@@ -89,7 +89,7 @@ func policyRuleForRedis(client client.Client) []v1.PolicyRule {
 
 	// Need additional policy rules if we are running on openshift, else the stateful set won't have the right
 	// permissions to start
-	rules = appendOpenShiftNonRootSCC(rules, client)
+	rules = appendOpenShiftRestrictedSCC(rules, client)
 
 	return rules
 }
@@ -125,7 +125,7 @@ func policyRuleForRedisHa(client client.Client) []v1.PolicyRule {
 
 	// Need additional policy rules if we are running on openshift, else the stateful set won't have the right
 	// permissions to start
-	rules = appendOpenShiftNonRootSCC(rules, client)
+	rules = appendOpenShiftRestrictedSCC(rules, client)
 
 	return rules
 }
@@ -436,16 +436,16 @@ func getPolicyRuleClusterRoleList() []struct {
 	}
 }
 
-func appendOpenShiftNonRootSCC(rules []v1.PolicyRule, client client.Client) []v1.PolicyRule {
+func appendOpenShiftRestrictedSCC(rules []v1.PolicyRule, client client.Client) []v1.PolicyRule {
 	if IsVersionAPIAvailable() {
-		// Starting with OpenShift 4.11, we need to use the resource name "nonroot-v2" instead of "nonroot"
-		resourceName := "nonroot"
+		// Starting with OpenShift 4.11, we need to use the resource name "restricted-v2" instead of "restricted"
+		resourceName := "restricted"
 		version, err := getClusterVersion(client)
 		if err != nil {
 			log.Error(err, "couldn't get OpenShift version")
 		}
 		if version == "" || semver.Compare(fmt.Sprintf("v%s", version), "v4.10.999") > 0 {
-			resourceName = "nonroot-v2"
+			resourceName = "restricted-v2"
 		}
 		orules := v1.PolicyRule{
 			APIGroups: []string{
