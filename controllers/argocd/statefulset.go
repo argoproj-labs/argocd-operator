@@ -360,7 +360,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 		},
 	}}
 
-	if IsVersionAPIAvailable() {
+	if IsOpenShiftCluster() {
 		var runAsNonRoot bool = true
 		ss.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
 			RunAsNonRoot: &runAsNonRoot,
