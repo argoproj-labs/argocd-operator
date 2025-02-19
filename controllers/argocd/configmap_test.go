@@ -761,7 +761,6 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceTrackingMethod(t *te
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
-
 	t.Run("Check default tracking method", func(t *testing.T) {
 		err = r.Client.Get(context.TODO(), types.NamespacedName{
 			Name:      common.ArgoCDConfigMapName,
@@ -1103,7 +1102,6 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withRespectRBAC(t *testing.T) {
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
-
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: common.ArgoCDConfigMapName, Namespace: testNamespace}, cm))
 
 	if c := cm.Data["resource.respectRBAC"]; c != "normal" {
@@ -1227,4 +1225,114 @@ func Test_validateOwnerReferences(t *testing.T) {
 	assert.Equal(t, cm.OwnerReferences[0].Kind, "ArgoCD")
 	assert.Equal(t, cm.OwnerReferences[0].Name, "argocd")
 	assert.Equal(t, cm.OwnerReferences[0].UID, uid)
+}
+
+func TestReconcileArgoCD_reconcileArgoConfigMap_withInstallationID(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.InstallationID = "test-id"
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	// Test initial installationID
+	err := r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NoError(t, err)
+
+	// Verify installationID is set as a top-level key
+	assert.Equal(t, "test-id", cm.Data[common.ArgoCDKeyInstallationID])
+
+	//Test updating installationID
+	a.Spec.InstallationID = "test-id-2"
+	err = r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	cm = &corev1.ConfigMap{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "test-id-2", cm.Data[common.ArgoCDKeyInstallationID])
+
+	// Test removing installationID
+	a.Spec.InstallationID = ""
+	err = r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NoError(t, err)
+
+	// Verify installationID was removed
+	assert.NotContains(t, cm.Data, common.ArgoCDKeyInstallationID)
+}
+
+func TestReconcileArgoCD_reconcileArgoConfigMap_withMultipleInstances(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	// Create first ArgoCD instance
+	argocd1 := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Name = "argocd-1"
+		a.Namespace = testNamespace
+		a.Spec.InstallationID = "instance-1"
+	})
+
+	// Create second ArgoCD instance
+	argocd2 := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Name = "argocd-2"
+		a.Namespace = testNamespace
+		a.Spec.InstallationID = "instance-2"
+	})
+
+	resObjs := []client.Object{argocd1, argocd2}
+	subresObjs := []client.Object{argocd1, argocd2}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	// Test first instance
+	err := r.reconcileArgoConfigMap(argocd1)
+	assert.NoError(t, err)
+
+	cm1 := &corev1.ConfigMap{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm1)
+	assert.NoError(t, err)
+
+	// Verify first instance's installationID
+	assert.Equal(t, "instance-1", cm1.Data[common.ArgoCDKeyInstallationID])
+
+	// Test second instance
+	err = r.reconcileArgoConfigMap(argocd2)
+	assert.NoError(t, err)
+
+	cm2 := &corev1.ConfigMap{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm2)
+	assert.NoError(t, err)
+
+	// Verify second instance's installationID
+	assert.Equal(t, "instance-2", cm2.Data[common.ArgoCDKeyInstallationID])
 }
