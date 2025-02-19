@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: guestbook
+  namespace: argocd-test-ns-scoped
+spec:
+  destination:
+    namespace: guestbook
+    server: 'https://kubernetes.default.svc'
+  project: guestbook-proj
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: guestbook
+    repoURL: 'https://github.com/argoproj/argocd-example-apps'
+  syncPolicy:
+    automated: {}
+    syncOptions:
+      - ServerSideApply=true

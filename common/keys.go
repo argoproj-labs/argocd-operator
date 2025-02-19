@@ -231,4 +231,7 @@ const (
 
 	// Label Selector is an env variable for ArgoCD instance reconcilliation.
 	ArgoCDLabelSelectorKey = "ARGOCD_LABEL_SELECTOR"
+
+	// ArgoCDKeyInstallationID is the configuration key for the installation ID.
+	ArgoCDKeyInstallationID = "installationID"
 )

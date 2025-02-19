@@ -1,0 +1,51 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 300
+---
+# Check first Application is healthy
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: test-app
+  namespace: test-1-046-argocd-1
+status:
+  health:
+    status: Healthy
+  sync:
+    status: Synced
+---
+# Check second Application is healthy
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: test-app
+  namespace: test-1-046-argocd-2
+status:
+  health:
+    status: Healthy
+  sync:
+    status: Synced
+---
+# Check resources in first namespace have correct annotation
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  namespace: source-ns-1
+  annotations:
+    argocd.argoproj.io/installation-id: instance-1
+    argocd.argoproj.io/tracking-id: test-app:apps/Deployment:source-ns-1/nginx-deployment
+  labels:
+    app.kubernetes.io/instance: test-app
+---
+# Check resources in second namespace have correct annotation
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  namespace: source-ns-2
+  annotations:
+    argocd.argoproj.io/installation-id: instance-2
+    argocd.argoproj.io/tracking-id: test-app:apps/Deployment:source-ns-2/nginx-deployment
+  labels:
+    app.kubernetes.io/instance: test-app
