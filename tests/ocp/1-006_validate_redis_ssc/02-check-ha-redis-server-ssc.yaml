@@ -1,0 +1,14 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: |
+    pod_name=$(oc get pod -l app.kubernetes.io/name=argocd-redis-ha -n $NAMESPACE -o jsonpath="{.items[0].metadata.name}")
+    actual_scc=$(oc get pod $pod_name -n $NAMESPACE -o jsonpath="{.metadata.annotations.openshift\.io/scc}")
+    expected_scc="restricted-v2"
+
+    if [[ "$actual_scc" != "$expected_scc" ]]; then
+      echo "SCC check failed: Expected '$expected_scc' but got '$actual_scc'"
+      exit 1
+    else
+      echo "SCC check passed: '$actual_scc'"
+    fi
