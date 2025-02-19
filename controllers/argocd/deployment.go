@@ -467,37 +467,72 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
 
-	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
-		Args:            getArgoRedisArgs(useTLS),
-		Image:           getRedisContainerImage(cr),
-		ImagePullPolicy: corev1.PullAlways,
-		Name:            "redis",
-		Ports: []corev1.ContainerPort{
-			{
-				ContainerPort: common.ArgoCDDefaultRedisPort,
-			},
-		},
-		Resources: getRedisResources(cr),
-		Env:       env,
-		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{
-					"ALL",
+	if IsVersionAPIAvailable() {
+		deploy.Spec.Template.Spec.Containers = []corev1.Container{{
+			Args:            getArgoRedisArgs(useTLS),
+			Image:           getRedisContainerImage(cr),
+			ImagePullPolicy: corev1.PullAlways,
+			Name:            "redis",
+			Ports: []corev1.ContainerPort{
+				{
+					ContainerPort: common.ArgoCDDefaultRedisPort,
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
-			SeccompProfile: &corev1.SeccompProfile{
-				Type: "RuntimeDefault",
+			Resources: getRedisResources(cr),
+			Env:       env,
+			SecurityContext: &corev1.SecurityContext{
+				AllowPrivilegeEscalation: boolPtr(false),
+				Capabilities: &corev1.Capabilities{
+					Drop: []corev1.Capability{
+						"ALL",
+					},
+				},
+				RunAsNonRoot: boolPtr(true),
+				SeccompProfile: &corev1.SeccompProfile{
+					Type: "RuntimeDefault",
+				},
 			},
-		},
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      common.ArgoCDRedisServerTLSSecretName,
-				MountPath: "/app/config/redis/tls",
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      common.ArgoCDRedisServerTLSSecretName,
+					MountPath: "/app/config/redis/tls",
+				},
 			},
-		},
-	}}
+		}}
+	} else {
+		deploy.Spec.Template.Spec.Containers = []corev1.Container{{
+			Args:            getArgoRedisArgs(useTLS),
+			Image:           getRedisContainerImage(cr),
+			ImagePullPolicy: corev1.PullAlways,
+			Name:            "redis",
+			Ports: []corev1.ContainerPort{
+				{
+					ContainerPort: common.ArgoCDDefaultRedisPort,
+				},
+			},
+			Resources: getRedisResources(cr),
+			Env:       env,
+			SecurityContext: &corev1.SecurityContext{
+				AllowPrivilegeEscalation: boolPtr(false),
+				Capabilities: &corev1.Capabilities{
+					Drop: []corev1.Capability{
+						"ALL",
+					},
+				},
+				RunAsNonRoot: boolPtr(true),
+				RunAsUser:    int64Ptr(999),
+				SeccompProfile: &corev1.SeccompProfile{
+					Type: "RuntimeDefault",
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      common.ArgoCDRedisServerTLSSecretName,
+					MountPath: "/app/config/redis/tls",
+				},
+			},
+		}}
+	}
 
 	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "argocd-redis")
 	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{
@@ -794,11 +829,22 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 		},
 	}
 
-	deploy.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
-		RunAsNonRoot: boolPtr(true),
-		SeccompProfile: &corev1.SeccompProfile{
-			Type: "RuntimeDefault",
-		},
+	if IsVersionAPIAvailable() {
+		deploy.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
+			RunAsNonRoot: boolPtr(true),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: "RuntimeDefault",
+			},
+		}
+	} else {
+		deploy.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
+			RunAsNonRoot: boolPtr(true),
+			RunAsUser:    int64Ptr(1000),
+			FSGroup:      int64Ptr(1000),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: "RuntimeDefault",
+			},
+		}
 	}
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
 
