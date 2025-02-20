@@ -87,8 +87,7 @@ func policyRuleForRedis(client client.Client) []v1.PolicyRule {
 		},
 	}
 
-	// Need additional policy rules if we are running on openshift, else the stateful set won't have the right
-	// permissions to start
+	// In OpenShift, we need to ensure that the Pods are running with the least privilege allowed.
 	rules = appendOpenShiftRestrictedSCC(rules, client)
 
 	return rules
@@ -123,8 +122,7 @@ func policyRuleForRedisHa(client client.Client) []v1.PolicyRule {
 		},
 	}
 
-	// Need additional policy rules if we are running on openshift, else the stateful set won't have the right
-	// permissions to start
+	// In OpenShift, we need to ensure that the Pods are running with the least privilege allowed.
 	rules = appendOpenShiftRestrictedSCC(rules, client)
 
 	return rules
