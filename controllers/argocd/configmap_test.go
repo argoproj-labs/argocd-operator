@@ -1040,6 +1040,47 @@ func Test_reconcileRBAC(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, cm.Data["policy.matchMode"], matcherMode)
+
+	// Verify when SSO different from keycloak it sync
+	rbacScopes := "[groups,email]"
+	cmRbacScopes := ""
+	a.Spec.RBAC.Scopes = &rbacScopes
+	cm.Data["scopes"] = cmRbacScopes
+	a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+		Provider: argoproj.SSOProviderTypeDex,
+	}
+	err = r.reconcileRBAC(a)
+	assert.NoError(t, err)
+
+	cm = &corev1.ConfigMap{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDRBACConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+
+	assert.NoError(t, err)
+	assert.Equal(t, rbacScopes, cm.Data["scopes"])
+	assert.Equal(t, rbacScopes, *a.Spec.RBAC.Scopes)
+
+	rbacScopes = "[groups]"
+	cmRbacScopes = cm.Data["scopes"]
+	a.Spec.RBAC.Scopes = &rbacScopes
+	a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+		Provider: argoproj.SSOProviderTypeKeycloak,
+	}
+	err = r.reconcileRBAC(a)
+	assert.NoError(t, err)
+
+	cm = &corev1.ConfigMap{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDRBACConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+
+	assert.NoError(t, err)
+	assert.Equal(t, cmRbacScopes, cm.Data["scopes"])
+	assert.Equal(t, rbacScopes, *a.Spec.RBAC.Scopes)
+
 }
 
 func Test_validateOwnerReferences(t *testing.T) {
