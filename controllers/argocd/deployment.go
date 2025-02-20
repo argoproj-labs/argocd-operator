@@ -1830,7 +1830,6 @@ func getRolloutInitContainer() []corev1.Container {
 				},
 			},
 			SecurityContext: &corev1.SecurityContext{
-				RunAsUser:                int64Ptr(999),
 				AllowPrivilegeEscalation: boolPtr(false),
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{
@@ -1839,6 +1838,7 @@ func getRolloutInitContainer() []corev1.Container {
 				},
 				ReadOnlyRootFilesystem: boolPtr(true),
 				RunAsNonRoot:           boolPtr(true),
+				RunAsUser:              int64Ptr(999),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: "RuntimeDefault",
 				},
