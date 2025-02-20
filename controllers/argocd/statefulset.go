@@ -363,14 +363,21 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 		},
 	}}
 
-	var fsGroup int64 = 1000
-	var runAsNonRoot bool = true
-	var runAsUser int64 = 1000
+	if IsOpenShiftCluster() {
+		var runAsNonRoot bool = true
+		ss.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
+			RunAsNonRoot: &runAsNonRoot,
+		}
+	} else {
+		var fsGroup int64 = 1000
+		var runAsNonRoot bool = true
+		var runAsUser int64 = 1000
 
-	ss.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
-		FSGroup:      &fsGroup,
-		RunAsNonRoot: &runAsNonRoot,
-		RunAsUser:    &runAsUser,
+		ss.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
+			FSGroup:      &fsGroup,
+			RunAsNonRoot: &runAsNonRoot,
+			RunAsUser:    &runAsUser,
+		}
 	}
 	AddSeccompProfileForOpenShift(r.Client, &ss.Spec.Template.Spec)
 

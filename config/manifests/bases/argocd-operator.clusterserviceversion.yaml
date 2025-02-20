@@ -427,6 +427,13 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: InstallationID uniquely identifies an Argo CD instance in multi-instance
+          clusters.
+        displayName: Installation ID
+        path: installationID
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: KustomizeVersions is a listing of configured versions of Kustomize
           to be made available within ArgoCD.
         displayName: Kustomize Build Options'
@@ -1025,6 +1032,13 @@ spec:
           the cluster.
         displayName: Initial Repositories'
         path: initialRepositories
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: InstallationID uniquely identifies an Argo CD instance in multi-instance
+          clusters.
+        displayName: Installation ID
+        path: installationID
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced

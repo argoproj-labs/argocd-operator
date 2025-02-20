@@ -792,6 +792,10 @@ type ArgoCDSpec struct {
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Application Instance Label Key'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	ApplicationInstanceLabelKey string `json:"applicationInstanceLabelKey,omitempty"`
 
+	// InstallationID uniquely identifies an Argo CD instance in multi-instance clusters.
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Installation ID",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
+	InstallationID string `json:"installationID,omitempty"`
+
 	// ConfigManagementPlugins is used to specify additional config management plugins.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Config Management Plugins'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	ConfigManagementPlugins string `json:"configManagementPlugins,omitempty"`
