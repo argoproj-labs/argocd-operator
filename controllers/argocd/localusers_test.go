@@ -164,3 +164,127 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersDelete(t *testing.T) {
 	expect.NoError(err)
 	expect.Empty(argocdSecret.Data["accounts.alice.tokens"])
 }
+
+func TestReconcileArgoCD_reconcileArgoLocalUsersDeleteWithExtraConfigAPIKey(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	var err error
+
+	expect := assert.New(t)
+
+	cr := makeTestArgoCD()
+	cr.Spec.LocalUsers = []argoproj.LocalUserSpec{
+		{
+			Name: "alice",
+		},
+	}
+
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	// Create and get the argocd-secret. The argocd-secret needs to exist before
+	// the test calls reconcileLocalUsers()
+	clusterSecret := argoutil.NewSecretWithSuffix(cr, "cluster")
+	clusterSecret.Data = map[string][]byte{common.ArgoCDKeyAdminPassword: []byte("something")}
+	tlsSecret := argoutil.NewSecretWithSuffix(cr, "tls")
+	err = r.Client.Create(context.TODO(), clusterSecret)
+	expect.NoError(err)
+	r.Client.Create(context.TODO(), tlsSecret)
+	expect.NoError(err)
+	err = r.reconcileArgoSecret(cr)
+	expect.NoError(err)
+	argocdSecret := corev1.Secret{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: cr.Namespace}, &argocdSecret)
+	expect.NoError(err)
+
+	// Reconcile to create the user secret and add the user's token to the argocd-secret
+	expect.NoError(r.reconcileLocalUsers(cr))
+	userSecret := corev1.Secret{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "alice-local-user", Namespace: cr.Namespace}, &userSecret)
+	expect.NoError(err)
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: cr.Namespace}, &argocdSecret)
+	expect.NoError(err)
+	expect.NotEmpty(argocdSecret.Data["accounts.alice.tokens"])
+
+	// Remove the user from the argocd CR, add them to the extraConfig and
+	// reconcile again
+	cr.Spec.LocalUsers = []argoproj.LocalUserSpec{}
+	cr.Spec.ExtraConfig = map[string]string{
+		"accounts.alice": "login, apiKey",
+	}
+	expect.NoError(r.reconcileLocalUsers(cr))
+
+	// Check that the user secret was deleted
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "alice-local-user", Namespace: cr.Namespace}, &userSecret)
+	expect.True(apierrors.IsNotFound(err))
+
+	// Check that the user's token was not removed
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: cr.Namespace}, &argocdSecret)
+	expect.NoError(err)
+	expect.NotEmpty(argocdSecret.Data["accounts.alice.tokens"])
+}
+
+func TestReconcileArgoCD_reconcileArgoLocalUsersDeleteWithExtraConfigLogin(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	var err error
+
+	expect := assert.New(t)
+
+	cr := makeTestArgoCD()
+	cr.Spec.LocalUsers = []argoproj.LocalUserSpec{
+		{
+			Name: "alice",
+		},
+	}
+
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	// Create and get the argocd-secret. The argocd-secret needs to exist before
+	// the test calls reconcileLocalUsers()
+	clusterSecret := argoutil.NewSecretWithSuffix(cr, "cluster")
+	clusterSecret.Data = map[string][]byte{common.ArgoCDKeyAdminPassword: []byte("something")}
+	tlsSecret := argoutil.NewSecretWithSuffix(cr, "tls")
+	err = r.Client.Create(context.TODO(), clusterSecret)
+	expect.NoError(err)
+	r.Client.Create(context.TODO(), tlsSecret)
+	expect.NoError(err)
+	err = r.reconcileArgoSecret(cr)
+	expect.NoError(err)
+	argocdSecret := corev1.Secret{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: cr.Namespace}, &argocdSecret)
+	expect.NoError(err)
+
+	// Reconcile to create the user secret and add the user's token to the argocd-secret
+	expect.NoError(r.reconcileLocalUsers(cr))
+	userSecret := corev1.Secret{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "alice-local-user", Namespace: cr.Namespace}, &userSecret)
+	expect.NoError(err)
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: cr.Namespace}, &argocdSecret)
+	expect.NoError(err)
+	expect.NotEmpty(argocdSecret.Data["accounts.alice.tokens"])
+
+	// Remove the user from the argocd CR, add them to the extraConfig and
+	// reconcile again
+	cr.Spec.LocalUsers = []argoproj.LocalUserSpec{}
+	cr.Spec.ExtraConfig = map[string]string{
+		"accounts.alice": "login",
+	}
+	expect.NoError(r.reconcileLocalUsers(cr))
+
+	// Check that the user secret was deleted
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "alice-local-user", Namespace: cr.Namespace}, &userSecret)
+	expect.True(apierrors.IsNotFound(err))
+
+	// Check that the user's token was removed
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: cr.Namespace}, &argocdSecret)
+	expect.NoError(err)
+	expect.Empty(argocdSecret.Data["accounts.alice.tokens"])
+}

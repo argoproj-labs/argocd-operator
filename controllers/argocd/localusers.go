@@ -35,18 +35,18 @@ import (
 )
 
 func (r *ReconcileArgoCD) reconcileLocalUsers(cr *argoproj.ArgoCD) error {
-	argoCDSecret := argoutil.NewSecretWithName(cr, common.ArgoCDSecretName)
-	if !argoutil.IsObjectFound(r.Client, cr.Namespace, argoCDSecret.Name, argoCDSecret) {
-		return fmt.Errorf("could not find argocd-secret")
+	// Retrieve the signing key from the argocd-secret
+	argoCDSecret := corev1.Secret{}
+	if !argoutil.IsObjectFound(r.Client, cr.Namespace, common.ArgoCDSecretName, &argoCDSecret) {
+		return fmt.Errorf("could not find secret %s", common.ArgoCDSecretName)
 	}
-
 	signingKey, ok := argoCDSecret.Data["server.secretkey"]
 	if !ok {
-		return fmt.Errorf("could not find server.secretkey in argocd-secret")
+		return fmt.Errorf("could not find server.secretkey in secret %s", argoCDSecret.Name)
 	}
 
+	// Reconcile the local users declared in the argocd CR
 	legacyUsers := localUsersInExtraConfig(cr)
-
 	for _, user := range cr.Spec.LocalUsers {
 		if legacyUsers[user.Name] {
 			continue
@@ -54,12 +54,13 @@ func (r *ReconcileArgoCD) reconcileLocalUsers(cr *argoproj.ArgoCD) error {
 		if user.ApiKey != nil && !*user.ApiKey {
 			continue
 		}
-		if err := r.reconcileUser(cr, user, argoCDSecret, signingKey); err != nil {
+		if err := r.reconcileUser(cr, user, signingKey); err != nil {
 			return err
 		}
 	}
 
-	// Delete the secret and token for users that are no longer in the argocd CR
+	// Delete the secret and token for users that are no longer in the
+	// localUsers section of theargocd CR
 	if err := r.cleanupLocalUsers(cr); err != nil {
 		return err
 	}
@@ -67,7 +68,14 @@ func (r *ReconcileArgoCD) reconcileLocalUsers(cr *argoproj.ArgoCD) error {
 	return nil
 }
 
-func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.LocalUserSpec, argoCDSecret *corev1.Secret, signingKey []byte) error {
+func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.LocalUserSpec, signingKey []byte) error {
+	// If the local user secret already exists, just return
+	userSecret := argoutil.NewSecretWithName(cr, user.Name+"-local-user")
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, userSecret.Name, userSecret) {
+		return nil
+	}
+	userSecret.Labels[common.ArgoCDKeyComponent] = "local-users"
+
 	// Create the values from which the token is generated
 
 	var uniqueId string
@@ -88,36 +96,30 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 		expiresIn = val
 	}
 
-	// Create the secret containing the API token for this user
-
-	secret := argoutil.NewSecretWithName(cr, user.Name+"-local-user")
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
-		return nil
-	}
-	secret.Labels[common.ArgoCDKeyComponent] = "local-users"
-
 	subject := fmt.Sprintf("%s:%s", user.Name, "apiKey")
 	jwtToken, err := createJwtToken(subject, issuedAt, expiresIn, uniqueId, signingKey)
 	if err != nil {
 		return fmt.Errorf("error creating token for user %s: %w", user.Name, err)
 	}
 
-	secret.Data = map[string][]byte{
+	userSecret.Data = map[string][]byte{
 		"user":     []byte(user.Name),
 		"ID":       []byte(uniqueId),
 		"apiToken": []byte(jwtToken),
 	}
 
-	if err := controllerutil.SetControllerReference(cr, secret, r.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(cr, userSecret, r.Scheme); err != nil {
 		return err
 	}
 
-	argoutil.LogResourceCreation(log, secret)
-	if err := r.Client.Create(context.TODO(), secret); err != nil {
+	// Create the local user secret
+
+	argoutil.LogResourceCreation(log, userSecret)
+	if err := r.Client.Create(context.TODO(), userSecret); err != nil {
 		return err
 	}
 
-	// Add the token to the argocd-secret
+	// Add the token info to the argocd-secret
 
 	var expiresAt int64
 	if expiresIn > 0 {
@@ -137,11 +139,16 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 		return err
 	}
 
+	argoCDSecret := corev1.Secret{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: common.ArgoCDSecretName, Namespace: cr.Namespace}, &argoCDSecret)
+	if err != nil {
+		return err
+	}
+
 	key := fmt.Sprintf("accounts.%s.tokens", user.Name)
-	value := string(tokens)
-	argoCDSecret.Data[key] = []byte(value)
-	argoutil.LogResourceUpdate(log, argoCDSecret, "adding token for user account", user.Name)
-	if err := r.Client.Update(context.TODO(), argoCDSecret); err != nil {
+	argoCDSecret.Data[key] = tokens
+	argoutil.LogResourceUpdate(log, &argoCDSecret, "adding token for user account", user.Name)
+	if err := r.Client.Update(context.TODO(), &argoCDSecret); err != nil {
 		return err
 	}
 
@@ -161,8 +168,8 @@ func (r *ReconcileArgoCD) cleanupLocalUsers(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
-	// Delete any users that aren't declared in the localUsers section of the
-	// argocd CR
+	// Clean up the local user secrets and argocd-secret tokens for any users
+	// that aren't declared in the localUsers section of the argocd CR
 	for _, secret := range secrets.Items {
 		userName := string(secret.Data["user"])
 		found := false
@@ -173,7 +180,7 @@ func (r *ReconcileArgoCD) cleanupLocalUsers(cr *argoproj.ArgoCD) error {
 			}
 		}
 		if !found {
-			if err := r.cleanupUser(userName, secret); err != nil {
+			if err := r.cleanupUser(cr, userName, secret); err != nil {
 				return err
 			}
 		}
@@ -182,25 +189,30 @@ func (r *ReconcileArgoCD) cleanupLocalUsers(cr *argoproj.ArgoCD) error {
 	return nil
 }
 
-func (r *ReconcileArgoCD) cleanupUser(userName string, secret corev1.Secret) error {
-	namespace := secret.Namespace
-
+func (r *ReconcileArgoCD) cleanupUser(cr *argoproj.ArgoCD, userName string, secret corev1.Secret) error {
 	// Delete the secret
 	argoutil.LogResourceDeletion(log, &secret, "deleting secret for user", userName)
 	if err := r.Client.Delete(context.TODO(), &secret); err != nil {
 		return err
 	}
 
-	// Delete the token from the argocd-secret
-	argoCDSecret := corev1.Secret{}
-	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: common.ArgoCDSecretName, Namespace: namespace}, &argoCDSecret); err != nil {
-		return err
-	}
-	key := fmt.Sprintf("accounts.%s.tokens", userName)
-	delete(argoCDSecret.Data, key)
-	argoutil.LogResourceUpdate(log, &argoCDSecret, "deleting token for user", userName)
-	if err := r.Client.Update(context.TODO(), &argoCDSecret); err != nil {
-		return err
+	// Delete the token from the argocd-secret provided the user isn't in the
+	// extraConfig and using an apiKey
+	value := cr.Spec.ExtraConfig["accounts."+userName]
+	if !strings.Contains(value, "apiKey") {
+		argoCDSecret := corev1.Secret{}
+		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: common.ArgoCDSecretName, Namespace: cr.Namespace}, &argoCDSecret); err != nil {
+			return err
+		}
+
+		key := fmt.Sprintf("accounts.%s.tokens", userName)
+		if _, ok := argoCDSecret.Data[key]; ok {
+			argoutil.LogResourceUpdate(log, &argoCDSecret, "deleting token for user", userName)
+			delete(argoCDSecret.Data, key)
+			if err := r.Client.Update(context.TODO(), &argoCDSecret); err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
