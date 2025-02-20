@@ -1643,6 +1643,10 @@ func AddSeccompProfileForOpenShift(client client.Client, podspec *corev1.PodSpec
 	}
 }
 
+func IsOpenShiftCluster() bool {
+	return IsVersionAPIAvailable() // This checks if the OpenShift API is available
+}
+
 // getClusterVersion returns the OpenShift Cluster version in which the operator is installed
 func getClusterVersion(client client.Client) (string, error) {
 	if !IsVersionAPIAvailable() {

@@ -467,6 +467,12 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
 
+	if !IsOpenShiftCluster() {
+		deploy.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
+			RunAsUser: int64Ptr(1000),
+		}
+	}
+
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Args:            getArgoRedisArgs(useTLS),
 		Image:           getRedisContainerImage(cr),
@@ -487,7 +493,6 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 				},
 			},
 			RunAsNonRoot: boolPtr(true),
-			RunAsUser:    int64Ptr(999),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
@@ -795,13 +800,22 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 		},
 	}
 
-	deploy.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
-		RunAsNonRoot: boolPtr(true),
-		RunAsUser:    int64Ptr(1000),
-		FSGroup:      int64Ptr(1000),
-		SeccompProfile: &corev1.SeccompProfile{
-			Type: "RuntimeDefault",
-		},
+	if IsOpenShiftCluster() {
+		deploy.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
+			RunAsNonRoot: boolPtr(true),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: "RuntimeDefault",
+			},
+		}
+	} else {
+		deploy.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
+			RunAsNonRoot: boolPtr(true),
+			RunAsUser:    int64Ptr(1000),
+			FSGroup:      int64Ptr(1000),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: "RuntimeDefault",
+			},
+		}
 	}
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
 
