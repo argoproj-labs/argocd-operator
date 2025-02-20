@@ -169,6 +169,10 @@ func getArgoImportVolumeMounts() []corev1.VolumeMount {
 		Name:      "secret-storage",
 		MountPath: "/secrets",
 	})
+	mounts = append(mounts, corev1.VolumeMount{
+		Name:      "tmp",
+		MountPath: "/tmp",
+	})
 
 	return mounts
 }
@@ -204,6 +208,12 @@ func getArgoImportVolumes(cr *argoprojv1alpha1.ArgoCDExport) []corev1.Volume {
 		},
 	})
 
+	volumes = append(volumes, corev1.Volume{
+		Name: "tmp",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	})
 	return volumes
 }
 
@@ -1805,6 +1815,7 @@ func getRolloutInitContainer() []corev1.Container {
 				},
 			},
 			SecurityContext: &corev1.SecurityContext{
+				RunAsUser:                int64Ptr(999),
 				AllowPrivilegeEscalation: boolPtr(false),
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{
