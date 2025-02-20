@@ -781,6 +781,11 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
+	log.Info("reconciling local users")
+	if err := r.reconcileLocalUsers(cr); err != nil {
+		return err
+	}
+
 	log.Info("reconciling services")
 	if err := r.reconcileServices(cr); err != nil {
 		return err

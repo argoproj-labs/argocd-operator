@@ -781,6 +781,32 @@ type KustomizeVersionSpec struct {
 	Path string `json:"path,omitempty"`
 }
 
+// LocalUserSpec is used to specify information about an ArgoCD local user to be created by the operator.
+type LocalUserSpec struct {
+	// Name of the local user
+	Name string `json:"name"`
+
+	// Enabled defines whether or not this local user is enabled. Default is
+	// true
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// ApiKey defines whether or not the user is configured to use an ArgoCD API
+	// key. Default is true
+	ApiKey *bool `json:"apiKey,omitempty"`
+
+	// Login defines whether or not the user is configured to be able to login. Default is false
+	Login bool `json:"login,omitempty"`
+
+	// TokenLifetime defines the how long the token issued to this user is valid
+	// for. An empty string or the value 0 indicates an infinite lifetime.
+	// Examples: "30m", "8760h"
+	TokenLifetime string `json:"tokenLifetime,omitempty"`
+
+	// AutoRenewToken specifies if a new token is to be issued once the existing
+	// one has expired
+	AutoRenewToken *bool `json:"autoRenewToken,omitempty"`
+}
+
 // ArgoCDMonitoringSpec is used to configure workload status monitoring for a given Argo CD instance.
 // It triggers creation of serviceMonitor and PrometheusRules that alert users when a given workload
 // status meets a certain criteria. For e.g, it can fire an alert if the application controller is
@@ -875,6 +901,9 @@ type ArgoCDSpec struct {
 	// KustomizeVersions is a listing of configured versions of Kustomize to be made available within ArgoCD.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Kustomize Build Options'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	KustomizeVersions []KustomizeVersionSpec `json:"kustomizeVersions,omitempty"`
+
+	// LocalUsers is a listing of local users to be created by the operator for the purpose of issuing ArgoCD API keys.
+	LocalUsers []LocalUserSpec `json:"localUsers,omitempty"`
 
 	// OIDCConfig is the OIDC configuration as an alternative to dex.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="OIDC Config'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
