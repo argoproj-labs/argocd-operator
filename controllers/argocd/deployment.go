@@ -504,7 +504,6 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 			},
 			ReadOnlyRootFilesystem: boolPtr(true),
 			RunAsNonRoot:           boolPtr(true),
-			RunAsUser:              int64Ptr(999),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
