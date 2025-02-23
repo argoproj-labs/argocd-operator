@@ -1,4 +1,4 @@
-# Argo CD v2.13.1
+# Argo CD v2.14.2
 FROM quay.io/argoproj/argocd@sha256:018f6444077deb39eac7c549a0ffe68d75da71751dd19899e05d3b60e1c2476f as argocd
 
 # Final Image
