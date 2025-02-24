@@ -579,12 +579,16 @@ func (r *ReconcileArgoCD) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argop
 
 	// Scopes
 	if cr.Spec.RBAC.Scopes != nil && cm.Data[common.ArgoCDKeyRBACScopes] != *cr.Spec.RBAC.Scopes {
-		cm.Data[common.ArgoCDKeyRBACScopes] = *cr.Spec.RBAC.Scopes
-		if changed {
-			explanation += ", "
+		if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeKeycloak {
+			log.Info("cr.Spec.RBAC.Scopes value could be out of sync with the RBACConfigMap, since keycloak sso is enabled and scopes are fixed to [groups,mails]")
+		} else {
+			cm.Data[common.ArgoCDKeyRBACScopes] = *cr.Spec.RBAC.Scopes
+			if changed {
+				explanation += ", "
+			}
+			explanation += "rbac scopes"
+			changed = true
 		}
-		explanation += "rbac scopes"
-		changed = true
 	}
 
 	if changed {
