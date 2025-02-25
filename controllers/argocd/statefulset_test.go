@@ -638,11 +638,13 @@ func Test_UpdateNodePlacementStateful(t *testing.T) {
 	}
 }
 
-func Test_ContainsValidImage(t *testing.T) {
+func Test_ContainsInvalidImage(t *testing.T) {
 
 	a := makeTestArgoCD()
 	po := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argo-cd-application-controller",
+			Namespace: a.Namespace,
 			Labels: map[string]string{
 				common.ArgoCDKeyName: fmt.Sprintf("%s-%s", a.Name, "application-controller"),
 			},
@@ -658,9 +660,22 @@ func Test_ContainsValidImage(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, objs, objs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
 
-	if containsInvalidImage(a, r) {
+	// Test that containsInvalidImage returns false if there is nothing wrong with the Pod
+	containsInvalidImageRes, err := containsInvalidImage(*a, *r)
+	assert.NoError(t, err)
+	if containsInvalidImageRes {
 		t.Fatalf("containsInvalidImage failed, got true, expected false")
 	}
+
+	// Test that containsInvalidImage returns true if the Pod is in ErrImagePull
+	po.Status.ContainerStatuses = []corev1.ContainerStatus{
+		{State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "ErrImagePull"}}}}
+	err = cl.Status().Update(context.Background(), po)
+	assert.NoError(t, err)
+
+	containsInvalidImageRes, err = containsInvalidImage(*a, *r)
+	assert.NoError(t, err)
+	assert.True(t, containsInvalidImageRes)
 
 }
 
