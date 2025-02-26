@@ -18,6 +18,7 @@ import (
 	"context"
 	json "encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -69,9 +70,11 @@ func (r *ReconcileArgoCD) reconcileLocalUsers(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.LocalUserSpec, signingKey []byte) error {
-	// If the local user secret already exists, just return
 	userSecret := argoutil.NewSecretWithName(cr, user.Name+"-local-user")
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, userSecret.Name, userSecret) {
+		if user.ApiKey == nil || !*user.ApiKey {
+			r.cleanupUser(cr, user.Name, *userSecret)
+		}
 		return nil
 	}
 	userSecret.Labels[common.ArgoCDKeyComponent] = "local-users"
@@ -247,4 +250,52 @@ func localUsersInExtraConfig(cr *argoproj.ArgoCD) map[string]bool {
 		}
 	}
 	return localUsers
+}
+
+func (r *ReconcileArgoCD) ExpiringTokens(cr *argoproj.ArgoCD) ([]settings.Token, error) {
+	argoCDSecret := corev1.Secret{}
+	if !argoutil.IsObjectFound(r.Client, cr.Namespace, common.ArgoCDSecretName, &argoCDSecret) {
+		return nil, fmt.Errorf("could not find secret %s", common.ArgoCDSecretName)
+	}
+
+	var tokens []settings.Token
+
+	legacyUsers := localUsersInExtraConfig(cr)
+	for _, user := range cr.Spec.LocalUsers {
+		if legacyUsers[user.Name] {
+			continue
+		}
+		if user.ApiKey != nil && !*user.ApiKey {
+			continue
+		}
+		if user.TokenLifetime == "" {
+			continue
+		}
+
+		key := fmt.Sprintf("accounts.%s.tokens", user.Name)
+		value := argoCDSecret.Data[key]
+
+		var accountTokens []settings.Token
+		if err := json.Unmarshal(value, &accountTokens); err != nil {
+			return nil, err
+		}
+		if len(accountTokens) != 1 {
+			return nil, fmt.Errorf("expected 1 token for user %s, got %d", user.Name, len(accountTokens))
+		}
+
+		tokens = append(tokens, accountTokens[0])
+	}
+
+	slices.SortFunc(tokens, func(a settings.Token, b settings.Token) int {
+		value := a.ExpiresAt - b.ExpiresAt
+		if value < 0 {
+			return -1
+		} else if value > 0 {
+			return 1
+		} else {
+			return 0
+		}
+	})
+
+	return tokens, nil
 }

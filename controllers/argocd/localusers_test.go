@@ -42,7 +42,8 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersCreate(t *testing.T) {
 	cr := makeTestArgoCD()
 	cr.Spec.LocalUsers = []argoproj.LocalUserSpec{
 		{
-			Name: "alice",
+			Name:          "alice",
+			TokenLifetime: "1h",
 		},
 	}
 
@@ -105,6 +106,7 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersCreate(t *testing.T) {
 	expect.Len(userTokens, 1)
 	expect.Equal(string(userSecret.Data["ID"]), userTokens[0].ID)
 	expect.Equal(int64(claims["iat"].(float64)), userTokens[0].IssuedAt)
+	expect.Equal(int64(claims["exp"].(float64)), userTokens[0].ExpiresAt)
 }
 
 func TestReconcileArgoCD_reconcileArgoLocalUsersDelete(t *testing.T) {
@@ -287,4 +289,80 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersDeleteWithExtraConfigLogin(t *te
 	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: cr.Namespace}, &argocdSecret)
 	expect.NoError(err)
 	expect.Empty(argocdSecret.Data["accounts.alice.tokens"])
+}
+
+func TestReconcileArgoCD_reconcileArgoLocalUsersExpiringTokens(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	var err error
+
+	expect := assert.New(t)
+
+	cr := makeTestArgoCD()
+	cr.Spec.LocalUsers = []argoproj.LocalUserSpec{
+		{
+			Name:          "alice",
+			TokenLifetime: "3h",
+		},
+		{
+			Name:          "bob",
+			TokenLifetime: "1h",
+		},
+		{
+			Name:          "carol",
+			TokenLifetime: "2h",
+		},
+		{
+			Name: "david",
+		},
+	}
+
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	// Create and get the argocd-secret. The argocd-secret needs to exist before
+	// the test calls reconcileLocalUsers()
+	clusterSecret := argoutil.NewSecretWithSuffix(cr, "cluster")
+	clusterSecret.Data = map[string][]byte{common.ArgoCDKeyAdminPassword: []byte("something")}
+	tlsSecret := argoutil.NewSecretWithSuffix(cr, "tls")
+	err = r.Client.Create(context.TODO(), clusterSecret)
+	expect.NoError(err)
+	r.Client.Create(context.TODO(), tlsSecret)
+	expect.NoError(err)
+	err = r.reconcileArgoSecret(cr)
+	expect.NoError(err)
+
+	// Reconcile and then check that the ExpiredTokens method works as expected
+
+	expect.NoError(r.reconcileLocalUsers(cr))
+	expiringTokens, err := r.ExpiringTokens(cr)
+	expect.NoError(err)
+	expect.Len(expiringTokens, 3)
+
+	argocdSecret := corev1.Secret{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: cr.Namespace}, &argocdSecret)
+	expect.NoError(err)
+
+	userTokens := []settings.Token{}
+
+	// Check that bob's token is first
+	expect.NotEmpty(argocdSecret.Data["accounts.bob.tokens"])
+	err = json.Unmarshal(argocdSecret.Data["accounts.bob.tokens"], &userTokens)
+	expect.NoError(err)
+	expect.Equal(userTokens[0], expiringTokens[0])
+
+	// Check that carol's token is second
+	expect.NotEmpty(argocdSecret.Data["accounts.carol.tokens"])
+	err = json.Unmarshal(argocdSecret.Data["accounts.carol.tokens"], &userTokens)
+	expect.NoError(err)
+	expect.Equal(userTokens[0], expiringTokens[1])
+
+	// Check that alice's token is third
+	expect.NotEmpty(argocdSecret.Data["accounts.alice.tokens"])
+	err = json.Unmarshal(argocdSecret.Data["accounts.alice.tokens"], &userTokens)
+	expect.NoError(err)
+	expect.Equal(userTokens[0], expiringTokens[2])
 }
