@@ -525,7 +525,7 @@ func getDefaultNotificationsTriggers() map[string]string {
   send:
   - app-deployed
   when: app.status.operationState != nil and app.status.operationState.phase in ['Succeeded'] and app.status.health.status
-      == 'Healthy' and !time.Parse(app.status.health.lastTransitionTime).Before(time.Parse(app.status.operationState.finishedAt))`
+      == 'Healthy' and !time.Parse(app.status.health.lastTransitionTime).Add(1*time.Minute).Before(time.Parse(app.status.operationState.finishedAt))`
 
 	notificationsTriggers["trigger.on-health-degraded"] = `- description: Application has degraded
   send:
