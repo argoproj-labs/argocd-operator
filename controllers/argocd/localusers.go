@@ -19,6 +19,7 @@ import (
 	json "encoding/json"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -52,9 +53,6 @@ func (r *ReconcileArgoCD) reconcileLocalUsers(cr *argoproj.ArgoCD) error {
 		if legacyUsers[user.Name] {
 			continue
 		}
-		if user.ApiKey != nil && !*user.ApiKey {
-			continue
-		}
 		if err := r.reconcileUser(cr, user, signingKey); err != nil {
 			return err
 		}
@@ -70,12 +68,38 @@ func (r *ReconcileArgoCD) reconcileLocalUsers(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.LocalUserSpec, signingKey []byte) error {
+	var update bool
+	var explanation string
+
+	var expiresIn time.Duration
+	if user.TokenLifetime != "" {
+		val, err := time.ParseDuration(user.TokenLifetime)
+		if err != nil {
+			return fmt.Errorf("failed to parse token lifetime for user %s: %w", user.Name, err)
+		}
+		expiresIn = val
+	}
+
+	var tokenLifetime string
+	if user.TokenLifetime == "" || expiresIn == 0 {
+		tokenLifetime = "0h"
+	} else {
+		tokenLifetime = user.TokenLifetime
+	}
+
 	userSecret := argoutil.NewSecretWithName(cr, user.Name+"-local-user")
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, userSecret.Name, userSecret) {
-		if user.ApiKey == nil || !*user.ApiKey {
-			r.cleanupUser(cr, user.Name, *userSecret)
+		if user.ApiKey != nil && !*user.ApiKey {
+			if err := r.cleanupUser(cr, user.Name, *userSecret); err != nil {
+				return err
+			}
+			return nil
+		} else if tokenLifetime != string(userSecret.Data["expIn"]) {
+			update = true
+			explanation = "token lifetime changed"
+		} else {
+			return nil
 		}
-		return nil
 	}
 	userSecret.Labels[common.ArgoCDKeyComponent] = "local-users"
 
@@ -90,13 +114,9 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 
 	issuedAt := time.Now()
 
-	var expiresIn time.Duration
-	if user.TokenLifetime != "" {
-		val, err := time.ParseDuration(user.TokenLifetime)
-		if err != nil {
-			return fmt.Errorf("failed to parse token lifetime for user %s: %w", user.Name, err)
-		}
-		expiresIn = val
+	var expiresAt int64
+	if expiresIn > 0 {
+		expiresAt = issuedAt.Add(expiresIn).Unix()
 	}
 
 	subject := fmt.Sprintf("%s:%s", user.Name, "apiKey")
@@ -105,9 +125,13 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 		return fmt.Errorf("error creating token for user %s: %w", user.Name, err)
 	}
 
+	// We store the TokenLifetime so we can tell if it's been changed in the
+	// ArgoCD CR
 	userSecret.Data = map[string][]byte{
 		"user":     []byte(user.Name),
 		"ID":       []byte(uniqueId),
+		"expAt":    []byte(strconv.FormatInt(expiresAt, 10)),
+		"expIn":    []byte(tokenLifetime),
 		"apiToken": []byte(jwtToken),
 	}
 
@@ -115,19 +139,21 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 		return err
 	}
 
-	// Create the local user secret
+	// Create or update the local user secret
 
-	argoutil.LogResourceCreation(log, userSecret)
-	if err := r.Client.Create(context.TODO(), userSecret); err != nil {
-		return err
+	if update {
+		argoutil.LogResourceUpdate(log, userSecret, explanation)
+		if err := r.Client.Update(context.TODO(), userSecret); err != nil {
+			return err
+		}
+	} else {
+		argoutil.LogResourceCreation(log, userSecret)
+		if err := r.Client.Create(context.TODO(), userSecret); err != nil {
+			return err
+		}
 	}
 
 	// Add the token info to the argocd-secret
-
-	var expiresAt int64
-	if expiresIn > 0 {
-		expiresAt = issuedAt.Add(expiresIn).Unix()
-	}
 
 	accountTokens := []settings.Token{
 		{
@@ -150,7 +176,7 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 
 	key := fmt.Sprintf("accounts.%s.tokens", user.Name)
 	argoCDSecret.Data[key] = tokens
-	argoutil.LogResourceUpdate(log, &argoCDSecret, "adding token for user account", user.Name)
+	argoutil.LogResourceUpdate(log, &argoCDSecret, "setting token for user account", user.Name)
 	if err := r.Client.Update(context.TODO(), &argoCDSecret); err != nil {
 		return err
 	}

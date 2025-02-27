@@ -33,6 +33,32 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+func createResources(cr *argoproj.ArgoCD, expect *assert.Assertions) *ReconcileArgoCD {
+	var err error
+
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+
+	r := makeTestReconciler(cl, sch)
+
+	// Create and get the argocd-secret. The argocd-secret needs to exist before
+	// the tests call reconcileLocalUsers()
+	clusterSecret := argoutil.NewSecretWithSuffix(cr, "cluster")
+	clusterSecret.Data = map[string][]byte{common.ArgoCDKeyAdminPassword: []byte("something")}
+	tlsSecret := argoutil.NewSecretWithSuffix(cr, "tls")
+	err = r.Client.Create(context.TODO(), clusterSecret)
+	expect.NoError(err)
+	r.Client.Create(context.TODO(), tlsSecret)
+	expect.NoError(err)
+	err = r.reconcileArgoSecret(cr)
+	expect.NoError(err)
+
+	return r
+}
+
 func TestReconcileArgoCD_reconcileArgoLocalUsersCreate(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	var err error
@@ -47,30 +73,14 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersCreate(t *testing.T) {
 		},
 	}
 
-	resObjs := []client.Object{cr}
-	subresObjs := []client.Object{}
-	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := createResources(cr, expect)
 
-	// Create and get the argocd-secret. The argocd-secret needs to exist before
-	// the test calls reconcileLocalUsers()
-	clusterSecret := argoutil.NewSecretWithSuffix(cr, "cluster")
-	clusterSecret.Data = map[string][]byte{common.ArgoCDKeyAdminPassword: []byte("something")}
-	tlsSecret := argoutil.NewSecretWithSuffix(cr, "tls")
-	err = r.Client.Create(context.TODO(), clusterSecret)
-	expect.NoError(err)
-	r.Client.Create(context.TODO(), tlsSecret)
-	expect.NoError(err)
-	err = r.reconcileArgoSecret(cr)
-	expect.NoError(err)
 	argocdSecret := corev1.Secret{}
 	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: cr.Namespace}, &argocdSecret)
 	expect.NoError(err)
 
 	// Reconcile and then check that the user secret was created and that it
-	// contains the correct token and ID
+	// contains the correct info
 
 	expect.NoError(r.reconcileLocalUsers(cr))
 
@@ -82,6 +92,7 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersCreate(t *testing.T) {
 	expect.Equal("alice", string(userSecret.Data["user"]))
 	expect.NotEmpty(userSecret.Data["ID"])
 	expect.NotEmpty(userSecret.Data["apiToken"])
+	expect.Equal("1h", string(userSecret.Data["expIn"]))
 
 	token, err := jwt.Parse(string(userSecret.Data["apiToken"]), func(token *jwt.Token) (interface{}, error) {
 		return argocdSecret.Data["server.secretkey"], nil
@@ -107,6 +118,145 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersCreate(t *testing.T) {
 	expect.Equal(string(userSecret.Data["ID"]), userTokens[0].ID)
 	expect.Equal(int64(claims["iat"].(float64)), userTokens[0].IssuedAt)
 	expect.Equal(int64(claims["exp"].(float64)), userTokens[0].ExpiresAt)
+
+	// Reconcile again to ensure nothing changes
+
+	originalID := userSecret.Data["ID"]
+	originalAPIToken := userSecret.Data["apiToken"]
+
+	expect.NoError(r.reconcileLocalUsers(cr))
+
+	userSecret = corev1.Secret{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "alice-local-user", Namespace: cr.Namespace}, &userSecret)
+	expect.NoError(err)
+
+	expect.Equal("local-users", userSecret.Labels[common.ArgoCDKeyComponent])
+	expect.Equal("alice", string(userSecret.Data["user"]))
+	expect.Equal(originalID, userSecret.Data["ID"])
+	expect.Equal(originalAPIToken, userSecret.Data["apiToken"])
+
+}
+
+func TestReconcileArgoCD_reconcileArgoLocalUsersCreateWithDefaultTokenLifetime(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	var err error
+
+	expect := assert.New(t)
+
+	cr := makeTestArgoCD()
+	cr.Spec.LocalUsers = []argoproj.LocalUserSpec{
+		{
+			Name: "alice",
+		},
+	}
+
+	r := createResources(cr, expect)
+
+	argocdSecret := corev1.Secret{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: cr.Namespace}, &argocdSecret)
+	expect.NoError(err)
+
+	// Reconcile and then check that the user secret was created and that it
+	// contains the correct info
+
+	expect.NoError(r.reconcileLocalUsers(cr))
+
+	userSecret := corev1.Secret{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "alice-local-user", Namespace: cr.Namespace}, &userSecret)
+	expect.NoError(err)
+
+	expect.Equal("local-users", userSecret.Labels[common.ArgoCDKeyComponent])
+	expect.Equal("alice", string(userSecret.Data["user"]))
+	expect.NotEmpty(userSecret.Data["ID"])
+	expect.NotEmpty(userSecret.Data["apiToken"])
+	expect.Equal("0h", string(userSecret.Data["expIn"]))
+
+	token, err := jwt.Parse(string(userSecret.Data["apiToken"]), func(token *jwt.Token) (interface{}, error) {
+		return argocdSecret.Data["server.secretkey"], nil
+	})
+	expect.NoError(err)
+
+	claims := token.Claims.(jwt.MapClaims)
+	expect.Equal("argocd", claims["iss"])
+	expect.Equal("alice:apiKey", claims["sub"])
+	expect.Equal(string(userSecret.Data["ID"]), claims["jti"])
+
+	// Check that the argocd-secret has been updated with the user's token info
+
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: cr.Namespace}, &argocdSecret)
+	expect.NoError(err)
+	expect.NotEmpty(argocdSecret.Data["accounts.alice.tokens"])
+
+	userTokens := []settings.Token{}
+	err = json.Unmarshal(argocdSecret.Data["accounts.alice.tokens"], &userTokens)
+	expect.NoError(err)
+
+	expect.Len(userTokens, 1)
+	expect.Equal(string(userSecret.Data["ID"]), userTokens[0].ID)
+	expect.Equal(int64(claims["iat"].(float64)), userTokens[0].IssuedAt)
+	expect.Equal(int64(0), userTokens[0].ExpiresAt)
+
+	// Reconcile again to ensure nothing changes
+
+	originalID := userSecret.Data["ID"]
+	originalAPIToken := userSecret.Data["apiToken"]
+
+	expect.NoError(r.reconcileLocalUsers(cr))
+
+	userSecret = corev1.Secret{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "alice-local-user", Namespace: cr.Namespace}, &userSecret)
+	expect.NoError(err)
+
+	expect.Equal("local-users", userSecret.Labels[common.ArgoCDKeyComponent])
+	expect.Equal("alice", string(userSecret.Data["user"]))
+	expect.Equal(originalID, userSecret.Data["ID"])
+	expect.Equal(originalAPIToken, userSecret.Data["apiToken"])
+
+}
+
+func TestReconcileArgoCD_reconcileArgoLocalUsersUpdateTokenLifetime(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	var err error
+
+	expect := assert.New(t)
+
+	cr := makeTestArgoCD()
+	cr.Spec.LocalUsers = []argoproj.LocalUserSpec{
+		{
+			Name:          "alice",
+			TokenLifetime: "1h",
+		},
+	}
+
+	// Reconcile to create the user secret and update the argocd-secret
+
+	r := createResources(cr, expect)
+	expect.NoError(r.reconcileLocalUsers(cr))
+
+	originalUserSecret := corev1.Secret{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "alice-local-user", Namespace: cr.Namespace}, &originalUserSecret)
+	expect.NoError(err)
+
+	argocdSecret := corev1.Secret{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: cr.Namespace}, &argocdSecret)
+	expect.NoError(err)
+	originalTokens := argocdSecret.Data["accounts.alice.tokens"]
+
+	// Update the token lifetime and check that the token was reissued
+
+	cr.Spec.LocalUsers[0].TokenLifetime = "2h"
+	expect.NoError(r.reconcileLocalUsers(cr))
+
+	updatedUserSecret := corev1.Secret{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "alice-local-user", Namespace: cr.Namespace}, &updatedUserSecret)
+	expect.NoError(err)
+
+	expect.NotEqual(originalUserSecret.Data["apiToken"], updatedUserSecret.Data["apiToken"])
+	expect.Equal("2h", string(updatedUserSecret.Data["expIn"]))
+
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: cr.Namespace}, &argocdSecret)
+	expect.NoError(err)
+	expect.NotEqual(originalTokens, argocdSecret.Data["accounts.alice.tokens"])
 }
 
 func TestReconcileArgoCD_reconcileArgoLocalUsersDelete(t *testing.T) {
@@ -122,24 +272,8 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersDelete(t *testing.T) {
 		},
 	}
 
-	resObjs := []client.Object{cr}
-	subresObjs := []client.Object{}
-	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := createResources(cr, expect)
 
-	// Create and get the argocd-secret. The argocd-secret needs to exist before
-	// the test calls reconcileLocalUsers()
-	clusterSecret := argoutil.NewSecretWithSuffix(cr, "cluster")
-	clusterSecret.Data = map[string][]byte{common.ArgoCDKeyAdminPassword: []byte("something")}
-	tlsSecret := argoutil.NewSecretWithSuffix(cr, "tls")
-	err = r.Client.Create(context.TODO(), clusterSecret)
-	expect.NoError(err)
-	r.Client.Create(context.TODO(), tlsSecret)
-	expect.NoError(err)
-	err = r.reconcileArgoSecret(cr)
-	expect.NoError(err)
 	argocdSecret := corev1.Secret{}
 	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: cr.Namespace}, &argocdSecret)
 	expect.NoError(err)
@@ -180,24 +314,8 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersDeleteWithExtraConfigAPIKey(t *t
 		},
 	}
 
-	resObjs := []client.Object{cr}
-	subresObjs := []client.Object{}
-	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := createResources(cr, expect)
 
-	// Create and get the argocd-secret. The argocd-secret needs to exist before
-	// the test calls reconcileLocalUsers()
-	clusterSecret := argoutil.NewSecretWithSuffix(cr, "cluster")
-	clusterSecret.Data = map[string][]byte{common.ArgoCDKeyAdminPassword: []byte("something")}
-	tlsSecret := argoutil.NewSecretWithSuffix(cr, "tls")
-	err = r.Client.Create(context.TODO(), clusterSecret)
-	expect.NoError(err)
-	r.Client.Create(context.TODO(), tlsSecret)
-	expect.NoError(err)
-	err = r.reconcileArgoSecret(cr)
-	expect.NoError(err)
 	argocdSecret := corev1.Secret{}
 	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: cr.Namespace}, &argocdSecret)
 	expect.NoError(err)
@@ -242,24 +360,8 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersDeleteWithExtraConfigLogin(t *te
 		},
 	}
 
-	resObjs := []client.Object{cr}
-	subresObjs := []client.Object{}
-	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := createResources(cr, expect)
 
-	// Create and get the argocd-secret. The argocd-secret needs to exist before
-	// the test calls reconcileLocalUsers()
-	clusterSecret := argoutil.NewSecretWithSuffix(cr, "cluster")
-	clusterSecret.Data = map[string][]byte{common.ArgoCDKeyAdminPassword: []byte("something")}
-	tlsSecret := argoutil.NewSecretWithSuffix(cr, "tls")
-	err = r.Client.Create(context.TODO(), clusterSecret)
-	expect.NoError(err)
-	r.Client.Create(context.TODO(), tlsSecret)
-	expect.NoError(err)
-	err = r.reconcileArgoSecret(cr)
-	expect.NoError(err)
 	argocdSecret := corev1.Secret{}
 	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: cr.Namespace}, &argocdSecret)
 	expect.NoError(err)
@@ -316,24 +418,7 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersExpiringTokens(t *testing.T) {
 		},
 	}
 
-	resObjs := []client.Object{cr}
-	subresObjs := []client.Object{}
-	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
-
-	// Create and get the argocd-secret. The argocd-secret needs to exist before
-	// the test calls reconcileLocalUsers()
-	clusterSecret := argoutil.NewSecretWithSuffix(cr, "cluster")
-	clusterSecret.Data = map[string][]byte{common.ArgoCDKeyAdminPassword: []byte("something")}
-	tlsSecret := argoutil.NewSecretWithSuffix(cr, "tls")
-	err = r.Client.Create(context.TODO(), clusterSecret)
-	expect.NoError(err)
-	r.Client.Create(context.TODO(), tlsSecret)
-	expect.NoError(err)
-	err = r.reconcileArgoSecret(cr)
-	expect.NoError(err)
+	r := createResources(cr, expect)
 
 	// Reconcile and then check that the ExpiredTokens method works as expected
 
