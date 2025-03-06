@@ -1697,22 +1697,14 @@ spec:
           resources:
           - configmaps
           verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
+          - '*'
         - apiGroups:
           - ""
           resources:
-          - configmaps
           - endpoints
           - events
           - namespaces
           - persistentvolumeclaims
-          - pods
           - secrets
           - serviceaccounts
           - services
@@ -1723,6 +1715,11 @@ spec:
           - ""
           resources:
           - pods
+          verbs:
+          - '*'
+        - apiGroups:
+          - ""
+          resources:
           - pods/log
           verbs:
           - get
@@ -1761,27 +1758,12 @@ spec:
           resources:
           - applications
           - appprojects
-          verbs:
-          - '*'
-        - apiGroups:
-          - argoproj.io
-          resources:
           - argocdexports
           - argocdexports/finalizers
           - argocdexports/status
-          verbs:
-          - '*'
-        - apiGroups:
-          - argoproj.io
-          resources:
           - argocds
           - argocds/finalizers
           - argocds/status
-          verbs:
-          - '*'
-        - apiGroups:
-          - argoproj.io
-          resources:
           - notificationsconfigurations
           - notificationsconfigurations/finalizers
           verbs:
@@ -1849,11 +1831,6 @@ spec:
           - rbac.authorization.k8s.io
           resources:
           - '*'
-          verbs:
-          - '*'
-        - apiGroups:
-          - rbac.authorization.k8s.io
-          resources:
           - clusterrolebindings
           - clusterroles
           verbs:
