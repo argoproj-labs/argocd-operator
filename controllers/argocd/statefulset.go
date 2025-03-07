@@ -198,7 +198,8 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 						"ALL",
 					},
 				},
-				RunAsNonRoot: boolPtr(true),
+				ReadOnlyRootFilesystem: boolPtr(true),
+				RunAsNonRoot:           boolPtr(true),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: "RuntimeDefault",
 				},
@@ -273,7 +274,8 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 						"ALL",
 					},
 				},
-				RunAsNonRoot: boolPtr(true),
+				ReadOnlyRootFilesystem: boolPtr(true),
+				RunAsNonRoot:           boolPtr(true),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: "RuntimeDefault",
 				},
@@ -349,7 +351,8 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 					"ALL",
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
+			ReadOnlyRootFilesystem: boolPtr(true),
+			RunAsNonRoot:           boolPtr(true),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
@@ -663,6 +666,18 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			Name:      common.ArgoCDRedisServerTLSSecretName,
 			MountPath: "/app/config/controller/tls/redis",
 		},
+		{
+			Name:      "argocd-home",
+			MountPath: "/home/argocd",
+		},
+		{
+			Name:      "argocd-cmd-params-cm",
+			MountPath: "/home/argocd/params",
+		},
+		{
+			Name:      "argocd-application-controller-tmp",
+			MountPath: "/tmp",
+		},
 	}
 
 	if cr.Spec.Controller.VolumeMounts != nil {
@@ -699,7 +714,8 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 					"ALL",
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
+			ReadOnlyRootFilesystem: boolPtr(true),
+			RunAsNonRoot:           boolPtr(true),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
@@ -731,6 +747,35 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
 					Optional:   boolPtr(true),
 				},
+			},
+		},
+		{
+			Name: "argocd-home",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "argocd-cmd-params-cm",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "argocd-cmd-params-cm",
+					},
+					Optional: boolPtr(true),
+					Items: []corev1.KeyToPath{
+						{
+							Key:  "controller.profile.enabled",
+							Path: "profiler.enabled",
+						},
+					},
+				},
+			},
+		},
+		{
+			Name: "argocd-application-controller-tmp",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
 	}
@@ -787,7 +832,8 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 						"ALL",
 					},
 				},
-				RunAsNonRoot: boolPtr(true),
+				ReadOnlyRootFilesystem: boolPtr(true),
+				RunAsNonRoot:           boolPtr(true),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: "RuntimeDefault",
 				},

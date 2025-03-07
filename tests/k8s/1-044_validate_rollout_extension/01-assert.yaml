@@ -22,6 +22,14 @@ spec:
           volumeMounts:
             - name: extensions
               mountPath: /tmp/extensions/
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 999
       volumes:
       - configMap:
           defaultMode: 420
@@ -41,10 +49,28 @@ spec:
           defaultMode: 420
           optional: true
           secretName: argocd-operator-redis-tls
-      - emptyDir: {}
-        name: extensions
+      - name: plugins-home
+        emptyDir: {}
+      - name: argocd-cmd-params-cm
+        configMap:
+          defaultMode: 420
+          optional: true
+          items:
+          - key: server.profile.enabled
+            path: profiler.enabled
+      - name: tmp
+        emptyDir: {}
+      - name: extensions
+        emptyDir: {}
       containers:
       - name: argocd-server
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
         volumeMounts:
         - mountPath: /app/config/ssh
           name: ssh-known-hosts
@@ -54,5 +80,11 @@ spec:
           name: argocd-repo-server-tls
         - mountPath: /app/config/server/tls/redis
           name: argocd-operator-redis-tls
+        - mountPath: /home/argocd
+          name: plugins-home
+        - mountPath: /home/argocd/params
+          name: argocd-cmd-params-cm
+        - mountPath: /tmp
+          name: tmp
         - mountPath: /tmp/extensions/
           name: extensions
