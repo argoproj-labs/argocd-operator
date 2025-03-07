@@ -278,17 +278,6 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 					Type: "RuntimeDefault",
 				},
 			},
-			Lifecycle: &corev1.Lifecycle{
-				PostStart: &corev1.LifecycleHandler{
-					Exec: &corev1.ExecAction{
-						Command: []string{
-							"/bin/sh",
-							"-c",
-							"sleep 30; redis-cli -p 26379 sentinel reset argocd",
-						},
-					},
-				},
-			},
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					MountPath: "/data",
