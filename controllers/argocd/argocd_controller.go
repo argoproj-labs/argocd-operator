@@ -206,6 +206,12 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 				return reconcile.Result{}, argocd, err
 			}
 
+			if argocd.Spec.NamespaceManagement != nil {
+				if err := r.removeNamespaceManagementCRs(argocd.Namespace); err != nil {
+					return reconcile.Result{}, argocd, fmt.Errorf("failed to remove NamespaceManagement CR, error: %w", err)
+				}
+			}
+
 			// remove namespace of deleted Argo CD instance from deprecationEventEmissionTracker (if exists) so that if another instance
 			// is created in the same namespace in the future, that instance is appropriately tracked
 			delete(DeprecationEventEmissionTracker, argocd.Namespace)
@@ -237,6 +243,11 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 		return reconcile.Result{}, argocd, err
 	}
 
+	//Handle NamespaceManagement reconciliation
+	if err = r.reconcileNamespaceManagement(argocd); err != nil {
+		return reconcile.Result{}, argocd, err
+	}
+
 	if err := r.reconcileResources(argocd); err != nil {
 		// Error reconciling ArgoCD sub-resources - requeue the request.
 		return reconcile.Result{}, argocd, err
@@ -249,6 +260,6 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 // SetupWithManager sets up the controller with the Manager.
 func (r *ReconcileArgoCD) SetupWithManager(mgr ctrl.Manager) error {
 	bldr := ctrl.NewControllerManagedBy(mgr)
-	r.setResourceWatches(bldr, r.clusterResourceMapper, r.tlsSecretMapper, r.namespaceResourceMapper, r.clusterSecretResourceMapper, r.applicationSetSCMTLSConfigMapMapper)
+	r.setResourceWatches(bldr, r.clusterResourceMapper, r.tlsSecretMapper, r.namespaceResourceMapper, r.clusterSecretResourceMapper, r.applicationSetSCMTLSConfigMapMapper, r.nmMapper)
 	return bldr.Complete(r)
 }
