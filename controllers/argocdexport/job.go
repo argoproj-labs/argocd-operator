@@ -104,6 +104,11 @@ func getArgoExportVolumeMounts() []corev1.VolumeMount {
 		MountPath: "/secrets",
 	})
 
+	mounts = append(mounts, corev1.VolumeMount{
+		Name:      "tmp",
+		MountPath: "/tmp",
+	})
+
 	return mounts
 }
 
@@ -185,7 +190,8 @@ func newExportPodSpec(cr *argoproj.ArgoCDExport, argocdName string, client clien
 					"ALL",
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
+			ReadOnlyRootFilesystem: boolPtr(true),
+			RunAsNonRoot:           boolPtr(true),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
@@ -198,6 +204,7 @@ func newExportPodSpec(cr *argoproj.ArgoCDExport, argocdName string, client clien
 	pod.Volumes = []corev1.Volume{
 		getArgoStorageVolume("backup-storage", cr),
 		getArgoSecretVolume("secret-storage", cr),
+		{Name: "tmp", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
 	}
 
 	// Configure runAsUser, runAsGroup and fsGroup so that the job can write to the PV
