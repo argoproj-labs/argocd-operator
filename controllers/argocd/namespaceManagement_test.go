@@ -170,8 +170,18 @@ func TestReconcileNamespaceManagement_FeatureDisabled_NoResources(t *testing.T) 
 		}
 	})
 
+	nm := &argoproj.NamespaceManagement{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "namespace-mgmt",
+			Namespace: "managed-ns",
+		},
+		Spec: argoproj.NamespaceManagementSpec{
+			ManagedBy: a.Namespace,
+		},
+	}
+
 	resObjs := []client.Object{a}
-	subresObjs := []client.Object{a}
+	subresObjs := []client.Object{a, nm}
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)

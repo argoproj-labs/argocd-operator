@@ -6,12 +6,12 @@ import (
 	"os"
 	"strings"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj/argo-cd/v2/util/glob"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 // reconcileNamespaceManagement ensures that ArgoCD managed namespaces are properly tracked
@@ -26,7 +26,7 @@ func (r *ReconcileArgoCD) reconcileNamespaceManagement(argocd *argoproj.ArgoCD) 
 
 	// Check if Namespace Management is explicitly enabled via the Subscription env variable.
 	if !isNamespaceManagementEnabled() {
-		if err := handleFeatureDisable(r.Client); err != nil {
+		if err := r.handleFeatureDisable(); err != nil {
 			return err
 		}
 		return nil
@@ -117,17 +117,17 @@ func isNamespaceManagementEnabled() bool {
 
 // If the EnableManagedNamespace feature is disabled, clean up the RBACs associated with the managed namespaces
 // and remove the corresponding fields from the ArgoCD and NamespaceManagement CRs.
-func handleFeatureDisable(client client.Client) error {
+func (r *ReconcileArgoCD) handleFeatureDisable() error {
 	ctx := context.TODO()
 
 	// Check if NamespaceManagement CRs exist and if any ArgoCD instance has namespace management enabled.
 	nsMgmtList := &argoproj.NamespaceManagementList{}
-	if err := client.List(ctx, nsMgmtList); err != nil {
+	if err := r.Client.List(ctx, nsMgmtList); err != nil {
 		return err
 	}
 
 	argoCDList := &argoproj.ArgoCDList{}
-	if err := client.List(ctx, argoCDList); err != nil {
+	if err := r.Client.List(ctx, argoCDList); err != nil {
 		return err
 	}
 
@@ -175,7 +175,7 @@ func handleFeatureDisable(client client.Client) error {
 		// Remove .spec.namespaceManagement
 		argoCDCopy := argoCD.DeepCopy()
 		argoCDCopy.Spec.NamespaceManagement = nil
-		if err := client.Update(ctx, argoCDCopy); err != nil {
+		if err := r.Client.Update(ctx, argoCDCopy); err != nil {
 			log.Error(err, "Failed to update ArgoCD CR", "namespace", argoCD.Namespace)
 		} else {
 			log.Info("Removed .spec.namespaceManagement from ArgoCD CR", "namespace", argoCD.Namespace)
@@ -201,7 +201,7 @@ func handleFeatureDisable(client client.Client) error {
 		if nsMgmt.Spec.ManagedBy != "" {
 			nsMgmtCopy := nsMgmt.DeepCopy()
 			nsMgmtCopy.Spec.ManagedBy = ""
-			if err := client.Update(ctx, nsMgmtCopy); err != nil {
+			if err := r.Client.Update(ctx, nsMgmtCopy); err != nil {
 				log.Error(err, "Failed to update NamespaceManagement CR", "namespace", nsMgmt.Namespace)
 			} else {
 				log.Info("Removed .spec.managedBy from NamespaceManagement CR", "namespace", nsMgmt.Namespace)
