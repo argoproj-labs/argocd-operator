@@ -2090,11 +2090,11 @@ func argoCDNamespaceManagementFilterPredicate() predicate.Predicate {
 	return predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			valNew, ok := e.ObjectNew.(*argoproj.ArgoCD)
-			if !ok {
+			if !ok || valNew.Spec.NamespaceManagement == nil {
 				return false
 			}
 			valOld, ok := e.ObjectOld.(*argoproj.ArgoCD)
-			if !ok {
+			if !ok || valOld.Spec.NamespaceManagement == nil {
 				return false
 			}
 

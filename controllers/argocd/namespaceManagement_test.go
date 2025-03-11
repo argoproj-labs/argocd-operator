@@ -121,7 +121,7 @@ func TestHandleFeatureDisable_NoNamespaceManagement(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
 
-	err := r.handleFeatureDisable(testClient)
+	err := r.handleFeatureDisable(a, testClient)
 	// Assert: Should return no error since there are no NamespaceManagement CR and ArgoCD .spec.NamespaceManagement field is nil
 	assert.NoError(t, err)
 }
@@ -156,7 +156,7 @@ func TestHandleFeatureDisable_WithNamespaceManagement(t *testing.T) {
 	err := r.Client.Create(context.TODO(), nm)
 	assert.NoError(t, err)
 
-	err = r.handleFeatureDisable(testClient)
+	err = r.handleFeatureDisable(a, testClient)
 	// Assert: Should return no error and attempt updates
 	assert.NoError(t, err)
 

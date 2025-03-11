@@ -202,14 +202,14 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 				return reconcile.Result{}, argocd, fmt.Errorf("failed to remove resources from applicationSetSourceNamespaces, error: %w", err)
 			}
 
-			if err := r.removeDeletionFinalizer(argocd); err != nil {
-				return reconcile.Result{}, argocd, err
-			}
-
 			if argocd.Spec.NamespaceManagement != nil {
 				if err := r.removeNamespaceManagementCRs(argocd.Namespace); err != nil {
 					return reconcile.Result{}, argocd, fmt.Errorf("failed to remove NamespaceManagement CR, error: %w", err)
 				}
+			}
+
+			if err := r.removeDeletionFinalizer(argocd); err != nil {
+				return reconcile.Result{}, argocd, err
 			}
 
 			// remove namespace of deleted Argo CD instance from deprecationEventEmissionTracker (if exists) so that if another instance
@@ -243,9 +243,22 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 		return reconcile.Result{}, argocd, err
 	}
 
-	//Handle NamespaceManagement reconciliation
-	if err = r.reconcileNamespaceManagement(argocd); err != nil {
-		return reconcile.Result{}, argocd, err
+	// Handle NamespaceManagement reconciliation and check if Namespace Management is enabled via the Subscription env variable.
+	if isNamespaceManagementEnabled() {
+		if err := r.reconcileNamespaceManagement(argocd); err != nil {
+			return reconcile.Result{}, argocd, err
+		}
+	} else if argocd.Spec.NamespaceManagement != nil {
+		k8sClient, err := initK8sClient()
+		if err != nil {
+			log.Error(err, "Failed to initialize Kubernetes client")
+			return reconcile.Result{}, argocd, err
+		}
+
+		if err := r.handleFeatureDisable(argocd, k8sClient); err != nil {
+			log.Error(err, "Failed to disable NamespaceManagement feature")
+			return reconcile.Result{}, argocd, err
+		}
 	}
 
 	if err := r.reconcileResources(argocd); err != nil {
