@@ -1,3 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argo-cd-ns
+---
 apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
