@@ -198,7 +198,8 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 						"ALL",
 					},
 				},
-				RunAsNonRoot: boolPtr(true),
+				ReadOnlyRootFilesystem: boolPtr(true),
+				RunAsNonRoot:           boolPtr(true),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: "RuntimeDefault",
 				},
@@ -273,7 +274,8 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 						"ALL",
 					},
 				},
-				RunAsNonRoot: boolPtr(true),
+				ReadOnlyRootFilesystem: boolPtr(true),
+				RunAsNonRoot:           boolPtr(true),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: "RuntimeDefault",
 				},
@@ -338,7 +340,8 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 					"ALL",
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
+			ReadOnlyRootFilesystem: boolPtr(true),
+			RunAsNonRoot:           boolPtr(true),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
@@ -360,14 +363,21 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 		},
 	}}
 
-	var fsGroup int64 = 1000
-	var runAsNonRoot bool = true
-	var runAsUser int64 = 1000
+	if IsOpenShiftCluster() {
+		var runAsNonRoot bool = true
+		ss.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
+			RunAsNonRoot: &runAsNonRoot,
+		}
+	} else {
+		var fsGroup int64 = 1000
+		var runAsNonRoot bool = true
+		var runAsUser int64 = 1000
 
-	ss.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
-		FSGroup:      &fsGroup,
-		RunAsNonRoot: &runAsNonRoot,
-		RunAsUser:    &runAsUser,
+		ss.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
+			FSGroup:      &fsGroup,
+			RunAsNonRoot: &runAsNonRoot,
+			RunAsUser:    &runAsUser,
+		}
 	}
 	AddSeccompProfileForOpenShift(r.Client, &ss.Spec.Template.Spec)
 
@@ -645,6 +655,18 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			Name:      common.ArgoCDRedisServerTLSSecretName,
 			MountPath: "/app/config/controller/tls/redis",
 		},
+		{
+			Name:      "argocd-home",
+			MountPath: "/home/argocd",
+		},
+		{
+			Name:      "argocd-cmd-params-cm",
+			MountPath: "/home/argocd/params",
+		},
+		{
+			Name:      "argocd-application-controller-tmp",
+			MountPath: "/tmp",
+		},
 	}
 
 	if cr.Spec.Controller.VolumeMounts != nil {
@@ -681,7 +703,8 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 					"ALL",
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
+			ReadOnlyRootFilesystem: boolPtr(true),
+			RunAsNonRoot:           boolPtr(true),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
@@ -713,6 +736,35 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
 					Optional:   boolPtr(true),
 				},
+			},
+		},
+		{
+			Name: "argocd-home",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "argocd-cmd-params-cm",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "argocd-cmd-params-cm",
+					},
+					Optional: boolPtr(true),
+					Items: []corev1.KeyToPath{
+						{
+							Key:  "controller.profile.enabled",
+							Path: "profiler.enabled",
+						},
+					},
+				},
+			},
+		},
+		{
+			Name: "argocd-application-controller-tmp",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
 	}
@@ -769,7 +821,8 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 						"ALL",
 					},
 				},
-				RunAsNonRoot: boolPtr(true),
+				ReadOnlyRootFilesystem: boolPtr(true),
+				RunAsNonRoot:           boolPtr(true),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: "RuntimeDefault",
 				},
@@ -780,8 +833,10 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		podSpec.Volumes = getArgoImportVolumes(export)
 	}
 
-	invalidImagePod := containsInvalidImage(cr, r)
-	if invalidImagePod {
+	invalidImagePod, err := containsInvalidImage(*cr, *r)
+	if err != nil {
+		return err
+	} else if invalidImagePod {
 		argoutil.LogResourceDeletion(log, ss, "one or more pods has an invalid image")
 		if err := r.Client.Delete(context.TODO(), ss); err != nil {
 			return err
@@ -995,22 +1050,52 @@ func updateNodePlacementStateful(existing *appsv1.StatefulSet, ss *appsv1.Statef
 
 // Returns true if a StatefulSet has pods in ErrImagePull or ImagePullBackoff state.
 // These pods cannot be restarted automatially due to known kubernetes issue https://github.com/kubernetes/kubernetes/issues/67250
-func containsInvalidImage(cr *argoproj.ArgoCD, r *ReconcileArgoCD) bool {
+func containsInvalidImage(cr argoproj.ArgoCD, r ReconcileArgoCD) (bool, error) {
+
+	podList := &corev1.PodList{}
+	applicationControllerListOption := client.MatchingLabels{common.ArgoCDKeyName: fmt.Sprintf("%s-%s", cr.Name, "application-controller")}
+
+	if err := r.Client.List(context.TODO(), podList, applicationControllerListOption, client.InNamespace(cr.Namespace)); err != nil {
+		log.Error(err, "Failed to list Pods")
+		return false, err
+	}
+
+	if len(podList.Items) == 0 {
+		// No pods, no work to do
+		return false, nil
+	}
+
+	if len(podList.Items) != 1 {
+		// There should only be 0 or 1. If this message is printed, it suggests a problem.
+		log.Info("Unexpected number of pods in 'containsInvalidImage' pod list", "podListItems", fmt.Sprintf("%d", len(podList.Items)), "namespace", cr.Namespace)
+		return false, nil
+	}
+
+	appControllerPod := podList.Items[0]
+
+	if len(appControllerPod.Status.ContainerStatuses) == 0 {
+		// No container statuses for application-controller, no work to do.
+		return false, nil
+	}
 
 	brokenPod := false
 
-	podList := &corev1.PodList{}
-	listOption := client.MatchingLabels{common.ArgoCDKeyName: fmt.Sprintf("%s-%s", cr.Name, "application-controller")}
+	waitingState := appControllerPod.Status.ContainerStatuses[0].State.Waiting
+	if waitingState != nil {
 
-	if err := r.Client.List(context.TODO(), podList, listOption); err != nil {
-		log.Error(err, "Failed to list Pods")
-	}
-	if len(podList.Items) > 0 {
-		if len(podList.Items[0].Status.ContainerStatuses) > 0 {
-			if podList.Items[0].Status.ContainerStatuses[0].State.Waiting != nil && (podList.Items[0].Status.ContainerStatuses[0].State.Waiting.Reason == "ImagePullBackOff" || podList.Items[0].Status.ContainerStatuses[0].State.Waiting.Reason == "ErrImagePull") {
-				brokenPod = true
+		waitingReason := waitingState.Reason
+		if waitingReason == "ImagePullBackOff" || waitingReason == "ErrImagePull" {
+
+			var containerImage string
+			if len(appControllerPod.Spec.Containers) > 0 {
+				containerImage = appControllerPod.Spec.Containers[0].Image
 			}
+
+			log.Info("A broken pod was detected", "waitingReason", waitingReason, "containerImage", containerImage)
+			brokenPod = true
 		}
+
 	}
-	return brokenPod
+
+	return brokenPod, nil
 }
