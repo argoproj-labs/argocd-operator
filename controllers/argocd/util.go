@@ -2071,7 +2071,7 @@ func namespaceManagementFilterPredicate() predicate.Predicate {
 			if err := deleteRBACsForNamespace(e.Object.GetNamespace(), k8sClient); err != nil {
 				log.Error(err, fmt.Sprintf("failed to delete RBACs for namespace: %s", e.Object.GetNamespace()))
 			} else {
-				log.Info(fmt.Sprintf("Successfully removed the 1RBACs for namespace: %s", e.Object.GetNamespace()))
+				log.Info(fmt.Sprintf("Successfully removed the RBACs for namespace: %s", e.Object.GetNamespace()))
 			}
 
 			// Delete managed namespace from cluster secret
@@ -2079,7 +2079,7 @@ func namespaceManagementFilterPredicate() predicate.Predicate {
 			if err != nil {
 				log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", e.Object.GetNamespace()))
 			} else {
-				log.Info(fmt.Sprintf("Successfully deleted namespace1 %s from cluster secret", e.Object.GetNamespace()))
+				log.Info(fmt.Sprintf("Successfully deleted namespace %s from cluster secret", e.Object.GetNamespace()))
 			}
 			return false
 		},

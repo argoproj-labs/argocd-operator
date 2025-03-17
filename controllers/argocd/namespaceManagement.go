@@ -160,7 +160,7 @@ func (r *ReconcileArgoCD) handleFeatureDisable(argocd *argoproj.ArgoCD, k8sClien
 		if err != nil {
 			log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", nsMgmt.Namespace))
 		} else {
-			log.Info(fmt.Sprintf("Successfully deleted namespace1 %s from cluster secret", nsMgmt.Namespace))
+			log.Info(fmt.Sprintf("Successfully deleted namespace %s from cluster secret", nsMgmt.Namespace))
 		}
 
 		// Remove .spec.managedBy
