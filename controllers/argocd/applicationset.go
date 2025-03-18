@@ -891,7 +891,7 @@ func getApplicationSetResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements
 
 func setAppSetLabels(obj *metav1.ObjectMeta) {
 	obj.Labels["app.kubernetes.io/name"] = "argocd-applicationset-controller"
-	obj.Labels["app.kubernetes.io/part-of"] = "argocd-applicationset"
+	obj.Labels["app.kubernetes.io/part-of"] = "argocd"
 	obj.Labels["app.kubernetes.io/component"] = "controller"
 }
 
