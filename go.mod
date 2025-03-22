@@ -1,13 +1,15 @@
-module github.com/argoproj-labs/argocd-operator
+module github.com/barani129/argocd-operator
 
 go 1.22.0
+
+require github.com/argoproj-labs/argocd-operator v0.13.1
 
 require (
 	// Pin github.com/argoproj/argo-cd/v2 to v2.12.3
 	// ref: https://github.com/argoproj-labs/argocd-operator/pull/1606#issuecomment-2490948356
 	github.com/argoproj/argo-cd/v2 v2.12.3
 	github.com/cert-manager/cert-manager v1.14.4
-	github.com/coreos/prometheus-operator v0.29.0
+	github.com/coreos/prometheus-operator v0.40.0
 	github.com/go-logr/logr v1.4.2
 	github.com/google/go-cmp v0.6.0
 	github.com/json-iterator/go v1.1.12
@@ -24,7 +26,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.29.6
 	k8s.io/apimachinery v0.29.6
-	k8s.io/client-go v0.32.2
+	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/kube-aggregator v0.29.6
 	sigs.k8s.io/controller-runtime v0.17.2
 )
@@ -42,7 +44,6 @@ require (
 	github.com/go-logr/zapr v1.3.0 // indirect
 	github.com/go-openapi/jsonpointer v0.20.2 // indirect
 	github.com/go-openapi/jsonreference v0.20.4 // indirect
-	github.com/go-openapi/spec v0.20.8 // indirect
 	github.com/go-openapi/swag v0.22.7 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
