@@ -280,6 +280,25 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 					Type: "RuntimeDefault",
 				},
 			},
+			Lifecycle: &corev1.Lifecycle{
+				PostStart: &corev1.LifecycleHandler{
+					Exec: &corev1.ExecAction{
+						Command: []string{
+							"/bin/sh",
+							"-c",
+							func() string {
+								// Check if TLS is enabled for Redis
+								useTLS := r.redisShouldUseTLS(cr)
+								if useTLS {
+									// Use TLS for redis-cli when connecting to sentinel
+									return "sleep 30; redis-cli -p 26379 --tls --cert /app/config/redis/tls/tls.crt --key /app/config/redis/tls/tls.key --insecure sentinel reset argocd"
+								}
+								return "sleep 30; redis-cli -p 26379 sentinel reset argocd"
+							}(),
+						},
+					},
+				},
+			},
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					MountPath: "/data",
