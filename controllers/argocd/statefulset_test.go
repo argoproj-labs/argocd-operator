@@ -405,7 +405,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
 							LocalObjectReference: corev1.LocalObjectReference{
-								Name: fmt.Sprintf("argocd-redis-initial-password"),
+								Name: "argocd-redis-initial-password",
 							},
 							Key: "admin.password",
 						},
@@ -425,7 +425,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
 							LocalObjectReference: corev1.LocalObjectReference{
-								Name: fmt.Sprintf("argocd-redis-initial-password"),
+								Name: "argocd-redis-initial-password",
 							},
 							Key: "admin.password",
 						},
@@ -445,7 +445,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
 							LocalObjectReference: corev1.LocalObjectReference{
-								Name: fmt.Sprintf("argocd-redis-initial-password"),
+								Name: "argocd-redis-initial-password",
 							},
 							Key: "admin.password",
 						},
@@ -467,7 +467,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
 							LocalObjectReference: corev1.LocalObjectReference{
-								Name: fmt.Sprintf("argocd-redis-initial-password"),
+								Name: "argocd-redis-initial-password",
 							},
 							Key: "admin.password",
 						},
@@ -525,7 +525,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withAppSync(t *testing.T
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: fmt.Sprintf("argocd-redis-initial-password"),
+						Name: "argocd-redis-initial-password",
 					},
 					Key: "admin.password",
 				},
@@ -572,7 +572,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withEnv(t *testing.T) {
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: fmt.Sprintf("argocd-redis-initial-password"),
+						Name: "argocd-redis-initial-password",
 					},
 					Key: "admin.password",
 				},

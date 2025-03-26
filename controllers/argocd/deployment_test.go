@@ -2,7 +2,6 @@ package argocd
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"reflect"
 	"strings"
@@ -1263,7 +1262,7 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 						ValueFrom: &corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: fmt.Sprintf("argocd-redis-initial-password"),
+									Name: "argocd-redis-initial-password",
 								},
 								Key: "admin.password",
 							},
@@ -1708,7 +1707,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 						ValueFrom: &corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: fmt.Sprintf("argocd-redis-initial-password"),
+									Name: "argocd-redis-initial-password",
 								},
 								Key: "admin.password",
 							},
@@ -1816,7 +1815,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 						ValueFrom: &corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: fmt.Sprintf("argocd-redis-initial-password"),
+									Name: "argocd-redis-initial-password",
 								},
 								Key: "admin.password",
 							},

@@ -9,7 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
+
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -79,7 +79,7 @@ func TestReconcileNotifications_CreateServiceAccount(t *testing.T) {
 	desiredSa, err := r.reconcileNotificationsServiceAccount(a)
 	assert.NoError(t, err)
 
-	testSa := &corev1.ServiceAccount{}
+	testSa := &v1.ServiceAccount{}
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
 		Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
 		Namespace: a.Namespace,
@@ -113,7 +113,7 @@ func TestReconcileNotifications_CreateRoleBinding(t *testing.T) {
 	r := makeTestReconciler(cl, sch)
 
 	role := &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: "role-name"}}
-	sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa-name"}}
+	sa := &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa-name"}}
 
 	err := r.reconcileNotificationsRoleBinding(a, role, sa)
 	assert.NoError(t, err)
@@ -153,7 +153,7 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
-	sa := corev1.ServiceAccount{}
+	sa := v1.ServiceAccount{}
 
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
 
@@ -169,25 +169,25 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 	// Ensure the created Deployment has the expected properties
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.ObjectMeta.Name)
 
-	want := []corev1.Container{{
+	want := []v1.Container{{
 		Command:         []string{"argocd-notifications", "--loglevel", "info", "--argocd-repo-server", "argocd-repo-server.argocd.svc.cluster.local:8081"},
 		Image:           argoutil.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion),
-		ImagePullPolicy: corev1.PullAlways,
+		ImagePullPolicy: v1.PullAlways,
 		Name:            "argocd-notifications-controller",
-		SecurityContext: &corev1.SecurityContext{
+		SecurityContext: &v1.SecurityContext{
 			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{
+			Capabilities: &v1.Capabilities{
+				Drop: []v1.Capability{
 					"ALL",
 				},
 			},
 			ReadOnlyRootFilesystem: boolPtr(true),
 			RunAsNonRoot:           boolPtr(true),
-			SeccompProfile: &corev1.SeccompProfile{
+			SeccompProfile: &v1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
 		},
-		VolumeMounts: []corev1.VolumeMount{
+		VolumeMounts: []v1.VolumeMount{
 			{
 				Name:      "tls-certs",
 				MountPath: "/app/config/tls",
@@ -197,11 +197,11 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 				MountPath: "/app/config/reposerver/tls",
 			},
 		},
-		Resources:  corev1.ResourceRequirements{},
+		Resources:  v1.ResourceRequirements{},
 		WorkingDir: "/app",
-		LivenessProbe: &corev1.Probe{
-			ProbeHandler: corev1.ProbeHandler{
-				TCPSocket: &corev1.TCPSocketAction{
+		LivenessProbe: &v1.Probe{
+			ProbeHandler: v1.ProbeHandler{
+				TCPSocket: &v1.TCPSocketAction{
 					Port: intstr.IntOrString{
 						IntVal: int32(9001),
 					},
@@ -214,12 +214,12 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 		t.Fatalf("failed to reconcile notifications-controller deployment containers:\n%s", diff)
 	}
 
-	volumes := []corev1.Volume{
+	volumes := []v1.Volume{
 		{
 			Name: "tls-certs",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
+			VolumeSource: v1.VolumeSource{
+				ConfigMap: &v1.ConfigMapVolumeSource{
+					LocalObjectReference: v1.LocalObjectReference{
 						Name: "argocd-tls-certs-cm",
 					},
 				},
@@ -227,8 +227,8 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 		},
 		{
 			Name: "argocd-repo-server-tls",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
+			VolumeSource: v1.VolumeSource{
+				Secret: &v1.SecretVolumeSource{
 					SecretName: "argocd-repo-server-tls",
 					Optional:   boolPtr(true),
 				},
@@ -279,7 +279,7 @@ func TestReconcileNotifications_CreateMetricsService(t *testing.T) {
 	err = r.reconcileNotificationsMetricsService(a)
 	assert.NoError(t, err)
 
-	testService := &corev1.Service{}
+	testService := &v1.Service{}
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
 		Name:      fmt.Sprintf("%s-%s", a.Name, "notifications-controller-metrics"),
 		Namespace: a.Namespace,
@@ -362,7 +362,7 @@ func TestReconcileNotifications_CreateSecret(t *testing.T) {
 	err := r.reconcileNotificationsSecret(a)
 	assert.NoError(t, err)
 
-	testSecret := &corev1.Secret{}
+	testSecret := &v1.Secret{}
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-notifications-secret",
 		Namespace: a.Namespace,
@@ -371,14 +371,14 @@ func TestReconcileNotifications_CreateSecret(t *testing.T) {
 	a.Spec.Notifications.Enabled = false
 	err = r.reconcileNotificationsSecret(a)
 	assert.NoError(t, err)
-	secret := &corev1.Secret{}
+	secret := &v1.Secret{}
 	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-notifications-secret", Namespace: a.Namespace}, secret)
 	assertNotFound(t, err)
 }
 
 func TestReconcileNotifications_testEnvVars(t *testing.T) {
 
-	envMap := []corev1.EnvVar{
+	envMap := []v1.EnvVar{
 		{
 			Name:  "foo",
 			Value: "bar",
@@ -396,7 +396,7 @@ func TestReconcileNotifications_testEnvVars(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
 
-	sa := corev1.ServiceAccount{}
+	sa := v1.ServiceAccount{}
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
 
 	deployment := &appsv1.Deployment{}
@@ -413,7 +413,7 @@ func TestReconcileNotifications_testEnvVars(t *testing.T) {
 	}
 
 	// Verify any manual updates to the env vars should be overridden by the operator.
-	unwantedEnv := []corev1.EnvVar{
+	unwantedEnv := []v1.EnvVar{
 		{
 			Name:  "foo",
 			Value: "bar",
@@ -459,7 +459,7 @@ func TestReconcileNotifications_testLogLevel(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
 
-	sa := corev1.ServiceAccount{}
+	sa := v1.ServiceAccount{}
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
 
 	deployment := &appsv1.Deployment{}
