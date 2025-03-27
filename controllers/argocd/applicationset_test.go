@@ -978,7 +978,7 @@ func TestReconcileApplicationSet_RoleBinding(t *testing.T) {
 
 func appsetAssertExpectedLabels(t *testing.T, meta *metav1.ObjectMeta) {
 	assert.Equal(t, meta.Labels["app.kubernetes.io/name"], "argocd-applicationset-controller")
-	assert.Equal(t, meta.Labels["app.kubernetes.io/part-of"], "argocd-applicationset")
+	assert.Equal(t, meta.Labels["app.kubernetes.io/part-of"], "argocd")
 	assert.Equal(t, meta.Labels["app.kubernetes.io/component"], "controller")
 }
 
