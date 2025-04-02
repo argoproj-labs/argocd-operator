@@ -3,7 +3,6 @@ package argocd
 import (
 	"context"
 	b64 "encoding/base64"
-	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -17,7 +16,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -611,10 +609,10 @@ func TestGetArgoApplicationContainerEnv(t *testing.T) {
 	sync60s := []v1.EnvVar{
 		{Name: "HOME", Value: "/home/argocd", ValueFrom: (*v1.EnvVarSource)(nil)},
 		{Name: "REDIS_PASSWORD", Value: "",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: fmt.Sprintf("argocd-redis-initial-password"),
+			ValueFrom: &v1.EnvVarSource{
+				SecretKeyRef: &v1.SecretKeySelector{
+					LocalObjectReference: v1.LocalObjectReference{
+						Name: "argocd-redis-initial-password",
 					},
 					Key: "admin.password",
 				},
