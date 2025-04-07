@@ -14719,8 +14719,8 @@ spec:
                 - name
                 type: object
               initialRepositories:
-                description: InitialRepositories to configure Argo CD with upon creation
-                  of the cluster.
+                description: 'Deprecated: InitialRepositories to configure Argo CD
+                  with upon creation of the cluster.'
                 type: string
               initialSSHKnownHosts:
                 description: InitialSSHKnownHosts defines the SSH known hosts data
@@ -20006,8 +20006,8 @@ spec:
                     type: array
                 type: object
               repositoryCredentials:
-                description: RepositoryCredentials are the Git pull credentials to
-                  configure Argo CD with upon creation of the cluster.
+                description: 'Deprecated: RepositoryCredentials are the Git pull credentials
+                  to configure Argo CD with upon creation of the cluster.'
                 type: string
               resourceActions:
                 description: ResourceActions customizes resource action behavior.
