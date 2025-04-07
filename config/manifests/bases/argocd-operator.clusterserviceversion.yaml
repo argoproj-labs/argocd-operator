@@ -420,8 +420,8 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Import
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: InitialRepositories to configure Argo CD with upon creation of
-          the cluster.
+      - description: 'Deprecated: InitialRepositories to configure Argo CD with upon
+          creation of the cluster.'
         displayName: Initial Repositories'
         path: initialRepositories
         x-descriptors:
