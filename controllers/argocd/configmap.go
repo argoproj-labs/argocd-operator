@@ -413,10 +413,12 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	cm.Data[common.ArgoCDKeyUsersAnonymousEnabled] = fmt.Sprint(cr.Spec.UsersAnonymousEnabled)
 
 	// deprecated: log warning for deprecated field InitialRepositories
+	//nolint:staticcheck
 	if cr.Spec.InitialRepositories != "" {
 		log.Info(initialRepositoriesWarning)
 	}
 	// deprecated: log warning for deprecated field RepositoryCredential
+	//nolint:staticcheck
 	if cr.Spec.RepositoryCredentials != "" {
 		log.Info(repositoryCredentialsWarning)
 	}
