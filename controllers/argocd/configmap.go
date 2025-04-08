@@ -256,24 +256,6 @@ func getResourceTrackingMethod(cr *argoproj.ArgoCD) string {
 	return rtm.String()
 }
 
-// getInitialRepositories will return the initial repositories for the given ArgoCD.
-func getInitialRepositories(cr *argoproj.ArgoCD) string {
-	repos := common.ArgoCDDefaultRepositories
-	if len(cr.Spec.InitialRepositories) > 0 {
-		repos = cr.Spec.InitialRepositories
-	}
-	return repos
-}
-
-// getRepositoryCredentials will return the repository credentials for the given ArgoCD.
-func getRepositoryCredentials(cr *argoproj.ArgoCD) string {
-	repos := common.ArgoCDDefaultRepositoryCredentials
-	if len(cr.Spec.RepositoryCredentials) > 0 {
-		repos = cr.Spec.RepositoryCredentials
-	}
-	return repos
-}
-
 // getSSHKnownHosts will return the SSH Known Hosts data for the given ArgoCD.
 func getInitialSSHKnownHosts(cr *argoproj.ArgoCD) string {
 	skh := common.ArgoCDDefaultSSHKnownHosts
@@ -426,11 +408,20 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	cm.Data[common.ArgoCDKeyResourceExclusions] = getResourceExclusions(cr)
 	cm.Data[common.ArgoCDKeyResourceInclusions] = getResourceInclusions(cr)
 	cm.Data[common.ArgoCDKeyResourceTrackingMethod] = getResourceTrackingMethod(cr)
-	cm.Data[common.ArgoCDKeyRepositories] = getInitialRepositories(cr)
-	cm.Data[common.ArgoCDKeyRepositoryCredentials] = getRepositoryCredentials(cr)
 	cm.Data[common.ArgoCDKeyStatusBadgeEnabled] = fmt.Sprint(cr.Spec.StatusBadgeEnabled)
 	cm.Data[common.ArgoCDKeyServerURL] = r.getArgoServerURI(cr)
 	cm.Data[common.ArgoCDKeyUsersAnonymousEnabled] = fmt.Sprint(cr.Spec.UsersAnonymousEnabled)
+
+	// deprecated: log warning for deprecated field InitialRepositories
+	//nolint:staticcheck
+	if cr.Spec.InitialRepositories != "" {
+		log.Info(initialRepositoriesWarning)
+	}
+	// deprecated: log warning for deprecated field RepositoryCredential
+	//nolint:staticcheck
+	if cr.Spec.RepositoryCredentials != "" {
+		log.Info(repositoryCredentialsWarning)
+	}
 
 	// create dex config if dex is enabled through `.spec.sso`
 	if UseDex(cr) {
