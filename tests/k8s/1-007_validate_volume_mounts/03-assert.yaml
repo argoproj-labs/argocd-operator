@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+status:
+  applicationSetController: Running
+  phase: Available
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-dex-server
+spec:
+  template:
+    spec:
+      initContainers:
+        - volumeMounts:
+          - mountPath: /shared
+            name: static-files
+          - mountPath: /tmp
+            name: dexconfig
+          - name: empty-dir-volume
+            mountPath: /etc/test
+      containers:
+        - volumeMounts:
+          - mountPath: /shared
+            name: static-files
+          - mountPath: /tmp
+            name: dexconfig
+          - name: empty-dir-volume
+            mountPath: /etc/test
+      volumes:
+        - emptyDir: {}
+          name: static-files
+        - emptyDir: {}
+          name: dexconfig
+        - name: empty-dir-volume
+          emptyDir: {}
+status:
+  readyReplicas: 1
