@@ -9,7 +9,7 @@ require (
 	github.com/cert-manager/cert-manager v1.14.4
 	github.com/coreos/prometheus-operator v0.40.0
 	github.com/go-logr/logr v1.4.2
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 	github.com/json-iterator/go v1.1.12
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.34.0
