@@ -67,7 +67,9 @@ import (
 )
 
 const (
-	grafanaDeprecatedWarning = "Warning: grafana field is deprecated from ArgoCD: field will be ignored."
+	grafanaDeprecatedWarning     = "Warning: grafana field is deprecated from ArgoCD: field will be ignored."
+	initialRepositoriesWarning   = "Warning: Argo CD InitialRepositories field is deprecated from ArgoCD, field will be ignored."
+	repositoryCredentialsWarning = "Warning: Argo CD RepositoryCredentials field is deprecated from ArgoCD, field will be ignored."
 )
 
 var (
