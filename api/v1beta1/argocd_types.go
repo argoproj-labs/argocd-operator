@@ -762,6 +762,10 @@ type ArgoCDSSOSpec struct {
 	Keycloak *ArgoCDKeycloakSpec `json:"keycloak,omitempty"`
 }
 
+func (a *ArgoCDSSOSpec) IsEnabled() bool {
+	return a != nil && string(a.Provider) != ""
+}
+
 // KustomizeVersionSpec is used to specify information about a kustomize version to be used within ArgoCD.
 type KustomizeVersionSpec struct {
 	// Version is a configured kustomize version in the format of vX.Y.Z

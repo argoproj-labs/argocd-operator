@@ -735,16 +735,15 @@ func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoproj.ArgoCD) bool {
 // reconcileResources will reconcile common ArgoCD resources.
 func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD) error {
 
-	// we reconcile SSO first so that we can catch and throw errors for any illegal SSO configurations right away, and return control from here
-	// preventing dex resources from getting created anyway through the other function calls, effectively bypassing the SSO checks
-	log.Info("reconciling SSO")
-	if err := r.reconcileSSO(cr); err != nil {
-		log.Info(err.Error())
-	}
-
 	log.Info("reconciling status")
 	if err := r.reconcileStatus(cr); err != nil {
 		log.Info(err.Error())
+	}
+
+	log.Info("reconciling SSO")
+	if err := r.reconcileSSO(cr); err != nil {
+		log.Info(err.Error())
+		return err
 	}
 
 	log.Info("reconciling roles")

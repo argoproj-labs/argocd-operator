@@ -1,0 +1,16 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 300
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: argocd
+status:
+  conditions:
+  - message: ""
+    reason: Success
+    status: "True"
+    type: Reconciled
+  phase: Available
+  sso: Running
