@@ -34,15 +34,16 @@ import (
 
 // reconcileStatus will ensure that all of the Status properties are updated for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileStatus(cr *argoproj.ArgoCD) error {
+
+	if err := r.reconcileStatusPhase(cr); err != nil {
+		return err
+	}
+
 	if err := r.reconcileStatusApplicationController(cr); err != nil {
 		return err
 	}
 
 	if err := r.reconcileStatusSSO(cr); err != nil {
-		log.Info(err.Error())
-	}
-
-	if err := r.reconcileStatusPhase(cr); err != nil {
 		return err
 	}
 
@@ -245,7 +246,8 @@ func (r *ReconcileArgoCD) reconcileStatusPhase(cr *argoproj.ArgoCD) error {
 	if ((!cr.Spec.Controller.IsEnabled() && cr.Status.ApplicationController == "Unknown") || cr.Status.ApplicationController == "Running") &&
 		((!cr.Spec.Redis.IsEnabled() && cr.Status.Redis == "Unknown") || cr.Status.Redis == "Running" || (cr.Spec.Redis.IsEnabled() && cr.Spec.Redis.Remote != nil && *cr.Spec.Redis.Remote != "")) &&
 		((!cr.Spec.Repo.IsEnabled() && cr.Status.Repo == "Unknown") || cr.Status.Repo == "Running") &&
-		((!cr.Spec.Server.IsEnabled() && cr.Status.Server == "Unknown") || cr.Status.Server == "Running") {
+		((!cr.Spec.Server.IsEnabled() && cr.Status.Server == "Unknown") || cr.Status.Server == "Running") &&
+		((!cr.Spec.SSO.IsEnabled() && cr.Status.SSO == "Unknown") || cr.Status.SSO == "Running") {
 		phase = "Available"
 	} else {
 		phase = "Pending"
