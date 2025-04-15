@@ -232,8 +232,6 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 		"help.chatUrl":                       "",
 		"kustomize.buildOptions":             "",
 		"oidc.config":                        "",
-		"repositories":                       "",
-		"repository.credentials":             "",
 		"resource.inclusions":                "",
 		"resource.exclusions":                "",
 		"statusbadge.enabled":                "false",
