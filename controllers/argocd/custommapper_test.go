@@ -1027,3 +1027,80 @@ func TestReconcileArgoCD_tlsSecretMapperUserManagedSecret(t *testing.T) {
 		})
 	}
 }
+
+func TestReconcileArgoCD_nmMapper(t *testing.T) {
+	a := makeTestArgoCD()
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	// Fake client returns an error if ResourceVersion is not nil
+	a.ResourceVersion = ""
+
+	expected := []reconcile.Request{
+		{
+			NamespacedName: types.NamespacedName{
+				Name:      a.Name,
+				Namespace: a.Namespace,
+			},
+		},
+	}
+
+	// testing to check if it reconcile every argocd instance despite ManagedBy field is set or not
+	tests := []struct {
+		name string
+		o    client.Object
+		want []reconcile.Request
+	}{
+		{
+			name: "ManagedBy set",
+			o: &argoproj.NamespaceManagement{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-nsmgmt-1",
+					Namespace: "ns1",
+				},
+				Spec: argoproj.NamespaceManagementSpec{
+					ManagedBy: "some-ns",
+				},
+			},
+			want: expected,
+		},
+		{
+			name: "ManagedBy empty",
+			o: &argoproj.NamespaceManagement{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-nsmgmt-2",
+					Namespace: "ns2",
+				},
+				Spec: argoproj.NamespaceManagementSpec{
+					ManagedBy: "",
+				},
+			},
+			want: expected,
+		},
+		{
+			name: "ManagedBy non-matching",
+			o: &argoproj.NamespaceManagement{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-nsmgmt-3",
+					Namespace: "ns3",
+				},
+				Spec: argoproj.NamespaceManagementSpec{
+					ManagedBy: "another-ns",
+				},
+			},
+			want: expected,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := r.nmMapper(context.TODO(), tt.o)
+			assert.ElementsMatch(t, tt.want, got, "expected ArgoCD reconcile requests")
+		})
+	}
+}

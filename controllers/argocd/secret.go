@@ -393,6 +393,12 @@ func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoproj.ArgoCD) error {
 
 // generateSortedManagedNamespaceListForArgoCDCR return a list of namespaces with 'managed-by' label that are managed by this 'cr', and including the namespace containing 'cr'
 func generateSortedManagedNamespaceListForArgoCDCR(cr *argoproj.ArgoCD, rClient client.Client) ([]string, error) {
+	var namespaces []string
+
+	// map to track unique namespaces
+	uniqueNamespaces := make(map[string]struct{})
+
+	// Fetch namespaces with 'managed-by' label
 	namespaceList := corev1.NamespaceList{}
 	listOption := client.MatchingLabels{
 		common.ArgoCDManagedByLabel: cr.Namespace,
@@ -400,15 +406,37 @@ func generateSortedManagedNamespaceListForArgoCDCR(cr *argoproj.ArgoCD, rClient 
 	if err := rClient.List(context.TODO(), &namespaceList, listOption); err != nil {
 		return nil, err
 	}
-
-	var namespaces []string
+	// Collect namespaces from the label, ensuring uniqueness
 	for _, namespace := range namespaceList.Items {
-		namespaces = append(namespaces, namespace.Name)
+		uniqueNamespaces[namespace.Name] = struct{}{}
 	}
 
-	if !containsString(namespaces, cr.Namespace) {
-		namespaces = append(namespaces, cr.Namespace)
+	if isNamespaceManagementEnabled() {
+		// Fetch namespaces from NamespaceManagement CRs
+		nsMgmtList := &argoproj.NamespaceManagementList{}
+		if err := rClient.List(context.TODO(), nsMgmtList); err != nil {
+			return nil, err
+		}
+
+		// Collect namespaces where .spec.managedBy matches cr.Namespace
+		for _, nsMgmt := range nsMgmtList.Items {
+			if nsMgmt.Spec.ManagedBy == cr.Namespace {
+				uniqueNamespaces[nsMgmt.Namespace] = struct{}{}
+			}
+		}
 	}
+
+	// Add cr.Namespace if not already present
+	if _, exists := uniqueNamespaces[cr.Namespace]; !exists {
+		uniqueNamespaces[cr.Namespace] = struct{}{}
+	}
+
+	// Convert map keys to a slice
+	for ns := range uniqueNamespaces {
+		namespaces = append(namespaces, ns)
+	}
+
+	// Sort the namespaces
 	sort.Strings(namespaces)
 	return namespaces, nil
 }
