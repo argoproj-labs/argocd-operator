@@ -1193,15 +1193,6 @@ func splitList(s string) []string {
 	return elems
 }
 
-func containsString(arr []string, s string) bool {
-	for _, val := range arr {
-		if strings.TrimSpace(val) == s {
-			return true
-		}
-	}
-	return false
-}
-
 // DeprecationEventEmissionStatus is meant to track which deprecation events have been emitted already. This is temporary and can be removed in v0.0.6 once we have provided enough
 // deprecation notice
 type DeprecationEventEmissionStatus struct {
@@ -2046,31 +2037,5 @@ func updateStatusConditionOfNamespaceManagement(ctx context.Context, condition m
 			return err
 		}
 	}
-	return nil
-}
-
-func (r *ReconcileArgoCD) removeNamespaceManagementCRs(argocdNamespace string) error {
-	ctx := context.Background()
-	var nsMgmtList argoproj.NamespaceManagementList
-
-	// List all NamespaceManagement CRs
-	if err := r.Client.List(ctx, &nsMgmtList); err != nil {
-		return fmt.Errorf("failed to list NamespaceManagement CRs: %w", err)
-	}
-
-	if len(nsMgmtList.Items) > 0 {
-		for _, nsMgmt := range nsMgmtList.Items {
-			if nsMgmt.Spec.ManagedBy == argocdNamespace {
-				log.Info(fmt.Sprintf("Deleting NamespaceManagement CR %s in namespace %s", nsMgmt.Name, nsMgmt.Namespace))
-
-				// Delete the NamespaceManagement CR
-				if err := r.Client.Delete(ctx, &nsMgmt); err != nil && !apierrors.IsNotFound(err) {
-					log.Error(err, fmt.Sprintf("Failed to delete NamespaceManagement CR %s in namespace %s", nsMgmt.Name, nsMgmt.Namespace))
-					return err
-				}
-			}
-		}
-	}
-
 	return nil
 }

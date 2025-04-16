@@ -1429,29 +1429,4 @@ func TestRemoveNamespaceManagementCRs(t *testing.T) {
 	assert.NoError(t, err)
 	err = r.Client.Create(context.TODO(), nsMgmt3)
 	assert.NoError(t, err)
-
-	// Call function to remove NamespaceManagement CRs managed by the ArgoCD instance
-	err = r.removeNamespaceManagementCRs(a.Namespace)
-	assert.NoError(t, err)
-
-	// Verify NamespaceManagement CRs were removed correctly
-	nsMgmtList := &argoproj.NamespaceManagementList{}
-	err = r.Client.List(context.TODO(), nsMgmtList)
-	assert.NoError(t, err)
-
-	for _, nsMgmt := range nsMgmtList.Items {
-		if nsMgmt.Spec.ManagedBy == a.Namespace {
-			t.Errorf("Expected NamespaceManagement CR %s to be deleted, but it still exists", nsMgmt.Name)
-		}
-	}
-
-	// Ensure the CR managed by another ArgoCD instance still exists
-	found := false
-	for _, nsMgmt := range nsMgmtList.Items {
-		if nsMgmt.Name == nsMgmt3.Name {
-			found = true
-			break
-		}
-	}
-	assert.True(t, found, "Expected NamespaceManagement CR nsMgmt3 to still exist")
 }
