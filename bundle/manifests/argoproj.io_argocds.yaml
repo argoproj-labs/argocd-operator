@@ -193,6 +193,11 @@ spec:
                   image:
                     description: Image is the Argo CD ApplicationSet image (optional)
                     type: string
+                  logFormat:
+                    description: LogFormat refers to the log format used by the ApplicationSet
+                      component. Defaults to ArgoCDDefaultLogFormat if not configured.
+                      Valid options are text or json.
+                    type: string
                   logLevel:
                     description: LogLevel describes the log level that should be used
                       by the ApplicationSet controller. Defaults to ArgoCDDefaultLogLevel
@@ -1387,6 +1392,11 @@ spec:
                     description: LogLevel describes the log level that should be used
                       by the argocd-notifications. Defaults to ArgoCDDefaultLogLevel
                       if not set.  Valid options are debug,info, error, and warn.
+                    type: string
+                  logformat:
+                    description: LogFormat refers to the log format used by the argocd-notifications.
+                      Defaults to ArgoCDDefaultLogFormat if not configured. Valid
+                      options are text or json.
                     type: string
                   replicas:
                     description: Replicas defines the number of replicas to run for
@@ -7494,6 +7504,11 @@ spec:
                     description: LogLevel describes the log level that should be used
                       by the ApplicationSet controller. Defaults to ArgoCDDefaultLogLevel
                       if not set.  Valid options are debug,info, error, and warn.
+                    type: string
+                  logformat:
+                    description: LogFormat refers to the log format used by the ApplicationSet
+                      component. Defaults to ArgoCDDefaultLogFormat if not configured.
+                      Valid options are text or json.
                     type: string
                   resources:
                     description: Resources defines the Compute Resources required
@@ -14596,6 +14611,11 @@ spec:
                     description: LogLevel describes the log level that should be used
                       by the argocd-notifications. Defaults to ArgoCDDefaultLogLevel
                       if not set.  Valid options are debug,info, error, and warn.
+                    type: string
+                  logformat:
+                    description: LogFormat refers to the log format used by the argocd-notifications.
+                      Defaults to ArgoCDDefaultLogFormat if not configured. Valid
+                      options are text or json.
                     type: string
                   replicas:
                     description: Replicas defines the number of replicas to run for
