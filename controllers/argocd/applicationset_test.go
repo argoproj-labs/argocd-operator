@@ -1022,6 +1022,8 @@ func TestArgoCDApplicationSetCommand(t *testing.T) {
 		"argocd-repo-server.argocd.svc.cluster.local:8081",
 		"--loglevel",
 		"info",
+		"--logformat",
+		"text",
 	}
 
 	// When a single command argument is passed
@@ -1037,6 +1039,8 @@ func TestArgoCDApplicationSetCommand(t *testing.T) {
 		"foo.scv.cluster.local:6379",
 		"--loglevel",
 		"info",
+		"--logformat",
+		"text",
 	}
 
 	deployment := &appsv1.Deployment{}

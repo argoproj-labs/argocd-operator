@@ -170,7 +170,7 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.ObjectMeta.Name)
 
 	want := []v1.Container{{
-		Command:         []string{"argocd-notifications", "--loglevel", "info", "--argocd-repo-server", "argocd-repo-server.argocd.svc.cluster.local:8081"},
+		Command:         []string{"argocd-notifications", "--loglevel", "info", "--logformat", "text", "--argocd-repo-server", "argocd-repo-server.argocd.svc.cluster.local:8081"},
 		Image:           argoutil.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion),
 		ImagePullPolicy: v1.PullAlways,
 		Name:            "argocd-notifications-controller",
@@ -475,6 +475,8 @@ func TestReconcileNotifications_testLogLevel(t *testing.T) {
 		"argocd-notifications",
 		"--loglevel",
 		"debug",
+		"--logformat",
+		"text",
 		"--argocd-repo-server",
 		"argocd-repo-server.argocd.svc.cluster.local:8081",
 	}
@@ -507,5 +509,72 @@ func TestReconcileNotifications_testLogLevel(t *testing.T) {
 
 	if diff := cmp.Diff(expectedCMD, deployment.Spec.Template.Spec.Containers[0].Command); diff != "" {
 		t.Fatalf("operator failed to override the manual changes to notification controller:\n%s", diff)
+	}
+}
+
+func TestReconcileNotifications_testLogFormat(t *testing.T) {
+	testLogFormat := "json"
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Notifications.Enabled = true
+		a.Spec.Notifications.LogFormat = testLogFormat
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	sa := v1.ServiceAccount{}
+	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      a.Name + "-notifications-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	expectedCMD := []string{
+		"argocd-notifications",
+		"--loglevel",
+		"info",
+		"--logformat",
+		"json",
+		"--argocd-repo-server",
+		"argocd-repo-server.argocd.svc.cluster.local:8081",
+	}
+
+	if diff := cmp.Diff(expectedCMD, deployment.Spec.Template.Spec.Containers[0].Command); diff != "" {
+		t.Fatalf("failed to reconcile notifications-controller deployment logFormat:\n%s", diff)
+	}
+
+	// Verify any manual updates to the logFormat should be overridden by the operator.
+	unwantedCommand := []string{
+		"argocd-notifications",
+		"--logformat",
+		"text",
+	}
+
+	deployment.Spec.Template.Spec.Containers[0].Command = unwantedCommand
+	assert.NoError(t, r.Client.Update(context.TODO(), deployment))
+
+	// Reconcile back
+	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
+
+	// Get the updated deployment
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      a.Name + "-notifications-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	if diff := cmp.Diff(expectedCMD, deployment.Spec.Template.Spec.Containers[0].Command); diff != "" {
+		t.Fatalf("operator failed to override the manual changes to notification controller logFormat:\n%s", diff)
 	}
 }
