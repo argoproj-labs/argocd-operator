@@ -218,6 +218,7 @@ type ArgoCDApplicationSet struct {
 	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
 
 	// LogFormat refers to the log format used by the ApplicationSet component. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
+	// +kubebuilder:validation:Enum=text;json
 	LogFormat string `json:"logformat,omitempty"`
 }
 
@@ -408,6 +409,7 @@ type ArgoCDNotifications struct {
 	LogLevel string `json:"logLevel,omitempty"`
 
 	// LogFormat refers to the log format used by the argocd-notifications. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
+	// +kubebuilder:validation:Enum=text;json
 	LogFormat string `json:"logformat,omitempty"`
 }
 

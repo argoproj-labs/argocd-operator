@@ -197,6 +197,9 @@ spec:
                     description: LogFormat refers to the log format used by the ApplicationSet
                       component. Defaults to ArgoCDDefaultLogFormat if not configured.
                       Valid options are text or json.
+                    enum:
+                    - text
+                    - json
                     type: string
                   logLevel:
                     description: LogLevel describes the log level that should be used
@@ -1397,6 +1400,9 @@ spec:
                     description: LogFormat refers to the log format used by the argocd-notifications.
                       Defaults to ArgoCDDefaultLogFormat if not configured. Valid
                       options are text or json.
+                    enum:
+                    - text
+                    - json
                     type: string
                   replicas:
                     description: Replicas defines the number of replicas to run for
@@ -7509,6 +7515,9 @@ spec:
                     description: LogFormat refers to the log format used by the ApplicationSet
                       component. Defaults to ArgoCDDefaultLogFormat if not configured.
                       Valid options are text or json.
+                    enum:
+                    - text
+                    - json
                     type: string
                   resources:
                     description: Resources defines the Compute Resources required
@@ -14616,6 +14625,9 @@ spec:
                     description: LogFormat refers to the log format used by the argocd-notifications.
                       Defaults to ArgoCDDefaultLogFormat if not configured. Valid
                       options are text or json.
+                    enum:
+                    - text
+                    - json
                     type: string
                   replicas:
                     description: Replicas defines the number of replicas to run for
