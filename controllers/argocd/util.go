@@ -1829,53 +1829,90 @@ func createCondition(message string) metav1.Condition {
 
 // appendUniqueArgs appends extraArgs to cmd while ignoring any duplicate flags.
 func appendUniqueArgs(cmd []string, extraArgs []string) []string {
-	// Parse cmd into a map to track flags and their indices
-	existingArgs := make(map[string]int) // Map to track index of each flag in cmd
+	existing := map[string]string{}
+	repeated := map[string]map[string]bool{}
+	nonRepeatableFlags := map[string]bool{}
+	result := []string{}
+
+	// Helper to add flag+val to result
+	add := func(flag, val string) {
+		result = append(result, flag)
+		if val != "" {
+			result = append(result, val)
+		}
+	}
+
+	// Process original cmd and treat its flags as non-repeatable
 	for i := 0; i < len(cmd); i++ {
 		arg := cmd[i]
 		if strings.HasPrefix(arg, "--") {
-			// Check if the next item is a value (not another flag)
+			val := ""
 			if i+1 < len(cmd) && !strings.HasPrefix(cmd[i+1], "--") {
-				existingArgs[arg] = i
-				i++ // Skip the value
-			} else {
-				existingArgs[arg] = i
+				val = cmd[i+1]
+				i++
 			}
+			if repeated[arg] == nil {
+				repeated[arg] = map[string]bool{}
+			}
+			repeated[arg][val] = true
+			existing[arg] = val
+			nonRepeatableFlags[arg] = true // flags from cmd are non-repeatable
+			add(arg, val)
+		} else {
+			result = append(result, arg)
 		}
 	}
 
-	// Iterate over extraArgs to append or override existing flags
+	// Process extraArgs
 	for i := 0; i < len(extraArgs); i++ {
 		arg := extraArgs[i]
 		if strings.HasPrefix(arg, "--") {
-			if index, exists := existingArgs[arg]; exists {
-				// If the flag exists, check if we need to override its value
-				if i+1 < len(extraArgs) && !strings.HasPrefix(extraArgs[i+1], "--") {
-					// If the flag has a value in extraArgs,update it in cmd
-					if index+1 < len(cmd) && !strings.HasPrefix(cmd[index+1], "--") {
-						cmd[index+1] = extraArgs[i+1] // Override the existing value
-					} else {
-						// Insert the new value if it didn't previously have one
-						cmd = append(cmd[:index+1], append([]string{extraArgs[i+1]}, cmd[index+1:]...)...)
+			val := ""
+			if i+1 < len(extraArgs) && !strings.HasPrefix(extraArgs[i+1], "--") {
+				val = extraArgs[i+1]
+				i++
+			}
+
+			// Skip if this flag+val combo already exists
+			if repeated[arg] != nil && repeated[arg][val] {
+				continue
+			}
+
+			if nonRepeatableFlags[arg] {
+				// Remove the existing non-repeatable flag (and its value)
+				newResult := []string{}
+				skipNext := false
+				for j := 0; j < len(result); j++ {
+					if skipNext {
+						skipNext = false
+						continue
 					}
-					i++ // Skip the value in extraArgs
+					if result[j] == arg {
+						if j+1 < len(result) && !strings.HasPrefix(result[j+1], "--") {
+							skipNext = true
+						}
+						continue
+					}
+					newResult = append(newResult, result[j])
 				}
+				result = newResult
+
+				// Replace with new value
+				repeated[arg] = map[string]bool{val: true}
+				existing[arg] = val
+				add(arg, val)
 			} else {
-				// Append the new flag and its value if not present
-				cmd = append(cmd, arg)
-				if i+1 < len(extraArgs) && !strings.HasPrefix(extraArgs[i+1], "--") {
-					cmd = append(cmd, extraArgs[i+1])
-					existingArgs[arg] = len(cmd) - 2 // Update index tracking
-					i++                              // Skip the value
-				} else {
-					existingArgs[arg] = len(cmd) - 1 // Update index tracking
+				// Allow repeated if not seen before
+				if repeated[arg] == nil {
+					repeated[arg] = map[string]bool{}
 				}
+				repeated[arg][val] = true
+				add(arg, val)
 			}
 		} else {
-			// Append non-flag arguments directly
-			cmd = append(cmd, arg)
+			result = append(result, arg)
 		}
 	}
 
-	return cmd
+	return result
 }

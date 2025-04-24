@@ -1035,12 +1035,12 @@ func TestArgoCDApplicationSetCommand(t *testing.T) {
 	wantCmd := []string{
 		"entrypoint.sh",
 		"argocd-applicationset-controller",
-		"--argocd-repo-server",
-		"foo.scv.cluster.local:6379",
 		"--loglevel",
 		"info",
 		"--logformat",
 		"text",
+		"--argocd-repo-server",
+		"foo.scv.cluster.local:6379",
 	}
 
 	deployment := &appsv1.Deployment{}
@@ -1120,6 +1120,10 @@ func TestArgoCDApplicationSetCommand(t *testing.T) {
 		"newvalue",
 		"--newarg", // Duplicate argument passing at once
 		"newvalue",
+		"--arg1", // flag with 2 different vales
+		"value1",
+		"--arg1",
+		"value2",
 	}
 
 	assert.NoError(t, r.reconcileApplicationSetController(a))
@@ -1132,7 +1136,7 @@ func TestArgoCDApplicationSetCommand(t *testing.T) {
 		deployment))
 
 	// Non-duplicate argument "--newarg" should be added, duplicate "--newarg" which is added twice is ignored
-	cmd = append(cmd, "--newarg", "newvalue")
+	cmd = append(cmd, "--newarg", "newvalue", "--arg1", "value1", "--arg1", "value2")
 	assert.Equal(t, cmd, deployment.Spec.Template.Spec.Containers[0].Command)
 }
 
