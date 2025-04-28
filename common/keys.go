@@ -225,4 +225,8 @@ const (
 
 	// ArgoCDKeyInstallationID is the configuration key for the installation ID.
 	ArgoCDKeyInstallationID = "installationID"
+
+	// ENABLE_MANAGED_NAMESPACE_FEATURE is an environment variable that controls whether
+	// the Namespace Management feature is enabled.
+	EnableManagedNamespace = "ENABLE_MANAGED_NAMESPACE_FEATURE"
 )
