@@ -1,0 +1,11 @@
+apiVersion: argoproj.io/v1alpha1
+kind: NamespaceManagement
+metadata:
+  name: finance-app-namespace
+  namespace: finance-app
+status:
+  conditions:
+    - type: Reconciled
+      status: "False"  # Should fail because "test-app" doesn't match "tenant-*"
+      reason: "ErrorOccurred"
+      message: "ArgoCD resource does not allow management of this namespace."
