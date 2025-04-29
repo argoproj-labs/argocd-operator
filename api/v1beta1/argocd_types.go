@@ -851,7 +851,7 @@ type ArgoCDSpec struct {
 	// Import is the import/restore options for ArgoCD.
 	Import *ArgoCDImportSpec `json:"import,omitempty"`
 
-	// InitialRepositories to configure Argo CD with upon creation of the cluster.
+	// Deprecated: InitialRepositories to configure Argo CD with upon creation of the cluster.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Initial Repositories'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	InitialRepositories string `json:"initialRepositories,omitempty"`
 
@@ -890,7 +890,7 @@ type ArgoCDSpec struct {
 	// Repo defines the repo server options for Argo CD.
 	Repo ArgoCDRepoSpec `json:"repo,omitempty"`
 
-	// RepositoryCredentials are the Git pull credentials to configure Argo CD with upon creation of the cluster.
+	// Deprecated: RepositoryCredentials are the Git pull credentials to configure Argo CD with upon creation of the cluster.
 	RepositoryCredentials string `json:"repositoryCredentials,omitempty"`
 
 	// ResourceHealthChecks customizes resource health check behavior.
