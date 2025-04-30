@@ -1036,6 +1036,43 @@ func TestGetSourceNamespacesWithWildCardNamespace(t *testing.T) {
 	assert.Contains(t, sourceNamespaces, "test-namespace-1")
 	assert.Contains(t, sourceNamespaces, "test-namespace-2")
 }
+func TestGetSourceNamespacesWithRegExpNamespace(t *testing.T) {
+	a := makeTestArgoCD()
+	a.Spec = argoproj.ArgoCDSpec{
+		SourceNamespaces: []string{
+			"/^test.*test$/",
+		},
+	}
+	ns1 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "testtest",
+		},
+	}
+	ns2 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test123test",
+		},
+	}
+	ns3 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-abc-test",
+		},
+	}
+
+	resObjs := []client.Object{a, &ns1, &ns2, &ns3}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	sourceNamespaces, err := r.getSourceNamespaces(a)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(sourceNamespaces))
+	assert.Contains(t, sourceNamespaces, "testtest")
+	assert.Contains(t, sourceNamespaces, "test123test")
+	assert.Contains(t, sourceNamespaces, "test-abc-test")
+}
 
 func TestGenerateRandomString(t *testing.T) {
 
