@@ -719,6 +719,7 @@ func TestReconcileArgoCD_reconcileDeployments_proxy(t *testing.T) {
 
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		//lint:ignore SA1019 known to be deprecated
 		a.Spec.Grafana.Enabled = true
 		a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 			Provider: argoproj.SSOProviderTypeDex,

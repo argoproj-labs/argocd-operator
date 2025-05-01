@@ -306,7 +306,7 @@ func (r *ReconcileArgoCDExport) argocdName(namespace string) (string, error) {
 		return "", err
 	}
 	if len(argocds.Items) != 1 {
-		return "", fmt.Errorf("No Argo CD instance found in namespace %s", namespace)
+		return "", fmt.Errorf("no Argo CD instance found in namespace %s", namespace)
 	}
 	argocd := argocds.Items[0]
 	return argocd.Name, nil

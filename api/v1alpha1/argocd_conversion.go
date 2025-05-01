@@ -61,13 +61,14 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.ExtraConfig = src.Spec.ExtraConfig
 	dst.Spec.GATrackingID = src.Spec.GATrackingID
 	dst.Spec.GAAnonymizeUsers = src.Spec.GAAnonymizeUsers
-	//nolint:staticcheck
+	//lint:ignore SA1019 known to be deprecated
 	dst.Spec.Grafana = *ConvertAlphaToBetaGrafana(&src.Spec.Grafana)
 	dst.Spec.HA = *ConvertAlphaToBetaHA(&src.Spec.HA)
 	dst.Spec.HelpChatURL = src.Spec.HelpChatURL
 	dst.Spec.HelpChatText = src.Spec.HelpChatText
 	dst.Spec.Image = src.Spec.Image
 	dst.Spec.Import = (*v1beta1.ArgoCDImportSpec)(src.Spec.Import)
+	//lint:ignore SA1019 known to be deprecated
 	dst.Spec.InitialRepositories = src.Spec.InitialRepositories
 	dst.Spec.InitialSSHKnownHosts = v1beta1.SSHHostsSpec(src.Spec.InitialSSHKnownHosts)
 	dst.Spec.KustomizeBuildOptions = src.Spec.KustomizeBuildOptions
@@ -80,6 +81,7 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.RBAC = v1beta1.ArgoCDRBACSpec(src.Spec.RBAC)
 	dst.Spec.Redis = *ConvertAlphaToBetaRedis(&src.Spec.Redis)
 	dst.Spec.Repo = *ConvertAlphaToBetaRepo(&src.Spec.Repo)
+	//lint:ignore SA1019 known to be deprecated
 	dst.Spec.RepositoryCredentials = src.Spec.RepositoryCredentials
 	dst.Spec.ResourceHealthChecks = ConvertAlphaToBetaResourceHealthChecks(src.Spec.ResourceHealthChecks)
 	dst.Spec.ResourceIgnoreDifferences = ConvertAlphaToBetaResourceIgnoreDifferences(src.Spec.ResourceIgnoreDifferences)
@@ -131,13 +133,14 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.ExtraConfig = src.Spec.ExtraConfig
 	dst.Spec.GATrackingID = src.Spec.GATrackingID
 	dst.Spec.GAAnonymizeUsers = src.Spec.GAAnonymizeUsers
-	//nolint:staticcheck
+	//lint:ignore SA1019 known to be deprecated
 	dst.Spec.Grafana = *ConvertBetaToAlphaGrafana(&src.Spec.Grafana)
 	dst.Spec.HA = *ConvertBetaToAlphaHA(&src.Spec.HA)
 	dst.Spec.HelpChatURL = src.Spec.HelpChatURL
 	dst.Spec.HelpChatText = src.Spec.HelpChatText
 	dst.Spec.Image = src.Spec.Image
 	dst.Spec.Import = (*ArgoCDImportSpec)(src.Spec.Import)
+	//lint:ignore SA1019 known to be deprecated
 	dst.Spec.InitialRepositories = src.Spec.InitialRepositories
 	dst.Spec.InitialSSHKnownHosts = SSHHostsSpec(src.Spec.InitialSSHKnownHosts)
 	dst.Spec.KustomizeBuildOptions = src.Spec.KustomizeBuildOptions
@@ -150,6 +153,7 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.RBAC = ArgoCDRBACSpec(src.Spec.RBAC)
 	dst.Spec.Redis = *ConvertBetaToAlphaRedis(&src.Spec.Redis)
 	dst.Spec.Repo = *ConvertBetaToAlphaRepo(&src.Spec.Repo)
+	//lint:ignore SA1019 known to be deprecated
 	dst.Spec.RepositoryCredentials = src.Spec.RepositoryCredentials
 	dst.Spec.ResourceHealthChecks = ConvertBetaToAlphaResourceHealthChecks(src.Spec.ResourceHealthChecks)
 	dst.Spec.ResourceIgnoreDifferences = ConvertBetaToAlphaResourceIgnoreDifferences(src.Spec.ResourceIgnoreDifferences)

@@ -413,12 +413,12 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	cm.Data[common.ArgoCDKeyUsersAnonymousEnabled] = fmt.Sprint(cr.Spec.UsersAnonymousEnabled)
 
 	// deprecated: log warning for deprecated field InitialRepositories
-	//nolint:staticcheck
+	//lint:ignore SA1019 known to be deprecated
 	if cr.Spec.InitialRepositories != "" {
 		log.Info(initialRepositoriesWarning)
 	}
 	// deprecated: log warning for deprecated field RepositoryCredential
-	//nolint:staticcheck
+	//lint:ignore SA1019 known to be deprecated
 	if cr.Spec.RepositoryCredentials != "" {
 		log.Info(repositoryCredentialsWarning)
 	}
@@ -506,7 +506,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 
 // reconcileGrafanaConfiguration will ensure that the Grafana configuration ConfigMap is present.
 func (r *ReconcileArgoCD) reconcileGrafanaConfiguration(cr *argoproj.ArgoCD) error {
-	//nolint:staticcheck
+	//lint:ignore SA1019 known to be deprecated
 	if !cr.Spec.Grafana.Enabled {
 		return nil // Grafana not enabled, do nothing.
 	}
@@ -518,7 +518,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaConfiguration(cr *argoproj.ArgoCD) err
 
 // reconcileGrafanaDashboards will ensure that the Grafana dashboards ConfigMap is present.
 func (r *ReconcileArgoCD) reconcileGrafanaDashboards(cr *argoproj.ArgoCD) error {
-	//nolint:staticcheck
+	//lint:ignore SA1019 known to be deprecated
 	if !cr.Spec.Grafana.Enabled {
 		return nil // Grafana not enabled, do nothing.
 	}

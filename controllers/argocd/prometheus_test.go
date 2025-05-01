@@ -71,7 +71,7 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 							},
 							Expr: intstr.IntOrString{
 								Type:   intstr.String,
-								StrVal: fmt.Sprintf("kube_statefulset_status_replicas{statefulset=\"%s\", namespace=\"%s\"} != kube_statefulset_status_replicas_ready{statefulset=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(test.argocd.Name+"-application-controller"), test.argocd.Namespace, fmt.Sprintf(test.argocd.Name+"-application-controller"), test.argocd.Namespace),
+								StrVal: fmt.Sprintf("kube_statefulset_status_replicas{statefulset=\"%s\", namespace=\"%s\"} != kube_statefulset_status_replicas_ready{statefulset=\"%s\", namespace=\"%s\"} ", test.argocd.Name+"-application-controller", test.argocd.Namespace, test.argocd.Name+"-application-controller", test.argocd.Namespace),
 							},
 							For: ptr.To((monitoringv1.Duration)("1m")),
 							Labels: map[string]string{
@@ -85,7 +85,7 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 							},
 							Expr: intstr.IntOrString{
 								Type:   intstr.String,
-								StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(test.argocd.Name+"-server"), test.argocd.Namespace, fmt.Sprintf(test.argocd.Name+"-server"), test.argocd.Namespace),
+								StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", test.argocd.Name+"-server", test.argocd.Namespace, test.argocd.Name+"-server", test.argocd.Namespace),
 							},
 							For: ptr.To((monitoringv1.Duration)("1m")),
 							Labels: map[string]string{
@@ -99,7 +99,7 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 							},
 							Expr: intstr.IntOrString{
 								Type:   intstr.String,
-								StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(test.argocd.Name+"-repo-server"), test.argocd.Namespace, fmt.Sprintf(test.argocd.Name+"-repo-server"), test.argocd.Namespace),
+								StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", test.argocd.Name+"-repo-server", test.argocd.Namespace, test.argocd.Name+"-repo-server", test.argocd.Namespace),
 							},
 							For: ptr.To((monitoringv1.Duration)("1m")),
 							Labels: map[string]string{
@@ -113,7 +113,7 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 							},
 							Expr: intstr.IntOrString{
 								Type:   intstr.String,
-								StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(test.argocd.Name+"-applicationset-controller"), test.argocd.Namespace, fmt.Sprintf(test.argocd.Name+"-applicationset-controller"), test.argocd.Namespace),
+								StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", test.argocd.Name+"-applicationset-controller", test.argocd.Namespace, test.argocd.Name+"-applicationset-controller", test.argocd.Namespace),
 							},
 							For: ptr.To((monitoringv1.Duration)("5m")),
 							Labels: map[string]string{
@@ -127,7 +127,7 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 							},
 							Expr: intstr.IntOrString{
 								Type:   intstr.String,
-								StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(test.argocd.Name+"-dex-server"), test.argocd.Namespace, fmt.Sprintf(test.argocd.Name+"-dex-server"), test.argocd.Namespace),
+								StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", test.argocd.Name+"-dex-server", test.argocd.Namespace, test.argocd.Name+"-dex-server", test.argocd.Namespace),
 							},
 							For: ptr.To((monitoringv1.Duration)("5m")),
 							Labels: map[string]string{
@@ -141,7 +141,7 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 							},
 							Expr: intstr.IntOrString{
 								Type:   intstr.String,
-								StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(test.argocd.Name+"-notifications-controller"), test.argocd.Namespace, fmt.Sprintf(test.argocd.Name+"-notifications-controller"), test.argocd.Namespace),
+								StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", test.argocd.Name+"-notifications-controller", test.argocd.Namespace, test.argocd.Name+"-notifications-controller", test.argocd.Namespace),
 							},
 							For: ptr.To((monitoringv1.Duration)("5m")),
 							Labels: map[string]string{
@@ -155,7 +155,7 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 							},
 							Expr: intstr.IntOrString{
 								Type:   intstr.String,
-								StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(test.argocd.Name+"-redis"), test.argocd.Namespace, fmt.Sprintf(test.argocd.Name+"-redis"), test.argocd.Namespace),
+								StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", test.argocd.Name+"-redis", test.argocd.Namespace, test.argocd.Name+"-redis", test.argocd.Namespace),
 							},
 							For: ptr.To((monitoringv1.Duration)("5m")),
 							Labels: map[string]string{
