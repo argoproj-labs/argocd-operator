@@ -1460,7 +1460,7 @@ func (r *ReconcileArgoCD) getSourceNamespaces(cr *argoproj.ArgoCD) ([]string, er
 	}
 
 	for _, namespace := range namespaces.Items {
-		if glob.MatchStringInList(cr.Spec.SourceNamespaces, namespace.Name, glob.GLOB) {
+		if glob.MatchStringInList(cr.Spec.SourceNamespaces, namespace.Name, glob.REGEXP) {
 			sourceNamespaces = append(sourceNamespaces, namespace.Name)
 		}
 	}
