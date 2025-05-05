@@ -28,6 +28,8 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	configv1 "github.com/openshift/api/config/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -361,15 +363,36 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 	}
 
 	// Allow override of the Host for the Route.
+	var host string
 	if len(cr.Spec.ApplicationSet.WebhookServer.Host) > 0 {
-		route.Spec.Host = cr.Spec.ApplicationSet.WebhookServer.Host
+		host = cr.Spec.ApplicationSet.WebhookServer.Host
+	} else {
+		// Generate the default host
+		baseHost := fmt.Sprintf("%s-%s-%s", cr.Name, "applicationset-controller-webhook", cr.Namespace)
+		ingressConfig := &configv1.Ingress{}
+		err := r.Client.Get(context.TODO(), client.ObjectKey{Name: "cluster"}, ingressConfig)
+		if err != nil {
+			return err
+		}
+		appsDomain := ingressConfig.Spec.Domain
+		host = fmt.Sprintf("%s.%s", baseHost, appsDomain)
+	}
+
+	// Truncate the first label if needed
+	labels := strings.SplitN(host, ".", 2)
+	if len(labels[0]) > maxLabelLength {
+		labels[0] = labels[0][:maxLabelLength]
+	}
+	if len(labels) > 1 {
+		route.Spec.Host = fmt.Sprintf("%s.%s", labels[0], labels[1])
+	} else {
+		route.Spec.Host = labels[0]
 	}
 
 	hostname, err := shortenHostname(route.Spec.Host)
 	if err != nil {
 		return err
 	}
-
 	route.Spec.Host = hostname
 
 	route.Spec.Port = &routev1.RoutePort{
