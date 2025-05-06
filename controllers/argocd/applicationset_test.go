@@ -45,7 +45,7 @@ func applicationSetDefaultVolumeMounts() []v1.VolumeMount {
 		"argocd-repo-server-tls":              true,
 		common.ArgoCDRedisServerTLSSecretName: true,
 	}
-	mounts := make([]v1.VolumeMount, len(repoMounts)-len(ignoredMounts), len(repoMounts)-len(ignoredMounts))
+	mounts := make([]v1.VolumeMount, len(repoMounts)-len(ignoredMounts))
 	j := 0
 	for _, mount := range repoMounts {
 		if !ignoredMounts[mount.Name] {
@@ -64,7 +64,7 @@ func applicationSetDefaultVolumes() []v1.Volume {
 		"argocd-repo-server-tls":              true,
 		common.ArgoCDRedisServerTLSSecretName: true,
 	}
-	volumes := make([]v1.Volume, len(repoVolumes)-len(ignoredVolumes), len(repoVolumes)-len(ignoredVolumes))
+	volumes := make([]v1.Volume, len(repoVolumes)-len(ignoredVolumes))
 	j := 0
 	for _, volume := range repoVolumes {
 		if !ignoredVolumes[volume.Name] {
@@ -926,9 +926,7 @@ func TestReconcileApplicationSet_Role(t *testing.T) {
 	foundResources := []string{}
 
 	for _, rule := range role.Rules {
-		for _, resource := range rule.Resources {
-			foundResources = append(foundResources, resource)
-		}
+		foundResources = append(foundResources, rule.Resources...)
 	}
 
 	sort.Strings(expectedResources)
