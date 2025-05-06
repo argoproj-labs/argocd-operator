@@ -327,6 +327,12 @@ func TestAlphaToBetaConversion(t *testing.T) {
 						Kind:  "Deployment",
 					},
 				}
+				cr.Spec.NamespaceManagement = []ManagedNamespaces{
+					{
+						Name:           "test-nm-namespace",
+						AllowManagedBy: true,
+					},
+				}
 			}),
 			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
 				cr.Spec.ResourceIgnoreDifferences = &v1beta1.ResourceIgnoreDifference{
@@ -372,6 +378,12 @@ func TestAlphaToBetaConversion(t *testing.T) {
 					{
 						Group: "apps",
 						Kind:  "Deployment",
+					},
+				}
+				cr.Spec.NamespaceManagement = []v1beta1.ManagedNamespaces{
+					{
+						Name:           "test-nm-namespace",
+						AllowManagedBy: true,
 					},
 				}
 			}),
