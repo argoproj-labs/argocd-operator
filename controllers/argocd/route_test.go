@@ -492,6 +492,65 @@ func TestReconcileRouteForShorteningHostname(t *testing.T) {
 	}
 }
 
+func TestReconcileRouteForShorteningRoutename(t *testing.T) {
+	routeAPIFound = true
+	ctx := context.Background()
+	logf.SetLogger(ZapLogger(true))
+
+	// Use a long ArgoCD instance name to force truncation
+	longName := "this-is-a-very-long-argocd-instance-name-that-will-break-the-route-name-limit"
+	argoCD := makeArgoCD(func(a *argoproj.ArgoCD) {
+		a.Name = longName
+		a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
+			WebhookServer: argoproj.WebhookServerSpec{
+				Route: argoproj.ArgoCDRouteSpec{
+					Enabled: true,
+				},
+			},
+		}
+	})
+
+	// Add a fake Ingress resource to satisfy the domain lookup
+	ingressConfig := &configv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "cluster",
+		},
+		Spec: configv1.IngressSpec{
+			Domain: "apps.example.com",
+		},
+	}
+
+	resObjs := []client.Object{argoCD, ingressConfig}
+	subresObjs := []client.Object{argoCD}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
+
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      longName,
+			Namespace: testNamespace,
+		},
+	}
+
+	_, err := r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+
+	// The route name should be truncated to 63 chars
+	expectedRouteName := longName + "-applicationset-controller-webhook"
+	if len(expectedRouteName) > 63 {
+		expectedRouteName = expectedRouteName[:63]
+	}
+
+	loaded := &routev1.Route{}
+	err = r.Client.Get(ctx, types.NamespacedName{Name: expectedRouteName, Namespace: testNamespace}, loaded)
+	assert.NoError(t, err)
+	assert.LessOrEqual(t, len(loaded.Name), 63)
+}
+
 func TestReconcileRouteTLSConfig(t *testing.T) {
 	routeAPIFound = true
 	ctx := context.Background()
