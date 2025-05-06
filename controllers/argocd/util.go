@@ -1760,6 +1760,10 @@ func updateStatusConditionOfArgoCD(ctx context.Context, condition metav1.Conditi
 	if changed {
 		// get the latest version of argocd instance before updating
 		if err := k8sClient.Get(ctx, types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}, cr); err != nil {
+			if apierrors.IsNotFound(err) {
+				// if ArgoCD CR no longer exists, there is no status update needed, so just return.
+				return nil
+			}
 			return err
 		}
 
