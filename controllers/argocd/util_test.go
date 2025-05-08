@@ -420,6 +420,26 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 		}
 	}
 
+	operationProcesorsChangedResult2 := func(n string) []string {
+		return []string{
+			"argocd-application-controller",
+			"--redis",
+			"argocd-redis.argocd.svc.cluster.local:6379",
+			"--repo-server",
+			"argocd-repo-server.argocd.svc.cluster.local:8081",
+			"--status-processors",
+			"20",
+			"--kubectl-parallelism-limit",
+			"10",
+			"--loglevel",
+			"info",
+			"--logformat",
+			"text",
+			"--operation-processors",
+			n,
+		}
+	}
+
 	parallelismLimitChangedResult := func(n string) []string {
 		return []string{
 			"argocd-application-controller",
@@ -576,13 +596,13 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 		},
 		{
 			"configured extraCommandArgs",
-			[]argoCDOpt{extraCommandArgs([]string{"--app-hard-resync", "--app-resync"})},
-			extraCommandArgsChangedResult([]string{"--app-hard-resync", "--app-resync"}),
+			[]argoCDOpt{extraCommandArgs([]string{"--hydrator-enabled"})},
+			extraCommandArgsChangedResult([]string{"--hydrator-enabled"}),
 		},
 		{
 			"overriding default argument using extraCommandArgs",
 			[]argoCDOpt{extraCommandArgs([]string{"--operation-processors", "15"})},
-			operationProcesorsChangedResult("15"),
+			operationProcesorsChangedResult2("15"),
 		},
 		{
 			"configured empty extraCommandArgs",
@@ -1411,6 +1431,12 @@ func TestAppendUniqueArgs(t *testing.T) {
 			cmd:       []string{"arg1", "arg2"},
 			extraArgs: []string{"arg2", "arg3"},
 			want:      []string{"arg1", "arg2", "arg2", "arg3"},
+		},
+		{
+			name:      "add flag with two different values",
+			cmd:       []string{"arg1", "arg2"},
+			extraArgs: []string{"flag1", "value1", "flag1", "value2"},
+			want:      []string{"arg1", "arg2", "flag1", "value1", "flag1", "value2"},
 		},
 	}
 
