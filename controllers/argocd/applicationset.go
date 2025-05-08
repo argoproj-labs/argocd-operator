@@ -161,13 +161,15 @@ func (r *ReconcileArgoCD) reconcileApplicationSetController(cr *argoproj.ArgoCD)
 // reconcileApplicationControllerDeployment will ensure the Deployment resource is present for the ArgoCD Application Controller component.
 func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD, sa *corev1.ServiceAccount) error {
 
-	exists := false
 	existing := newDeploymentWithSuffix("applicationset-controller", "controller", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
-		exists = true
+
+	deplExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
+	if err != nil {
+		return err
 	}
+
 	if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.IsEnabled() {
-		if exists {
+		if deplExists {
 			argoutil.LogResourceDeletion(log, existing, "application set not enabled")
 			return r.Client.Delete(context.TODO(), existing)
 		}
@@ -236,7 +238,13 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 	addSCMGitlabVolumeMount := false
 	if scmRootCAConfigMapName := getSCMRootCAConfigMapName(cr); scmRootCAConfigMapName != "" {
 		cm := newConfigMapWithName(scmRootCAConfigMapName, cr)
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, cr.Spec.ApplicationSet.SCMRootCAConfigMap, cm) {
+
+		cmExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, cr.Spec.ApplicationSet.SCMRootCAConfigMap, cm)
+		if err != nil {
+			return err
+		}
+
+		if cmExists {
 			addSCMGitlabVolumeMount = true
 			podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
 				Name: "appset-gitlab-scm-tls-cert",
@@ -268,7 +276,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 	}
 	AddSeccompProfileForOpenShift(r.Client, podSpec)
 
-	if exists {
+	if deplExists {
 		// Add Kubernetes-specific labels/annotations from the live object in the source to preserve metadata.
 		addKubernetesData(deploy.Spec.Template.Labels, existing.Spec.Template.Labels)
 		addKubernetesData(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations)
@@ -903,22 +911,27 @@ func (r *ReconcileArgoCD) reconcileApplicationSetService(cr *argoproj.ArgoCD) er
 	log.Info("reconciling applicationset service")
 
 	svc := newServiceWithSuffix(common.ApplicationSetServiceNameSuffix, common.ApplicationSetServiceNameSuffix, cr)
+	serviceExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc)
+	if err != nil {
+		return err
+	}
+
 	if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.IsEnabled() {
 
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+		if serviceExists {
 			err := argoutil.FetchObject(r.Client, cr.Namespace, svc.Name, svc)
 			if err != nil {
 				return err
 			}
 			argoutil.LogResourceDeletion(log, svc, "application set not enabled")
-			err = r.Delete(context.TODO(), svc)
-			if err != nil {
+			if err := r.Delete(context.TODO(), svc); err != nil {
 				return err
 			}
 		}
 		return nil
+
 	} else {
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+		if serviceExists {
 			return nil // Service found, do nothing
 		}
 	}
