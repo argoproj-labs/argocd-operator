@@ -23,4 +23,4 @@ spec:
         - info
         - --logformat
         - text
-        - --app-hard-resync
+        - --hydrator-enabled
