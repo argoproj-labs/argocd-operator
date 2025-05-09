@@ -7,3 +7,9 @@ metadata:
 spec:
   ha:
     enabled: true
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: |
+    kubectl patch -n test-1-042-restricted-pss-compliant argocd/argocd --type='json' -p='[{"op": "remove", "path": "/spec/sso"}]'

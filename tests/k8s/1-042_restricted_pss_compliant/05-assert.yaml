@@ -1,3 +1,7 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 300
+---
 apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
