@@ -105,7 +105,11 @@ func (r *ReconcileArgoCD) ReconcileRedisNetworkPolicy(cr *argoproj.ArgoCD) error
 		},
 	}
 
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+	npExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
+	if err != nil {
+		return err
+	}
+	if npExists {
 
 		modified := false
 		explanation := ""
@@ -152,8 +156,7 @@ func (r *ReconcileArgoCD) ReconcileRedisNetworkPolicy(cr *argoproj.ArgoCD) error
 	}
 
 	argoutil.LogResourceCreation(log, networkPolicy)
-	err := r.Client.Create(context.TODO(), networkPolicy)
-	if err != nil {
+	if err := r.Client.Create(context.TODO(), networkPolicy); err != nil {
 		log.Error(err, "Failed to create redis network policy")
 		return fmt.Errorf("failed to create redis network policy. error: %w", err)
 	}
@@ -227,7 +230,11 @@ func (r *ReconcileArgoCD) ReconcileRedisHANetworkPolicy(cr *argoproj.ArgoCD) err
 		},
 	}
 
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+	npExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
+	if err != nil {
+		return err
+	}
+	if npExists {
 
 		modified := false
 		explanation := ""
@@ -274,8 +281,8 @@ func (r *ReconcileArgoCD) ReconcileRedisHANetworkPolicy(cr *argoproj.ArgoCD) err
 	}
 
 	argoutil.LogResourceCreation(log, networkPolicy)
-	err := r.Client.Create(context.TODO(), networkPolicy)
-	if err != nil {
+
+	if err := r.Client.Create(context.TODO(), networkPolicy); err != nil {
 		log.Error(err, "Failed to create redis ha network policy")
 		return fmt.Errorf("failed to create redis ha network policy. error: %w", err)
 	}

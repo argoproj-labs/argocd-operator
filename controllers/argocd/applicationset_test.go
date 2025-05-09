@@ -159,17 +159,22 @@ func checkExpectedDeploymentValues(t *testing.T, r *ReconcileArgoCD, deployment 
 		},
 	}
 
-	if a.Spec.ApplicationSet.SCMRootCAConfigMap != "" && argoutil.IsObjectFound(r.Client, a.Namespace, common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName, a) {
-		volumes = append(volumes, v1.Volume{
-			Name: "appset-gitlab-scm-tls-cert",
-			VolumeSource: v1.VolumeSource{
-				ConfigMap: &v1.ConfigMapVolumeSource{
-					LocalObjectReference: v1.LocalObjectReference{
-						Name: common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName,
+	if a.Spec.ApplicationSet.SCMRootCAConfigMap != "" {
+
+		exists, err := argoutil.IsObjectFound(r.Client, a.Namespace, common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName, a)
+		assert.Nil(t, err)
+		if exists {
+			volumes = append(volumes, v1.Volume{
+				Name: "appset-gitlab-scm-tls-cert",
+				VolumeSource: v1.VolumeSource{
+					ConfigMap: &v1.ConfigMapVolumeSource{
+						LocalObjectReference: v1.LocalObjectReference{
+							Name: common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName,
+						},
 					},
 				},
-			},
-		})
+			})
+		}
 	}
 
 	if extraVolumes != nil {
