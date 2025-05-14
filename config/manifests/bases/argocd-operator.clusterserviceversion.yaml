@@ -289,8 +289,10 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
-      - description: ConfigManagementPlugins is used to specify additional config
-          management plugins.
+      - description: 'Deprecated: ConfigManagementPlugins field is no longer supported.
+          Argo CD now requires plugins to be defined as sidecar containers of repo
+          server component. See ''.spec.repo.sidecarContainers''. ConfigManagementPlugins
+          was previously used to specify additional config management plugins.'
         displayName: Config Management Plugins'
         path: configManagementPlugins
         x-descriptors:
@@ -865,8 +867,10 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
-      - description: ConfigManagementPlugins is used to specify additional config
-          management plugins.
+      - description: 'Deprecated: ConfigManagementPlugins field is no longer supported.
+          Argo CD now requires plugins to be defined as sidecar containers of repo
+          server component. See ''.spec.repo.sidecarContainers''. ConfigManagementPlugins
+          was previously used to specify additional config management plugins.'
         displayName: Config Management Plugins'
         path: configManagementPlugins
         x-descriptors:

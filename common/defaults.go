@@ -81,9 +81,6 @@ const (
 	// ArgoCDDefaultBackupKeyNumSymbols is the number of symbols to use for the generated default backup key.
 	ArgoCDDefaultBackupKeyNumSymbols = 5
 
-	// ArgoCDDefaultConfigManagementPlugins is the default configuration value for the config management plugins.
-	ArgoCDDefaultConfigManagementPlugins = ""
-
 	// ArgoCDDefaultControllerResourceLimitCPU is the default CPU limit when not specified for the Argo CD application
 	// controller contianer.
 	ArgoCDDefaultControllerResourceLimitCPU = "1000m"

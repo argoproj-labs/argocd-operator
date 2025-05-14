@@ -443,8 +443,11 @@ spec:
                 - content
                 type: object
               configManagementPlugins:
-                description: ConfigManagementPlugins is used to specify additional
-                  config management plugins.
+                description: 'Deprecated: ConfigManagementPlugins field is no longer
+                  supported. Argo CD now requires plugins to be defined as sidecar
+                  containers of repo server component. See ''.spec.repo.sidecarContainers''.
+                  ConfigManagementPlugins was previously used to specify additional
+                  config management plugins.'
                 type: string
               controller:
                 description: Controller defines the Application Controller options
@@ -9638,8 +9641,11 @@ spec:
                 - content
                 type: object
               configManagementPlugins:
-                description: ConfigManagementPlugins is used to specify additional
-                  config management plugins.
+                description: 'Deprecated: ConfigManagementPlugins field is no longer
+                  supported. Argo CD now requires plugins to be defined as sidecar
+                  containers of repo server component. See ''.spec.repo.sidecarContainers''.
+                  ConfigManagementPlugins was previously used to specify additional
+                  config management plugins.'
                 type: string
               controller:
                 description: Controller defines the Application Controller options

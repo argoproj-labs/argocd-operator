@@ -80,15 +80,6 @@ func getSCMRootCAConfigMapName(cr *argoproj.ArgoCD) string {
 	return ""
 }
 
-// getConfigManagementPlugins will return the config management plugins for the given ArgoCD.
-func getConfigManagementPlugins(cr *argoproj.ArgoCD) string {
-	plugins := common.ArgoCDDefaultConfigManagementPlugins
-	if len(cr.Spec.ConfigManagementPlugins) > 0 {
-		plugins = cr.Spec.ConfigManagementPlugins
-	}
-	return plugins
-}
-
 // getGATrackingID will return the google analytics tracking ID for the given Argo CD.
 func getGATrackingID(cr *argoproj.ArgoCD) string {
 	id := common.ArgoCDDefaultGATrackingID
@@ -364,7 +355,6 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	cm.Data = make(map[string]string)
 	cm.Data = setRespectRBAC(cr, cm.Data)
 	cm.Data[common.ArgoCDKeyApplicationInstanceLabelKey] = getApplicationInstanceLabelKey(cr)
-	cm.Data[common.ArgoCDKeyConfigManagementPlugins] = getConfigManagementPlugins(cr)
 	cm.Data[common.ArgoCDKeyAdminEnabled] = fmt.Sprintf("%t", !cr.Spec.DisableAdmin)
 	cm.Data[common.ArgoCDKeyGATrackingID] = getGATrackingID(cr)
 	cm.Data[common.ArgoCDKeyGAAnonymizeUsers] = fmt.Sprint(cr.Spec.GAAnonymizeUsers)

@@ -224,7 +224,6 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 		"application.instanceLabelKey":       common.ArgoCDDefaultApplicationInstanceLabelKey,
 		"application.resourceTrackingMethod": argoproj.ResourceTrackingMethodLabel.String(),
 		"admin.enabled":                      "true",
-		"configManagementPlugins":            "",
 		"dex.config":                         "",
 		"ga.anonymizeusers":                  "false",
 		"ga.trackingid":                      "",
