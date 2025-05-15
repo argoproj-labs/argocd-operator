@@ -1142,7 +1142,7 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 
 	namespaceHandler := handler.EnqueueRequestsFromMapFunc(namespaceResourceMapper)
 
-	bldr.Watches(&corev1.Namespace{}, namespaceHandler, builder.WithPredicates(namespaceFilterPredicate()))
+	bldr.Watches(&corev1.Namespace{}, namespaceHandler, builder.WithPredicates(r.namespaceFilterPredicate()))
 
 	return bldr
 }
@@ -1208,7 +1208,7 @@ type DeprecationEventEmissionStatus struct {
 // This is temporary and can be removed in v0.0.6 when we remove the deprecated fields.
 var DeprecationEventEmissionTracker = make(map[string]DeprecationEventEmissionStatus)
 
-func namespaceFilterPredicate() predicate.Predicate {
+func (r *ReconcileArgoCD) namespaceFilterPredicate() predicate.Predicate {
 	return predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			// This checks if ArgoCDManagedByLabel exists in newMeta, if exists then -
@@ -1218,10 +1218,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 			// Event is then handled by the reconciler, which would create appropriate RBACs.
 			if valNew, ok := e.ObjectNew.GetLabels()[common.ArgoCDManagedByLabel]; ok {
 				if valOld, ok := e.ObjectOld.GetLabels()[common.ArgoCDManagedByLabel]; ok && valOld != valNew {
-					k8sClient, err := initK8sClient()
-					if err != nil {
-						return false
-					}
+					k8sClient := r.K8sClient
 					if err := deleteRBACsForNamespace(e.ObjectOld.GetName(), k8sClient); err != nil {
 						log.Error(err, fmt.Sprintf("failed to delete RBACs for namespace: %s", e.ObjectOld.GetName()))
 					} else {
@@ -1229,7 +1226,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 					}
 
 					// Delete namespace from cluster secret of previously managing argocd instance
-					if err = deleteManagedNamespaceFromClusterSecret(valOld, e.ObjectOld.GetName(), k8sClient); err != nil {
+					if err := deleteManagedNamespaceFromClusterSecret(valOld, e.ObjectOld.GetName(), k8sClient); err != nil {
 						log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", e.ObjectOld.GetName()))
 					} else {
 						log.Info(fmt.Sprintf("Successfully deleted namespace %s from cluster secret", e.ObjectOld.GetName()))
@@ -1240,10 +1237,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 			// This checks if the old meta had the label, if it did, delete the RBACs for the namespace
 			// which were created when the label was added to the namespace.
 			if ns, ok := e.ObjectOld.GetLabels()[common.ArgoCDManagedByLabel]; ok && ns != "" {
-				k8sClient, err := initK8sClient()
-				if err != nil {
-					return false
-				}
+				k8sClient := r.K8sClient
 				if err := deleteRBACsForNamespace(e.ObjectOld.GetName(), k8sClient); err != nil {
 					log.Error(err, fmt.Sprintf("failed to delete RBACs for namespace: %s", e.ObjectOld.GetName()))
 				} else {
@@ -1251,7 +1245,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 				}
 
 				// Delete managed namespace from cluster secret
-				if err = deleteManagedNamespaceFromClusterSecret(ns, e.ObjectOld.GetName(), k8sClient); err != nil {
+				if err := deleteManagedNamespaceFromClusterSecret(ns, e.ObjectOld.GetName(), k8sClient); err != nil {
 					log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", e.ObjectOld.GetName()))
 				} else {
 					log.Info(fmt.Sprintf("Successfully deleted namespace %s from cluster secret", e.ObjectOld.GetName()))
@@ -1262,13 +1256,9 @@ func namespaceFilterPredicate() predicate.Predicate {
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			if ns, ok := e.Object.GetLabels()[common.ArgoCDManagedByLabel]; ok && ns != "" {
-				k8sClient, err := initK8sClient()
-
-				if err != nil {
-					return false
-				}
+				k8sClient := r.K8sClient
 				// Delete managed namespace from cluster secret
-				err = deleteManagedNamespaceFromClusterSecret(ns, e.Object.GetName(), k8sClient)
+				err := deleteManagedNamespaceFromClusterSecret(ns, e.Object.GetName(), k8sClient)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", e.Object.GetName()))
 				} else {
@@ -1386,22 +1376,6 @@ func deleteManagedNamespaceFromClusterSecret(ownerNS, sourceNS string, k8sClient
 	}
 
 	return nil
-}
-
-func initK8sClient() (*kubernetes.Clientset, error) {
-	cfg, err := config.GetConfig()
-	if err != nil {
-		log.Error(err, "unable to get k8s config")
-		return nil, err
-	}
-
-	k8sClient, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		log.Error(err, "unable to create k8s client")
-		return nil, err
-	}
-
-	return k8sClient, nil
 }
 
 // getLogLevel returns the log level for a specified component if it is set or returns the default log level if it is not set
@@ -1584,11 +1558,8 @@ func isProxyCluster() bool {
 	return false
 }
 
-func getOpenShiftAPIURL() string {
-	k8s, err := initK8sClient()
-	if err != nil {
-		log.Error(err, "failed to initialize k8s client")
-	}
+func (r *ReconcileArgoCD) getOpenShiftAPIURL() string {
+	k8s := r.K8sClient
 
 	cm, err := k8s.CoreV1().ConfigMaps("openshift-console").Get(context.TODO(), "console-config", metav1.GetOptions{})
 	if err != nil {
@@ -1927,12 +1898,7 @@ func (r *ReconcileArgoCD) namespaceManagementFilterPredicate() predicate.Predica
 				return false
 			}
 
-			k8sClient, err := initK8sClient()
-			if err != nil {
-				log.Error(err, "Failed to initialize Kubernetes client")
-				return false
-			}
-
+			k8sClient := r.K8sClient
 			return r.handleNamespaceManagementUpdate(oldNSMgmt, newNSMgmt, k8sClient)
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
@@ -1941,10 +1907,7 @@ func (r *ReconcileArgoCD) namespaceManagementFilterPredicate() predicate.Predica
 			if !ok {
 				return false
 			}
-			k8sClient, err := initK8sClient()
-			if err != nil {
-				return false
-			}
+			k8sClient := r.K8sClient
 			return r.handleNamespaceManagementDelete(nsMgmt, k8sClient)
 		},
 	}
@@ -1962,11 +1925,7 @@ func (r *ReconcileArgoCD) argoCDNamespaceManagementFilterPredicate() predicate.P
 				return false
 			}
 
-			k8sClient, err := initK8sClient()
-			if err != nil {
-				return false
-			}
-
+			k8sClient := r.K8sClient
 			return r.handleArgoCDNamespaceManagementUpdate(valNew, valOld, k8sClient)
 		},
 	}

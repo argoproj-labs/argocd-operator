@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -53,6 +54,8 @@ type ReconcileArgoCD struct {
 	ManagedApplicationSetSourceNamespaces map[string]string
 	// Stores label selector used to reconcile a subset of ArgoCD
 	LabelSelector string
+
+	K8sClient kubernetes.Interface
 }
 
 var log = logr.Log.WithName("controller_argocd")
@@ -245,12 +248,7 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 			return reconcile.Result{}, argocd, err
 		}
 	} else if argocd.Spec.NamespaceManagement != nil {
-		k8sClient, err := initK8sClient()
-		if err != nil {
-			log.Error(err, "Failed to initialize Kubernetes client")
-			return reconcile.Result{}, argocd, err
-		}
-
+		k8sClient := r.K8sClient
 		if err := r.disableNamespaceManagement(argocd, k8sClient); err != nil {
 			log.Error(err, "Failed to disable NamespaceManagement feature")
 			return reconcile.Result{}, argocd, err
@@ -262,12 +260,7 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 			return reconcile.Result{}, argocd, err
 		}
 
-		k8sClient, err := initK8sClient()
-		if err != nil {
-			log.Error(err, "Failed to initialize Kubernetes client")
-			return reconcile.Result{}, argocd, err
-		}
-
+		k8sClient := r.K8sClient
 		for _, nsMgmt := range nsMgmtList.Items {
 			// Skip the namespaceManagement CR which is not managed by the current Argo CD instance
 			if nsMgmt.Spec.ManagedBy != argocd.Namespace {

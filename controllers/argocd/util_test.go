@@ -284,7 +284,7 @@ func TestRemoveDeletionFinalizer(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		err := r.removeDeletionFinalizer(a)
 		assert.NoError(t, err)
@@ -300,7 +300,7 @@ func TestRemoveDeletionFinalizer(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		err := r.removeDeletionFinalizer(a)
 		assert.Error(t, err, `failed to remove deletion finalizer from argocd: argocds.argoproj.io "argocd" not found`)
@@ -316,7 +316,7 @@ func TestAddDeletionFinalizer(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		err := r.addDeletionFinalizer(a)
 		assert.NoError(t, err)
@@ -332,7 +332,7 @@ func TestAddDeletionFinalizer(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		err := r.addDeletionFinalizer(a)
 		assert.Error(t, err, `failed to add deletion finalizer for argocd: argocds.argoproj.io "argocd" not found`)
@@ -757,7 +757,7 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	nsArgocd := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: a.Namespace,
@@ -854,7 +854,7 @@ func TestSetManagedNamespaces(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	err := r.setManagedNamespaces(a)
 	assert.NoError(t, err)
@@ -888,7 +888,7 @@ func TestSetManagedSourceNamespaces(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	err := r.setManagedSourceNamespaces(a)
 	assert.NoError(t, err)
@@ -926,7 +926,7 @@ func TestGetSourceNamespacesWithWildcardPatternNamespace(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	sourceNamespaces, err := r.getSourceNamespaces(a)
 	assert.NoError(t, err)
@@ -964,7 +964,7 @@ func TestGetSourceNamespacesWithSpecificNamespace(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	sourceNamespaces, err := r.getSourceNamespaces(a)
 	assert.NoError(t, err)
@@ -1008,7 +1008,7 @@ func TestGetSourceNamespacesWithMultipleSourceNamespaces(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	sourceNamespaces, err := r.getSourceNamespaces(a)
 	assert.NoError(t, err)
@@ -1047,7 +1047,7 @@ func TestGetSourceNamespacesWithWildCardNamespace(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	sourceNamespaces, err := r.getSourceNamespaces(a)
 	assert.NoError(t, err)
@@ -1084,7 +1084,7 @@ func TestGetSourceNamespacesWithRegExpNamespace(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	sourceNamespaces, err := r.getSourceNamespaces(a)
 	assert.NoError(t, err)
@@ -1137,7 +1137,7 @@ func TestReconcileArgoCD_reconcileDexOAuthClientSecret(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	_, err := r.reconcileServiceAccount(common.ArgoCDDefaultDexServiceAccountName, a)
@@ -1243,7 +1243,7 @@ func TestUpdateStatusConditionOfArgoCD_Success(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	argocd := argoproj.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1271,7 +1271,7 @@ func TestUpdateStatusConditionOfArgoCD_Fail(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	argocd := argoproj.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1503,7 +1503,7 @@ func TestNamespaceManagementHandlers(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		client := testclient.NewSimpleClientset()
 		secretName := setupRBACAndSecret(t, client, argoCDOld, testNamespace)
@@ -1545,7 +1545,7 @@ func TestNamespaceManagementHandlers(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		client := testclient.NewSimpleClientset()
 		secretName := setupRBACAndSecret(t, client, argoCD, testNamespace)
@@ -1576,7 +1576,7 @@ func TestNamespaceManagementHandlers(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		client := testclient.NewSimpleClientset()
 		secretName := setupRBACAndSecret(t, client, argoCD, testNamespace)

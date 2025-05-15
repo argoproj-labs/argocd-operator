@@ -27,6 +27,7 @@ import (
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	testclient "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -376,7 +377,15 @@ func TestKeycloak_testRealmConfigCreation(t *testing.T) {
 		ArgoCDURL:     "https://bar.argocd.com",
 	}
 
-	_, err := createRealmConfig(cfg)
+	a := makeTestArgoCD()
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	_, err := r.createRealmConfig(cfg)
 	assert.NoError(t, err)
 }
 
@@ -389,7 +398,7 @@ func TestKeycloak_testServerCert(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme, templatev1.Install, oappsv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	sslCertsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -461,7 +470,7 @@ func TestKeycloakConfigVerifyTLSForOpenShift(t *testing.T) {
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme, templatev1.Install, oappsv1.Install, routev1.Install)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 			keycloakRoute := &routev1.Route{
 				ObjectMeta: metav1.ObjectMeta{

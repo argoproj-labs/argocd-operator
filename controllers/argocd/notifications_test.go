@@ -9,6 +9,7 @@ import (
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
+	testclient "k8s.io/client-go/kubernetes/fake"
 
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -37,7 +38,7 @@ func TestReconcileNotifications_CreateRoles(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	_, err := r.reconcileNotificationsRole(a)
 	assert.NoError(t, err)
@@ -74,7 +75,7 @@ func TestReconcileNotifications_CreateServiceAccount(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	desiredSa, err := r.reconcileNotificationsServiceAccount(a)
 	assert.NoError(t, err)
@@ -110,7 +111,7 @@ func TestReconcileNotifications_CreateRoleBinding(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	role := &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: "role-name"}}
 	sa := &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa-name"}}
@@ -152,7 +153,7 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 	sa := v1.ServiceAccount{}
 
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
@@ -271,7 +272,7 @@ func TestReconcileNotifications_CreateMetricsService(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	err := monitoringv1.AddToScheme(r.Scheme)
 	assert.NoError(t, err)
@@ -313,7 +314,7 @@ func TestReconcileNotifications_CreateServiceMonitor(t *testing.T) {
 	v1alpha1.AddToScheme(sch)
 
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	// Notifications controller service monitor should not be created when Prometheus API is not found.
 	prometheusAPIFound = false
@@ -357,7 +358,7 @@ func TestReconcileNotifications_CreateSecret(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	err := r.reconcileNotificationsSecret(a)
 	assert.NoError(t, err)
@@ -394,7 +395,7 @@ func TestReconcileNotifications_testEnvVars(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	sa := v1.ServiceAccount{}
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
@@ -457,7 +458,7 @@ func TestReconcileNotifications_testLogLevel(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	sa := v1.ServiceAccount{}
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
@@ -524,7 +525,7 @@ func TestReconcileNotifications_testLogFormat(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	sa := v1.ServiceAccount{}
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))

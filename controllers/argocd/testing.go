@@ -30,6 +30,7 @@ import (
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -52,10 +53,11 @@ func ZapLogger(development bool) logr.Logger {
 
 type SchemeOpt func(*runtime.Scheme) error
 
-func makeTestReconciler(client client.Client, sch *runtime.Scheme) *ReconcileArgoCD {
+func makeTestReconciler(client client.Client, sch *runtime.Scheme, k8sClient kubernetes.Interface) *ReconcileArgoCD {
 	return &ReconcileArgoCD{
-		Client: client,
-		Scheme: sch,
+		Client:    client,
+		Scheme:    sch,
+		K8sClient: k8sClient,
 	}
 }
 
