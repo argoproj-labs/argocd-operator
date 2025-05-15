@@ -356,7 +356,9 @@ func TestReconcileArgoCD_CleanUp(t *testing.T) {
 
 	for _, test := range tt {
 		t.Run(test.name, func(t *testing.T) {
-			if argoutil.IsObjectFound(r.Client, "", test.name, test.resource) {
+			found, err := argoutil.IsObjectFound(r.Client, "", test.name, test.resource)
+			assert.Nil(t, err)
+			if found {
 				t.Errorf("Expected %s to be deleted", test.name)
 			}
 		})
