@@ -53,7 +53,7 @@ func TestReconcileNamespaceManagement_FeatureEnabled(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	// Enable namespace management
 	os.Setenv(common.EnableManagedNamespace, "true")
@@ -109,9 +109,6 @@ func TestReconcileNamespaceManagement_FeatureEnabled(t *testing.T) {
 }
 
 func TestHandleFeatureDisable_NoNamespaceManagement(t *testing.T) {
-	// fake Kubernetes client
-	testClient := testclient.NewSimpleClientset()
-
 	a := makeTestArgoCD()
 
 	resObjs := []client.Object{a}
@@ -119,9 +116,9 @@ func TestHandleFeatureDisable_NoNamespaceManagement(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	err := r.disableNamespaceManagement(a, testClient)
+	err := r.disableNamespaceManagement(a, r.K8sClient)
 	// Assert: Should return no error since there are no NamespaceManagement CR and ArgoCD .spec.NamespaceManagement field is nil
 	assert.NoError(t, err)
 }
@@ -203,7 +200,7 @@ func TestReconcileNamespaceManagement_FeatureEnabled_NoCRs(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	os.Setenv(common.EnableManagedNamespace, "true")
 	defer os.Unsetenv(common.EnableManagedNamespace)
@@ -247,7 +244,7 @@ func TestReconcileNamespaceManagement_DifferentManagedBy(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	err := r.Client.Create(context.Background(), nmOther)
 	assert.NoError(t, err)
@@ -285,7 +282,7 @@ func TestReconcileNamespaceManagement_ExplicitlyDisallowed(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 	logf.SetLogger(ZapLogger(true))
 
 	err := r.Client.Create(context.Background(), nm)
@@ -324,7 +321,7 @@ func TestReconcileNamespaceManagement_DeduplicateNamespaces(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	err := r.Client.Create(context.Background(), nm)
 	assert.NoError(t, err)
