@@ -247,10 +247,6 @@ metadata:
           "apiVersion": "argoproj.io/v1beta1",
           "kind": "NamespaceManagement",
           "metadata": {
-            "labels": {
-              "app.kubernetes.io/managed-by": "kustomize",
-              "app.kubernetes.io/name": "argocd-operator"
-            },
             "name": "namespacemanagement-sample"
           },
           "spec": {
