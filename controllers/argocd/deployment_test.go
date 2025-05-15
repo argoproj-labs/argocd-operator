@@ -1616,12 +1616,12 @@ func TestReconcileServer_RolloutUI(t *testing.T) {
 	// Check for the volume
 	foundVolume := false
 	for _, vol := range deployment.Spec.Template.Spec.Volumes {
-		if vol.Name == "extensions" {
+		if vol.Name == "rollout-extensions" {
 			foundVolume = true
 			assert.NotNil(t, vol.VolumeSource.EmptyDir)
 		}
 	}
-	assert.True(t, foundVolume, "expected volume 'extensions' to be present")
+	assert.True(t, foundVolume, "expected volume 'rollout-extensions' to be present")
 
 	// Disable rollouts UI
 	a.Spec.Server.EnableRolloutsUI = false
@@ -1640,11 +1640,11 @@ func TestReconcileServer_RolloutUI(t *testing.T) {
 	// Check that volume is removed
 	foundVolume = false
 	for _, vol := range deployment.Spec.Template.Spec.Volumes {
-		if vol.Name == "extensions" {
+		if vol.Name == "rollout-extensions" {
 			foundVolume = true
 		}
 	}
-	assert.False(t, foundVolume, "expected volume 'extensions' to be removed")
+	assert.False(t, foundVolume, "expected volume 'rollout-extension' to be removed")
 
 }
 

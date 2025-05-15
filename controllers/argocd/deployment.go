@@ -1572,25 +1572,27 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 
 	deploy.Spec.Template.Spec.Volumes = serverVolumes
 
+	rolloutsVolumeName := "rollout-extensions"
+
 	if cr.Spec.Server.EnableRolloutsUI {
 
 		deploy.Spec.Template.Spec.InitContainers = append(deploy.Spec.Template.Spec.InitContainers, getRolloutInitContainer()...)
 
 		deploy.Spec.Template.Spec.Containers[0].VolumeMounts = append(deploy.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
-			Name:      "extensions",
+			Name:      rolloutsVolumeName,
 			MountPath: "/tmp/extensions/",
 		})
 
 		deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, corev1.Volume{
-			Name: "extensions",
+			Name: rolloutsVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		})
 	} else if !cr.Spec.Server.EnableRolloutsUI {
-		deploy.Spec.Template.Spec.InitContainers = removeInitContainer(deploy.Spec.Template.Spec.InitContainers, "rollout-extension")
-		deploy.Spec.Template.Spec.Volumes = removeVolume(deploy.Spec.Template.Spec.Volumes, "extensions")
-		deploy.Spec.Template.Spec.Containers[0].VolumeMounts = removeVolumeMount(deploy.Spec.Template.Spec.Containers[0].VolumeMounts, "extensions")
+		deploy.Spec.Template.Spec.InitContainers = removeInitContainer(deploy.Spec.Template.Spec.InitContainers, rolloutsVolumeName)
+		deploy.Spec.Template.Spec.Volumes = removeVolume(deploy.Spec.Template.Spec.Volumes, rolloutsVolumeName)
+		deploy.Spec.Template.Spec.Containers[0].VolumeMounts = removeVolumeMount(deploy.Spec.Template.Spec.Containers[0].VolumeMounts, rolloutsVolumeName)
 
 	}
 
@@ -1825,7 +1827,7 @@ func getRolloutInitContainer() []corev1.Container {
 			Name: "rollout-extension",
 			VolumeMounts: []corev1.VolumeMount{
 				{
-					Name:      "extensions",
+					Name:      "rollout-extensions",
 					MountPath: "/tmp/extensions/",
 				},
 			},
