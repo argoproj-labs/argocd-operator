@@ -840,7 +840,7 @@ func (r *ReconcileArgoCD) prepareKeycloakConfigForK8s(cr *argoproj.ArgoCD) (*key
 }
 
 // creates a keycloak realm configuration which when posted to keycloak using http client creates a keycloak realm.
-func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
+func (r *ReconcileArgoCD) createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
 
 	ks := &CustomKeycloakAPIRealm{
 		Realm:       keycloakRealm,
@@ -924,7 +924,7 @@ func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
 	if CanUseKeycloakWithTemplate() {
 		baseURL := "https://kubernetes.default.svc.cluster.local"
 		if isProxyCluster() {
-			baseURL = getOpenShiftAPIURL()
+			baseURL = r.getOpenShiftAPIURL()
 		}
 
 		ks.IdentityProviders = []*KeycloakIdentityProvider{
@@ -1387,7 +1387,7 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoproj.ArgoCD) err
 		if existingDC.Annotations["argocd.argoproj.io/realm-created"] == "false" {
 
 			// Create a keycloak realm and publish.
-			response, err := createRealm(cfg)
+			response, err := r.createRealm(cfg)
 			if err != nil {
 				message := fmt.Sprintf("Failed posting keycloak realm configuration for ArgoCD %s in namespace %s", cr.Name, cr.Namespace)
 				log.Error(err, message)
@@ -1507,7 +1507,7 @@ func (r *ReconcileArgoCD) reconcileKeycloak(cr *argoproj.ArgoCD) error {
 		// If Keycloak deployment exists and a realm is already created for ArgoCD, Do not create a new one.
 		if existingDeployment.Annotations["argocd.argoproj.io/realm-created"] == "false" {
 			// Create a keycloak realm and publish.
-			response, err := createRealm(cfg)
+			response, err := r.createRealm(cfg)
 			if err != nil {
 				message := fmt.Sprintf("Failed posting keycloak realm configuration for ArgoCD %s in namespace %s", cr.Name, cr.Namespace)
 				log.Error(err, message)
