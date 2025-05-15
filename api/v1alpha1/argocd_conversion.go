@@ -55,6 +55,7 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.ApplicationSet = ConvertAlphaToBetaApplicationSet(src.Spec.ApplicationSet)
 	dst.Spec.ExtraConfig = src.Spec.ExtraConfig
 	dst.Spec.ApplicationInstanceLabelKey = src.Spec.ApplicationInstanceLabelKey
+	//lint:ignore SA1019 known to be deprecated
 	dst.Spec.ConfigManagementPlugins = src.Spec.ConfigManagementPlugins
 	dst.Spec.Controller = *ConvertAlphaToBetaController(&src.Spec.Controller)
 	dst.Spec.DisableAdmin = src.Spec.DisableAdmin
@@ -127,6 +128,7 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.ApplicationSet = ConvertBetaToAlphaApplicationSet(src.Spec.ApplicationSet)
 	dst.Spec.ExtraConfig = src.Spec.ExtraConfig
 	dst.Spec.ApplicationInstanceLabelKey = src.Spec.ApplicationInstanceLabelKey
+	//lint:ignore SA1019 known to be deprecated
 	dst.Spec.ConfigManagementPlugins = src.Spec.ConfigManagementPlugins
 	dst.Spec.Controller = *ConvertBetaToAlphaController(&src.Spec.Controller)
 	dst.Spec.DisableAdmin = src.Spec.DisableAdmin

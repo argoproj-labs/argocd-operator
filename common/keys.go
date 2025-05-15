@@ -44,9 +44,6 @@ const (
 	// ArgoCDKeyBackupKey is the "backup key" key for ConfigMaps.
 	ArgoCDKeyBackupKey = "backup.key"
 
-	// ArgoCDKeyConfigManagementPlugins is the configuration key for config management plugins.
-	ArgoCDKeyConfigManagementPlugins = "configManagementPlugins"
-
 	// ArgoCDKeyComponent is the resource component key for labels.
 	ArgoCDKeyComponent = "app.kubernetes.io/component"
 
