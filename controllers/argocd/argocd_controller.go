@@ -31,10 +31,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-<<<<<<< HEAD
+
 	"k8s.io/client-go/kubernetes"
-=======
->>>>>>> 67b841c (Fix and update logic and tests of namespaceManagement)
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
