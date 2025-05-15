@@ -2214,14 +2214,14 @@ func namespaceManagementFilterPredicate() predicate.Predicate {
 				if err := deleteRBACsForNamespace(e.ObjectOld.GetNamespace(), k8sClient); err != nil {
 					log.Error(err, fmt.Sprintf("failed to delete RBACs for namespace: %s", e.ObjectOld.GetNamespace()))
 				} else {
-					log.Info(fmt.Sprintf("Successfully1 removed the RBACs for namespace: %s", e.ObjectOld.GetNamespace()))
+					log.Info(fmt.Sprintf("Successfully removed the RBACs for namespace: %s", e.ObjectOld.GetNamespace()))
 				}
 
 				// Delete namespace from cluster secret of previously managing argocd instance
 				if err = deleteManagedNamespaceFromClusterSecret(oldNSMgmt.Spec.ManagedBy, e.ObjectOld.GetNamespace(), k8sClient); err != nil {
 					log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", e.ObjectOld.GetNamespace()))
 				} else {
-					log.Info(fmt.Sprintf("Successfully12 deleted namespace %s from cluster secret", e.ObjectOld.GetNamespace()))
+					log.Info(fmt.Sprintf("Successfully deleted namespace %s from cluster secret", e.ObjectOld.GetNamespace()))
 				}
 
 				// Return true to trigger reconciliation
@@ -2354,31 +2354,5 @@ func updateStatusConditionOfNamespaceManagement(ctx context.Context, condition m
 			return err
 		}
 	}
-	return nil
-}
-
-func (r *ReconcileArgoCD) removeNamespaceManagementCRs(argocdNamespace string) error {
-	ctx := context.Background()
-	var nsMgmtList argoproj.NamespaceManagementList
-
-	// List all NamespaceManagement CRs
-	if err := r.Client.List(ctx, &nsMgmtList); err != nil {
-		return fmt.Errorf("failed to list NamespaceManagement CRs: %w", err)
-	}
-
-	if len(nsMgmtList.Items) > 0 {
-		for _, nsMgmt := range nsMgmtList.Items {
-			if nsMgmt.Spec.ManagedBy == argocdNamespace {
-				log.Info(fmt.Sprintf("Deleting NamespaceManagement CR %s in namespace %s", nsMgmt.Name, nsMgmt.Namespace))
-
-				// Delete the NamespaceManagement CR
-				if err := r.Client.Delete(ctx, &nsMgmt); err != nil && !apierrors.IsNotFound(err) {
-					log.Error(err, fmt.Sprintf("Failed to delete NamespaceManagement CR %s in namespace %s", nsMgmt.Name, nsMgmt.Namespace))
-					return err
-				}
-			}
-		}
-	}
-
 	return nil
 }
