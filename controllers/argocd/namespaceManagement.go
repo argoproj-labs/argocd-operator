@@ -191,6 +191,5 @@ func (r *ReconcileArgoCD) disableNamespaceManagement(argocd *argoproj.ArgoCD, k8
 			}
 		}
 	}
-
 	return nil
 }
