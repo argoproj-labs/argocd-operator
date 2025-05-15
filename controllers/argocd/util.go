@@ -1112,11 +1112,7 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 
 	nmMapperResourceHandler := handler.EnqueueRequestsFromMapFunc(nmMapper)
 
-<<<<<<< HEAD
 	bldr.Watches(&argoproj.NamespaceManagement{}, nmMapperResourceHandler, builder.WithPredicates(r.namespaceManagementFilterPredicate()))
-=======
-	bldr.Watches(&argoproj.NamespaceManagement{}, nmMapperResourceHandler, builder.WithPredicates(namespaceManagementFilterPredicate()))
->>>>>>> 49a050d (Fix merge conflicts)
 
 	clusterResourceHandler := handler.EnqueueRequestsFromMapFunc(clusterResourceMapper)
 
