@@ -1788,6 +1788,20 @@ func addKubernetesData(source map[string]string, live map[string]string) {
 	}
 }
 
+func AddExistingLabels(existing *map[string]string, expected map[string]string) bool {
+	changed := false
+	if *existing == nil {
+		*existing = make(map[string]string)
+	}
+	for key, value := range expected {
+		if (*existing)[key] != value {
+			(*existing)[key] = value
+			changed = true
+		}
+	}
+	return changed
+}
+
 // updateStatusConditionOfArgoCD calls Set Condition of ArgoCD status
 func updateStatusConditionOfArgoCD(ctx context.Context, condition metav1.Condition, cr *argoproj.ArgoCD, k8sClient client.Client, log logr.Logger) error {
 	changed, newConditions := insertOrUpdateConditionsInSlice(condition, cr.Status.Conditions)

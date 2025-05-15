@@ -334,6 +334,23 @@ func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoproj.ArgoCD, useTLSForRedi
 // This ConfigMap holds the CA Certificate data for client use.
 func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoproj.ArgoCD) error {
 	cm := newConfigMapWithName(getCAConfigMapName(cr), cr)
+	existingCM := &corev1.ConfigMap{}
+	exists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) 
+	if err != nil {
+		return err
+	}
+	if exists {
+		changed := false
+		//Check if labels have changed
+		if AddExistingLabels(&existingCM.Labels, cm.GetLabels()) {
+			argoutil.LogResourceUpdate(log, existingCM, "updating", "CAConfigMap labels")
+			changed = true
+			if changed {
+				return r.Client.Update(context.TODO(), existingCM)
+			}
+		}
+
+	}
 
 	configMapExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm)
 	if err != nil {
@@ -493,6 +510,12 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 		}
 
 		changed := false
+		//Check if labels have changed
+		if AddExistingLabels(&existingCM.Labels, cm.GetLabels()) {
+			argoutil.LogResourceUpdate(log, existingCM, "updating", "ConfigMap labels")
+			changed = true
+		}
+
 		if !reflect.DeepEqual(cm.Data, existingCM.Data) {
 			existingCM.Data = cm.Data
 			changed = true
