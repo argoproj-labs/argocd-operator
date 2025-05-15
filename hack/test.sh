@@ -18,4 +18,6 @@
 
 set -e 
 
-kubectl kuttl test ./tests/k8s ./tests/ha --config ./tests/kuttl-tests.yaml 
+kubectl kuttl test ./tests/k8s --config ./tests/kuttl-tests.yaml
+
+ENABLE_MANAGED_NAMESPACE_FEATURE=true kubectl kuttl test ./tests/nm  --config ./tests/kuttl-tests.yaml --test 1-048_validate_namespace_management_glob
