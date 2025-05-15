@@ -118,11 +118,7 @@ func TestHandleFeatureDisable_NoNamespaceManagement(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-<<<<<<< HEAD
 	err := r.disableNamespaceManagement(a, r.K8sClient)
-=======
-	err := r.handleFeatureDisable(a, testClient)
->>>>>>> 62aa9e2 (Fix failing of tests)
 	// Assert: Should return no error since there are no NamespaceManagement CR and ArgoCD .spec.NamespaceManagement field is nil
 	assert.NoError(t, err)
 }
