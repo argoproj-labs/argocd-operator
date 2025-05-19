@@ -44,12 +44,14 @@ func NewTLSSecret(cr *argoproj.ArgoCD, suffix string) *corev1.Secret {
 
 // NewSecret returns a new Secret based on the given metadata.
 func NewSecret(cr *argoproj.ArgoCD) *corev1.Secret {
-	return &corev1.Secret{
+	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: LabelsForCluster(cr),
 		},
 		Type: corev1.SecretTypeOpaque,
 	}
+	AddWatchedByOperatorLabel(&secret.ObjectMeta)
+	return secret
 }
 
 // NewSecretWithName returns a new Secret based on the given metadata with the provided Name.
