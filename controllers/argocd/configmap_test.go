@@ -305,6 +305,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 		if diff := cmp.Diff(want, cm.Data); diff != "" {
 			t.Fatalf("reconcileArgoConfigMap (%s) failed:\n%s", tt.name, diff)
 		}
+		assert.True(t, true, argoutil.IsWatchedByOperator(cm.ObjectMeta.Labels))
 	}
 }
 
@@ -339,6 +340,7 @@ func TestReconcileArgoCD_reconcileEmptyArgoConfigMap(t *testing.T) {
 		Namespace: testNamespace,
 	}, cm)
 	assert.NoError(t, err)
+	assert.True(t, true, argoutil.IsWatchedByOperator(cm.ObjectMeta.Labels))
 }
 
 func TestReconcileArgoCD_reconcileArgoConfigMap_withDisableAdmin(t *testing.T) {
@@ -1221,6 +1223,8 @@ func Test_validateOwnerReferences(t *testing.T) {
 	assert.Equal(t, cm.OwnerReferences[0].Kind, "ArgoCD")
 	assert.Equal(t, cm.OwnerReferences[0].Name, "argocd")
 	assert.Equal(t, cm.OwnerReferences[0].UID, uid)
+
+	assert.True(t, true, argoutil.IsWatchedByOperator(cm.ObjectMeta.Labels))
 }
 
 func TestReconcileArgoCD_reconcileArgoConfigMap_withInstallationID(t *testing.T) {
@@ -1247,7 +1251,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withInstallationID(t *testing.T)
 		Namespace: testNamespace,
 	}, cm)
 	assert.NoError(t, err)
-
+	assert.True(t, true, argoutil.IsWatchedByOperator(cm.ObjectMeta.Labels))
 	// Verify installationID is set as a top-level key
 	assert.Equal(t, "test-id", cm.Data[common.ArgoCDKeyInstallationID])
 
@@ -1278,6 +1282,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withInstallationID(t *testing.T)
 
 	// Verify installationID was removed
 	assert.NotContains(t, cm.Data, common.ArgoCDKeyInstallationID)
+	assert.True(t, true, argoutil.IsWatchedByOperator(cm.ObjectMeta.Labels))
 }
 
 func TestReconcileArgoCD_reconcileArgoConfigMap_withMultipleInstances(t *testing.T) {
@@ -1317,7 +1322,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withMultipleInstances(t *testing
 
 	// Verify first instance's installationID
 	assert.Equal(t, "instance-1", cm1.Data[common.ArgoCDKeyInstallationID])
-
+	assert.True(t, true, argoutil.IsWatchedByOperator(cm1.ObjectMeta.Labels))
 	// Test second instance
 	err = r.reconcileArgoConfigMap(argocd2)
 	assert.NoError(t, err)
@@ -1331,6 +1336,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withMultipleInstances(t *testing
 
 	// Verify second instance's installationID
 	assert.Equal(t, "instance-2", cm2.Data[common.ArgoCDKeyInstallationID])
+	assert.True(t, true, argoutil.IsWatchedByOperator(cm2.ObjectMeta.Labels))
 }
 
 func TestReconcileArgoCD_RBACPolicyWithLogsPermissions(t *testing.T) {
