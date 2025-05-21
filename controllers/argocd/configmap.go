@@ -116,6 +116,15 @@ func getKustomizeBuildOptions(cr *argoproj.ArgoCD) string {
 	return kbo
 }
 
+// getWebTerminalEnabled will return whether the web terminal is enabled for the given ArgoCD.
+func getWebTerminalEnabled(cr *argoproj.ArgoCD) string {
+	wte := common.ArgoCDDefaultWebTerminalEnabled
+	if cr.Spec.WebTerminal.Enabled {
+		wte = "true"
+	}
+	return wte
+}
+
 // getOIDCConfig will return the OIDC configuration for the given ArgoCD.
 func getOIDCConfig(cr *argoproj.ArgoCD) string {
 	config := common.ArgoCDDefaultOIDCConfig
@@ -361,6 +370,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	cm.Data[common.ArgoCDKeyHelpChatURL] = getHelpChatURL(cr)
 	cm.Data[common.ArgoCDKeyHelpChatText] = getHelpChatText(cr)
 	cm.Data[common.ArgoCDKeyKustomizeBuildOptions] = getKustomizeBuildOptions(cr)
+	cm.Data[common.ArgoCDKeyWebTerminalEnabled] = getWebTerminalEnabled(cr)
 
 	// Set installationID as a top-level key
 	if cr.Spec.InstallationID != "" {
