@@ -1598,6 +1598,15 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 
 	if replicas := getArgoCDServerReplicas(cr); replicas != nil {
 		deploy.Spec.Replicas = replicas
+
+		// Add ARGOCD_API_SERVER_REPLICAS env var to the argocd-server container
+		deploy.Spec.Template.Spec.Containers[0].Env = append(
+			deploy.Spec.Template.Spec.Containers[0].Env,
+			corev1.EnvVar{
+				Name:  "ARGOCD_API_SERVER_REPLICAS",
+				Value: fmt.Sprintf("%d", *replicas),
+			},
+		)
 	}
 
 	if cr.Spec.Server.SidecarContainers != nil {
