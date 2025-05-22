@@ -81,7 +81,6 @@ func (r *ReconcileArgoCD) reconcileStatusApplicationController(cr *argoproj.Argo
 	ss := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, ss.Name, ss) {
 		status = "Pending"
-
 		if ss.Spec.Replicas != nil {
 			if ss.Status.ReadyReplicas == *ss.Spec.Replicas {
 				status = "Running"
@@ -123,7 +122,6 @@ func (r *ReconcileArgoCD) reconcileStatusDex(cr *argoproj.ArgoCD) error {
 		cr.Status.SSO = status
 		return r.Client.Status().Update(context.TODO(), cr)
 	}
-
 	return nil
 }
 

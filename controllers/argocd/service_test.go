@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	testclient "k8s.io/client-go/kubernetes/fake"
 
 	"k8s.io/apimachinery/pkg/types"
 
@@ -93,7 +94,7 @@ func TestReconcileServerService(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 	a = makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.Server.Service.Type = "NodePort"
 	})
@@ -143,7 +144,7 @@ func TestReconcileArgoCD_reconcileRedisWithRemoteEn(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	redisRemote := "https://remote.redis.instance"
 
@@ -164,7 +165,7 @@ func TestReconcileArgoCD_reconcileRepoServerWithRemoteEnabled(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	repoServerRemote := "https://remote.repo-server.instance"
 
