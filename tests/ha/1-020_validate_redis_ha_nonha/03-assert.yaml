@@ -36,7 +36,7 @@ spec:
             cpu: 200m
             memory: 128Mi
 status:
-  readyReplicas: 1
+  readyReplicas: 3
 ---
 apiVersion: apps/v1
 kind: StatefulSet
