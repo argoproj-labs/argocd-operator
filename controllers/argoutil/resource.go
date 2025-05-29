@@ -96,8 +96,21 @@ func FetchStorageSecretName(export *argoprojv1alpha1.ArgoCDExport) string {
 
 // IsObjectFound will perform a basic check that the given object exists via the Kubernetes API.
 // If an error occurs as part of the check, the function will return false.
-func IsObjectFound(client client.Client, namespace string, name string, obj client.Object) bool {
-	return !apierrors.IsNotFound(FetchObject(client, namespace, name, obj))
+func IsObjectFound(client client.Client, namespace string, name string, obj client.Object) (bool, error) {
+
+	if err := FetchObject(client, namespace, name, obj); err != nil {
+
+		if apierrors.IsNotFound(err) {
+			// Object was not found
+			return false, nil
+		}
+
+		// Another error occurred besides the object not being found
+		return false, err
+	}
+
+	// Object was found
+	return true, nil
 }
 
 // NameWithSuffix will return a string using the Name from the given ObjectMeta with the provded suffix appended.
