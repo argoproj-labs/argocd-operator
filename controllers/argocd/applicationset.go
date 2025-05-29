@@ -279,8 +279,8 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 			existing.Spec.Template.Spec.Containers = podSpec.Containers
 			existing.Spec.Template.Spec.Volumes = podSpec.Volumes
 			existing.Spec.Template.Spec.ServiceAccountName = podSpec.ServiceAccountName
-			existing.Labels = deploy.Labels
-			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
+			AddExistingLabels(&existing.Labels, deploy.Labels)
+			AddExistingLabels(&existing.Spec.Template.Labels, deploy.Spec.Template.Labels)
 			existing.Spec.Selector = deploy.Spec.Selector
 			existing.Spec.Template.Spec.NodeSelector = deploy.Spec.Template.Spec.NodeSelector
 			existing.Spec.Template.Spec.Tolerations = deploy.Spec.Template.Spec.Tolerations
@@ -903,6 +903,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetService(cr *argoproj.ArgoCD) er
 	log.Info("reconciling applicationset service")
 
 	svc := newServiceWithSuffix(common.ApplicationSetServiceNameSuffix, common.ApplicationSetServiceNameSuffix, cr)
+	deploy := newServiceWithSuffix("applicationset-controller", common.ApplicationSetServiceNameSuffix, cr)
 	if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.IsEnabled() {
 
 		if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
@@ -919,6 +920,8 @@ func (r *ReconcileArgoCD) reconcileApplicationSetService(cr *argoproj.ArgoCD) er
 		return nil
 	} else {
 		if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+			AddExistingLabels(&svc.Labels, deploy.Labels)
+			r.Client.Update(context.TODO(), svc)
 			return nil // Service found, do nothing
 		}
 	}
