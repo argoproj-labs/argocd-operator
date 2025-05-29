@@ -287,8 +287,8 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 			existing.Spec.Template.Spec.Containers = podSpec.Containers
 			existing.Spec.Template.Spec.Volumes = podSpec.Volumes
 			existing.Spec.Template.Spec.ServiceAccountName = podSpec.ServiceAccountName
-			existing.Labels = deploy.Labels
-			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
+			AddExistingLabels(&existing.Labels, deploy.Labels)
+			AddExistingLabels(&existing.Spec.Template.Labels, deploy.Spec.Template.Labels)
 			existing.Spec.Selector = deploy.Spec.Selector
 			existing.Spec.Template.Spec.NodeSelector = deploy.Spec.Template.Spec.NodeSelector
 			existing.Spec.Template.Spec.Tolerations = deploy.Spec.Template.Spec.Tolerations
