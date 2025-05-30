@@ -518,7 +518,7 @@ func matchAggregatedClusterRoleFields(expectedClusterRole *v1.ClusterRole, exist
 
 	// if ClusterRole is for View permissions then compare Labels
 	if name == common.ArgoCDApplicationControllerComponentView {
-		if !AddExistingLabels(&existingClusterRole.Labels, expectedClusterRole.Labels) {
+		if AddExistingLabels(&existingClusterRole.Labels, expectedClusterRole.Labels) {
 			if changed {
 				explanation += ", "
 			}
