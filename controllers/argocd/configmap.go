@@ -346,7 +346,9 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoproj.ArgoCD) error {
 			argoutil.LogResourceUpdate(log, existingCM, "updating", "CAConfigMap labels")
 			changed = true
 			if changed {
-				return r.Client.Update(context.TODO(), existingCM)
+				if err := r.Client.Update(context.TODO(), existingCM); err != nil {
+					log.Error(err, "failed to update service object")
+				}
 			}
 		}
 
