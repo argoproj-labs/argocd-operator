@@ -921,7 +921,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetService(cr *argoproj.ArgoCD) er
 	} else {
 		if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 			AddExistingLabels(&svc.Labels, deploy.Labels)
-			if err := r.Client.Update(context.TODO(), svc); err != nil {
+			if err := r.Update(context.TODO(), svc); err != nil {
 				log.Error(err, "failed to update service object")
 			}
 			return nil // Service found, do nothing
