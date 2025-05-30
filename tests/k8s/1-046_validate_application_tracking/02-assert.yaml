@@ -18,6 +18,14 @@ metadata:
   labels:
     argocd.argoproj.io/managed-by: test-1-046-argocd-2
 ---
+# Check third namespace annotations
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: source-ns-3
+  annotations:
+    argocd.argoproj.io/managed-by: test-1-046-argocd-3
+---
 # Verify RBAC is set up for first namespace
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
