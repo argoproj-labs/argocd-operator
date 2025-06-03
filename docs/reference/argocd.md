@@ -802,7 +802,7 @@ Scopes | `[groups]` | The `scopes` property in the `argocd-rbac-cm` ConfigMap.  
 
 ### RBAC Example
 
-The following example shows all properties set to the default values.
+The following example shows a basic RBAC configuration with default values and logs permissions:
 
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
@@ -816,9 +816,78 @@ spec:
     defaultPolicy: 'role:readonly'
     policyMatcherMode: 'glob'
     policy: |
+      # Default readonly role with logs permissions
+      p, role:readonly, applications, get, */*, allow
+      p, role:readonly, logs, get, */*, allow
+      
+      # Default admin role with logs permissions
+      p, role:admin, applications, *, */*, allow
+      p, role:admin, logs, get, */*, allow
+      
+      # Assign admin role to cluster-admins group
       g, system:cluster-admins, role:admin
     scopes: '[groups]'
 ```
+
+### Logs RBAC Enforcement
+
+Starting with Argo CD 3.0, logs RBAC enforcement is enabled by default and logs are treated as a first-class RBAC resource. This means:
+
+1. The `server.rbac.log.enforce.enable` flag has been removed
+2. Logs permissions must be explicitly granted to users/groups/roles
+3. Default roles (readonly and admin) include logs permissions
+4. Custom roles must explicitly include logs permissions
+
+#### Creating Custom Roles with Logs Access
+
+When creating custom roles, you must explicitly add logs permissions:
+
+```yaml
+spec:
+  rbac:
+    policy: |
+      # Custom role with logs access
+      p, role:custom-role, applications, get, */*, allow
+      p, role:custom-role, logs, get, */*, allow
+      
+      # Assign role to users/groups
+      g, user1, role:custom-role
+```
+
+#### Global Log Viewer Role
+
+You can create a global log viewer role that only has access to logs:
+
+```yaml
+spec:
+  rbac:
+    policy: |
+      # Global log viewer role
+      p, role:global-log-viewer, logs, get, */*, allow
+      
+      # Assign role to users/groups
+      g, log-viewers, role:global-log-viewer
+```
+
+### Migration from Argo CD 2.4 to 3.0
+
+If you're upgrading from Argo CD 2.4 to 3.0, note the following changes:
+
+1. The `server.rbac.log.enforce.enable` flag is no longer supported
+2. Logs RBAC is now enforced by default
+3. Users with existing policies need to explicitly add logs permissions
+4. Default roles (readonly and admin) now include logs permissions
+
+#### Remediation Steps
+
+1. Quick Remediation:
+   - Add logs permissions to existing roles
+   - Example: `p, role:existing-role, logs, get, */*, allow`
+
+2. Recommended Remediation:
+   - Review existing roles and their permissions
+   - Add logs permissions only to roles that need them
+   - Consider creating a dedicated log viewer role
 
 ## Redis Options
 
