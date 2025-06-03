@@ -829,7 +829,7 @@ spec:
     scopes: '[groups]'
 ```
 
-### Logs RBAC Enforcement
+### Logs RBAC Enforcement (v3.0+)
 
 Starting with Argo CD 3.0, logs RBAC enforcement is enabled by default and logs are treated as a first-class RBAC resource. This means:
 
