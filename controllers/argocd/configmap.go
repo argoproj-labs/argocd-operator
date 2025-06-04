@@ -443,6 +443,11 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 		}
 	}
 
+	// Check and set default value for server.rbac.disableApplicationFineGrainedRBACInheritance if not present
+	if _, exists := cm.Data[common.ArgoCDServerRBACDisableFineGrainedInheritance]; !exists {
+		cm.Data[common.ArgoCDServerRBACDisableFineGrainedInheritance] = "false"
+	}
+
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
 		return err
 	}

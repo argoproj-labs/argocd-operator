@@ -233,9 +233,10 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 		"oidc.config":                        "",
 		"resource.inclusions":                "",
 		"resource.exclusions":                "",
-		"statusbadge.enabled":                "false",
-		"url":                                "https://argocd-server",
-		"users.anonymous.enabled":            "false",
+		"server.rbac.disableApplicationFineGrainedRBACInheritance": "false",
+		"statusbadge.enabled":     "false",
+		"url":                     "https://argocd-server",
+		"users.anonymous.enabled": "false",
 	}
 
 	cmdTests := []struct {
