@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+  namespace: argocd-operator-system
+spec:
+  rbac:
+    defaultPolicy: 'role:readonly'
+    policy: |
+      # Default readonly role with logs permissions
+      p, role:readonly, applications, get, */*, allow
+      p, role:readonly, logs, get, */*, allow
+
+      # Default admin role with logs permissions
+      p, role:admin, applications, *, */*, allow
+      p, role:admin, logs, get, */*, allow
+
+      # Global log viewer role
+      p, role:global-log-viewer, logs, get, */*, allow
