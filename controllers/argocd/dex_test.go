@@ -229,6 +229,93 @@ func TestReconcileArgoCD_reconcileDeployments_Dex_with_resources(t *testing.T) {
 	}
 }
 
+func TestReconcileArgoCD_reconcileDeployments_Dex_with_volumes(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		name       string
+		setEnvFunc func(*testing.T, string)
+		argoCD     *argoproj.ArgoCD
+	}{
+		{
+			name:       "dex with volumes - .spec.sso.provider=dex",
+			setEnvFunc: nil,
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
+						Volumes: []corev1.Volume{
+							{Name: "custom-config", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+						},
+						VolumeMounts: []corev1.VolumeMount{
+							{Name: "custom-config", MountPath: "/etc/custom-config"},
+						},
+					},
+				}
+			}),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			resObjs := []client.Object{test.argoCD}
+			subresObjs := []client.Object{test.argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
+
+			if test.setEnvFunc != nil {
+				test.setEnvFunc(t, "false")
+			}
+
+			assert.NoError(t, r.reconcileDexDeployment(test.argoCD))
+
+			deployment := &appsv1.Deployment{}
+			assert.NoError(t, r.Client.Get(
+				context.TODO(),
+				types.NamespacedName{
+					Name:      test.argoCD.Name + "-dex-server",
+					Namespace: test.argoCD.Namespace,
+				},
+				deployment))
+
+			testVolumes := []corev1.Volume{
+				{
+					Name: "static-files",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+				{
+					Name: "dexconfig",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+				{
+					Name: "custom-config",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+			}
+
+			testVolumeMounts := []corev1.VolumeMount{
+				{Name: "static-files", MountPath: "/shared"},
+				{Name: "dexconfig", MountPath: "/tmp"},
+				{Name: "custom-config", MountPath: "/etc/custom-config"},
+			}
+
+			assert.Equal(t, deployment.Spec.Template.Spec.Volumes, testVolumes)
+
+			assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].VolumeMounts, testVolumeMounts)
+			assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].VolumeMounts, testVolumeMounts)
+		})
+	}
+}
+
 func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
