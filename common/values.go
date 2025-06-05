@@ -94,4 +94,7 @@ const (
 
 	// AutoUpdateAnnotationKey is the name of an annotation which prevents reconciliation if set to "false"
 	AutoUpdateAnnotationKey = "rbac.authorization.kubernetes.io/autoupdate"
+
+	// ArgoCDCmdParamsConfigMapName is the upstream hard-coded ArgoCD command params ConfigMap name.
+	ArgoCDCmdParamsConfigMapName = "argocd-cmd-params-cm"
 )
