@@ -819,6 +819,14 @@ spec:
       g, system:cluster-admins, role:admin
     scopes: '[groups]'
 ```
+### Fine-Grained RBAC for application update and delete sub-resources (v3.0+)
+
+The default behavior of fine-grained policies have changed so they no longer apply to sub-resources. Prior to v3, policies granting update or delete to an application also applied to any of its sub-resources.
+
+Starting with v3, the update or delete actions only apply to the application itself. New policies must be defined to allow the update/* or delete/* actions on an Application's managed resources.
+
+To preserve v2 behavior the config value server.rbac.disableApplicationFineGrainedRBACInheritance is set to false in the Argo CD ConfigMap argocd-cm.
+
 
 ## Redis Options
 
