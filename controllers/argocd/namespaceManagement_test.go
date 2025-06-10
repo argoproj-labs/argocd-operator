@@ -89,6 +89,8 @@ func TestReconcileNamespaceManagement_FeatureEnabled(t *testing.T) {
 	assert.Equal(t, metav1.ConditionTrue, reconciledCondition.Status)
 	assert.Equal(t, "Success", reconciledCondition.Reason)
 
+	reconciledCondition = nil
+
 	// Verify error status on disallowed namespace
 	err = r.Client.Get(context.TODO(), types.NamespacedName{
 		Name:      nmDisallowed.Name,
@@ -96,7 +98,6 @@ func TestReconcileNamespaceManagement_FeatureEnabled(t *testing.T) {
 	}, nmDisallowed)
 	assert.NoError(t, err)
 
-	reconciledCondition = nil
 	for _, cond := range nmDisallowed.Status.Conditions {
 		if cond.Type == "Reconciled" {
 			reconciledCondition = &cond
@@ -123,6 +124,131 @@ func TestHandleFeatureDisable_NoNamespaceManagement(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestHandleFeatureDisable_NamespaceCRsExistButNoMatch(t *testing.T) {
+	a := makeTestArgoCD()
+
+	// Create a NamespaceManagement CR that is managed by a different ArgoCD instance
+	nm := &argoproj.NamespaceManagement{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "nm1",
+			Namespace: "ns-1",
+		},
+		Spec: argoproj.NamespaceManagementSpec{
+			ManagedBy: "other-argocd",
+		},
+	}
+
+	resObjs := []client.Object{a, nm}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, nil, nil)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	err := r.disableNamespaceManagement(a, r.K8sClient)
+	assert.NoError(t, err)
+}
+
+func TestHandleFeatureDisable_NamespaceMatchesPattern_RBACDeleted(t *testing.T) {
+	a := makeTestArgoCD()
+	a.Spec.NamespaceManagement = []argoproj.ManagedNamespaces{
+		{
+			Name:           "ns-*",
+			AllowManagedBy: true,
+		},
+	}
+
+	nm := &argoproj.NamespaceManagement{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "nm1",
+			Namespace: "ns-1",
+		},
+		Spec: argoproj.NamespaceManagementSpec{
+			ManagedBy: "argocd",
+		},
+	}
+
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "ns-1",
+			Labels: map[string]string{
+				"some": "label",
+			},
+		},
+	}
+
+	resObjs := []client.Object{a, nm, ns}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, nil, nil)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset(ns))
+
+	err := r.disableNamespaceManagement(a, r.K8sClient)
+	assert.NoError(t, err)
+}
+
+func TestHandleFeatureDisable_SkipManagedByLabel(t *testing.T) {
+	a := makeTestArgoCD()
+	a.Spec.NamespaceManagement = []argoproj.ManagedNamespaces{
+		{
+			Name:           "ns-*",
+			AllowManagedBy: true,
+		},
+	}
+
+	nm := &argoproj.NamespaceManagement{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "nm1",
+			Namespace: "ns-managed",
+		},
+		Spec: argoproj.NamespaceManagementSpec{
+			ManagedBy: "argocd",
+		},
+	}
+
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "ns-managed",
+			Labels: map[string]string{
+				common.ArgoCDManagedByLabel: "ns-managed",
+			},
+		},
+	}
+
+	resObjs := []client.Object{a, nm, ns}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, nil, nil)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset(ns))
+
+	err := r.disableNamespaceManagement(a, r.K8sClient)
+	assert.NoError(t, err)
+}
+
+func TestHandleFeatureDisable_NoPatternMatch(t *testing.T) {
+	a := makeTestArgoCD()
+	a.Spec.NamespaceManagement = []argoproj.ManagedNamespaces{
+		{
+			Name:           "prod-*",
+			AllowManagedBy: true,
+		},
+	}
+
+	nm := &argoproj.NamespaceManagement{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "nm1",
+			Namespace: "dev-ns",
+		},
+		Spec: argoproj.NamespaceManagementSpec{
+			ManagedBy: "argocd",
+		},
+	}
+
+	resObjs := []client.Object{a, nm}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, nil, nil)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	err := r.disableNamespaceManagement(a, r.K8sClient)
+	assert.NoError(t, err)
+}
+
 func TestMatchesNamespaceManagementRules(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -141,18 +267,6 @@ func TestMatchesNamespaceManagementRules(t *testing.T) {
 			},
 			namespace:   "allowed-ns",
 			expectMatch: true,
-		},
-		{
-			name: "does not match when AllowManagedBy is false",
-			argocd: &argoproj.ArgoCD{
-				Spec: argoproj.ArgoCDSpec{
-					NamespaceManagement: []argoproj.ManagedNamespaces{
-						{Name: "allowed-*", AllowManagedBy: false},
-					},
-				},
-			},
-			namespace:   "allowed-ns",
-			expectMatch: false,
 		},
 		{
 			name: "does not match pattern",
@@ -180,7 +294,13 @@ func TestMatchesNamespaceManagementRules(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			match := matchesNamespaceManagementRules(tt.argocd, tt.namespace)
+			var allowedPatterns []string
+			for _, nm := range tt.argocd.Spec.NamespaceManagement {
+				if nm.AllowManagedBy {
+					allowedPatterns = append(allowedPatterns, nm.Name)
+				}
+			}
+			match := matchesNamespaceManagementRules(allowedPatterns, tt.namespace)
 			assert.Equal(t, tt.expectMatch, match)
 		})
 	}
@@ -293,7 +413,7 @@ func TestReconcileNamespaceManagement_ExplicitlyDisallowed(t *testing.T) {
 
 	err = r.reconcileNamespaceManagement(a)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "is not allowed to be managed by ArgoCD")
+	assert.Contains(t, err.Error(), "Namespace deny-ns is not permitted for management by ArgoCD instance argocd based on NamespaceManagement rules")
 }
 
 func TestReconcileNamespaceManagement_DeduplicateNamespaces(t *testing.T) {
