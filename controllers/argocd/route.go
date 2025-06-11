@@ -377,7 +377,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 		// Generate the default host
 		baseHost := fmt.Sprintf("%s-%s-%s", cr.Name, common.ApplicationSetControllerWebhookSuffix, cr.Namespace)
 		ingressConfig := &configv1.Ingress{}
-		err := r.Client.Get(context.TODO(), client.ObjectKey{Name: "cluster"}, ingressConfig)
+		err := r.Get(context.TODO(), client.ObjectKey{Name: "cluster"}, ingressConfig)
 		if err != nil {
 			return err
 		}
