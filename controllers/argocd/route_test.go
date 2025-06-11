@@ -253,7 +253,7 @@ func TestReconcileRouteApplicationSetHost(t *testing.T) {
 	assert.NoError(t, err)
 
 	loaded := &routev1.Route{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s-%s", testArgoCDName, common.ApplicationSetServiceNameSuffix, "webhook"), Namespace: testNamespace}, loaded)
+	err = r.Client.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s", testArgoCDName, common.ApplicationSetControllerWebhookSuffix), Namespace: testNamespace}, loaded)
 	fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
 
 	wantTLSConfig := &routev1.TLSConfig{
@@ -309,7 +309,7 @@ func TestReconcileRouteApplicationSetTlsTermination(t *testing.T) {
 	assert.NoError(t, err)
 
 	loaded := &routev1.Route{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s-%s", testArgoCDName, common.ApplicationSetServiceNameSuffix, "webhook"), Namespace: testNamespace}, loaded)
+	err = r.Client.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s", testArgoCDName, common.ApplicationSetControllerWebhookSuffix), Namespace: testNamespace}, loaded)
 	fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
 
 	wantTLSConfig := &routev1.TLSConfig{
@@ -381,7 +381,7 @@ func TestReconcileRouteApplicationSetTls(t *testing.T) {
 	assert.NoError(t, err)
 
 	// The route name should be based on the ArgoCD instance name
-	expectedRouteName := fmt.Sprintf("%s-%s", testArgoCDName, "applicationset-controller-webhook")
+	expectedRouteName := fmt.Sprintf("%s-%s", testArgoCDName, common.ApplicationSetControllerWebhookSuffix)
 	if len(expectedRouteName) > 63 {
 		expectedRouteName = expectedRouteName[:63]
 	}
@@ -404,7 +404,7 @@ func TestReconcileRouteApplicationSetTls(t *testing.T) {
 	}
 
 	// Verify hostname
-	expectedHost := fmt.Sprintf("%s-%s-%s.apps.example.com", testArgoCDName, "applicationset-controller-webhook", testNamespace)
+	expectedHost := fmt.Sprintf("%s-%s-%s.apps.example.com", testArgoCDName, common.ApplicationSetControllerWebhookSuffix, testNamespace)
 	if diff := cmp.Diff(expectedHost, loaded.Spec.Host); diff != "" {
 		t.Fatalf("failed to reconcile route hostname:\n%s", diff)
 	}
@@ -565,7 +565,7 @@ func TestReconcileRouteForShorteningRoutename(t *testing.T) {
 	assert.NoError(t, err)
 
 	// The route name should be truncated to 63 chars
-	expectedRouteName := longName + "-applicationset-controller-webhook"
+	expectedRouteName := longName + "-" + common.ApplicationSetControllerWebhookSuffix
 	if len(expectedRouteName) > 63 {
 		expectedRouteName = expectedRouteName[:63]
 	}

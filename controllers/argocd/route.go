@@ -329,7 +329,7 @@ func isCreatedByServiceCA(crName string, secret corev1.Secret) bool {
 // reconcileApplicationSetControllerWebhookRoute will ensure that the ArgoCD Server Route is present.
 func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argoproj.ArgoCD) error {
 	// Generate a base name for the route
-	baseName := fmt.Sprintf("%s-%s", cr.Name, "applicationset-controller-webhook")
+	baseName := fmt.Sprintf("%s-%s", cr.Name, common.ApplicationSetControllerWebhookSuffix)
 	// Truncate to 63 characters if needed (Kubernetes label value limit)
 	if len(baseName) > maxLabelLength {
 		baseName = baseName[:maxLabelLength]
@@ -375,7 +375,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 		host = cr.Spec.ApplicationSet.WebhookServer.Host
 	} else {
 		// Generate the default host
-		baseHost := fmt.Sprintf("%s-%s-%s", cr.Name, "applicationset-controller-webhook", cr.Namespace)
+		baseHost := fmt.Sprintf("%s-%s-%s", cr.Name, common.ApplicationSetControllerWebhookSuffix, cr.Namespace)
 		ingressConfig := &configv1.Ingress{}
 		err := r.Client.Get(context.TODO(), client.ObjectKey{Name: "cluster"}, ingressConfig)
 		if err != nil {
