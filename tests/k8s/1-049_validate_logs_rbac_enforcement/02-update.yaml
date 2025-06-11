@@ -5,15 +5,11 @@ metadata:
   namespace: argocd-operator-system
 spec:
   rbac:
-    defaultPolicy: 'role:readonly'
     policy: |
-      # Default readonly role with logs permissions
-      p, role:readonly, applications, get, */*, allow
-      p, role:readonly, logs, get, */*, allow
-
-      # Default admin role with logs permissions
-      p, role:admin, applications, *, */*, allow
-      p, role:admin, logs, get, */*, allow
-
+      # Custom role without logs permissions
+      p, role:no-logs, applications, get, */*, allow
+      # Custom role with logs permissions
+      p, role:with-logs, applications, get, */*, allow
+      p, role:with-logs, logs, get, */*, allow
       # Global log viewer role
       p, role:global-log-viewer, logs, get, */*, allow

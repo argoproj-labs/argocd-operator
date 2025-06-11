@@ -1,23 +1,15 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: argocd-cm
-  namespace: argocd-operator-system
-data:
-  # Verify that server.rbac.log.enforce.enable is not present
-  # It verifies the ConfigMap exists and has expected content
-  # It implicitly confirms the deprecated key is not present
-  admin.enabled: "true" # required to satisfy object type
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
   name: argocd-rbac-cm
   namespace: argocd-operator-system
 data:
+  # Verify custom roles and global log viewer role
   policy.csv: |
     # Custom role without logs permissions
     p, role:no-logs, applications, get, */*, allow
     # Custom role with logs permissions
     p, role:with-logs, applications, get, */*, allow
     p, role:with-logs, logs, get, */*, allow
+    # Global log viewer role
+    p, role:global-log-viewer, logs, get, */*, allow

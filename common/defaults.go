@@ -172,10 +172,7 @@ const (
 	ArgoCDDefaultPrometheusReplicas = int32(1)
 
 	// ArgoCDDefaultRBACPolicy is the default RBAC policy CSV data.
-	ArgoCDDefaultRBACPolicy = `p, role:readonly, applications, get, */*, allow
-p, role:readonly, logs, get, */*, allow
-p, role:admin, applications, *, */*, allow
-p, role:admin, logs, get, */*, allow`
+	ArgoCDDefaultRBACPolicy = ""
 
 	// ArgoCDDefaultRBACDefaultPolicy is the default Argo CD RBAC policy.
 	ArgoCDDefaultRBACDefaultPolicy = "role:readonly"

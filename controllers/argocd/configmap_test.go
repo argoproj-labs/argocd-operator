@@ -1353,7 +1353,7 @@ func TestReconcileArgoCD_RBACPolicyWithLogsPermissions(t *testing.T) {
 
 	ctx := context.TODO()
 
-	// Test 1: Verify default policy includes logs permissions for readonly and admin roles
+	// Test 1: Verify no default policy is injected when no policy is specified
 	err := r.reconcileRBAC(a)
 	assert.NoError(t, err)
 
@@ -1364,14 +1364,16 @@ func TestReconcileArgoCD_RBACPolicyWithLogsPermissions(t *testing.T) {
 	}, createdCM)
 	assert.NoError(t, err)
 
-	// Verify default policy includes logs permissions for both readonly and admin roles
+	// Verify no default policy is injected
 	policy := createdCM.Data[common.ArgoCDKeyRBACPolicyCSV]
-	assert.Contains(t, policy, "p, role:readonly, logs, get, */*, allow")
-	assert.Contains(t, policy, "p, role:admin, logs, get, */*, allow")
+	assert.Empty(t, policy)
 
-	// Test 2: Verify custom role with applications access but without logs access
-	customPolicy := `p, role:custom-app-viewer, applications, get, */*, allow`
-	a.Spec.RBAC.Policy = &customPolicy
+	// Test 2: Verify default readonly role with logs permissions
+	defaultReadonlyPolicy := `p, role:readonly, applications, get, */*, allow
+p, role:readonly, logs, get, */*, allow`
+	a.Spec.RBAC.Policy = &defaultReadonlyPolicy
+	defaultPolicy := "role:readonly"
+	a.Spec.RBAC.DefaultPolicy = &defaultPolicy
 
 	err = r.reconcileRBAC(a)
 	assert.NoError(t, err)
@@ -1382,12 +1384,53 @@ func TestReconcileArgoCD_RBACPolicyWithLogsPermissions(t *testing.T) {
 	}, createdCM)
 	assert.NoError(t, err)
 
-	// Verify that logs permissions are not automatically granted with applications access
+	// Verify readonly role has logs permissions
+	policy = createdCM.Data[common.ArgoCDKeyRBACPolicyCSV]
+	assert.Equal(t, defaultReadonlyPolicy, policy)
+	assert.Equal(t, defaultPolicy, createdCM.Data[common.ArgoCDKeyRBACPolicyDefault])
+
+	// Test 3: Verify default admin role with logs permissions
+	defaultAdminPolicy := `p, role:admin, applications, *, */*, allow
+p, role:admin, logs, get, */*, allow`
+	a.Spec.RBAC.Policy = &defaultAdminPolicy
+	defaultPolicy = "role:admin"
+	a.Spec.RBAC.DefaultPolicy = &defaultPolicy
+
+	err = r.reconcileRBAC(a)
+	assert.NoError(t, err)
+
+	err = r.Client.Get(ctx, types.NamespacedName{
+		Name:      common.ArgoCDRBACConfigMapName,
+		Namespace: a.Namespace,
+	}, createdCM)
+	assert.NoError(t, err)
+
+	// Verify admin role has logs permissions
+	policy = createdCM.Data[common.ArgoCDKeyRBACPolicyCSV]
+	assert.Equal(t, defaultAdminPolicy, policy)
+	assert.Equal(t, defaultPolicy, createdCM.Data[common.ArgoCDKeyRBACPolicyDefault])
+
+	// Test 4: Verify custom role without logs permissions
+	customPolicy := `p, role:custom-app-viewer, applications, get, */*, allow`
+	a.Spec.RBAC.Policy = &customPolicy
+	defaultPolicy = "role:custom-app-viewer"
+	a.Spec.RBAC.DefaultPolicy = &defaultPolicy
+
+	err = r.reconcileRBAC(a)
+	assert.NoError(t, err)
+
+	err = r.Client.Get(ctx, types.NamespacedName{
+		Name:      common.ArgoCDRBACConfigMapName,
+		Namespace: a.Namespace,
+	}, createdCM)
+	assert.NoError(t, err)
+
+	// Verify custom role does not have logs permissions
 	policy = createdCM.Data[common.ArgoCDKeyRBACPolicyCSV]
 	assert.Equal(t, customPolicy, policy)
 	assert.NotContains(t, policy, "p, role:custom-app-viewer, logs, get, */*, allow")
 
-	// Test 3: Verify adding logs permissions to custom role
+	// Test 5: Verify custom role with explicit logs permissions
 	customPolicyWithLogs := `p, role:custom-app-viewer, applications, get, */*, allow
 p, role:custom-app-viewer, logs, get, */*, allow`
 	a.Spec.RBAC.Policy = &customPolicyWithLogs
@@ -1401,14 +1444,14 @@ p, role:custom-app-viewer, logs, get, */*, allow`
 	}, createdCM)
 	assert.NoError(t, err)
 
-	// Verify logs permissions are explicitly added
+	// Verify custom role has explicit logs permissions
 	policy = createdCM.Data[common.ArgoCDKeyRBACPolicyCSV]
 	assert.Equal(t, customPolicyWithLogs, policy)
 
-	// Test 4: Verify global log viewer role
+	// Test 6: Verify global log viewer role
 	globalLogViewerPolicy := `p, role:global-log-viewer, logs, get, */*, allow`
 	a.Spec.RBAC.Policy = &globalLogViewerPolicy
-	defaultPolicy := "role:global-log-viewer"
+	defaultPolicy = "role:global-log-viewer"
 	a.Spec.RBAC.DefaultPolicy = &defaultPolicy
 
 	err = r.reconcileRBAC(a)
@@ -1425,7 +1468,7 @@ p, role:custom-app-viewer, logs, get, */*, allow`
 	assert.Equal(t, globalLogViewerPolicy, policy)
 	assert.Equal(t, defaultPolicy, createdCM.Data[common.ArgoCDKeyRBACPolicyDefault])
 
-	// Test 5: Verify default policy is restored when custom policy is removed
+	// Test 7: Verify no default policy is restored when custom policy is removed
 	// Clean up ConfigMap to simulate a reset state
 	err = r.Client.Delete(ctx, createdCM)
 	assert.NoError(t, err)
@@ -1442,12 +1485,11 @@ p, role:custom-app-viewer, logs, get, */*, allow`
 	}, createdCM)
 	assert.NoError(t, err)
 
-	// Verify default policy is restored with logs permissions
+	// Verify no default policy is restored
 	policy = createdCM.Data[common.ArgoCDKeyRBACPolicyCSV]
-	assert.Contains(t, policy, "p, role:readonly, logs, get, */*, allow")
-	assert.Contains(t, policy, "p, role:admin, logs, get, */*, allow")
+	assert.Empty(t, policy)
 
-	// Test 6: Verify server.rbac.log.enforce.enable is not set in argocd-cm
+	// Test 8: Verify server.rbac.log.enforce.enable is not set in argocd-cm
 	cm := &corev1.ConfigMap{}
 	err = r.Client.Get(ctx, types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
