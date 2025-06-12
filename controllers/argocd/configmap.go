@@ -16,8 +16,10 @@ package argocd
 
 import (
 	"context"
+	json "encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -29,6 +31,8 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+
+	k8syaml "sigs.k8s.io/yaml"
 )
 
 // createRBACConfigMap will create the Argo CD RBAC ConfigMap resource.
@@ -216,13 +220,32 @@ func getResourceActions(cr *argoproj.ArgoCD) map[string]string {
 	return action
 }
 
-// getResourceExclusions will return the resource exclusions for the given ArgoCD.
-func getResourceExclusions(cr *argoproj.ArgoCD) string {
-	re := common.ArgoCDDefaultResourceExclusions
-	if cr.Spec.ResourceExclusions != "" {
-		re = cr.Spec.ResourceExclusions
+// getResourceExclusions merges user-provided exclusions from CR with defaults.
+// It does NOT override existing config map values if already set.
+func getResourceExclusions(cr *argoproj.ArgoCD, existingCM *corev1.ConfigMap) string {
+	// Do not override user-edited values in the ConfigMap
+	if val, ok := existingCM.Data[common.ArgoCDKeyResourceExclusions]; ok && val != "" {
+		return val
 	}
-	return re
+
+	defaults := getDefaultResourceExclusions()
+	userExclusions := []filteredResource{}
+
+	if cr.Spec.ResourceExclusions != "" {
+		if err := k8syaml.Unmarshal([]byte(cr.Spec.ResourceExclusions), &userExclusions); err != nil {
+			// Log error but fallback to defaults
+			log.Info("Failed to parse ResourceExclusions from CR; using defaults", "error", err)
+		}
+	}
+
+	merged := mergeResourceExclusions(defaults, userExclusions)
+	finalYaml, err := marshalWithJSONTags(merged)
+	if err != nil {
+		log.Error(err, "Failed to marshal merged resource exclusions")
+		return ""
+	}
+
+	return finalYaml
 }
 
 // getResourceInclusions will return the resource inclusions for the given ArgoCD.
@@ -395,7 +418,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 		}
 	}
 
-	cm.Data[common.ArgoCDKeyResourceExclusions] = getResourceExclusions(cr)
+	cm.Data[common.ArgoCDKeyResourceExclusions] = getResourceExclusions(cr, cm)
 	cm.Data[common.ArgoCDKeyResourceInclusions] = getResourceInclusions(cr)
 	cm.Data[common.ArgoCDKeyResourceTrackingMethod] = getResourceTrackingMethod(cr)
 	cm.Data[common.ArgoCDKeyStatusBadgeEnabled] = fmt.Sprint(cr.Spec.StatusBadgeEnabled)
@@ -788,4 +811,59 @@ func (r *ReconcileArgoCD) reconcileGPGKeysConfigMap(cr *argoproj.ArgoCD) error {
 	}
 	argoutil.LogResourceCreation(log, cm)
 	return r.Client.Create(context.TODO(), cm)
+}
+
+type filteredResource struct {
+	APIGroups []string `json:"apiGroups,omitempty"`
+	Kinds     []string `json:"kinds,omitempty"`
+	Clusters  []string `json:"clusters,omitempty"`
+}
+
+func getDefaultResourceExclusions() []filteredResource {
+	return []filteredResource{
+		{APIGroups: []string{"", "discovery.k8s.io"}, Kinds: []string{"Endpoints", "EndpointSlice"}},
+		{APIGroups: []string{"apiregistration.k8s.io"}, Kinds: []string{"APIService"}},
+		{APIGroups: []string{"coordination.k8s.io"}, Kinds: []string{"Lease"}},
+		{APIGroups: []string{"authentication.k8s.io", "authorization.k8s.io"},
+			Kinds: []string{
+				"SelfSubjectReview", "TokenReview", "LocalSubjectAccessReview",
+				"SelfSubjectAccessReview", "SelfSubjectRulesReview", "SubjectAccessReview"}},
+		{APIGroups: []string{"certificates.k8s.io"}, Kinds: []string{"CertificateSigningRequest"}},
+		{APIGroups: []string{"cert-manager.io"}, Kinds: []string{"CertificateRequest"}},
+		{APIGroups: []string{"cilium.io"}, Kinds: []string{"CiliumIdentity", "CiliumEndpoint", "CiliumEndpointSlice"}},
+		{APIGroups: []string{"kyverno.io", "reports.kyverno.io", "wgpolicyk8s.io"},
+			Kinds: []string{
+				"PolicyReport", "ClusterPolicyReport", "EphemeralReport", "ClusterEphemeralReport",
+				"AdmissionReport", "ClusterAdmissionReport", "BackgroundScanReport",
+				"ClusterBackgroundScanReport", "UpdateRequest"}},
+	}
+}
+
+func mergeResourceExclusions(defaults, user []filteredResource) []filteredResource {
+	seen := map[string]struct{}{}
+	var merged []filteredResource
+	for _, r := range append(defaults, user...) {
+		key := fmt.Sprintf("%v|%v|%v",
+			strings.Join(r.APIGroups, ","),
+			strings.Join(r.Kinds, ","),
+			strings.Join(r.Clusters, ","))
+
+		if _, exists := seen[key]; !exists {
+			seen[key] = struct{}{}
+			merged = append(merged, r)
+		}
+	}
+	return merged
+}
+
+func marshalWithJSONTags(resources []filteredResource) (string, error) {
+	jsonData, err := json.Marshal(resources)
+	if err != nil {
+		return "", err
+	}
+	yamlData, err := k8syaml.JSONToYAML(jsonData)
+	if err != nil {
+		return "", err
+	}
+	return string(yamlData), nil
 }
