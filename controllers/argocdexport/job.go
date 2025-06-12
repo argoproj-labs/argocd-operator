@@ -238,7 +238,11 @@ func (r *ReconcileArgoCDExport) reconcileCronJob(cr *argoproj.ArgoCDExport) erro
 	}
 
 	cj := newCronJob(cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cj.Name, cj) {
+	cjExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, cj.Name, cj)
+	if err != nil {
+		return err
+	}
+	if cjExists {
 		if *cr.Spec.Schedule != cj.Spec.Schedule {
 			cj.Spec.Schedule = *cr.Spec.Schedule
 			argoutil.LogResourceUpdate(log, cj, "updating the schedule")
@@ -275,7 +279,11 @@ func (r *ReconcileArgoCDExport) reconcileJob(cr *argoproj.ArgoCDExport) error {
 	}
 
 	job := newJob(cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, job.Name, job) {
+	jobExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, job.Name, job)
+	if err != nil {
+		return err
+	}
+	if jobExists {
 		if job.Status.Succeeded > 0 && cr.Status.Phase != common.ArgoCDStatusCompleted {
 			// Mark status Phase as Complete
 			cr.Status.Phase = common.ArgoCDStatusCompleted
