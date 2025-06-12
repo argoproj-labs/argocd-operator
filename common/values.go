@@ -86,6 +86,9 @@ const (
 	//ApplicationSetServiceNameSuffix is the suffix for Apllication Set Controller Service
 	ApplicationSetServiceNameSuffix = "applicationset-controller"
 
+	// ApplicationSetControllerWebhookSuffix is the suffix for ApplicationSet Webhook
+	ApplicationSetControllerWebhookSuffix = "appset-webhook"
+
 	// ArgoCDAggregateToControllerLabelKey is label to configure base aggregated ClusterRole for Argo CD Application Controller.
 	ArgoCDAggregateToControllerLabelKey = "argocd/aggregate-to-controller"
 
