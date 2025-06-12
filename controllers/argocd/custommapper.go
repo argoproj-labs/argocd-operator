@@ -266,3 +266,27 @@ func (r *ReconcileArgoCD) applicationSetSCMTLSConfigMapMapper(ctx context.Contex
 
 	return result
 }
+
+// namespaceResourceMapper maps a watch event on a namespaceManagement, back to the
+// ArgoCD object that we want to reconcile.
+func (r *ReconcileArgoCD) nmMapper(ctx context.Context, o client.Object) []reconcile.Request {
+	var result []reconcile.Request
+
+	// List ALL ArgoCD CRs in the cluster
+	argocdList := &argoproj.ArgoCDList{}
+	if err := r.List(ctx, argocdList); err != nil {
+		return result
+	}
+
+	// Reconcile each ArgoCD instance
+	for _, argocd := range argocdList.Items {
+		result = append(result, reconcile.Request{
+			NamespacedName: client.ObjectKey{
+				Name:      argocd.Name,
+				Namespace: argocd.Namespace,
+			},
+		})
+	}
+
+	return result
+}
