@@ -548,24 +548,6 @@ Initial git repositories to configure Argo CD to use upon creation of the cluste
 !!! warning
     Argo CD InitialRepositories field is deprecated from ArgoCD, field will be ignored. Setting or modifications to the `repositories` field should then be made through the Argo CD web UI or CLI.
 
-### Removed support for legacy repo config in argocd-cm (v3.0+)
-
-Before repositories were managed as Secrets, they were configured in the `argocd-cm` ConfigMap. The `argocd-cm` option has been deprecated for some time and is no longer available in Argo CD 3.0.
-
-#### Detection
-
-To check whether you have any repositories configured in `argocd-cm`, run the following command:
-
-```bash
-kubectl get cm argocd-cm -n argocd -o=jsonpath="[{.data.repositories}, {.data['repository\.credentials']}, {.data['helm\.repositories']}]"
-```
-
-If you have no repositories configured in `argocd-cm`, the output will be `[, , ]`, and you are not impacted by this change.
-
-#### Migration
-
-To convert your repositories to Secrets, follow the documentation for [declarative management of repositories](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#repositories).
-
 ## Notifications Controller Options
 
 The following properties are available for configuring the Notifications controller component.
@@ -605,24 +587,6 @@ The following example sets a value in the `argocd-cm` ConfigMap using the `Repos
 
 !!! warning
     Argo CD RepositoryCredentials field is deprecated from ArgoCD, field will be ignored.
-
-### Removed support for legacy repo config in argocd-cm (v3.0+)
-
-Before repositories were managed as Secrets, they were configured in the `argocd-cm` ConfigMap. The `argocd-cm` option has been deprecated for some time and is no longer available in Argo CD 3.0.
-
-#### Detection
-
-To check whether you have any repositories configured in `argocd-cm`, run the following command:
-
-```bash
-kubectl get cm argocd-cm -n argocd -o=jsonpath="[{.data.repositories}, {.data['repository\.credentials']}, {.data['helm\.repositories']}]"
-```
-
-If you have no repositories configured in `argocd-cm`, the output will be `[, , ]`, and you are not impacted by this change.
-
-#### Migration
-
-To convert your repositories to Secrets, follow the documentation for [declarative management of repositories](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#repositories).
 
 ## Initial SSH Known Hosts
 
