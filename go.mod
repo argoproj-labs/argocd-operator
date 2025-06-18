@@ -6,7 +6,7 @@ require (
 	// Pin github.com/argoproj/argo-cd/v2 to v2.12.10
 	// ref: https://github.com/argoproj-labs/argocd-operator/pull/1606#issuecomment-2490948356
 	github.com/argoproj/argo-cd/v2 v2.12.10
-	github.com/cert-manager/cert-manager v1.14.4
+	github.com/cert-manager/cert-manager v1.15.4
 	github.com/go-logr/logr v1.4.3
 	github.com/google/go-cmp v0.6.0
 	github.com/json-iterator/go v1.1.12
@@ -22,12 +22,12 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/mod v0.22.0
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.29.6
-	k8s.io/apimachinery v0.29.6
+	k8s.io/api v0.30.1
+	k8s.io/apimachinery v0.30.1
 	k8s.io/client-go v12.0.0+incompatible
-	k8s.io/kube-aggregator v0.29.6
-	k8s.io/utils v0.0.0-20240310230437-4693a0247e57
-	sigs.k8s.io/controller-runtime v0.17.2
+	k8s.io/kube-aggregator v0.30.1
+	k8s.io/utils v0.0.0-20240502163921-fe8a2dddb1d0
+	sigs.k8s.io/controller-runtime v0.18.2
 )
 
 require (
@@ -79,11 +79,10 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.29.6 // indirect
-	k8s.io/component-base v0.29.6 // indirect
+	k8s.io/apiextensions-apiserver v0.30.1 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
-	k8s.io/kube-openapi v0.0.0-20240322212309-b815d8309940 // indirect
-	sigs.k8s.io/gateway-api v1.0.0 // indirect
+	k8s.io/kube-openapi v0.0.0-20240430033511-f0e62f92d13f // indirect
+	sigs.k8s.io/gateway-api v1.1.0 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
