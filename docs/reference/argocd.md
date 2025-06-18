@@ -548,6 +548,24 @@ Initial git repositories to configure Argo CD to use upon creation of the cluste
 !!! warning
     Argo CD InitialRepositories field is deprecated from ArgoCD, field will be ignored. Setting or modifications to the `repositories` field should then be made through the Argo CD web UI or CLI.
 
+### Removed support for legacy repo config in argocd-cm (v3.0+)
+
+Before repositories were managed as Secrets, they were configured in the `argocd-cm` ConfigMap. The `argocd-cm` option has been deprecated for some time and is no longer available in Argo CD 3.0.
+
+#### Detection
+
+To check whether you have any repositories configured in `argocd-cm`, run the following command:
+
+```bash
+kubectl get cm argocd-cm -n argocd -o=jsonpath="[{.data.repositories}, {.data['repository\.credentials']}, {.data['helm\.repositories']}]"
+```
+
+If you have no repositories configured in `argocd-cm`, the output will be `[, , ]`, and you are not impacted by this change.
+
+#### Migration
+
+To convert your repositories to Secrets, follow the documentation for [declarative management of repositories](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#repositories).
+
 ## Notifications Controller Options
 
 The following properties are available for configuring the Notifications controller component.
@@ -587,6 +605,24 @@ The following example sets a value in the `argocd-cm` ConfigMap using the `Repos
 
 !!! warning
     Argo CD RepositoryCredentials field is deprecated from ArgoCD, field will be ignored.
+
+### Removed support for legacy repo config in argocd-cm (v3.0+)
+
+Before repositories were managed as Secrets, they were configured in the `argocd-cm` ConfigMap. The `argocd-cm` option has been deprecated for some time and is no longer available in Argo CD 3.0.
+
+#### Detection
+
+To check whether you have any repositories configured in `argocd-cm`, run the following command:
+
+```bash
+kubectl get cm argocd-cm -n argocd -o=jsonpath="[{.data.repositories}, {.data['repository\.credentials']}, {.data['helm\.repositories']}]"
+```
+
+If you have no repositories configured in `argocd-cm`, the output will be `[, , ]`, and you are not impacted by this change.
+
+#### Migration
+
+To convert your repositories to Secrets, follow the documentation for [declarative management of repositories](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#repositories).
 
 ## Initial SSH Known Hosts
 
@@ -819,6 +855,197 @@ spec:
       g, system:cluster-admins, role:admin
     scopes: '[groups]'
 ```
+
+### Changes to RBAC with Dex SSO Authentication (v3.0+)
+
+Starting with Argo CD 3.0, the RBAC subject identification mechanism for Dex SSO authentication has changed. Previously, the `sub` claim returned in the authentication was used as the subject for RBAC. However, this value depends on the Dex internal implementation and should not be considered an immutable value that represents the subject.
+
+The new behavior requests the `federated:id` scope from Dex, and the new value used as the RBAC subject will be based on the `federated_claims.user_id` claim instead of the `sub` claim.
+
+#### Understanding the Change
+
+**Before (Argo CD 2.x):**
+- RBAC subjects were based on the Dex `sub` claim
+- The `sub` claim contained encoded information including the user ID and connector ID
+- Example: `ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA`
+
+**After (Argo CD 3.0+):**
+- RBAC subjects are based on the `federated_claims.user_id` claim
+- This provides a cleaner, more predictable user identifier
+- Example: `example@argoproj.io`
+
+#### Decoding Legacy Sub Claims
+
+To identify the correct `user_id` to use in your new policies, you can decode the current `sub` claims defined in your existing policies:
+
+```bash
+echo "ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA" | base64 -d
+# Output: example@argoproj.iodex_conn_i%
+```
+
+The decoded value shows the user ID (`example@argoproj.io`) followed by connector information.
+
+#### Policy Migration Examples
+
+**Legacy policies using Dex sub claim (incorrect for v3.0+):**
+```yaml
+spec:
+  rbac:
+    policy: |
+      g, ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA, role:example
+      p, ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA, applications, *, *, allow
+```
+
+**Updated policies using federated_claims.user_id (correct for v3.0+):**
+```yaml
+spec:
+  rbac:
+    policy: |
+      g, example@argoproj.io, role:example
+      p, example@argoproj.io, applications, *, *, allow
+```
+
+#### Migration from Argo CD 2.x to 3.0
+
+If you're upgrading from Argo CD 2.x to 3.0 and using Dex SSO, you need to update your RBAC policies to maintain the same access levels.
+
+#### Detection
+
+The following users are **affected** by this change:
+- Users who have Dex SSO configured with custom RBAC policies
+- Users who reference Dex `sub` claims in their RBAC policies
+- Users who have user-specific permissions based on Dex authentication
+
+The following users are **unaffected** by this change:
+- Users who don't use Dex SSO
+- Users who only use group-based RBAC policies
+- Users who use other SSO providers (Keycloak, OIDC, etc.)
+
+#### Remediation Steps
+
+1. **Quick Remediation:**
+   - Decode existing `sub` claims in your policies
+   - Replace `sub` claim values with the decoded `user_id`
+   - Example: Replace `ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA` with `example@argoproj.io`
+
+2. **Recommended Remediation:**
+   - Audit all existing RBAC policies for Dex `sub` claim references
+   - Decode each `sub` claim to identify the actual user ID
+   - Update policies to use the `federated_claims.user_id` format
+   - Test authentication and authorization after the changes
+   - Consider using group-based policies instead of user-specific ones for better maintainability
+
+#### CLI Authentication
+
+If you're using the Argo CD CLI with Dex authentication, make sure to use the new Argo CD version to obtain an authentication token with the appropriate claims. The CLI will automatically handle the new authentication flow.
+
+#### Best Practices
+
+1. **Use Group-Based Policies**: Instead of user-specific policies, consider using group-based policies for better maintainability
+2. **Document User Mappings**: Keep a record of the decoded user IDs for future reference
+3. **Test Thoroughly**: Verify that all users maintain their expected access levels after the migration
+4. **Monitor Authentication**: Watch for authentication issues during and after the migration
+
+#### Example Migration Workflow
+
+1. **Identify affected policies:**
+   ```bash
+   kubectl get cm argocd-rbac-cm -n argocd -o=jsonpath='{.data.policy\.csv}'
+   ```
+
+2. **Decode sub claims:**
+   ```bash
+   echo "YOUR_SUB_CLAIM_HERE" | base64 -d
+   ```
+
+3. **Update policies:**
+   ```yaml
+   spec:
+     rbac:
+       policy: |
+         # Old: g, ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA, role:example
+         # New: g, example@argoproj.io, role:example
+         g, example@argoproj.io, role:example
+   ```
+
+4. **Test authentication:**
+   ```bash
+   argocd login <your-argocd-server> --sso
+   argocd app list
+   ```
+
+### Logs RBAC Enforcement (v3.0+)
+
+Starting with Argo CD 3.0, logs RBAC enforcement is enabled by default and logs are treated as a first-class RBAC resource. This means:
+
+1. The `server.rbac.log.enforce.enable` flag has been removed
+2. Logs permissions must be explicitly granted to users/groups/roles
+3. The operator does not manage default RBAC policies - users must define their own policies
+4. Custom roles must explicitly include logs permissions
+
+#### Creating Custom Roles with Logs Access
+
+When creating custom roles, you must explicitly add logs permissions:
+
+```yaml
+spec:
+  rbac:
+    policy: |
+      # Custom role with logs access
+      p, role:custom-role, applications, get, */*, allow
+      p, role:custom-role, logs, get, */*, allow
+      
+      # Assign role to users/groups
+      g, user1, role:custom-role
+```
+
+#### Global Log Viewer Role
+
+You can create a global log viewer role that only has access to logs:
+
+```yaml
+spec:
+  rbac:
+    policy: |
+      # Global log viewer role
+      p, role:global-log-viewer, logs, get, */*, allow
+      
+      # Assign role to users/groups
+      g, log-viewers, role:global-log-viewer
+```
+
+### Migration from Argo CD 2.4 to 3.0
+
+If you're upgrading from Argo CD 2.4 to 3.0, note the following changes:
+
+1. The `server.rbac.log.enforce.enable` flag is no longer supported
+2. Logs RBAC is now enforced by default
+3. Users with existing policies need to explicitly add logs permissions
+4. The operator does not provide default RBAC policies - you must define your own
+
+#### Detection
+
+The following users are **unaffected** by this change:
+- Users who have `server.rbac.log.enforce.enable: "true"` in their `argocd-cm` ConfigMap
+- Users who have `policy.default: role:readonly` or `policy.default: role:admin` in their `argocd-rbac-cm` ConfigMap
+
+The following users are **affected** and should perform remediation:
+- Users who don't have a `policy.default` in their `argocd-rbac-cm` ConfigMap
+- Users who have `server.rbac.log.enforce.enable` set to `false` or don't have this setting at all in their `argocd-cm` ConfigMap
+
+#### Remediation Steps
+
+1. **Quick Remediation:**
+   - Add logs permissions to existing roles
+   - Example: `p, role:existing-role, logs, get, */*, allow`
+
+2. **Recommended Remediation:**
+   - Review existing roles and their permissions
+   - Add logs permissions only to roles that need them
+   - Consider creating a dedicated log viewer role
+   - Define your own RBAC policies as the operator does not provide defaults
+   - Remove the `server.rbac.log.enforce.enable` setting from `argocd-cm` ConfigMap if it was present before the upgrade
+
 ### Fine-Grained RBAC for application update and delete sub-resources (v3.0+)
 
 The default behavior of fine-grained policies have changed so they no longer apply to sub-resources. Prior to v3, policies granting update or delete to an application also applied to any of its sub-resources.
@@ -827,6 +1054,7 @@ Starting with v3, the update or delete actions only apply to the application its
 
 To preserve v2 behavior the config value server.rbac.disableApplicationFineGrainedRBACInheritance is set to false in the Argo CD ConfigMap argocd-cm.
 
+<<<<<<< HEAD
 
 ### Logs RBAC Enforcement (Argo CD v3.0+)
 
@@ -880,6 +1108,8 @@ spec:
       g, log-viewers, role:global-log-viewer
 ```
 
+=======
+>>>>>>> 2e424ce (validate and document new changes to RBAC with Dex SSo Authentication introduced in ArgoCD 3.0)
 ## Redis Options
 
 The following properties are available for configuring the Redis component.
@@ -1782,3 +2012,72 @@ spec:
     content: "Custom Styles - Banners"
     url: "https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners"
 ```
+#### Remediation Steps
+
+1. **Quick Remediation:**
+   - Add logs permissions to existing roles
+   - Example: `p, role:existing-role, logs, get, */*, allow`
+
+2. **Recommended Remediation:**
+   - Review existing roles and their permissions
+   - Add logs permissions only to roles that need them
+   - Consider creating a dedicated log viewer role
+   - Define your own RBAC policies as the operator does not provide defaults
+   - Remove the `server.rbac.log.enforce.enable` setting from `argocd-cm` ConfigMap if it was present before the upgrade
+
+### RBAC Management Approach (v3.0+)
+
+With Argo CD 3.0, the operator takes a hands-off approach to RBAC management, leaving it to administrators to define their own policies. This approach provides several benefits:
+
+1. **Flexibility**: Administrators have full control over RBAC policies
+2. **Security**: No default policies that might grant unintended access
+3. **Compliance**: Organizations can implement their own security policies
+4. **Customization**: Tailored roles and permissions for specific use cases
+
+#### Recommended RBAC Management Strategy
+
+1. **Define Global Roles**: Create reusable roles that can be assigned to multiple users/groups
+2. **Use Group-Based Access**: Leverage SSO groups for easier management
+3. **Implement Least Privilege**: Grant only necessary permissions
+4. **Document Policies**: Maintain clear documentation of RBAC policies
+5. **Regular Reviews**: Periodically review and update RBAC policies
+
+#### Example RBAC Policy Structure
+
+```yaml
+spec:
+  rbac:
+    policy: |
+      # Global roles
+      p, role:admin, *, *, */*, allow
+      p, role:readonly, applications, get, */*, allow
+      p, role:readonly, projects, get, */*, allow
+      p, role:readonly, logs, get, */*, allow
+      
+      # Custom roles
+      p, role:app-developer, applications, get, */*, allow
+      p, role:app-developer, applications, sync, */*, allow
+      p, role:app-developer, logs, get, */*, allow
+      
+      p, role:log-viewer, logs, get, */*, allow
+      
+      # Group assignments
+      g, cluster-admins, role:admin
+      g, developers, role:app-developer
+      g, log-viewers, role:log-viewer
+      
+      # Default policy for unauthenticated users
+      p, role:readonly, applications, get, */*, allow
+```
+
+#### Support and Documentation
+
+For support engineers and administrators, consider creating:
+
+1. **Knowledge Base Articles (KCS)**: Step-by-step guides for common RBAC scenarios
+2. **Troubleshooting Guides**: Common issues and solutions
+3. **Best Practices Documentation**: Security and management recommendations
+4. **Migration Guides**: From Argo CD 2.4 to 3.0
+
+This approach ensures that RBAC management remains flexible and secure while providing the necessary tools and documentation for effective administration.
+
