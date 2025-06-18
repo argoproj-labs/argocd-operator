@@ -99,6 +99,7 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.Banner = (*v1beta1.Banner)(src.Spec.Banner)
 	dst.Spec.DefaultClusterScopedRoleDisabled = src.Spec.DefaultClusterScopedRoleDisabled
 	dst.Spec.AggregatedClusterRoles = src.Spec.AggregatedClusterRoles
+	dst.Spec.NamespaceManagement = ConvertAlphaToBetaNamespaceManagement(src.Spec.NamespaceManagement)
 
 	// Status conversion
 	dst.Status = v1beta1.ArgoCDStatus(src.Status)
@@ -172,6 +173,7 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.Banner = (*Banner)(src.Spec.Banner)
 	dst.Spec.DefaultClusterScopedRoleDisabled = src.Spec.DefaultClusterScopedRoleDisabled
 	dst.Spec.AggregatedClusterRoles = src.Spec.AggregatedClusterRoles
+	dst.Spec.NamespaceManagement = ConvertBetaToAlphaNamespaceManagement(src.Spec.NamespaceManagement)
 
 	// Status conversion
 	dst.Status = ArgoCDStatus(src.Status)
@@ -704,6 +706,29 @@ func ConvertBetaToAlphaRepo(src *v1beta1.ArgoCDRepoSpec) *ArgoCDRepoSpec {
 			VolumeMounts:         src.VolumeMounts,
 			Volumes:              src.Volumes,
 		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaNamespaceManagement(src []v1beta1.ManagedNamespaces) []ManagedNamespaces {
+	var dst []ManagedNamespaces
+	for _, s := range src {
+		dst = append(dst, ManagedNamespaces{
+			Name:           s.Name,
+			AllowManagedBy: s.AllowManagedBy,
+		})
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaNamespaceManagement(src []ManagedNamespaces) []v1beta1.ManagedNamespaces {
+	var dst []v1beta1.ManagedNamespaces
+	for _, s := range src {
+		dst = append(dst, v1beta1.ManagedNamespaces{
+			Name:           s.Name,
+			AllowManagedBy: s.AllowManagedBy,
+		},
+		)
 	}
 	return dst
 }
