@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+status:
+  phase: Available
+  sso: Running
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-dex-server
+status:
+  readyReplicas: 1
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+data:
+  policy.csv: |
+    # Legacy policies using encoded sub claims (simulating Argo CD 2.x)
+    g, ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA, role:test-role
+    p, ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA, applications, get, */*, allow
+    p, ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA, logs, get, */*, allow
+
+    # Admin user with encoded sub claim
+    g, QWRtaW5AZXhhbXBsZS5jb20gZGV4X2Nvbm5faWQ, role:admin
+    p, QWRtaW5AZXhhbXBsZS5jb20gZGV4X2Nvbm5faWQ, *, *, */*, allow
+
+    # Group-based policies (these should work in both versions)
+    g, test-group, role:test-role
+    g, admin-group, role:admin 
