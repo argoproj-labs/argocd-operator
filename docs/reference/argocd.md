@@ -1018,6 +1018,7 @@ Starting with v3, the update or delete actions only apply to the application its
 
 To preserve v2 behavior the config value server.rbac.disableApplicationFineGrainedRBACInheritance is set to false in the Argo CD ConfigMap argocd-cm.
 
+
 ## Redis Options
 
 The following properties are available for configuring the Redis component.
