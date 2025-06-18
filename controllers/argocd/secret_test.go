@@ -261,7 +261,7 @@ func Test_ReconcileArgoCD_ReconcileExistingArgoSecret(t *testing.T) {
 	if testSecret.Data[common.ArgoCDKeyServerSecretKey] == nil {
 		t.Errorf("Expected data for data.server.secretKey but got nothing")
 	}
-	assert.True(t, true, argoutil.IsWatchedByOperator(testSecret.ObjectMeta.Labels))
+	assert.True(t, argoutil.IsWatchedByOperator(testSecret.ObjectMeta.Labels))
 }
 
 func Test_ReconcileArgoCD_ReconcileShouldNotChangeWhenUpdatedAdminPass(t *testing.T) {
@@ -293,7 +293,7 @@ func Test_ReconcileArgoCD_ReconcileShouldNotChangeWhenUpdatedAdminPass(t *testin
 	testSecret := &corev1.Secret{}
 	secretErr := r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: "argocd-operator"}, testSecret)
 	assert.NoError(t, secretErr)
-	assert.True(t, true, argoutil.IsWatchedByOperator(testSecret.ObjectMeta.Labels))
+	assert.True(t, argoutil.IsWatchedByOperator(testSecret.ObjectMeta.Labels))
 
 	// simulating update of argo-cd Admin password from cli or argocd dashboard
 	hashedPassword, _ := argopass.HashPassword("updated_password")
@@ -327,7 +327,7 @@ func Test_ReconcileArgoCD_ReconcileShouldNotChangeWhenUpdatedAdminPass(t *testin
 	if testSecret.Data[common.ArgoCDKeyServerSecretKey] == nil {
 		t.Errorf("Expected data for data.server.secretKey but got nothing")
 	}
-	assert.True(t, true, argoutil.IsWatchedByOperator(testSecret.ObjectMeta.Labels))
+	assert.True(t, argoutil.IsWatchedByOperator(testSecret.ObjectMeta.Labels))
 }
 
 func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
@@ -553,7 +553,7 @@ func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
 	assert.Nil(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
-	assert.True(t, true, argoutil.IsWatchedByOperator(testSecret.ObjectMeta.Labels))
+	assert.True(t, argoutil.IsWatchedByOperator(testSecret.ObjectMeta.Labels))
 }
 
 func TestGenerateSortedManagedNamespaceListForArgoCDCR(t *testing.T) {
