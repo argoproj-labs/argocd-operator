@@ -253,7 +253,7 @@ func TestReconcileRouteApplicationSetHost(t *testing.T) {
 	assert.NoError(t, err)
 
 	loaded := &routev1.Route{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s-%s", testArgoCDName, common.ApplicationSetServiceNameSuffix, "webhook"), Namespace: testNamespace}, loaded)
+	err = r.Client.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s", testArgoCDName, common.ApplicationSetControllerWebhookSuffix), Namespace: testNamespace}, loaded)
 	fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
 
 	wantTLSConfig := &routev1.TLSConfig{
@@ -309,7 +309,7 @@ func TestReconcileRouteApplicationSetTlsTermination(t *testing.T) {
 	assert.NoError(t, err)
 
 	loaded := &routev1.Route{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s-%s", testArgoCDName, common.ApplicationSetServiceNameSuffix, "webhook"), Namespace: testNamespace}, loaded)
+	err = r.Client.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s", testArgoCDName, common.ApplicationSetControllerWebhookSuffix), Namespace: testNamespace}, loaded)
 	fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
 
 	wantTLSConfig := &routev1.TLSConfig{
@@ -351,7 +351,17 @@ func TestReconcileRouteApplicationSetTls(t *testing.T) {
 		}
 	})
 
-	resObjs := []client.Object{argoCD}
+	// Create the Ingress configuration
+	ingressConfig := &configv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "cluster",
+		},
+		Spec: configv1.IngressSpec{
+			Domain: "apps.example.com",
+		},
+	}
+
+	resObjs := []client.Object{argoCD, ingressConfig}
 	subresObjs := []client.Object{argoCD}
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
@@ -370,10 +380,17 @@ func TestReconcileRouteApplicationSetTls(t *testing.T) {
 	_, err := r.Reconcile(context.TODO(), req)
 	assert.NoError(t, err)
 
-	loaded := &routev1.Route{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s-%s", testArgoCDName, common.ApplicationSetServiceNameSuffix, "webhook"), Namespace: testNamespace}, loaded)
-	fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
+	// The route name should be based on the ArgoCD instance name
+	expectedRouteName := fmt.Sprintf("%s-%s", testArgoCDName, common.ApplicationSetControllerWebhookSuffix)
+	if len(expectedRouteName) > 63 {
+		expectedRouteName = expectedRouteName[:63]
+	}
 
+	loaded := &routev1.Route{}
+	err = r.Client.Get(ctx, types.NamespacedName{Name: expectedRouteName, Namespace: testNamespace}, loaded)
+	fatalIfError(t, err, "failed to load route %q: %s", expectedRouteName, err)
+
+	// Verify TLS configuration
 	wantTLSConfig := &routev1.TLSConfig{
 		Termination:                   routev1.TLSTerminationEdge,
 		Certificate:                   "test-certificate",
@@ -383,28 +400,36 @@ func TestReconcileRouteApplicationSetTls(t *testing.T) {
 		InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 	}
 	if diff := cmp.Diff(wantTLSConfig, loaded.Spec.TLS); diff != "" {
-		t.Fatalf("failed to reconcile route:\n%s", diff)
+		t.Fatalf("failed to reconcile route TLS config:\n%s", diff)
 	}
 
-	assert.Empty(t, loaded.Spec.Host)
+	// Verify hostname
+	expectedHost := fmt.Sprintf("%s-%s-%s.apps.example.com", testArgoCDName, common.ApplicationSetControllerWebhookSuffix, testNamespace)
+	if diff := cmp.Diff(expectedHost, loaded.Spec.Host); diff != "" {
+		t.Fatalf("failed to reconcile route hostname:\n%s", diff)
+	}
 
+	// Verify port configuration
 	wantPort := &routev1.RoutePort{
 		TargetPort: intstr.FromString("webhook"),
 	}
 	if diff := cmp.Diff(wantPort, loaded.Spec.Port); diff != "" {
-		t.Fatalf("failed to reconcile route:\n%s", diff)
+		t.Fatalf("failed to reconcile route port:\n%s", diff)
 	}
 
+	// Verify annotations
 	if diff := cmp.Diff("my-annotation-value", loaded.Annotations["my-annotation-key"]); diff != "" {
-		t.Fatalf("failed to reconcile route:\n%s", diff)
+		t.Fatalf("failed to reconcile route annotations:\n%s", diff)
 	}
 
+	// Verify labels
 	if diff := cmp.Diff("my-label-value", loaded.Labels["my-label-key"]); diff != "" {
-		t.Fatalf("failed to reconcile route:\n%s", diff)
+		t.Fatalf("failed to reconcile route labels:\n%s", diff)
 	}
 
+	// Verify wildcard policy
 	if diff := cmp.Diff(wildcardPolicy, loaded.Spec.WildcardPolicy); diff != "" {
-		t.Fatalf("failed to reconcile route:\n%s", diff)
+		t.Fatalf("failed to reconcile route wildcard policy:\n%s", diff)
 	}
 }
 
@@ -490,6 +515,65 @@ func TestReconcileRouteForShorteningHostname(t *testing.T) {
 
 		})
 	}
+}
+
+func TestReconcileRouteForShorteningRoutename(t *testing.T) {
+	routeAPIFound = true
+	ctx := context.Background()
+	logf.SetLogger(ZapLogger(true))
+
+	// Use a long ArgoCD instance name to force truncation
+	longName := "this-is-a-very-long-argocd-instance-name-that-will-break-the-route-name-limit"
+	argoCD := makeArgoCD(func(a *argoproj.ArgoCD) {
+		a.Name = longName
+		a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
+			WebhookServer: argoproj.WebhookServerSpec{
+				Route: argoproj.ArgoCDRouteSpec{
+					Enabled: true,
+				},
+			},
+		}
+	})
+
+	// Add a fake Ingress resource to satisfy the domain lookup
+	ingressConfig := &configv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "cluster",
+		},
+		Spec: configv1.IngressSpec{
+			Domain: "apps.example.com",
+		},
+	}
+
+	resObjs := []client.Object{argoCD, ingressConfig}
+	subresObjs := []client.Object{argoCD}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
+
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      longName,
+			Namespace: testNamespace,
+		},
+	}
+
+	_, err := r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+
+	// The route name should be truncated to 63 chars
+	expectedRouteName := longName + "-" + common.ApplicationSetControllerWebhookSuffix
+	if len(expectedRouteName) > 63 {
+		expectedRouteName = expectedRouteName[:63]
+	}
+
+	loaded := &routev1.Route{}
+	err = r.Client.Get(ctx, types.NamespacedName{Name: expectedRouteName, Namespace: testNamespace}, loaded)
+	assert.NoError(t, err)
+	assert.LessOrEqual(t, len(loaded.Name), 63)
 }
 
 func TestReconcileRouteTLSConfig(t *testing.T) {

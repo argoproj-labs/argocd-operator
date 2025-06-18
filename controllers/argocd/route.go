@@ -25,6 +25,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	configv1 "github.com/openshift/api/config/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
@@ -325,8 +328,14 @@ func isCreatedByServiceCA(crName string, secret corev1.Secret) bool {
 
 // reconcileApplicationSetControllerWebhookRoute will ensure that the ArgoCD Server Route is present.
 func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argoproj.ArgoCD) error {
-	name := fmt.Sprintf("%s-%s", common.ApplicationSetServiceNameSuffix, "webhook")
-	route := newRouteWithSuffix(name, cr)
+	// Generate a base name for the route
+	baseName := fmt.Sprintf("%s-%s", cr.Name, common.ApplicationSetControllerWebhookSuffix)
+	// Truncate to 63 characters if needed (Kubernetes label value limit)
+	if len(baseName) > maxLabelLength {
+		baseName = baseName[:maxLabelLength]
+	}
+	route := newRouteWithName(baseName, cr)
+
 	found := argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
 	if found {
 		if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.WebhookServer.Route.Enabled {
@@ -361,15 +370,36 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 	}
 
 	// Allow override of the Host for the Route.
+	var host string
 	if len(cr.Spec.ApplicationSet.WebhookServer.Host) > 0 {
-		route.Spec.Host = cr.Spec.ApplicationSet.WebhookServer.Host
+		host = cr.Spec.ApplicationSet.WebhookServer.Host
+	} else {
+		// Generate the default host
+		baseHost := fmt.Sprintf("%s-%s-%s", cr.Name, common.ApplicationSetControllerWebhookSuffix, cr.Namespace)
+		ingressConfig := &configv1.Ingress{}
+		err := r.Get(context.TODO(), client.ObjectKey{Name: "cluster"}, ingressConfig)
+		if err != nil {
+			return err
+		}
+		appsDomain := ingressConfig.Spec.Domain
+		host = fmt.Sprintf("%s.%s", baseHost, appsDomain)
+	}
+
+	// Truncate the first label if needed
+	labels := strings.SplitN(host, ".", 2)
+	if len(labels[0]) > maxLabelLength {
+		labels[0] = labels[0][:maxLabelLength]
+	}
+	if len(labels) > 1 {
+		route.Spec.Host = fmt.Sprintf("%s.%s", labels[0], labels[1])
+	} else {
+		route.Spec.Host = labels[0]
 	}
 
 	hostname, err := shortenHostname(route.Spec.Host)
 	if err != nil {
 		return err
 	}
-
 	route.Spec.Host = hostname
 
 	route.Spec.Port = &routev1.RoutePort{
