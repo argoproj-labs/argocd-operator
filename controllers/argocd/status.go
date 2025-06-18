@@ -226,6 +226,7 @@ func (r *ReconcileArgoCD) reconcileStatusSSO(cr *argoproj.ArgoCD) error {
 		if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeDex {
 			return r.reconcileStatusDex(cr)
 		} else if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeKeycloak {
+			log.Info("Keycloak SSO provider is deprecated and will be removed in a future release. Please migrate to Dex or another supported provider.")
 			return r.reconcileStatusKeycloak(cr)
 		}
 	} else {
