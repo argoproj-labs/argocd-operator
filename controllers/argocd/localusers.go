@@ -51,6 +51,7 @@ func (s *semaphore) protect(code func()) {
 var (
 	expiringTokens     = map[string]*time.Timer{}
 	expiringTokensLock semaphore
+	resourceLock       semaphore
 )
 
 func (r *ReconcileArgoCD) reconcileLocalUsers(cr *argoproj.ArgoCD) error {
@@ -76,7 +77,7 @@ func (r *ReconcileArgoCD) reconcileLocalUsers(cr *argoproj.ArgoCD) error {
 	}
 
 	// Delete the secret and token for users that are no longer in the
-	// localUsers section of theargocd CR
+	// localUsers section of the argocd CR
 	if err := r.cleanupLocalUsers(cr); err != nil {
 		return err
 	}
@@ -112,10 +113,11 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 			}
 		})
 
-		if err := r.cleanupUser(cr, user.Name, userSecret); err != nil {
-			return err
-		}
-		return nil
+		var err error
+		resourceLock.protect(func() {
+			err = r.cleanupUser(cr, user.Name, userSecret)
+		})
+		return err
 	}
 
 	var tokenDuration time.Duration
@@ -161,7 +163,7 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 				if _, ok := expiringTokens[key]; !ok {
 					when := time.Until(time.Unix(expAt, 0))
 					timer := time.AfterFunc(when, func() {
-						err := r.issueToken(*cr, user, userSecret, secretExists, tokenLifetime, tokenDuration, "token automatically re-issued after expiration", signingKey)
+						err := r.issueToken(*cr, user, userSecret, true, tokenLifetime, tokenDuration, "token automatically re-issued after expiration", signingKey)
 						if err != nil {
 							log.Error(err, "when trying to re-issue token for user", user.Name)
 						}
@@ -187,12 +189,13 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 		})
 
 		if !tokenLifetimeChanged {
-			userSecret.Data["autoRenew"] = []byte(autoRenew)
-			argoutil.LogResourceUpdate(log, &userSecret, "autoRenew set to false for user", cr.Namespace+"/"+user.Name)
-			if err := r.Client.Update(context.TODO(), &userSecret); err != nil {
-				return err
-			}
-			return nil
+			var err error
+			resourceLock.protect(func() {
+				userSecret.Data["autoRenew"] = []byte(autoRenew)
+				argoutil.LogResourceUpdate(log, &userSecret, "autoRenew set to false for user", cr.Namespace+"/"+user.Name)
+				err = r.Client.Update(context.TODO(), &userSecret)
+			})
+			return err
 		}
 	}
 
@@ -200,9 +203,13 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 	// changed, add a timer for the remaining duration. There is no need to
 	// re-issue the token, so just update the secret.
 	if autoRenewChanged && autoRenew == "true" && !tokenLifetimeChanged {
-		userSecret.Data["autoRenew"] = []byte(autoRenew)
-		argoutil.LogResourceUpdate(log, &userSecret, "autoRenew set to true")
-		if err := r.Client.Update(context.TODO(), &userSecret); err != nil {
+		var err error
+		resourceLock.protect(func() {
+			userSecret.Data["autoRenew"] = []byte(autoRenew)
+			argoutil.LogResourceUpdate(log, &userSecret, "autoRenew set to true")
+			err = r.Client.Update(context.TODO(), &userSecret)
+		})
+		if err != nil {
 			return err
 		}
 
@@ -240,6 +247,14 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 }
 
 func (r *ReconcileArgoCD) issueToken(cr argoproj.ArgoCD, user argoproj.LocalUserSpec, userSecret corev1.Secret, secretExists bool, tokenLifetime string, tokenDuration time.Duration, explanation string, signingKey []byte) error {
+	var err error
+	resourceLock.protect(func() {
+		err = r.issueToken1(cr, user, userSecret, secretExists, tokenLifetime, tokenDuration, explanation, signingKey)
+	})
+	return err
+}
+
+func (r *ReconcileArgoCD) issueToken1(cr argoproj.ArgoCD, user argoproj.LocalUserSpec, userSecret corev1.Secret, secretExists bool, tokenLifetime string, tokenDuration time.Duration, explanation string, signingKey []byte) error {
 
 	// Create the values from which the token is generated
 
@@ -290,25 +305,6 @@ func (r *ReconcileArgoCD) issueToken(cr argoproj.ArgoCD, user argoproj.LocalUser
 		}
 	}
 
-	// Find the timer for the user and update it
-	if tokenDuration > 0 {
-		expiringTokensLock.protect(func() {
-			key := cr.Namespace + "/" + user.Name
-			existingTimer, ok := expiringTokens[key]
-			if ok {
-				existingTimer.Stop()
-				delete(expiringTokens, key)
-			}
-			timer := time.AfterFunc(tokenDuration, func() {
-				err := r.issueToken(cr, user, userSecret, secretExists, tokenLifetime, tokenDuration, "token automatically re-issued after expiration", signingKey)
-				if err != nil {
-					log.Error(err, "when trying to re-issue token for user", user.Name)
-				}
-			})
-			expiringTokens[cr.Namespace+"/"+user.Name] = timer
-		})
-	}
-
 	// Add the token info to the argocd-secret
 
 	accountTokens := []settings.Token{
@@ -335,6 +331,25 @@ func (r *ReconcileArgoCD) issueToken(cr argoproj.ArgoCD, user argoproj.LocalUser
 	argoutil.LogResourceUpdate(log, &argoCDSecret, "setting token for user account", user.Name)
 	if err := r.Client.Update(context.TODO(), &argoCDSecret); err != nil {
 		return err
+	}
+
+	// Find the timer for the user and update it
+	if tokenDuration > 0 {
+		expiringTokensLock.protect(func() {
+			key := cr.Namespace + "/" + user.Name
+			existingTimer, ok := expiringTokens[key]
+			if ok {
+				existingTimer.Stop()
+				delete(expiringTokens, key)
+			}
+			timer := time.AfterFunc(tokenDuration, func() {
+				err := r.issueToken(cr, user, userSecret, true, tokenLifetime, tokenDuration, "token automatically re-issued after expiration", signingKey)
+				if err != nil {
+					log.Error(err, "when trying to re-issue token for user", user.Name)
+				}
+			})
+			expiringTokens[cr.Namespace+"/"+user.Name] = timer
+		})
 	}
 
 	return nil
@@ -365,7 +380,19 @@ func (r *ReconcileArgoCD) cleanupLocalUsers(cr *argoproj.ArgoCD) error {
 			}
 		}
 		if !found {
-			if err := r.cleanupUser(cr, userName, secret); err != nil {
+			expiringTokensLock.protect(func() {
+				key := cr.Namespace + "/" + userName
+				existingTimer, ok := expiringTokens[key]
+				if ok {
+					existingTimer.Stop()
+					delete(expiringTokens, key)
+				}
+			})
+			var err error
+			resourceLock.protect(func() {
+				err = r.cleanupUser(cr, userName, secret)
+			})
+			if err != nil {
 				return err
 			}
 		}
