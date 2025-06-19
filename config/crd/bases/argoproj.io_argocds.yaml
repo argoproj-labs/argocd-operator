@@ -7100,8 +7100,9 @@ spec:
                       Image is the SSO container image.
                     type: string
                   keycloak:
-                    description: Keycloak contains the configuration for Argo CD keycloak
-                      authentication
+                    description: |-
+                      Keycloak contains the configuration for Argo CD keycloak authentication
+                      Deprecated: This field is planned for removal in a future release and will no longer be supported.
                     properties:
                       host:
                         description: Host is the hostname to use for Ingress/Route
