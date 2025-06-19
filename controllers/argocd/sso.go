@@ -108,8 +108,8 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoproj.ArgoCD) error {
 
 		// case 3
 		if cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeKeycloak {
+			log.Info("Keycloak SSO provider is deprecated and will be removed in a future release. Please migrate to Dex or another supported provider.")
 			// Relevant SSO settings at play are `.spec.sso.keycloak` fields, `.spec.sso.dex`
-
 			if cr.Spec.SSO.Dex != nil {
 				// new dex spec fields are expressed when `.spec.sso.provider` is set to keycloak ==> conflict
 				errMsg = "cannot supply dex configuration when requested SSO provider is keycloak"
@@ -173,6 +173,8 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoproj.ArgoCD) error {
 	// keycloak
 	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeKeycloak {
 
+		log.Info("Keycloak SSO provider is deprecated and will be removed in a future release. Please migrate to Dex or another supported provider.")
+
 		// Trigger reconciliation of any Dex resources so they get deleted
 		if err := r.reconcileDexResources(cr); err != nil && !apiErrors.IsNotFound(err) {
 			log.Error(err, "Unable to delete existing dex resources before configuring keycloak")
@@ -205,6 +207,7 @@ func (r *ReconcileArgoCD) deleteSSOConfiguration(newCr *argoproj.ArgoCD, oldCr *
 	log.Info("uninstalling existing SSO configuration")
 
 	if oldCr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeKeycloak {
+		log.Info("Keycloak SSO provider is deprecated and will be removed in a future release. Please migrate to Dex or another supported provider.")
 		if err := deleteKeycloakConfiguration(newCr); err != nil {
 			log.Error(err, "Unable to delete existing keycloak configuration")
 			return fmt.Errorf("unable to delete existing keycloak configuration. error: %w", err)
