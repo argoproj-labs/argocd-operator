@@ -348,6 +348,10 @@ func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoproj.ArgoCD, useTLSForRedi
 		return err
 	}
 
+	if err := r.reconcileArgoCmdParamsConfigMap(cr); err != nil {
+		return err
+	}
+
 	return r.reconcileGPGKeysConfigMap(cr)
 }
 
@@ -802,4 +806,51 @@ func (r *ReconcileArgoCD) reconcileGPGKeysConfigMap(cr *argoproj.ArgoCD) error {
 	}
 	argoutil.LogResourceCreation(log, cm)
 	return r.Client.Create(context.TODO(), cm)
+}
+
+// reconcileArgoCmdParamsConfigMap will ensure that the ConfigMap containing command line parameters for ArgoCD is present.
+func (r *ReconcileArgoCD) reconcileArgoCmdParamsConfigMap(cr *argoproj.ArgoCD) error {
+	cm := newConfigMapWithName(common.ArgoCDCmdParamsConfigMapName, cr)
+	cm.Data = make(map[string]string)
+
+	// Only set data if spec.cmdParams is defined
+	if len(cr.Spec.CmdParams) > 0 {
+		for k, v := range cr.Spec.CmdParams {
+			cm.Data[k] = v
+		}
+	}
+
+	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
+		return err
+	}
+	existingCM := &corev1.ConfigMap{}
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
+		changed := false
+
+		// Compare only if data is being managed
+		if len(cm.Data) > 0 && !reflect.DeepEqual(cm.Data, existingCM.Data) {
+			existingCM.Data = cm.Data
+			changed = true
+		}
+		// Check OwnerReferences
+		var refChanged bool
+		var err error
+		if refChanged, err = modifyOwnerReferenceIfNeeded(cr, existingCM, r.Scheme); err != nil {
+			return err
+		}
+		if refChanged {
+			changed = true
+		}
+		if changed {
+			explanation := "updating data"
+			if refChanged {
+				explanation += ", owner reference"
+			}
+			argoutil.LogResourceUpdate(log, existingCM, explanation)
+			return r.Update(context.TODO(), existingCM)
+		}
+		return nil // Do nothing as there is no change in the configmap.
+	}
+	argoutil.LogResourceCreation(log, cm)
+	return r.Create(context.TODO(), cm)
 }
