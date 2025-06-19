@@ -297,6 +297,9 @@ vs-ssh.visualstudio.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7Hr1oTWqNqOlzGJOf
 
 	// NotificationsControllerMetricsPort is the port that is used to expose notifications controller metrics.
 	NotificationsControllerMetricsPort = 9001
+
+	// ArgoCDCmdParamsConfigMapName is the upstream hard-coded ArgoCD command params ConfigMap name.
+	ArgoCDCmdParamsConfigMapName = "argocd-cmd-params-cm"
 )
 
 // DefaultLabels returns the default set of labels for controllers.

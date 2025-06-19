@@ -954,6 +954,9 @@ type ArgoCDSpec struct {
 
 	// AggregatedClusterRoles will allow users to have aggregated ClusterRoles for a cluster scoped instance.
 	AggregatedClusterRoles bool `json:"aggregatedClusterRoles,omitempty"`
+
+	// CmdParams specifies command-line parameters for the Argo CD components.
+	CmdParams map[string]string `json:"cmdParams,omitempty"`
 }
 
 const (
