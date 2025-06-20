@@ -819,6 +819,145 @@ spec:
       g, system:cluster-admins, role:admin
     scopes: '[groups]'
 ```
+
+### Changes to RBAC with Dex SSO Authentication (Argo CD v3.0+)
+
+Starting with Argo CD 3.0, the RBAC subject identification mechanism for Dex SSO authentication has changed. Previously, the `sub` claim returned in the authentication was used as the subject for RBAC. However, this value depends on the Dex internal implementation and should not be considered an immutable value that represents the subject.
+
+The new behavior requests the `federated:id` scope from Dex, and the new value used as the RBAC subject will be based on the `federated_claims.user_id` claim instead of the `sub` claim.
+
+#### Understanding the Change
+
+**Before (Argo CD 2.x):**
+- RBAC subjects were based on the Dex `sub` claim
+- The `sub` claim contained encoded information including the user ID and connector ID
+- Example: `ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA`
+
+**After (Argo CD 3.0+):**
+- RBAC subjects are based on the `federated_claims.user_id` claim
+- This provides a cleaner, more predictable user identifier
+- Example: `example@argoproj.io`
+
+#### Decoding Legacy Sub Claims
+
+To identify the correct `user_id` to use in your new policies, you can decode the current `sub` claims defined in your existing policies:
+
+```bash
+echo "ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA" | base64 -d
+# Output: example@argoproj.iodex_conn_i%
+```
+
+The decoded value shows the user ID (`example@argoproj.io`) followed by connector information.
+
+#### Policy Migration Examples
+
+**Legacy policies using Dex sub claim (incorrect for Argo CD 3.0+):**
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: rbac-legacy
+spec:
+  rbac:
+    policy: |
+      g, ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA, role:example
+      p, ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA, applications, *, *, allow
+```
+
+**Updated policies using federated_claims.user_id (correct for Argo CD 3.0+):**
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: rbac-migrated
+spec:
+  rbac:
+    policy: |
+      g, example@argoproj.io, role:example
+      p, example@argoproj.io, applications, *, *, allow
+```
+
+#### Migration from Argo CD 2.x to 3.0
+
+If you're upgrading from Argo CD 2.x to 3.0 and using Dex SSO, you need to update your RBAC policies to maintain the same access levels.
+
+#### Detection
+
+The following users are **affected** by this change:
+- Users who have Dex SSO configured with custom RBAC policies
+- Users who reference Dex `sub` claims in their RBAC policies
+- Users who have user-specific permissions based on Dex authentication
+
+The following users are **unaffected** by this change:
+- Users who don't use Dex SSO
+- Users who only use group-based RBAC policies
+- Users who use other SSO providers (Keycloak, OIDC, etc.)
+
+#### Remediation Steps
+
+1. **Quick Remediation:**
+   - Decode existing `sub` claims in your policies
+   - Replace `sub` claim values with the decoded `user_id`
+   - Example: Replace `ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA` with `example@argoproj.io`
+
+2. **Recommended Remediation:**
+   - Audit all existing RBAC policies for Dex `sub` claim references
+   - Decode each `sub` claim to identify the actual user ID
+   - Update policies to use the `federated_claims.user_id` format
+   - Test authentication and authorization after the changes
+   - Consider using group-based policies instead of user-specific ones for better maintainability
+
+#### CLI Authentication
+
+If you're using the Argo CD CLI with Dex authentication, make sure to use the new Argo CD version to obtain an authentication token with the appropriate claims. The CLI will automatically handle the new authentication flow.
+
+#### Best Practices
+
+1. **Use Group-Based Policies**: Instead of user-specific policies, consider using group-based policies for better maintainability
+2. **Document User Mappings**: Keep a record of the decoded user IDs for future reference
+3. **Test Thoroughly**: Verify that all users maintain their expected access levels after the migration
+4. **Monitor Authentication**: Watch for authentication issues during and after the migration
+
+#### Example Migration Workflow
+
+1. **Identify affected policies:**
+   ```bash
+   kubectl get cm argocd-rbac-cm -n argocd -o=jsonpath='{.data.policy\.csv}'
+   ```
+
+2. **Decode sub claims:**
+   ```bash
+   echo "YOUR_SUB_CLAIM_HERE" | base64 -d
+   ```
+
+3. **Update policies:**
+   ```yaml
+   apiVersion: argoproj.io/v1alpha1
+   kind: ArgoCD
+   metadata:
+     name: example-argocd
+     labels:
+       example: rbac-migration
+   spec:
+     rbac:
+       policy: |
+         # Old: g, ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA, role:example
+         # New: g, example@argoproj.io, role:example
+         g, example@argoproj.io, role:example
+   ```
+
+4. **Test authentication:**
+   ```bash
+   argocd login <your-argocd-server> --sso
+   argocd app list
+   ```
+
 ### Fine-Grained RBAC for application update and delete sub-resources (v3.0+)
 
 The default behavior of fine-grained policies have changed so they no longer apply to sub-resources. Prior to v3, policies granting update or delete to an application also applied to any of its sub-resources.
