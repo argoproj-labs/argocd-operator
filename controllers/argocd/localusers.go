@@ -18,7 +18,6 @@ import (
 	"context"
 	json "encoding/json"
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -38,20 +37,24 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-type semaphore struct {
-	sync.Mutex
+type lock struct {
+	lock sync.Mutex
 }
 
-func (s *semaphore) protect(code func()) {
-	s.Lock()
-	defer s.Unlock()
+func (l *lock) protect(code func()) {
+	l.lock.Lock()
+	defer l.lock.Unlock()
 	code()
 }
 
+type tokenRenewalTimer struct {
+	timer *time.Timer
+	stop  bool
+}
+
 var (
-	expiringTokens     = map[string]*time.Timer{}
-	expiringTokensLock semaphore
-	resourceLock       semaphore
+	tokenRenewalTimers = map[string]*tokenRenewalTimer{}
+	userTokensLock     lock
 )
 
 func (r *ReconcileArgoCD) reconcileLocalUsers(cr *argoproj.ArgoCD) error {
@@ -104,17 +107,15 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 	// If the ApiKey setting has been changed to false, delete the secret and
 	// the token and the timer.
 	if secretExists && user.ApiKey != nil && !*user.ApiKey {
-		expiringTokensLock.protect(func() {
-			key := cr.Namespace + "/" + user.Name
-			existingTimer, ok := expiringTokens[key]
-			if ok {
-				existingTimer.Stop()
-				delete(expiringTokens, key)
-			}
-		})
-
 		var err error
-		resourceLock.protect(func() {
+		userTokensLock.protect(func() {
+			key := cr.Namespace + "/" + user.Name
+			existingTimer, ok := tokenRenewalTimers[key]
+			if ok {
+				existingTimer.stop = true
+				existingTimer.timer.Stop()
+				delete(tokenRenewalTimers, key)
+			}
 			err = r.cleanupUser(cr, user.Name, userSecret)
 		})
 		return err
@@ -143,9 +144,12 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 		autoRenew = "false"
 	}
 
-	expAt, err := strconv.ParseInt(string(userSecret.Data["expAt"]), 10, 64)
-	if err != nil {
-		return fmt.Errorf("failed to convert \"expAt\" value to int64 from user secret %s: %w", userSecret.Name, err)
+	var expAt int64
+	if secretExists {
+		expAt, err = strconv.ParseInt(string(userSecret.Data["expAt"]), 10, 64)
+		if err != nil {
+			return fmt.Errorf("failed to convert \"expAt\" value to int64 from user secret %s: %w", userSecret.Name, err)
+		}
 	}
 
 	// If the use secret already exists and neither the token lifetime nor the
@@ -153,22 +157,29 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 	// ensure the timer exists if auto-renew is true.
 	tokenLifetimeChanged := secretExists && tokenLifetime != string(userSecret.Data["tokenLifetime"])
 	autoRenewChanged := secretExists && autoRenew != string(userSecret.Data["autoRenew"])
-	if !tokenLifetimeChanged && !autoRenewChanged {
-		if secretExists && autoRenew == "true" {
+	if secretExists && !tokenLifetimeChanged && !autoRenewChanged {
+		if autoRenew == "true" && tokenDuration > 0 {
 			// If the secret exists and autoRenew is true, but there is no timer for the
 			// user, we need to add a timer for the remaining duration. This would
 			// happen when the operator is restared.
-			expiringTokensLock.protect(func() {
+			userTokensLock.protect(func() {
 				key := cr.Namespace + "/" + user.Name
-				if _, ok := expiringTokens[key]; !ok {
+				if _, ok := tokenRenewalTimers[key]; !ok {
+					renewalTimer := &tokenRenewalTimer{}
 					when := time.Until(time.Unix(expAt, 0))
 					timer := time.AfterFunc(when, func() {
-						err := r.issueToken(*cr, user, userSecret, true, tokenLifetime, tokenDuration, "token automatically re-issued after expiration", signingKey)
-						if err != nil {
-							log.Error(err, "when trying to re-issue token for user", user.Name)
-						}
+						userTokensLock.protect(func() {
+							if renewalTimer.stop {
+								return
+							}
+							err := r.issueToken(*cr, user, userSecret, true, tokenLifetime, tokenDuration, "token automatically re-issued after expiration", signingKey)
+							if err != nil {
+								log.Error(err, "when trying to re-issue token for user", user.Name)
+							}
+						})
 					})
-					expiringTokens[key] = timer
+					renewalTimer.timer = timer
+					tokenRenewalTimers[key] = renewalTimer
 				}
 			})
 		}
@@ -179,22 +190,22 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 	// token lifetime has not changed, there is no need to re-issue the token,
 	// so just update the secret.
 	if autoRenewChanged && autoRenew == "false" {
-		expiringTokensLock.protect(func() {
+		var err error
+		userTokensLock.protect(func() {
 			key := cr.Namespace + "/" + user.Name
-			existingTimer, ok := expiringTokens[key]
+			existingTimer, ok := tokenRenewalTimers[key]
 			if ok {
-				existingTimer.Stop()
-				delete(expiringTokens, key)
+				existingTimer.stop = true
+				existingTimer.timer.Stop()
+				delete(tokenRenewalTimers, key)
 			}
-		})
-
-		if !tokenLifetimeChanged {
-			var err error
-			resourceLock.protect(func() {
+			if !tokenLifetimeChanged {
 				userSecret.Data["autoRenew"] = []byte(autoRenew)
 				argoutil.LogResourceUpdate(log, &userSecret, "autoRenew set to false for user", cr.Namespace+"/"+user.Name)
 				err = r.Client.Update(context.TODO(), &userSecret)
-			})
+			}
+		})
+		if !tokenLifetimeChanged {
 			return err
 		}
 	}
@@ -202,29 +213,31 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 	// If auto-renew has been changed to true but the token lifetime has not
 	// changed, add a timer for the remaining duration. There is no need to
 	// re-issue the token, so just update the secret.
-	if autoRenewChanged && autoRenew == "true" && !tokenLifetimeChanged {
+	if autoRenewChanged && autoRenew == "true" && !tokenLifetimeChanged && tokenDuration > 0 {
 		var err error
-		resourceLock.protect(func() {
+
+		userTokensLock.protect(func() {
+			renewalTimer := &tokenRenewalTimer{}
+			when := time.Until(time.Unix(expAt, 0))
+			timer := time.AfterFunc(when, func() {
+				userTokensLock.protect(func() {
+					if renewalTimer.stop {
+						return
+					}
+					err := r.issueToken(*cr, user, userSecret, secretExists, tokenLifetime, tokenDuration, "token automatically re-issued after expiration", signingKey)
+					if err != nil {
+						log.Error(err, "when trying to re-issue token for user", cr.Namespace+"/"+user.Name)
+					}
+				})
+			})
+			renewalTimer.timer = timer
+			tokenRenewalTimers[cr.Namespace+"/"+user.Name] = renewalTimer
 			userSecret.Data["autoRenew"] = []byte(autoRenew)
 			argoutil.LogResourceUpdate(log, &userSecret, "autoRenew set to true")
 			err = r.Client.Update(context.TODO(), &userSecret)
 		})
-		if err != nil {
-			return err
-		}
 
-		expiringTokensLock.protect(func() {
-			when := time.Until(time.Unix(expAt, 0))
-			timer := time.AfterFunc(when, func() {
-				err := r.issueToken(*cr, user, userSecret, secretExists, tokenLifetime, tokenDuration, "token automatically re-issued after expiration", signingKey)
-				if err != nil {
-					log.Error(err, "when trying to re-issue token for user", cr.Namespace+"/"+user.Name)
-				}
-			})
-			expiringTokens[cr.Namespace+"/"+user.Name] = timer
-		})
-
-		return nil
+		return err
 	}
 
 	var explanation string
@@ -238,23 +251,15 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 		explanation += fmt.Sprintf("auto-renew changed from %s to %s for user %s", string(userSecret.Data["autoRenew"]), autoRenew, cr.Namespace+"/"+user.Name)
 	}
 
-	err = r.issueToken(*cr, user, userSecret, secretExists, tokenLifetime, tokenDuration, explanation, signingKey)
-	if err != nil {
-		return err
-	}
-
+	err = nil
+	userTokensLock.protect(func() {
+		err = r.issueToken(*cr, user, userSecret, secretExists, tokenLifetime, tokenDuration, explanation, signingKey)
+	})
 	return nil
 }
 
+// *** THIS METHOD NEEDS TO BE CALLED UNDER THE PROTECTION OF userTokensLock ***
 func (r *ReconcileArgoCD) issueToken(cr argoproj.ArgoCD, user argoproj.LocalUserSpec, userSecret corev1.Secret, secretExists bool, tokenLifetime string, tokenDuration time.Duration, explanation string, signingKey []byte) error {
-	var err error
-	resourceLock.protect(func() {
-		err = r.issueToken1(cr, user, userSecret, secretExists, tokenLifetime, tokenDuration, explanation, signingKey)
-	})
-	return err
-}
-
-func (r *ReconcileArgoCD) issueToken1(cr argoproj.ArgoCD, user argoproj.LocalUserSpec, userSecret corev1.Secret, secretExists bool, tokenLifetime string, tokenDuration time.Duration, explanation string, signingKey []byte) error {
 
 	// Create the values from which the token is generated
 
@@ -278,14 +283,21 @@ func (r *ReconcileArgoCD) issueToken1(cr argoproj.ArgoCD, user argoproj.LocalUse
 		return fmt.Errorf("error creating token for user %s: %w", user.Name, err)
 	}
 
-	// We store the TokenLifetime so we can tell if it's been changed in the
-	// ArgoCD CR
+	// We store the the values of TokenLifetime and AutoRenew in the user secret
+	// so we can tell if they've been changed in the ArgoCD CR
+
+	var autoRenew string
+	if user.AutoRenewToken == nil || *user.AutoRenewToken {
+		autoRenew = "true"
+	} else {
+		autoRenew = "false"
+	}
 	userSecret.Data = map[string][]byte{
 		"user":          []byte(user.Name),
 		"ID":            []byte(uniqueId),
 		"expAt":         []byte(strconv.FormatInt(expiresAt, 10)),
 		"tokenLifetime": []byte(tokenLifetime),
-		"autoRenew":     []byte(strconv.FormatBool(*user.AutoRenewToken)),
+		"autoRenew":     []byte(autoRenew),
 		"apiToken":      []byte(jwtToken),
 	}
 
@@ -334,22 +346,28 @@ func (r *ReconcileArgoCD) issueToken1(cr argoproj.ArgoCD, user argoproj.LocalUse
 	}
 
 	// Find the timer for the user and update it
-	if tokenDuration > 0 {
-		expiringTokensLock.protect(func() {
-			key := cr.Namespace + "/" + user.Name
-			existingTimer, ok := expiringTokens[key]
-			if ok {
-				existingTimer.Stop()
-				delete(expiringTokens, key)
-			}
-			timer := time.AfterFunc(tokenDuration, func() {
+	if tokenDuration > 0 && autoRenew == "true" {
+		key := cr.Namespace + "/" + user.Name
+		existingTimer, ok := tokenRenewalTimers[key]
+		if ok {
+			existingTimer.stop = true
+			existingTimer.timer.Stop()
+			delete(tokenRenewalTimers, key)
+		}
+		renewalTimer := &tokenRenewalTimer{}
+		timer := time.AfterFunc(tokenDuration, func() {
+			userTokensLock.protect(func() {
+				if renewalTimer.stop {
+					return
+				}
 				err := r.issueToken(cr, user, userSecret, true, tokenLifetime, tokenDuration, "token automatically re-issued after expiration", signingKey)
 				if err != nil {
 					log.Error(err, "when trying to re-issue token for user", user.Name)
 				}
 			})
-			expiringTokens[cr.Namespace+"/"+user.Name] = timer
 		})
+		renewalTimer.timer = timer
+		tokenRenewalTimers[cr.Namespace+"/"+user.Name] = renewalTimer
 	}
 
 	return nil
@@ -380,16 +398,15 @@ func (r *ReconcileArgoCD) cleanupLocalUsers(cr *argoproj.ArgoCD) error {
 			}
 		}
 		if !found {
-			expiringTokensLock.protect(func() {
-				key := cr.Namespace + "/" + userName
-				existingTimer, ok := expiringTokens[key]
-				if ok {
-					existingTimer.Stop()
-					delete(expiringTokens, key)
-				}
-			})
 			var err error
-			resourceLock.protect(func() {
+			userTokensLock.protect(func() {
+				key := cr.Namespace + "/" + userName
+				existingTimer, ok := tokenRenewalTimers[key]
+				if ok {
+					existingTimer.stop = true
+					existingTimer.timer.Stop()
+					delete(tokenRenewalTimers, key)
+				}
 				err = r.cleanupUser(cr, userName, secret)
 			})
 			if err != nil {
@@ -461,50 +478,13 @@ func localUsersInExtraConfig(cr *argoproj.ArgoCD) map[string]bool {
 	return localUsers
 }
 
-func (r *ReconcileArgoCD) ExpiringTokens(cr *argoproj.ArgoCD) ([]settings.Token, error) {
-	argoCDSecret := corev1.Secret{}
-	if !argoutil.IsObjectFound(r.Client, cr.Namespace, common.ArgoCDSecretName, &argoCDSecret) {
-		return nil, fmt.Errorf("could not find secret %s", common.ArgoCDSecretName)
-	}
-
-	var tokens []settings.Token
-
-	legacyUsers := localUsersInExtraConfig(cr)
-	for _, user := range cr.Spec.LocalUsers {
-		if legacyUsers[user.Name] {
-			continue
-		}
-		if user.ApiKey != nil && !*user.ApiKey {
-			continue
-		}
-		if user.TokenLifetime == "" {
-			continue
-		}
-
-		key := fmt.Sprintf("accounts.%s.tokens", user.Name)
-		value := argoCDSecret.Data[key]
-
-		var accountTokens []settings.Token
-		if err := json.Unmarshal(value, &accountTokens); err != nil {
-			return nil, err
-		}
-		if len(accountTokens) != 1 {
-			return nil, fmt.Errorf("expected 1 token for user %s, got %d", user.Name, len(accountTokens))
-		}
-
-		tokens = append(tokens, accountTokens[0])
-	}
-
-	slices.SortFunc(tokens, func(a settings.Token, b settings.Token) int {
-		value := a.ExpiresAt - b.ExpiresAt
-		if value < 0 {
-			return -1
-		} else if value > 0 {
-			return 1
-		} else {
-			return 0
+// For use by test code
+func cleanupTokenTimers() {
+	userTokensLock.protect(func() {
+		for key, timer := range tokenRenewalTimers {
+			timer.stop = true
+			timer.timer.Stop()
+			delete(tokenRenewalTimers, key)
 		}
 	})
-
-	return tokens, nil
 }
