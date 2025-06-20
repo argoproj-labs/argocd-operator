@@ -804,13 +804,16 @@ Scopes | `[groups]` | The `scopes` property in the `argocd-rbac-cm` ConfigMap.  
 
 The following example shows a basic RBAC configuration with custom roles and logs permissions:
 
-``` yaml
+```yaml
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
-  name: argocd
+  name: example-argocd
+  labels:
+    example: rbac
 spec:
   rbac:
+    defaultPolicy: 'role:readonly'
     policyMatcherMode: 'glob'
     policy: |
       # Custom role with applications and logs access
@@ -822,7 +825,7 @@ spec:
     scopes: '[groups]'
 ```
 
-### Logs RBAC Enforcement (v3.0+)
+### Logs RBAC Enforcement (Argo CD v3.0+)
 
 Starting with Argo CD 3.0, logs RBAC enforcement is enabled by default and logs are treated as a first-class RBAC resource. This means:
 
@@ -836,6 +839,12 @@ Starting with Argo CD 3.0, logs RBAC enforcement is enabled by default and logs 
 When creating custom roles, you must explicitly add logs permissions:
 
 ```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: rbac-logs
 spec:
   rbac:
     policy: |
@@ -852,6 +861,12 @@ spec:
 You can create a global log viewer role that only has access to logs:
 
 ```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: rbac-log-viewer
 spec:
   rbac:
     policy: |
@@ -883,11 +898,11 @@ The following users are **affected** and should perform remediation:
 
 #### Remediation Steps
 
-1. Quick Remediation:
+1. **Quick Remediation:**
    - Add logs permissions to existing roles
    - Example: `p, role:existing-role, logs, get, */*, allow`
 
-2. Recommended Remediation:
+2. **Recommended Remediation:**
    - Review existing roles and their permissions
    - Add logs permissions only to roles that need them
    - Consider creating a dedicated log viewer role
