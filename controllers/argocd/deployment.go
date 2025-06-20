@@ -1357,9 +1357,8 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 			explanation += "annotations"
 			changed = true
 		}
-
-		if !reflect.DeepEqual(deploy.Spec.Template.Labels, existing.Spec.Template.Labels) {
-			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
+		// Preserve non-operator labels in the existing deployment.
+		if AddExistingLabels(&existing.Spec.Template.Labels, deploy.Spec.Template.Labels) {
 			if changed {
 				explanation += ", "
 			}
@@ -1742,8 +1741,8 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			explanation += "annotations"
 			changed = true
 		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Labels, existing.Spec.Template.Labels) {
-			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
+		// Preserve non-operator labels in the existing deployment.
+		if AddExistingLabels(&existing.Spec.Template.Labels, deploy.Spec.Template.Labels) {
 			if changed {
 				explanation += ", "
 			}
