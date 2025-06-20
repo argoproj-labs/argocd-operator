@@ -3,7 +3,6 @@ package argocd
 import (
 	"context"
 	b64 "encoding/base64"
-	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -17,7 +16,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -420,6 +418,26 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 		}
 	}
 
+	operationProcesorsChangedResult2 := func(n string) []string {
+		return []string{
+			"argocd-application-controller",
+			"--redis",
+			"argocd-redis.argocd.svc.cluster.local:6379",
+			"--repo-server",
+			"argocd-repo-server.argocd.svc.cluster.local:8081",
+			"--status-processors",
+			"20",
+			"--kubectl-parallelism-limit",
+			"10",
+			"--loglevel",
+			"info",
+			"--logformat",
+			"text",
+			"--operation-processors",
+			n,
+		}
+	}
+
 	parallelismLimitChangedResult := func(n string) []string {
 		return []string{
 			"argocd-application-controller",
@@ -576,13 +594,13 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 		},
 		{
 			"configured extraCommandArgs",
-			[]argoCDOpt{extraCommandArgs([]string{"--app-hard-resync", "--app-resync"})},
-			extraCommandArgsChangedResult([]string{"--app-hard-resync", "--app-resync"}),
+			[]argoCDOpt{extraCommandArgs([]string{"--hydrator-enabled"})},
+			extraCommandArgsChangedResult([]string{"--hydrator-enabled"}),
 		},
 		{
 			"overriding default argument using extraCommandArgs",
 			[]argoCDOpt{extraCommandArgs([]string{"--operation-processors", "15"})},
-			operationProcesorsChangedResult("15"),
+			operationProcesorsChangedResult2("15"),
 		},
 		{
 			"configured empty extraCommandArgs",
@@ -611,10 +629,10 @@ func TestGetArgoApplicationContainerEnv(t *testing.T) {
 	sync60s := []v1.EnvVar{
 		{Name: "HOME", Value: "/home/argocd", ValueFrom: (*v1.EnvVarSource)(nil)},
 		{Name: "REDIS_PASSWORD", Value: "",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: fmt.Sprintf("argocd-redis-initial-password"),
+			ValueFrom: &v1.EnvVarSource{
+				SecretKeyRef: &v1.SecretKeySelector{
+					LocalObjectReference: v1.LocalObjectReference{
+						Name: "argocd-redis-initial-password",
 					},
 					Key: "admin.password",
 				},
@@ -1038,6 +1056,43 @@ func TestGetSourceNamespacesWithWildCardNamespace(t *testing.T) {
 	assert.Contains(t, sourceNamespaces, "test-namespace-1")
 	assert.Contains(t, sourceNamespaces, "test-namespace-2")
 }
+func TestGetSourceNamespacesWithRegExpNamespace(t *testing.T) {
+	a := makeTestArgoCD()
+	a.Spec = argoproj.ArgoCDSpec{
+		SourceNamespaces: []string{
+			"/^test.*test$/",
+		},
+	}
+	ns1 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "testtest",
+		},
+	}
+	ns2 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test123test",
+		},
+	}
+	ns3 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-abc-test",
+		},
+	}
+
+	resObjs := []client.Object{a, &ns1, &ns2, &ns3}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	sourceNamespaces, err := r.getSourceNamespaces(a)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(sourceNamespaces))
+	assert.Contains(t, sourceNamespaces, "testtest")
+	assert.Contains(t, sourceNamespaces, "test123test")
+	assert.Contains(t, sourceNamespaces, "test-abc-test")
+}
 
 func TestGenerateRandomString(t *testing.T) {
 
@@ -1374,6 +1429,12 @@ func TestAppendUniqueArgs(t *testing.T) {
 			cmd:       []string{"arg1", "arg2"},
 			extraArgs: []string{"arg2", "arg3"},
 			want:      []string{"arg1", "arg2", "arg2", "arg3"},
+		},
+		{
+			name:      "add flag with two different values",
+			cmd:       []string{"arg1", "arg2"},
+			extraArgs: []string{"flag1", "value1", "flag1", "value2"},
+			want:      []string{"arg1", "arg2", "flag1", "value1", "flag1", "value2"},
 		},
 	}
 

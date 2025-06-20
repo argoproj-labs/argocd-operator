@@ -168,17 +168,6 @@ Resource Types:
                </tr>
                <tr>
                   <td>
-                     <code>initialRepositories</code></br>
-                     <em>
-                     string
-                     </em>
-                  </td>
-                  <td>
-                     <p>InitialRepositories to configure Argo CD with upon creation of the cluster.</p>
-                  </td>
-               </tr>
-               <tr>
-                  <td>
                      <code>initialSSHKnownHosts</code></br>
                      <em>
                      string
@@ -273,17 +262,6 @@ Resource Types:
                   </td>
                   <td>
                      <p>Repo defines the repo server options for Argo CD.</p>
-                  </td>
-               </tr>
-               <tr>
-                  <td>
-                     <code>repositoryCredentials</code></br>
-                     <em>
-                     string
-                     </em>
-                  </td>
-                  <td>
-                     <p>RepositoryCredentials are the Git pull credentials to configure Argo CD with upon creation of the cluster.</p>
                   </td>
                </tr>
                <tr>
@@ -2008,17 +1986,6 @@ Resource Types:
       </tr>
       <tr>
          <td>
-            <code>initialRepositories</code></br>
-            <em>
-            string
-            </em>
-         </td>
-         <td>
-            <p>InitialRepositories to configure Argo CD with upon creation of the cluster.</p>
-         </td>
-      </tr>
-      <tr>
-         <td>
             <code>initialSSHKnownHosts</code></br>
             <em>
             string
@@ -2100,17 +2067,6 @@ Resource Types:
          </td>
          <td>
             <p>Repo defines the repo server options for Argo CD.</p>
-         </td>
-      </tr>
-      <tr>
-         <td>
-            <code>repositoryCredentials</code></br>
-            <em>
-            string
-            </em>
-         </td>
-         <td>
-            <p>RepositoryCredentials are the Git pull credentials to configure Argo CD with upon creation of the cluster.</p>
          </td>
       </tr>
       <tr>

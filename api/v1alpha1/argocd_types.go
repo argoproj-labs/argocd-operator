@@ -159,6 +159,10 @@ type ArgoCDApplicationSet struct {
 	LogLevel string `json:"logLevel,omitempty"`
 
 	WebhookServer WebhookServerSpec `json:"webhookServer,omitempty"`
+
+	// LogFormat refers to the log format used by the ApplicationSet component. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
+	// +kubebuilder:validation:Enum=text;json
+	LogFormat string `json:"logFormat,omitempty"`
 }
 
 // ArgoCDCASpec defines the CA options for ArgCD.
@@ -339,6 +343,10 @@ type ArgoCDNotifications struct {
 
 	// LogLevel describes the log level that should be used by the argocd-notifications. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug,info, error, and warn.
 	LogLevel string `json:"logLevel,omitempty"`
+
+	// LogFormat refers to the log format used by the argocd-notifications. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
+	// +kubebuilder:validation:Enum=text;json
+	LogFormat string `json:"logformat,omitempty"`
 }
 
 // ArgoCDPrometheusSpec defines the desired state for the Prometheus component.
@@ -628,6 +636,7 @@ type ArgoCDSSOSpec struct {
 	Dex *ArgoCDDexSpec `json:"dex,omitempty"`
 
 	// Keycloak contains the configuration for Argo CD keycloak authentication
+	// Deprecated: This field is planned for removal in a future release and will no longer be supported.
 	Keycloak *ArgoCDKeycloakSpec `json:"keycloak,omitempty"`
 
 	// Deprecated field. Support dropped in v1beta1 version.
@@ -686,7 +695,7 @@ type ArgoCDSpec struct {
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Installation ID",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	InstallationID string `json:"installationID,omitempty"`
 
-	// ConfigManagementPlugins is used to specify additional config management plugins.
+	// Deprecated: ConfigManagementPlugins field is no longer supported. Argo CD now requires plugins to be defined as sidecar containers of repo server component. See '.spec.repo.sidecarContainers'. ConfigManagementPlugins was previously used to specify additional config management plugins.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Config Management Plugins'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	ConfigManagementPlugins string `json:"configManagementPlugins,omitempty"`
 

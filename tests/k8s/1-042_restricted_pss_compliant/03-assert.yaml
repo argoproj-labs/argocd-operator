@@ -1,3 +1,7 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 400
+---
 apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
@@ -9,7 +13,7 @@ status:
   redis: Running
   repo: Running
   server: Running
-  #sso: Running  # due to bug in keycloak service code, status remains as Pending
+  sso: Running
 ---
 apiVersion: apps/v1
 kind: Deployment

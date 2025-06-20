@@ -39,11 +39,11 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
-	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	oappsv1 "github.com/openshift/api/apps/v1"
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	configv1client "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/sethvargo/go-password/password"
 	"golang.org/x/mod/semver"
 	appsv1 "k8s.io/api/apps/v1"
@@ -67,7 +67,9 @@ import (
 )
 
 const (
-	grafanaDeprecatedWarning = "Warning: grafana field is deprecated from ArgoCD: field will be ignored."
+	grafanaDeprecatedWarning     = "Warning: grafana field is deprecated from ArgoCD: field will be ignored."
+	initialRepositoriesWarning   = "Warning: Argo CD InitialRepositories field is deprecated from ArgoCD, field will be ignored."
+	repositoryCredentialsWarning = "Warning: Argo CD RepositoryCredentials field is deprecated from ArgoCD, field will be ignored."
 )
 
 var (
@@ -733,16 +735,15 @@ func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoproj.ArgoCD) bool {
 // reconcileResources will reconcile common ArgoCD resources.
 func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD) error {
 
-	// we reconcile SSO first so that we can catch and throw errors for any illegal SSO configurations right away, and return control from here
-	// preventing dex resources from getting created anyway through the other function calls, effectively bypassing the SSO checks
-	log.Info("reconciling SSO")
-	if err := r.reconcileSSO(cr); err != nil {
-		log.Info(err.Error())
-	}
-
 	log.Info("reconciling status")
 	if err := r.reconcileStatus(cr); err != nil {
 		log.Info(err.Error())
+	}
+
+	log.Info("reconciling SSO")
+	if err := r.reconcileSSO(cr); err != nil {
+		log.Info(err.Error())
+		return err
 	}
 
 	log.Info("reconciling roles")
@@ -1458,7 +1459,7 @@ func (r *ReconcileArgoCD) getSourceNamespaces(cr *argoproj.ArgoCD) ([]string, er
 	}
 
 	for _, namespace := range namespaces.Items {
-		if glob.MatchStringInList(cr.Spec.SourceNamespaces, namespace.Name, glob.GLOB) {
+		if glob.MatchStringInList(cr.Spec.SourceNamespaces, namespace.Name, glob.REGEXP) {
 			sourceNamespaces = append(sourceNamespaces, namespace.Name)
 		}
 	}
@@ -1758,6 +1759,10 @@ func updateStatusConditionOfArgoCD(ctx context.Context, condition metav1.Conditi
 	if changed {
 		// get the latest version of argocd instance before updating
 		if err := k8sClient.Get(ctx, types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}, cr); err != nil {
+			if apierrors.IsNotFound(err) {
+				// if ArgoCD CR no longer exists, there is no status update needed, so just return.
+				return nil
+			}
 			return err
 		}
 
@@ -1829,53 +1834,90 @@ func createCondition(message string) metav1.Condition {
 
 // appendUniqueArgs appends extraArgs to cmd while ignoring any duplicate flags.
 func appendUniqueArgs(cmd []string, extraArgs []string) []string {
-	// Parse cmd into a map to track flags and their indices
-	existingArgs := make(map[string]int) // Map to track index of each flag in cmd
+	existing := map[string]string{}
+	repeated := map[string]map[string]bool{}
+	nonRepeatableFlags := map[string]bool{}
+	result := []string{}
+
+	// Helper to add flag+val to result
+	add := func(flag, val string) {
+		result = append(result, flag)
+		if val != "" {
+			result = append(result, val)
+		}
+	}
+
+	// Process original cmd and treat its flags as non-repeatable
 	for i := 0; i < len(cmd); i++ {
 		arg := cmd[i]
 		if strings.HasPrefix(arg, "--") {
-			// Check if the next item is a value (not another flag)
+			val := ""
 			if i+1 < len(cmd) && !strings.HasPrefix(cmd[i+1], "--") {
-				existingArgs[arg] = i
-				i++ // Skip the value
-			} else {
-				existingArgs[arg] = i
+				val = cmd[i+1]
+				i++
 			}
+			if repeated[arg] == nil {
+				repeated[arg] = map[string]bool{}
+			}
+			repeated[arg][val] = true
+			existing[arg] = val
+			nonRepeatableFlags[arg] = true // flags from cmd are non-repeatable
+			add(arg, val)
+		} else {
+			result = append(result, arg)
 		}
 	}
 
-	// Iterate over extraArgs to append or override existing flags
+	// Process extraArgs
 	for i := 0; i < len(extraArgs); i++ {
 		arg := extraArgs[i]
 		if strings.HasPrefix(arg, "--") {
-			if index, exists := existingArgs[arg]; exists {
-				// If the flag exists, check if we need to override its value
-				if i+1 < len(extraArgs) && !strings.HasPrefix(extraArgs[i+1], "--") {
-					// If the flag has a value in extraArgs,update it in cmd
-					if index+1 < len(cmd) && !strings.HasPrefix(cmd[index+1], "--") {
-						cmd[index+1] = extraArgs[i+1] // Override the existing value
-					} else {
-						// Insert the new value if it didn't previously have one
-						cmd = append(cmd[:index+1], append([]string{extraArgs[i+1]}, cmd[index+1:]...)...)
+			val := ""
+			if i+1 < len(extraArgs) && !strings.HasPrefix(extraArgs[i+1], "--") {
+				val = extraArgs[i+1]
+				i++
+			}
+
+			// Skip if this flag+val combo already exists
+			if repeated[arg] != nil && repeated[arg][val] {
+				continue
+			}
+
+			if nonRepeatableFlags[arg] {
+				// Remove the existing non-repeatable flag (and its value)
+				newResult := []string{}
+				skipNext := false
+				for j := 0; j < len(result); j++ {
+					if skipNext {
+						skipNext = false
+						continue
 					}
-					i++ // Skip the value in extraArgs
+					if result[j] == arg {
+						if j+1 < len(result) && !strings.HasPrefix(result[j+1], "--") {
+							skipNext = true
+						}
+						continue
+					}
+					newResult = append(newResult, result[j])
 				}
+				result = newResult
+
+				// Replace with new value
+				repeated[arg] = map[string]bool{val: true}
+				existing[arg] = val
+				add(arg, val)
 			} else {
-				// Append the new flag and its value if not present
-				cmd = append(cmd, arg)
-				if i+1 < len(extraArgs) && !strings.HasPrefix(extraArgs[i+1], "--") {
-					cmd = append(cmd, extraArgs[i+1])
-					existingArgs[arg] = len(cmd) - 2 // Update index tracking
-					i++                              // Skip the value
-				} else {
-					existingArgs[arg] = len(cmd) - 1 // Update index tracking
+				// Allow repeated if not seen before
+				if repeated[arg] == nil {
+					repeated[arg] = map[string]bool{}
 				}
+				repeated[arg][val] = true
+				add(arg, val)
 			}
 		} else {
-			// Append non-flag arguments directly
-			cmd = append(cmd, arg)
+			result = append(result, arg)
 		}
 	}
 
-	return cmd
+	return result
 }

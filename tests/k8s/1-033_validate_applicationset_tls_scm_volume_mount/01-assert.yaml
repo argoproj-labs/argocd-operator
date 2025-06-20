@@ -37,6 +37,8 @@ spec:
           - argocd-repo-server.test-1-32-appsets-scm-tls-mount.svc.cluster.local:8081
           - --loglevel
           - info
+          - --logformat
+          - text
           - --scm-root-ca-path
           - /app/tls/scm/cert
           volumeMounts:

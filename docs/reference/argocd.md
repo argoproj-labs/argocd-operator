@@ -13,7 +13,6 @@ Name | Default | Description
 --- | --- | ---
 [**ApplicationInstanceLabelKey**](#application-instance-label-key) | `mycompany.com/appname` |  The metadata.label key name where Argo CD injects the app name as a tracking label.
 [**ApplicationSet**](#applicationset-controller-options) | [Object] | ApplicationSet controller configuration options.
-[**ConfigManagementPlugins**](#config-management-plugins) | [Empty] | Configuration to add a config management plugin.
 [**Controller**](#controller-options) | [Object] | Argo CD Application Controller options.
 [**DisableAdmin**](#disable-admin) | `false` | Disable the admin user.
 [**ExtraConfig**](#extra-config) | [Empty] | A catch-all mechanism to populate the argocd-cm configmap.
@@ -160,29 +159,6 @@ data:
     -----END CERTIFICATE-----
 ```    
 
-## Config Management Plugins
-
-Configuration to add a config management plugin. This property maps directly to the `configManagementPlugins` field in the `argocd-cm` ConfigMap.
-
-### Config Management Plugins Example
-
-The following example sets a value in the `argocd-cm` ConfigMap using the `ConfigManagementPlugins` property on the `ArgoCD` resource.
-
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: example-argocd
-  labels:
-    example: config-management-plugins
-spec:
-  configManagementPlugins: |
-    - name: kasane
-      init:
-        command: [kasane, update]
-      generate:
-        command: [kasane, show]
-```
 
 ## Controller Options
 
@@ -565,50 +541,12 @@ argoproj.io/AppProject default unchanged
 argo-cd import complete
 ```
 
-## Initial Repositories
+## Initial Repositories [Deprecated]
 
 Initial git repositories to configure Argo CD to use upon creation of the cluster.
 
-This property maps directly to the `repositories` field in the `argocd-cm` ConfigMap. Updating this property after the cluster has been created has no affect and should be used only as a means to initialize the cluster with the value provided. Modifications to the `repositories` field should then be made through the Argo CD web UI or CLI.
-
-### Initial Repositories Example
-
-The following example sets a value in the `argocd-cm` ConfigMap using the `InitialRepositories` property on the `ArgoCD` resource.
-
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: example-argocd
-  labels:
-    example: initial-repositories
-spec:
-  initialRepositories: |
-    - url: https://github.com/argoproj/my-private-repository
-      passwordSecret:
-        name: my-secret
-        key: password
-      usernameSecret:
-        name: my-secret
-        key: username
-      sshPrivateKeySecret:
-        name: my-secret
-        key: sshPrivateKey
-    - type: helm
-      url: https://storage.googleapis.com/istio-prerelease/daily-build/master-latest-daily/charts
-      name: istio.io
-    - type: helm
-      url: https://my-private-chart-repo.internal
-      name: private-repo
-      usernameSecret:
-        name: my-secret
-        key: username
-      passwordSecret:
-        name: my-secret
-        key: password
-    - type: git
-      url: https://github.com/argoproj/argocd-example-apps.git
-```
+!!! warning
+    Argo CD InitialRepositories field is deprecated from ArgoCD, field will be ignored. Setting or modifications to the `repositories` field should then be made through the Argo CD web UI or CLI.
 
 ## Notifications Controller Options
 
@@ -647,21 +585,8 @@ This property maps directly to the `repository.credentials` field in the `argocd
 
 The following example sets a value in the `argocd-cm` ConfigMap using the `RepositoryCredentials` property on the `ArgoCD` resource.
 
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: example-argocd
-  labels:
-    example: repository-credentials
-spec:
-  repositoryCredentials: |
-    - sshPrivateKeySecret:
-        key: sshPrivateKey
-        name: my-ssh-secret
-      type: git
-      url: ssh://git@gitlab.com/my-org/
-```
+!!! warning
+    Argo CD RepositoryCredentials field is deprecated from ArgoCD, field will be ignored.
 
 ## Initial SSH Known Hosts
 
@@ -894,6 +819,14 @@ spec:
       g, system:cluster-admins, role:admin
     scopes: '[groups]'
 ```
+### Fine-Grained RBAC for application update and delete sub-resources (v3.0+)
+
+The default behavior of fine-grained policies have changed so they no longer apply to sub-resources. Prior to v3, policies granting update or delete to an application also applied to any of its sub-resources.
+
+Starting with v3, the update or delete actions only apply to the application itself. New policies must be defined to allow the update/* or delete/* actions on an Application's managed resources.
+
+To preserve v2 behavior the config value server.rbac.disableApplicationFineGrainedRBACInheritance is set to false in the Argo CD ConfigMap argocd-cm.
+
 
 ## Redis Options
 

@@ -2,7 +2,6 @@ package argocd
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"reflect"
 	"strings"
@@ -720,6 +719,7 @@ func TestReconcileArgoCD_reconcileDeployments_proxy(t *testing.T) {
 
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		//lint:ignore SA1019 known to be deprecated
 		a.Spec.Grafana.Enabled = true
 		a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 			Provider: argoproj.SSOProviderTypeDex,
@@ -1263,7 +1263,7 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 						ValueFrom: &corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: fmt.Sprintf("argocd-redis-initial-password"),
+									Name: "argocd-redis-initial-password",
 								},
 								Key: "admin.password",
 							},
@@ -1428,12 +1428,12 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 		"https://argocd-dex-server.argocd.svc.cluster.local:5556",
 		"--repo-server",
 		"argocd-repo-server.argocd.svc.cluster.local:8081",
-		"--redis",
-		"foo.scv.cluster.local:6379",
 		"--loglevel",
 		"info",
 		"--logformat",
 		"text",
+		"--redis",
+		"foo.scv.cluster.local:6379",
 	}
 
 	assert.NoError(t, r.reconcileServerDeployment(a, false))
@@ -1616,12 +1616,12 @@ func TestReconcileServer_RolloutUI(t *testing.T) {
 	// Check for the volume
 	foundVolume := false
 	for _, vol := range deployment.Spec.Template.Spec.Volumes {
-		if vol.Name == "extensions" {
+		if vol.Name == "rollout-extensions" {
 			foundVolume = true
 			assert.NotNil(t, vol.VolumeSource.EmptyDir)
 		}
 	}
-	assert.True(t, foundVolume, "expected volume 'extensions' to be present")
+	assert.True(t, foundVolume, "expected volume 'rollout-extensions' to be present")
 
 	// Disable rollouts UI
 	a.Spec.Server.EnableRolloutsUI = false
@@ -1640,11 +1640,11 @@ func TestReconcileServer_RolloutUI(t *testing.T) {
 	// Check that volume is removed
 	foundVolume = false
 	for _, vol := range deployment.Spec.Template.Spec.Volumes {
-		if vol.Name == "extensions" {
+		if vol.Name == "rollout-extensions" {
 			foundVolume = true
 		}
 	}
-	assert.False(t, foundVolume, "expected volume 'extensions' to be removed")
+	assert.False(t, foundVolume, "expected volume 'rollout-extension' to be removed")
 
 }
 
@@ -1708,7 +1708,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 						ValueFrom: &corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: fmt.Sprintf("argocd-redis-initial-password"),
+									Name: "argocd-redis-initial-password",
 								},
 								Key: "admin.password",
 							},
@@ -1816,7 +1816,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 						ValueFrom: &corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: fmt.Sprintf("argocd-redis-initial-password"),
+									Name: "argocd-redis-initial-password",
 								},
 								Key: "admin.password",
 							},
@@ -2516,12 +2516,12 @@ func TestArgoCDRepoServerDeploymentCommand(t *testing.T) {
 	wantCmd := []string{
 		"uid_entrypoint.sh",
 		"argocd-repo-server",
-		"--redis",
-		"foo.scv.cluster.local:6379",
 		"--loglevel",
 		"info",
 		"--logformat",
 		"text",
+		"--redis",
+		"foo.scv.cluster.local:6379",
 	}
 
 	assert.NoError(t, r.reconcileRepoDeployment(a, false))
@@ -2773,4 +2773,36 @@ func Test_getRolloutInitContainer(t *testing.T) {
 
 		})
 	}
+}
+
+func TestSetReplicasAndEnvVar_WhenServerReplicasIsDefined(t *testing.T) {
+	t.Run("should set replicas and ARGOCD_API_SERVER_REPLICAS env var when spec.server.replicas is set", func(t *testing.T) {
+		logf.SetLogger(ZapLogger(true))
+		a := makeTestArgoCD()
+		var replicas *int32
+		v := int32(2)
+		replicas = &v
+		a.Spec.Server.Replicas = replicas
+
+		resObjs := []client.Object{a}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch)
+
+		err := r.reconcileServerDeployment(a, false)
+		assert.NoError(t, err)
+		deployment := &appsv1.Deployment{}
+		err = r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: testNamespace,
+		}, deployment)
+		assert.NoError(t, err)
+
+		// Check that the env vars are set, Count is 2 because of the default REDIS_PASSWORD env var
+		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 2)
+		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_API_SERVER_REPLICAS", Value: "2"})
+	})
+
 }

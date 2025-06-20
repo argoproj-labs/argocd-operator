@@ -4,6 +4,9 @@ metadata:
   name: argocd
   namespace: test-1-042-restricted-pss-compliant
 spec:
+  server:
+    ingress:
+      enabled: true
   sso:
     provider: keycloak
     keycloak:

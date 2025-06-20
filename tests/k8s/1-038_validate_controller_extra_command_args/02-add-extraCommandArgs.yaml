@@ -6,4 +6,4 @@ metadata:
 spec:
   controller:
     extraCommandArgs:
-    - --app-hard-resync
+    - --hydrator-enabled

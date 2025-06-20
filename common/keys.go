@@ -44,9 +44,6 @@ const (
 	// ArgoCDKeyBackupKey is the "backup key" key for ConfigMaps.
 	ArgoCDKeyBackupKey = "backup.key"
 
-	// ArgoCDKeyConfigManagementPlugins is the configuration key for config management plugins.
-	ArgoCDKeyConfigManagementPlugins = "configManagementPlugins"
-
 	// ArgoCDKeyComponent is the resource component key for labels.
 	ArgoCDKeyComponent = "app.kubernetes.io/component"
 
@@ -131,12 +128,6 @@ const (
 	// ArgoCDKeyResourceTrackingMethod is the configuration key for resource tracking method
 	ArgoCDKeyResourceTrackingMethod = "application.resourceTrackingMethod"
 
-	// ArgoCDKeyRepositories is the configuration key for repositories.
-	ArgoCDKeyRepositories = "repositories"
-
-	// ArgoCDKeyRepositoryCredentials is the configuration key for repository.credentials.
-	ArgoCDKeyRepositoryCredentials = "repository.credentials"
-
 	// ArgoCDKeyServerSecretKey is the server secret key property name for the Argo secret.
 	ArgoCDKeyServerSecretKey = "server.secretkey"
 
@@ -201,6 +192,10 @@ const (
 	// ArgoCDRedisImageEnvName is the environment variable used to get the image
 	// to used for the Redis container.
 	ArgoCDRedisImageEnvName = "ARGOCD_REDIS_IMAGE"
+
+	// ArgoCDServerRBACDisableFineGrainedInheritance is needed to specify if it is not possible to deny
+	// fine-grained permissions for a sub-resource if the action was explicitly allowed on the application
+	ArgoCDServerRBACDisableFineGrainedInheritance = "server.rbac.disableApplicationFineGrainedRBACInheritance"
 
 	// ArgoCDDeletionFinalizer is a finalizer to implement pre-delete hooks
 	ArgoCDDeletionFinalizer = "argoproj.io/finalizer"

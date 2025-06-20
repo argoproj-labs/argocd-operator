@@ -193,6 +193,14 @@ spec:
                   image:
                     description: Image is the Argo CD ApplicationSet image (optional)
                     type: string
+                  logFormat:
+                    description: LogFormat refers to the log format used by the ApplicationSet
+                      component. Defaults to ArgoCDDefaultLogFormat if not configured.
+                      Valid options are text or json.
+                    enum:
+                    - text
+                    - json
+                    type: string
                   logLevel:
                     description: LogLevel describes the log level that should be used
                       by the ApplicationSet controller. Defaults to ArgoCDDefaultLogLevel
@@ -446,8 +454,11 @@ spec:
                 - content
                 type: object
               configManagementPlugins:
-                description: ConfigManagementPlugins is used to specify additional
-                  config management plugins.
+                description: 'Deprecated: ConfigManagementPlugins field is no longer
+                  supported. Argo CD now requires plugins to be defined as sidecar
+                  containers of repo server component. See ''.spec.repo.sidecarContainers''.
+                  ConfigManagementPlugins was previously used to specify additional
+                  config management plugins.'
                 type: string
               controller:
                 description: Controller defines the Application Controller options
@@ -1388,6 +1399,14 @@ spec:
                       by the argocd-notifications. Defaults to ArgoCDDefaultLogLevel
                       if not set.  Valid options are debug,info, error, and warn.
                     type: string
+                  logformat:
+                    description: LogFormat refers to the log format used by the argocd-notifications.
+                      Defaults to ArgoCDDefaultLogFormat if not configured. Valid
+                      options are text or json.
+                    enum:
+                    - text
+                    - json
+                    type: string
                   replicas:
                     description: Replicas defines the number of replicas to run for
                       notifications-controller
@@ -2171,6 +2190,18 @@ spec:
                                   required:
                                   - port
                                   type: object
+                                sleep:
+                                  description: Sleep represents the duration that
+                                    the container should sleep before being terminated.
+                                  properties:
+                                    seconds:
+                                      description: Seconds is the number of seconds
+                                        to sleep.
+                                      format: int64
+                                      type: integer
+                                  required:
+                                  - seconds
+                                  type: object
                                 tcpSocket:
                                   description: |-
                                     Deprecated. TCPSocket is NOT supported as a LifecycleHandler and kept
@@ -2268,6 +2299,18 @@ spec:
                                       type: string
                                   required:
                                   - port
+                                  type: object
+                                sleep:
+                                  description: Sleep represents the duration that
+                                    the container should sleep before being terminated.
+                                  properties:
+                                    seconds:
+                                      description: Seconds is the number of seconds
+                                        to sleep.
+                                      format: int64
+                                      type: integer
+                                  required:
+                                  - seconds
                                   type: object
                                 tcpSocket:
                                   description: |-
@@ -3572,6 +3615,18 @@ spec:
                                   required:
                                   - port
                                   type: object
+                                sleep:
+                                  description: Sleep represents the duration that
+                                    the container should sleep before being terminated.
+                                  properties:
+                                    seconds:
+                                      description: Seconds is the number of seconds
+                                        to sleep.
+                                      format: int64
+                                      type: integer
+                                  required:
+                                  - seconds
+                                  type: object
                                 tcpSocket:
                                   description: |-
                                     Deprecated. TCPSocket is NOT supported as a LifecycleHandler and kept
@@ -3669,6 +3724,18 @@ spec:
                                       type: string
                                   required:
                                   - port
+                                  type: object
+                                sleep:
+                                  description: Sleep represents the duration that
+                                    the container should sleep before being terminated.
+                                  properties:
+                                    seconds:
+                                      description: Seconds is the number of seconds
+                                        to sleep.
+                                      format: int64
+                                      type: integer
+                                  required:
+                                  - seconds
                                   type: object
                                 tcpSocket:
                                   description: |-
@@ -5232,34 +5299,6 @@ spec:
                                         status field of the claim.
                                         More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
                                       properties:
-                                        claims:
-                                          description: |-
-                                            Claims lists the names of resources, defined in spec.resourceClaims,
-                                            that are used by this container.
-
-
-                                            This is an alpha field and requires enabling the
-                                            DynamicResourceAllocation feature gate.
-
-
-                                            This field is immutable. It can only be set for containers.
-                                          items:
-                                            description: ResourceClaim references
-                                              one entry in PodSpec.ResourceClaims.
-                                            properties:
-                                              name:
-                                                description: |-
-                                                  Name must match the name of one entry in pod.spec.resourceClaims of
-                                                  the Pod where this field is used. It makes that resource available
-                                                  inside a container.
-                                                type: string
-                                            required:
-                                            - name
-                                            type: object
-                                          type: array
-                                          x-kubernetes-list-map-keys:
-                                          - name
-                                          x-kubernetes-list-type: map
                                         limits:
                                           additionalProperties:
                                             anyOf:
@@ -5335,6 +5374,21 @@ spec:
                                       description: |-
                                         storageClassName is the name of the StorageClass required by the claim.
                                         More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
+                                      type: string
+                                    volumeAttributesClassName:
+                                      description: |-
+                                        volumeAttributesClassName may be used to set the VolumeAttributesClass used by this claim.
+                                        If specified, the CSI driver will create or update the volume with the attributes defined
+                                        in the corresponding VolumeAttributesClass. This has a different purpose than storageClassName,
+                                        it can be changed after the claim is created. An empty string value means that no VolumeAttributesClass
+                                        will be applied to the claim but it's not allowed to reset this field to empty string once it is set.
+                                        If unspecified and the PersistentVolumeClaim is unbound, the default VolumeAttributesClass
+                                        will be set by the persistentvolume controller if it exists.
+                                        If the resource referred to by volumeAttributesClass does not exist, this PersistentVolumeClaim will be
+                                        set to a Pending state, as reflected by the modifyVolumeStatus field, until such as a resource
+                                        exists.
+                                        More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#volumeattributesclass
+                                        (Alpha) Using this field requires the VolumeAttributesClass feature gate to be enabled.
                                       type: string
                                     volumeMode:
                                       description: |-
@@ -5741,6 +5795,100 @@ spec:
                                 description: Projection that may be projected along
                                   with other supported volume types
                                 properties:
+                                  clusterTrustBundle:
+                                    description: |-
+                                      ClusterTrustBundle allows a pod to access the `.spec.trustBundle` field
+                                      of ClusterTrustBundle objects in an auto-updating file.
+
+
+                                      Alpha, gated by the ClusterTrustBundleProjection feature gate.
+
+
+                                      ClusterTrustBundle objects can either be selected by name, or by the
+                                      combination of signer name and a label selector.
+
+
+                                      Kubelet performs aggressive normalization of the PEM contents written
+                                      into the pod filesystem.  Esoteric PEM features such as inter-block
+                                      comments and block headers are stripped.  Certificates are deduplicated.
+                                      The ordering of certificates within the file is arbitrary, and Kubelet
+                                      may change the order over time.
+                                    properties:
+                                      labelSelector:
+                                        description: |-
+                                          Select all ClusterTrustBundles that match this label selector.  Only has
+                                          effect if signerName is set.  Mutually-exclusive with name.  If unset,
+                                          interpreted as "match nothing".  If set but empty, interpreted as "match
+                                          everything".
+                                        properties:
+                                          matchExpressions:
+                                            description: matchExpressions is a list
+                                              of label selector requirements. The
+                                              requirements are ANDed.
+                                            items:
+                                              description: |-
+                                                A label selector requirement is a selector that contains values, a key, and an operator that
+                                                relates the key and values.
+                                              properties:
+                                                key:
+                                                  description: key is the label key
+                                                    that the selector applies to.
+                                                  type: string
+                                                operator:
+                                                  description: |-
+                                                    operator represents a key's relationship to a set of values.
+                                                    Valid operators are In, NotIn, Exists and DoesNotExist.
+                                                  type: string
+                                                values:
+                                                  description: |-
+                                                    values is an array of string values. If the operator is In or NotIn,
+                                                    the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                                    the values array must be empty. This array is replaced during a strategic
+                                                    merge patch.
+                                                  items:
+                                                    type: string
+                                                  type: array
+                                              required:
+                                              - key
+                                              - operator
+                                              type: object
+                                            type: array
+                                          matchLabels:
+                                            additionalProperties:
+                                              type: string
+                                            description: |-
+                                              matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                                              map is equivalent to an element of matchExpressions, whose key field is "key", the
+                                              operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                            type: object
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                      name:
+                                        description: |-
+                                          Select a single ClusterTrustBundle by object name.  Mutually-exclusive
+                                          with signerName and labelSelector.
+                                        type: string
+                                      optional:
+                                        description: |-
+                                          If true, don't block pod startup if the referenced ClusterTrustBundle(s)
+                                          aren't available.  If using name, then the named ClusterTrustBundle is
+                                          allowed not to exist.  If using signerName, then the combination of
+                                          signerName and labelSelector is allowed to match zero
+                                          ClusterTrustBundles.
+                                        type: boolean
+                                      path:
+                                        description: Relative path from the volume
+                                          root to write the bundle.
+                                        type: string
+                                      signerName:
+                                        description: |-
+                                          Select all ClusterTrustBundles that match this signer name.
+                                          Mutually-exclusive with name.  The contents of all selected
+                                          ClusterTrustBundles will be unified and deduplicated.
+                                        type: string
+                                    required:
+                                    - path
+                                    type: object
                                   configMap:
                                     description: configMap information about the configMap
                                       data to project
@@ -6963,8 +7111,9 @@ spec:
                       Image is the SSO container image.
                     type: string
                   keycloak:
-                    description: Keycloak contains the configuration for Argo CD keycloak
-                      authentication
+                    description: |-
+                      Keycloak contains the configuration for Argo CD keycloak authentication
+                      Deprecated: This field is planned for removal in a future release and will no longer be supported.
                     properties:
                       host:
                         description: Host is the hostname to use for Ingress/Route
@@ -7494,6 +7643,14 @@ spec:
                     description: LogLevel describes the log level that should be used
                       by the ApplicationSet controller. Defaults to ArgoCDDefaultLogLevel
                       if not set.  Valid options are debug,info, error, and warn.
+                    type: string
+                  logformat:
+                    description: LogFormat refers to the log format used by the ApplicationSet
+                      component. Defaults to ArgoCDDefaultLogFormat if not configured.
+                      Valid options are text or json.
+                    enum:
+                    - text
+                    - json
                     type: string
                   resources:
                     description: Resources defines the Compute Resources required
@@ -8192,34 +8349,6 @@ spec:
                                         status field of the claim.
                                         More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
                                       properties:
-                                        claims:
-                                          description: |-
-                                            Claims lists the names of resources, defined in spec.resourceClaims,
-                                            that are used by this container.
-
-
-                                            This is an alpha field and requires enabling the
-                                            DynamicResourceAllocation feature gate.
-
-
-                                            This field is immutable. It can only be set for containers.
-                                          items:
-                                            description: ResourceClaim references
-                                              one entry in PodSpec.ResourceClaims.
-                                            properties:
-                                              name:
-                                                description: |-
-                                                  Name must match the name of one entry in pod.spec.resourceClaims of
-                                                  the Pod where this field is used. It makes that resource available
-                                                  inside a container.
-                                                type: string
-                                            required:
-                                            - name
-                                            type: object
-                                          type: array
-                                          x-kubernetes-list-map-keys:
-                                          - name
-                                          x-kubernetes-list-type: map
                                         limits:
                                           additionalProperties:
                                             anyOf:
@@ -8295,6 +8424,21 @@ spec:
                                       description: |-
                                         storageClassName is the name of the StorageClass required by the claim.
                                         More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
+                                      type: string
+                                    volumeAttributesClassName:
+                                      description: |-
+                                        volumeAttributesClassName may be used to set the VolumeAttributesClass used by this claim.
+                                        If specified, the CSI driver will create or update the volume with the attributes defined
+                                        in the corresponding VolumeAttributesClass. This has a different purpose than storageClassName,
+                                        it can be changed after the claim is created. An empty string value means that no VolumeAttributesClass
+                                        will be applied to the claim but it's not allowed to reset this field to empty string once it is set.
+                                        If unspecified and the PersistentVolumeClaim is unbound, the default VolumeAttributesClass
+                                        will be set by the persistentvolume controller if it exists.
+                                        If the resource referred to by volumeAttributesClass does not exist, this PersistentVolumeClaim will be
+                                        set to a Pending state, as reflected by the modifyVolumeStatus field, until such as a resource
+                                        exists.
+                                        More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#volumeattributesclass
+                                        (Alpha) Using this field requires the VolumeAttributesClass feature gate to be enabled.
                                       type: string
                                     volumeMode:
                                       description: |-
@@ -8701,6 +8845,100 @@ spec:
                                 description: Projection that may be projected along
                                   with other supported volume types
                                 properties:
+                                  clusterTrustBundle:
+                                    description: |-
+                                      ClusterTrustBundle allows a pod to access the `.spec.trustBundle` field
+                                      of ClusterTrustBundle objects in an auto-updating file.
+
+
+                                      Alpha, gated by the ClusterTrustBundleProjection feature gate.
+
+
+                                      ClusterTrustBundle objects can either be selected by name, or by the
+                                      combination of signer name and a label selector.
+
+
+                                      Kubelet performs aggressive normalization of the PEM contents written
+                                      into the pod filesystem.  Esoteric PEM features such as inter-block
+                                      comments and block headers are stripped.  Certificates are deduplicated.
+                                      The ordering of certificates within the file is arbitrary, and Kubelet
+                                      may change the order over time.
+                                    properties:
+                                      labelSelector:
+                                        description: |-
+                                          Select all ClusterTrustBundles that match this label selector.  Only has
+                                          effect if signerName is set.  Mutually-exclusive with name.  If unset,
+                                          interpreted as "match nothing".  If set but empty, interpreted as "match
+                                          everything".
+                                        properties:
+                                          matchExpressions:
+                                            description: matchExpressions is a list
+                                              of label selector requirements. The
+                                              requirements are ANDed.
+                                            items:
+                                              description: |-
+                                                A label selector requirement is a selector that contains values, a key, and an operator that
+                                                relates the key and values.
+                                              properties:
+                                                key:
+                                                  description: key is the label key
+                                                    that the selector applies to.
+                                                  type: string
+                                                operator:
+                                                  description: |-
+                                                    operator represents a key's relationship to a set of values.
+                                                    Valid operators are In, NotIn, Exists and DoesNotExist.
+                                                  type: string
+                                                values:
+                                                  description: |-
+                                                    values is an array of string values. If the operator is In or NotIn,
+                                                    the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                                    the values array must be empty. This array is replaced during a strategic
+                                                    merge patch.
+                                                  items:
+                                                    type: string
+                                                  type: array
+                                              required:
+                                              - key
+                                              - operator
+                                              type: object
+                                            type: array
+                                          matchLabels:
+                                            additionalProperties:
+                                              type: string
+                                            description: |-
+                                              matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                                              map is equivalent to an element of matchExpressions, whose key field is "key", the
+                                              operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                            type: object
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                      name:
+                                        description: |-
+                                          Select a single ClusterTrustBundle by object name.  Mutually-exclusive
+                                          with signerName and labelSelector.
+                                        type: string
+                                      optional:
+                                        description: |-
+                                          If true, don't block pod startup if the referenced ClusterTrustBundle(s)
+                                          aren't available.  If using name, then the named ClusterTrustBundle is
+                                          allowed not to exist.  If using signerName, then the combination of
+                                          signerName and labelSelector is allowed to match zero
+                                          ClusterTrustBundles.
+                                        type: boolean
+                                      path:
+                                        description: Relative path from the volume
+                                          root to write the bundle.
+                                        type: string
+                                      signerName:
+                                        description: |-
+                                          Select all ClusterTrustBundles that match this signer name.
+                                          Mutually-exclusive with name.  The contents of all selected
+                                          ClusterTrustBundles will be unified and deduplicated.
+                                        type: string
+                                    required:
+                                    - path
+                                    type: object
                                   configMap:
                                     description: configMap information about the configMap
                                       data to project
@@ -9414,9 +9652,18 @@ spec:
                 required:
                 - content
                 type: object
+              cmdParams:
+                additionalProperties:
+                  type: string
+                description: CmdParams specifies command-line parameters for the Argo
+                  CD components.
+                type: object
               configManagementPlugins:
-                description: ConfigManagementPlugins is used to specify additional
-                  config management plugins.
+                description: 'Deprecated: ConfigManagementPlugins field is no longer
+                  supported. Argo CD now requires plugins to be defined as sidecar
+                  containers of repo server component. See ''.spec.repo.sidecarContainers''.
+                  ConfigManagementPlugins was previously used to specify additional
+                  config management plugins.'
                 type: string
               controller:
                 description: Controller defines the Application Controller options
@@ -9850,6 +10097,18 @@ spec:
                                   required:
                                   - port
                                   type: object
+                                sleep:
+                                  description: Sleep represents the duration that
+                                    the container should sleep before being terminated.
+                                  properties:
+                                    seconds:
+                                      description: Seconds is the number of seconds
+                                        to sleep.
+                                      format: int64
+                                      type: integer
+                                  required:
+                                  - seconds
+                                  type: object
                                 tcpSocket:
                                   description: |-
                                     Deprecated. TCPSocket is NOT supported as a LifecycleHandler and kept
@@ -9947,6 +10206,18 @@ spec:
                                       type: string
                                   required:
                                   - port
+                                  type: object
+                                sleep:
+                                  description: Sleep represents the duration that
+                                    the container should sleep before being terminated.
+                                  properties:
+                                    seconds:
+                                      description: Seconds is the number of seconds
+                                        to sleep.
+                                      format: int64
+                                      type: integer
+                                  required:
+                                  - seconds
                                   type: object
                                 tcpSocket:
                                   description: |-
@@ -11300,6 +11571,18 @@ spec:
                                   required:
                                   - port
                                   type: object
+                                sleep:
+                                  description: Sleep represents the duration that
+                                    the container should sleep before being terminated.
+                                  properties:
+                                    seconds:
+                                      description: Seconds is the number of seconds
+                                        to sleep.
+                                      format: int64
+                                      type: integer
+                                  required:
+                                  - seconds
+                                  type: object
                                 tcpSocket:
                                   description: |-
                                     Deprecated. TCPSocket is NOT supported as a LifecycleHandler and kept
@@ -11397,6 +11680,18 @@ spec:
                                       type: string
                                   required:
                                   - port
+                                  type: object
+                                sleep:
+                                  description: Sleep represents the duration that
+                                    the container should sleep before being terminated.
+                                  properties:
+                                    seconds:
+                                      description: Seconds is the number of seconds
+                                        to sleep.
+                                      format: int64
+                                      type: integer
+                                  required:
+                                  - seconds
                                   type: object
                                 tcpSocket:
                                   description: |-
@@ -12952,34 +13247,6 @@ spec:
                                         status field of the claim.
                                         More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
                                       properties:
-                                        claims:
-                                          description: |-
-                                            Claims lists the names of resources, defined in spec.resourceClaims,
-                                            that are used by this container.
-
-
-                                            This is an alpha field and requires enabling the
-                                            DynamicResourceAllocation feature gate.
-
-
-                                            This field is immutable. It can only be set for containers.
-                                          items:
-                                            description: ResourceClaim references
-                                              one entry in PodSpec.ResourceClaims.
-                                            properties:
-                                              name:
-                                                description: |-
-                                                  Name must match the name of one entry in pod.spec.resourceClaims of
-                                                  the Pod where this field is used. It makes that resource available
-                                                  inside a container.
-                                                type: string
-                                            required:
-                                            - name
-                                            type: object
-                                          type: array
-                                          x-kubernetes-list-map-keys:
-                                          - name
-                                          x-kubernetes-list-type: map
                                         limits:
                                           additionalProperties:
                                             anyOf:
@@ -13055,6 +13322,21 @@ spec:
                                       description: |-
                                         storageClassName is the name of the StorageClass required by the claim.
                                         More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
+                                      type: string
+                                    volumeAttributesClassName:
+                                      description: |-
+                                        volumeAttributesClassName may be used to set the VolumeAttributesClass used by this claim.
+                                        If specified, the CSI driver will create or update the volume with the attributes defined
+                                        in the corresponding VolumeAttributesClass. This has a different purpose than storageClassName,
+                                        it can be changed after the claim is created. An empty string value means that no VolumeAttributesClass
+                                        will be applied to the claim but it's not allowed to reset this field to empty string once it is set.
+                                        If unspecified and the PersistentVolumeClaim is unbound, the default VolumeAttributesClass
+                                        will be set by the persistentvolume controller if it exists.
+                                        If the resource referred to by volumeAttributesClass does not exist, this PersistentVolumeClaim will be
+                                        set to a Pending state, as reflected by the modifyVolumeStatus field, until such as a resource
+                                        exists.
+                                        More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#volumeattributesclass
+                                        (Alpha) Using this field requires the VolumeAttributesClass feature gate to be enabled.
                                       type: string
                                     volumeMode:
                                       description: |-
@@ -13461,6 +13743,100 @@ spec:
                                 description: Projection that may be projected along
                                   with other supported volume types
                                 properties:
+                                  clusterTrustBundle:
+                                    description: |-
+                                      ClusterTrustBundle allows a pod to access the `.spec.trustBundle` field
+                                      of ClusterTrustBundle objects in an auto-updating file.
+
+
+                                      Alpha, gated by the ClusterTrustBundleProjection feature gate.
+
+
+                                      ClusterTrustBundle objects can either be selected by name, or by the
+                                      combination of signer name and a label selector.
+
+
+                                      Kubelet performs aggressive normalization of the PEM contents written
+                                      into the pod filesystem.  Esoteric PEM features such as inter-block
+                                      comments and block headers are stripped.  Certificates are deduplicated.
+                                      The ordering of certificates within the file is arbitrary, and Kubelet
+                                      may change the order over time.
+                                    properties:
+                                      labelSelector:
+                                        description: |-
+                                          Select all ClusterTrustBundles that match this label selector.  Only has
+                                          effect if signerName is set.  Mutually-exclusive with name.  If unset,
+                                          interpreted as "match nothing".  If set but empty, interpreted as "match
+                                          everything".
+                                        properties:
+                                          matchExpressions:
+                                            description: matchExpressions is a list
+                                              of label selector requirements. The
+                                              requirements are ANDed.
+                                            items:
+                                              description: |-
+                                                A label selector requirement is a selector that contains values, a key, and an operator that
+                                                relates the key and values.
+                                              properties:
+                                                key:
+                                                  description: key is the label key
+                                                    that the selector applies to.
+                                                  type: string
+                                                operator:
+                                                  description: |-
+                                                    operator represents a key's relationship to a set of values.
+                                                    Valid operators are In, NotIn, Exists and DoesNotExist.
+                                                  type: string
+                                                values:
+                                                  description: |-
+                                                    values is an array of string values. If the operator is In or NotIn,
+                                                    the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                                    the values array must be empty. This array is replaced during a strategic
+                                                    merge patch.
+                                                  items:
+                                                    type: string
+                                                  type: array
+                                              required:
+                                              - key
+                                              - operator
+                                              type: object
+                                            type: array
+                                          matchLabels:
+                                            additionalProperties:
+                                              type: string
+                                            description: |-
+                                              matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                                              map is equivalent to an element of matchExpressions, whose key field is "key", the
+                                              operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                            type: object
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                      name:
+                                        description: |-
+                                          Select a single ClusterTrustBundle by object name.  Mutually-exclusive
+                                          with signerName and labelSelector.
+                                        type: string
+                                      optional:
+                                        description: |-
+                                          If true, don't block pod startup if the referenced ClusterTrustBundle(s)
+                                          aren't available.  If using name, then the named ClusterTrustBundle is
+                                          allowed not to exist.  If using signerName, then the combination of
+                                          signerName and labelSelector is allowed to match zero
+                                          ClusterTrustBundles.
+                                        type: boolean
+                                      path:
+                                        description: Relative path from the volume
+                                          root to write the bundle.
+                                        type: string
+                                      signerName:
+                                        description: |-
+                                          Select all ClusterTrustBundles that match this signer name.
+                                          Mutually-exclusive with name.  The contents of all selected
+                                          ClusterTrustBundles will be unified and deduplicated.
+                                        type: string
+                                    required:
+                                    - path
+                                    type: object
                                   configMap:
                                     description: configMap information about the configMap
                                       data to project
@@ -14356,8 +14732,8 @@ spec:
                 - name
                 type: object
               initialRepositories:
-                description: InitialRepositories to configure Argo CD with upon creation
-                  of the cluster.
+                description: 'Deprecated: InitialRepositories to configure Argo CD
+                  with upon creation of the cluster.'
                 type: string
               initialSSHKnownHosts:
                 description: InitialSSHKnownHosts defines the SSH known hosts data
@@ -14596,6 +14972,14 @@ spec:
                     description: LogLevel describes the log level that should be used
                       by the argocd-notifications. Defaults to ArgoCDDefaultLogLevel
                       if not set.  Valid options are debug,info, error, and warn.
+                    type: string
+                  logformat:
+                    description: LogFormat refers to the log format used by the argocd-notifications.
+                      Defaults to ArgoCDDefaultLogFormat if not configured. Valid
+                      options are text or json.
+                    enum:
+                    - text
+                    - json
                     type: string
                   replicas:
                     description: Replicas defines the number of replicas to run for
@@ -15398,6 +15782,18 @@ spec:
                                   required:
                                   - port
                                   type: object
+                                sleep:
+                                  description: Sleep represents the duration that
+                                    the container should sleep before being terminated.
+                                  properties:
+                                    seconds:
+                                      description: Seconds is the number of seconds
+                                        to sleep.
+                                      format: int64
+                                      type: integer
+                                  required:
+                                  - seconds
+                                  type: object
                                 tcpSocket:
                                   description: |-
                                     Deprecated. TCPSocket is NOT supported as a LifecycleHandler and kept
@@ -15495,6 +15891,18 @@ spec:
                                       type: string
                                   required:
                                   - port
+                                  type: object
+                                sleep:
+                                  description: Sleep represents the duration that
+                                    the container should sleep before being terminated.
+                                  properties:
+                                    seconds:
+                                      description: Seconds is the number of seconds
+                                        to sleep.
+                                      format: int64
+                                      type: integer
+                                  required:
+                                  - seconds
                                   type: object
                                 tcpSocket:
                                   description: |-
@@ -16809,6 +17217,18 @@ spec:
                                   required:
                                   - port
                                   type: object
+                                sleep:
+                                  description: Sleep represents the duration that
+                                    the container should sleep before being terminated.
+                                  properties:
+                                    seconds:
+                                      description: Seconds is the number of seconds
+                                        to sleep.
+                                      format: int64
+                                      type: integer
+                                  required:
+                                  - seconds
+                                  type: object
                                 tcpSocket:
                                   description: |-
                                     Deprecated. TCPSocket is NOT supported as a LifecycleHandler and kept
@@ -16906,6 +17326,18 @@ spec:
                                       type: string
                                   required:
                                   - port
+                                  type: object
+                                sleep:
+                                  description: Sleep represents the duration that
+                                    the container should sleep before being terminated.
+                                  properties:
+                                    seconds:
+                                      description: Seconds is the number of seconds
+                                        to sleep.
+                                      format: int64
+                                      type: integer
+                                  required:
+                                  - seconds
                                   type: object
                                 tcpSocket:
                                   description: |-
@@ -18469,34 +18901,6 @@ spec:
                                         status field of the claim.
                                         More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
                                       properties:
-                                        claims:
-                                          description: |-
-                                            Claims lists the names of resources, defined in spec.resourceClaims,
-                                            that are used by this container.
-
-
-                                            This is an alpha field and requires enabling the
-                                            DynamicResourceAllocation feature gate.
-
-
-                                            This field is immutable. It can only be set for containers.
-                                          items:
-                                            description: ResourceClaim references
-                                              one entry in PodSpec.ResourceClaims.
-                                            properties:
-                                              name:
-                                                description: |-
-                                                  Name must match the name of one entry in pod.spec.resourceClaims of
-                                                  the Pod where this field is used. It makes that resource available
-                                                  inside a container.
-                                                type: string
-                                            required:
-                                            - name
-                                            type: object
-                                          type: array
-                                          x-kubernetes-list-map-keys:
-                                          - name
-                                          x-kubernetes-list-type: map
                                         limits:
                                           additionalProperties:
                                             anyOf:
@@ -18572,6 +18976,21 @@ spec:
                                       description: |-
                                         storageClassName is the name of the StorageClass required by the claim.
                                         More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
+                                      type: string
+                                    volumeAttributesClassName:
+                                      description: |-
+                                        volumeAttributesClassName may be used to set the VolumeAttributesClass used by this claim.
+                                        If specified, the CSI driver will create or update the volume with the attributes defined
+                                        in the corresponding VolumeAttributesClass. This has a different purpose than storageClassName,
+                                        it can be changed after the claim is created. An empty string value means that no VolumeAttributesClass
+                                        will be applied to the claim but it's not allowed to reset this field to empty string once it is set.
+                                        If unspecified and the PersistentVolumeClaim is unbound, the default VolumeAttributesClass
+                                        will be set by the persistentvolume controller if it exists.
+                                        If the resource referred to by volumeAttributesClass does not exist, this PersistentVolumeClaim will be
+                                        set to a Pending state, as reflected by the modifyVolumeStatus field, until such as a resource
+                                        exists.
+                                        More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#volumeattributesclass
+                                        (Alpha) Using this field requires the VolumeAttributesClass feature gate to be enabled.
                                       type: string
                                     volumeMode:
                                       description: |-
@@ -18978,6 +19397,100 @@ spec:
                                 description: Projection that may be projected along
                                   with other supported volume types
                                 properties:
+                                  clusterTrustBundle:
+                                    description: |-
+                                      ClusterTrustBundle allows a pod to access the `.spec.trustBundle` field
+                                      of ClusterTrustBundle objects in an auto-updating file.
+
+
+                                      Alpha, gated by the ClusterTrustBundleProjection feature gate.
+
+
+                                      ClusterTrustBundle objects can either be selected by name, or by the
+                                      combination of signer name and a label selector.
+
+
+                                      Kubelet performs aggressive normalization of the PEM contents written
+                                      into the pod filesystem.  Esoteric PEM features such as inter-block
+                                      comments and block headers are stripped.  Certificates are deduplicated.
+                                      The ordering of certificates within the file is arbitrary, and Kubelet
+                                      may change the order over time.
+                                    properties:
+                                      labelSelector:
+                                        description: |-
+                                          Select all ClusterTrustBundles that match this label selector.  Only has
+                                          effect if signerName is set.  Mutually-exclusive with name.  If unset,
+                                          interpreted as "match nothing".  If set but empty, interpreted as "match
+                                          everything".
+                                        properties:
+                                          matchExpressions:
+                                            description: matchExpressions is a list
+                                              of label selector requirements. The
+                                              requirements are ANDed.
+                                            items:
+                                              description: |-
+                                                A label selector requirement is a selector that contains values, a key, and an operator that
+                                                relates the key and values.
+                                              properties:
+                                                key:
+                                                  description: key is the label key
+                                                    that the selector applies to.
+                                                  type: string
+                                                operator:
+                                                  description: |-
+                                                    operator represents a key's relationship to a set of values.
+                                                    Valid operators are In, NotIn, Exists and DoesNotExist.
+                                                  type: string
+                                                values:
+                                                  description: |-
+                                                    values is an array of string values. If the operator is In or NotIn,
+                                                    the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                                    the values array must be empty. This array is replaced during a strategic
+                                                    merge patch.
+                                                  items:
+                                                    type: string
+                                                  type: array
+                                              required:
+                                              - key
+                                              - operator
+                                              type: object
+                                            type: array
+                                          matchLabels:
+                                            additionalProperties:
+                                              type: string
+                                            description: |-
+                                              matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                                              map is equivalent to an element of matchExpressions, whose key field is "key", the
+                                              operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                            type: object
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                      name:
+                                        description: |-
+                                          Select a single ClusterTrustBundle by object name.  Mutually-exclusive
+                                          with signerName and labelSelector.
+                                        type: string
+                                      optional:
+                                        description: |-
+                                          If true, don't block pod startup if the referenced ClusterTrustBundle(s)
+                                          aren't available.  If using name, then the named ClusterTrustBundle is
+                                          allowed not to exist.  If using signerName, then the combination of
+                                          signerName and labelSelector is allowed to match zero
+                                          ClusterTrustBundles.
+                                        type: boolean
+                                      path:
+                                        description: Relative path from the volume
+                                          root to write the bundle.
+                                        type: string
+                                      signerName:
+                                        description: |-
+                                          Select all ClusterTrustBundles that match this signer name.
+                                          Mutually-exclusive with name.  The contents of all selected
+                                          ClusterTrustBundles will be unified and deduplicated.
+                                        type: string
+                                    required:
+                                    - path
+                                    type: object
                                   configMap:
                                     description: configMap information about the configMap
                                       data to project
@@ -19506,8 +20019,8 @@ spec:
                     type: array
                 type: object
               repositoryCredentials:
-                description: RepositoryCredentials are the Git pull credentials to
-                  configure Argo CD with upon creation of the cluster.
+                description: 'Deprecated: RepositoryCredentials are the Git pull credentials
+                  to configure Argo CD with upon creation of the cluster.'
                 type: string
               resourceActions:
                 description: ResourceActions customizes resource action behavior.
@@ -20199,6 +20712,18 @@ spec:
                                   required:
                                   - port
                                   type: object
+                                sleep:
+                                  description: Sleep represents the duration that
+                                    the container should sleep before being terminated.
+                                  properties:
+                                    seconds:
+                                      description: Seconds is the number of seconds
+                                        to sleep.
+                                      format: int64
+                                      type: integer
+                                  required:
+                                  - seconds
+                                  type: object
                                 tcpSocket:
                                   description: |-
                                     Deprecated. TCPSocket is NOT supported as a LifecycleHandler and kept
@@ -20296,6 +20821,18 @@ spec:
                                       type: string
                                   required:
                                   - port
+                                  type: object
+                                sleep:
+                                  description: Sleep represents the duration that
+                                    the container should sleep before being terminated.
+                                  properties:
+                                    seconds:
+                                      description: Seconds is the number of seconds
+                                        to sleep.
+                                      format: int64
+                                      type: integer
+                                  required:
+                                  - seconds
                                   type: object
                                 tcpSocket:
                                   description: |-
@@ -21720,6 +22257,18 @@ spec:
                                   required:
                                   - port
                                   type: object
+                                sleep:
+                                  description: Sleep represents the duration that
+                                    the container should sleep before being terminated.
+                                  properties:
+                                    seconds:
+                                      description: Seconds is the number of seconds
+                                        to sleep.
+                                      format: int64
+                                      type: integer
+                                  required:
+                                  - seconds
+                                  type: object
                                 tcpSocket:
                                   description: |-
                                     Deprecated. TCPSocket is NOT supported as a LifecycleHandler and kept
@@ -21817,6 +22366,18 @@ spec:
                                       type: string
                                   required:
                                   - port
+                                  type: object
+                                sleep:
+                                  description: Sleep represents the duration that
+                                    the container should sleep before being terminated.
+                                  properties:
+                                    seconds:
+                                      description: Seconds is the number of seconds
+                                        to sleep.
+                                      format: int64
+                                      type: integer
+                                  required:
+                                  - seconds
                                   type: object
                                 tcpSocket:
                                   description: |-
@@ -23372,34 +23933,6 @@ spec:
                                         status field of the claim.
                                         More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
                                       properties:
-                                        claims:
-                                          description: |-
-                                            Claims lists the names of resources, defined in spec.resourceClaims,
-                                            that are used by this container.
-
-
-                                            This is an alpha field and requires enabling the
-                                            DynamicResourceAllocation feature gate.
-
-
-                                            This field is immutable. It can only be set for containers.
-                                          items:
-                                            description: ResourceClaim references
-                                              one entry in PodSpec.ResourceClaims.
-                                            properties:
-                                              name:
-                                                description: |-
-                                                  Name must match the name of one entry in pod.spec.resourceClaims of
-                                                  the Pod where this field is used. It makes that resource available
-                                                  inside a container.
-                                                type: string
-                                            required:
-                                            - name
-                                            type: object
-                                          type: array
-                                          x-kubernetes-list-map-keys:
-                                          - name
-                                          x-kubernetes-list-type: map
                                         limits:
                                           additionalProperties:
                                             anyOf:
@@ -23475,6 +24008,21 @@ spec:
                                       description: |-
                                         storageClassName is the name of the StorageClass required by the claim.
                                         More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
+                                      type: string
+                                    volumeAttributesClassName:
+                                      description: |-
+                                        volumeAttributesClassName may be used to set the VolumeAttributesClass used by this claim.
+                                        If specified, the CSI driver will create or update the volume with the attributes defined
+                                        in the corresponding VolumeAttributesClass. This has a different purpose than storageClassName,
+                                        it can be changed after the claim is created. An empty string value means that no VolumeAttributesClass
+                                        will be applied to the claim but it's not allowed to reset this field to empty string once it is set.
+                                        If unspecified and the PersistentVolumeClaim is unbound, the default VolumeAttributesClass
+                                        will be set by the persistentvolume controller if it exists.
+                                        If the resource referred to by volumeAttributesClass does not exist, this PersistentVolumeClaim will be
+                                        set to a Pending state, as reflected by the modifyVolumeStatus field, until such as a resource
+                                        exists.
+                                        More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#volumeattributesclass
+                                        (Alpha) Using this field requires the VolumeAttributesClass feature gate to be enabled.
                                       type: string
                                     volumeMode:
                                       description: |-
@@ -23881,6 +24429,100 @@ spec:
                                 description: Projection that may be projected along
                                   with other supported volume types
                                 properties:
+                                  clusterTrustBundle:
+                                    description: |-
+                                      ClusterTrustBundle allows a pod to access the `.spec.trustBundle` field
+                                      of ClusterTrustBundle objects in an auto-updating file.
+
+
+                                      Alpha, gated by the ClusterTrustBundleProjection feature gate.
+
+
+                                      ClusterTrustBundle objects can either be selected by name, or by the
+                                      combination of signer name and a label selector.
+
+
+                                      Kubelet performs aggressive normalization of the PEM contents written
+                                      into the pod filesystem.  Esoteric PEM features such as inter-block
+                                      comments and block headers are stripped.  Certificates are deduplicated.
+                                      The ordering of certificates within the file is arbitrary, and Kubelet
+                                      may change the order over time.
+                                    properties:
+                                      labelSelector:
+                                        description: |-
+                                          Select all ClusterTrustBundles that match this label selector.  Only has
+                                          effect if signerName is set.  Mutually-exclusive with name.  If unset,
+                                          interpreted as "match nothing".  If set but empty, interpreted as "match
+                                          everything".
+                                        properties:
+                                          matchExpressions:
+                                            description: matchExpressions is a list
+                                              of label selector requirements. The
+                                              requirements are ANDed.
+                                            items:
+                                              description: |-
+                                                A label selector requirement is a selector that contains values, a key, and an operator that
+                                                relates the key and values.
+                                              properties:
+                                                key:
+                                                  description: key is the label key
+                                                    that the selector applies to.
+                                                  type: string
+                                                operator:
+                                                  description: |-
+                                                    operator represents a key's relationship to a set of values.
+                                                    Valid operators are In, NotIn, Exists and DoesNotExist.
+                                                  type: string
+                                                values:
+                                                  description: |-
+                                                    values is an array of string values. If the operator is In or NotIn,
+                                                    the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                                    the values array must be empty. This array is replaced during a strategic
+                                                    merge patch.
+                                                  items:
+                                                    type: string
+                                                  type: array
+                                              required:
+                                              - key
+                                              - operator
+                                              type: object
+                                            type: array
+                                          matchLabels:
+                                            additionalProperties:
+                                              type: string
+                                            description: |-
+                                              matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                                              map is equivalent to an element of matchExpressions, whose key field is "key", the
+                                              operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                            type: object
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                      name:
+                                        description: |-
+                                          Select a single ClusterTrustBundle by object name.  Mutually-exclusive
+                                          with signerName and labelSelector.
+                                        type: string
+                                      optional:
+                                        description: |-
+                                          If true, don't block pod startup if the referenced ClusterTrustBundle(s)
+                                          aren't available.  If using name, then the named ClusterTrustBundle is
+                                          allowed not to exist.  If using signerName, then the combination of
+                                          signerName and labelSelector is allowed to match zero
+                                          ClusterTrustBundles.
+                                        type: boolean
+                                      path:
+                                        description: Relative path from the volume
+                                          root to write the bundle.
+                                        type: string
+                                      signerName:
+                                        description: |-
+                                          Select all ClusterTrustBundles that match this signer name.
+                                          Mutually-exclusive with name.  The contents of all selected
+                                          ClusterTrustBundles will be unified and deduplicated.
+                                        type: string
+                                    required:
+                                    - path
+                                    type: object
                                   configMap:
                                     description: configMap information about the configMap
                                       data to project
