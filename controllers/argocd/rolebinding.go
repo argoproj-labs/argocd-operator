@@ -2,6 +2,7 @@ package argocd
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"reflect"
@@ -18,6 +19,32 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
+
+// truncates a string to maxLabelLength characters and adds a hash suffix to ensure uniqueness
+func truncateWithHash(input string) string {
+	if len(input) <= maxLabelLength {
+		return input
+	}
+
+	// Calculate hash of the original string
+	hash := sha256.Sum256([]byte(input))
+	hashSuffix := fmt.Sprintf("-%x", hash[:4])
+
+	// Calculate how much we can truncate
+	maxBaseLength := maxLabelLength - len(hashSuffix)
+	if maxBaseLength <= 0 {
+		// If hash suffix is longer than maxLabelLength, just use the hash
+		// Ensure we don't exceed maxLabelLength
+		hashStr := fmt.Sprintf("%x", hash)
+		if len(hashStr) > maxLabelLength-3 {
+			hashStr = hashStr[:maxLabelLength-3]
+		}
+		return fmt.Sprintf("rb-%s", hashStr)
+	}
+
+	// Truncate and add hash
+	return input[:maxBaseLength] + hashSuffix
+}
 
 // newClusterRoleBinding returns a new ClusterRoleBinding instance.
 func newClusterRoleBinding(cr *argoproj.ArgoCD) *v1.ClusterRoleBinding {
@@ -67,7 +94,8 @@ func newRoleBindingForSupportNamespaces(cr *argoproj.ArgoCD, namespace string) *
 }
 
 func getRoleBindingNameForSourceNamespaces(argocdName, targetNamespace string) string {
-	return fmt.Sprintf("%s_%s", argocdName, targetNamespace)
+	baseName := fmt.Sprintf("%s_%s", argocdName, targetNamespace)
+	return truncateWithHash(baseName)
 }
 
 // newRoleBindingWithname creates a new RoleBinding with the given name for the given ArgCD.
