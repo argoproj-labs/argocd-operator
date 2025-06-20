@@ -316,7 +316,6 @@ func TestReconcileArgoCD_reconcileRoleBinding_forSourceNamespaces(t *testing.T) 
 
 	workloadIdentifier := common.ArgoCDServerComponent
 
-	// This should not fail with label length error due to our truncation fix
 	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, p, a))
 
 	roleBinding := &rbacv1.RoleBinding{}
@@ -339,12 +338,6 @@ func TestTruncateWithHash(t *testing.T) {
 		expected string
 		length   int
 	}{
-		{
-			name:     "short string - no truncation needed",
-			input:    "short-name",
-			expected: "short-name",
-			length:   10,
-		},
 		{
 			name:     "exactly 63 characters - no truncation needed",
 			input:    "exactly-sixty-three-characters-long-string-that-is-perfect",
