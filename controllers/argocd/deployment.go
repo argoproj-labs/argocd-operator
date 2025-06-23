@@ -1384,7 +1384,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 			changed = true
 		}
 		// Preserve non-operator labels in the existing deployment.
-		if AddExistingLabels(&existing.Spec.Template.Labels, deploy.Spec.Template.Labels) {
+		if UpdateMapValues(&existing.Spec.Template.Labels, deploy.Spec.Template.Labels) {
 			if changed {
 				explanation += ", "
 			}
@@ -1772,7 +1772,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			changed = true
 		}
 		// Preserve non-operator labels in the existing deployment.
-		if AddExistingLabels(&existing.Spec.Template.Labels, deploy.Spec.Template.Labels) {
+		if UpdateMapValues(&existing.Spec.Template.Labels, deploy.Spec.Template.Labels) {
 			if changed {
 				explanation += ", "
 			}

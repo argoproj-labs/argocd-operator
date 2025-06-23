@@ -1249,6 +1249,92 @@ func TestRetainKubernetesData(t *testing.T) {
 	}
 }
 
+func TestUpdateMapValue(t *testing.T) {
+	tests := []struct {
+		name     string
+		source   map[string]string
+		existing map[string]string
+		expected map[string]string
+	}{
+		{
+			name: "Retain non-operator-specific keys not in source",
+			source: map[string]string{
+				"node.kubernetes.io/pod":             "true",
+				"kubectl.kubernetes.io/restartedAt":  "2024-12-05T09:46:46+05:30",
+				"openshift.openshift.io/restartedAt": "2024-12-05T09:46:46+05:30",
+			},
+			existing: map[string]string{
+				"node.kubernetes.io/pod":             "true",
+				"kubectl.kubernetes.io/restartedAt":  "2024-12-05T09:46:46+05:30",
+				"openshift.openshift.io/restartedAt": "2024-12-05T09:46:46+05:30",
+				"custom-label":                       "custom-value",
+			},
+			expected: map[string]string{
+				"custom-label":                       "custom-value",              // retained from existing
+				"node.kubernetes.io/pod":             "true",                      // unchanged
+				"kubectl.kubernetes.io/restartedAt":  "2024-12-05T09:46:46+05:30", // unchanged
+				"openshift.openshift.io/restartedAt": "2024-12-05T09:46:46+05:30", // unchanged
+			},
+		},
+		{
+			name: "Override operator-specific keys in live with source",
+			source: map[string]string{
+				"node.kubernetes.io/pod":            "source-true",
+				"kubectl.kubernetes.io/restartedAt": "2024-12-05T09:46:46+05:30",
+			},
+			existing: map[string]string{
+				"node.kubernetes.io/pod":            "live-true", // should override
+				"kubectl.kubernetes.io/restartedAt": "2024-12-05T09:46:46+05:30",
+			},
+			expected: map[string]string{
+				"node.kubernetes.io/pod":            "source-true",
+				"kubectl.kubernetes.io/restartedAt": "2024-12-05T09:46:46+05:30",
+			},
+		},
+		{
+			name: "Retain existing operator-specific keys from source",
+			source: map[string]string{
+				"node.kubernetes.io/pod":            "source-true",
+				"kubectl.kubernetes.io/restartedAt": "2024-12-05T09:46:46+05:30",
+			},
+			existing: map[string]string{
+				"node.kubernetes.io/pod": "source-true",
+			},
+			expected: map[string]string{
+				"node.kubernetes.io/pod":            "source-true",
+				"kubectl.kubernetes.io/restartedAt": "2024-12-05T09:46:46+05:30",
+			},
+		},
+		{
+			name: "Handles empty live map",
+			source: map[string]string{
+				"custom-label": "custom-value",
+			},
+			existing: map[string]string{},
+			expected: map[string]string{
+				"custom-label": "custom-value", // unchanged
+			},
+		},
+		{
+			name:   "Handles empty source map",
+			source: map[string]string{},
+			existing: map[string]string{
+				"openshift.io/resource": "value",
+			},
+			expected: map[string]string{
+				"openshift.io/resource": "value", // added from live
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			UpdateMapValues(&tt.existing, tt.source)
+			assert.Equal(t, tt.expected, tt.existing)
+		})
+	}
+}
+
 func TestUpdateStatusConditionOfArgoCD_Success(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	ctx := context.Background()

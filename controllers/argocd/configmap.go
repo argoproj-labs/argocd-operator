@@ -342,7 +342,7 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoproj.ArgoCD) error {
 	if exists {
 		changed := false
 		//Check if labels have changed
-		if AddExistingLabels(&existingCM.Labels, cm.GetLabels()) {
+		if UpdateMapValues(&existingCM.Labels, cm.GetLabels()) {
 			argoutil.LogResourceUpdate(log, existingCM, "updating", "CAConfigMap labels")
 			changed = true
 			if changed {
@@ -513,7 +513,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 
 		changed := false
 		//Check if labels have changed
-		if AddExistingLabels(&existingCM.Labels, cm.GetLabels()) {
+		if UpdateMapValues(&existingCM.Labels, cm.GetLabels()) {
 			argoutil.LogResourceUpdate(log, existingCM, "updating", "ConfigMap labels")
 			changed = true
 		}

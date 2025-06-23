@@ -1788,12 +1788,12 @@ func addKubernetesData(source map[string]string, live map[string]string) {
 	}
 }
 
-func AddExistingLabels(existing *map[string]string, expected map[string]string) bool {
+func UpdateMapValues(existing *map[string]string, source map[string]string) bool {
 	changed := false
 	if *existing == nil {
 		*existing = make(map[string]string)
 	}
-	for key, value := range expected {
+	for key, value := range source {
 		if (*existing)[key] != value {
 			(*existing)[key] = value
 			changed = true

@@ -545,14 +545,14 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 			explanation += "init containers"
 			changed = true
 		}
-		if AddExistingLabels(&existing.Labels, ss.Labels) {
+		if UpdateMapValues(&existing.Labels, ss.Labels) {
 			if changed {
 				explanation += ", "
 			}
 			explanation += "labels"
 			changed = true
 		}
-		if AddExistingLabels(&existing.Spec.Template.Labels, ss.Spec.Template.Labels) {
+		if UpdateMapValues(&existing.Spec.Template.Labels, ss.Spec.Template.Labels) {
 			if changed {
 				explanation += ", "
 			}
