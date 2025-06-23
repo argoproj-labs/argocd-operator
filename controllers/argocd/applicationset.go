@@ -279,8 +279,8 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 			existing.Spec.Template.Spec.Containers = podSpec.Containers
 			existing.Spec.Template.Spec.Volumes = podSpec.Volumes
 			existing.Spec.Template.Spec.ServiceAccountName = podSpec.ServiceAccountName
-			AddExistingLabels(&existing.Labels, deploy.Labels)
-			AddExistingLabels(&existing.Spec.Template.Labels, deploy.Spec.Template.Labels)
+			UpdateMapValues(&existing.Labels, deploy.Labels)
+			UpdateMapValues(&existing.Spec.Template.Labels, deploy.Spec.Template.Labels)
 			existing.Spec.Selector = deploy.Spec.Selector
 			existing.Spec.Template.Spec.NodeSelector = deploy.Spec.Template.Spec.NodeSelector
 			existing.Spec.Template.Spec.Tolerations = deploy.Spec.Template.Spec.Tolerations
@@ -920,7 +920,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetService(cr *argoproj.ArgoCD) er
 		return nil
 	} else {
 		if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
-			AddExistingLabels(&svc.Labels, deploy.Labels)
+			UpdateMapValues(&svc.Labels, deploy.Labels)
 			if err := r.Update(context.TODO(), svc); err != nil {
 				log.Error(err, "failed to update service object")
 			}
