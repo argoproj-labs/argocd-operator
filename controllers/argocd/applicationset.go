@@ -902,7 +902,6 @@ func (r *ReconcileArgoCD) reconcileApplicationSetService(cr *argoproj.ArgoCD) er
 	log.Info("reconciling applicationset service")
 
 	svc := newServiceWithSuffix(common.ApplicationSetServiceNameSuffix, common.ApplicationSetServiceNameSuffix, cr)
-	deploy := newServiceWithSuffix("applicationset-controller", common.ApplicationSetServiceNameSuffix, cr)
 	if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.IsEnabled() {
 
 		if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
@@ -919,10 +918,6 @@ func (r *ReconcileArgoCD) reconcileApplicationSetService(cr *argoproj.ArgoCD) er
 		return nil
 	} else {
 		if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
-			UpdateMapValues(&svc.Labels, deploy.Labels)
-			if err := r.Update(context.TODO(), svc); err != nil {
-				log.Error(err, "failed to update service object")
-			}
 			return nil // Service found, do nothing
 		}
 	}
