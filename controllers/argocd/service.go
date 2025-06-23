@@ -35,6 +35,12 @@ func getArgoServerServiceType(cr *argoproj.ArgoCD) corev1.ServiceType {
 	if len(cr.Spec.Server.Service.Type) > 0 {
 		return cr.Spec.Server.Service.Type
 	}
+
+	// If Principal is enabled, use LoadBalancer service type
+	if cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Principal != nil && cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
+		return corev1.ServiceTypeLoadBalancer
+	}
+
 	return corev1.ServiceTypeClusterIP
 }
 
@@ -313,6 +319,14 @@ func (r *ReconcileArgoCD) reconcileRedisService(cr *argoproj.ArgoCD) error {
 		return nil // Service found, do nothing
 	}
 
+	// If Principal is enabled, use LoadBalancer service type
+	if cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Principal != nil && cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
+		svc.Spec.Type = corev1.ServiceTypeLoadBalancer
+	} else {
+		// TODO: Existing and current service is not compared and updated
+		svc.Spec.Type = corev1.ServiceTypeClusterIP
+	}
+
 	if cr.Spec.HA.Enabled || !cr.Spec.Redis.IsEnabled() {
 		return nil //return as Ha is enabled do nothing
 	}
@@ -412,6 +426,14 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *argoproj.ArgoCD) error {
 
 	if !cr.Spec.Repo.IsEnabled() {
 		return nil
+	}
+
+	// If Principal is enabled, use LoadBalancer service type
+	if cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Principal != nil && cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
+		svc.Spec.Type = corev1.ServiceTypeLoadBalancer
+	} else {
+		// TODO: Existing and current service is not compared and updated
+		svc.Spec.Type = corev1.ServiceTypeClusterIP
 	}
 
 	ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDRepoServerTLSSecretName, cr.Spec.Repo.WantsAutoTLS())

@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd-e2e-cluster-config
+---
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+  namespace: argocd-e2e-cluster-config
+spec:
+  controller:
+    enabled: false
+  argoCDAgent:
+    principal:
+      enabled: true
+      allowedNamespaces:
+        - "*"
+      jwtAllowGenerate: true
+      auth: "mtls:CN=([^,]+)"
+      logLevel: "trace"
+      image: "quay.io/user/argocd-agent:v1"
+  sourceNamespaces:
+    - "agent-managed"
+    - "agent-autonomous"

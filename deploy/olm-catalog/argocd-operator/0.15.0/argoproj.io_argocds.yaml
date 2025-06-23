@@ -446,6 +446,42 @@ spec:
                         type: object
                     type: object
                 type: object
+              argoCDAgent:
+                description: ArgoCDAgent defines configurations for the ArgoCD Agent
+                  component.
+                properties:
+                  principal:
+                    description: Principal defines configurations for the Principal
+                      component of Argo CD Agent.
+                    properties:
+                      allowedNamespaces:
+                        description: AllowedNamespaces is the list of namespaces that
+                          the Principal component is allowed to access.
+                        items:
+                          type: string
+                        type: array
+                      auth:
+                        description: Auth is the authentication method for the Principal
+                          component.
+                        type: string
+                      enabled:
+                        description: Enabled is the flag to enable the Principal component
+                          during Argo CD installation. (optional, default `false`)
+                        type: boolean
+                      image:
+                        description: Image is the name of Argo CD Agent image
+                        type: string
+                      jwtAllowGenerate:
+                        description: JWTAllowGenerate is the flag to enable the JWT
+                          generation during Argo CD installation.
+                        type: boolean
+                      logLevel:
+                        description: LogLevel refers to the log level used by the
+                          Principal component. Defaults to info if not configured.
+                          Valid options are debug, info, trace, error, and warn.
+                        type: string
+                    type: object
+                type: object
               banner:
                 description: Banner defines an additional banner to be displayed in
                   Argo CD UI
@@ -10126,6 +10162,42 @@ spec:
                         required:
                         - enabled
                         type: object
+                    type: object
+                type: object
+              argoCDAgent:
+                description: ArgoCDAgent defines configurations for the ArgoCD Agent
+                  component.
+                properties:
+                  principal:
+                    description: Principal defines configurations for the Principal
+                      component of Argo CD Agent.
+                    properties:
+                      allowedNamespaces:
+                        description: AllowedNamespaces is the list of namespaces that
+                          the Principal component is allowed to access.
+                        items:
+                          type: string
+                        type: array
+                      auth:
+                        description: Auth is the authentication method for the Principal
+                          component.
+                        type: string
+                      enabled:
+                        description: Enabled is the flag to enable the Principal component
+                          during Argo CD installation. (optional, default `false`)
+                        type: boolean
+                      image:
+                        description: Image is the name of Argo CD Agent image
+                        type: string
+                      jwtAllowGenerate:
+                        description: JWTAllowGenerate is the flag to enable the JWT
+                          generation during Argo CD installation.
+                        type: boolean
+                      logLevel:
+                        description: LogLevel refers to the log level used by the
+                          Principal component. Defaults to info if not configured.
+                          Valid options are debug, info, trace, error, and warn.
+                        type: string
                     type: object
                 type: object
               banner:
