@@ -545,20 +545,6 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 			explanation += "init containers"
 			changed = true
 		}
-		if UpdateMapValues(&existing.Labels, ss.Labels) {
-			if changed {
-				explanation += ", "
-			}
-			explanation += "labels"
-			changed = true
-		}
-		if UpdateMapValues(&existing.Spec.Template.Labels, ss.Spec.Template.Labels) {
-			if changed {
-				explanation += ", "
-			}
-			explanation += "labels"
-			changed = true
-		}
 		if changed {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			return r.Client.Update(context.TODO(), existing)
