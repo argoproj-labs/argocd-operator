@@ -9414,6 +9414,12 @@ spec:
                 required:
                 - content
                 type: object
+              cmdParams:
+                additionalProperties:
+                  type: string
+                description: CmdParams specifies command-line parameters for the Argo
+                  CD components.
+                type: object
               configManagementPlugins:
                 description: ConfigManagementPlugins is used to specify additional
                   config management plugins.
