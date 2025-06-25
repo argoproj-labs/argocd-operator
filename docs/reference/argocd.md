@@ -802,7 +802,7 @@ Scopes | `[groups]` | The `scopes` property in the `argocd-rbac-cm` ConfigMap.  
 
 ### RBAC Example
 
-The following example shows a basic RBAC configuration with custom roles and logs permissions:
+The following example shows all properties set to the default values.
 
 ```yaml
 apiVersion: argoproj.io/v1alpha1
@@ -816,12 +816,7 @@ spec:
     defaultPolicy: 'role:readonly'
     policyMatcherMode: 'glob'
     policy: |
-      # Custom role with applications and logs access
-      p, role:custom-role, applications, get, */*, allow
-      p, role:custom-role, logs, get, */*, allow
-      
-      # Assign role to users/groups
-      g, user1, role:custom-role
+      g, system:cluster-admins, role:admin
     scopes: '[groups]'
 ```
 
@@ -839,7 +834,7 @@ Starting with Argo CD 3.0, logs RBAC enforcement is enabled by default and logs 
 When creating custom roles, you must explicitly add logs permissions:
 
 ```yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd
@@ -861,7 +856,7 @@ spec:
 You can create a global log viewer role that only has access to logs:
 
 ```yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd
@@ -876,38 +871,6 @@ spec:
       # Assign role to users/groups
       g, log-viewers, role:global-log-viewer
 ```
-
-### Migration from Argo CD 2.4 to 3.0
-
-If you're upgrading from Argo CD 2.4 to 3.0, note the following changes:
-
-1. The `server.rbac.log.enforce.enable` flag is no longer supported
-2. Logs RBAC is now enforced by default
-3. Users with existing policies need to explicitly add logs permissions
-4. The operator does not provide default RBAC policies - you must define your own
-
-#### Detection
-
-The following users are **unaffected** by this change:
-- Users who have `server.rbac.log.enforce.enable: "true"` in their `argocd-cm` ConfigMap
-- Users who have `policy.default: role:readonly` or `policy.default: role:admin` in their `argocd-rbac-cm` ConfigMap
-
-The following users are **affected** and should perform remediation:
-- Users who don't have a `policy.default` in their `argocd-rbac-cm` ConfigMap
-- Users who have `server.rbac.log.enforce.enable` set to `false` or don't have this setting at all in their `argocd-cm` ConfigMap
-
-#### Remediation Steps
-
-1. **Quick Remediation:**
-   - Add logs permissions to existing roles
-   - Example: `p, role:existing-role, logs, get, */*, allow`
-
-2. **Recommended Remediation:**
-   - Review existing roles and their permissions
-   - Add logs permissions only to roles that need them
-   - Consider creating a dedicated log viewer role
-   - Define your own RBAC policies as the operator does not provide defaults
-   - Remove the `server.rbac.log.enforce.enable` setting from `argocd-cm` ConfigMap if it was present before the upgrade
 
 ## Redis Options
 
