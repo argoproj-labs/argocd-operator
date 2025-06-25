@@ -1,0 +1,15 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+  namespace: argocd-operator-system
+spec:
+  rbac:
+    policy: |
+      # Custom role without logs permissions
+      p, role:no-logs, applications, get, */*, allow
+      # Custom role with logs permissions
+      p, role:with-logs, applications, get, */*, allow
+      p, role:with-logs, logs, get, */*, allow
+      # Global log viewer role
+      p, role:global-log-viewer, logs, get, */*, allow

@@ -804,7 +804,7 @@ Scopes | `[groups]` | The `scopes` property in the `argocd-rbac-cm` ConfigMap.  
 
 The following example shows all properties set to the default values.
 
-``` yaml
+```yaml
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
@@ -827,6 +827,58 @@ Starting with v3, the update or delete actions only apply to the application its
 
 To preserve v2 behavior the config value server.rbac.disableApplicationFineGrainedRBACInheritance is set to false in the Argo CD ConfigMap argocd-cm.
 
+
+### Logs RBAC Enforcement (Argo CD v3.0+)
+
+Starting with Argo CD 3.0, logs RBAC enforcement is enabled by default and logs are treated as a first-class RBAC resource. This means:
+
+1. The `server.rbac.log.enforce.enable` flag has been removed
+2. Logs permissions must be explicitly granted to users/groups/roles
+3. The operator does not manage default RBAC policies - users must define their own policies
+4. Custom roles must explicitly include logs permissions
+
+#### Creating Custom Roles with Logs Access
+
+When creating custom roles, you must explicitly add logs permissions:
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: rbac-logs
+spec:
+  rbac:
+    policy: |
+      # Custom role with logs access
+      p, role:custom-role, applications, get, */*, allow
+      p, role:custom-role, logs, get, */*, allow
+      
+      # Assign role to users/groups
+      g, user1, role:custom-role
+```
+
+#### Global Log Viewer Role
+
+You can create a global log viewer role that only has access to logs:
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: rbac-log-viewer
+spec:
+  rbac:
+    policy: |
+      # Global log viewer role
+      p, role:global-log-viewer, logs, get, */*, allow
+      
+      # Assign role to users/groups
+      g, log-viewers, role:global-log-viewer
+```
 
 ## Redis Options
 

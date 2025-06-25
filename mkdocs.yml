@@ -32,6 +32,7 @@ nav:
   - Overview: index.md
   - Release Process: release-process.md
   - Security: SECURITY.md
+  - Upgrading: upgrading.md
   - E2E Testing: e2e-test-guide.md
   - Install:
     - Getting Started: install/start.md

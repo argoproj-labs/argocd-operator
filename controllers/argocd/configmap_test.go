@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -1330,4 +1331,209 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withMultipleInstances(t *testing
 
 	// Verify second instance's installationID
 	assert.Equal(t, "instance-2", cm2.Data[common.ArgoCDKeyInstallationID])
+}
+
+func TestReconcileArgoCD_RBACPolicyWithLogsPermissions(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+
+	argocdCM := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: a.Namespace,
+		},
+		Data: map[string]string{},
+	}
+
+	resObjs := []client.Object{a, argocdCM}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	ctx := context.TODO()
+
+	// Test 1: Verify no default policy is injected when no policy is specified
+	err := r.reconcileRBAC(a)
+	assert.NoError(t, err)
+
+	createdCM := &corev1.ConfigMap{}
+	err = r.Client.Get(ctx, types.NamespacedName{
+		Name:      common.ArgoCDRBACConfigMapName,
+		Namespace: a.Namespace,
+	}, createdCM)
+	assert.NoError(t, err)
+
+	// Verify no default policy is injected
+	policy := createdCM.Data[common.ArgoCDKeyRBACPolicyCSV]
+	assert.Empty(t, policy)
+
+	// Test 2: Verify default readonly role with logs permissions
+	defaultReadonlyPolicy := `p, role:readonly, applications, get, */*, allow
+p, role:readonly, logs, get, */*, allow`
+	a.Spec.RBAC.Policy = &defaultReadonlyPolicy
+	defaultPolicy := "role:readonly"
+	a.Spec.RBAC.DefaultPolicy = &defaultPolicy
+
+	err = r.reconcileRBAC(a)
+	assert.NoError(t, err)
+
+	err = r.Client.Get(ctx, types.NamespacedName{
+		Name:      common.ArgoCDRBACConfigMapName,
+		Namespace: a.Namespace,
+	}, createdCM)
+	assert.NoError(t, err)
+
+	// Verify readonly role has logs permissions
+	policy = createdCM.Data[common.ArgoCDKeyRBACPolicyCSV]
+	assert.Equal(t, defaultReadonlyPolicy, policy)
+	assert.Equal(t, defaultPolicy, createdCM.Data[common.ArgoCDKeyRBACPolicyDefault])
+
+	// Test 3: Verify default admin role with logs permissions
+	defaultAdminPolicy := `p, role:admin, applications, *, */*, allow
+p, role:admin, logs, get, */*, allow`
+	a.Spec.RBAC.Policy = &defaultAdminPolicy
+	defaultPolicy = "role:admin"
+	a.Spec.RBAC.DefaultPolicy = &defaultPolicy
+
+	err = r.reconcileRBAC(a)
+	assert.NoError(t, err)
+
+	err = r.Client.Get(ctx, types.NamespacedName{
+		Name:      common.ArgoCDRBACConfigMapName,
+		Namespace: a.Namespace,
+	}, createdCM)
+	assert.NoError(t, err)
+
+	// Verify admin role has logs permissions
+	policy = createdCM.Data[common.ArgoCDKeyRBACPolicyCSV]
+	assert.Equal(t, defaultAdminPolicy, policy)
+	assert.Equal(t, defaultPolicy, createdCM.Data[common.ArgoCDKeyRBACPolicyDefault])
+
+	// Test 4: Verify custom role without logs permissions
+	customPolicy := `p, role:custom-app-viewer, applications, get, */*, allow`
+	a.Spec.RBAC.Policy = &customPolicy
+	defaultPolicy = "role:custom-app-viewer"
+	a.Spec.RBAC.DefaultPolicy = &defaultPolicy
+
+	err = r.reconcileRBAC(a)
+	assert.NoError(t, err)
+
+	err = r.Client.Get(ctx, types.NamespacedName{
+		Name:      common.ArgoCDRBACConfigMapName,
+		Namespace: a.Namespace,
+	}, createdCM)
+	assert.NoError(t, err)
+
+	// Verify custom role does not have logs permissions
+	policy = createdCM.Data[common.ArgoCDKeyRBACPolicyCSV]
+	assert.Equal(t, customPolicy, policy)
+	assert.NotContains(t, policy, "p, role:custom-app-viewer, logs, get, */*, allow")
+
+	// Test 5: Verify custom role with explicit logs permissions
+	customPolicyWithLogs := `p, role:custom-app-viewer, applications, get, */*, allow
+p, role:custom-app-viewer, logs, get, */*, allow`
+	a.Spec.RBAC.Policy = &customPolicyWithLogs
+
+	err = r.reconcileRBAC(a)
+	assert.NoError(t, err)
+
+	err = r.Client.Get(ctx, types.NamespacedName{
+		Name:      common.ArgoCDRBACConfigMapName,
+		Namespace: a.Namespace,
+	}, createdCM)
+	assert.NoError(t, err)
+
+	// Verify custom role has explicit logs permissions
+	policy = createdCM.Data[common.ArgoCDKeyRBACPolicyCSV]
+	assert.Equal(t, customPolicyWithLogs, policy)
+
+	// Test 6: Verify global log viewer role
+	globalLogViewerPolicy := `p, role:global-log-viewer, logs, get, */*, allow`
+	a.Spec.RBAC.Policy = &globalLogViewerPolicy
+	defaultPolicy = "role:global-log-viewer"
+	a.Spec.RBAC.DefaultPolicy = &defaultPolicy
+
+	err = r.reconcileRBAC(a)
+	assert.NoError(t, err)
+
+	err = r.Client.Get(ctx, types.NamespacedName{
+		Name:      common.ArgoCDRBACConfigMapName,
+		Namespace: a.Namespace,
+	}, createdCM)
+	assert.NoError(t, err)
+
+	// Verify global log viewer role and default policy
+	policy = createdCM.Data[common.ArgoCDKeyRBACPolicyCSV]
+	assert.Equal(t, globalLogViewerPolicy, policy)
+	assert.Equal(t, defaultPolicy, createdCM.Data[common.ArgoCDKeyRBACPolicyDefault])
+
+	// Test 7: Verify no default policy is restored when custom policy is removed
+	// Clean up ConfigMap to simulate a reset state
+	err = r.Client.Delete(ctx, createdCM)
+	assert.NoError(t, err)
+
+	a.Spec.RBAC.Policy = nil
+	a.Spec.RBAC.DefaultPolicy = nil
+
+	err = r.reconcileRBAC(a)
+	assert.NoError(t, err)
+
+	err = r.Client.Get(ctx, types.NamespacedName{
+		Name:      common.ArgoCDRBACConfigMapName,
+		Namespace: a.Namespace,
+	}, createdCM)
+	assert.NoError(t, err)
+
+	// Verify no default policy is restored
+	policy = createdCM.Data[common.ArgoCDKeyRBACPolicyCSV]
+	assert.Empty(t, policy)
+
+	// Test 8: Verify server.rbac.log.enforce.enable is not set in argocd-cm
+	cm := &corev1.ConfigMap{}
+	err = r.Client.Get(ctx, types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: a.Namespace,
+	}, cm)
+	assert.NoError(t, err)
+
+	_, exists := cm.Data["server.rbac.log.enforce.enable"]
+	assert.False(t, exists, "server.rbac.log.enforce.enable should not exist in Argo CD v3.0+")
+}
+
+func TestReconcileArgoCD_RemovesLegacyLogEnforceFlag(t *testing.T) {
+	// Setup fake ArgoCD instance and client
+	cr := makeTestArgoCD() // helper to create ArgoCD CR
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: cr.Namespace,
+		},
+		Data: map[string]string{
+			"server.rbac.log.enforce.enable": "true",
+		},
+	}
+
+	scheme := runtime.NewScheme()
+	_ = corev1.AddToScheme(scheme)
+	_ = argoproj.AddToScheme(scheme)
+
+	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cr, cm).Build()
+	r := &ReconcileArgoCD{Client: client, Scheme: scheme}
+
+	// Call reconcile
+	err := r.reconcileArgoConfigMap(cr)
+	assert.NoError(t, err)
+
+	// Fetch updated ConfigMap
+	updated := &corev1.ConfigMap{}
+	err = client.Get(context.TODO(), types.NamespacedName{
+		Name:      cm.Name,
+		Namespace: cm.Namespace,
+	}, updated)
+	assert.NoError(t, err)
+
+	_, exists := updated.Data["server.rbac.log.enforce.enable"]
+	assert.False(t, exists, "expected deprecated key to be removed")
 }
