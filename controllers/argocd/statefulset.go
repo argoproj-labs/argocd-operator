@@ -21,8 +21,6 @@ import (
 	"strconv"
 	"time"
 
-	"k8s.io/utils/pointer"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -613,8 +611,7 @@ func getArgoControllerContainerEnv(cr *argoproj.ArgoCD, replicas int32) []corev1
 				LocalObjectReference: corev1.LocalObjectReference{
 					Name: common.ArgoCDCmdParamsConfigMapName,
 				},
-				Key:      "controller.resource.health.persist",
-				Optional: pointer.Bool(true),
+				Key: "controller.resource.health.persist",
 			},
 		},
 	},

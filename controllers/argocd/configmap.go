@@ -800,18 +800,15 @@ func (r *ReconcileArgoCD) reconcileArgoCmdParamsConfigMap(cr *argoproj.ArgoCD) e
 	cm := newConfigMapWithName(common.ArgoCDCmdParamsConfigMapName, cr)
 	cm.Data = make(map[string]string)
 
+	// Set default for controller.resource.health.persist to "true"
+	const healthPersistKey = "controller.resource.health.persist"
+	cm.Data[healthPersistKey] = "true"
+
 	// Copy user-specified command parameters if any
 	if len(cr.Spec.CmdParams) > 0 {
 		for k, v := range cr.Spec.CmdParams {
 			cm.Data[k] = v
 		}
-	}
-
-	// Set default for controller.resource.health.persist to "true"
-	// only if user hasn't provided it explicitly
-	const healthPersistKey = "controller.resource.health.persist"
-	if _, exists := cm.Data[healthPersistKey]; !exists {
-		cm.Data[healthPersistKey] = "true"
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {

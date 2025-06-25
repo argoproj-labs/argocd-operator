@@ -177,6 +177,16 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 	cmd = append(cmd, "--logformat")
 	cmd = append(cmd, getLogFormat(cr.Spec.Controller.LogFormat))
 
+	persistHealth := "true" // default
+	if val, ok := cr.Spec.CmdParams["controller.resource.health.persist"]; ok {
+		persistHealth = val
+	}
+
+	// set the command only if persistHealth is true
+	if persistHealth == "true" {
+		cmd = append(cmd, "--persist-resource-health")
+	}
+
 	// check if extra args are present
 	extraArgs := cr.Spec.Controller.ExtraCommandArgs
 	cmd = appendUniqueArgs(cmd, extraArgs)

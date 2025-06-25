@@ -72,6 +72,10 @@ func controllerDefaultVolumes() []corev1.Volume {
 							Key:  "controller.profile.enabled",
 							Path: "profiler.enabled",
 						},
+						{
+							Key:  "controller.resource.health.persist",
+							Path: "controller.resource.health.persist",
+						},
 					},
 				},
 			},
@@ -208,7 +212,9 @@ func TestReconcileArgoCD_reconcileApplicationController(t *testing.T) {
 		"--status-processors", "20",
 		"--kubectl-parallelism-limit", "10",
 		"--loglevel", "info",
-		"--logformat", "text"}
+		"--logformat", "text",
+		"--persist-resource-health",
+	}
 	if diff := cmp.Diff(want, command); diff != "" {
 		t.Fatalf("reconciliation failed:\n%s", diff)
 	}
@@ -254,7 +260,8 @@ func TestReconcileArgoCD_reconcileApplicationController_withRedisTLS(t *testing.
 		"--status-processors", "20",
 		"--kubectl-parallelism-limit", "10",
 		"--loglevel", "info",
-		"--logformat", "text"}
+		"--logformat", "text",
+		"--persist-resource-health"}
 	if diff := cmp.Diff(want, command); diff != "" {
 		t.Fatalf("reconciliation failed:\n%s", diff)
 	}
@@ -293,7 +300,8 @@ func TestReconcileArgoCD_reconcileApplicationController_withUpdate(t *testing.T)
 		"--status-processors", "30",
 		"--kubectl-parallelism-limit", "10",
 		"--loglevel", "info",
-		"--logformat", "text"}
+		"--logformat", "text",
+		"--persist-resource-health"}
 	if diff := cmp.Diff(want, command); diff != "" {
 		t.Fatalf("reconciliation failed:\n%s", diff)
 	}
@@ -401,6 +409,12 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 			},
 			replicas: 1,
 			vars: []corev1.EnvVar{
+				{Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST", ValueFrom: &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
+						Key:                  "controller.resource.health.persist",
+					},
+				}},
 				{Name: "HOME", Value: "/home/argocd"},
 				{Name: "REDIS_PASSWORD", Value: "",
 					ValueFrom: &corev1.EnvVarSource{
@@ -421,6 +435,12 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 			replicas: 1,
 			vars: []corev1.EnvVar{
 				{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "1"},
+				{Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST", ValueFrom: &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
+						Key:                  "controller.resource.health.persist",
+					},
+				}},
 				{Name: "HOME", Value: "/home/argocd"},
 				{Name: "REDIS_PASSWORD", Value: "",
 					ValueFrom: &corev1.EnvVarSource{
@@ -441,6 +461,12 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 			replicas: 3,
 			vars: []corev1.EnvVar{
 				{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "3"},
+				{Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST", ValueFrom: &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
+						Key:                  "controller.resource.health.persist",
+					},
+				}},
 				{Name: "HOME", Value: "/home/argocd"},
 				{Name: "REDIS_PASSWORD", Value: "",
 					ValueFrom: &corev1.EnvVarSource{
@@ -463,6 +489,12 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 			replicas: 2,
 			vars: []corev1.EnvVar{
 				{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "2"},
+				{Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST", ValueFrom: &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
+						Key:                  "controller.resource.health.persist",
+					},
+				}},
 				{Name: "HOME", Value: "/home/argocd"},
 				{Name: "REDIS_PASSWORD", Value: "",
 					ValueFrom: &corev1.EnvVarSource{
@@ -520,6 +552,12 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 func TestReconcileArgoCD_reconcileApplicationController_withAppSync(t *testing.T) {
 
 	expectedEnv := []corev1.EnvVar{
+		{Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST", ValueFrom: &corev1.EnvVarSource{
+			ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
+				Key:                  "controller.resource.health.persist",
+			},
+		}},
 		{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "600s"},
 		{Name: "HOME", Value: "/home/argocd"},
 		{Name: "REDIS_PASSWORD", Value: "",
@@ -567,6 +605,12 @@ func TestReconcileArgoCD_reconcileApplicationController_withAppSync(t *testing.T
 func TestReconcileArgoCD_reconcileApplicationController_withEnv(t *testing.T) {
 
 	expectedEnv := []corev1.EnvVar{
+		{Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST", ValueFrom: &corev1.EnvVarSource{
+			ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
+				Key:                  "controller.resource.health.persist",
+			},
+		}},
 		{Name: "CUSTOM_ENV_VAR", Value: "custom-value"},
 		{Name: "HOME", Value: "/home/argocd"},
 		{Name: "REDIS_PASSWORD", Value: "",

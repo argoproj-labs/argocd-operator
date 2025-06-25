@@ -23,4 +23,5 @@ spec:
         - info
         - --logformat
         - text
+        - --persist-resource-health
         - --hydrator-enabled

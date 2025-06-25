@@ -22,6 +22,7 @@ spec:
         - --loglevel
         - info
         - --logformat
+        - --persist-resource-health
         - text
 ---
 apiVersion: apps/v1
@@ -49,6 +50,7 @@ spec:
         - info
         - --logformat
         - text
+        - --persist-resource-health
         - --status-processors
         - "15"
         - --kubectl-parallelism-limit
