@@ -1537,3 +1537,66 @@ func TestReconcileArgoCD_RemovesLegacyLogEnforceFlag(t *testing.T) {
 	_, exists := updated.Data["server.rbac.log.enforce.enable"]
 	assert.False(t, exists, "expected deprecated key to be removed")
 }
+
+func TestReconcileArgoCD_reconcileArgoCmdParamsConfigMap(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		name           string
+		cmdParams      map[string]string
+		expectedValue  string
+		expectKeyExist bool
+	}{
+		{
+			name:           "No user-specified CmdParams",
+			cmdParams:      nil,
+			expectedValue:  "true",
+			expectKeyExist: true,
+		},
+		{
+			name: "User-specified CmdParams without health.persist",
+			cmdParams: map[string]string{
+				"some.other.param": "value",
+			},
+			expectedValue:  "true",
+			expectKeyExist: true,
+		},
+		{
+			name: "User overrides health.persist to false",
+			cmdParams: map[string]string{
+				"controller.resource.health.persist": "false",
+			},
+			expectedValue:  "false",
+			expectKeyExist: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.CmdParams = test.cmdParams
+			})
+
+			resObjs := []client.Object{a}
+			subresObjs := []client.Object{a}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
+
+			err := r.reconcileArgoCmdParamsConfigMap(a)
+			assert.NoError(t, err)
+
+			cm := &corev1.ConfigMap{}
+			err = r.Client.Get(context.TODO(), types.NamespacedName{
+				Name:      common.ArgoCDCmdParamsConfigMapName,
+				Namespace: testNamespace,
+			}, cm)
+			assert.NoError(t, err)
+
+			val, exists := cm.Data["controller.resource.health.persist"]
+			assert.Equal(t, test.expectKeyExist, exists, "Expected key existence mismatesth")
+			assert.Equal(t, test.expectedValue, val, "Expected value mismatch")
+		})
+	}
+}
