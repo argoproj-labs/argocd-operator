@@ -51,3 +51,28 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: source-ns-2
+---
+# Check second namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: source-ns-3
+---
+# Check third ArgoCD instance is available
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd-3
+  namespace: test-1-046-argocd-3
+status:
+  phase: Available
+---
+# Check first ArgoCD ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: test-1-046-argocd-3
+data:
+  installationID: "instance-3"
+  application.resourceTrackingMethod: "annotation"

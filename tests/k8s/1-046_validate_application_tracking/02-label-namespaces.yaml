@@ -4,4 +4,5 @@ commands:
   - script: |
         kubectl label ns source-ns-1 argocd.argoproj.io/managed-by=test-1-046-argocd-1
         kubectl label ns source-ns-2 argocd.argoproj.io/managed-by=test-1-046-argocd-2
+        kubectl annotate ns source-ns-3 argocd.argoproj.io/managed-by=test-1-046-argocd-3
         sleep 30
