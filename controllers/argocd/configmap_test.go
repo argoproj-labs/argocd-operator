@@ -32,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	k8syaml "sigs.k8s.io/yaml"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -221,6 +222,9 @@ func TestReconcileArgoCD_reconcileTLSCerts_withInitialCertsUpdate(t *testing.T) 
 func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
+	defaultExclusions, err := k8syaml.Marshal(getDefaultResourceExclusions())
+	assert.NoError(t, err)
+
 	defaultConfigMapData := map[string]string{
 		"application.instanceLabelKey":       common.ArgoCDDefaultApplicationInstanceLabelKey,
 		"application.resourceTrackingMethod": argoproj.ResourceTrackingMethodLabel.String(),
@@ -233,7 +237,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 		"kustomize.buildOptions":             "",
 		"oidc.config":                        "",
 		"resource.inclusions":                "",
-		"resource.exclusions":                "",
+		"resource.exclusions":                string(defaultExclusions),
 		"server.rbac.disableApplicationFineGrainedRBACInheritance": "false",
 		"statusbadge.enabled":     "false",
 		"url":                     "https://argocd-server",
@@ -274,6 +278,33 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 				"ui.bannercontent": "Custom Styles - Banners",
 				"ui.bannerurl":     "https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners",
 			},
+		},
+		{
+			"resource-exclusions",
+			[]argoCDOpt{func(a *argoproj.ArgoCD) {
+				a.Spec.ResourceExclusions = `- apiGroups:
+    - repositories.stash.appscode.com
+  kinds:
+    - Snapshot
+  clusters:
+    - "*.local"`
+
+			}},
+			func() map[string]string {
+				all := append(getDefaultResourceExclusions(), filteredResource{
+					APIGroups: []string{"repositories.stash.appscode.com"},
+					Kinds:     []string{"Snapshot"},
+					Clusters:  []string{"*.local"},
+				})
+				raw, err := k8syaml.Marshal(all)
+				if err != nil {
+					panic(err)
+				}
+				fmt.Println(string(raw))
+				return map[string]string{
+					"resource.exclusions": string(raw),
+				}
+			}(),
 		},
 	}
 
