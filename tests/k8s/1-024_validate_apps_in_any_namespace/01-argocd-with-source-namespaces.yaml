@@ -14,6 +14,11 @@ kind: Namespace
 metadata:
   name: test-2-24-custom
 ---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: longns-abcdefghijklmnopqrstuvwxyz-123456789012345
+---
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
@@ -23,3 +28,4 @@ spec:
   sourceNamespaces:
   - test-1-24-custom
   - test-2-24-custom
+  - longns-abcdefghijklmnopqrstuvwxyz-123456789012345
