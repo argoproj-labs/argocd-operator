@@ -61,7 +61,7 @@ func createResources(cr *argoproj.ArgoCD, expect *assert.Assertions) *ReconcileA
 }
 
 func TestReconcileArgoCD_reconcileArgoLocalUsersCreate(t *testing.T) {
-	defer cleanupTokenTimers()
+	defer cleanupAllTokenTimers()
 	logf.SetLogger(ZapLogger(true))
 	var err error
 
@@ -150,7 +150,7 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersCreate(t *testing.T) {
 }
 
 func TestReconcileArgoCD_reconcileArgoLocalUsersCreateWithDefaultTokenLifetime(t *testing.T) {
-	defer cleanupTokenTimers()
+	defer cleanupAllTokenTimers()
 	logf.SetLogger(ZapLogger(true))
 	var err error
 
@@ -232,7 +232,7 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersCreateWithDefaultTokenLifetime(t
 }
 
 func TestReconcileArgoCD_reconcileArgoLocalUsersUpdateTokenLifetime(t *testing.T) {
-	defer cleanupTokenTimers()
+	defer cleanupAllTokenTimers()
 	logf.SetLogger(ZapLogger(true))
 	var err error
 
@@ -296,7 +296,7 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersUpdateTokenLifetime(t *testing.T
 }
 
 func TestReconcileArgoCD_reconcileArgoLocalUsersDelete(t *testing.T) {
-	defer cleanupTokenTimers()
+	defer cleanupAllTokenTimers()
 	logf.SetLogger(ZapLogger(true))
 	var err error
 
@@ -353,7 +353,7 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersDelete(t *testing.T) {
 }
 
 func TestReconcileArgoCD_reconcileArgoLocalUsersDeleteWithExtraConfigAPIKey(t *testing.T) {
-	defer cleanupTokenTimers()
+	defer cleanupAllTokenTimers()
 	logf.SetLogger(ZapLogger(true))
 	var err error
 
@@ -414,7 +414,7 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersDeleteWithExtraConfigAPIKey(t *t
 }
 
 func TestReconcileArgoCD_reconcileArgoLocalUsersDeleteWithExtraConfigLogin(t *testing.T) {
-	defer cleanupTokenTimers()
+	defer cleanupAllTokenTimers()
 	logf.SetLogger(ZapLogger(true))
 	var err error
 
@@ -475,7 +475,7 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersDeleteWithExtraConfigLogin(t *te
 }
 
 func TestReconcileArgoCD_reconcileArgoLocalUsersBasicAutoRenew(t *testing.T) {
-	defer cleanupTokenTimers()
+	defer cleanupAllTokenTimers()
 	logf.SetLogger(ZapLogger(true))
 	var err error
 
@@ -555,7 +555,7 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersBasicAutoRenew(t *testing.T) {
 }
 
 func TestReconcileArgoCD_reconcileArgoLocalUsersTurnOffAutoRenew(t *testing.T) {
-	defer cleanupTokenTimers()
+	defer cleanupAllTokenTimers()
 	logf.SetLogger(ZapLogger(true))
 
 	expect := assert.New(t)
@@ -596,7 +596,7 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersTurnOffAutoRenew(t *testing.T) {
 }
 
 func TestReconcileArgoCD_reconcileArgoLocalUsersTurnOnAutoRenew(t *testing.T) {
-	defer cleanupTokenTimers()
+	defer cleanupAllTokenTimers()
 	logf.SetLogger(ZapLogger(true))
 
 	expect := assert.New(t)

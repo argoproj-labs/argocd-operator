@@ -188,6 +188,9 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 		ActiveInstanceReconciliationCount.DeleteLabelValues(argocd.Namespace)
 		ReconcileTime.DeletePartialMatch(prometheus.Labels{"namespace": argocd.Namespace})
 
+		// Remove any local user token renewal timers for the namespace
+		cleanupNamespaceTokenTimers(argocd.Namespace)
+
 		if argocd.IsDeletionFinalizerPresent() {
 			if err := r.deleteClusterResources(argocd); err != nil {
 				return reconcile.Result{}, argocd, fmt.Errorf("failed to delete ClusterResources: %w", err)

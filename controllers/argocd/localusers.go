@@ -488,8 +488,22 @@ func localUsersInExtraConfig(cr *argoproj.ArgoCD) map[string]bool {
 	return localUsers
 }
 
+func cleanupNamespaceTokenTimers(namespace string) {
+	userTokensLock.protect(func() {
+		log.Info(fmt.Sprintf("removing local user token renewal timers for namespace \"%s\"", namespace))
+		prefix := namespace + "/"
+		for key, timer := range tokenRenewalTimers {
+			if strings.HasPrefix(key, prefix) {
+				timer.stop = true
+				timer.timer.Stop()
+				delete(tokenRenewalTimers, key)
+			}
+		}
+	})
+}
+
 // For use by test code
-func cleanupTokenTimers() {
+func cleanupAllTokenTimers() {
 	userTokensLock.protect(func() {
 		for key, timer := range tokenRenewalTimers {
 			timer.stop = true
