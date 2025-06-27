@@ -347,13 +347,13 @@ func TestTruncateWithHash(t *testing.T) {
 		{
 			name:     "64 characters - needs truncation",
 			input:    "exactly-sixty-four-characters-long-string-that-needs-truncation",
-			expected: "exactly-sixty-four-characters-long-string-that-needs-truncat-", // truncated + hash
+			expected: "exactly-sixty-four-characters-long-string-that-needs-trunc-", // truncated + 7-char hash
 			length:   63,
 		},
 		{
 			name:     "very long string - needs significant truncation",
 			input:    "this-is-a-very-long-string-that-will-need-to-be-truncated-significantly-to-fit-within-the-kubernetes-label-limit",
-			expected: "this-is-a-very-long-string-that-will-need-to-be-truncated-", // truncated + hash
+			expected: "this-is-a-very-long-string-that-will-need-to-be-truncated-", // truncated + 7-char hash
 			length:   63,
 		},
 		{

@@ -2,7 +2,7 @@ package argocd
 
 import (
 	"context"
-	"crypto/sha256"
+	"crypto/sha1"
 	"fmt"
 	"os"
 	"reflect"
@@ -27,8 +27,8 @@ func truncateWithHash(input string) string {
 	}
 
 	// Calculate hash of the original string
-	hash := sha256.Sum256([]byte(input))
-	hashSuffix := fmt.Sprintf("-%x", hash[:4])
+	hash := sha1.Sum([]byte(input))
+	hashSuffix := fmt.Sprintf("-%x", hash[:7])
 
 	// Calculate how much we can truncate
 	maxBaseLength := maxLabelLength - len(hashSuffix)
