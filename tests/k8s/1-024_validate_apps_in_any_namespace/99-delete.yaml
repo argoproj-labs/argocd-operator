@@ -11,5 +11,8 @@ delete:
 - apiVersion: v1
   kind: Namespace
   name: central-argocd
+- apiVersion: v1
+  kind: Namespace
+  name: longns-abcdefghijklmnopqrstuvwxyz-123456789012345
 commands:
-  - command: sleep 30s
+- command: sleep 30s
