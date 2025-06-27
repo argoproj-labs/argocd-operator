@@ -2,9 +2,9 @@
 
 This page contains upgrade instructions and migration guides for the Argo CD Operator.
 
-#### Upgrading from Operator ≤0.14 (Argo CD ≤2.14) to Operator 0.15+ (Argo CD 3.0+)
+## Upgrading from Operator ≤0.14 (Argo CD ≤2.14) to Operator 0.15+ (Argo CD 3.0+)
 
-## Logs RBAC Enforcement
+### Logs RBAC Enforcement
 
 If you're upgrading from Argo CD 2.x to 3.0+, note the following changes:
 
@@ -36,7 +36,7 @@ The following users are **affected** and should perform remediation:
    - Define your own RBAC policies as the operator does not provide defaults
    - Remove the `server.rbac.log.enforce.enable` setting from `argocd-cm` ConfigMap if it was present before the upgrade
 
-## RBAC with Dex SSO Authentication
+### RBAC with Dex SSO Authentication
 
 If you're upgrading from Argo CD 2.x to 3.0+ and using Dex SSO, you need to update your RBAC policies to maintain the same access levels.
 
