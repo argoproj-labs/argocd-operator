@@ -56,4 +56,4 @@ kind: Deployment
 metadata:
   name: example-argocd-redis-ha-haproxy
 status:
-  readyReplicas: 1
+  readyReplicas: 3

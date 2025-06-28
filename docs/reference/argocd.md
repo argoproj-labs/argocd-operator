@@ -13,7 +13,6 @@ Name | Default | Description
 --- | --- | ---
 [**ApplicationInstanceLabelKey**](#application-instance-label-key) | `mycompany.com/appname` |  The metadata.label key name where Argo CD injects the app name as a tracking label.
 [**ApplicationSet**](#applicationset-controller-options) | [Object] | ApplicationSet controller configuration options.
-[**ConfigManagementPlugins**](#config-management-plugins) | [Empty] | Configuration to add a config management plugin.
 [**Controller**](#controller-options) | [Object] | Argo CD Application Controller options.
 [**DisableAdmin**](#disable-admin) | `false` | Disable the admin user.
 [**ExtraConfig**](#extra-config) | [Empty] | A catch-all mechanism to populate the argocd-cm configmap.
@@ -160,29 +159,6 @@ data:
     -----END CERTIFICATE-----
 ```    
 
-## Config Management Plugins
-
-Configuration to add a config management plugin. This property maps directly to the `configManagementPlugins` field in the `argocd-cm` ConfigMap.
-
-### Config Management Plugins Example
-
-The following example sets a value in the `argocd-cm` ConfigMap using the `ConfigManagementPlugins` property on the `ArgoCD` resource.
-
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: example-argocd
-  labels:
-    example: config-management-plugins
-spec:
-  configManagementPlugins: |
-    - name: kasane
-      init:
-        command: [kasane, update]
-      generate:
-        command: [kasane, show]
-```
 
 ## Controller Options
 
@@ -828,7 +804,7 @@ Scopes | `[groups]` | The `scopes` property in the `argocd-rbac-cm` ConfigMap.  
 
 The following example shows all properties set to the default values.
 
-``` yaml
+```yaml
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
@@ -842,6 +818,66 @@ spec:
     policy: |
       g, system:cluster-admins, role:admin
     scopes: '[groups]'
+```
+### Fine-Grained RBAC for application update and delete sub-resources (v3.0+)
+
+The default behavior of fine-grained policies have changed so they no longer apply to sub-resources. Prior to v3, policies granting update or delete to an application also applied to any of its sub-resources.
+
+Starting with v3, the update or delete actions only apply to the application itself. New policies must be defined to allow the update/* or delete/* actions on an Application's managed resources.
+
+To preserve v2 behavior the config value server.rbac.disableApplicationFineGrainedRBACInheritance is set to false in the Argo CD ConfigMap argocd-cm.
+
+
+### Logs RBAC Enforcement (Argo CD v3.0+)
+
+Starting with Argo CD 3.0, logs RBAC enforcement is enabled by default and logs are treated as a first-class RBAC resource. This means:
+
+1. The `server.rbac.log.enforce.enable` flag has been removed
+2. Logs permissions must be explicitly granted to users/groups/roles
+3. The operator does not manage default RBAC policies - users must define their own policies
+4. Custom roles must explicitly include logs permissions
+
+#### Creating Custom Roles with Logs Access
+
+When creating custom roles, you must explicitly add logs permissions:
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: rbac-logs
+spec:
+  rbac:
+    policy: |
+      # Custom role with logs access
+      p, role:custom-role, applications, get, */*, allow
+      p, role:custom-role, logs, get, */*, allow
+      
+      # Assign role to users/groups
+      g, user1, role:custom-role
+```
+
+#### Global Log Viewer Role
+
+You can create a global log viewer role that only has access to logs:
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: rbac-log-viewer
+spec:
+  rbac:
+    policy: |
+      # Global log viewer role
+      p, role:global-log-viewer, logs, get, */*, allow
+      
+      # Assign role to users/groups
+      g, log-viewers, role:global-log-viewer
 ```
 
 ## Redis Options

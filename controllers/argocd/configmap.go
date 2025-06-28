@@ -80,15 +80,6 @@ func getSCMRootCAConfigMapName(cr *argoproj.ArgoCD) string {
 	return ""
 }
 
-// getConfigManagementPlugins will return the config management plugins for the given ArgoCD.
-func getConfigManagementPlugins(cr *argoproj.ArgoCD) string {
-	plugins := common.ArgoCDDefaultConfigManagementPlugins
-	if len(cr.Spec.ConfigManagementPlugins) > 0 {
-		plugins = cr.Spec.ConfigManagementPlugins
-	}
-	return plugins
-}
-
 // getGATrackingID will return the google analytics tracking ID for the given Argo CD.
 func getGATrackingID(cr *argoproj.ArgoCD) string {
 	id := common.ArgoCDDefaultGATrackingID
@@ -330,6 +321,10 @@ func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoproj.ArgoCD, useTLSForRedi
 		return err
 	}
 
+	if err := r.reconcileArgoCmdParamsConfigMap(cr); err != nil {
+		return err
+	}
+
 	return r.reconcileGPGKeysConfigMap(cr)
 }
 
@@ -364,7 +359,6 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	cm.Data = make(map[string]string)
 	cm.Data = setRespectRBAC(cr, cm.Data)
 	cm.Data[common.ArgoCDKeyApplicationInstanceLabelKey] = getApplicationInstanceLabelKey(cr)
-	cm.Data[common.ArgoCDKeyConfigManagementPlugins] = getConfigManagementPlugins(cr)
 	cm.Data[common.ArgoCDKeyAdminEnabled] = fmt.Sprintf("%t", !cr.Spec.DisableAdmin)
 	cm.Data[common.ArgoCDKeyGATrackingID] = getGATrackingID(cr)
 	cm.Data[common.ArgoCDKeyGAAnonymizeUsers] = fmt.Sprint(cr.Spec.GAAnonymizeUsers)
@@ -453,6 +447,11 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 		}
 	}
 
+	// Check and set default value for server.rbac.disableApplicationFineGrainedRBACInheritance if not present
+	if _, exists := cm.Data[common.ArgoCDServerRBACDisableFineGrainedInheritance]; !exists {
+		cm.Data[common.ArgoCDServerRBACDisableFineGrainedInheritance] = "false"
+	}
+
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
 		return err
 	}
@@ -468,6 +467,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 			}
 			cm.Data[common.ArgoCDKeyDexConfig] = existingCM.Data[common.ArgoCDKeyDexConfig]
 		} else if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeKeycloak {
+			log.Info("Keycloak SSO provider is deprecated and will be removed in a future release. Please migrate to Dex or another supported provider.")
 			// retain oidc.config during reconcilliation when keycloak is configured
 			cm.Data[common.ArgoCDKeyOIDCConfig] = existingCM.Data[common.ArgoCDKeyOIDCConfig]
 		}
@@ -793,4 +793,51 @@ func (r *ReconcileArgoCD) reconcileGPGKeysConfigMap(cr *argoproj.ArgoCD) error {
 	}
 	argoutil.LogResourceCreation(log, cm)
 	return r.Client.Create(context.TODO(), cm)
+}
+
+// reconcileArgoCmdParamsConfigMap will ensure that the ConfigMap containing command line parameters for ArgoCD is present.
+func (r *ReconcileArgoCD) reconcileArgoCmdParamsConfigMap(cr *argoproj.ArgoCD) error {
+	cm := newConfigMapWithName(common.ArgoCDCmdParamsConfigMapName, cr)
+	cm.Data = make(map[string]string)
+
+	// Only set data if spec.cmdParams is defined
+	if len(cr.Spec.CmdParams) > 0 {
+		for k, v := range cr.Spec.CmdParams {
+			cm.Data[k] = v
+		}
+	}
+
+	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
+		return err
+	}
+	existingCM := &corev1.ConfigMap{}
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
+		changed := false
+
+		// Compare only if data is being managed
+		if len(cm.Data) > 0 && !reflect.DeepEqual(cm.Data, existingCM.Data) {
+			existingCM.Data = cm.Data
+			changed = true
+		}
+		// Check OwnerReferences
+		var refChanged bool
+		var err error
+		if refChanged, err = modifyOwnerReferenceIfNeeded(cr, existingCM, r.Scheme); err != nil {
+			return err
+		}
+		if refChanged {
+			changed = true
+		}
+		if changed {
+			explanation := "updating data"
+			if refChanged {
+				explanation += ", owner reference"
+			}
+			argoutil.LogResourceUpdate(log, existingCM, explanation)
+			return r.Update(context.TODO(), existingCM)
+		}
+		return nil // Do nothing as there is no change in the configmap.
+	}
+	argoutil.LogResourceCreation(log, cm)
+	return r.Create(context.TODO(), cm)
 }

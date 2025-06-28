@@ -4,6 +4,7 @@ repo_url: https://github.com/argoproj-labs/argocd-operator
 strict: true
 theme:
   name: material
+  favicon: 'assets/logo.png'
   palette:
   - media: '(prefers-color-scheme: light)'
     primary: teal
@@ -31,6 +32,7 @@ nav:
   - Overview: index.md
   - Release Process: release-process.md
   - Security: SECURITY.md
+  - Upgrading: upgrading.md
   - E2E Testing: e2e-test-guide.md
   - Install:
     - Getting Started: install/start.md
