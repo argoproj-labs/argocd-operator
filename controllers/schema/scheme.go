@@ -18,6 +18,8 @@ limitations under the License.
 package schema
 
 import (
+	"os"
+
 	appsv1 "github.com/openshift/api/apps/v1"
 	configv1 "github.com/openshift/api/config/v1"
 	oauthv1 "github.com/openshift/api/oauth/v1"
@@ -27,7 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	v1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
