@@ -29,52 +29,52 @@ markdown_extensions:
 - toc:
     permalink: true
 nav:
-  - Overview: index.md
-  - Release Process: release-process.md
-  - Security: SECURITY.md
-  - Upgrading: upgrading.md
-  - E2E Testing: e2e-test-guide.md
-  - Install:
-    - Getting Started: install/start.md
-    - OpenShift: install/openshift.md
-    - Operator Lifecycle Manager: install/olm.md
-    - Manual Installation: install/manual.md
-  - Usage:
-    - Basics: usage/basics.md
-    - Config Management: usage/config_management_2.0.md
-    - Custom Tooling: usage/customization.md
-    - Deploy Resources to Different Namespaces: usage/deploy-to-different-namespaces.md
-    - Export: usage/export.md
-    - ExtraConfig: usage/extra-config.md
-    - High Availability:
-      - Redis: usage/ha/redis.md
-      - Repo Server: usage/ha/repo-server.md
-    - Ingress: usage/ingress.md
-    - Insights: usage/insights.md
-    - Dex: usage/dex.md
-    - Keycloak:
-      - Kubernetes: usage/keycloak/kubernetes.md
-      - OpenShift: usage/keycloak/openshift.md
-    - Notifications: usage/notifications.md
-    - Resource Management: usage/resource_management.md
-    - Routes: usage/routes.md
-    - Respect RBAC: usage/respect_rbac.md
-    - Custom Roles: usage/custom_roles.md
-    - Apps in Any Namespace: usage/apps-in-any-namespace.md
-    - Appsets in Any Namespace: usage/appsets-in-any-namespace.md
-    - Custom labels and annotations: usage/custom_labels_annotations.md
-  - Reference:
-    - ArgoCD: reference/argocd.md
-    - ApplicationSet:
-        - Policies: reference/applicationSet.md
-    - ArgoCDExport: reference/argocdexport.md
-    - API Docs: reference/api.html.md
-    - NotificationsConfiguration: reference/notificationsconfiguration.md
-  - Contributing:
-      - Contributing: developer-guide/contributing.md
-      - Development:
-          - Setup: developer-guide/development.md
-          - OLM Environment: developer-guide/olm-env.md
-          - OpenAPI: developer-guide/openapi.md
-  - Releases ⧉: https://github.com/argoproj-labs/argocd-operator/releases
-  - Roadmap ⧉: https://github.com/argoproj-labs/argocd-operator/milestones
+- Overview: index.md
+- Release Process: release-process.md
+- Security: SECURITY.md
+- E2E Testing: e2e-test-guide.md
+- Install:
+  - Getting Started: install/start.md
+  - OpenShift: install/openshift.md
+  - Operator Lifecycle Manager: install/olm.md
+  - Manual Installation: install/manual.md
+- Usage:
+  - Basics: usage/basics.md
+  - Config Management: usage/config_management_2.0.md
+  - Custom Tooling: usage/customization.md
+  - Deploy Resources to Different Namespaces: usage/deploy-to-different-namespaces.md
+  - Export: usage/export.md
+  - ExtraConfig: usage/extra-config.md
+  - High Availability:
+    - Redis: usage/ha/redis.md
+    - Repo Server: usage/ha/repo-server.md
+  - Ingress: usage/ingress.md
+  - Insights: usage/insights.md
+  - Dex: usage/dex.md
+  - Keycloak:
+    - Kubernetes: usage/keycloak/kubernetes.md
+    - OpenShift: usage/keycloak/openshift.md
+  - Notifications: usage/notifications.md
+  - Resource Management: usage/resource_management.md
+  - Routes: usage/routes.md
+  - Respect RBAC: usage/respect_rbac.md
+  - Custom Roles: usage/custom_roles.md
+  - Apps in Any Namespace: usage/apps-in-any-namespace.md
+  - Appsets in Any Namespace: usage/appsets-in-any-namespace.md
+  - Custom labels and annotations: usage/custom_labels_annotations.md
+- Reference:
+  - ArgoCD: reference/argocd.md
+  - ApplicationSet:
+    - Policies: reference/applicationSet.md
+  - ArgoCDExport: reference/argocdexport.md
+  - API Docs: reference/api.html.md
+  - NotificationsConfiguration: reference/notificationsconfiguration.md
+- Contributing:
+  - Contributing: developer-guide/contributing.md
+  - Development:
+    - Setup: developer-guide/development.md
+    - OLM Environment: developer-guide/olm-env.md
+    - OpenAPI: developer-guide/openapi.md
+- Releases ⧉: https://github.com/argoproj-labs/argocd-operator/releases
+- Upgrading: upgrading.md
+- Roadmap ⧉: https://github.com/argoproj-labs/argocd-operator/milestones

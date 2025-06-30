@@ -1,0 +1,42 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+spec:
+  sso:
+    provider: dex
+    dex:
+      config: |
+        connectors:
+        - type: mock
+          id: mock
+          name: Mock
+          config:
+            users:
+            - email: test@example.com
+              name: Test User
+              groups: ["test-group"]
+        - type: mock
+          id: mock2
+          name: Mock2
+          config:
+            users:
+            - email: admin@example.com
+              name: Admin User
+              groups: ["admin-group"]
+  rbac:
+    defaultPolicy: 'role:readonly'
+    policyMatcherMode: 'glob'
+    policy: |
+      # Legacy policies using encoded sub claims (simulating Argo CD 2.x)
+      g, ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA, role:test-role
+      p, ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA, applications, get, */*, allow
+      p, ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA, logs, get, */*, allow
+
+      # Admin user with encoded sub claim
+      g, QWRtaW5AZXhhbXBsZS5jb20gZGV4X2Nvbm5faWQ, role:admin
+      p, QWRtaW5AZXhhbXBsZS5jb20gZGV4X2Nvbm5faWQ, *, *, */*, allow
+
+      # Group-based policies (these should work in both versions)
+      g, test-group, role:test-role
+      g, admin-group, role:admin 

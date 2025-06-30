@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+status:
+  phase: Available
+  sso: Running
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+data:
+  policy.csv: |
+    # Migrated policies using federated_claims.user_id (Argo CD 3.0+)
+    g, test@example.com, role:test-role
+    p, test@example.com, applications, get, */*, allow
+    p, test@example.com, logs, get, */*, allow
+
+    # Admin user with federated_claims.user_id
+    g, admin@example.com, role:admin
+    p, admin@example.com, *, *, */*, allow
+
+    # Group-based policies (these should work in both versions)
+    g, test-group, role:test-role
+    g, admin-group, role:admin 
