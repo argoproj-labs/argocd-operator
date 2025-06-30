@@ -25,12 +25,6 @@ import (
 	"strings"
 
 	"github.com/argoproj/argo-cd/v3/util/env"
-	appsv1 "github.com/openshift/api/apps/v1"
-	configv1 "github.com/openshift/api/config/v1"
-	oauthv1 "github.com/openshift/api/oauth/v1"
-	routev1 "github.com/openshift/api/route/v1"
-	templatev1 "github.com/openshift/api/template/v1"
-	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -40,6 +34,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdexport"
+	operatorscheme "github.com/argoproj-labs/argocd-operator/schema"
 
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
@@ -52,13 +47,10 @@ import (
 	"go.uber.org/zap/zapcore"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	v1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	v1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/version"
 	//+kubebuilder:scaffold:imports
@@ -68,14 +60,6 @@ var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 )
-
-func init() {
-	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-
-	utilruntime.Must(v1alpha1.AddToScheme(scheme))
-	utilruntime.Must(v1beta1.AddToScheme(scheme))
-	//+kubebuilder:scaffold:scheme
-}
 
 func printVersion() {
 	setupLog.Info(fmt.Sprintf("Go Version: %s", goruntime.Version()))
@@ -190,65 +174,15 @@ func main() {
 
 	setupLog.Info("Registering Components.")
 
-	// Setup Scheme for all resources
-	if err := v1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
-		setupLog.Error(err, "")
-		os.Exit(1)
-	}
-
-	if err := v1beta1.AddToScheme(mgr.GetScheme()); err != nil {
-		setupLog.Error(err, "")
-		os.Exit(1)
-	}
-
-	// Setup Scheme for Prometheus if available.
-	if argocd.IsPrometheusAPIAvailable() {
-		if err := monitoringv1.AddToScheme(mgr.GetScheme()); err != nil {
-			setupLog.Error(err, "")
-			os.Exit(1)
-		}
-	}
-
-	// Setup Scheme for OpenShift Routes if available.
-	if argocd.IsRouteAPIAvailable() {
-		if err := routev1.Install(mgr.GetScheme()); err != nil {
-			setupLog.Error(err, "")
-			os.Exit(1)
-		}
-	}
-
-	// Set up the scheme for openshift config if available
-	if argocd.IsVersionAPIAvailable() {
-		if err := configv1.Install(mgr.GetScheme()); err != nil {
-			setupLog.Error(err, "")
-			os.Exit(1)
-		}
-	}
-
-	// Setup Schemes for SSO if template instance is available.
-	if argocd.CanUseKeycloakWithTemplate() {
-		setupLog.Info("Keycloak instance can be managed using OpenShift Template")
-		if err := templatev1.Install(mgr.GetScheme()); err != nil {
-			setupLog.Error(err, "")
-			os.Exit(1)
-		}
-		if err := appsv1.Install(mgr.GetScheme()); err != nil {
-			setupLog.Error(err, "")
-			os.Exit(1)
-		}
-		if err := oauthv1.Install(mgr.GetScheme()); err != nil {
-			setupLog.Error(err, "")
-			os.Exit(1)
-		}
-	} else {
-		setupLog.Info("Keycloak instance cannot be managed using OpenShift Template, as DeploymentConfig/Template API is not present")
-	}
+	// Setup Scheme for all resources using the centralized scheme package
+	operatorscheme.SetupScheme(mgr.GetScheme())
 
 	k8sClient, err := initK8sClient()
 	if err != nil {
 		setupLog.Error(err, "Failed to initialize Kubernetes client")
 		os.Exit(1)
 	}
+
 	if err = (&argocd.ReconcileArgoCD{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
