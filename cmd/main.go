@@ -34,7 +34,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdexport"
-	operatorscheme "github.com/argoproj-labs/argocd-operator/schema"
+	operatorscheme "github.com/argoproj-labs/argocd-operator/controllers/schema"
 
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
