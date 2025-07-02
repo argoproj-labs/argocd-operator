@@ -34,7 +34,7 @@ func truncateWithHash(input string) string {
 	hash := sha1.Sum([]byte(input))
 	hashSuffix := fmt.Sprintf("-%x", hash[:hashLabelLength])
 
-	// Calculate how much we can truncate (63 - 8 = 55 characters for base name)
+	// Calculate how much we can truncate
 	maxBaseLength := maxLabelLength - len(hashSuffix)
 
 	// Truncate and add hash
