@@ -293,7 +293,8 @@ func TestReconcileArgoCD_reconcileRoleBinding_custom_role(t *testing.T) {
 
 func TestReconcileArgoCD_reconcileRoleBinding_forSourceNamespaces(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	sourceNamespace := "newNamespaceTest"
+	// Use a long namespace to test the truncation fix
+	sourceNamespace := "grp-bk-time-deposit-servicing-activity-topic-streaming-12345678"
 	a := makeTestArgoCD()
 	a.Spec = argoproj.ArgoCDSpec{
 		SourceNamespaces: []string{
@@ -320,6 +321,155 @@ func TestReconcileArgoCD_reconcileRoleBinding_forSourceNamespaces(t *testing.T) 
 	roleBinding := &rbacv1.RoleBinding{}
 	expectedName := getRoleBindingNameForSourceNamespaces(a.Name, sourceNamespace)
 
+	// Verify the name is truncated to 63 characters
+	assert.LessOrEqual(t, len(expectedName), maxLabelLength, "RoleBinding name should not exceed maxLabelLength")
+
+	// Verify the RoleBinding was created successfully
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: sourceNamespace}, roleBinding))
 
+	// Verify the RoleBinding name is exactly 63 characters
+	assert.Equal(t, 63, len(roleBinding.Name), "RoleBinding name should be exactly 63 characters")
+}
+
+func TestTruncateWithHash(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+		length   int
+	}{
+		{
+			name:     "exactly 63 characters - no truncation needed",
+			input:    "exactly-sixty-three-characters-long-string-that-is-perfect",
+			expected: "exactly-sixty-three-characters-long-string-that-is-perfect",
+			length:   63,
+		},
+		{
+			name:     "64 characters - needs truncation",
+			input:    "exactly-sixty-four-characters-long-string-that-needs-truncation",
+			expected: "exactly-sixty-four-characters-long-string-that-needs-trunc-", // truncated + 7-char hash
+			length:   63,
+		},
+		{
+			name:     "very long string - needs significant truncation",
+			input:    "this-is-a-very-long-string-that-will-need-to-be-truncated-significantly-to-fit-within-the-kubernetes-label-limit",
+			expected: "this-is-a-very-long-string-that-will-need-to-be-truncated-", // truncated + 7-char hash
+			length:   63,
+		},
+		{
+			name:     "extremely long string - hash only",
+			input:    "this-is-an-extremely-long-string-that-is-so-long-it-will-need-to-be-completely-replaced-by-a-hash-because-there-is-no-room-for-any-part-of-the-original-string",
+			expected: "rb-", // starts with rb- followed by hash
+			length:   63,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := truncateWithHash(tt.input)
+
+			// Check length constraint
+			assert.LessOrEqual(t, len(result), maxLabelLength, "Result should not exceed maxLabelLength")
+
+			// Check that result is deterministic
+			result2 := truncateWithHash(tt.input)
+			assert.Equal(t, result, result2, "Function should be deterministic")
+
+			// For short strings, should be unchanged
+			if len(tt.input) <= maxLabelLength {
+				assert.Equal(t, tt.input, result, "Short strings should not be modified")
+			} else {
+				// For long strings, should be different and shorter
+				assert.NotEqual(t, tt.input, result, "Long strings should be modified")
+				assert.LessOrEqual(t, len(result), maxLabelLength, "Result should be within length limit")
+
+				// Should contain hash suffix if truncated
+				if len(tt.input) > maxLabelLength {
+					assert.Contains(t, result, "-", "Truncated strings should contain hash separator")
+				}
+			}
+		})
+	}
+}
+
+// TestGetRoleBindingNameForSourceNamespaces tests the updated function with various namespace lengths
+func TestGetRoleBindingNameForSourceNamespaces(t *testing.T) {
+	tests := []struct {
+		name            string
+		argocdName      string
+		targetNamespace string
+		expectedLength  int
+	}{
+		{
+			name:            "short namespace",
+			argocdName:      "argocd",
+			targetNamespace: "short-ns",
+			expectedLength:  16, // "argocd_short-ns"
+		},
+		{
+			name:            "medium namespace",
+			argocdName:      "argocd",
+			targetNamespace: "medium-length-namespace-name",
+			expectedLength:  35, // "argocd_medium-length-namespace-name"
+		},
+		{
+			name:            "long namespace - needs truncation",
+			argocdName:      "argocd",
+			targetNamespace: "grp-bk-time-deposit-servicing-activity-topic-streaming-12345678",
+			expectedLength:  63, // Should be truncated to exactly 63 chars
+		},
+		{
+			name:            "very long namespace - needs significant truncation",
+			argocdName:      "argocd",
+			targetNamespace: "this-is-an-extremely-long-namespace-name-that-will-definitely-exceed-the-kubernetes-label-limit-and-need-to-be-truncated",
+			expectedLength:  63, // Should be truncated to exactly 63 chars
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := getRoleBindingNameForSourceNamespaces(tt.argocdName, tt.targetNamespace)
+
+			// Check length constraint
+			assert.LessOrEqual(t, len(result), maxLabelLength, "RoleBinding name should not exceed maxLabelLength")
+
+			// Check that result is deterministic
+			result2 := getRoleBindingNameForSourceNamespaces(tt.argocdName, tt.targetNamespace)
+			assert.Equal(t, result, result2, "Function should be deterministic")
+
+			// For short namespaces, should contain original namespace name
+			if len(tt.argocdName)+len(tt.targetNamespace)+1 <= maxLabelLength {
+				expected := fmt.Sprintf("%s_%s", tt.argocdName, tt.targetNamespace)
+				assert.Equal(t, expected, result, "Short namespaces should not be truncated")
+			} else {
+				// For long namespaces, should be truncated and contain hash
+				assert.LessOrEqual(t, len(result), maxLabelLength, "Long namespaces should be truncated")
+				assert.Contains(t, result, tt.argocdName, "Result should contain ArgoCD name")
+				assert.Contains(t, result, "-", "Truncated names should contain hash separator")
+			}
+		})
+	}
+}
+
+// TestTruncateWithHashUniqueness tests that different inputs produce different hashes
+func TestTruncateWithHashUniqueness(t *testing.T) {
+	inputs := []string{
+		"namespace1",
+		"namespace2",
+		"very-long-namespace-name-that-will-be-truncated-1",
+		"very-long-namespace-name-that-will-be-truncated-2",
+		"argocd_grp-bk-time-deposit-servicing-activity-topic-streaming-12345678",
+		"argocd_grp-bk-time-deposit-servicing-activity-topic-streaming-87654321",
+	}
+
+	results := make(map[string]bool)
+
+	for _, input := range inputs {
+		result := truncateWithHash(input)
+		assert.False(t, results[result], "Hash should be unique for different inputs: %s", input)
+		results[result] = true
+
+		// Verify length constraint
+		assert.LessOrEqual(t, len(result), maxLabelLength, "Result should not exceed maxLabelLength")
+	}
 }
