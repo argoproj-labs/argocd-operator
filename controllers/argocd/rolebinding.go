@@ -20,7 +20,11 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
-// truncates a string to maxLabelLength characters and adds a hash suffix to ensure uniqueness
+const (
+	hashLabelLength = 7
+)
+
+// truncateWithHash truncates a string to a maximum of 63 characters and adds a hash suffix to ensure uniqueness
 func truncateWithHash(input string) string {
 	if len(input) <= maxLabelLength {
 		return input
@@ -28,19 +32,10 @@ func truncateWithHash(input string) string {
 
 	// Calculate hash of the original string
 	hash := sha1.Sum([]byte(input))
-	hashSuffix := fmt.Sprintf("-%x", hash[:7])
+	hashSuffix := fmt.Sprintf("-%x", hash[:hashLabelLength])
 
-	// Calculate how much we can truncate
+	// Calculate how much we can truncate (63 - 8 = 55 characters for base name)
 	maxBaseLength := maxLabelLength - len(hashSuffix)
-	if maxBaseLength <= 0 {
-		// If hash suffix is longer than maxLabelLength, just use the hash
-		// Ensure we don't exceed maxLabelLength
-		hashStr := fmt.Sprintf("%x", hash)
-		if len(hashStr) > maxLabelLength-3 {
-			hashStr = hashStr[:maxLabelLength-3]
-		}
-		return fmt.Sprintf("rb-%s", hashStr)
-	}
 
 	// Truncate and add hash
 	return input[:maxBaseLength] + hashSuffix
