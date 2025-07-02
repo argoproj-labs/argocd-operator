@@ -16,6 +16,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -376,6 +377,7 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 		"info",
 		"--logformat",
 		"text",
+		"--persist-resource-health",
 	}
 
 	controllerProcesorsChangedResult := func(n string) []string {
@@ -395,6 +397,7 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 			"info",
 			"--logformat",
 			"text",
+			"--persist-resource-health",
 		}
 	}
 
@@ -415,6 +418,7 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 			"info",
 			"--logformat",
 			"text",
+			"--persist-resource-health",
 		}
 	}
 
@@ -433,6 +437,7 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 			"info",
 			"--logformat",
 			"text",
+			"--persist-resource-health",
 			"--operation-processors",
 			n,
 		}
@@ -455,6 +460,7 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 			"info",
 			"--logformat",
 			"text",
+			"--persist-resource-health",
 		}
 	}
 
@@ -475,6 +481,7 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 			"info",
 			"--logformat",
 			f,
+			"--persist-resource-health",
 		}
 	}
 
@@ -495,6 +502,7 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 			l,
 			"--logformat",
 			"text",
+			"--persist-resource-health",
 		}
 	}
 
@@ -637,7 +645,13 @@ func TestGetArgoApplicationContainerEnv(t *testing.T) {
 					Key: "admin.password",
 				},
 			}},
-		{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "60s", ValueFrom: (*v1.EnvVarSource)(nil)}}
+		{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "60s", ValueFrom: (*v1.EnvVarSource)(nil)},
+		{Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST", ValueFrom: &corev1.EnvVarSource{
+			ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
+				Key:                  "controller.resource.health.persist",
+			},
+		}}}
 
 	cmdTests := []struct {
 		name string

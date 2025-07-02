@@ -604,6 +604,18 @@ func getArgoControllerContainerEnv(cr *argoproj.ArgoCD, replicas int32) []corev1
 		})
 	}
 
+	env = append(env, corev1.EnvVar{
+		Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST",
+		ValueFrom: &corev1.EnvVarSource{
+			ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: common.ArgoCDCmdParamsConfigMapName,
+				},
+				Key: "controller.resource.health.persist",
+			},
+		},
+	},
+	)
 	return env
 }
 
@@ -783,6 +795,10 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 						{
 							Key:  "controller.profile.enabled",
 							Path: "profiler.enabled",
+						},
+						{
+							Key:  "controller.resource.health.persist",
+							Path: "controller.resource.health.persist",
 						},
 					},
 				},
