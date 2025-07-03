@@ -31,7 +31,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/argoproj/argo-cd/v2/util/glob"
+	"github.com/argoproj/argo-cd/v3/util/glob"
 	"github.com/go-logr/logr"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
