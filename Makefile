@@ -168,7 +168,7 @@ all: test install run e2e ## UnitTest, Run the operator locally and execute e2e 
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 controller-gen: ## Download controller-gen locally if necessary.
-	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.14.0)
+	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.3)
 
 KUSTOMIZE = $(shell pwd)/bin/kustomize
 kustomize: ## Download kustomize locally if necessary.
@@ -199,7 +199,6 @@ bundle: operator-sdk manifests kustomize ## Generate bundle manifests and metada
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
 	$(OPERATOR_SDK) bundle validate ./bundle
-	sed -i 's/control-plane: argocd-operator/control-plane: controller-manager/g' bundle/manifests/argocd-operator-webhook-service_v1_service.yaml bundle/manifests/argocd-operator-controller-manager-metrics-service_v1_service.yaml bundle/manifests/argocd-operator.clusterserviceversion.yaml
 	rm -fr deploy/olm-catalog/argocd-operator/$(VERSION)
 	mkdir -p deploy/olm-catalog/argocd-operator/$(VERSION)
 	cp -r bundle/manifests/* deploy/olm-catalog/argocd-operator/$(VERSION)/

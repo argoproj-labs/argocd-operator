@@ -1701,22 +1701,14 @@ spec:
           resources:
           - configmaps
           verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
+          - '*'
         - apiGroups:
           - ""
           resources:
-          - configmaps
           - endpoints
           - events
           - namespaces
           - persistentvolumeclaims
-          - pods
           - secrets
           - serviceaccounts
           - services
@@ -1727,6 +1719,11 @@ spec:
           - ""
           resources:
           - pods
+          verbs:
+          - '*'
+        - apiGroups:
+          - ""
+          resources:
           - pods/log
           verbs:
           - get
@@ -1765,19 +1762,9 @@ spec:
           resources:
           - applications
           - appprojects
-          verbs:
-          - '*'
-        - apiGroups:
-          - argoproj.io
-          resources:
           - argocdexports
           - argocdexports/finalizers
           - argocdexports/status
-          verbs:
-          - '*'
-        - apiGroups:
-          - argoproj.io
-          resources:
           - argocds
           - argocds/finalizers
           - argocds/status
@@ -1853,11 +1840,6 @@ spec:
           - rbac.authorization.k8s.io
           resources:
           - '*'
-          verbs:
-          - '*'
-        - apiGroups:
-          - rbac.authorization.k8s.io
-          resources:
           - clusterrolebindings
           - clusterroles
           verbs:
@@ -1892,20 +1874,20 @@ spec:
         serviceAccountName: argocd-operator-controller-manager
       deployments:
       - label:
-          control-plane: controller-manager
+          control-plane: argocd-operator
         name: argocd-operator-controller-manager
         spec:
           replicas: 1
           selector:
             matchLabels:
-              control-plane: controller-manager
+              control-plane: argocd-operator
           strategy: {}
           template:
             metadata:
               annotations:
                 kubectl.kubernetes.io/default-container: manager
               labels:
-                control-plane: controller-manager
+                control-plane: argocd-operator
             spec:
               containers:
               - args:

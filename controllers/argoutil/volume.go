@@ -23,12 +23,12 @@ import (
 )
 
 // DefaultPVCResources will return the default PVC resources.
-func DefaultPVCResources() corev1.ResourceRequirements {
+func DefaultPVCResources() corev1.VolumeResourceRequirements {
 	capacity, err := resource.ParseQuantity(common.ArgoCDDefaultExportLocalCapicity)
 	if err != nil {
 		log.Error(err, "unable to parse quantity")
 	}
-	return corev1.ResourceRequirements{
+	return corev1.VolumeResourceRequirements{
 		Requests: corev1.ResourceList{
 			"storage": capacity,
 		},
