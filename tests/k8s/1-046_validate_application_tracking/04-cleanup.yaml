@@ -10,10 +10,16 @@ delete:
   name: test-1-046-argocd-2
 - apiVersion: v1
   kind: Namespace
+  name: test-1-046-argocd-3
+- apiVersion: v1
+  kind: Namespace
   name: source-ns-1
 - apiVersion: v1
   kind: Namespace
   name: source-ns-2
+- apiVersion: v1
+  kind: Namespace
+  name: source-ns-3
 # Delete ArgoCD instances
 - apiVersion: argoproj.io/v1beta1
   kind: ArgoCD
@@ -23,6 +29,10 @@ delete:
   kind: ArgoCD
   name: argocd-2
   namespace: test-1-046-argocd-2
+- apiVersion: argoproj.io/v1beta1
+  kind: ArgoCD
+  name: argocd-3
+  namespace: test-1-046-argocd-3
 # Delete Applications
 - apiVersion: argoproj.io/v1alpha1
   kind: Application
