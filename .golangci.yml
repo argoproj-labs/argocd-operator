@@ -1,18 +1,38 @@
-run:
-  timeout: 2m
+version: "2"
 linters:
   enable:
-    - govet
-    - unused
-    - goimports
-    - ineffassign
     - unconvert
     - unparam
-issues:
-  exclude-files:
-    - ".*_test\\.go"
-  exclude-dirs:
-    - vendor/
-linters-settings:
-  goimports:
-    local-prefixes: github.com/argoproj-labs/argocd-operator
+    - govet
+    - unused
+    - unconvert
+  disable:
+    - staticcheck
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - .*_test\.go
+      - vendor/
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/argoproj-labs/argocd-operator
+  exclusions:
+    generated: lax
+    paths:
+      - .*_test\.go
+      - vendor/
+      - third_party$
+      - builtin$
+      - examples$
