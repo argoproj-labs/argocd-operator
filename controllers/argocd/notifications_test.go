@@ -339,7 +339,7 @@ func TestReconcileNotifications_CreateServiceMonitor(t *testing.T) {
 
 	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Port, "metrics")
 	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Scheme, "http")
-	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Interval, "30s")
+	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Interval, monitoringv1.Duration("30s"))
 	assert.Equal(t, testServiceMonitor.Spec.Selector.MatchLabels["app.kubernetes.io/name"],
 		fmt.Sprintf("%s-%s", a.Name, "notifications-controller-metrics"))
 }
