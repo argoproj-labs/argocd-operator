@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -106,6 +107,7 @@ func TestReconcileNotifications_CreateConfigMap(t *testing.T) {
 			Namespace: a.Namespace,
 		},
 		testCM))
+	assert.True(t, argoutil.IsWatchedByOperator(testCM.ObjectMeta.Labels))
 
 	// Verify that the configmap has the default template
 	assert.NotEqual(t, testCM.Data["template.app-created"], "")
@@ -172,7 +174,7 @@ func TestReconcileNotifications_UpdateConfigMap(t *testing.T) {
 			Namespace: a.Namespace,
 		},
 		testCM))
-
+	assert.True(t, argoutil.IsWatchedByOperator(testCM.ObjectMeta.Labels))
 	// Verify that the updated configuration
 	assert.Equal(t, testCM.Data["trigger.on-sync-status-test"],
 		"- when: app.status.sync.status == 'Unknown' \n send: [my-custom-template]")
@@ -221,7 +223,7 @@ func TestReconcileNotifications_DeleteConfigMap(t *testing.T) {
 			Namespace: a.Namespace,
 		},
 		testCM))
-
+	assert.True(t, argoutil.IsWatchedByOperator(testCM.ObjectMeta.Labels))
 	// Verify if ConfigMap is created with required data
 	assert.Equal(t, testCM.Data["trigger.on-sync-status-test"],
 		"- when: app.status.sync.status == 'Unknown' \n send: [my-custom-template]")
