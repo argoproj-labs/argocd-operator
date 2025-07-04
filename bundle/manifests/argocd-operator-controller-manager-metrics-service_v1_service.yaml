@@ -3,7 +3,7 @@ kind: Service
 metadata:
   creationTimestamp: null
   labels:
-    control-plane: controller-manager
+    control-plane: argocd-operator
   name: argocd-operator-controller-manager-metrics-service
 spec:
   ports:
@@ -11,6 +11,6 @@ spec:
     port: 8443
     targetPort: 8080
   selector:
-    control-plane: controller-manager
+    control-plane: argocd-operator
 status:
   loadBalancer: {}
