@@ -59,7 +59,9 @@ import (
 	v1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	v1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/version"
+
 	//+kubebuilder:scaffold:imports
+	appv1alpha1 "github.com/argoproj/argo-cd/v2/pkg/apis/application/v1alpha1"
 )
 
 var (
@@ -72,6 +74,7 @@ func init() {
 
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
 	utilruntime.Must(v1beta1.AddToScheme(scheme))
+	utilruntime.Must(appv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
