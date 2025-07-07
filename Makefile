@@ -194,12 +194,18 @@ rm -rf $$TMP_DIR ;\
 endef
 
 .PHONY: bundle
+# Detect platform and set SED_INPLACE accordingly
+ifeq ($(shell uname), Darwin)
+  SED_INPLACE = sed -i ''
+else
+  SED_INPLACE = sed -i
+endif
 bundle: operator-sdk manifests kustomize ## Generate bundle manifests and metadata, then validate generated files.
 	$(OPERATOR_SDK) generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
 	$(OPERATOR_SDK) bundle validate ./bundle
-	sed -i.bak 's/control-plane: argocd-operator/control-plane: controller-manager/g' bundle/manifests/argocd-operator-webhook-service_v1_service.yaml bundle/manifests/argocd-operator-controller-manager-metrics-service_v1_service.yaml bundle/manifests/argocd-operator.clusterserviceversion.yaml
+	$(SED_INPLACE) 's/control-plane: argocd-operator/control-plane: controller-manager/g' bundle/manifests/argocd-operator-webhook-service_v1_service.yaml bundle/manifests/argocd-operator-controller-manager-metrics-service_v1_service.yaml bundle/manifests/argocd-operator.clusterserviceversion.yaml
 	rm -fr deploy/olm-catalog/argocd-operator/$(VERSION)
 	mkdir -p deploy/olm-catalog/argocd-operator/$(VERSION)
 	cp -r bundle/manifests/* deploy/olm-catalog/argocd-operator/$(VERSION)/
