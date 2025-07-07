@@ -1,0 +1,7 @@
+apiVersion: argoproj.io/v1alpha1
+kind: NamespaceManagement
+metadata:
+  name: finance-app-namespace
+  namespace: test-app  # Doesn't match "tenant-*"
+spec:
+  managedBy: argo-cd-ns

@@ -211,6 +211,12 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 				return reconcile.Result{}, argocd, err
 			}
 
+			if argocd.Spec.NamespaceManagement != nil {
+				if err := r.removeNamespaceManagementCRs(argocd.Namespace); err != nil {
+					return reconcile.Result{}, argocd, fmt.Errorf("failed to remove NamespaceManagement CR, error: %w", err)
+				}
+			}
+
 			// remove namespace of deleted Argo CD instance from deprecationEventEmissionTracker (if exists) so that if another instance
 			// is created in the same namespace in the future, that instance is appropriately tracked
 			delete(DeprecationEventEmissionTracker, argocd.Namespace)
