@@ -1285,6 +1285,24 @@ spec:
                 required:
                 - enabled
                 type: object
+              namespaceManagement:
+                description: NamespaceManagement defines the list of namespaces that
+                  Argo CD is allowed to manage.
+                items:
+                  description: NamespaceManagement defines the namespace management
+                    settings
+                  properties:
+                    allowManagedBy:
+                      description: Whether the namespace can be managed by ArgoCD
+                      type: boolean
+                    name:
+                      description: Name of the namespace or pattern to be managed
+                      type: string
+                  required:
+                  - allowManagedBy
+                  - name
+                  type: object
+                type: array
               nodePlacement:
                 description: NodePlacement defines NodeSelectors and Taints for Argo
                   CD workloads
@@ -15693,6 +15711,24 @@ spec:
                 required:
                 - enabled
                 type: object
+              namespaceManagement:
+                description: NamespaceManagement defines the list of namespaces that
+                  Argo CD is allowed to manage.
+                items:
+                  description: NamespaceManagement defines the namespace management
+                    settings
+                  properties:
+                    allowManagedBy:
+                      description: Whether the namespace can be managed by ArgoCD
+                      type: boolean
+                    name:
+                      description: Name of the namespace or pattern to be managed
+                      type: string
+                  required:
+                  - allowManagedBy
+                  - name
+                  type: object
+                type: array
               nodePlacement:
                 description: NodePlacement defines NodeSelectors and Taints for Argo
                   CD workloads

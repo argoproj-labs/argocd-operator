@@ -12,6 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	testclient "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -45,6 +46,7 @@ func TestReconcileNamespaceManagement_FeatureEnabled(t *testing.T) {
 
 	// Namespace management enabled, ensure namespaces are processed
 	os.Setenv(common.EnableManagedNamespace, "true")
+	defer os.Unsetenv(common.EnableManagedNamespace)
 
 	err := r.Client.Create(context.Background(), nm)
 	assert.NoError(t, err)
@@ -106,8 +108,25 @@ func TestReconcileNamespaceManagement_FeatureEnabled(t *testing.T) {
 
 }
 
-func TestReconcileNamespaceManagement_FeatureDisabled(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
+func TestHandleFeatureDisable_NoNamespaceManagement(t *testing.T) {
+	// fake Kubernetes client
+	testClient := testclient.NewSimpleClientset()
+
+	a := makeTestArgoCD()
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	err := r.handleFeatureDisable(testClient)
+	// Assert: Should return no error since there are no NamespaceManagement CR and ArgoCD .spec.NamespaceManagement field is nil
+	assert.NoError(t, err)
+}
+
+func TestHandleFeatureDisable_WithNamespaceManagement(t *testing.T) {
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.NamespaceManagement = []argoproj.ManagedNamespaces{{
 			Name:           "managed-ns",
@@ -115,6 +134,7 @@ func TestReconcileNamespaceManagement_FeatureDisabled(t *testing.T) {
 		},
 		}
 	})
+	testClient := testclient.NewSimpleClientset()
 
 	nm := &argoproj.NamespaceManagement{
 		ObjectMeta: metav1.ObjectMeta{
@@ -133,57 +153,23 @@ func TestReconcileNamespaceManagement_FeatureDisabled(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
 
-	// 1) Namespace management disabled and there exists a a NamespaceManagement CR and related ArgoCD instances with namespace management,
-	// ensure feature cleanup is called and fields are removed
-	os.Setenv(common.EnableManagedNamespace, "false")
-	defer os.Unsetenv(common.EnableManagedNamespace)
-
-	err := r.Client.Create(context.Background(), nm)
+	err := r.Client.Create(context.TODO(), nm)
 	assert.NoError(t, err)
 
-	err = r.reconcileNamespaceManagement(a)
+	err = r.handleFeatureDisable(testClient)
+	// Assert: Should return no error and attempt updates
 	assert.NoError(t, err)
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
-		Name:      nm.Name,
-		Namespace: nm.Namespace,
-	}, nm)
+	// Verify that NamespaceManagement field in ArgoCD is removed
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: a.Name}, a)
 	assert.NoError(t, err)
+	assert.Nil(t, a.Spec.NamespaceManagement, "NamespaceManagement should be removed from ArgoCD")
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
-		Name:      a.Name,
-		Namespace: a.Namespace,
-	}, a)
+	// Verify that ManagedBy field in NamespaceManagement is cleared
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Namespace: nm.Namespace, Name: nm.Name}, nm)
 	assert.NoError(t, err)
+	assert.Empty(t, nm.Spec.ManagedBy, "ManagedBy field should be cleared in NamespaceManagement")
 
-	assert.Nil(t, a.Spec.NamespaceManagement, "NamespaceManagement should be removed")
-	assert.Empty(t, nm.Spec.ManagedBy, "ManagedBy should be removed")
-}
-
-func TestReconcileNamespaceManagement_FeatureDisabled_NoResources(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
-		a.Spec.NamespaceManagement = []argoproj.ManagedNamespaces{{
-			Name:           "managed-ns",
-			AllowManagedBy: true,
-		},
-		}
-	})
-
-	resObjs := []client.Object{a}
-	subresObjs := []client.Object{a}
-	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
-
-	// If namespace management is disabled and neither a NamespaceManagement CR
-	// and any related ArgoCD instances with namespace management are found, return nil
-	os.Setenv(common.EnableManagedNamespace, "false")
-	defer os.Unsetenv(common.EnableManagedNamespace)
-
-	err := r.reconcileNamespaceManagement(a)
-	assert.NoError(t, err)
 }
 
 func TestMatchesNamespaceManagementRules(t *testing.T) {
