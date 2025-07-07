@@ -645,6 +645,7 @@ func TestGenerateSortedManagedNamespaceListForArgoCDCR(t *testing.T) {
 
 	res, err = generateSortedManagedNamespaceListForArgoCDCR(a, r.Client)
 	assert.NoError(t, err)
+<<<<<<< HEAD
 	assert.Equal(t, res, []string{managedByNamespace.Name, nsMgmt1.Namespace, a.Namespace, nsMgmt2.Namespace})
 
 }
@@ -770,6 +771,10 @@ func TestGenerateSortedManagedNamespaceListForArgoCDCR1(t *testing.T) {
 			"bbbb-third-when-sorted-nm",  // from nsMgmt2
 		})
 	})
+=======
+	assert.Equal(t, res, []string{nsMgmt1.Namespace, a.Namespace, nsMgmt2.Namespace})
+
+>>>>>>> 49a050d (Fix merge conflicts)
 }
 
 func TestCombineClusterSecretNamespacesWithManagedNamespaces(t *testing.T) {
