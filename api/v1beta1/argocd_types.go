@@ -957,6 +957,18 @@ type ArgoCDSpec struct {
 
 	// CmdParams specifies command-line parameters for the Argo CD components.
 	CmdParams map[string]string `json:"cmdParams,omitempty"`
+
+	// NamespaceManagement defines the list of namespaces that Argo CD is allowed to manage.
+	NamespaceManagement []ManagedNamespaces `json:"namespaceManagement,omitempty"`
+}
+
+// NamespaceManagement defines the namespace management settings
+type ManagedNamespaces struct {
+	// Name of the namespace or pattern to be managed
+	Name string `json:"name"`
+
+	// Whether the namespace can be managed by ArgoCD
+	AllowManagedBy bool `json:"allowManagedBy"`
 }
 
 const (

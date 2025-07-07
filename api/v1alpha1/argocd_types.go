@@ -850,6 +850,18 @@ type ArgoCDSpec struct {
 
 	// AggregatedClusterRoles will allow users to have aggregated ClusterRoles for a cluster scoped instance.
 	AggregatedClusterRoles bool `json:"aggregatedClusterRoles,omitempty"`
+
+	// NamespaceManagement defines the list of namespaces that Argo CD is allowed to manage.
+	NamespaceManagement []ManagedNamespaces `json:"namespaceManagement,omitempty"`
+}
+
+// NamespaceManagement defines the namespace management settings
+type ManagedNamespaces struct {
+	// Name of the namespace or pattern to be managed
+	Name string `json:"name"`
+
+	// Whether the namespace can be managed by ArgoCD
+	AllowManagedBy bool `json:"allowManagedBy"`
 }
 
 const (

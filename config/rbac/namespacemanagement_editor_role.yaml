@@ -1,0 +1,24 @@
+# permissions for end users to edit namespacemanagements.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: namespacemanagement-editor-role
+rules:
+- apiGroups:
+  - argoproj.io
+  resources:
+  - namespacemanagements
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - argoproj.io
+  resources:
+  - namespacemanagements/status
+  verbs:
+  - get
