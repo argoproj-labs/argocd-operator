@@ -23,7 +23,7 @@ package v1beta1
 import (
 	routev1 "github.com/openshift/api/route/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -1011,19 +1011,18 @@ func (in *ArgoCDSpec) DeepCopyInto(out *ArgoCDSpec) {
 		*out = new(Banner)
 		**out = **in
 	}
-<<<<<<< HEAD
 	if in.CmdParams != nil {
 		in, out := &in.CmdParams, &out.CmdParams
 		*out = make(map[string]string, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val
 		}
-=======
+	}
+
 	if in.NamespaceManagement != nil {
 		in, out := &in.NamespaceManagement, &out.NamespaceManagement
 		*out = make([]ManagedNamespaces, len(*in))
 		copy(*out, *in)
->>>>>>> 413d0ff (Fix merge conflicts)
 	}
 }
 

@@ -955,10 +955,9 @@ type ArgoCDSpec struct {
 	// AggregatedClusterRoles will allow users to have aggregated ClusterRoles for a cluster scoped instance.
 	AggregatedClusterRoles bool `json:"aggregatedClusterRoles,omitempty"`
 
-<<<<<<< HEAD
 	// CmdParams specifies command-line parameters for the Argo CD components.
 	CmdParams map[string]string `json:"cmdParams,omitempty"`
-=======
+
 	// NamespaceManagement defines the list of namespaces that Argo CD is allowed to manage.
 	NamespaceManagement []ManagedNamespaces `json:"namespaceManagement,omitempty"`
 }
@@ -970,7 +969,6 @@ type ManagedNamespaces struct {
 
 	// Whether the namespace can be managed by ArgoCD
 	AllowManagedBy bool `json:"allowManagedBy"`
->>>>>>> 413d0ff (Fix merge conflicts)
 }
 
 const (
