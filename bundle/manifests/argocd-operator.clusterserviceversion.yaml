@@ -247,7 +247,7 @@ metadata:
     capabilities: Deep Insights
     categories: Integration & Delivery
     certified: "false"
-    createdAt: "2025-06-18T07:38:13Z"
+    createdAt: "2025-07-07T01:37:08Z"
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v1.35.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
@@ -441,10 +441,8 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
-      - description: 'Deprecated: ConfigManagementPlugins field is no longer supported.
-          Argo CD now requires plugins to be defined as sidecar containers of repo
-          server component. See ''.spec.repo.sidecarContainers''. ConfigManagementPlugins
-          was previously used to specify additional config management plugins.'
+      - description: ConfigManagementPlugins is used to specify additional config
+          management plugins.
         displayName: Config Management Plugins'
         path: configManagementPlugins
         x-descriptors:
@@ -1060,10 +1058,8 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
-      - description: 'Deprecated: ConfigManagementPlugins field is no longer supported.
-          Argo CD now requires plugins to be defined as sidecar containers of repo
-          server component. See ''.spec.repo.sidecarContainers''. ConfigManagementPlugins
-          was previously used to specify additional config management plugins.'
+      - description: ConfigManagementPlugins is used to specify additional config
+          management plugins.
         displayName: Config Management Plugins'
         path: configManagementPlugins
         x-descriptors:
@@ -1193,8 +1189,8 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Import
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'Deprecated: InitialRepositories to configure Argo CD with upon
-          creation of the cluster.'
+      - description: InitialRepositories to configure Argo CD with upon creation of
+          the cluster.
         displayName: Initial Repositories'
         path: initialRepositories
         x-descriptors:
@@ -1768,11 +1764,6 @@ spec:
           - argocds
           - argocds/finalizers
           - argocds/status
-          verbs:
-          - '*'
-        - apiGroups:
-          - argoproj.io
-          resources:
           - notificationsconfigurations
           - notificationsconfigurations/finalizers
           verbs:
@@ -1874,20 +1865,20 @@ spec:
         serviceAccountName: argocd-operator-controller-manager
       deployments:
       - label:
-          control-plane: argocd-operator
+          control-plane: controller-manager
         name: argocd-operator-controller-manager
         spec:
           replicas: 1
           selector:
             matchLabels:
-              control-plane: argocd-operator
+              control-plane: controller-manager
           strategy: {}
           template:
             metadata:
               annotations:
                 kubectl.kubernetes.io/default-container: manager
               labels:
-                control-plane: argocd-operator
+                control-plane: controller-manager
             spec:
               containers:
               - args:
