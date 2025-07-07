@@ -247,12 +247,13 @@ metadata:
     capabilities: Deep Insights
     categories: Integration & Delivery
     certified: "false"
-    createdAt: "2025-06-25T10:06:53Z"
+    createdAt: "2025-06-25T10:15:56Z"
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v1.35.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
     repository: https://github.com/argoproj-labs/argocd-operator
     support: Argo CD
+    containerImage: quay.io/argoprojlabs/argocd-operator@sha256:cc620f91e52a707d06b6d4603790a1926faac6da2183a9b12edecebc3a2d4041
   name: argocd-operator.v0.14.0
   namespace: placeholder
 spec:
@@ -1697,14 +1698,22 @@ spec:
           resources:
           - configmaps
           verbs:
-          - '*'
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
         - apiGroups:
           - ""
           resources:
+          - configmaps
           - endpoints
           - events
           - namespaces
           - persistentvolumeclaims
+          - pods
           - secrets
           - serviceaccounts
           - services
@@ -1715,11 +1724,6 @@ spec:
           - ""
           resources:
           - pods
-          verbs:
-          - '*'
-        - apiGroups:
-          - ""
-          resources:
           - pods/log
           verbs:
           - get
@@ -1758,12 +1762,27 @@ spec:
           resources:
           - applications
           - appprojects
+          verbs:
+          - '*'
+        - apiGroups:
+          - argoproj.io
+          resources:
           - argocdexports
           - argocdexports/finalizers
           - argocdexports/status
+          verbs:
+          - '*'
+        - apiGroups:
+          - argoproj.io
+          resources:
           - argocds
           - argocds/finalizers
           - argocds/status
+          verbs:
+          - '*'
+        - apiGroups:
+          - argoproj.io
+          resources:
           - notificationsconfigurations
           - notificationsconfigurations/finalizers
           verbs:
@@ -1831,6 +1850,11 @@ spec:
           - rbac.authorization.k8s.io
           resources:
           - '*'
+          verbs:
+          - '*'
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          resources:
           - clusterrolebindings
           - clusterroles
           verbs:
