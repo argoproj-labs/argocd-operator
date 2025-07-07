@@ -3,9 +3,10 @@ package argocd
 import (
 	"sync"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 var (
