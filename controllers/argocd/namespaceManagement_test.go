@@ -305,6 +305,7 @@ func TestReconcileNamespaceManagement_DeduplicateNamespaces(t *testing.T) {
 			{Name: "ns-1", AllowManagedBy: true},
 		}
 	})
+	testClient := testclient.NewSimpleClientset()
 
 	nm := &argoproj.NamespaceManagement{
 		ObjectMeta: metav1.ObjectMeta{
