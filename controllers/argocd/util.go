@@ -1150,6 +1150,12 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 
 	bldr.Watches(&corev1.Namespace{}, namespaceHandler, builder.WithPredicates(namespaceFilterPredicate()))
 
+	bldrHook := newBuilderHook(r.Client, bldr)
+	err := applyReconcilerHook(&argoproj.ArgoCD{}, bldrHook, "")
+	if err != nil {
+		log.Error(err, "failed to apply builder hook")
+	}
+
 	return bldr
 }
 
