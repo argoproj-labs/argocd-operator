@@ -23,18 +23,19 @@ import (
 	"sync"
 	"time"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
-	"github.com/argoproj/argo-cd/v3/util/settings"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj/argo-cd/v3/util/settings"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 const (
@@ -105,7 +106,7 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 	// Get the user secret if it exists, else create a new one
 	userSecret := corev1.Secret{}
 	secretName := user.Name + "-local-user"
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: secretName, Namespace: cr.Namespace}, &userSecret)
+	err = r.Get(context.TODO(), types.NamespacedName{Name: secretName, Namespace: cr.Namespace}, &userSecret)
 	if apierrors.IsNotFound(err) {
 		secretExists = false
 		userSecret = *argoutil.NewSecretWithName(cr, secretName)
@@ -212,7 +213,7 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 			if !tokenLifetimeChanged {
 				userSecret.Data[localUserAutoRenew] = []byte(autoRenew)
 				argoutil.LogResourceUpdate(log, &userSecret, "autoRenew set to false for user", cr.Namespace+"/"+user.Name)
-				err = r.Client.Update(context.TODO(), &userSecret)
+				err = r.Update(context.TODO(), &userSecret)
 			}
 		})
 		if !tokenLifetimeChanged {
@@ -244,7 +245,7 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 			tokenRenewalTimers[cr.Namespace+"/"+user.Name] = renewalTimer
 			userSecret.Data[localUserAutoRenew] = []byte(autoRenew)
 			argoutil.LogResourceUpdate(log, &userSecret, "autoRenew set to true")
-			err = r.Client.Update(context.TODO(), &userSecret)
+			err = r.Update(context.TODO(), &userSecret)
 		})
 
 		return err
@@ -314,7 +315,7 @@ func (r *ReconcileArgoCD) issueToken(cr argoproj.ArgoCD, user argoproj.LocalUser
 	// Create or update the local user secret
 	if secretExists {
 		argoutil.LogResourceUpdate(log, &userSecret, explanation)
-		if err := r.Client.Update(context.TODO(), &userSecret); err != nil {
+		if err := r.Update(context.TODO(), &userSecret); err != nil {
 			return err
 		}
 	} else {
@@ -322,7 +323,7 @@ func (r *ReconcileArgoCD) issueToken(cr argoproj.ArgoCD, user argoproj.LocalUser
 			return err
 		}
 		argoutil.LogResourceCreation(log, &userSecret)
-		if err := r.Client.Create(context.TODO(), &userSecret); err != nil {
+		if err := r.Create(context.TODO(), &userSecret); err != nil {
 			return err
 		}
 	}
@@ -343,7 +344,7 @@ func (r *ReconcileArgoCD) issueToken(cr argoproj.ArgoCD, user argoproj.LocalUser
 	}
 
 	argoCDSecret := corev1.Secret{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: common.ArgoCDSecretName, Namespace: cr.Namespace}, &argoCDSecret)
+	err = r.Get(context.TODO(), types.NamespacedName{Name: common.ArgoCDSecretName, Namespace: cr.Namespace}, &argoCDSecret)
 	if err != nil {
 		return err
 	}
@@ -351,7 +352,7 @@ func (r *ReconcileArgoCD) issueToken(cr argoproj.ArgoCD, user argoproj.LocalUser
 	key := fmt.Sprintf("accounts.%s.tokens", user.Name)
 	argoCDSecret.Data[key] = tokens
 	argoutil.LogResourceUpdate(log, &argoCDSecret, "setting token for user account", user.Name)
-	if err := r.Client.Update(context.TODO(), &argoCDSecret); err != nil {
+	if err := r.Update(context.TODO(), &argoCDSecret); err != nil {
 		return err
 	}
 
@@ -392,7 +393,7 @@ func (r *ReconcileArgoCD) cleanupLocalUsers(cr *argoproj.ArgoCD) error {
 		}),
 		Namespace: cr.Namespace,
 	}
-	if err := r.Client.List(context.TODO(), &secrets, &options); err != nil {
+	if err := r.List(context.TODO(), &secrets, &options); err != nil {
 		return err
 	}
 
@@ -431,7 +432,7 @@ func (r *ReconcileArgoCD) cleanupLocalUsers(cr *argoproj.ArgoCD) error {
 func (r *ReconcileArgoCD) cleanupUser(cr *argoproj.ArgoCD, userName string, secret corev1.Secret) error {
 	// Delete the secret
 	argoutil.LogResourceDeletion(log, &secret, "deleting secret for user", userName)
-	if err := r.Client.Delete(context.TODO(), &secret); err != nil {
+	if err := r.Delete(context.TODO(), &secret); err != nil {
 		return err
 	}
 
@@ -440,7 +441,7 @@ func (r *ReconcileArgoCD) cleanupUser(cr *argoproj.ArgoCD, userName string, secr
 	value := cr.Spec.ExtraConfig["accounts."+userName]
 	if !strings.Contains(value, localUserApiKey) {
 		argoCDSecret := corev1.Secret{}
-		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: common.ArgoCDSecretName, Namespace: cr.Namespace}, &argoCDSecret); err != nil {
+		if err := r.Get(context.TODO(), types.NamespacedName{Name: common.ArgoCDSecretName, Namespace: cr.Namespace}, &argoCDSecret); err != nil {
 			return err
 		}
 
@@ -448,7 +449,7 @@ func (r *ReconcileArgoCD) cleanupUser(cr *argoproj.ArgoCD, userName string, secr
 		if _, ok := argoCDSecret.Data[key]; ok {
 			argoutil.LogResourceUpdate(log, &argoCDSecret, "deleting token for user", userName)
 			delete(argoCDSecret.Data, key)
-			if err := r.Client.Update(context.TODO(), &argoCDSecret); err != nil {
+			if err := r.Update(context.TODO(), &argoCDSecret); err != nil {
 				return err
 			}
 		}
