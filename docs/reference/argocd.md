@@ -1848,6 +1848,8 @@ Name | Default | Description
 --- | --- | ---
 Banner.Content | [Empty] | The banner message content (required if a banner should be displayed).
 Banner.URL | [Empty] | The banner message link URL (optional).
+Banner.Permanent | [Empty] | true if the banner should be displayed permanently else false(optional).
+Banner.Position | [Empty] | The banner position (optional).
 
 ### Banner Example
 The following example enables a UI banner with message content and URL.
@@ -1863,6 +1865,8 @@ spec:
   banner:
     content: "Custom Styles - Banners"
     url: "https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners"
+    permanent: `true`
+    position: "bottom"
 ```
 #### Remediation Steps
 

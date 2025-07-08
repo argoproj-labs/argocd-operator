@@ -1066,6 +1066,10 @@ type Banner struct {
 	Content string `json:"content"`
 	// URL defines an optional URL to be used as banner message link
 	URL string `json:"url,omitempty"`
+	// Permanent defines if the banner should be displayed permanently or only for a certain period of time
+	Permanent bool `json:"permanent,omitempty"`
+	// Position defines the position of the banner in the UI
+	Position string `json:"position,omitempty"`
 }
 
 // ArgoCDTLSSpec defines the TLS options for ArgCD.
