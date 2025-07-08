@@ -957,6 +957,9 @@ type ArgoCDSpec struct {
 
 	// CmdParams specifies command-line parameters for the Argo CD components.
 	CmdParams map[string]string `json:"cmdParams,omitempty"`
+
+	// ArgoCDAgent defines configurations for the ArgoCD Agent component.
+	ArgoCDAgent *ArgoCDAgentSpec `json:"argoCDAgent,omitempty"`
 }
 
 const (
@@ -1096,6 +1099,37 @@ type WebhookServerSpec struct {
 
 	// Route defines the desired state for an OpenShift Route for the Application set webhook component.
 	Route ArgoCDRouteSpec `json:"route,omitempty"`
+}
+
+type ArgoCDAgentSpec struct {
+
+	// Principal defines configurations for the Principal component of Argo CD Agent.
+	Principal *PrincipalSpec `json:"principal,omitempty"`
+}
+
+type PrincipalSpec struct {
+
+	// Enabled is the flag to enable the Principal component during Argo CD installation. (optional, default `false`)
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// AllowedNamespaces is the list of namespaces that the Principal component is allowed to access.
+	AllowedNamespaces []string `json:"allowedNamespaces,omitempty"`
+
+	// JWTAllowGenerate is the flag to enable the JWT generation during Argo CD installation.
+	JWTAllowGenerate bool `json:"jwtAllowGenerate,omitempty"`
+
+	// Auth is the authentication method for the Principal component.
+	Auth string `json:"auth,omitempty"`
+
+	// LogLevel refers to the log level used by the Principal component. Defaults to info if not configured. Valid options are debug, info, trace, error, and warn.
+	LogLevel string `json:"logLevel,omitempty"`
+
+	// Image is the name of Argo CD Agent image
+	Image string `json:"image,omitempty"`
+}
+
+func (a *PrincipalSpec) IsEnabled() bool {
+	return a.Enabled != nil && *a.Enabled
 }
 
 // IsDeletionFinalizerPresent checks if the instance has deletion finalizer

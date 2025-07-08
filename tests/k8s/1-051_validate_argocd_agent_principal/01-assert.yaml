@@ -1,0 +1,155 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 120
+---
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+  namespace: argocd-e2e-cluster-config
+status:
+  phase: Available
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: argocd-agent-principal
+  namespace: argocd-e2e-cluster-config
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-agent-principal
+  namespace: argocd-e2e-cluster-config
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-agent-principal
+  namespace: argocd-e2e-cluster-config 
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+ name: argocd-argocd-e2e-cluster-config-agent-principal  
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: argocd-argocd-e2e-cluster-config-agent-principal
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-agent-principal
+  namespace: argocd-e2e-cluster-config
+spec:
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-agent-principal-metrics
+  namespace: argocd-e2e-cluster-config
+spec:
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-redis
+  namespace: argocd-e2e-cluster-config
+spec:
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-repo-server
+  namespace: argocd-e2e-cluster-config
+spec:
+  type: LoadBalancer  
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-server
+  namespace: argocd-e2e-cluster-config
+spec:
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-agent-params
+  namespace: argocd-e2e-cluster-config
+data:
+  principal.jwt.allow-generate: 'true'
+  principal.jwt.secret-name: argocd-agent-jwt
+  principal.log.format: text
+  principal.tls.server.root-ca-path: ''
+  principal.resource-proxy.tls.ca-path: ''
+  principal.namespace-create.enable: 'false'
+  principal.resource-proxy.tls.key-path: ''
+  principal.pprof-port: '0'
+  principal.keep-alive-min-interval: 30s
+  principal.listen.port: '8443'
+  principal.auth: 'mtls:CN=([^,]+)'
+  principal.resource-proxy.secret-name: argocd-agent-resource-proxy-tls
+  principal.tls.client-cert.match-subject: 'false'
+  principal.tls.client-cert.require: 'false'
+  principal.tls.server.key-path: ''
+  principal.tls.server.root-ca-secret-name: argocd-agent-ca
+  principal.metrics.port: '8000'
+  principal.listen.host: ''
+  principal.namespace-create.pattern: ''
+  principal.tls.server.allow-generate: 'true'
+  principal.redis-compression-type: gzip
+  principal.tls.secret-name: argocd-agent-principal-tls
+  principal.resource-proxy.ca.path: ''
+  principal.tls.server.cert-path: ''
+  principal.resource-proxy.ca.secret-name: argocd-agent-ca
+  principal.enable-resource-proxy: 'true'
+  principal.jwt.key-path: ''
+  principal.log.level: trace
+  principal.namespace: argocd-e2e-cluster-config
+  principal.resource-proxy.tls.cert-path: ''
+  principal.redis-server-address: 'argocd-redis:6379'
+  principal.allowed-namespaces: '*'
+  principal.enable-websocket: 'false'
+  principal.namespace-create.labels: ''
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-redis
+  namespace: argocd-e2e-cluster-config
+status:
+  readyReplicas: 1  
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-repo-server
+  namespace: argocd-e2e-cluster-config
+status:
+  readyReplicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-server
+  namespace: argocd-e2e-cluster-config
+status:
+  readyReplicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-agent-principal
+  namespace: argocd-e2e-cluster-config
+  labels:
+    app.kubernetes.io/component: principal
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/name: argocd-agent-principal
+    app.kubernetes.io/part-of: argocd-agent

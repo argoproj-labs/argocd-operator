@@ -97,6 +97,16 @@ func (r *ReconcileArgoCD) ReconcileRedisNetworkPolicy(cr *argoproj.ArgoCD) error
 		},
 	}
 
+	if cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Principal != nil && cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
+		networkPolicy.Spec.Ingress[0].From = append(networkPolicy.Spec.Ingress[0].From, networkingv1.NetworkPolicyPeer{
+			PodSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app.kubernetes.io/name": fmt.Sprintf("%s-agent-%s", cr.Name, "principal"),
+				},
+			},
+		})
+	}
+
 	// Check if the network policy already exists
 	existing := &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
