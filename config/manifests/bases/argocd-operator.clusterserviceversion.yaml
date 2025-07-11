@@ -1432,10 +1432,10 @@ spec:
   - name: Operator Source Code
     url: https://github.com/argoproj-labs/argocd-operator
   maintainers:
-  - email: aveerama@redhat.com
-    name: Abhishek Veeramalla
+  - email: sghadi@redhat.com
+    name: Siddhesh Ghadi
   maturity: alpha
   provider:
     name: Argo CD Community
-  replaces: argocd-operator.v0.14.1
-  version: 0.15.0
+  replaces: argocd-operator.v0.15.0
+  version: 0.16.0
