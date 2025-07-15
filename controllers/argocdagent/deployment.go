@@ -147,9 +147,14 @@ func buildPorts(compName string) []corev1.ContainerPort {
 		{
 			ContainerPort: 8443,
 			Name:          compName,
-		}, {
+		},
+		{
 			ContainerPort: 8000,
 			Name:          "metrics",
+		},
+		{
+			ContainerPort: 6379,
+			Name:          "redis",
 		},
 	}
 }

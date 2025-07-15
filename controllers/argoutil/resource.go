@@ -174,3 +174,7 @@ func LogResourceAction(log logr.Logger, action string, object metav1.Object, exp
 
 	log.Info(msg)
 }
+
+func GenerateAgentPrincipalRedisProxyServiceName(crName string) string {
+	return fmt.Sprintf("%s-agent-%s", crName, "principal-redisproxy")
+}
