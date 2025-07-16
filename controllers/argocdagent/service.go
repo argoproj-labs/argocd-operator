@@ -46,6 +46,12 @@ const (
 	PrincipalMetricsServicePort = 8000
 	// PrincipalMetricsServiceTargetPort is the target port for the principal metrics service
 	PrincipalMetricsServiceTargetPort = 8000
+	// PrincipalRedisProxyServicePortName is the name of the Redis proxy port
+	PrincipalRedisProxyServicePortName = "redis"
+	// PrincipalRedisProxyServicePort is the external port for the principal Redis proxy service
+	PrincipalRedisProxyServicePort = 6379
+	// PrincipalRedisProxyServiceTargetPort is the target port for the principal Redis proxy service
+	PrincipalRedisProxyServiceTargetPort = 6379
 )
 
 // ReconcilePrincipalService reconciles the principal service for the ArgoCD agent.
@@ -171,6 +177,68 @@ func ReconcilePrincipalMetricsService(client client.Client, compName string, cr 
 	return nil
 }
 
+// ReconcilePrincipalRedisProxyService reconciles the principal Redis proxy service for the ArgoCD agent.
+// It creates, updates, or deletes the Redis proxy service based on the principal configuration.
+func ReconcilePrincipalRedisProxyService(client client.Client, compName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme) error {
+
+	service := buildService(argoutil.GenerateAgentPrincipalRedisProxyServiceName(cr.Name), compName, cr)
+	expectedSpec := buildPrincipalRedisProxyServiceSpec(compName, cr)
+
+	// Check if the Redis proxy service already exists in the cluster
+	exists := true
+	if err := client.Get(context.TODO(), types.NamespacedName{Name: service.Name, Namespace: service.Namespace}, service); err != nil {
+		if !errors.IsNotFound(err) {
+			return fmt.Errorf("failed to get existing principal Redis proxy service %s in namespace %s: %v", service.Name, service.Namespace, err)
+		}
+		exists = false
+	}
+
+	// If Redis proxy service exists, handle updates or deletion
+	if exists {
+		if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
+			argoutil.LogResourceDeletion(log, service, "principal Redis proxy service is being deleted as principal is disabled")
+			if err := client.Delete(context.TODO(), service); err != nil {
+				return fmt.Errorf("failed to delete principal Redis proxy service %s: %v", service.Name, err)
+			}
+			return nil
+		}
+
+		if !reflect.DeepEqual(service.Spec.Ports, expectedSpec.Ports) ||
+			!reflect.DeepEqual(service.Spec.Selector, expectedSpec.Selector) ||
+			!reflect.DeepEqual(service.Spec.Type, expectedSpec.Type) {
+
+			service.Spec.Type = expectedSpec.Type
+			service.Spec.Ports = expectedSpec.Ports
+			service.Spec.Selector = expectedSpec.Selector
+
+			argoutil.LogResourceUpdate(log, service, "updating principal Redis proxy service spec")
+			if err := client.Update(context.TODO(), service); err != nil {
+				return fmt.Errorf("failed to update principal Redis proxy service %s: %v", service.Name, err)
+			}
+		}
+		return nil
+	}
+
+	// If Redis proxy service doesn't exist and principal is disabled, nothing to do
+	if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
+		return nil
+	}
+
+	if err := controllerutil.SetControllerReference(cr, service, scheme); err != nil {
+		return fmt.Errorf("failed to set ArgoCD CR %s as owner for service %s: %w", cr.Name, service.Name, err)
+	}
+
+	service.Spec.Type = expectedSpec.Type
+	service.Spec.Ports = expectedSpec.Ports
+	service.Spec.Selector = expectedSpec.Selector
+
+	argoutil.LogResourceCreation(log, service)
+	if err := client.Create(context.TODO(), service); err != nil {
+		return fmt.Errorf("failed to create principal Redis proxy service %s: %v", service.Name, err)
+	}
+	return nil
+}
+
 func buildPrincipalServiceSpec(compName string, cr *argoproj.ArgoCD) corev1.ServiceSpec {
 	return corev1.ServiceSpec{
 		Ports: []corev1.ServicePort{
@@ -201,7 +269,24 @@ func buildPrincipalMetricsServiceSpec(compName string, cr *argoproj.ArgoCD) core
 		Selector: map[string]string{
 			common.ArgoCDKeyName: generateAgentResourceName(cr.Name, compName),
 		},
-		Type: corev1.ServiceTypeLoadBalancer,
+		Type: corev1.ServiceTypeClusterIP,
+	}
+}
+
+func buildPrincipalRedisProxyServiceSpec(compName string, cr *argoproj.ArgoCD) corev1.ServiceSpec {
+	return corev1.ServiceSpec{
+		Ports: []corev1.ServicePort{
+			{
+				Name:       PrincipalRedisProxyServicePortName,
+				Port:       PrincipalRedisProxyServicePort,
+				Protocol:   corev1.ProtocolTCP,
+				TargetPort: intstr.FromInt(PrincipalRedisProxyServiceTargetPort),
+			},
+		},
+		Selector: map[string]string{
+			common.ArgoCDKeyName: generateAgentResourceName(cr.Name, compName),
+		},
+		Type: corev1.ServiceTypeClusterIP,
 	}
 }
 
