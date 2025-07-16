@@ -357,7 +357,7 @@ func TestReconcilePrincipalDeployment_VerifyDeploymentSpec(t *testing.T) {
 	assert.Equal(t, corev1.SeccompProfileType("RuntimeDefault"), container.SecurityContext.SeccompProfile.Type)
 
 	// Verify ports configuration
-	assert.Len(t, container.Ports, 2)
+	assert.Len(t, container.Ports, 3)
 	principalPort := container.Ports[0]
 	assert.Equal(t, testCompName, principalPort.Name)
 	assert.Equal(t, int32(8443), principalPort.ContainerPort)
