@@ -70,7 +70,7 @@ func (r *NotificationsConfigurationReconciler) reconcileNotificationsConfigmap(c
 	// check context separately as converting context map to string produce different string due to random serialization of map value
 	changed := checkIfContextChanged(cr, NotificationsConfigMap)
 
-	for k := range expectedConfiguration {
+	for k, _ := range expectedConfiguration {
 		if !reflect.DeepEqual(expectedConfiguration[k], NotificationsConfigMap.Data[k]) && k != "context" {
 			changed = true
 		}

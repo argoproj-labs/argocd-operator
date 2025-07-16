@@ -176,7 +176,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoproj.ArgoCD) error {
 		// Trigger reconciliation of any Dex resources so they get deleted
 		if err := r.reconcileDexResources(cr); err != nil && !apiErrors.IsNotFound(err) {
 			log.Error(err, "Unable to delete existing dex resources before configuring keycloak")
-			return fmt.Errorf("unable to delete existing dex resources before configuring keycloak. error: %w", err)
+			return fmt.Errorf("Unable to delete existing dex resources before configuring keycloak. error: %w", err)
 		}
 
 		if err := r.reconcileKeycloakConfiguration(cr); err != nil {
@@ -187,7 +187,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoproj.ArgoCD) error {
 		// Delete any lingering keycloak artifacts before Dex is configured as this is not handled by the reconcilliation loop
 		if err := deleteKeycloakConfiguration(cr); err != nil && !apiErrors.IsNotFound(err) {
 			log.Error(err, "Unable to delete existing SSO configuration before configuring Dex")
-			return fmt.Errorf("unable to delete existing SSO configuration before configuring Dex. error: %w", err)
+			return fmt.Errorf("Unable to delete existing SSO configuration before configuring Dex. error: %w", err)
 		}
 
 		if err := r.reconcileDexResources(cr); err != nil {
@@ -207,13 +207,13 @@ func (r *ReconcileArgoCD) deleteSSOConfiguration(newCr *argoproj.ArgoCD, oldCr *
 	if oldCr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeKeycloak {
 		if err := deleteKeycloakConfiguration(newCr); err != nil {
 			log.Error(err, "Unable to delete existing keycloak configuration")
-			return fmt.Errorf("unable to delete existing keycloak configuration. error: %w", err)
+			return fmt.Errorf("Unable to delete existing keycloak configuration. error: %w", err)
 		}
 	} else if oldCr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeDex {
 		// Trigger reconciliation of Dex resources so they get deleted
 		if err := r.deleteDexResources(newCr); err != nil {
 			log.Error(err, "Unable to reconcile necessary resources for uninstallation of Dex")
-			return fmt.Errorf("unable to reconcile necessary resources for uninstallation of Dex. error: %w", err)
+			return fmt.Errorf("Unable to reconcile necessary resources for uninstallation of Dex. error: %w", err)
 		}
 	}
 

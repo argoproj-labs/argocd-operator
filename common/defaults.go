@@ -70,7 +70,7 @@ const (
 	ArgoCDDefaultArgoImage = "quay.io/argoproj/argocd"
 
 	// ArgoCDDefaultArgoVersion is the Argo CD container image digest to use when version not specified.
-	ArgoCDDefaultArgoVersion = "sha256:bf7ad407274f0e860ca7baefc37af19a31cc13da2f770180a1df2319da32d345" // v2.14.4
+	ArgoCDDefaultArgoVersion = "sha256:3be6babe6a3248cf35f2c7816c0fcbbbdba592320d93494016ef7123031339cb" // v2.14.15
 
 	// ArgoCDDefaultBackupKeyLength is the length of the generated default backup key.
 	ArgoCDDefaultBackupKeyLength = 32
@@ -300,6 +300,9 @@ vs-ssh.visualstudio.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7Hr1oTWqNqOlzGJOf
 
 	// NotificationsControllerMetricsPort is the port that is used to expose notifications controller metrics.
 	NotificationsControllerMetricsPort = 9001
+
+	// ArgoCDCmdParamsConfigMapName is the upstream hard-coded ArgoCD command params ConfigMap name.
+	ArgoCDCmdParamsConfigMapName = "argocd-cmd-params-cm"
 )
 
 // DefaultLabels returns the default set of labels for controllers.

@@ -282,22 +282,15 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 					"ALL",
 				},
 			},
-			ReadOnlyRootFilesystem: boolPtr(true),
-			RunAsNonRoot:           boolPtr(true),
+			RunAsNonRoot: boolPtr(true),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
 		},
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "static-files",
-				MountPath: "/shared",
-			},
-			{
-				Name:      "dexconfig",
-				MountPath: "/tmp",
-			},
-		},
+		VolumeMounts: []corev1.VolumeMount{{
+			Name:      "static-files",
+			MountPath: "/shared",
+		}},
 	}}
 
 	deploy.Spec.Template.Spec.InitContainers = []corev1.Container{{
@@ -319,38 +312,24 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 					"ALL",
 				},
 			},
-			ReadOnlyRootFilesystem: boolPtr(true),
-			RunAsNonRoot:           boolPtr(true),
+			RunAsNonRoot: boolPtr(true),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
 		},
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "static-files",
-				MountPath: "/shared",
-			},
-			{
-				Name:      "dexconfig",
-				MountPath: "/tmp",
-			}},
+		VolumeMounts: []corev1.VolumeMount{{
+			Name:      "static-files",
+			MountPath: "/shared",
+		}},
 	}}
 
 	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDDefaultDexServiceAccountName)
-	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{
-		{
-			Name: "static-files",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
+	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{{
+		Name: "static-files",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
-		{
-			Name: "dexconfig",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		},
-	}
+	}}
 
 	existing := newDeploymentWithSuffix("dex-server", "dex-server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
@@ -428,22 +407,6 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 				explanation += ", "
 			}
 			explanation += "container security context"
-			changed = true
-		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].VolumeMounts, existing.Spec.Template.Spec.Containers[0].VolumeMounts) {
-			existing.Spec.Template.Spec.Containers[0].VolumeMounts = deploy.Spec.Template.Spec.Containers[0].VolumeMounts
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container volume mounts"
-			changed = true
-		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
-			existing.Spec.Template.Spec.Volumes = deploy.Spec.Template.Spec.Volumes
-			if changed {
-				explanation += ", "
-			}
-			explanation += "volumes"
 			changed = true
 		}
 

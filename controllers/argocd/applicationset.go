@@ -59,9 +59,6 @@ func (r *ReconcileArgoCD) getArgoApplicationSetCommand(cr *argoproj.ArgoCD) []st
 	cmd = append(cmd, "--loglevel")
 	cmd = append(cmd, getLogLevel(cr.Spec.ApplicationSet.LogLevel))
 
-	cmd = append(cmd, "--logformat")
-	cmd = append(cmd, getLogFormat(cr.Spec.ApplicationSet.LogFormat))
-
 	if cr.Spec.ApplicationSet.SCMRootCAConfigMap != "" {
 		cmd = append(cmd, "--scm-root-ca-path")
 		cmd = append(cmd, ApplicationSetGitlabSCMTlsCertPath)
@@ -894,7 +891,7 @@ func getApplicationSetResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements
 
 func setAppSetLabels(obj *metav1.ObjectMeta) {
 	obj.Labels["app.kubernetes.io/name"] = "argocd-applicationset-controller"
-	obj.Labels["app.kubernetes.io/part-of"] = "argocd"
+	obj.Labels["app.kubernetes.io/part-of"] = "argocd-applicationset"
 	obj.Labels["app.kubernetes.io/component"] = "controller"
 }
 

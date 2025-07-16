@@ -565,12 +565,50 @@ argoproj.io/AppProject default unchanged
 argo-cd import complete
 ```
 
-## Initial Repositories [Deprecated]
+## Initial Repositories
 
 Initial git repositories to configure Argo CD to use upon creation of the cluster.
 
-!!! warning
-    Argo CD InitialRepositories field is deprecated from ArgoCD, field will be ignored. Setting or modifications to the `repositories` field should then be made through the Argo CD web UI or CLI.
+This property maps directly to the `repositories` field in the `argocd-cm` ConfigMap. Updating this property after the cluster has been created has no affect and should be used only as a means to initialize the cluster with the value provided. Modifications to the `repositories` field should then be made through the Argo CD web UI or CLI.
+
+### Initial Repositories Example
+
+The following example sets a value in the `argocd-cm` ConfigMap using the `InitialRepositories` property on the `ArgoCD` resource.
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: initial-repositories
+spec:
+  initialRepositories: |
+    - url: https://github.com/argoproj/my-private-repository
+      passwordSecret:
+        name: my-secret
+        key: password
+      usernameSecret:
+        name: my-secret
+        key: username
+      sshPrivateKeySecret:
+        name: my-secret
+        key: sshPrivateKey
+    - type: helm
+      url: https://storage.googleapis.com/istio-prerelease/daily-build/master-latest-daily/charts
+      name: istio.io
+    - type: helm
+      url: https://my-private-chart-repo.internal
+      name: private-repo
+      usernameSecret:
+        name: my-secret
+        key: username
+      passwordSecret:
+        name: my-secret
+        key: password
+    - type: git
+      url: https://github.com/argoproj/argocd-example-apps.git
+```
 
 ## Notifications Controller Options
 
@@ -609,8 +647,21 @@ This property maps directly to the `repository.credentials` field in the `argocd
 
 The following example sets a value in the `argocd-cm` ConfigMap using the `RepositoryCredentials` property on the `ArgoCD` resource.
 
-!!! warning
-    Argo CD RepositoryCredentials field is deprecated from ArgoCD, field will be ignored.
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: repository-credentials
+spec:
+  repositoryCredentials: |
+    - sshPrivateKeySecret:
+        key: sshPrivateKey
+        name: my-ssh-secret
+      type: git
+      url: ssh://git@gitlab.com/my-org/
+```
 
 ## Initial SSH Known Hosts
 

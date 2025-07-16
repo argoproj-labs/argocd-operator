@@ -131,6 +131,12 @@ const (
 	// ArgoCDKeyResourceTrackingMethod is the configuration key for resource tracking method
 	ArgoCDKeyResourceTrackingMethod = "application.resourceTrackingMethod"
 
+	// ArgoCDKeyRepositories is the configuration key for repositories.
+	ArgoCDKeyRepositories = "repositories"
+
+	// ArgoCDKeyRepositoryCredentials is the configuration key for repository.credentials.
+	ArgoCDKeyRepositoryCredentials = "repository.credentials"
+
 	// ArgoCDKeyServerSecretKey is the server secret key property name for the Argo secret.
 	ArgoCDKeyServerSecretKey = "server.secretkey"
 

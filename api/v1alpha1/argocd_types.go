@@ -159,10 +159,6 @@ type ArgoCDApplicationSet struct {
 	LogLevel string `json:"logLevel,omitempty"`
 
 	WebhookServer WebhookServerSpec `json:"webhookServer,omitempty"`
-
-	// LogFormat refers to the log format used by the ApplicationSet component. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
-	// +kubebuilder:validation:Enum=text;json
-	LogFormat string `json:"logFormat,omitempty"`
 }
 
 // ArgoCDCASpec defines the CA options for ArgCD.
@@ -343,10 +339,6 @@ type ArgoCDNotifications struct {
 
 	// LogLevel describes the log level that should be used by the argocd-notifications. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug,info, error, and warn.
 	LogLevel string `json:"logLevel,omitempty"`
-
-	// LogFormat refers to the log format used by the argocd-notifications. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
-	// +kubebuilder:validation:Enum=text;json
-	LogFormat string `json:"logformat,omitempty"`
 }
 
 // ArgoCDPrometheusSpec defines the desired state for the Prometheus component.

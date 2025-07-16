@@ -104,11 +104,6 @@ func getArgoExportVolumeMounts() []corev1.VolumeMount {
 		MountPath: "/secrets",
 	})
 
-	mounts = append(mounts, corev1.VolumeMount{
-		Name:      "tmp",
-		MountPath: "/tmp",
-	})
-
 	return mounts
 }
 
@@ -190,8 +185,7 @@ func newExportPodSpec(cr *argoproj.ArgoCDExport, argocdName string, client clien
 					"ALL",
 				},
 			},
-			ReadOnlyRootFilesystem: boolPtr(true),
-			RunAsNonRoot:           boolPtr(true),
+			RunAsNonRoot: boolPtr(true),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
@@ -204,7 +198,6 @@ func newExportPodSpec(cr *argoproj.ArgoCDExport, argocdName string, client clien
 	pod.Volumes = []corev1.Volume{
 		getArgoStorageVolume("backup-storage", cr),
 		getArgoSecretVolume("secret-storage", cr),
-		{Name: "tmp", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
 	}
 
 	// Configure runAsUser, runAsGroup and fsGroup so that the job can write to the PV
@@ -306,7 +299,7 @@ func (r *ReconcileArgoCDExport) argocdName(namespace string) (string, error) {
 		return "", err
 	}
 	if len(argocds.Items) != 1 {
-		return "", fmt.Errorf("no Argo CD instance found in namespace %s", namespace)
+		return "", fmt.Errorf("No Argo CD instance found in namespace %s", namespace)
 	}
 	argocd := argocds.Items[0]
 	return argocd.Name, nil

@@ -22,7 +22,7 @@ metadata:
     app.kubernetes.io/component: controller
     app.kubernetes.io/managed-by: argocd
     app.kubernetes.io/name: argocd-applicationset-controller
-    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/part-of: argocd-applicationset
 spec:
   selector:
     matchLabels:
@@ -37,8 +37,6 @@ spec:
           - argocd-repo-server.test-1-32-appsets-scm-tls-mount.svc.cluster.local:8081
           - --loglevel
           - info
-          - --logformat
-          - text
           - --scm-root-ca-path
           - /app/tls/scm/cert
           volumeMounts:

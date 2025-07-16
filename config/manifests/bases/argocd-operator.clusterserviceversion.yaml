@@ -420,8 +420,8 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Import
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'Deprecated: InitialRepositories to configure Argo CD with upon
-          creation of the cluster.'
+      - description: InitialRepositories to configure Argo CD with upon creation of
+          the cluster.
         displayName: Initial Repositories'
         path: initialRepositories
         x-descriptors:
@@ -1433,5 +1433,5 @@ spec:
   maturity: alpha
   provider:
     name: Argo CD Community
-  replaces: argocd-operator.v0.13.0
-  version: 0.14.0
+  replaces: argocd-operator.v0.14.0
+  version: 0.14.1

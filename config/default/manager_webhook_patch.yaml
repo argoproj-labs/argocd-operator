@@ -21,4 +21,3 @@ spec:
         secret:
           defaultMode: 420
           secretName: webhook-server-cert
-          optional: true

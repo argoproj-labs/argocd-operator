@@ -18,8 +18,6 @@ spec:
           - example-argocd-repo-server.test-1-29-appsets-extra-command.svc.cluster.local:8081
           - --loglevel
           - info
-          - --logformat
-          - text
           - --enable-progressive-rollouts
           name: argocd-applicationset-controller
 

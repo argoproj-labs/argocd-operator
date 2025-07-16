@@ -256,6 +256,24 @@ func getResourceTrackingMethod(cr *argoproj.ArgoCD) string {
 	return rtm.String()
 }
 
+// getInitialRepositories will return the initial repositories for the given ArgoCD.
+func getInitialRepositories(cr *argoproj.ArgoCD) string {
+	repos := common.ArgoCDDefaultRepositories
+	if len(cr.Spec.InitialRepositories) > 0 {
+		repos = cr.Spec.InitialRepositories
+	}
+	return repos
+}
+
+// getRepositoryCredentials will return the repository credentials for the given ArgoCD.
+func getRepositoryCredentials(cr *argoproj.ArgoCD) string {
+	repos := common.ArgoCDDefaultRepositoryCredentials
+	if len(cr.Spec.RepositoryCredentials) > 0 {
+		repos = cr.Spec.RepositoryCredentials
+	}
+	return repos
+}
+
 // getSSHKnownHosts will return the SSH Known Hosts data for the given ArgoCD.
 func getInitialSSHKnownHosts(cr *argoproj.ArgoCD) string {
 	skh := common.ArgoCDDefaultSSHKnownHosts
@@ -327,6 +345,10 @@ func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoproj.ArgoCD, useTLSForRedi
 	}
 
 	if err := r.reconcileGrafanaDashboards(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileArgoCmdParamsConfigMap(cr); err != nil {
 		return err
 	}
 
@@ -408,20 +430,11 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	cm.Data[common.ArgoCDKeyResourceExclusions] = getResourceExclusions(cr)
 	cm.Data[common.ArgoCDKeyResourceInclusions] = getResourceInclusions(cr)
 	cm.Data[common.ArgoCDKeyResourceTrackingMethod] = getResourceTrackingMethod(cr)
+	cm.Data[common.ArgoCDKeyRepositories] = getInitialRepositories(cr)
+	cm.Data[common.ArgoCDKeyRepositoryCredentials] = getRepositoryCredentials(cr)
 	cm.Data[common.ArgoCDKeyStatusBadgeEnabled] = fmt.Sprint(cr.Spec.StatusBadgeEnabled)
 	cm.Data[common.ArgoCDKeyServerURL] = r.getArgoServerURI(cr)
 	cm.Data[common.ArgoCDKeyUsersAnonymousEnabled] = fmt.Sprint(cr.Spec.UsersAnonymousEnabled)
-
-	// deprecated: log warning for deprecated field InitialRepositories
-	//lint:ignore SA1019 known to be deprecated
-	if cr.Spec.InitialRepositories != "" {
-		log.Info(initialRepositoriesWarning)
-	}
-	// deprecated: log warning for deprecated field RepositoryCredential
-	//lint:ignore SA1019 known to be deprecated
-	if cr.Spec.RepositoryCredentials != "" {
-		log.Info(repositoryCredentialsWarning)
-	}
 
 	// create dex config if dex is enabled through `.spec.sso`
 	if UseDex(cr) {
@@ -506,7 +519,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 
 // reconcileGrafanaConfiguration will ensure that the Grafana configuration ConfigMap is present.
 func (r *ReconcileArgoCD) reconcileGrafanaConfiguration(cr *argoproj.ArgoCD) error {
-	//lint:ignore SA1019 known to be deprecated
+	//nolint:staticcheck
 	if !cr.Spec.Grafana.Enabled {
 		return nil // Grafana not enabled, do nothing.
 	}
@@ -518,7 +531,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaConfiguration(cr *argoproj.ArgoCD) err
 
 // reconcileGrafanaDashboards will ensure that the Grafana dashboards ConfigMap is present.
 func (r *ReconcileArgoCD) reconcileGrafanaDashboards(cr *argoproj.ArgoCD) error {
-	//lint:ignore SA1019 known to be deprecated
+	//nolint:staticcheck
 	if !cr.Spec.Grafana.Enabled {
 		return nil // Grafana not enabled, do nothing.
 	}
@@ -793,4 +806,51 @@ func (r *ReconcileArgoCD) reconcileGPGKeysConfigMap(cr *argoproj.ArgoCD) error {
 	}
 	argoutil.LogResourceCreation(log, cm)
 	return r.Client.Create(context.TODO(), cm)
+}
+
+// reconcileArgoCmdParamsConfigMap will ensure that the ConfigMap containing command line parameters for ArgoCD is present.
+func (r *ReconcileArgoCD) reconcileArgoCmdParamsConfigMap(cr *argoproj.ArgoCD) error {
+	cm := newConfigMapWithName(common.ArgoCDCmdParamsConfigMapName, cr)
+	cm.Data = make(map[string]string)
+
+	// Only set data if spec.cmdParams is defined
+	if len(cr.Spec.CmdParams) > 0 {
+		for k, v := range cr.Spec.CmdParams {
+			cm.Data[k] = v
+		}
+	}
+
+	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
+		return err
+	}
+	existingCM := &corev1.ConfigMap{}
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
+		changed := false
+
+		// Compare only if data is being managed
+		if len(cm.Data) > 0 && !reflect.DeepEqual(cm.Data, existingCM.Data) {
+			existingCM.Data = cm.Data
+			changed = true
+		}
+		// Check OwnerReferences
+		var refChanged bool
+		var err error
+		if refChanged, err = modifyOwnerReferenceIfNeeded(cr, existingCM, r.Scheme); err != nil {
+			return err
+		}
+		if refChanged {
+			changed = true
+		}
+		if changed {
+			explanation := "updating data"
+			if refChanged {
+				explanation += ", owner reference"
+			}
+			argoutil.LogResourceUpdate(log, existingCM, explanation)
+			return r.Update(context.TODO(), existingCM)
+		}
+		return nil // Do nothing as there is no change in the configmap.
+	}
+	argoutil.LogResourceCreation(log, cm)
+	return r.Create(context.TODO(), cm)
 }

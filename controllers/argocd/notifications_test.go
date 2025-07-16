@@ -9,7 +9,7 @@ import (
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
-
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -79,7 +79,7 @@ func TestReconcileNotifications_CreateServiceAccount(t *testing.T) {
 	desiredSa, err := r.reconcileNotificationsServiceAccount(a)
 	assert.NoError(t, err)
 
-	testSa := &v1.ServiceAccount{}
+	testSa := &corev1.ServiceAccount{}
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
 		Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
 		Namespace: a.Namespace,
@@ -113,7 +113,7 @@ func TestReconcileNotifications_CreateRoleBinding(t *testing.T) {
 	r := makeTestReconciler(cl, sch)
 
 	role := &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: "role-name"}}
-	sa := &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa-name"}}
+	sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa-name"}}
 
 	err := r.reconcileNotificationsRoleBinding(a, role, sa)
 	assert.NoError(t, err)
@@ -153,7 +153,7 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
-	sa := v1.ServiceAccount{}
+	sa := corev1.ServiceAccount{}
 
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
 
@@ -169,25 +169,23 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 	// Ensure the created Deployment has the expected properties
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.ObjectMeta.Name)
 
-	want := []v1.Container{{
-		Command:         []string{"argocd-notifications", "--loglevel", "info", "--logformat", "text", "--argocd-repo-server", "argocd-repo-server.argocd.svc.cluster.local:8081"},
+	want := []corev1.Container{{
+		Command:         []string{"argocd-notifications", "--loglevel", "info", "--argocd-repo-server", "argocd-repo-server.argocd.svc.cluster.local:8081"},
 		Image:           argoutil.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion),
-		ImagePullPolicy: v1.PullAlways,
+		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-notifications-controller",
-		SecurityContext: &v1.SecurityContext{
+		SecurityContext: &corev1.SecurityContext{
 			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &v1.Capabilities{
-				Drop: []v1.Capability{
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{
 					"ALL",
 				},
 			},
-			ReadOnlyRootFilesystem: boolPtr(true),
-			RunAsNonRoot:           boolPtr(true),
-			SeccompProfile: &v1.SeccompProfile{
+			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
 		},
-		VolumeMounts: []v1.VolumeMount{
+		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "tls-certs",
 				MountPath: "/app/config/tls",
@@ -197,11 +195,11 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 				MountPath: "/app/config/reposerver/tls",
 			},
 		},
-		Resources:  v1.ResourceRequirements{},
+		Resources:  corev1.ResourceRequirements{},
 		WorkingDir: "/app",
-		LivenessProbe: &v1.Probe{
-			ProbeHandler: v1.ProbeHandler{
-				TCPSocket: &v1.TCPSocketAction{
+		LivenessProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				TCPSocket: &corev1.TCPSocketAction{
 					Port: intstr.IntOrString{
 						IntVal: int32(9001),
 					},
@@ -214,12 +212,12 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 		t.Fatalf("failed to reconcile notifications-controller deployment containers:\n%s", diff)
 	}
 
-	volumes := []v1.Volume{
+	volumes := []corev1.Volume{
 		{
 			Name: "tls-certs",
-			VolumeSource: v1.VolumeSource{
-				ConfigMap: &v1.ConfigMapVolumeSource{
-					LocalObjectReference: v1.LocalObjectReference{
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
 						Name: "argocd-tls-certs-cm",
 					},
 				},
@@ -227,8 +225,8 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 		},
 		{
 			Name: "argocd-repo-server-tls",
-			VolumeSource: v1.VolumeSource{
-				Secret: &v1.SecretVolumeSource{
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
 					SecretName: "argocd-repo-server-tls",
 					Optional:   boolPtr(true),
 				},
@@ -279,7 +277,7 @@ func TestReconcileNotifications_CreateMetricsService(t *testing.T) {
 	err = r.reconcileNotificationsMetricsService(a)
 	assert.NoError(t, err)
 
-	testService := &v1.Service{}
+	testService := &corev1.Service{}
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
 		Name:      fmt.Sprintf("%s-%s", a.Name, "notifications-controller-metrics"),
 		Namespace: a.Namespace,
@@ -362,7 +360,7 @@ func TestReconcileNotifications_CreateSecret(t *testing.T) {
 	err := r.reconcileNotificationsSecret(a)
 	assert.NoError(t, err)
 
-	testSecret := &v1.Secret{}
+	testSecret := &corev1.Secret{}
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-notifications-secret",
 		Namespace: a.Namespace,
@@ -371,14 +369,14 @@ func TestReconcileNotifications_CreateSecret(t *testing.T) {
 	a.Spec.Notifications.Enabled = false
 	err = r.reconcileNotificationsSecret(a)
 	assert.NoError(t, err)
-	secret := &v1.Secret{}
+	secret := &corev1.Secret{}
 	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-notifications-secret", Namespace: a.Namespace}, secret)
 	assertNotFound(t, err)
 }
 
 func TestReconcileNotifications_testEnvVars(t *testing.T) {
 
-	envMap := []v1.EnvVar{
+	envMap := []corev1.EnvVar{
 		{
 			Name:  "foo",
 			Value: "bar",
@@ -396,7 +394,7 @@ func TestReconcileNotifications_testEnvVars(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
 
-	sa := v1.ServiceAccount{}
+	sa := corev1.ServiceAccount{}
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
 
 	deployment := &appsv1.Deployment{}
@@ -413,7 +411,7 @@ func TestReconcileNotifications_testEnvVars(t *testing.T) {
 	}
 
 	// Verify any manual updates to the env vars should be overridden by the operator.
-	unwantedEnv := []v1.EnvVar{
+	unwantedEnv := []corev1.EnvVar{
 		{
 			Name:  "foo",
 			Value: "bar",
@@ -459,7 +457,7 @@ func TestReconcileNotifications_testLogLevel(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
 
-	sa := v1.ServiceAccount{}
+	sa := corev1.ServiceAccount{}
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
 
 	deployment := &appsv1.Deployment{}
@@ -475,8 +473,6 @@ func TestReconcileNotifications_testLogLevel(t *testing.T) {
 		"argocd-notifications",
 		"--loglevel",
 		"debug",
-		"--logformat",
-		"text",
 		"--argocd-repo-server",
 		"argocd-repo-server.argocd.svc.cluster.local:8081",
 	}
@@ -509,72 +505,5 @@ func TestReconcileNotifications_testLogLevel(t *testing.T) {
 
 	if diff := cmp.Diff(expectedCMD, deployment.Spec.Template.Spec.Containers[0].Command); diff != "" {
 		t.Fatalf("operator failed to override the manual changes to notification controller:\n%s", diff)
-	}
-}
-
-func TestReconcileNotifications_testLogFormat(t *testing.T) {
-	testLogFormat := "json"
-	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
-		a.Spec.Notifications.Enabled = true
-		a.Spec.Notifications.LogFormat = testLogFormat
-	})
-
-	resObjs := []client.Object{a}
-	subresObjs := []client.Object{a}
-	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
-
-	sa := v1.ServiceAccount{}
-	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
-
-	deployment := &appsv1.Deployment{}
-	assert.NoError(t, r.Client.Get(
-		context.TODO(),
-		types.NamespacedName{
-			Name:      a.Name + "-notifications-controller",
-			Namespace: a.Namespace,
-		},
-		deployment))
-
-	expectedCMD := []string{
-		"argocd-notifications",
-		"--loglevel",
-		"info",
-		"--logformat",
-		"json",
-		"--argocd-repo-server",
-		"argocd-repo-server.argocd.svc.cluster.local:8081",
-	}
-
-	if diff := cmp.Diff(expectedCMD, deployment.Spec.Template.Spec.Containers[0].Command); diff != "" {
-		t.Fatalf("failed to reconcile notifications-controller deployment logFormat:\n%s", diff)
-	}
-
-	// Verify any manual updates to the logFormat should be overridden by the operator.
-	unwantedCommand := []string{
-		"argocd-notifications",
-		"--logformat",
-		"text",
-	}
-
-	deployment.Spec.Template.Spec.Containers[0].Command = unwantedCommand
-	assert.NoError(t, r.Client.Update(context.TODO(), deployment))
-
-	// Reconcile back
-	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
-
-	// Get the updated deployment
-	assert.NoError(t, r.Client.Get(
-		context.TODO(),
-		types.NamespacedName{
-			Name:      a.Name + "-notifications-controller",
-			Namespace: a.Namespace,
-		},
-		deployment))
-
-	if diff := cmp.Diff(expectedCMD, deployment.Spec.Template.Spec.Containers[0].Command); diff != "" {
-		t.Fatalf("operator failed to override the manual changes to notification controller logFormat:\n%s", diff)
 	}
 }

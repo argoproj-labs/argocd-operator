@@ -417,7 +417,7 @@ func TestReconcileArgoCD_reconcileClusterRole_aggregated_error(t *testing.T) {
 
 	t.Log("Verify response.")
 	assert.Error(t, err)
-	assert.EqualError(t, err, "custom Cluster Roles and Aggregated Cluster Roles can not be used together")
+	assert.EqualError(t, err, "Custom Cluster Roles and Aggregated Cluster Roles can not be used together.")
 }
 
 // This test is to verify that base aggregated ClusterRole is created.

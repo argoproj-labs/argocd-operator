@@ -106,7 +106,7 @@ func (r *ReconcileArgoCD) reconcileRoutes(cr *argoproj.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 	route := newRouteWithSuffix("grafana", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
-		//lint:ignore SA1019 known to be deprecated
+		//nolint:staticcheck
 		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
 			argoutil.LogResourceDeletion(log, route, "grafana or grafana route is disabled")
@@ -116,7 +116,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 		return nil // Route found, do nothing
 	}
 
-	//lint:ignore SA1019 known to be deprecated
+	//nolint:staticcheck
 	if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route.Enabled {
 		return nil // Grafana itself or Route not enabled, do nothing.
 	}

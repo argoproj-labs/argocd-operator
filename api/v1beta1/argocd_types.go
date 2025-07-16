@@ -216,10 +216,6 @@ type ArgoCDApplicationSet struct {
 
 	// VolumeMounts adds volumeMounts to the Argo CD ApplicationSet Controller container.
 	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
-
-	// LogFormat refers to the log format used by the ApplicationSet component. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
-	// +kubebuilder:validation:Enum=text;json
-	LogFormat string `json:"logformat,omitempty"`
 }
 
 func (a *ArgoCDApplicationSet) IsEnabled() bool {
@@ -407,10 +403,6 @@ type ArgoCDNotifications struct {
 
 	// LogLevel describes the log level that should be used by the argocd-notifications. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug,info, error, and warn.
 	LogLevel string `json:"logLevel,omitempty"`
-
-	// LogFormat refers to the log format used by the argocd-notifications. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
-	// +kubebuilder:validation:Enum=text;json
-	LogFormat string `json:"logformat,omitempty"`
 }
 
 // ArgoCDPrometheusSpec defines the desired state for the Prometheus component.
@@ -851,7 +843,7 @@ type ArgoCDSpec struct {
 	// Import is the import/restore options for ArgoCD.
 	Import *ArgoCDImportSpec `json:"import,omitempty"`
 
-	// Deprecated: InitialRepositories to configure Argo CD with upon creation of the cluster.
+	// InitialRepositories to configure Argo CD with upon creation of the cluster.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Initial Repositories'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	InitialRepositories string `json:"initialRepositories,omitempty"`
 
@@ -890,7 +882,7 @@ type ArgoCDSpec struct {
 	// Repo defines the repo server options for Argo CD.
 	Repo ArgoCDRepoSpec `json:"repo,omitempty"`
 
-	// Deprecated: RepositoryCredentials are the Git pull credentials to configure Argo CD with upon creation of the cluster.
+	// RepositoryCredentials are the Git pull credentials to configure Argo CD with upon creation of the cluster.
 	RepositoryCredentials string `json:"repositoryCredentials,omitempty"`
 
 	// ResourceHealthChecks customizes resource health check behavior.
@@ -950,6 +942,9 @@ type ArgoCDSpec struct {
 
 	// AggregatedClusterRoles will allow users to have aggregated ClusterRoles for a cluster scoped instance.
 	AggregatedClusterRoles bool `json:"aggregatedClusterRoles,omitempty"`
+
+	// CmdParams specifies command-line parameters for the Argo CD components.
+	CmdParams map[string]string `json:"cmdParams,omitempty"`
 }
 
 const (

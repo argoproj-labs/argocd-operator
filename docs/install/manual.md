@@ -7,10 +7,10 @@ The following steps can be used to manually install the operator on any Kubernet
 
 ## Cluster
 
-This guide uses [minikube](https://minikube.sigs.k8s.io/) to deploy a Kubernetes cluster locally, follow the
-instructions for your platform to install.
+This guide uses [minikube](https://minikube.sigs.k8s.io/) to deploy a Kubernetes cluster locally, follow the 
+instructions for your platform to install. 
 
-Run minikube with a dedicated profile. Adjust the system resources as needed for your platform.
+Run minikube with a dedicated profile. Adjust the system resources as needed for your platform. 
 
 ```bash
 minikube start -p argocd --cpus=4 --disk-size=40gb --memory=8gb
@@ -18,7 +18,7 @@ minikube start -p argocd --cpus=4 --disk-size=40gb --memory=8gb
 
 ## Manual Install
 
-The following section outlines the steps necessary to deploy the ArgoCD Operator manually using standard Kubernetes
+The following section outlines the steps necessary to deploy the ArgoCD Operator manually using standard Kubernetes 
 manifests. Note that these steps generates the manifests using kustomize.
 
 !!! info
@@ -27,7 +27,7 @@ manifests. Note that these steps generates the manifests using kustomize.
 ### Namespace
 
 By default, the operator is installed into the `argocd-operator-system` namespace. To modify this, update the
-value of the `namespace` specified in the `config/default/kustomization.yaml` file.
+value of the `namespace` specified in the `config/default/kustomization.yaml` file. 
 
 ### Conversion Webhook Support
 
@@ -46,7 +46,7 @@ Add cert-manager annotation to CRD in `config/crd/patches/cainjection_in_argocds
 ```yaml
 metadata:
   name: argocds.argoproj.io
-  annotations:
+  annotations: 
     cert-manager.io/inject-ca-from: $(CERTIFICATE_NAMESPACE)/$(CERTIFICATE_NAME)
 ```
 
@@ -125,16 +125,13 @@ argocd-operator-controller-manager-6c449c6998-ts95w   2/2     Running   0       
 ```
 !!! info
     If you see `Error: container's runAsUser breaks non-root policy`, means container wants to have admin privilege. run `oc adm policy add-scc-to-user privileged -z default -n argocd-operator-system` to enable admin on the namespace and change the following line in deployment resource: `runAsNonRoot: false`. This is a quick fix to make it running, this is not a suggested approach for *production*.
+    
+## Usage 
 
-!!! info
-    ArgoCD instance deployed by operator will be namespace scoped. To make it cluster scoped, add environment variable `ARGOCD_CLUSTER_CONFIG_NAMESPACES` with `argocd-operator-system` as a value to `argocd-operator-controller-manager` deployment.
-
-## Usage
-
-Once the operator is installed and running, new ArgoCD resources can be created. See the [usage][docs_usage]
+Once the operator is installed and running, new ArgoCD resources can be created. See the [usage][docs_usage] 
 documentation to learn how to create new `ArgoCD` resources.
 
-## Cleanup
+## Cleanup 
 
 To remove the operator from the cluster, run the following comand. This will remove all resources that were created,
 including the namespace.

@@ -9,7 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -349,7 +349,7 @@ func (r *ReconcileArgoCD) reconcileClusterRole(componentName string, policyRules
 				}
 			} else {
 				// if it is "Not Found" error then ignore it else return the error
-				if !errors.IsNotFound(err) {
+				if !apierrors.IsNotFound(err) {
 					return nil, err
 				}
 			}
@@ -432,7 +432,7 @@ func checkCustomClusterRoleMode(r *ReconcileArgoCD, cr *argoproj.ArgoCD, compone
 			}
 		} else {
 			// if it is "Not Found" error then ignore it else return the error
-			if !errors.IsNotFound(err) {
+			if !apierrors.IsNotFound(err) {
 				return true, err
 			}
 		}
@@ -590,7 +590,7 @@ func matchDefaultClusterRoleFields(expectedClusterRole *v1.ClusterRole, existing
 
 func verifyInstallationMode(cr *argoproj.ArgoCD, allowed bool) error {
 	if allowed && cr.Spec.DefaultClusterScopedRoleDisabled && cr.Spec.AggregatedClusterRoles {
-		return fmt.Errorf("custom Cluster Roles and Aggregated Cluster Roles can not be used together")
+		return fmt.Errorf("Custom Cluster Roles and Aggregated Cluster Roles can not be used together.")
 	}
 	return nil
 }

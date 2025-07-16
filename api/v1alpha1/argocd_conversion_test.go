@@ -489,7 +489,7 @@ func TestAlphaToBetaConversion(t *testing.T) {
 						Termination: routev1.TLSTerminationEdge,
 					},
 				}
-				//lint:ignore SA1019 known to be deprecated
+				//nolint:staticcheck
 				cr.Spec.Grafana.Route = v1beta1.ArgoCDRouteSpec{
 					Enabled: true,
 					TLS: &routev1.TLSConfig{

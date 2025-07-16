@@ -185,7 +185,7 @@ func (h *httpclient) validateKeycloakURL(URL string) error {
 	res, err := h.requester.Do(req)
 	if err != nil {
 		log.Info("Cannot access keycloak with Internal service name, trying keycloak Route URL")
-		return fmt.Errorf("cannot access keycloak with Internal service name, trying keycloak Route URL. error: %w", err)
+		return fmt.Errorf("Cannot access keycloak with Internal service name, trying keycloak Route URL. error: %w", err)
 	}
 	_ = res.Body.Close()
 	return nil

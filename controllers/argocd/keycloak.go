@@ -1544,7 +1544,6 @@ func restrictedContainerSecurityContext() *corev1.SecurityContext {
 			},
 		},
 		AllowPrivilegeEscalation: boolPtr(false),
-		ReadOnlyRootFilesystem:   boolPtr(false),
 		RunAsNonRoot:             boolPtr(true),
 		SeccompProfile: &corev1.SeccompProfile{
 			Type: "RuntimeDefault",
