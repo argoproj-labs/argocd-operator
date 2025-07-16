@@ -623,9 +623,16 @@ func getRedisServerAddress(cr *argoproj.ArgoCD) string {
 	if cr.Spec.Redis.Remote != nil && *cr.Spec.Redis.Remote != "" {
 		return *cr.Spec.Redis.Remote
 	}
+
+	// If principal is enabled, then Argo CD server/repo server should be configured to use redis proxy from principal (argo cd agent)
+	if cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Principal != nil && cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
+		return argoutil.GenerateAgentPrincipalRedisProxyServiceName(cr.Name) + "." + cr.Namespace + ".svc.cluster.local:6379"
+	}
+
 	if cr.Spec.HA.Enabled {
 		return getRedisHAProxyAddress(cr)
 	}
+
 	return fqdnServiceRef(common.ArgoCDDefaultRedisSuffix, common.ArgoCDDefaultRedisPort, cr)
 }
 
@@ -1982,6 +1989,11 @@ func (r *ReconcileArgoCD) reconcileArgoCDAgent(cr *argoproj.ArgoCD) error {
 
 	log.Info("reconciling ArgoCD Agent metrics service")
 	if err := argocdagent.ReconcilePrincipalMetricsService(r.Client, compName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent redis proxy service")
+	if err := argocdagent.ReconcilePrincipalRedisProxyService(r.Client, compName, cr, r.Scheme); err != nil {
 		return err
 	}
 

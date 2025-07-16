@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -339,7 +340,7 @@ func TestReconcilePrincipalMetricsService_ServiceDoesNotExist_PrincipalEnabled(t
 	assert.Equal(t, corev1.ProtocolTCP, metricsPort.Protocol)
 
 	// Verify Service type is LoadBalancer
-	assert.Equal(t, corev1.ServiceTypeLoadBalancer, svc.Spec.Type)
+	assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
 
 	// Verify owner reference is set
 	assert.Len(t, svc.OwnerReferences, 1)
@@ -550,7 +551,7 @@ func TestReconcilePrincipalMetricsService_VerifyMetricsServiceSpec(t *testing.T)
 	assert.Equal(t, corev1.ProtocolTCP, metricsPort.Protocol)
 
 	// Verify Service type is LoadBalancer
-	assert.Equal(t, corev1.ServiceTypeLoadBalancer, svc.Spec.Type)
+	assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
 
 	// Verify selector points to the correct component
 	expectedSelector := map[string]string{
@@ -590,6 +591,292 @@ func TestReconcilePrincipalService_VerifyPrincipalServiceSpec(t *testing.T) {
 
 	// Verify Service type is LoadBalancer
 	assert.Equal(t, corev1.ServiceTypeLoadBalancer, svc.Spec.Type)
+
+	// Verify selector points to the correct component
+	expectedSelector := map[string]string{
+		common.ArgoCDKeyName: generateAgentResourceName(cr.Name, testCompName),
+	}
+	assert.Equal(t, expectedSelector, svc.Spec.Selector)
+}
+
+// Tests for ReconcilePrincipalRedisProxyService
+
+func TestReconcilePrincipalRedisProxyService_ServiceDoesNotExist_PrincipalDisabled(t *testing.T) {
+	// Test case: Redis proxy service doesn't exist and principal is disabled
+	// Expected behavior: Should do nothing (no creation, no error)
+
+	cr := makeTestArgoCD(withPrincipalEnabled(false))
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalRedisProxyService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was not created
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      argoutil.GenerateAgentPrincipalRedisProxyServiceName(cr.Name),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.True(t, errors.IsNotFound(err))
+}
+
+func TestReconcilePrincipalRedisProxyService_ServiceDoesNotExist_PrincipalEnabled(t *testing.T) {
+	// Test case: Redis proxy service doesn't exist and principal is enabled
+	// Expected behavior: Should create the Redis proxy service with expected spec
+
+	cr := makeTestArgoCD(withPrincipalEnabled(true))
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalRedisProxyService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was created
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      argoutil.GenerateAgentPrincipalRedisProxyServiceName(cr.Name),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.NoError(t, err)
+
+	// Verify Service has expected metadata
+	expectedName := argoutil.GenerateAgentPrincipalRedisProxyServiceName(cr.Name)
+	assert.Equal(t, expectedName, svc.Name)
+	assert.Equal(t, cr.Namespace, svc.Namespace)
+	assert.Equal(t, buildLabelsForAgentPrincipal(cr.Name, testCompName), svc.Labels)
+
+	// Verify Service has expected spec
+	expectedSpec := buildPrincipalRedisProxyServiceSpec(testCompName, cr)
+	assert.Equal(t, expectedSpec.Type, svc.Spec.Type)
+	assert.Equal(t, expectedSpec.Ports, svc.Spec.Ports)
+	assert.Equal(t, expectedSpec.Selector, svc.Spec.Selector)
+
+	// Verify specific port configuration using constants
+	assert.Len(t, svc.Spec.Ports, 1)
+	redisPort := svc.Spec.Ports[0]
+	assert.Equal(t, PrincipalRedisProxyServicePortName, redisPort.Name)
+	assert.Equal(t, int32(PrincipalRedisProxyServicePort), redisPort.Port)
+	assert.Equal(t, intstr.FromInt(PrincipalRedisProxyServiceTargetPort), redisPort.TargetPort)
+	assert.Equal(t, corev1.ProtocolTCP, redisPort.Protocol)
+
+	// Verify Service type is ClusterIP
+	assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
+
+	// Verify owner reference is set
+	assert.Len(t, svc.OwnerReferences, 1)
+	assert.Equal(t, cr.Name, svc.OwnerReferences[0].Name)
+	assert.Equal(t, "ArgoCD", svc.OwnerReferences[0].Kind)
+}
+
+func TestReconcilePrincipalRedisProxyService_ServiceExists_PrincipalDisabled(t *testing.T) {
+	// Test case: Redis proxy service exists and principal is disabled
+	// Expected behavior: Should delete the Redis proxy service
+
+	cr := makeTestArgoCD(withPrincipalEnabled(false))
+
+	// Create existing Service
+	existingSvc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      argoutil.GenerateAgentPrincipalRedisProxyServiceName(cr.Name),
+			Namespace: cr.Namespace,
+			Labels:    buildLabelsForAgentPrincipal(cr.Name, testCompName),
+		},
+		Spec: buildPrincipalRedisProxyServiceSpec(testCompName, cr),
+	}
+
+	resObjs := []client.Object{cr, existingSvc}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalRedisProxyService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was deleted
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      argoutil.GenerateAgentPrincipalRedisProxyServiceName(cr.Name),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.True(t, errors.IsNotFound(err))
+}
+
+func TestReconcilePrincipalRedisProxyService_ServiceExists_PrincipalEnabled_SameSpec(t *testing.T) {
+	// Test case: Redis proxy service exists, principal is enabled, and spec is the same
+	// Expected behavior: Should do nothing (no update)
+
+	cr := makeTestArgoCD(withPrincipalEnabled(true))
+
+	expectedSpec := buildPrincipalRedisProxyServiceSpec(testCompName, cr)
+	existingSvc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      argoutil.GenerateAgentPrincipalRedisProxyServiceName(cr.Name),
+			Namespace: cr.Namespace,
+			Labels:    buildLabelsForAgentPrincipal(cr.Name, testCompName),
+		},
+		Spec: expectedSpec,
+	}
+
+	resObjs := []client.Object{cr, existingSvc}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalRedisProxyService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service still exists with same spec
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      argoutil.GenerateAgentPrincipalRedisProxyServiceName(cr.Name),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedSpec.Type, svc.Spec.Type)
+	assert.Equal(t, expectedSpec.Ports, svc.Spec.Ports)
+	assert.Equal(t, expectedSpec.Selector, svc.Spec.Selector)
+}
+
+func TestReconcilePrincipalRedisProxyService_ServiceExists_PrincipalEnabled_DifferentSpec(t *testing.T) {
+	// Test case: Redis proxy service exists, principal is enabled, but spec is different
+	// Expected behavior: Should update the Redis proxy service with expected spec
+
+	cr := makeTestArgoCD(withPrincipalEnabled(true))
+
+	// Create existing Service with different spec
+	differentSpec := corev1.ServiceSpec{
+		Type: corev1.ServiceTypeLoadBalancer, // Different from expected ClusterIP
+		Ports: []corev1.ServicePort{
+			{
+				Name:       "http", // Different port name
+				Port:       80,     // Different port
+				Protocol:   corev1.ProtocolTCP,
+				TargetPort: intstr.FromInt(8080), // Different target port
+			},
+		},
+		Selector: map[string]string{
+			"app": "different-app", // Different selector
+		},
+	}
+
+	existingSvc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      argoutil.GenerateAgentPrincipalRedisProxyServiceName(cr.Name),
+			Namespace: cr.Namespace,
+			Labels:    buildLabelsForAgentPrincipal(cr.Name, testCompName),
+		},
+		Spec: differentSpec,
+	}
+
+	resObjs := []client.Object{cr, existingSvc}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalRedisProxyService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was updated with expected spec
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      argoutil.GenerateAgentPrincipalRedisProxyServiceName(cr.Name),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.NoError(t, err)
+
+	expectedSpec := buildPrincipalRedisProxyServiceSpec(testCompName, cr)
+	assert.Equal(t, expectedSpec.Type, svc.Spec.Type)
+	assert.Equal(t, expectedSpec.Ports, svc.Spec.Ports)
+	assert.Equal(t, expectedSpec.Selector, svc.Spec.Selector)
+}
+
+func TestReconcilePrincipalRedisProxyService_ServiceExists_PrincipalNotSet(t *testing.T) {
+	// Test case: Redis proxy service exists but principal spec is not set (nil)
+	// Expected behavior: Should delete the Redis proxy service
+
+	cr := makeTestArgoCD() // No principal configuration
+
+	// Create existing Service
+	existingSvc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      argoutil.GenerateAgentPrincipalRedisProxyServiceName(cr.Name),
+			Namespace: cr.Namespace,
+			Labels:    buildLabelsForAgentPrincipal(cr.Name, testCompName),
+		},
+		Spec: buildPrincipalRedisProxyServiceSpec(testCompName, cr),
+	}
+
+	resObjs := []client.Object{cr, existingSvc}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalRedisProxyService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was deleted
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      argoutil.GenerateAgentPrincipalRedisProxyServiceName(cr.Name),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.True(t, errors.IsNotFound(err))
+}
+
+func TestReconcilePrincipalRedisProxyService_ServiceDoesNotExist_AgentNotSet(t *testing.T) {
+	// Test case: Redis proxy service doesn't exist and agent spec is not set (nil)
+	// Expected behavior: Should do nothing
+
+	cr := makeTestArgoCD() // No agent configuration
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalRedisProxyService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was not created
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      argoutil.GenerateAgentPrincipalRedisProxyServiceName(cr.Name),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.True(t, errors.IsNotFound(err))
+}
+
+func TestReconcilePrincipalRedisProxyService_VerifyRedisProxyServiceSpec(t *testing.T) {
+	// Test case: Verify the Redis proxy service spec has correct Redis-specific configuration
+	// Expected behavior: Should create service with Redis proxy port and correct selector
+
+	cr := makeTestArgoCD(withPrincipalEnabled(true))
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalRedisProxyService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was created
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      argoutil.GenerateAgentPrincipalRedisProxyServiceName(cr.Name),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.NoError(t, err)
+
+	// Verify Service has correct Redis proxy port configuration
+	assert.Len(t, svc.Spec.Ports, 1)
+	redisPort := svc.Spec.Ports[0]
+	assert.Equal(t, PrincipalRedisProxyServicePortName, redisPort.Name)
+	assert.Equal(t, int32(PrincipalRedisProxyServicePort), redisPort.Port)
+	assert.Equal(t, intstr.FromInt(PrincipalRedisProxyServiceTargetPort), redisPort.TargetPort)
+	assert.Equal(t, corev1.ProtocolTCP, redisPort.Protocol)
+
+	// Verify Service type is ClusterIP
+	assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
 
 	// Verify selector points to the correct component
 	expectedSelector := map[string]string{
