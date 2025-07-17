@@ -231,5 +231,5 @@ const (
 	ArgoCDKeyInstallationID = "installationID"
 
 	// ArgoCDWatchedByOperatorLabel for resources watched by the operator
-	ArgoCDWatchedByOperatorLabel = "operator.argoproj.io/watched-by"
+	ArgoCDWatchedByOperatorLabel = "operator.argoproj.io/tracked-by"
 )
