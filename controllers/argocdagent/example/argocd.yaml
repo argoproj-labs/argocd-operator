@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+spec:
+  controller:
+    enabled: false
+  argoCDAgent:
+    principal:
+      enabled: true
+      allowedNamespaces:
+        - "*"
+      jwtAllowGenerate: true
+      auth: "mtls:CN=([^,]+)"
+      logLevel: "trace"
+      image: "quay.io/user/argocd-agent:v1"
+  sourceNamespaces:
+    - "agent-managed"
+    - "agent-autonomous"

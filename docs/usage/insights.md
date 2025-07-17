@@ -8,7 +8,7 @@ Argo CD exports many metrics that can be used to monitor and provide insights in
 
 ## Cluster
 
-This section builds on the example minishift cluster from the [OLM Istall Guide][olm_guide]. 
+This section builds on the example minishift cluster from the [OLM Install Guide][olm_guide].
 
 ## Prometheus
 
@@ -138,6 +138,7 @@ spec:
 ```
 
 Password can be obtained from the secret by running the below command.
+
 ```
 oc -n argocd extract secret/example-argocd-cluster --to=-
 ```

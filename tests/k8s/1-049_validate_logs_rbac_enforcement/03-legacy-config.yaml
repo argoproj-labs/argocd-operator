@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd-operator-system
+data:
+  # Legacy configuration with server.rbac.log.enforce.enable set to true
+  server.rbac.log.enforce.enable: "true"
+  admin.enabled: "true"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: argocd-operator-system
+data:
+  # Legacy configuration with no default policy
+  policy.csv: |
+    # Custom role with only applications access
+    p, role:app-only, applications, get, */*, allow
+---
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+  namespace: argocd-operator-system
+spec:
+  rbac:
+    # No default policy specified
+    policy: |
+      # Custom role with only applications access
+      p, role:app-only, applications, get, */*, allow 

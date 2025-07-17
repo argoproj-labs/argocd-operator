@@ -159,5 +159,7 @@ spec:
           items:
           - key: controller.profile.enabled
             path: profiler.enabled
+          - key: controller.resource.health.persist
+            path: controller.resource.health.persist
       - name: argocd-application-controller-tmp
         emptyDir: {}

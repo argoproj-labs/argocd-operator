@@ -99,6 +99,7 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.Banner = (*v1beta1.Banner)(src.Spec.Banner)
 	dst.Spec.DefaultClusterScopedRoleDisabled = src.Spec.DefaultClusterScopedRoleDisabled
 	dst.Spec.AggregatedClusterRoles = src.Spec.AggregatedClusterRoles
+	dst.Spec.ArgoCDAgent = ConvertAlphaToBetaArgoCDAgent(src.Spec.ArgoCDAgent)
 
 	// Status conversion
 	dst.Status = v1beta1.ArgoCDStatus(src.Status)
@@ -172,6 +173,7 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.Banner = (*Banner)(src.Spec.Banner)
 	dst.Spec.DefaultClusterScopedRoleDisabled = src.Spec.DefaultClusterScopedRoleDisabled
 	dst.Spec.AggregatedClusterRoles = src.Spec.AggregatedClusterRoles
+	dst.Spec.ArgoCDAgent = ConvertBetaToAlphaArgoCDAgent(src.Spec.ArgoCDAgent)
 
 	// Status conversion
 	dst.Status = ArgoCDStatus(src.Status)
@@ -703,6 +705,56 @@ func ConvertBetaToAlphaRepo(src *v1beta1.ArgoCDRepoSpec) *ArgoCDRepoSpec {
 			Version:              src.Version,
 			VolumeMounts:         src.VolumeMounts,
 			Volumes:              src.Volumes,
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaArgoCDAgent(src *ArgoCDAgentSpec) *v1beta1.ArgoCDAgentSpec {
+	var dst *v1beta1.ArgoCDAgentSpec
+	if src != nil {
+		dst = &v1beta1.ArgoCDAgentSpec{
+			Principal: ConvertAlphaToBetaPrincipal(src.Principal),
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaPrincipal(src *PrincipalSpec) *v1beta1.PrincipalSpec {
+	var dst *v1beta1.PrincipalSpec
+	if src != nil {
+		dst = &v1beta1.PrincipalSpec{
+			Enabled:           src.Enabled,
+			AllowedNamespaces: src.AllowedNamespaces,
+			JWTAllowGenerate:  src.JWTAllowGenerate,
+			Auth:              src.Auth,
+			LogLevel:          src.LogLevel,
+			Image:             src.Image,
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaArgoCDAgent(src *v1beta1.ArgoCDAgentSpec) *ArgoCDAgentSpec {
+	var dst *ArgoCDAgentSpec
+	if src != nil {
+		dst = &ArgoCDAgentSpec{
+			Principal: ConvertBetaToAlphaPrincipal(src.Principal),
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaPrincipal(src *v1beta1.PrincipalSpec) *PrincipalSpec {
+	var dst *PrincipalSpec
+	if src != nil {
+		dst = &PrincipalSpec{
+			Enabled:           src.Enabled,
+			AllowedNamespaces: src.AllowedNamespaces,
+			JWTAllowGenerate:  src.JWTAllowGenerate,
+			Auth:              src.Auth,
+			LogLevel:          src.LogLevel,
+			Image:             src.Image,
 		}
 	}
 	return dst

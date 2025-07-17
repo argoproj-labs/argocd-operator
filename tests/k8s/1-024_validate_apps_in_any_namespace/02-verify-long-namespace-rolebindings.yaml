@@ -1,0 +1,51 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+testScript: |
+  #!/bin/bash
+  set -e
+
+  echo "Testing long namespace RoleBinding truncation in 1-024 test..."
+
+  # Wait for RoleBindings to be created
+  sleep 30
+
+  # Test that RoleBindings are created successfully for the long namespace
+  echo "✓ Step 1: Verifying RoleBindings are created for long namespace..."
+
+  LONG_NAMESPACE="longns-abcdefghijklmnopqrstuvwxyz-123456789012345"
+  EXPECTED_ROLEBINDING="example-argocd_longns-abcdefghijklmnopqrstuvwxyz-123456789012-9a19a95"
+
+  # Check if the RoleBinding exists
+  if kubectl get rolebinding "$EXPECTED_ROLEBINDING" -n "$LONG_NAMESPACE" >/dev/null 2>&1; then
+    echo "✓ RoleBinding '$EXPECTED_ROLEBINDING' found in namespace '$LONG_NAMESPACE'"
+  else
+    echo "✗ RoleBinding '$EXPECTED_ROLEBINDING' not found in namespace '$LONG_NAMESPACE'"
+    echo "Available RoleBindings in namespace:"
+    kubectl get rolebindings -n "$LONG_NAMESPACE" || echo "No RoleBindings found"
+    exit 1
+  fi
+
+  # Test that RoleBinding name is exactly 63 characters
+  echo "✓ Step 2: Verifying RoleBinding name is exactly 63 characters..."
+  actual_name=$(kubectl get rolebinding "$EXPECTED_ROLEBINDING" -n "$LONG_NAMESPACE" -o jsonpath='{.metadata.name}')
+  length=${#actual_name}
+  echo "  RoleBinding: $actual_name (length: $length)"
+
+  if [ "$length" -eq 63 ]; then
+    echo "    ✓ Name is exactly 63 characters (truncation working)"
+  else
+    echo "    ✗ Name is not 63 characters: $length"
+    exit 1
+  fi
+
+  # Test that the name contains the expected hash suffix
+  echo "✓ Step 3: Verifying hash suffix..."
+  if [[ "$actual_name" == *"-9a19a95" ]]; then
+    echo "    ✓ Name contains expected hash suffix '9a19a95'"
+  else
+    echo "    ✗ Name does not contain expected hash suffix '9a19a95'"
+    exit 1
+  fi
+
+  echo "✓ Long namespace RoleBinding truncation test passed!"
+  echo "✓ RoleBinding created successfully with proper name truncation" 

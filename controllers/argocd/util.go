@@ -31,12 +31,13 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/argoproj/argo-cd/v2/util/glob"
+	"github.com/argoproj/argo-cd/v3/util/glob"
 	"github.com/go-logr/logr"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocdagent"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
 	oappsv1 "github.com/openshift/api/apps/v1"
@@ -176,6 +177,16 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 
 	cmd = append(cmd, "--logformat")
 	cmd = append(cmd, getLogFormat(cr.Spec.Controller.LogFormat))
+
+	persistHealth := "true" // default
+	if val, ok := cr.Spec.CmdParams["controller.resource.health.persist"]; ok {
+		persistHealth = val
+	}
+
+	// set the command only if persistHealth is true
+	if persistHealth == "true" {
+		cmd = append(cmd, "--persist-resource-health")
+	}
 
 	// check if extra args are present
 	extraArgs := cr.Spec.Controller.ExtraCommandArgs
@@ -612,9 +623,16 @@ func getRedisServerAddress(cr *argoproj.ArgoCD) string {
 	if cr.Spec.Redis.Remote != nil && *cr.Spec.Redis.Remote != "" {
 		return *cr.Spec.Redis.Remote
 	}
+
+	// If principal is enabled, then Argo CD server/repo server should be configured to use redis proxy from principal (argo cd agent)
+	if cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Principal != nil && cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
+		return argoutil.GenerateAgentPrincipalRedisProxyServiceName(cr.Name) + "." + cr.Namespace + ".svc.cluster.local:6379"
+	}
+
 	if cr.Spec.HA.Enabled {
 		return getRedisHAProxyAddress(cr)
 	}
+
 	return fqdnServiceRef(common.ArgoCDDefaultRedisSuffix, common.ArgoCDDefaultRedisPort, cr)
 }
 
@@ -861,6 +879,10 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD) error {
 	}
 
 	if err := r.ReconcileNetworkPolicies(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileArgoCDAgent(cr); err != nil {
 		return err
 	}
 
@@ -1139,6 +1161,12 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 	namespaceHandler := handler.EnqueueRequestsFromMapFunc(namespaceResourceMapper)
 
 	bldr.Watches(&corev1.Namespace{}, namespaceHandler, builder.WithPredicates(namespaceFilterPredicate()))
+
+	bldrHook := newBuilderHook(r.Client, bldr)
+	err := applyReconcilerHook(&argoproj.ArgoCD{}, bldrHook, "")
+	if err != nil {
+		log.Error(err, "failed to apply builder hook")
+	}
 
 	return bldr
 }
@@ -1920,4 +1948,65 @@ func appendUniqueArgs(cmd []string, extraArgs []string) []string {
 	}
 
 	return result
+}
+
+// reconcileArgoCDAgent will reconcile all ArgoCD Agent resources.
+func (r *ReconcileArgoCD) reconcileArgoCDAgent(cr *argoproj.ArgoCD) error {
+	compName := "principal"
+	log.Info("reconciling ArgoCD Agent resources")
+
+	log.Info("reconciling ArgoCD Agent servie account")
+	var sa *corev1.ServiceAccount
+	var err error
+
+	if sa, err = argocdagent.ReconcilePrincipalServiceAccount(r.Client, compName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent role")
+	if _, err := argocdagent.ReconcilePrincipalRole(r.Client, compName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent cluster role")
+	if _, err := argocdagent.ReconcilePrincipalClusterRoles(r.Client, compName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent role binding")
+	if err := argocdagent.ReconcilePrincipalRoleBinding(r.Client, compName, sa, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent cluster role binding")
+	if err := argocdagent.ReconcilePrincipalClusterRoleBinding(r.Client, compName, sa, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent configmap")
+	if err := argocdagent.ReconcilePrincipalConfigMap(r.Client, compName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent service")
+	if err := argocdagent.ReconcilePrincipalService(r.Client, compName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent metrics service")
+	if err := argocdagent.ReconcilePrincipalMetricsService(r.Client, compName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent redis proxy service")
+	if err := argocdagent.ReconcilePrincipalRedisProxyService(r.Client, compName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent deployment")
+	if err := argocdagent.ReconcilePrincipalDeployment(r.Client, compName, sa.Name, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	return nil
 }
