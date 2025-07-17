@@ -1,0 +1,9 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd-long-name-for-route-testiiiiiiiiiiiiiiiiiiiiiiiing
+spec:
+  applicationSet:
+    webhookServer:
+      route:
+        enabled: true
