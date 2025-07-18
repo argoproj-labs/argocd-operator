@@ -454,7 +454,11 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 	}
 
 	existing := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+	ssExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
+	if err != nil {
+		return err
+	}
+	if ssExists {
 		if !(cr.Spec.HA.Enabled && cr.Spec.Redis.IsEnabled()) {
 			// StatefulSet exists but either HA or component enabled flag has been set to false, delete the StatefulSet
 			var explanation string
@@ -846,12 +850,21 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 	}
 
 	// Handle import/restore from ArgoCDExport
-	export := r.getArgoCDExport(cr)
+	export, err := r.getArgoCDExport(cr)
+	if err != nil {
+		return err
+	}
 	if export == nil {
 		log.Info("existing argocd export not found, skipping import")
 	} else {
+
+		containerCommand, err := getArgoImportCommand(r.Client, cr)
+		if err != nil {
+			return err
+		}
+
 		podSpec.InitContainers = []corev1.Container{{
-			Command:         getArgoImportCommand(r.Client, cr),
+			Command:         containerCommand,
 			Env:             proxyEnvVars(getArgoImportContainerEnv(export)...),
 			Resources:       getArgoApplicationControllerResources(cr),
 			Image:           getArgoImportContainerImage(export),
@@ -899,7 +912,11 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 	}
 
 	existing := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+	ssExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
+	if err != nil {
+		return err
+	}
+	if ssExists {
 		if !cr.Spec.Controller.IsEnabled() {
 			// Delete existing deployment for Application Controller, if any ..
 			argoutil.LogResourceDeletion(log, existing, "application controller is disabled")
@@ -1042,7 +1059,11 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 
 	// Delete existing deployment for Application Controller, if any ..
 	deploy := newDeploymentWithSuffix("application-controller", "application-controller", cr)
-	if argoutil.IsObjectFound(r.Client, deploy.Namespace, deploy.Name, deploy) {
+	deplExists, err := argoutil.IsObjectFound(r.Client, deploy.Namespace, deploy.Name, deploy)
+	if err != nil {
+		return err
+	}
+	if deplExists {
 		argoutil.LogResourceDeletion(log, deploy, "application controller is configured using stateful set, not deployment")
 		if err := r.Client.Delete(context.TODO(), deploy); err != nil {
 			return err
@@ -1069,7 +1090,11 @@ func (r *ReconcileArgoCD) reconcileStatefulSets(cr *argoproj.ArgoCD, useTLSForRe
 
 // triggerStatefulSetRollout will update the label with the given key to trigger a new rollout of the StatefulSet.
 func (r *ReconcileArgoCD) triggerStatefulSetRollout(sts *appsv1.StatefulSet, key string) error {
-	if !argoutil.IsObjectFound(r.Client, sts.Namespace, sts.Name, sts) {
+	ssExists, err := argoutil.IsObjectFound(r.Client, sts.Namespace, sts.Name, sts)
+	if err != nil {
+		return err
+	}
+	if !ssExists {
 		log.Info(fmt.Sprintf("unable to locate deployment with name: %s", sts.Name))
 		return nil
 	}

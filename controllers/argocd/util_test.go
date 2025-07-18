@@ -268,7 +268,8 @@ func TestGetArgoServerURI(t *testing.T) {
 			cr := makeTestArgoCD(tt.opts...)
 			r := &ReconcileArgoCD{}
 			setRouteAPIFound(t, tt.routeEnabled)
-			result := r.getArgoServerURI(cr)
+			result, err := r.getArgoServerURI(cr)
+			assert.Nil(t, err)
 			if result != tt.want {
 				t.Errorf("%s test failed, got=%q want=%q", tt.name, result, tt.want)
 			}
