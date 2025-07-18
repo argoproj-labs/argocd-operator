@@ -150,7 +150,7 @@ func getKeycloakConfigMapTemplate(ns string) *corev1.ConfigMap {
 		},
 		TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "ConfigMap"},
 	}
-	argoutil.AddWatchedByOperatorLabel(&cm.ObjectMeta)
+	argoutil.AddTrackedByOperatorLabel(&cm.ObjectMeta)
 	return cm
 }
 
@@ -169,7 +169,7 @@ func getKeycloakSecretTemplate(ns string) *corev1.Secret {
 			"SSO_PASSWORD": "${SSO_ADMIN_PASSWORD}",
 		},
 	}
-	argoutil.AddWatchedByOperatorLabel(&secret.ObjectMeta)
+	argoutil.AddTrackedByOperatorLabel(&secret.ObjectMeta)
 	return secret
 }
 

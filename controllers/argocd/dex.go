@@ -74,7 +74,7 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string,
 			},
 			Type: corev1.SecretTypeServiceAccountToken,
 		}
-		argoutil.AddWatchedByOperatorLabel(&secret.ObjectMeta)
+		argoutil.AddTrackedByOperatorLabel(&secret.ObjectMeta)
 		argoutil.LogResourceCreation(log, secret)
 		err := r.Client.Create(context.TODO(), secret)
 		if err != nil {

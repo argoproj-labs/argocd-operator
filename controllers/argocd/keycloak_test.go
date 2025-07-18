@@ -319,7 +319,7 @@ func TestKeycloakResources(t *testing.T) {
 func TestNewKeycloakTemplate_testConfigmap(t *testing.T) {
 	cm := getKeycloakConfigMapTemplate(fakeNs)
 	assert.Equal(t, cm.Name, "${APPLICATION_NAME}-service-ca")
-	assert.True(t, argoutil.IsWatchedByOperator(cm.ObjectMeta.Labels))
+	assert.True(t, argoutil.IsTrackedByOperator(cm.ObjectMeta.Labels))
 	assert.Equal(t, cm.Namespace, fakeNs)
 }
 

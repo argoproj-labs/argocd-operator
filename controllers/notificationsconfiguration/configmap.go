@@ -36,7 +36,7 @@ func (r *NotificationsConfigurationReconciler) reconcileNotificationsConfigmap(c
 		if err := controllerutil.SetControllerReference(cr, NotificationsConfigMap, r.Scheme); err != nil {
 			return err
 		}
-		argoutil.AddWatchedByOperatorLabel(&NotificationsConfigMap.ObjectMeta)
+		argoutil.AddTrackedByOperatorLabel(&NotificationsConfigMap.ObjectMeta)
 		argoutil.LogResourceCreation(log, NotificationsConfigMap)
 		err := r.Client.Create(context.TODO(), NotificationsConfigMap)
 		if err != nil {

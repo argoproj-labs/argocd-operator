@@ -277,7 +277,7 @@ func newConfigMap(cr *argoproj.ArgoCD) *corev1.ConfigMap {
 			Labels:    argoutil.LabelsForCluster(cr),
 		},
 	}
-	argoutil.AddWatchedByOperatorLabel(&cm.ObjectMeta)
+	argoutil.AddTrackedByOperatorLabel(&cm.ObjectMeta)
 	return cm
 }
 
