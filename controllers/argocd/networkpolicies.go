@@ -166,7 +166,7 @@ func (r *ReconcileArgoCD) ReconcileRedisNetworkPolicy(cr *argoproj.ArgoCD) error
 	}
 
 	argoutil.LogResourceCreation(log, networkPolicy)
-	if err := r.Client.Create(context.TODO(), networkPolicy); err != nil {
+	if err := r.Create(context.TODO(), networkPolicy); err != nil {
 		log.Error(err, "Failed to create redis network policy")
 		return fmt.Errorf("failed to create redis network policy. error: %w", err)
 	}
@@ -292,7 +292,7 @@ func (r *ReconcileArgoCD) ReconcileRedisHANetworkPolicy(cr *argoproj.ArgoCD) err
 
 	argoutil.LogResourceCreation(log, networkPolicy)
 
-	if err := r.Client.Create(context.TODO(), networkPolicy); err != nil {
+	if err := r.Create(context.TODO(), networkPolicy); err != nil {
 		log.Error(err, "Failed to create redis ha network policy")
 		return fmt.Errorf("failed to create redis ha network policy. error: %w", err)
 	}
