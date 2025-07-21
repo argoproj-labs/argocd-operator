@@ -37,6 +37,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdexport"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
@@ -52,6 +53,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -185,6 +187,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	cachedClient := mgr.GetClient()
+	liveClient, err := ctrlclient.New(ctrl.GetConfigOrDie(), ctrlclient.Options{Scheme: mgr.GetScheme()})
+	if err != nil {
+		// handle error
+	}
+	wrapperClient := argoutil.NewClientWrapper(cachedClient, liveClient)
+
 	setupLog.Info("Registering Components.")
 
 	// Setup Scheme for all resources
@@ -228,7 +237,7 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&argocd.ReconcileArgoCD{
-		Client:        mgr.GetClient(),
+		Client:        wrapperClient,
 		Scheme:        mgr.GetScheme(),
 		LabelSelector: labelSelectorFlag,
 		K8sClient:     k8sClient,
@@ -237,14 +246,14 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&argocdexport.ReconcileArgoCDExport{
-		Client: mgr.GetClient(),
+		Client: wrapperClient,
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ArgoCDExport")
 		os.Exit(1)
 	}
 	if err = (&notificationsConfig.NotificationsConfigurationReconciler{
-		Client: mgr.GetClient(),
+		Client: wrapperClient,
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NotificationsConfiguration")
