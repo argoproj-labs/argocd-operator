@@ -73,7 +73,11 @@ func (r *ReconcileArgoCD) reconcileServerHPA(cr *argoproj.ArgoCD) error {
 	}
 
 	existingHPA := newHorizontalPodAutoscalerWithSuffix("server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, existingHPA.Name, existingHPA) {
+	hpaExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existingHPA.Name, existingHPA)
+	if err != nil {
+		return err
+	}
+	if hpaExists {
 		if !cr.Spec.Server.Autoscale.Enabled {
 			argoutil.LogResourceDeletion(log, existingHPA, "server autoscaling is disabled")
 			return r.Client.Delete(context.TODO(), existingHPA) // HorizontalPodAutoscaler found but globally disabled, delete it.

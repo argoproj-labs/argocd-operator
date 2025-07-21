@@ -128,7 +128,11 @@ func newServiceMonitorWithSuffix(suffix string, cr *argoproj.ArgoCD) *monitoring
 // reconcileMetricsServiceMonitor will ensure that the ServiceMonitor is present for the ArgoCD metrics Service.
 func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) error {
 	sm := newServiceMonitorWithSuffix(common.ArgoCDKeyMetrics, cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
+	smExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm)
+	if err != nil {
+		return err
+	}
+	if smExists {
 		if !cr.Spec.Prometheus.Enabled {
 			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
 			argoutil.LogResourceDeletion(log, sm, "prometheus is disabled")
@@ -162,7 +166,11 @@ func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) er
 // reconcilePrometheus will ensure that Prometheus is present for ArgoCD metrics.
 func (r *ReconcileArgoCD) reconcilePrometheus(cr *argoproj.ArgoCD) error {
 	prometheus := newPrometheus(cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, prometheus.Name, prometheus) {
+	prExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, prometheus.Name, prometheus)
+	if err != nil {
+		return err
+	}
+	if prExists {
 		if !cr.Spec.Prometheus.Enabled {
 			// Prometheus exists but enabled flag has been set to false, delete the Prometheus
 			argoutil.LogResourceDeletion(log, prometheus, "prometheus is disabled")
@@ -194,7 +202,11 @@ func (r *ReconcileArgoCD) reconcilePrometheus(cr *argoproj.ArgoCD) error {
 // reconcileRepoServerServiceMonitor will ensure that the ServiceMonitor is present for the Repo Server metrics Service.
 func (r *ReconcileArgoCD) reconcileRepoServerServiceMonitor(cr *argoproj.ArgoCD) error {
 	sm := newServiceMonitorWithSuffix("repo-server-metrics", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
+	smExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm)
+	if err != nil {
+		return err
+	}
+	if smExists {
 		if !cr.Spec.Prometheus.Enabled {
 			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
 			argoutil.LogResourceDeletion(log, sm, "prometheus is disabled")
@@ -228,7 +240,11 @@ func (r *ReconcileArgoCD) reconcileRepoServerServiceMonitor(cr *argoproj.ArgoCD)
 // reconcileServerMetricsServiceMonitor will ensure that the ServiceMonitor is present for the ArgoCD Server metrics Service.
 func (r *ReconcileArgoCD) reconcileServerMetricsServiceMonitor(cr *argoproj.ArgoCD) error {
 	sm := newServiceMonitorWithSuffix("server-metrics", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
+	smExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm)
+	if err != nil {
+		return err
+	}
+	if smExists {
 		if !cr.Spec.Prometheus.Enabled {
 			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
 			argoutil.LogResourceDeletion(log, sm, "prometheus is disabled")
@@ -264,7 +280,12 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoproj.ArgoCD) error {
 
 	promRule := newPrometheusRule(cr.Namespace, "argocd-component-status-alert")
 
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, promRule.Name, promRule) {
+	prExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, promRule.Name, promRule)
+	if err != nil {
+		return err
+	}
+
+	if prExists {
 
 		if !cr.Spec.Monitoring.Enabled {
 			// PrometheusRule exists but enabled flag has been set to false, delete the PrometheusRule

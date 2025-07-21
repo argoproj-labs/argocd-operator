@@ -46,7 +46,11 @@ func (r *ReconcileArgoCDExport) reconcilePVC(cr *argoproj.ArgoCDExport) error {
 	}
 
 	pvc := argoutil.NewPersistentVolumeClaim(cr.ObjectMeta)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, pvc.Name, pvc) {
+	pvcExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, pvc.Name, pvc)
+	if err != nil {
+		return err
+	}
+	if pvcExists {
 		return nil // PVC exists, move along...
 	}
 
