@@ -136,7 +136,7 @@ func getKeycloakContainerImage(cr *argoproj.ArgoCD) string {
 }
 
 func getKeycloakConfigMapTemplate(ns string) *corev1.ConfigMap {
-	return &corev1.ConfigMap{
+	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
 				"description": "ConfigMap providing service ca bundle",
@@ -150,10 +150,12 @@ func getKeycloakConfigMapTemplate(ns string) *corev1.ConfigMap {
 		},
 		TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "ConfigMap"},
 	}
+	argoutil.AddTrackedByOperatorLabel(&cm.ObjectMeta)
+	return cm
 }
 
 func getKeycloakSecretTemplate(ns string) *corev1.Secret {
-	return &corev1.Secret{
+	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: map[string]string{
 				"application": "${APPLICATION_NAME}",
@@ -167,6 +169,8 @@ func getKeycloakSecretTemplate(ns string) *corev1.Secret {
 			"SSO_PASSWORD": "${SSO_ADMIN_PASSWORD}",
 		},
 	}
+	argoutil.AddTrackedByOperatorLabel(&secret.ObjectMeta)
+	return secret
 }
 
 // defaultKeycloakResources for Keycloak container.

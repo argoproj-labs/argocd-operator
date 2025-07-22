@@ -270,13 +270,15 @@ func getInitialTLSCerts(cr *argoproj.ArgoCD) map[string]string {
 
 // newConfigMap returns a new ConfigMap instance for the given ArgoCD.
 func newConfigMap(cr *argoproj.ArgoCD) *corev1.ConfigMap {
-	return &corev1.ConfigMap{
+	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
 			Labels:    argoutil.LabelsForCluster(cr),
 		},
 	}
+	argoutil.AddTrackedByOperatorLabel(&cm.ObjectMeta)
+	return cm
 }
 
 // newConfigMapWithName creates a new ConfigMap with the given name for the given ArgCD.
