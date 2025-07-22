@@ -151,18 +151,30 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoproj.ArgoCD) error {
 	clusterSecret := argoutil.NewSecretWithSuffix(cr, "cluster")
 	secret := argoutil.NewSecretWithName(cr, common.ArgoCDSecretName)
 
-	if !argoutil.IsObjectFound(r.Client, cr.Namespace, clusterSecret.Name, clusterSecret) {
+	clusterSecretFound, err := argoutil.IsObjectFound(r.Client, cr.Namespace, clusterSecret.Name, clusterSecret)
+	if err != nil {
+		return err
+	}
+	if !clusterSecretFound {
 		log.Info(fmt.Sprintf("cluster secret [%s] not found, waiting to reconcile argo secret [%s]", clusterSecret.Name, secret.Name))
 		return nil
 	}
 
 	tlsSecret := argoutil.NewSecretWithSuffix(cr, "tls")
-	if !argoutil.IsObjectFound(r.Client, cr.Namespace, tlsSecret.Name, tlsSecret) {
+	tlsSecretExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, tlsSecret.Name, tlsSecret)
+	if err != nil {
+		return err
+	}
+	if !tlsSecretExists {
 		log.Info(fmt.Sprintf("tls secret [%s] not found, waiting to reconcile argo secret [%s]", tlsSecret.Name, secret.Name))
 		return nil
 	}
 
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
+	secretFound, err := argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret)
+	if err != nil {
+		return err
+	}
+	if secretFound {
 		return r.reconcileExistingArgoSecret(cr, secret, clusterSecret, tlsSecret)
 	}
 
@@ -203,7 +215,11 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoproj.ArgoCD) error {
 // reconcileClusterMainSecret will ensure that the main Secret is present for the Argo CD cluster.
 func (r *ReconcileArgoCD) reconcileClusterMainSecret(cr *argoproj.ArgoCD) error {
 	secret := argoutil.NewSecretWithSuffix(cr, "cluster")
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
+	secretExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret)
+	if err != nil {
+		return err
+	}
+	if secretExists {
 		return nil // Secret found, do nothing
 	}
 
@@ -226,12 +242,16 @@ func (r *ReconcileArgoCD) reconcileClusterMainSecret(cr *argoproj.ArgoCD) error 
 // reconcileClusterTLSSecret ensures the TLS Secret is created for the ArgoCD cluster.
 func (r *ReconcileArgoCD) reconcileClusterTLSSecret(cr *argoproj.ArgoCD) error {
 	secret := argoutil.NewTLSSecret(cr, "tls")
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
+	secretExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret)
+	if err != nil {
+		return err
+	}
+	if secretExists {
 		return nil // Secret found, do nothing
 	}
 
 	caSecret := argoutil.NewSecretWithSuffix(cr, "ca")
-	caSecret, err := argoutil.FetchSecret(r.Client, cr.ObjectMeta, caSecret.Name)
+	caSecret, err = argoutil.FetchSecret(r.Client, cr.ObjectMeta, caSecret.Name)
 	if err != nil {
 		return err
 	}
@@ -262,11 +282,15 @@ func (r *ReconcileArgoCD) reconcileClusterTLSSecret(cr *argoproj.ArgoCD) error {
 // reconcileClusterCASecret ensures the CA Secret is created for the ArgoCD cluster.
 func (r *ReconcileArgoCD) reconcileClusterCASecret(cr *argoproj.ArgoCD) error {
 	secret := argoutil.NewSecretWithSuffix(cr, "ca")
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
+	secretExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret)
+	if err != nil {
+		return err
+	}
+	if secretExists {
 		return nil // Secret found, do nothing
 	}
 
-	secret, err := newCASecret(cr)
+	secret, err = newCASecret(cr)
 	if err != nil {
 		return err
 	}
@@ -674,7 +698,11 @@ func (r *ReconcileArgoCD) reconcileRedisTLSSecret(cr *argoproj.ArgoCD, useTLSFor
 			// communicate with the existing pods (which are not using tls) to establish which is the master.
 			// So instead we delete the stateful set, which will delete all the pods.
 			redisSts := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
-			if argoutil.IsObjectFound(r.Client, redisSts.Namespace, redisSts.Name, redisSts) {
+			ssExists, err := argoutil.IsObjectFound(r.Client, redisSts.Namespace, redisSts.Name, redisSts)
+			if err != nil {
+				return err
+			}
+			if ssExists {
 				argoutil.LogResourceDeletion(log, redisSts, "to trigger pods to restart")
 				err = r.Client.Delete(context.TODO(), redisSts)
 				if err != nil {
@@ -747,7 +775,12 @@ func (r *ReconcileArgoCD) getClusterSecrets(cr *argoproj.ArgoCD) (*corev1.Secret
 // reconcileRedisInitialPasswordSecret will ensure that the redis Secret is present for the cluster.
 func (r *ReconcileArgoCD) reconcileRedisInitialPasswordSecret(cr *argoproj.ArgoCD) error {
 	secret := argoutil.NewSecretWithSuffix(cr, "redis-initial-password")
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
+
+	secretExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret)
+	if err != nil {
+		return err
+	}
+	if secretExists {
 		return nil // Secret found, do nothing
 	}
 

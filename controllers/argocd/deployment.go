@@ -57,9 +57,9 @@ func getArgoCDServerReplicas(cr *argoproj.ArgoCD) *int32 {
 	return nil
 }
 
-func (r *ReconcileArgoCD) getArgoCDExport(cr *argoproj.ArgoCD) *argoprojv1alpha1.ArgoCDExport {
+func (r *ReconcileArgoCD) getArgoCDExport(cr *argoproj.ArgoCD) (*argoprojv1alpha1.ArgoCDExport, error) {
 	if cr.Spec.Import == nil {
-		return nil
+		return nil, nil
 	}
 
 	namespace := cr.ObjectMeta.Namespace
@@ -68,10 +68,14 @@ func (r *ReconcileArgoCD) getArgoCDExport(cr *argoproj.ArgoCD) *argoprojv1alpha1
 	}
 
 	export := &argoprojv1alpha1.ArgoCDExport{}
-	if argoutil.IsObjectFound(r.Client, namespace, cr.Spec.Import.Name, export) {
-		return export
+	exists, err := argoutil.IsObjectFound(r.Client, namespace, cr.Spec.Import.Name, export)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	if exists {
+		return export, nil
+	}
+	return nil, nil
 }
 
 func getArgoExportSecretName(export *argoprojv1alpha1.ArgoCDExport) string {
@@ -82,7 +86,7 @@ func getArgoExportSecretName(export *argoprojv1alpha1.ArgoCDExport) string {
 	return name
 }
 
-func getArgoImportBackend(client client.Client, cr *argoproj.ArgoCD) string {
+func getArgoImportBackend(client client.Client, cr *argoproj.ArgoCD) (string, error) {
 	backend := common.ArgoCDExportStorageBackendLocal
 	namespace := cr.ObjectMeta.Namespace
 	if cr.Spec.Import != nil && cr.Spec.Import.Namespace != nil && len(*cr.Spec.Import.Namespace) > 0 {
@@ -90,22 +94,32 @@ func getArgoImportBackend(client client.Client, cr *argoproj.ArgoCD) string {
 	}
 
 	export := &argoprojv1alpha1.ArgoCDExport{}
-	if argoutil.IsObjectFound(client, namespace, cr.Spec.Import.Name, export) {
+	exists, err := argoutil.IsObjectFound(client, namespace, cr.Spec.Import.Name, export)
+	if err != nil {
+		return "", err
+	}
+	if exists {
 		if export.Spec.Storage != nil && len(export.Spec.Storage.Backend) > 0 {
 			backend = export.Spec.Storage.Backend
 		}
 	}
-	return backend
+	return backend, nil
 }
 
 // getArgoImportCommand will return the command for the ArgoCD import process.
-func getArgoImportCommand(client client.Client, cr *argoproj.ArgoCD) []string {
+func getArgoImportCommand(client client.Client, cr *argoproj.ArgoCD) ([]string, error) {
 	cmd := make([]string, 0)
 	cmd = append(cmd, "uid_entrypoint.sh")
 	cmd = append(cmd, "argocd-operator-util")
 	cmd = append(cmd, "import")
-	cmd = append(cmd, getArgoImportBackend(client, cr))
-	return cmd
+
+	args, err := getArgoImportBackend(client, cr)
+	if err != nil {
+		return nil, err
+	}
+
+	cmd = append(cmd, args)
+	return cmd, nil
 }
 
 func getArgoImportContainerEnv(cr *argoprojv1alpha1.ArgoCDExport) []corev1.EnvVar {
@@ -535,7 +549,11 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 	}
 
 	existing := newDeploymentWithSuffix("redis", "redis", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+	deplFound, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
+	if err != nil {
+		return err
+	}
+	if deplFound {
 		if !cr.Spec.Redis.IsEnabled() {
 			// Deployment exists but component enabled flag has been set to false, delete the Deployment
 			argoutil.LogResourceDeletion(log, deploy, "redis is disabled but deployment exists")
@@ -846,7 +864,11 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 	}
 
 	existing := newDeploymentWithSuffix("redis-ha-haproxy", "redis", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+	deplExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
+	if err != nil {
+		return err
+	}
+	if deplExists {
 		if !cr.Spec.HA.Enabled {
 			// Deployment exists but HA enabled flag has been set to false, delete the Deployment
 			argoutil.LogResourceDeletion(log, existing, "redis ha is disabled")
@@ -1222,7 +1244,11 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 	}
 
 	existing := newDeploymentWithSuffix("repo-server", "repo-server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+	deplExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
+	if err != nil {
+		return err
+	}
+	if deplExists {
 
 		if !cr.Spec.Repo.IsEnabled() {
 			// Delete existing deployment for ArgoCD Repo Server, if any ..
@@ -1631,7 +1657,11 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 	}
 
 	existing := newDeploymentWithSuffix("server", "server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+	deplExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
+	if err != nil {
+		return err
+	}
+	if deplExists {
 		if !cr.Spec.Server.IsEnabled() {
 			// Delete existing deployment for ArgoCD Server, if any ..
 			argoutil.LogResourceDeletion(log, existing, "argocd server is disabled")
@@ -1772,7 +1802,12 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 
 // triggerDeploymentRollout will update the label with the given key to trigger a new rollout of the Deployment.
 func (r *ReconcileArgoCD) triggerDeploymentRollout(deployment *appsv1.Deployment, key string) error {
-	if !argoutil.IsObjectFound(r.Client, deployment.Namespace, deployment.Name, deployment) {
+
+	deplExists, err := argoutil.IsObjectFound(r.Client, deployment.Namespace, deployment.Name, deployment)
+	if err != nil {
+		return err
+	}
+	if !deplExists {
 		log.Info(fmt.Sprintf("unable to locate deployment with name: %s", deployment.Name))
 		return nil
 	}

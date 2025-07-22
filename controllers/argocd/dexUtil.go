@@ -52,9 +52,12 @@ func getDexContainerImage(cr *argoproj.ArgoCD) string {
 }
 
 // getDexOAuthRedirectURI will return the OAuth redirect URI for the Dex server.
-func (r *ReconcileArgoCD) getDexOAuthRedirectURI(cr *argoproj.ArgoCD) string {
-	uri := r.getArgoServerURI(cr)
-	return uri + common.ArgoCDDefaultDexOAuthRedirectPath
+func (r *ReconcileArgoCD) getDexOAuthRedirectURI(cr *argoproj.ArgoCD) (string, error) {
+	uri, err := r.getArgoServerURI(cr)
+	if err != nil {
+		return "", err
+	}
+	return uri + common.ArgoCDDefaultDexOAuthRedirectPath, nil
 }
 
 // getDexOAuthClientID will return the OAuth client ID for the given ArgoCD.
