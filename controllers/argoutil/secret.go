@@ -44,12 +44,14 @@ func NewTLSSecret(cr *argoproj.ArgoCD, suffix string) *corev1.Secret {
 
 // NewSecret returns a new Secret based on the given metadata.
 func NewSecret(cr *argoproj.ArgoCD) *corev1.Secret {
-	return &corev1.Secret{
+	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: LabelsForCluster(cr),
 		},
 		Type: corev1.SecretTypeOpaque,
 	}
+	AddTrackedByOperatorLabel(&secret.ObjectMeta)
+	return secret
 }
 
 // NewSecretWithName returns a new Secret based on the given metadata with the provided Name.
@@ -77,6 +79,7 @@ func CreateTLSSecret(client client.Client, name string, namespace string, data m
 		Type: corev1.SecretTypeTLS,
 		Data: data,
 	}
+	AddTrackedByOperatorLabel(&secret.ObjectMeta)
 	LogResourceCreation(log, &secret)
 	return client.Create(context.TODO(), &secret)
 }
@@ -89,6 +92,7 @@ func CreateSecret(client client.Client, name string, namespace string, data map[
 		},
 		Data: data,
 	}
+	AddTrackedByOperatorLabel(&secret.ObjectMeta)
 	LogResourceCreation(log, &secret)
 	return client.Create(context.TODO(), &secret)
 }

@@ -229,4 +229,7 @@ const (
 
 	// ArgoCDKeyInstallationID is the configuration key for the installation ID.
 	ArgoCDKeyInstallationID = "installationID"
+
+	// ArgoCDTrackedByOperatorLabel for resources tracked by the operator
+	ArgoCDTrackedByOperatorLabel = "operator.argoproj.io/tracked-by"
 )

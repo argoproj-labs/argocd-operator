@@ -178,3 +178,17 @@ func LogResourceAction(log logr.Logger, action string, object metav1.Object, exp
 func GenerateAgentPrincipalRedisProxyServiceName(crName string) string {
 	return fmt.Sprintf("%s-agent-%s", crName, "principal-redisproxy")
 }
+
+// AddTrackedByOperatorLabel adds the ArgoCDTrackedByOperator label to the resource
+func AddTrackedByOperatorLabel(meta *metav1.ObjectMeta) {
+	if meta.Labels == nil {
+		meta.Labels = make(map[string]string)
+	}
+	meta.Labels[common.ArgoCDTrackedByOperatorLabel] = common.ArgoCDAppName
+}
+
+// IsTrackedByOperator checks if the resource is tracked by the operator
+func IsTrackedByOperator(labels map[string]string) bool {
+	value, exists := labels[common.ArgoCDTrackedByOperatorLabel]
+	return exists && value == common.ArgoCDAppName
+}
