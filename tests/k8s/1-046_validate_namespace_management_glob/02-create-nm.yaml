@@ -1,0 +1,7 @@
+apiVersion: argoproj.io/v1beta1
+kind: NamespaceManagement
+metadata:
+  name: ui-app-namespace
+  namespace: tenant-ui-app  # Matches "tenant-*"
+spec:
+  managedBy: argo-cd-ns

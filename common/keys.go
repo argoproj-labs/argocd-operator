@@ -238,4 +238,7 @@ const (
 
 	// ArgoCDTrackedByOperatorLabel for resources tracked by the operator
 	ArgoCDTrackedByOperatorLabel = "operator.argoproj.io/tracked-by"
+	// ENABLE_MANAGED_NAMESPACE_FEATURE is an environment variable that controls whether
+	// the Namespace Management feature is enabled.
+	EnableManagedNamespace = "ENABLE_MANAGED_NAMESPACE_FEATURE"
 )

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"os"
 	"reflect"
 	"sort"
 	"testing"
@@ -599,6 +600,41 @@ func TestGenerateSortedManagedNamespaceListForArgoCDCR(t *testing.T) {
 	res, err = generateSortedManagedNamespaceListForArgoCDCR(a, r.Client)
 	assert.NoError(t, err)
 	assert.Equal(t, res, []string{managedByNamespace.Name, a.Namespace})
+
+	// If Namespace management is enabled, fetch from NamespaceManagement CRs
+	// and Ensure that results returned by this function are sorted by namespace name
+	os.Setenv(common.EnableManagedNamespace, "true")
+	defer os.Unsetenv(common.EnableManagedNamespace)
+
+	nsMgmt1 := argoproj.NamespaceManagement{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "namespace-mgmt-1",
+			Namespace: "aaaa-second-when-sorted-nm",
+		},
+		Spec: argoproj.NamespaceManagementSpec{
+			ManagedBy: a.Namespace,
+		},
+	}
+
+	nsMgmt2 := argoproj.NamespaceManagement{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "namespace-mgmt-2",
+			Namespace: "bbbb-third-when-sorted-nm",
+		},
+		Spec: argoproj.NamespaceManagementSpec{
+			ManagedBy: a.Namespace,
+		},
+	}
+
+	err = cl.Create(context.Background(), &nsMgmt1)
+	assert.NoError(t, err)
+	err = cl.Create(context.Background(), &nsMgmt2)
+	assert.NoError(t, err)
+
+	res, err = generateSortedManagedNamespaceListForArgoCDCR(a, r.Client)
+	assert.NoError(t, err)
+	assert.Equal(t, res, []string{nsMgmt1.Namespace, a.Namespace, nsMgmt2.Namespace})
+
 }
 
 func TestCombineClusterSecretNamespacesWithManagedNamespaces(t *testing.T) {

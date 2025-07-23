@@ -1027,3 +1027,83 @@ func TestReconcileArgoCD_tlsSecretMapperUserManagedSecret(t *testing.T) {
 		})
 	}
 }
+
+func TestReconcileArgoCD_nmMapper(t *testing.T) {
+	a := makeTestArgoCD()
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	a.Namespace = "test-namespace"
+
+	// Fake client returns an error if ResourceVersion is not nil
+	a.ResourceVersion = ""
+	assert.NoError(t, r.Client.Create(context.TODO(), a))
+
+	type test struct {
+		name string
+		o    client.Object
+		want []reconcile.Request
+	}
+
+	tests := []test{
+		{
+			name: "NamespaceManagement CR with valid managedBy field",
+			o: &argoproj.NamespaceManagement{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-nsmgmt",
+					Namespace: "test-ns",
+				},
+				Spec: argoproj.NamespaceManagementSpec{
+					ManagedBy: a.Namespace,
+				},
+			},
+			want: []reconcile.Request{
+				{
+					NamespacedName: types.NamespacedName{
+						Name:      a.Name,
+						Namespace: a.Namespace,
+					},
+				},
+			},
+		},
+		{
+			name: "NamespaceManagement CR with empty managedBy field",
+			o: &argoproj.NamespaceManagement{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-nsmgmt",
+					Namespace: "test-ns",
+				},
+				Spec: argoproj.NamespaceManagementSpec{
+					ManagedBy: "",
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "NamespaceManagement CR with non-matching managedBy field",
+			o: &argoproj.NamespaceManagement{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-nsmgmt",
+					Namespace: "test-ns",
+				},
+				Spec: argoproj.NamespaceManagementSpec{
+					ManagedBy: "unknown-namespace",
+				},
+			},
+			want: []reconcile.Request{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := r.nmMapper(context.TODO(), tt.o); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ReconcileArgoCD.nmMapper(), got = %v, want = %v", got, tt.want)
+			}
+		})
+	}
+}

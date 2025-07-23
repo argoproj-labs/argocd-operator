@@ -1,0 +1,9 @@
+apiVersion: argoproj.io/v1alpha1
+kind: NamespaceManagement
+metadata:
+  name: ui-app-namespace
+  namespace: tenant-ui-app
+status:
+  conditions:
+    - type: Reconciled
+      status: "True"  # Should be allowed because "tenant-ui-app" matches "tenant-*"

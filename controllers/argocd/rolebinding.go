@@ -141,6 +141,23 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 				argoutil.LogResourceUpdate(log, &namespace, "namespace is terminating, removing 'managed-by' label")
 				_ = r.Client.Update(context.TODO(), &namespace)
 			}
+
+			// List all NamespaceManagement CRs in this namespace
+			if isNamespaceManagementEnabled() {
+				nsMgmtList := &argoproj.NamespaceManagementList{}
+				listOptions := &client.ListOptions{Namespace: namespace.Name}
+				err := r.Client.List(context.TODO(), nsMgmtList, listOptions)
+				if err != nil {
+					log.Error(err, "failed to list NamespaceManagement CRs", "namespace", namespace.Name)
+				} else {
+					for _, nsMgmt := range nsMgmtList.Items {
+						argoutil.LogResourceDeletion(log, &nsMgmt, "namespace is terminating, deleting NamespaceManagement CR")
+						if delErr := r.Client.Delete(context.TODO(), &nsMgmt); delErr != nil {
+							log.Error(delErr, "failed to delete NamespaceManagement CR", "name", nsMgmt.Name, "namespace", namespace.Name)
+						}
+					}
+				}
+			}
 			continue
 		}
 

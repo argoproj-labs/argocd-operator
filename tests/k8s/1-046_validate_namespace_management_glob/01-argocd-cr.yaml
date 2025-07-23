@@ -1,0 +1,11 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argo-cd
+  namespace: argo-cd-ns
+spec:
+  namespaceManagement:
+    - name: "tenant-ui-team"  # Allow exact match
+      allowManagedBy: true
+    - name: "tenant-*"
+      allowManagedBy: true  # Allow all "tenant-*" namespaces

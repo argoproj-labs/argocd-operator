@@ -1469,3 +1469,74 @@ func TestAppendUniqueArgs(t *testing.T) {
 		})
 	}
 }
+
+func TestRemoveNamespaceManagementCRs(t *testing.T) {
+	a := makeTestArgoCD()
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	// Create NamespaceManagement CRs, some managed by the target ArgoCD instance, some not
+	nsMgmt1 := &argoproj.NamespaceManagement{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "nsMgmt1",
+			Namespace: "test-ns-1",
+		},
+		Spec: argoproj.NamespaceManagementSpec{
+			ManagedBy: a.Namespace,
+		},
+	}
+	nsMgmt2 := &argoproj.NamespaceManagement{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "nsMgmt2",
+			Namespace: "test-ns-2",
+		},
+		Spec: argoproj.NamespaceManagementSpec{
+			ManagedBy: a.Namespace,
+		},
+	}
+	nsMgmt3 := &argoproj.NamespaceManagement{
+		ObjectMeta: metav1.ObjectMeta{Name: "nsMgmt3",
+			Namespace: "test-ns-3",
+		},
+		Spec: argoproj.NamespaceManagementSpec{
+			ManagedBy: "other-argocd-ns",
+		},
+	}
+
+	err := r.Client.Create(context.TODO(), nsMgmt1)
+	assert.NoError(t, err)
+	err = r.Client.Create(context.TODO(), nsMgmt2)
+	assert.NoError(t, err)
+	err = r.Client.Create(context.TODO(), nsMgmt3)
+	assert.NoError(t, err)
+
+	// Call function to remove NamespaceManagement CRs managed by the ArgoCD instance
+	err = r.removeNamespaceManagementCRs(a.Namespace)
+	assert.NoError(t, err)
+
+	// Verify NamespaceManagement CRs were removed correctly
+	nsMgmtList := &argoproj.NamespaceManagementList{}
+	err = r.Client.List(context.TODO(), nsMgmtList)
+	assert.NoError(t, err)
+
+	for _, nsMgmt := range nsMgmtList.Items {
+		if nsMgmt.Spec.ManagedBy == a.Namespace {
+			t.Errorf("Expected NamespaceManagement CR %s to be deleted, but it still exists", nsMgmt.Name)
+		}
+	}
+
+	// Ensure the CR managed by another ArgoCD instance still exists
+	found := false
+	for _, nsMgmt := range nsMgmtList.Items {
+		if nsMgmt.Name == nsMgmt3.Name {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "Expected NamespaceManagement CR nsMgmt3 to still exist")
+}

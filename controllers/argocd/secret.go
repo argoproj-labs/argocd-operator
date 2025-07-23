@@ -417,17 +417,34 @@ func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoproj.ArgoCD) error {
 
 // generateSortedManagedNamespaceListForArgoCDCR return a list of namespaces with 'managed-by' label that are managed by this 'cr', and including the namespace containing 'cr'
 func generateSortedManagedNamespaceListForArgoCDCR(cr *argoproj.ArgoCD, rClient client.Client) ([]string, error) {
-	namespaceList := corev1.NamespaceList{}
-	listOption := client.MatchingLabels{
-		common.ArgoCDManagedByLabel: cr.Namespace,
-	}
-	if err := rClient.List(context.TODO(), &namespaceList, listOption); err != nil {
-		return nil, err
-	}
-
 	var namespaces []string
-	for _, namespace := range namespaceList.Items {
-		namespaces = append(namespaces, namespace.Name)
+
+	if !isNamespaceManagementEnabled() {
+		// Fetch namespaces with 'managed-by' label
+		namespaceList := corev1.NamespaceList{}
+		listOption := client.MatchingLabels{
+			common.ArgoCDManagedByLabel: cr.Namespace,
+		}
+		if err := rClient.List(context.TODO(), &namespaceList, listOption); err != nil {
+			return nil, err
+		}
+		// Collect namespaces from the label
+		for _, namespace := range namespaceList.Items {
+			namespaces = append(namespaces, namespace.Name)
+		}
+	} else {
+		// Fetch namespaces from NamespaceManagement CRs
+		nsMgmtList := &argoproj.NamespaceManagementList{}
+		if err := rClient.List(context.TODO(), nsMgmtList); err != nil {
+			return nil, err
+		}
+
+		// Collect namespaces where .spec.managedBy matches cr.Namespace
+		for _, nsMgmt := range nsMgmtList.Items {
+			if nsMgmt.Spec.ManagedBy == cr.Namespace {
+				namespaces = append(namespaces, nsMgmt.Namespace)
+			}
+		}
 	}
 
 	if !containsString(namespaces, cr.Namespace) {

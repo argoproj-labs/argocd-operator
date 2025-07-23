@@ -447,3 +447,49 @@ func TestReconcileArgoCD_Status_Condition(t *testing.T) {
 	assert.Equal(t, a.Status.Conditions[0].Message, "")
 	assert.Equal(t, a.Status.Conditions[0].Status, metav1.ConditionTrue)
 }
+
+func TestReconcileArgoCD_Reconcile_RemoveNamespaceManagementCRsOnArgocdDeletion(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	a := makeTestArgoCD(deletedAt(time.Now()), addFinalizer(common.ArgoCDDeletionFinalizer))
+	// Ensure NamespaceManagement is set
+	a.Spec.NamespaceManagement = append(a.Spec.NamespaceManagement, argoproj.ManagedNamespaces{
+		Name:           "test-nsmgmt",
+		AllowManagedBy: true,
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	// Create a NamespaceManagement CR
+	nsMgmt := &argoproj.NamespaceManagement{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-nsmgmt",
+			Namespace: "test-ns",
+		},
+		Spec: argoproj.NamespaceManagementSpec{
+			ManagedBy: a.Namespace,
+		},
+	}
+	err := r.Client.Create(context.TODO(), nsMgmt)
+	assert.NoError(t, err)
+
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      a.Name,
+			Namespace: a.Namespace,
+		},
+	}
+
+	_, err = r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+
+	// Verify that the NamespaceManagement CR was deleted
+	deletedNSMgmt := &argoproj.NamespaceManagement{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: nsMgmt.Name, Namespace: nsMgmt.Namespace}, deletedNSMgmt)
+	assert.True(t, apierrors.IsNotFound(err), "Expected NamespaceManagement CR to be deleted")
+}
