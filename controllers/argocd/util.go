@@ -2021,16 +2021,30 @@ func (r *ReconcileArgoCD) argoCDNamespaceManagementFilterPredicate() predicate.P
 
 func (r *ReconcileArgoCD) handleArgoCDNamespaceManagementUpdate(valNew, valOld *argoproj.ArgoCD, k8sClient kubernetes.Interface) bool {
 	if !reflect.DeepEqual(valOld.Spec.NamespaceManagement, valNew.Spec.NamespaceManagement) {
-		namespacesToDelete := getNamespacesToDelete(valOld.Spec.NamespaceManagement, valNew.Spec.NamespaceManagement)
+		// Fetch all namespaces from the cluster
+		namespaceList := &corev1.NamespaceList{}
+		if err := r.List(context.TODO(), namespaceList); err != nil {
+			log.Error(err, "Failed to list namespaces for NamespaceManagement update")
+			// Return false as we cannot proceed without namespace info
+			return false
+		}
+
+		// Extract all namespace names into a slice
+		var allNamespaces []string
+		for _, ns := range namespaceList.Items {
+			allNamespaces = append(allNamespaces, ns.Name)
+		}
+
+		namespacesToDelete := getNamespacesToDelete(valOld.Spec.NamespaceManagement, valNew.Spec.NamespaceManagement, allNamespaces)
 
 		if len(namespacesToDelete) > 0 {
 			for _, nsEntry := range namespacesToDelete {
 				ns := &corev1.Namespace{}
-				if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: nsEntry}, ns); err != nil {
+				if err := r.Get(context.TODO(), types.NamespacedName{Name: nsEntry}, ns); err != nil {
 					continue // Could not fetch namespace; skip cleanup
 				}
 
-				// Skip cleanup if managed-by label still points to us
+				// Skip cleanup if managed-by label exists
 				if labelVal, labelExists := ns.Labels[common.ArgoCDManagedByLabel]; labelExists && labelVal == valOld.Namespace {
 					log.Info(fmt.Sprintf("Skipping cleanup for namespace %s because it's still labeled as managed by this ArgoCD instance", nsEntry))
 					continue
@@ -2048,7 +2062,7 @@ func (r *ReconcileArgoCD) handleArgoCDNamespaceManagementUpdate(valNew, valOld *
 
 func (r *ReconcileArgoCD) handleNamespaceManagementUpdate(oldNSMgmt, newNSMgmt *argoproj.NamespaceManagement, k8sClient kubernetes.Interface) bool {
 	ns := &corev1.Namespace{}
-	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: oldNSMgmt.Spec.ManagedBy}, ns); err != nil {
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: oldNSMgmt.Spec.ManagedBy}, ns); err != nil {
 		return false
 	}
 
@@ -2070,7 +2084,7 @@ func (r *ReconcileArgoCD) handleNamespaceManagementUpdate(oldNSMgmt, newNSMgmt *
 
 func (r *ReconcileArgoCD) handleNamespaceManagementDelete(nsMgmt *argoproj.NamespaceManagement, k8sClient kubernetes.Interface) bool {
 	ns := &corev1.Namespace{}
-	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: nsMgmt.Spec.ManagedBy}, ns); err != nil {
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: nsMgmt.Spec.ManagedBy}, ns); err != nil {
 		return false
 	}
 
@@ -2156,31 +2170,30 @@ func (r *ReconcileArgoCD) removeNamespaceManagementCRs(argocdNamespace string) e
 	return nil
 =======
 // getNamespacesToDelete determines which namespaces were removed or had allowManagedBy changed.
-func getNamespacesToDelete(oldList, newList []argoproj.ManagedNamespaces) []string {
-	// Convert old and new NamespaceManagement lists into maps for easy lookup
-	oldNamespaces := make(map[string]bool)
-	newNamespaces := make(map[string]bool)
-	oldNamespaceSettings := make(map[string]bool) // Track allowManagedBy values
-	newNamespaceSettings := make(map[string]bool)
-
-	for _, ns := range oldList {
-		oldNamespaces[ns.Name] = true
-		oldNamespaceSettings[ns.Name] = ns.AllowManagedBy // Store old setting
-	}
-	for _, ns := range newList {
-		newNamespaces[ns.Name] = true
-		newNamespaceSettings[ns.Name] = ns.AllowManagedBy // Store new setting
-	}
-
-	// Find namespaces that were removed or had allowManagedBy changed
-	namespacesToDelete := []string{}
-	if len(oldNamespaces) > 0 {
-		for ns := range oldNamespaces {
-			if !newNamespaces[ns] { // Namespace was removed
-				namespacesToDelete = append(namespacesToDelete, ns)
-			} else if oldNamespaceSettings[ns] != newNamespaceSettings[ns] { // allowManagedBy changed
-				namespacesToDelete = append(namespacesToDelete, ns)
+// oldList, newList contain patterns in ns.Name, but allNamespaces contains real namespace names.
+func getNamespacesToDelete(oldList, newList []argoproj.ManagedNamespaces, allNamespaces []string) []string {
+	// expandNsPatterns expands namespace patterns into actual namespaces using glob match.
+	// Example: pattern "team-*" will match ["team-123", "team-567", "team-dev", "team-prod"]
+	expandNsPatterns := func(list []argoproj.ManagedNamespaces) map[string]bool {
+		result := make(map[string]bool)
+		for _, patternEntry := range list {
+			for _, ns := range allNamespaces {
+				if glob.MatchStringInList([]string{patternEntry.Name}, ns, glob.GLOB) {
+					result[ns] = patternEntry.AllowManagedBy
+				}
 			}
+		}
+		return result
+	}
+
+	oldExpanded := expandNsPatterns(oldList)
+	newExpanded := expandNsPatterns(newList)
+
+	var namespacesToDelete []string
+	for ns, oldAllowed := range oldExpanded {
+		newAllowed, exists := newExpanded[ns]
+		if !exists || newAllowed != oldAllowed {
+			namespacesToDelete = append(namespacesToDelete, ns)
 		}
 	}
 	return namespacesToDelete

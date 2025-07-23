@@ -1616,3 +1616,92 @@ func TestNamespaceManagementHandlers(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+func TestGetNamespacesToDelete(t *testing.T) {
+	tests := []struct {
+		name           string
+		oldList        []argoproj.ManagedNamespaces
+		newList        []argoproj.ManagedNamespaces
+		allNamespaces  []string
+		expectedDelete []string
+	}{
+		{
+			name: "no change between old and new lists",
+			oldList: []argoproj.ManagedNamespaces{
+				{Name: "dev-*", AllowManagedBy: true},
+			},
+			newList: []argoproj.ManagedNamespaces{
+				{Name: "dev-*", AllowManagedBy: true},
+			},
+			allNamespaces:  []string{"dev-a", "dev-b"},
+			expectedDelete: []string{},
+		},
+		{
+			name: "namespace removed in new list",
+			oldList: []argoproj.ManagedNamespaces{
+				{Name: "team-*", AllowManagedBy: true},
+			},
+			newList:        []argoproj.ManagedNamespaces{},
+			allNamespaces:  []string{"team-alpha", "team-beta"},
+			expectedDelete: []string{"team-alpha", "team-beta"},
+		},
+		{
+			name: "AllowManagedBy changed",
+			oldList: []argoproj.ManagedNamespaces{
+				{Name: "qa-*", AllowManagedBy: true},
+			},
+			newList: []argoproj.ManagedNamespaces{
+				{Name: "qa-*", AllowManagedBy: false},
+			},
+			allNamespaces:  []string{"qa-1", "qa-2"},
+			expectedDelete: []string{"qa-1", "qa-2"},
+		},
+		{
+			name: "mixed match and change",
+			oldList: []argoproj.ManagedNamespaces{
+				{Name: "app-*", AllowManagedBy: true},
+				{Name: "sys-*", AllowManagedBy: true},
+			},
+			newList: []argoproj.ManagedNamespaces{
+				{Name: "app-*", AllowManagedBy: true},
+			},
+			allNamespaces:  []string{"app-x", "sys-y"},
+			expectedDelete: []string{"sys-y"},
+		},
+		{
+			name: "new list has new namespace pattern, should not be deleted",
+			oldList: []argoproj.ManagedNamespaces{
+				{Name: "a-*", AllowManagedBy: true},
+			},
+			newList: []argoproj.ManagedNamespaces{
+				{Name: "a-*", AllowManagedBy: true},
+				{Name: "b-*", AllowManagedBy: true},
+			},
+			allNamespaces:  []string{"a-1", "b-1"},
+			expectedDelete: []string{},
+		},
+		{
+			name: "no match in allNamespaces, nothing to delete",
+			oldList: []argoproj.ManagedNamespaces{
+				{Name: "zzz-*", AllowManagedBy: true},
+			},
+			newList:        []argoproj.ManagedNamespaces{},
+			allNamespaces:  []string{"abc", "def"},
+			expectedDelete: []string{},
+		},
+		{
+			name:           "empty old and new lists",
+			oldList:        []argoproj.ManagedNamespaces{},
+			newList:        []argoproj.ManagedNamespaces{},
+			allNamespaces:  []string{"dev1", "dev2"},
+			expectedDelete: []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := getNamespacesToDelete(tt.oldList, tt.newList, tt.allNamespaces)
+			assert.ElementsMatch(t, tt.expectedDelete, result)
+		})
+	}
+}

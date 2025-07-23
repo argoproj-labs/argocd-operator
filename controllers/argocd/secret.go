@@ -27,6 +27,7 @@ import (
 	"time"
 
 	argopass "github.com/argoproj/argo-cd/v3/util/password"
+	"github.com/argoproj/argo-cd/v3/util/glob"
 	certmanagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -439,11 +440,11 @@ func generateSortedManagedNamespaceListForArgoCDCR(cr *argoproj.ArgoCD, rClient 
 		uniqueNamespaces[namespace.Name] = struct{}{}
 	}
 
-	// Build a lookup map from ArgoCD .spec.namespaceManagement where allowManagedBy == true
-	allowedNamespaceMap := make(map[string]bool)
+	// Build a list of allowed namespace patterns from ArgoCD .spec.namespaceManagement where allowManagedBy == true
+	var allowedNamespacePatterns []string
 	for _, entry := range cr.Spec.NamespaceManagement {
 		if entry.AllowManagedBy {
-			allowedNamespaceMap[entry.Name] = true
+			allowedNamespacePatterns = append(allowedNamespacePatterns, entry.Name)
 		}
 	}
 
@@ -458,7 +459,7 @@ func generateSortedManagedNamespaceListForArgoCDCR(cr *argoproj.ArgoCD, rClient 
 		// Collect namespaces where .spec.managedBy matches cr.Namespace
 		for _, nsMgmt := range nsMgmtList.Items {
 			if nsMgmt.Spec.ManagedBy == cr.Namespace {
-				if allowedNamespaceMap[nsMgmt.Namespace] {
+				if glob.MatchStringInList(allowedNamespacePatterns, nsMgmt.Namespace, glob.GLOB) {
 					uniqueNamespaces[nsMgmt.Namespace] = struct{}{}
 				}
 			}

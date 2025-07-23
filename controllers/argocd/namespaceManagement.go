@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/argoproj/argo-cd/v2/util/glob"
+	"github.com/argoproj/argo-cd/v3/util/glob"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -28,15 +28,17 @@ func (r *ReconcileArgoCD) reconcileNamespaceManagement(argocd *argoproj.ArgoCD) 
 
 	// List all NamespaceManagement CRs
 	nmList := &argoproj.NamespaceManagementList{}
-	if err := r.Client.List(ctx, nmList); err != nil {
+	if err := r.List(ctx, nmList); err != nil {
 		return fmt.Errorf("failed to list NamespaceManagement resources: %w", err)
 	}
 
-	// Convert NamespaceManagement spec into a lookup map
-	allowedNamespaces := make(map[string]bool)
+	// Extract allowed patterns from ArgoCD spec (only those allowed to be managed)
+	var allowedNsPatterns []string
 	if argocd.Spec.NamespaceManagement != nil {
 		for _, nm := range argocd.Spec.NamespaceManagement {
-			allowedNamespaces[nm.Name] = nm.AllowManagedBy
+			if nm.AllowManagedBy {
+				allowedNsPatterns = append(allowedNsPatterns, nm.Name)
+			}
 		}
 	}
 
@@ -57,22 +59,14 @@ func (r *ReconcileArgoCD) reconcileNamespaceManagement(argocd *argoproj.ArgoCD) 
 			continue
 		}
 
-		// Check if the namespace is explicitly disallowed (allowManagedBy: false)
-		allowed, exists := allowedNamespaces[namespace]
-		if exists && !allowed {
-			message = fmt.Sprintf("Namespace %s is not allowed to be managed by ArgoCD", namespace)
-			errorMessages = append(errorMessages, message)
-			continue
-		}
-
-		// Validate namespace management rules
-		if nm.Spec.ManagedBy == argocd.Namespace && matchesNamespaceManagementRules(argocd, namespace) {
+		if matchesNamespaceManagementRules(allowedNsPatterns, namespace) {
 			managedNamespaces = append(managedNamespaces, corev1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{Name: namespace},
 			})
 		} else {
 			message = fmt.Sprintf("Namespace %s is not permitted for management by ArgoCD instance %s based on NamespaceManagement rules", namespace, argocd.Namespace)
 			errorMessages = append(errorMessages, message)
+			statusUpdates = append(statusUpdates, nmStatus{nm: nm, message: message})
 		}
 
 		statusUpdates = append(statusUpdates, nmStatus{nm: nm, message: message})
@@ -118,18 +112,7 @@ func (r *ReconcileArgoCD) reconcileNamespaceManagement(argocd *argoproj.ArgoCD) 
 }
 
 // Helper function to check if a namespace matches ArgoCD namespace management rules
-func matchesNamespaceManagementRules(argocd *argoproj.ArgoCD, namespace string) bool {
-	if argocd.Spec.NamespaceManagement == nil {
-		return false
-	}
-
-	var allowedPatterns []string
-	for _, managedNs := range argocd.Spec.NamespaceManagement {
-		if managedNs.AllowManagedBy {
-			allowedPatterns = append(allowedPatterns, managedNs.Name) // Collect name patterns only if allowed
-		}
-	}
-
+func matchesNamespaceManagementRules(allowedPatterns []string, namespace string) bool {
 	return glob.MatchStringInList(allowedPatterns, namespace, glob.GLOB)
 }
 
@@ -145,49 +128,61 @@ func (r *ReconcileArgoCD) disableNamespaceManagement(argocd *argoproj.ArgoCD, k8
 
 	// List all NamespaceManagement CRs
 	nsMgmtList := &argoproj.NamespaceManagementList{}
-	if err := r.Client.List(ctx, nsMgmtList); err != nil {
+	if err := r.List(ctx, nsMgmtList); err != nil {
 		return err
 	}
 
-	// Build a lookup of namespaces managed by this ArgoCD instance
-	managedNamespaces := map[string]bool{}
+	// Build a list of namespaces managed by this ArgoCD instance
+	var managedNamespaces []string
 	for _, nsMgmt := range nsMgmtList.Items {
 		if nsMgmt.Spec.ManagedBy == argocd.Namespace {
-			managedNamespaces[nsMgmt.Namespace] = true
+			managedNamespaces = append(managedNamespaces, nsMgmt.Namespace)
 		}
 	}
 
-	// Only act on namespaces in ArgoCD.spec.namespaceManagement that are truly managed by this ArgoCD
+	// For each pattern in ArgoCD.spec.NamespaceManagement, find matching namespaces and process them
 	for _, ns := range argocd.Spec.NamespaceManagement {
-		nsName := ns.Name
-		if !managedNamespaces[nsName] {
-			log.Info(fmt.Sprintf("Skipping namespace %s: not managed by this ArgoCD instance or NamespaceManagement CR missing", nsName))
+		nsPattern := ns.Name
+		allowManaged := ns.AllowManagedBy
+
+		// Find all actual namespaces that match the pattern
+		var matchedNamespaces []string
+		for _, actualNs := range managedNamespaces {
+			if glob.MatchStringInList([]string{nsPattern}, actualNs, glob.GLOB) {
+				matchedNamespaces = append(matchedNamespaces, actualNs)
+			}
+		}
+
+		if len(matchedNamespaces) == 0 {
+			log.Info(fmt.Sprintf("Skipping namespace %s: not managed by this ArgoCD instance or NamespaceManagement CR missing", nsPattern))
 			continue
 		}
 
-		// Check if the namespace has a "managed-by" label
-		namespace := &corev1.Namespace{}
-		if err := r.Client.Get(ctx, types.NamespacedName{Name: nsName}, namespace); err != nil {
-			log.Error(err, fmt.Sprintf("unable to fetch namespace %s", nsName))
-			return err
-		}
-
-		// Skip RBAC deletion if the namespace has the "managed-by" label
-		if namespace.Labels[common.ArgoCDManagedByLabel] == nsName {
-			log.Info(fmt.Sprintf("Skipping RBAC deletion for namespace %s due to managed-by label", nsName))
-			continue
-		}
-
-		if ns.AllowManagedBy {
-			if err := deleteRBACsForNamespace(nsName, k8sClient); err != nil {
-				log.Error(err, fmt.Sprintf("Failed to delete RBACs for namespace: %s", nsName))
+		for _, nsName := range matchedNamespaces {
+			// Get namespace object
+			namespace := &corev1.Namespace{}
+			if err := r.Get(ctx, types.NamespacedName{Name: nsName}, namespace); err != nil {
+				log.Error(err, fmt.Sprintf("unable to fetch namespace %s", nsName))
 				return err
 			}
-			log.Info(fmt.Sprintf("Successfully removed RBACs for namespace: %s", nsName))
 
-			if err := deleteManagedNamespaceFromClusterSecret(argocd.Namespace, nsName, k8sClient); err != nil {
-				log.Error(err, fmt.Sprintf("Unable to delete namespace %s from cluster secret", nsName))
-				return err
+			// Skip RBAC deletion if the namespace has the "managed-by" label
+			if namespace.Labels[common.ArgoCDManagedByLabel] == nsName {
+				log.Info(fmt.Sprintf("Skipping RBAC deletion for namespace %s due to managed-by label", nsName))
+				continue
+			}
+
+			if allowManaged {
+				if err := deleteRBACsForNamespace(nsName, k8sClient); err != nil {
+					log.Error(err, fmt.Sprintf("Failed to delete RBACs for namespace: %s", nsName))
+					return err
+				}
+				log.Info(fmt.Sprintf("Successfully removed RBACs for namespace: %s", nsName))
+
+				if err := deleteManagedNamespaceFromClusterSecret(argocd.Namespace, nsName, k8sClient); err != nil {
+					log.Error(err, fmt.Sprintf("Unable to delete namespace %s from cluster secret", nsName))
+					return err
+				}
 			}
 		}
 	}

@@ -257,7 +257,7 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 	} else if len(argocd.Spec.NamespaceManagement) == 0 {
 		// Handle cleanup of NamespaceManagement RBAC when the feature is removed from the ArgoCD CR.
 		nsMgmtList := &argoproj.NamespaceManagementList{}
-		if err := r.Client.List(context.TODO(), nsMgmtList); err != nil {
+		if err := r.List(context.TODO(), nsMgmtList); err != nil {
 			return reconcile.Result{}, argocd, err
 		}
 
@@ -270,7 +270,7 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 
 			// Check if the namespace has a "managed-by" label
 			namespace := &corev1.Namespace{}
-			if err := r.Client.Get(ctx, types.NamespacedName{Name: nsMgmt.Namespace}, namespace); err != nil {
+			if err := r.Get(ctx, types.NamespacedName{Name: nsMgmt.Namespace}, namespace); err != nil {
 				log.Error(err, fmt.Sprintf("unable to fetch namespace %s", nsMgmt.Namespace))
 				return reconcile.Result{}, argocd, err
 			}

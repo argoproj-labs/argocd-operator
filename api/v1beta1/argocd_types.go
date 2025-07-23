@@ -978,8 +978,11 @@ type ManagedNamespaces struct {
 
 	// Whether the namespace can be managed by ArgoCD
 	AllowManagedBy bool `json:"allowManagedBy"`
+<<<<<<< HEAD
 >>>>>>> 413d0ff (Fix merge conflicts)
 >>>>>>> 3cf96d2 (Fix merge conflicts)
+=======
+>>>>>>> c286c4a (Fix conflics in controller file)
 }
 
 const (
