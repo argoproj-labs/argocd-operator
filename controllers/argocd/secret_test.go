@@ -633,7 +633,7 @@ func TestGenerateSortedManagedNamespaceListForArgoCDCR(t *testing.T) {
 
 	res, err = generateSortedManagedNamespaceListForArgoCDCR(a, r.Client)
 	assert.NoError(t, err)
-	assert.Equal(t, res, []string{nsMgmt1.Namespace, a.Namespace, nsMgmt2.Namespace})
+	assert.Equal(t, res, []string{managedByNamespace.Name, nsMgmt1.Namespace, a.Namespace, nsMgmt2.Namespace})
 
 }
 
