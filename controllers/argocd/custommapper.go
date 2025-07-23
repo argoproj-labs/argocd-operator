@@ -274,7 +274,7 @@ func (r *ReconcileArgoCD) nmMapper(ctx context.Context, o client.Object) []recon
 
 	// List ALL ArgoCD CRs in the cluster
 	argocdList := &argoproj.ArgoCDList{}
-	if err := r.Client.List(ctx, argocdList); err != nil {
+	if err := r.List(ctx, argocdList); err != nil {
 		return result
 	}
 

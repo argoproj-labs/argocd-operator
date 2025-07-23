@@ -2790,7 +2790,7 @@ func TestSetReplicasAndEnvVar_WhenServerReplicasIsDefined(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		err := r.reconcileServerDeployment(a, false)
 		assert.NoError(t, err)
