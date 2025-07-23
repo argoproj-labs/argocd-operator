@@ -242,12 +242,22 @@ metadata:
               "provider": "dex"
             }
           }
+        },
+        {
+          "apiVersion": "argoproj.io/v1beta1",
+          "kind": "NamespaceManagement",
+          "metadata": {
+            "name": "namespacemanagement-sample"
+          },
+          "spec": {
+            "managedBy": "argocd-ns"
+          }
         }
       ]
     capabilities: Deep Insights
     categories: Integration & Delivery
     certified: "false"
-    createdAt: "2025-07-08T11:55:50Z"
+    createdAt: "2025-07-07T12:07:19Z"
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v1.35.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
@@ -1554,6 +1564,12 @@ spec:
         path: sso
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
+      version: v1beta1
+    - description: NamespaceManagement is the Schema for the namespacemanagements
+        API
+      displayName: Namespace Management
+      kind: NamespaceManagement
+      name: namespacemanagements.argoproj.io
       version: v1beta1
     - description: NotificationsConfiguration is the Schema for the notificationsconfiguration
         API
