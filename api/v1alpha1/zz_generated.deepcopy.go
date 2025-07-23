@@ -986,6 +986,7 @@ func (in *ArgoCDSpec) DeepCopyInto(out *ArgoCDSpec) {
 		in, out := &in.ArgoCDAgent, &out.ArgoCDAgent
 		*out = new(ArgoCDAgentSpec)
 		(*in).DeepCopyInto(*out)
+	}
 	if in.NamespaceManagement != nil {
 		in, out := &in.NamespaceManagement, &out.NamespaceManagement
 		*out = make([]ManagedNamespaces, len(*in))
