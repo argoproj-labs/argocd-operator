@@ -6,5 +6,5 @@ metadata:
     example: basic
 spec:
   namespaceManagement:
-    - name: naaz # allow a single namespace
+    - name: tenant-ns # allow a single namespace
       allowManagedBy: true

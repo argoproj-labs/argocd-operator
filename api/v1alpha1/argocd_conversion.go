@@ -99,7 +99,11 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.Banner = (*v1beta1.Banner)(src.Spec.Banner)
 	dst.Spec.DefaultClusterScopedRoleDisabled = src.Spec.DefaultClusterScopedRoleDisabled
 	dst.Spec.AggregatedClusterRoles = src.Spec.AggregatedClusterRoles
+<<<<<<< HEAD
 	dst.Spec.ArgoCDAgent = ConvertAlphaToBetaArgoCDAgent(src.Spec.ArgoCDAgent)
+=======
+	dst.Spec.NamespaceManagement = ConvertAlphaToBetaNamespaceManagement(src.Spec.NamespaceManagement)
+>>>>>>> 2672bf1 (Fix merge conflics in bundle and deploy files)
 
 	// Status conversion
 	dst.Status = v1beta1.ArgoCDStatus(src.Status)
@@ -173,7 +177,11 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.Banner = (*Banner)(src.Spec.Banner)
 	dst.Spec.DefaultClusterScopedRoleDisabled = src.Spec.DefaultClusterScopedRoleDisabled
 	dst.Spec.AggregatedClusterRoles = src.Spec.AggregatedClusterRoles
+<<<<<<< HEAD
 	dst.Spec.ArgoCDAgent = ConvertBetaToAlphaArgoCDAgent(src.Spec.ArgoCDAgent)
+=======
+	dst.Spec.NamespaceManagement = ConvertBetaToAlphaNamespaceManagement(src.Spec.NamespaceManagement)
+>>>>>>> 2672bf1 (Fix merge conflics in bundle and deploy files)
 
 	// Status conversion
 	dst.Status = ArgoCDStatus(src.Status)
@@ -710,12 +718,24 @@ func ConvertBetaToAlphaRepo(src *v1beta1.ArgoCDRepoSpec) *ArgoCDRepoSpec {
 	return dst
 }
 
+
 func ConvertAlphaToBetaArgoCDAgent(src *ArgoCDAgentSpec) *v1beta1.ArgoCDAgentSpec {
 	var dst *v1beta1.ArgoCDAgentSpec
 	if src != nil {
 		dst = &v1beta1.ArgoCDAgentSpec{
 			Principal: ConvertAlphaToBetaPrincipal(src.Principal),
 		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaNamespaceManagement(src []v1beta1.ManagedNamespaces) []ManagedNamespaces {
+	var dst []ManagedNamespaces
+	for _, s := range src {
+		dst = append(dst, ManagedNamespaces{
+			Name:           s.Name,
+			AllowManagedBy: s.AllowManagedBy,
+		})
 	}
 	return dst
 }
@@ -756,6 +776,14 @@ func ConvertBetaToAlphaPrincipal(src *v1beta1.PrincipalSpec) *PrincipalSpec {
 			LogLevel:          src.LogLevel,
 			Image:             src.Image,
 		}
+func ConvertAlphaToBetaNamespaceManagement(src []ManagedNamespaces) []v1beta1.ManagedNamespaces {
+	var dst []v1beta1.ManagedNamespaces
+	for _, s := range src {
+		dst = append(dst, v1beta1.ManagedNamespaces{
+			Name:           s.Name,
+			AllowManagedBy: s.AllowManagedBy,
+		},
+		)
 	}
 	return dst
 }

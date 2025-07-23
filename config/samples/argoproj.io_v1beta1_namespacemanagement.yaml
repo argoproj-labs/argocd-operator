@@ -1,9 +1,6 @@
 apiVersion: argoproj.io/v1beta1
 kind: NamespaceManagement
 metadata:
-  labels:
-    app.kubernetes.io/name: argocd-operator
-    app.kubernetes.io/managed-by: kustomize
   name: namespacemanagement-sample
 spec: 
   managedBy: argocd-ns

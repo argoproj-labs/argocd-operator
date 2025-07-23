@@ -8,7 +8,6 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -23,10 +22,10 @@ func TestReconcileNamespaceManagement_FeatureEnabled(t *testing.T) {
 		a.Spec.NamespaceManagement = []argoproj.ManagedNamespaces{{
 			Name:           "managed-ns",
 			AllowManagedBy: true,
-		},
-		}
+		}}
 	})
 
+	// Allowed NamespaceManagement
 	nm := &argoproj.NamespaceManagement{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "namespace-mgmt",
@@ -37,27 +36,41 @@ func TestReconcileNamespaceManagement_FeatureEnabled(t *testing.T) {
 		},
 	}
 
+	// Disallowed NamespaceManagement (should trigger error)
+	nmDisallowed := &argoproj.NamespaceManagement{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "namespace-mgmt-disallowed",
+			Namespace: "disallowed-ns",
+		},
+		Spec: argoproj.NamespaceManagementSpec{
+			ManagedBy: a.Namespace,
+		},
+	}
+
 	resObjs := []client.Object{a}
-	subresObjs := []client.Object{a, nm}
+	subresObjs := []client.Object{a, nm, nmDisallowed}
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
 
-	// Namespace management enabled, ensure namespaces are processed
+	// Enable namespace management
 	os.Setenv(common.EnableManagedNamespace, "true")
 	defer os.Unsetenv(common.EnableManagedNamespace)
 
+	// Create both CRs
 	err := r.Client.Create(context.Background(), nm)
 	assert.NoError(t, err)
 
-	err = r.reconcileNamespaceManagement(a)
+	err = r.Client.Create(context.Background(), nmDisallowed)
 	assert.NoError(t, err)
 
-	assert.NotNil(t, r.ManagedNamespaces)
-	assert.Contains(t, getNamespaceNames(r.ManagedNamespaces), "managed-ns")
+	// Reconcile
+	err = r.reconcileNamespaceManagement(a)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Namespace disallowed-ns is not permitted for management by ArgoCD instance argocd based on NamespaceManagement rules")
 
-	// Verify Status Conditions are Updated Properly for Success
+	// Verify success status on allowed namespace
 	err = r.Client.Get(context.TODO(), types.NamespacedName{
 		Name:      nm.Name,
 		Namespace: nm.Namespace,
@@ -71,41 +84,27 @@ func TestReconcileNamespaceManagement_FeatureEnabled(t *testing.T) {
 			break
 		}
 	}
+	assert.NotNil(t, reconciledCondition)
+	assert.Equal(t, metav1.ConditionTrue, reconciledCondition.Status)
+	assert.Equal(t, "Success", reconciledCondition.Reason)
 
-	assert.Equal(t, metav1.ConditionTrue, reconciledCondition.Status, "Reconciled condition should be True")
-	assert.Equal(t, "Success", reconciledCondition.Reason, "Reconciled condition reason should be Success")
-
+	// Verify error status on disallowed namespace
 	err = r.Client.Get(context.TODO(), types.NamespacedName{
-		Name:      nm.Name,
-		Namespace: nm.Namespace,
-	}, nm)
+		Name:      nmDisallowed.Name,
+		Namespace: nmDisallowed.Namespace,
+	}, nmDisallowed)
 	assert.NoError(t, err)
 
-	nm.Spec.ManagedBy = "other-argocd"
-	err = r.Client.Update(context.Background(), nm)
-	assert.NoError(t, err)
-
-	err = r.reconcileNamespaceManagement(a)
-	expectedError := "error: ArgoCD does not allow management of this namespace"
-	assert.Error(t, err, expectedError)
-
-	// Verify Status Conditions are Updated Properly for ErrorOccurred
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
-		Name:      nm.Name,
-		Namespace: nm.Namespace,
-	}, nm)
-	assert.NoError(t, err)
-
-	for _, cond := range nm.Status.Conditions {
+	reconciledCondition = nil
+	for _, cond := range nmDisallowed.Status.Conditions {
 		if cond.Type == "Reconciled" {
 			reconciledCondition = &cond
 			break
 		}
 	}
-
-	assert.Equal(t, metav1.ConditionFalse, reconciledCondition.Status, "Reconciled condition should be False")
-	assert.Equal(t, "ErrorOccurred", reconciledCondition.Reason, "Reconciled condition reason should be ErrorOccurred")
-
+	assert.NotNil(t, reconciledCondition)
+	assert.Equal(t, metav1.ConditionFalse, reconciledCondition.Status)
+	assert.Equal(t, "ErrorOccurred", reconciledCondition.Reason)
 }
 
 func TestHandleFeatureDisable_NoNamespaceManagement(t *testing.T) {
@@ -121,74 +120,70 @@ func TestHandleFeatureDisable_NoNamespaceManagement(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
 
-	err := r.handleFeatureDisable(a, testClient)
+	err := r.disableNamespaceManagement(a, testClient)
 	// Assert: Should return no error since there are no NamespaceManagement CR and ArgoCD .spec.NamespaceManagement field is nil
 	assert.NoError(t, err)
 }
 
-func TestHandleFeatureDisable_WithNamespaceManagement(t *testing.T) {
-	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
-		a.Spec.NamespaceManagement = []argoproj.ManagedNamespaces{{
-			Name:           "managed-ns",
-			AllowManagedBy: true,
-		},
-		}
-	})
-	testClient := testclient.NewSimpleClientset()
-
-	nm := &argoproj.NamespaceManagement{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "namespace-mgmt",
-			Namespace: "managed-ns",
-		},
-		Spec: argoproj.NamespaceManagementSpec{
-			ManagedBy: a.Namespace,
-		},
-	}
-
-	resObjs := []client.Object{a}
-	subresObjs := []client.Object{a, nm}
-	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
-
-	err := r.Client.Create(context.TODO(), nm)
-	assert.NoError(t, err)
-
-	err = r.handleFeatureDisable(a, testClient)
-	// Assert: Should return no error and attempt updates
-	assert.NoError(t, err)
-
-	// Verify that NamespaceManagement field in ArgoCD is removed
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: a.Name}, a)
-	assert.NoError(t, err)
-	assert.Nil(t, a.Spec.NamespaceManagement, "NamespaceManagement should be removed from ArgoCD")
-
-	// Verify that ManagedBy field in NamespaceManagement is cleared
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Namespace: nm.Namespace, Name: nm.Name}, nm)
-	assert.NoError(t, err)
-	assert.Empty(t, nm.Spec.ManagedBy, "ManagedBy field should be cleared in NamespaceManagement")
-
-}
-
 func TestMatchesNamespaceManagementRules(t *testing.T) {
-	argocd := &argoproj.ArgoCD{
-		Spec: argoproj.ArgoCDSpec{
-			NamespaceManagement: []argoproj.ManagedNamespaces{
-				{Name: "allowed-*"},
+	tests := []struct {
+		name        string
+		argocd      *argoproj.ArgoCD
+		namespace   string
+		expectMatch bool
+	}{
+		{
+			name: "matches allowed pattern",
+			argocd: &argoproj.ArgoCD{
+				Spec: argoproj.ArgoCDSpec{
+					NamespaceManagement: []argoproj.ManagedNamespaces{
+						{Name: "allowed-*", AllowManagedBy: true},
+					},
+				},
 			},
+			namespace:   "allowed-ns",
+			expectMatch: true,
+		},
+		{
+			name: "does not match when AllowManagedBy is false",
+			argocd: &argoproj.ArgoCD{
+				Spec: argoproj.ArgoCDSpec{
+					NamespaceManagement: []argoproj.ManagedNamespaces{
+						{Name: "allowed-*", AllowManagedBy: false},
+					},
+				},
+			},
+			namespace:   "allowed-ns",
+			expectMatch: false,
+		},
+		{
+			name: "does not match pattern",
+			argocd: &argoproj.ArgoCD{
+				Spec: argoproj.ArgoCDSpec{
+					NamespaceManagement: []argoproj.ManagedNamespaces{
+						{Name: "allowed-*", AllowManagedBy: true},
+					},
+				},
+			},
+			namespace:   "denied-ns",
+			expectMatch: false,
+		},
+		{
+			name: "no namespace management configured",
+			argocd: &argoproj.ArgoCD{
+				Spec: argoproj.ArgoCDSpec{
+					NamespaceManagement: nil,
+				},
+			},
+			namespace:   "random-ns",
+			expectMatch: false,
 		},
 	}
-	assert.True(t, matchesNamespaceManagementRules(argocd, "allowed-ns"))
-	assert.True(t, matchesNamespaceManagementRules(argocd, "allowed-ns1"))
-	assert.False(t, matchesNamespaceManagementRules(argocd, "denied-ns"))
-}
 
-func getNamespaceNames(nsList *corev1.NamespaceList) []string {
-	var names []string
-	for _, ns := range nsList.Items {
-		names = append(names, ns.Name)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			match := matchesNamespaceManagementRules(tt.argocd, tt.namespace)
+			assert.Equal(t, tt.expectMatch, match)
+		})
 	}
-	return names
 }

@@ -257,13 +257,13 @@ metadata:
     capabilities: Deep Insights
     categories: Integration & Delivery
     certified: "false"
-    createdAt: "2025-07-26T07:37:32Z"
+    createdAt: "2025-05-06T06:48:01Z"
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v1.35.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
     repository: https://github.com/argoproj-labs/argocd-operator
     support: Argo CD
-  name: argocd-operator.v0.16.0
+  name: argocd-operator.v0.14.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -451,10 +451,8 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
-      - description: 'Deprecated: ConfigManagementPlugins field is no longer supported.
-          Argo CD now requires plugins to be defined as sidecar containers of repo
-          server component. See ''.spec.repo.sidecarContainers''. ConfigManagementPlugins
-          was previously used to specify additional config management plugins.'
+      - description: ConfigManagementPlugins is used to specify additional config
+          management plugins.
         displayName: Config Management Plugins'
         path: configManagementPlugins
         x-descriptors:
@@ -1070,10 +1068,8 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
-      - description: 'Deprecated: ConfigManagementPlugins field is no longer supported.
-          Argo CD now requires plugins to be defined as sidecar containers of repo
-          server component. See ''.spec.repo.sidecarContainers''. ConfigManagementPlugins
-          was previously used to specify additional config management plugins.'
+      - description: ConfigManagementPlugins is used to specify additional config
+          management plugins.
         displayName: Config Management Plugins'
         path: configManagementPlugins
         x-descriptors:
@@ -1717,14 +1713,22 @@ spec:
           resources:
           - configmaps
           verbs:
-          - '*'
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
         - apiGroups:
           - ""
           resources:
+          - configmaps
           - endpoints
           - events
           - namespaces
           - persistentvolumeclaims
+          - pods
           - secrets
           - serviceaccounts
           - services
@@ -1735,11 +1739,6 @@ spec:
           - ""
           resources:
           - pods
-          verbs:
-          - '*'
-        - apiGroups:
-          - ""
-          resources:
           - pods/log
           verbs:
           - get
@@ -1778,12 +1777,27 @@ spec:
           resources:
           - applications
           - appprojects
+          verbs:
+          - '*'
+        - apiGroups:
+          - argoproj.io
+          resources:
           - argocdexports
           - argocdexports/finalizers
           - argocdexports/status
+          verbs:
+          - '*'
+        - apiGroups:
+          - argoproj.io
+          resources:
           - argocds
           - argocds/finalizers
           - argocds/status
+          verbs:
+          - '*'
+        - apiGroups:
+          - argoproj.io
+          resources:
           - notificationsconfigurations
           - notificationsconfigurations/finalizers
           verbs:
@@ -1851,6 +1865,11 @@ spec:
           - rbac.authorization.k8s.io
           resources:
           - '*'
+          verbs:
+          - '*'
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          resources:
           - clusterrolebindings
           - clusterroles
           verbs:
@@ -1885,20 +1904,20 @@ spec:
         serviceAccountName: argocd-operator-controller-manager
       deployments:
       - label:
-          control-plane: controller-manager
+          control-plane: argocd-operator
         name: argocd-operator-controller-manager
         spec:
           replicas: 1
           selector:
             matchLabels:
-              control-plane: controller-manager
+              control-plane: argocd-operator
           strategy: {}
           template:
             metadata:
               annotations:
                 kubectl.kubernetes.io/default-container: manager
               labels:
-                control-plane: controller-manager
+                control-plane: argocd-operator
             spec:
               containers:
               - args:
@@ -1912,7 +1931,7 @@ spec:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
                 - name: ENABLE_CONVERSION_WEBHOOK
                   value: "true"
-                image: quay.io/argoprojlabs/argocd-operator:v0.16.0
+                image: quay.io/argoprojlabs/argocd-operator:v0.14.0
                 livenessProbe:
                   httpGet:
                     path: /healthz
@@ -1999,13 +2018,13 @@ spec:
   - name: Operator Source Code
     url: https://github.com/argoproj-labs/argocd-operator
   maintainers:
-  - email: sghadi@redhat.com
-    name: Siddhesh Ghadi
+  - email: aveerama@redhat.com
+    name: Abhishek Veeramalla
   maturity: alpha
   provider:
     name: Argo CD Community
-  replaces: argocd-operator.v0.15.0
-  version: 0.16.0
+  replaces: argocd-operator.v0.13.0
+  version: 0.14.0
   webhookdefinitions:
   - admissionReviewVersions:
     - v1alpha1

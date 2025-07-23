@@ -1038,72 +1038,69 @@ func TestReconcileArgoCD_nmMapper(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
 
-	a.Namespace = "test-namespace"
-
 	// Fake client returns an error if ResourceVersion is not nil
 	a.ResourceVersion = ""
-	assert.NoError(t, r.Client.Create(context.TODO(), a))
 
-	type test struct {
+	expected := []reconcile.Request{
+		{
+			NamespacedName: types.NamespacedName{
+				Name:      a.Name,
+				Namespace: a.Namespace,
+			},
+		},
+	}
+
+	// testing to check if it reconcile every argocd instance despite ManagedBy field is set or not
+	tests := []struct {
 		name string
 		o    client.Object
 		want []reconcile.Request
-	}
-
-	tests := []test{
+	}{
 		{
-			name: "NamespaceManagement CR with valid managedBy field",
+			name: "ManagedBy set",
 			o: &argoproj.NamespaceManagement{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-nsmgmt",
-					Namespace: "test-ns",
+					Name:      "test-nsmgmt-1",
+					Namespace: "ns1",
 				},
 				Spec: argoproj.NamespaceManagementSpec{
-					ManagedBy: a.Namespace,
+					ManagedBy: "some-ns",
 				},
 			},
-			want: []reconcile.Request{
-				{
-					NamespacedName: types.NamespacedName{
-						Name:      a.Name,
-						Namespace: a.Namespace,
-					},
-				},
-			},
+			want: expected,
 		},
 		{
-			name: "NamespaceManagement CR with empty managedBy field",
+			name: "ManagedBy empty",
 			o: &argoproj.NamespaceManagement{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-nsmgmt",
-					Namespace: "test-ns",
+					Name:      "test-nsmgmt-2",
+					Namespace: "ns2",
 				},
 				Spec: argoproj.NamespaceManagementSpec{
 					ManagedBy: "",
 				},
 			},
-			want: nil,
+			want: expected,
 		},
 		{
-			name: "NamespaceManagement CR with non-matching managedBy field",
+			name: "ManagedBy non-matching",
 			o: &argoproj.NamespaceManagement{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-nsmgmt",
-					Namespace: "test-ns",
+					Name:      "test-nsmgmt-3",
+					Namespace: "ns3",
 				},
 				Spec: argoproj.NamespaceManagementSpec{
-					ManagedBy: "unknown-namespace",
+					ManagedBy: "another-ns",
 				},
 			},
-			want: []reconcile.Request{},
+			want: expected,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := r.nmMapper(context.TODO(), tt.o); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ReconcileArgoCD.nmMapper(), got = %v, want = %v", got, tt.want)
-			}
+			got := r.nmMapper(context.TODO(), tt.o)
+			assert.ElementsMatch(t, tt.want, got, "expected ArgoCD reconcile requests")
 		})
 	}
 }

@@ -1230,15 +1230,6 @@ func splitList(s string) []string {
 	return elems
 }
 
-func containsString(arr []string, s string) bool {
-	for _, val := range arr {
-		if strings.TrimSpace(val) == s {
-			return true
-		}
-	}
-	return false
-}
-
 // DeprecationEventEmissionStatus is meant to track which deprecation events have been emitted already. This is temporary and can be removed in v0.0.6 once we have provided enough
 // deprecation notice
 type DeprecationEventEmissionStatus struct {
@@ -1953,7 +1944,6 @@ func appendUniqueArgs(cmd []string, extraArgs []string) []string {
 	return result
 }
 
-<<<<<<< HEAD
 // reconcileArgoCDAgent will reconcile all ArgoCD Agent resources.
 func (r *ReconcileArgoCD) reconcileArgoCDAgent(cr *argoproj.ArgoCD) error {
 	compName := "principal"
@@ -2010,7 +2000,11 @@ func (r *ReconcileArgoCD) reconcileArgoCDAgent(cr *argoproj.ArgoCD) error {
 	log.Info("reconciling ArgoCD Agent deployment")
 	if err := argocdagent.ReconcilePrincipalDeployment(r.Client, compName, sa.Name, cr, r.Scheme); err != nil {
 		return err
-=======
+	}
+
+	return nil
+}
+
 func namespaceManagementFilterPredicate() predicate.Predicate {
 	return predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -2033,14 +2027,14 @@ func namespaceManagementFilterPredicate() predicate.Predicate {
 				if err := deleteRBACsForNamespace(e.ObjectOld.GetNamespace(), k8sClient); err != nil {
 					log.Error(err, fmt.Sprintf("failed to delete RBACs for namespace: %s", e.ObjectOld.GetNamespace()))
 				} else {
-					log.Info(fmt.Sprintf("Successfully1 removed the RBACs for namespace: %s", e.ObjectOld.GetNamespace()))
+					log.Info(fmt.Sprintf("Successfully removed the RBACs for namespace: %s", e.ObjectOld.GetNamespace()))
 				}
 
 				// Delete namespace from cluster secret of previously managing argocd instance
 				if err = deleteManagedNamespaceFromClusterSecret(oldNSMgmt.Spec.ManagedBy, e.ObjectOld.GetNamespace(), k8sClient); err != nil {
 					log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", e.ObjectOld.GetNamespace()))
 				} else {
-					log.Info(fmt.Sprintf("Successfully12 deleted namespace %s from cluster secret", e.ObjectOld.GetNamespace()))
+					log.Info(fmt.Sprintf("Successfully deleted namespace %s from cluster secret", e.ObjectOld.GetNamespace()))
 				}
 
 				// Return true to trigger reconciliation
@@ -2197,7 +2191,6 @@ func (r *ReconcileArgoCD) removeNamespaceManagementCRs(argocdNamespace string) e
 				}
 			}
 		}
->>>>>>> 3cf96d2 (Fix merge conflicts)
 	}
 
 	return nil

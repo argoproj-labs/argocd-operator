@@ -419,20 +419,23 @@ func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoproj.ArgoCD) error {
 func generateSortedManagedNamespaceListForArgoCDCR(cr *argoproj.ArgoCD, rClient client.Client) ([]string, error) {
 	var namespaces []string
 
-	if !isNamespaceManagementEnabled() {
-		// Fetch namespaces with 'managed-by' label
-		namespaceList := corev1.NamespaceList{}
-		listOption := client.MatchingLabels{
-			common.ArgoCDManagedByLabel: cr.Namespace,
-		}
-		if err := rClient.List(context.TODO(), &namespaceList, listOption); err != nil {
-			return nil, err
-		}
-		// Collect namespaces from the label
-		for _, namespace := range namespaceList.Items {
-			namespaces = append(namespaces, namespace.Name)
-		}
-	} else {
+	// map to track unique namespaces
+	uniqueNamespaces := make(map[string]struct{})
+
+	// Fetch namespaces with 'managed-by' label
+	namespaceList := corev1.NamespaceList{}
+	listOption := client.MatchingLabels{
+		common.ArgoCDManagedByLabel: cr.Namespace,
+	}
+	if err := rClient.List(context.TODO(), &namespaceList, listOption); err != nil {
+		return nil, err
+	}
+	// Collect namespaces from the label, ensuring uniqueness
+	for _, namespace := range namespaceList.Items {
+		uniqueNamespaces[namespace.Name] = struct{}{}
+	}
+
+	if isNamespaceManagementEnabled() {
 		// Fetch namespaces from NamespaceManagement CRs
 		nsMgmtList := &argoproj.NamespaceManagementList{}
 		if err := rClient.List(context.TODO(), nsMgmtList); err != nil {
@@ -442,14 +445,22 @@ func generateSortedManagedNamespaceListForArgoCDCR(cr *argoproj.ArgoCD, rClient 
 		// Collect namespaces where .spec.managedBy matches cr.Namespace
 		for _, nsMgmt := range nsMgmtList.Items {
 			if nsMgmt.Spec.ManagedBy == cr.Namespace {
-				namespaces = append(namespaces, nsMgmt.Namespace)
+				uniqueNamespaces[nsMgmt.Namespace] = struct{}{}
 			}
 		}
 	}
 
-	if !containsString(namespaces, cr.Namespace) {
-		namespaces = append(namespaces, cr.Namespace)
+	// Add cr.Namespace if not already present
+	if _, exists := uniqueNamespaces[cr.Namespace]; !exists {
+		uniqueNamespaces[cr.Namespace] = struct{}{}
 	}
+
+	// Convert map keys to a slice
+	for ns := range uniqueNamespaces {
+		namespaces = append(namespaces, ns)
+	}
+
+	// Sort the namespaces
 	sort.Strings(namespaces)
 	return namespaces, nil
 }
