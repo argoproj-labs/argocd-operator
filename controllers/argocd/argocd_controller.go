@@ -24,11 +24,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -252,6 +254,51 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 		if err := r.disableNamespaceManagement(argocd, k8sClient); err != nil {
 			log.Error(err, "Failed to disable NamespaceManagement feature")
 			return reconcile.Result{}, argocd, err
+		}
+	} else if len(argocd.Spec.NamespaceManagement) == 0 {
+		// Handle cleanup of NamespaceManagement RBAC when the feature is removed from the ArgoCD CR.
+		nsMgmtList := &argoproj.NamespaceManagementList{}
+		if err := r.Client.List(context.TODO(), nsMgmtList); err != nil {
+			return reconcile.Result{}, argocd, err
+		}
+
+		k8sClient, err := initK8sClient()
+		if err != nil {
+			log.Error(err, "Failed to initialize Kubernetes client")
+			return reconcile.Result{}, argocd, err
+		}
+
+		for _, nsMgmt := range nsMgmtList.Items {
+			// Skip the namespaceManagement CR which is not managed by the current Argo CD instance
+			if nsMgmt.Spec.ManagedBy != argocd.Namespace {
+				continue
+			}
+
+			// Check if the namespace has a "managed-by" label
+			namespace := &corev1.Namespace{}
+			if err := r.Client.Get(ctx, types.NamespacedName{Name: nsMgmt.Namespace}, namespace); err != nil {
+				log.Error(err, fmt.Sprintf("unable to fetch namespace %s", nsMgmt.Namespace))
+				return reconcile.Result{}, argocd, err
+			}
+
+			// Skip RBAC deletion if the namespace has the "managed-by" label
+			if namespace.Labels[common.ArgoCDManagedByLabel] == nsMgmt.Namespace {
+				log.Info(fmt.Sprintf("Skipping RBAC deletion for namespace %s due to managed-by label", nsMgmt.Namespace))
+				continue
+			}
+
+			// Remove roles and rolebindings
+			if err := deleteRBACsForNamespace(nsMgmt.Namespace, k8sClient); err != nil {
+				log.Error(err, fmt.Sprintf("Failed to delete RBACs for namespace: %s", nsMgmt.Namespace))
+				return reconcile.Result{}, argocd, err
+			}
+			log.Info(fmt.Sprintf("Successfully removed RBACs for namespace: %s", nsMgmt.Namespace))
+
+			if err := deleteManagedNamespaceFromClusterSecret(argocd.Namespace, nsMgmt.Namespace, k8sClient); err != nil {
+				log.Error(err, fmt.Sprintf("Unable to delete namespace %s from cluster secret", nsMgmt.Namespace))
+				return reconcile.Result{}, argocd, err
+			}
+
 		}
 	}
 

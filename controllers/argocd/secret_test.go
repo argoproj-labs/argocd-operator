@@ -559,7 +559,18 @@ func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 
 func TestGenerateSortedManagedNamespaceListForArgoCDCR(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
+	a := makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+		cr.Spec.NamespaceManagement = []argoproj.ManagedNamespaces{
+			{
+				Name:           "aaaa-second-when-sorted-nm",
+				AllowManagedBy: true,
+			},
+			{
+				Name:           "bbbb-third-when-sorted-nm",
+				AllowManagedBy: true,
+			},
+		}
+	})
 
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
@@ -635,6 +646,129 @@ func TestGenerateSortedManagedNamespaceListForArgoCDCR(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, res, []string{managedByNamespace.Name, nsMgmt1.Namespace, a.Namespace, nsMgmt2.Namespace})
 
+}
+
+func TestGenerateSortedManagedNamespaceListForArgoCDCR1(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+		cr.Spec.NamespaceManagement = []argoproj.ManagedNamespaces{
+			{
+				Name:           "aaaa-second-when-sorted-nm",
+				AllowManagedBy: true,
+			},
+			{
+				Name:           "bbbb-third-when-sorted-nm",
+				AllowManagedBy: true,
+			},
+		}
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+
+	t.Run("should return default and managedBy namespaces", func(t *testing.T) {
+		ns := corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "my-managed-namespace",
+				Labels: map[string]string{common.ArgoCDManagedByLabel: a.Namespace},
+			},
+		}
+		err := cl.Create(context.Background(), &ns)
+		assert.NoError(t, err)
+
+		res, err := generateSortedManagedNamespaceListForArgoCDCR(a, r.Client)
+		assert.NoError(t, err)
+		assert.Equal(t, res, []string{a.Namespace, ns.Name})
+	})
+
+	t.Run("should return sorted managedBy namespaces", func(t *testing.T) {
+		err := cl.Delete(context.Background(), &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "my-managed-namespace"}})
+		assert.NoError(t, err)
+
+		ns := corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "aaaa-first-when-sorted",
+				Labels: map[string]string{common.ArgoCDManagedByLabel: a.Namespace},
+			},
+		}
+		err = cl.Create(context.Background(), &ns)
+		assert.NoError(t, err)
+
+		res, err := generateSortedManagedNamespaceListForArgoCDCR(a, r.Client)
+		assert.NoError(t, err)
+		assert.Equal(t, res, []string{ns.Name, a.Namespace})
+	})
+
+	t.Run("should ignore NamespaceManagement when feature is disabled", func(t *testing.T) {
+		nsMgmt1 := argoproj.NamespaceManagement{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "namespace-mgmt-1",
+				Namespace: "aaaa-second-when-sorted-nm",
+			},
+			Spec: argoproj.NamespaceManagementSpec{
+				ManagedBy: a.Namespace,
+			},
+		}
+		nsMgmt2 := argoproj.NamespaceManagement{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "namespace-mgmt-2",
+				Namespace: "bbbb-third-when-sorted-nm",
+			},
+			Spec: argoproj.NamespaceManagementSpec{
+				ManagedBy: a.Namespace,
+			},
+		}
+		err := cl.Create(context.Background(), &nsMgmt1)
+		assert.NoError(t, err)
+		err = cl.Create(context.Background(), &nsMgmt2)
+		assert.NoError(t, err)
+
+		res, err := generateSortedManagedNamespaceListForArgoCDCR(a, r.Client)
+		assert.NoError(t, err)
+		assert.NotContains(t, res, nsMgmt1.Namespace)
+		assert.NotContains(t, res, nsMgmt2.Namespace)
+	})
+
+	t.Run("should ignore NamespaceManagement CRs with different managedBy", func(t *testing.T) {
+		nsMgmtOther := argoproj.NamespaceManagement{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "namespace-mgmt-other",
+				Namespace: "zzzz-should-not-be-included",
+			},
+			Spec: argoproj.NamespaceManagementSpec{
+				ManagedBy: "some-other-namespace",
+			},
+		}
+		err := cl.Create(context.Background(), &nsMgmtOther)
+		assert.NoError(t, err)
+
+		os.Setenv(common.EnableManagedNamespace, "true")
+		defer os.Unsetenv(common.EnableManagedNamespace)
+
+		res, err := generateSortedManagedNamespaceListForArgoCDCR(a, r.Client)
+		assert.NoError(t, err)
+		assert.NotContains(t, res, nsMgmtOther.Namespace)
+	})
+
+	t.Run("should return all sorted namespaces including NamespaceManagement when feature enabled", func(t *testing.T) {
+		os.Setenv(common.EnableManagedNamespace, "true")
+		defer os.Unsetenv(common.EnableManagedNamespace)
+
+		res, err := generateSortedManagedNamespaceListForArgoCDCR(a, r.Client)
+		assert.NoError(t, err)
+		assert.Equal(t, res, []string{
+			"aaaa-first-when-sorted",     // from label
+			"aaaa-second-when-sorted-nm", // from nsMgmt1
+			a.Namespace,                  // default
+			"bbbb-third-when-sorted-nm",  // from nsMgmt2
+		})
+	})
 }
 
 func TestCombineClusterSecretNamespacesWithManagedNamespaces(t *testing.T) {

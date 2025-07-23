@@ -8,6 +8,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -186,4 +187,165 @@ func TestMatchesNamespaceManagementRules(t *testing.T) {
 			assert.Equal(t, tt.expectMatch, match)
 		})
 	}
+}
+
+func TestReconcileNamespaceManagement_FeatureEnabled_NoCRs(t *testing.T) {
+	// Feature enabled but no NamespaceManagement CRs exist
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.NamespaceManagement = []argoproj.ManagedNamespaces{
+			{Name: "managed-ns", AllowManagedBy: true},
+		}
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a} // no NamespaceManagement CRs
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	os.Setenv(common.EnableManagedNamespace, "true")
+	defer os.Unsetenv(common.EnableManagedNamespace)
+
+	err := r.reconcileNamespaceManagement(a)
+	assert.NoError(t, err)
+
+	// Should only include ArgoCD namespace
+	found := false
+	for _, ns := range r.ManagedNamespaces.Items {
+		if ns.Name == a.Namespace {
+			found = true
+		}
+	}
+	assert.True(t, found)
+	assert.Len(t, r.ManagedNamespaces.Items, 1)
+}
+
+func TestReconcileNamespaceManagement_DifferentManagedBy(t *testing.T) {
+	// NamespaceManagement CR for a different ArgoCD instance (should be skipped)
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Namespace = "argocd"
+		a.Spec.NamespaceManagement = []argoproj.ManagedNamespaces{
+			{Name: "managed-ns", AllowManagedBy: true},
+		}
+	})
+
+	nmOther := &argoproj.NamespaceManagement{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "namespace-mgmt-other",
+			Namespace: "managed-ns",
+		},
+		Spec: argoproj.NamespaceManagementSpec{
+			ManagedBy: "some-other-argocd",
+		},
+	}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a, nmOther}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	err := r.Client.Create(context.Background(), nmOther)
+	assert.NoError(t, err)
+
+	os.Setenv(common.EnableManagedNamespace, "true")
+	defer os.Unsetenv(common.EnableManagedNamespace)
+
+	err = r.reconcileNamespaceManagement(a)
+	assert.NoError(t, err)
+
+	// Should only include ArgoCD namespace
+	assert.Len(t, r.ManagedNamespaces.Items, 1)
+	assert.Equal(t, "argocd", r.ManagedNamespaces.Items[0].Name)
+}
+
+func TestReconcileNamespaceManagement_ExplicitlyDisallowed(t *testing.T) {
+	// Explicitly disallowed namespace (AllowManagedBy=false)
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Namespace = "argocd"
+		a.Spec.NamespaceManagement = []argoproj.ManagedNamespaces{
+			{Name: "deny-ns", AllowManagedBy: false},
+		}
+	})
+	nm := &argoproj.NamespaceManagement{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "namespace-mgmt-deny",
+			Namespace: "deny-ns",
+		},
+		Spec: argoproj.NamespaceManagementSpec{
+			ManagedBy: a.Namespace,
+		},
+	}
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a, nm}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+	logf.SetLogger(ZapLogger(true))
+
+	err := r.Client.Create(context.Background(), nm)
+	assert.NoError(t, err)
+
+	os.Setenv(common.EnableManagedNamespace, "true")
+	defer os.Unsetenv(common.EnableManagedNamespace)
+
+	err = r.reconcileNamespaceManagement(a)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "is not allowed to be managed by ArgoCD")
+}
+
+func TestReconcileNamespaceManagement_DeduplicateNamespaces(t *testing.T) {
+	// Duplicate namespaces in status should not be added multiple times
+	// duplicates are not added to r.ManagedNamespaces.
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.NamespaceManagement = []argoproj.ManagedNamespaces{
+			{Name: "ns-1", AllowManagedBy: true},
+		}
+	})
+
+	nm := &argoproj.NamespaceManagement{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "nm1",
+			Namespace: "ns-1",
+		},
+		Spec: argoproj.NamespaceManagementSpec{
+			ManagedBy: a.Namespace,
+		},
+	}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a, nm}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	err := r.Client.Create(context.Background(), nm)
+	assert.NoError(t, err)
+
+	r.ManagedNamespaces = &corev1.NamespaceList{
+		Items: []corev1.Namespace{
+			{ObjectMeta: metav1.ObjectMeta{Name: "ns-1"}},
+		},
+	}
+
+	os.Setenv(common.EnableManagedNamespace, "true")
+	defer os.Unsetenv(common.EnableManagedNamespace)
+
+	err = r.reconcileNamespaceManagement(a)
+	assert.NoError(t, err)
+
+	count := 0
+	for _, ns := range r.ManagedNamespaces.Items {
+		if ns.Name == "ns-1" {
+			count++
+		}
+	}
+	assert.Equal(t, 1, count)
 }
