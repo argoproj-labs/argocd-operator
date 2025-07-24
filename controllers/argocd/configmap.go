@@ -454,6 +454,12 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 			if cr.Spec.Banner.URL != "" {
 				cm.Data[common.ArgoCDKeyBannerURL] = cr.Spec.Banner.URL
 			}
+			if cr.Spec.Banner.Permanent {
+				cm.Data[common.ArgoCDKeyBannerPermanent] = "true"
+			}
+			if cr.Spec.Banner.Position != "" {
+				cm.Data[common.ArgoCDKeyBannerPosition] = cr.Spec.Banner.Position
+			}
 		}
 	}
 
