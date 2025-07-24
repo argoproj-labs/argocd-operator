@@ -30,52 +30,37 @@ func NewClientWrapper(cachedClient ctrlclient.Client, liveClient ctrlclient.Clie
 
 // Get overrides the embedded client's Get method to implement cache fallback.
 func (cw *ClientWrapper) Get(ctx context.Context, key types.NamespacedName, obj ctrlclient.Object, opts ...ctrlclient.GetOption) error {
-
 	// Try getting from the cached client first (this is the embedded client's Get)
 	err := cw.Client.Get(ctx, key, obj, opts...)
 	if err == nil {
-		// Found in cache, return
+		// Found in cache, return successfully
 		return nil
 	}
 	// If not found in cache, check if it's a NotFound error
 	if errors.IsNotFound(err) {
-		log.Info("Resource not found in cache, attempting live lookup",
-			"kind", obj.GetObjectKind().GroupVersionKind().Kind, "namespace", key.Namespace, "name", key.Name)
-
-		// Use liveClient to do a live look up of resource
+		// Use liveClient to do a live lookup of resource
 		liveErr := cw.liveClient.Get(ctx, key, obj, opts...)
-
 		if liveErr == nil {
-			log.Info("Resource found live, attempting to label for future caching",
-				"kind", obj.GetObjectKind().GroupVersionKind().Kind, "namespace", key.Namespace, "name", key.Name)
-
-			// Resource is present live, add the label so it ends up in the cache next time
-			patch := ctrlclient.MergeFrom(obj.DeepCopyObject().(ctrlclient.Object)) // Patch from original live state
-
+			// Resource found live - try to label it for future caching
+			// Create patch from the original live state
+			patch := ctrlclient.MergeFrom(obj.DeepCopyObject().(ctrlclient.Object))
+			// Add the tracking label to match cache filtering
 			labels := obj.GetLabels()
 			if labels == nil {
 				labels = make(map[string]string)
 			}
-			labels[common.ArgoCDKeyPartOf] = common.ArgoCDAppName
+			labels[common.ArgoCDTrackedByOperatorLabel] = common.ArgoCDAppName
 			obj.SetLabels(labels)
-
 			// Attempt to patch the live object with the new label
-			patchErr := cw.liveClient.Patch(ctx, obj, patch)
-			if patchErr != nil {
-				// Log the error but don't fail the Get operation if we successfully retrieved it live
-				log.Error(patchErr, "Failed to label live-looked-up resource",
-					"kind", obj.GetObjectKind().GroupVersionKind().Kind, "namespace", key.Namespace, "name", key.Name)
-			} else {
-				log.Info("Successfully labeled resource",
-					"kind", obj.GetObjectKind().GroupVersionKind().Kind, "namespace", key.Namespace, "name", key.Name)
-			}
+			// If patching fails, we still succeeded in getting the resource
+			// Return success - we found the object live
+			cw.liveClient.Patch(ctx, obj, patch)
 			return nil
 		}
-		log.Info("Resource not found live",
-			"kind", obj.GetObjectKind().GroupVersionKind().Kind, "namespace", key.Namespace, "name", key.Name, "error", liveErr.Error())
-		return err // Return the original cache "not found" error
+		// Object not found in both cache and live - return the live error
+		return liveErr
 	}
-	// For other errors (e.g., API server down, permissions), return the original error from the cache lookup
-	log.Error(err, "Error getting resource from cache", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "namespace", key.Namespace, "name", key.Name)
+
+	// For other errors (e.g., API server down, permissions), return the original cache error
 	return err
 }
