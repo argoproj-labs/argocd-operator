@@ -288,6 +288,38 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 				"ui.bannerurl":     "https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners",
 			},
 		},
+		{
+			"with-banner-url-and-permanent",
+			[]argoCDOpt{func(a *argoproj.ArgoCD) {
+				a.Spec.Banner = &argoproj.Banner{
+					Content:   "Custom Styles - Banners",
+					URL:       "https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners",
+					Permanent: true,
+				}
+			}},
+			map[string]string{
+				"ui.bannercontent":   "Custom Styles - Banners",
+				"ui.bannerurl":       "https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners",
+				"ui.bannerpermanent": "true",
+			},
+		},
+		{
+			"with-banner-url-and-permanent-and-position",
+			[]argoCDOpt{func(a *argoproj.ArgoCD) {
+				a.Spec.Banner = &argoproj.Banner{
+					Content:   "Custom Styles - Banners",
+					URL:       "https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners",
+					Permanent: true,
+					Position:  "top",
+				}
+			}},
+			map[string]string{
+				"ui.bannercontent":   "Custom Styles - Banners",
+				"ui.bannerurl":       "https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners",
+				"ui.bannerpermanent": "true",
+				"ui.bannerposition":  "top",
+			},
+		},
 	}
 
 	for _, tt := range cmdTests {

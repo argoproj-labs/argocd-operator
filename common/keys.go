@@ -146,6 +146,12 @@ const (
 	// ArgoCDKeyBannerURL is the configuration key for a banner message URL.
 	ArgoCDKeyBannerURL = "ui.bannerurl"
 
+	// ArgoCDKeyBannerPermanent is the configuration key for permanent banner.
+	ArgoCDKeyBannerPermanent = "ui.bannerpermanent"
+
+	// ArgoCDKeyBannerURL is the configuration key for banner position.
+	ArgoCDKeyBannerPosition = "ui.bannerposition"
+
 	// ArgoCDKeyTLSCACert is the key for TLS CA certificates.
 	ArgoCDKeyTLSCACert = "ca.crt"
 
