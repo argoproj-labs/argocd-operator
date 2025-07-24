@@ -49,6 +49,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"go.uber.org/zap/zapcore"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -194,7 +195,8 @@ func main() {
 	cachedClient := mgr.GetClient()
 	liveClient, err := ctrlclient.New(ctrl.GetConfigOrDie(), ctrlclient.Options{Scheme: mgr.GetScheme()})
 	if err != nil {
-		// handle error
+		setupLog.Error(err, "unable to create live client")
+		os.Exit(1)
 	}
 	wrapperClient := argoutil.NewClientWrapper(cachedClient, liveClient)
 
