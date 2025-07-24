@@ -1763,9 +1763,8 @@ func UseServer(name string, cr *argoproj.ArgoCD) bool {
 	return true
 }
 
-// UpdateMapValues checks for any Kubernetes-specific labels or annotations
-// in the existing and source object and updates the existing object.
-// This helps avoid loss of important Kubernetes-managed or non-Kubernetes-managed labels/annotations during updates.
+// UpdateMapValues updates the values of an existing map with the values from a source map if they differ.
+// It returns true if any values were changed.
 func UpdateMapValues(existing *map[string]string, source map[string]string) bool {
 	changed := false
 	if *existing == nil {

@@ -1023,7 +1023,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			changed = true
 		}
 
-		// Add Kubernetes-specific labels/annotations from the live object in the source to preserve metadata.
+		//Check if labels/annotations have changed
 		UpdateMapValues(&existing.Spec.Template.Labels, ss.Spec.Template.Labels)
 		UpdateMapValues(&existing.Spec.Template.Annotations, ss.Spec.Template.Annotations)
 

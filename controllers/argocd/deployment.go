@@ -1371,7 +1371,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 			changed = true
 		}
 
-		//  Add Kubernetes-specific labels/annotations from the source object in the live and preserve non-operator specific labels/anotations.
+		//Check if labels/annotations have changed
 		UpdateMapValues(&existing.Spec.Template.Labels, deploy.Spec.Template.Labels)
 		UpdateMapValues(&existing.Spec.Template.Annotations, deploy.Spec.Template.Annotations)
 
@@ -1759,7 +1759,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			}
 		}
 
-		// Add Kubernetes-specific labels/annotations from the source object in the live and preserve non-operator specific labels/anotations.
+		//Check if labels/annotations have changed
 		UpdateMapValues(&existing.Spec.Template.Labels, deploy.Spec.Template.Labels)
 		UpdateMapValues(&existing.Spec.Template.Annotations, deploy.Spec.Template.Annotations)
 

@@ -335,7 +335,7 @@ func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoproj.ArgoCD, useTLSForRedi
 func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoproj.ArgoCD) error {
 	cm := newConfigMapWithName(getCAConfigMapName(cr), cr)
 	existingCM := &corev1.ConfigMap{}
-	exists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) 
+	exists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM)
 	if err != nil {
 		return err
 	}
