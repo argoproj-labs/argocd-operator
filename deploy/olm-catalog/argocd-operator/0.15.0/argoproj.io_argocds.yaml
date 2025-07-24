@@ -489,14 +489,6 @@ spec:
                   content:
                     description: Content defines the banner message content to display
                     type: string
-                  permanent:
-                    description: Permanent defines if the banner should be displayed
-                      permanently or only for a certain period of time
-                    type: boolean
-                  position:
-                    description: Position defines the position of the banner in the
-                      UI
-                    type: string
                   url:
                     description: URL defines an optional URL to be used as banner
                       message link
@@ -10214,14 +10206,6 @@ spec:
                 properties:
                   content:
                     description: Content defines the banner message content to display
-                    type: string
-                  permanent:
-                    description: Permanent defines if the banner should be displayed
-                      permanently or only for a certain period of time
-                    type: boolean
-                  position:
-                    description: Position defines the position of the banner in the
-                      UI
                     type: string
                   url:
                     description: URL defines an optional URL to be used as banner
