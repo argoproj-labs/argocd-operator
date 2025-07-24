@@ -31,6 +31,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -61,6 +62,7 @@ import (
 	v1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	v1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/version"
+	corev1 "k8s.io/api/core/v1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -174,12 +176,15 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "b674928d.argoproj.io",
-	}
-
-	if watchedNsCache := getDefaultWatchedNamespacesCacheOptions(); watchedNsCache != nil {
-		options.Cache = cache.Options{
-			DefaultNamespaces: watchedNsCache,
-		}
+		NewCache: func(config *rest.Config, cacheOpts cache.Options) (cache.Cache, error) {
+			// Set up label-based filtering for ConfigMaps and Secrets
+			filteredCacheOpts := setupCacheOptions()
+			filteredCacheOpts.Scheme = scheme
+			if watchedNsCache := getDefaultWatchedNamespacesCacheOptions(); watchedNsCache != nil {
+				filteredCacheOpts.DefaultNamespaces = watchedNsCache
+			}
+			return cache.New(config, filteredCacheOpts)
+		},
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
@@ -333,4 +338,23 @@ func getWatchNamespace() (string, error) {
 		return "", fmt.Errorf("%s must be set", watchNamespaceEnvVar)
 	}
 	return ns, nil
+}
+
+func setupCacheOptions() cache.Options {
+	cacheOpts := cache.Options{}
+
+	// Create label selector for ArgoCD-managed resources
+	watchedByArgoCDSelector := labels.SelectorFromSet(
+		labels.Set{common.ArgoCDTrackedByOperatorLabel: common.ArgoCDAppName},
+	)
+
+	setupLog.Info(fmt.Sprintf("Setting up cache with label selector: %s=%s", common.ArgoCDTrackedByOperatorLabel, common.ArgoCDAppName))
+
+	// Only cache ConfigMaps and Secrets that have the ArgoCD label
+	cacheOpts.ByObject = map[ctrlclient.Object]cache.ByObject{
+		&corev1.Secret{}:    {Label: watchedByArgoCDSelector},
+		&corev1.ConfigMap{}: {Label: watchedByArgoCDSelector},
+	}
+
+	return cacheOpts
 }
