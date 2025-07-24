@@ -3,10 +3,11 @@ package argoutil
 import (
 	"context"
 
-	"github.com/argoproj-labs/argocd-operator/common"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client" // Renamed to avoid conflict with our wrapper's name
+
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 // ClientWrapper wraps a controller-runtime client to customize Get behavior.
@@ -54,7 +55,7 @@ func (cw *ClientWrapper) Get(ctx context.Context, key types.NamespacedName, obj 
 			// Attempt to patch the live object with the new label
 			// If patching fails, we still succeeded in getting the resource
 			// Return success - we found the object live
-			cw.liveClient.Patch(ctx, obj, patch)
+			_ = cw.liveClient.Patch(ctx, obj, patch)
 			return nil
 		}
 		// Object not found in both cache and live - return the live error
