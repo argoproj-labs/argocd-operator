@@ -334,12 +334,21 @@ func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoproj.ArgoCD, useTLSForRedi
 // This ConfigMap holds the CA Certificate data for client use.
 func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoproj.ArgoCD) error {
 	cm := newConfigMapWithName(getCAConfigMapName(cr), cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+
+	configMapExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm)
+	if err != nil {
+		return err
+	}
+	if configMapExists {
 		return nil // ConfigMap found, do nothing
 	}
 
 	caSecret := argoutil.NewSecretWithSuffix(cr, common.ArgoCDCASuffix)
-	if !argoutil.IsObjectFound(r.Client, cr.Namespace, caSecret.Name, caSecret) {
+	caSecretExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, caSecret.Name, caSecret)
+	if err != nil {
+		return err
+	}
+	if !caSecretExists {
 		log.Info(fmt.Sprintf("ca secret [%s] not found, waiting to reconcile ca configmap [%s]", caSecret.Name, cm.Name))
 		return nil
 	}
@@ -405,7 +414,12 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	cm.Data[common.ArgoCDKeyResourceInclusions] = getResourceInclusions(cr)
 	cm.Data[common.ArgoCDKeyResourceTrackingMethod] = getResourceTrackingMethod(cr)
 	cm.Data[common.ArgoCDKeyStatusBadgeEnabled] = fmt.Sprint(cr.Spec.StatusBadgeEnabled)
-	cm.Data[common.ArgoCDKeyServerURL] = r.getArgoServerURI(cr)
+
+	serverURI, err := r.getArgoServerURI(cr)
+	if err != nil {
+		return err
+	}
+	cm.Data[common.ArgoCDKeyServerURL] = serverURI
 	cm.Data[common.ArgoCDKeyUsersAnonymousEnabled] = fmt.Sprint(cr.Spec.UsersAnonymousEnabled)
 
 	// deprecated: log warning for deprecated field InitialRepositories
@@ -459,7 +473,11 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	}
 
 	existingCM := &corev1.ConfigMap{}
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
+	found, err := argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM)
+	if err != nil {
+		return err
+	}
+	if found {
 
 		// reconcile dex configuration if dex is enabled `.spec.sso.dex.provider` or there is
 		// existing dex configuration
@@ -533,7 +551,12 @@ func (r *ReconcileArgoCD) reconcileGrafanaDashboards(cr *argoproj.ArgoCD) error 
 // reconcileRBAC will ensure that the ArgoCD RBAC ConfigMap is present.
 func (r *ReconcileArgoCD) reconcileRBAC(cr *argoproj.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDRBACConfigMapName, cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+
+	found, err := argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm)
+	if err != nil {
+		return err
+	}
+	if found {
 		return r.reconcileRBACConfigMap(cm, cr)
 	}
 	return r.createRBACConfigMap(cm, cr)
@@ -659,7 +682,11 @@ func (r *ReconcileArgoCD) reconcileRedisHAHealthConfigMap(cr *argoproj.ArgoCD, u
 	}
 	if !cr.Spec.HA.Enabled {
 		existingCM := &corev1.ConfigMap{}
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
+		exists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM)
+		if err != nil {
+			return err
+		}
+		if exists {
 			// ConfigMap exists but HA enabled flag has been set to false, delete the ConfigMap
 			argoutil.LogResourceDeletion(log, cm, "redis ha is disabled")
 			return r.Client.Delete(context.TODO(), existingCM)
@@ -672,7 +699,11 @@ func (r *ReconcileArgoCD) reconcileRedisHAHealthConfigMap(cr *argoproj.ArgoCD, u
 	}
 
 	existingCM := &corev1.ConfigMap{}
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
+	exists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM)
+	if err != nil {
+		return err
+	}
+	if exists {
 		// Check if the data has changed
 		if !reflect.DeepEqual(cm.Data, existingCM.Data) {
 			existingCM.Data = cm.Data
@@ -700,7 +731,11 @@ func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSF
 	if !cr.Spec.HA.Enabled {
 
 		existingCM := &corev1.ConfigMap{}
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
+		exists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM)
+		if err != nil {
+			return err
+		}
+		if exists {
 			// ConfigMap exists but HA enabled flag has been set to false, delete the ConfigMap
 			argoutil.LogResourceDeletion(log, cm, "redis ha is disabled")
 			return r.Client.Delete(context.TODO(), existingCM)
@@ -714,7 +749,11 @@ func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSF
 	}
 
 	existingCM := &corev1.ConfigMap{}
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
+	exists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM)
+	if err != nil {
+		return err
+	}
+	if exists {
 		// Check if the data has changed
 		if !reflect.DeepEqual(cm.Data, existingCM.Data) {
 			existingCM.Data = cm.Data
@@ -730,7 +769,12 @@ func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSF
 
 func (r *ReconcileArgoCD) recreateRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	cm := newConfigMapWithName(common.ArgoCDRedisHAConfigMapName, cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+
+	exists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm)
+	if err != nil {
+		return err
+	}
+	if exists {
 		argoutil.LogResourceDeletion(log, cm, "deleting config map in order to recreate it")
 		if err := r.Client.Delete(context.TODO(), cm); err != nil {
 			return err
@@ -741,7 +785,12 @@ func (r *ReconcileArgoCD) recreateRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSFo
 
 func (r *ReconcileArgoCD) recreateRedisHAHealthConfigMap(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	cm := newConfigMapWithName(common.ArgoCDRedisHAHealthConfigMapName, cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+
+	exists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm)
+	if err != nil {
+		return err
+	}
+	if exists {
 		argoutil.LogResourceDeletion(log, cm, "deleting config map in order to recreate it")
 		if err := r.Client.Delete(context.TODO(), cm); err != nil {
 			return err
@@ -753,7 +802,11 @@ func (r *ReconcileArgoCD) recreateRedisHAHealthConfigMap(cr *argoproj.ArgoCD, us
 // reconcileSSHKnownHosts will ensure that the ArgoCD SSH Known Hosts ConfigMap is present.
 func (r *ReconcileArgoCD) reconcileSSHKnownHosts(cr *argoproj.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDKnownHostsConfigMapName, cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+	exists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm)
+	if err != nil {
+		return err
+	}
+	if exists {
 		return nil // ConfigMap found, move along...
 	}
 
@@ -771,7 +824,11 @@ func (r *ReconcileArgoCD) reconcileSSHKnownHosts(cr *argoproj.ArgoCD) error {
 // reconcileTLSCerts will ensure that the ArgoCD TLS Certs ConfigMap is present.
 func (r *ReconcileArgoCD) reconcileTLSCerts(cr *argoproj.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDTLSCertsConfigMapName, cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+	exists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm)
+	if err != nil {
+		return err
+	}
+	if exists {
 		return nil // ConfigMap found, move along...
 	}
 
@@ -787,7 +844,11 @@ func (r *ReconcileArgoCD) reconcileTLSCerts(cr *argoproj.ArgoCD) error {
 // reconcileGPGKeysConfigMap creates a gpg-keys config map
 func (r *ReconcileArgoCD) reconcileGPGKeysConfigMap(cr *argoproj.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDGPGKeysConfigMapName, cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+	exists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm)
+	if err != nil {
+		return err
+	}
+	if exists {
 		return nil
 	}
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
@@ -818,7 +879,12 @@ func (r *ReconcileArgoCD) reconcileArgoCmdParamsConfigMap(cr *argoproj.ArgoCD) e
 	}
 
 	existingCM := &corev1.ConfigMap{}
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
+	isFound, err := argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM)
+	if err != nil {
+		return err
+	}
+	if isFound {
+
 		changed := false
 
 		// Compare only if data is being managed

@@ -108,7 +108,11 @@ func (r *ReconcileArgoCD) reconcileRoutes(cr *argoproj.ArgoCD) error {
 // reconcileGrafanaRoute will ensure that the ArgoCD Grafana Route is present.
 func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 	route := newRouteWithSuffix("grafana", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
+	rExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
+	if err != nil {
+		return err
+	}
+	if rExists {
 		//lint:ignore SA1019 known to be deprecated
 		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
@@ -132,7 +136,11 @@ func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 // reconcilePrometheusRoute will ensure that the ArgoCD Prometheus Route is present.
 func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoproj.ArgoCD) error {
 	route := newRouteWithSuffix("prometheus", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
+	rExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
+	if err != nil {
+		return err
+	}
+	if rExists {
 		if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
 			var explanation string
@@ -201,7 +209,10 @@ func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoproj.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 
 	route := newRouteWithSuffix("server", cr)
-	found := argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
+	found, err := argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
+	if err != nil {
+		return err
+	}
 	if found {
 		if !cr.Spec.Server.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
@@ -255,7 +266,10 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 		}
 
 		tlsSecret := &corev1.Secret{}
-		isTLSSecretFound := argoutil.IsObjectFound(r.Client, cr.Namespace, common.ArgoCDServerTLSSecretName, tlsSecret)
+		isTLSSecretFound, err := argoutil.IsObjectFound(r.Client, cr.Namespace, common.ArgoCDServerTLSSecretName, tlsSecret)
+		if err != nil {
+			return err
+		}
 		// Since Passthrough was the default policy in the previous versions of the operator, we don't want to
 		// break users who have already configured a TLS secret for Passthrough.
 		// We continue with Passthrough if we find a TLS secret that was manually configured
@@ -336,7 +350,11 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 	}
 	route := newRouteWithName(baseName, cr)
 
-	found := argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
+	found, err := argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
+	if err != nil {
+		return err
+	}
+
 	if found {
 		if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.WebhookServer.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route

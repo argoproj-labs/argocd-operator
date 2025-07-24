@@ -130,7 +130,11 @@ func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *ar
 
 		// Trigger rollout of Dex Deployment to pick up changes.
 		deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
-		if !argoutil.IsObjectFound(r.Client, deploy.Namespace, deploy.Name, deploy) {
+		deplExists, err := argoutil.IsObjectFound(r.Client, deploy.Namespace, deploy.Name, deploy)
+		if err != nil {
+			return err
+		}
+		if !deplExists {
 			log.Info("unable to locate dex deployment")
 			return nil
 		}
@@ -151,6 +155,11 @@ func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoproj.ArgoCD) (string, er
 		groups = cr.Spec.SSO.Dex.Groups
 	}
 
+	redirectURI, err := r.getDexOAuthRedirectURI(cr)
+	if err != nil {
+		return "", err
+	}
+
 	connector := DexConnector{
 		Type: "openshift",
 		ID:   "openshift",
@@ -159,7 +168,7 @@ func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoproj.ArgoCD) (string, er
 			"issuer":       "https://kubernetes.default.svc", // TODO: Should this be hard-coded?
 			"clientID":     getDexOAuthClientID(cr),
 			"clientSecret": "$oidc.dex.clientSecret",
-			"redirectURI":  r.getDexOAuthRedirectURI(cr),
+			"redirectURI":  redirectURI,
 			"insecureCA":   true, // TODO: Configure for openshift CA,
 			"groups":       groups,
 		},
@@ -212,7 +221,10 @@ func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoproj.ArgoCD) error 
 	}
 
 	// Get the OAuth redirect URI that should be used.
-	uri := r.getDexOAuthRedirectURI(cr)
+	uri, err := r.getDexOAuthRedirectURI(cr)
+	if err != nil {
+		return err
+	}
 	log.Info(fmt.Sprintf("URI: %s", uri))
 
 	// Get the current redirect URI
@@ -354,7 +366,11 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 	}
 
 	existing := newDeploymentWithSuffix("dex-server", "dex-server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+	deplExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
+	if err != nil {
+		return err
+	}
+	if deplExists {
 
 		// dex uninstallation requested
 		if !UseDex(cr) {
@@ -471,7 +487,12 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 // reconcileDexService will ensure that the Service for Dex is present.
 func (r *ReconcileArgoCD) reconcileDexService(cr *argoproj.ArgoCD) error {
 	svc := newServiceWithSuffix("dex-server", "dex-server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+
+	svcExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc)
+	if err != nil {
+		return err
+	}
+	if svcExists {
 
 		// dex uninstallation requested
 		if !UseDex(cr) {
@@ -585,7 +606,11 @@ func (r *ReconcileArgoCD) deleteDexResources(cr *argoproj.ArgoCD) error {
 	// since reconcileArgoConfigMap won't call reconcileDexConfiguration once dex has been disabled (to avoid reconciling on
 	// dexconfig unnecessarily when it isn't enabled)
 	cm := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+	cmExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm)
+	if err != nil {
+		return err
+	}
+	if cmExists {
 		if err := r.reconcileDexConfiguration(cm, cr); err != nil {
 			log.Error(err, "error reconciling dex configuration in configmap")
 		}
