@@ -29,6 +29,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -173,12 +174,15 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "b674928d.argoproj.io",
-	}
-
-	if watchedNsCache := getDefaultWatchedNamespacesCacheOptions(); watchedNsCache != nil {
-		options.Cache = cache.Options{
-			DefaultNamespaces: watchedNsCache,
-		}
+		NewCache: func(config *rest.Config, cacheOpts cache.Options) (cache.Cache, error) {
+			// Set up label-based filtering for ConfigMaps and Secrets
+			filteredCacheOpts := setupCacheOptions()
+			filteredCacheOpts.Scheme = scheme
+			if watchedNsCache := getDefaultWatchedNamespacesCacheOptions(); watchedNsCache != nil {
+				filteredCacheOpts.DefaultNamespaces = watchedNsCache
+			}
+			return cache.New(config, filteredCacheOpts)
+		},
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
