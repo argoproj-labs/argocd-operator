@@ -149,6 +149,32 @@ spec:
               key: client-secret
 ```
 
+## Additional Volume Mounts for Dex Container
+
+You can optionally inject additional volumes and volume mounts into the Dex container managed by the Argo CD Operator. This allows for advanced configurations such as providing custom certificates, identity provider connectors, or other external resources required by Dex.
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+spec:
+  sso:
+    provider: dex
+    dex: 
+      volumeMounts:
+        - name: custom-cert
+          mountPath: /etc/dex/ssl
+          readOnly: true
+      volumes:
+        - name: custom-cert
+          secret:
+            secretName: dex-tls-secret
+```
+
+- `spec.sso.dex.volumeMounts` and `spec.sso.dex.volumes` follow the standard Kubernetes `volumeMounts` and `volumes` schema.
+- Ensure the volume name matches between the `volumes` and `volumeMounts` sections.
+
 ## Uninstalling Dex
 
 !!! note

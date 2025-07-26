@@ -1,0 +1,15 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+spec:
+  sso:
+    provider: dex
+    dex:
+      config: test-config
+      volumes:
+        - name: empty-dir-volume
+          emptyDir: {}
+      volumeMounts:
+        - name: empty-dir-volume
+          mountPath: /etc/test
