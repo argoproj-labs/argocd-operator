@@ -277,9 +277,8 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 	AddSeccompProfileForOpenShift(r.Client, podSpec)
 
 	if deplExists {
-		// Add Kubernetes-specific labels/annotations from the live object in the source to preserve metadata.
-		addKubernetesData(deploy.Spec.Template.Labels, existing.Spec.Template.Labels)
-		addKubernetesData(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations)
+		//Check if annotations have changed
+		UpdateMapValues(&existing.Spec.Template.Annotations, deploy.Spec.Template.Annotations)
 
 		// If the Deployment already exists, make sure the values we care about are up-to-date
 		deploymentsDifferent := identifyDeploymentDifference(*existing, *deploy)
@@ -287,8 +286,8 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 			existing.Spec.Template.Spec.Containers = podSpec.Containers
 			existing.Spec.Template.Spec.Volumes = podSpec.Volumes
 			existing.Spec.Template.Spec.ServiceAccountName = podSpec.ServiceAccountName
-			existing.Labels = deploy.Labels
-			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
+			UpdateMapValues(&existing.Labels, deploy.Labels)
+			UpdateMapValues(&existing.Spec.Template.Labels, deploy.Spec.Template.Labels)
 			existing.Spec.Selector = deploy.Spec.Selector
 			existing.Spec.Template.Spec.NodeSelector = deploy.Spec.Template.Spec.NodeSelector
 			existing.Spec.Template.Spec.Tolerations = deploy.Spec.Template.Spec.Tolerations
