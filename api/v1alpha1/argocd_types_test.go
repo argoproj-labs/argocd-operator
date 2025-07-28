@@ -24,7 +24,7 @@ func Test_ResourceTrackingMethodToString(t *testing.T) {
 		{ResourceTrackingMethodLabel, stringResourceTrackingMethodLabel},
 		{ResourceTrackingMethodAnnotation, stringResourceTrackingMethodAnnotation},
 		{ResourceTrackingMethodAnnotationAndLabel, stringResourceTrackingMethodAnnotationAndLabel},
-		{20, stringResourceTrackingMethodLabel},
+		{20, stringResourceTrackingMethodAnnotation},
 	}
 	for _, tt := range testdata {
 		rtm := tt.rtm
@@ -41,6 +41,7 @@ func Test_ParseResourceTrackingMethod(t *testing.T) {
 		{ResourceTrackingMethodAnnotation, stringResourceTrackingMethodAnnotation},
 		{ResourceTrackingMethodAnnotationAndLabel, stringResourceTrackingMethodAnnotationAndLabel},
 		{ResourceTrackingMethodInvalid, "invalid"},
+		{ResourceTrackingMethodAnnotation, ""},
 	}
 	for _, tt := range testdata {
 		assert.Equal(t, tt.rtm, ParseResourceTrackingMethod(tt.str))
