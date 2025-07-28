@@ -242,16 +242,6 @@ metadata:
               "provider": "dex"
             }
           }
-        },
-        {
-          "apiVersion": "argoproj.io/v1beta1",
-          "kind": "NamespaceManagement",
-          "metadata": {
-            "name": "namespacemanagement-sample"
-          },
-          "spec": {
-            "managedBy": "argocd-ns"
-          }
         }
       ]
     capabilities: Deep Insights
@@ -1564,12 +1554,6 @@ spec:
         path: sso
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      version: v1beta1
-    - description: NamespaceManagement is the Schema for the namespacemanagements
-        API
-      displayName: Namespace Management
-      kind: NamespaceManagement
-      name: namespacemanagements.argoproj.io
       version: v1beta1
     - description: NotificationsConfiguration is the Schema for the notificationsconfiguration
         API
