@@ -999,7 +999,7 @@ func removeString(slice []string, s string) []string {
 }
 
 // setResourceWatches will register Watches for each of the supported Resources.
-func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, clusterSecretResourceMapper, applicationSetGitlabSCMTLSConfigMapMapper handler.MapFunc) *builder.Builder {
+func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, clusterSecretResourceMapper, applicationSetGitlabSCMTLSConfigMapMapper, nmMapper handler.MapFunc) *builder.Builder {
 
 	deploymentConfigPred := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -1089,7 +1089,7 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 	}
 
 	// Watch for changes to primary resource ArgoCD
-	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(deleteSSOPred, deleteNotificationsPred))
+	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(deleteSSOPred, deleteNotificationsPred, r.argoCDNamespaceManagementFilterPredicate()))
 
 	// Watch for changes to ConfigMap sub-resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.ConfigMap{})
@@ -1109,6 +1109,10 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 	bldr.Owns(&v1.Role{})
 
 	bldr.Owns(&v1.RoleBinding{})
+
+	nmMapperResourceHandler := handler.EnqueueRequestsFromMapFunc(nmMapper)
+
+	bldr.Watches(&argoproj.NamespaceManagement{}, nmMapperResourceHandler, builder.WithPredicates(r.namespaceManagementFilterPredicate()))
 
 	clusterResourceHandler := handler.EnqueueRequestsFromMapFunc(clusterResourceMapper)
 
@@ -1168,7 +1172,7 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 
 	namespaceHandler := handler.EnqueueRequestsFromMapFunc(namespaceResourceMapper)
 
-	bldr.Watches(&corev1.Namespace{}, namespaceHandler, builder.WithPredicates(namespaceFilterPredicate()))
+	bldr.Watches(&corev1.Namespace{}, namespaceHandler, builder.WithPredicates(r.namespaceFilterPredicate()))
 
 	bldrHook := newBuilderHook(r.Client, bldr)
 	err := applyReconcilerHook(&argoproj.ArgoCD{}, bldrHook, "")
@@ -1226,15 +1230,6 @@ func splitList(s string) []string {
 	return elems
 }
 
-func containsString(arr []string, s string) bool {
-	for _, val := range arr {
-		if strings.TrimSpace(val) == s {
-			return true
-		}
-	}
-	return false
-}
-
 // DeprecationEventEmissionStatus is meant to track which deprecation events have been emitted already. This is temporary and can be removed in v0.0.6 once we have provided enough
 // deprecation notice
 type DeprecationEventEmissionStatus struct {
@@ -1249,7 +1244,7 @@ type DeprecationEventEmissionStatus struct {
 // This is temporary and can be removed in v0.0.6 when we remove the deprecated fields.
 var DeprecationEventEmissionTracker = make(map[string]DeprecationEventEmissionStatus)
 
-func namespaceFilterPredicate() predicate.Predicate {
+func (r *ReconcileArgoCD) namespaceFilterPredicate() predicate.Predicate {
 	return predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			// This checks if ArgoCDManagedByLabel exists in newMeta, if exists then -
@@ -1259,10 +1254,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 			// Event is then handled by the reconciler, which would create appropriate RBACs.
 			if valNew, ok := e.ObjectNew.GetLabels()[common.ArgoCDManagedByLabel]; ok {
 				if valOld, ok := e.ObjectOld.GetLabels()[common.ArgoCDManagedByLabel]; ok && valOld != valNew {
-					k8sClient, err := initK8sClient()
-					if err != nil {
-						return false
-					}
+					k8sClient := r.K8sClient
 					if err := deleteRBACsForNamespace(e.ObjectOld.GetName(), k8sClient); err != nil {
 						log.Error(err, fmt.Sprintf("failed to delete RBACs for namespace: %s", e.ObjectOld.GetName()))
 					} else {
@@ -1270,7 +1262,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 					}
 
 					// Delete namespace from cluster secret of previously managing argocd instance
-					if err = deleteManagedNamespaceFromClusterSecret(valOld, e.ObjectOld.GetName(), k8sClient); err != nil {
+					if err := deleteManagedNamespaceFromClusterSecret(valOld, e.ObjectOld.GetName(), k8sClient); err != nil {
 						log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", e.ObjectOld.GetName()))
 					} else {
 						log.Info(fmt.Sprintf("Successfully deleted namespace %s from cluster secret", e.ObjectOld.GetName()))
@@ -1281,10 +1273,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 			// This checks if the old meta had the label, if it did, delete the RBACs for the namespace
 			// which were created when the label was added to the namespace.
 			if ns, ok := e.ObjectOld.GetLabels()[common.ArgoCDManagedByLabel]; ok && ns != "" {
-				k8sClient, err := initK8sClient()
-				if err != nil {
-					return false
-				}
+				k8sClient := r.K8sClient
 				if err := deleteRBACsForNamespace(e.ObjectOld.GetName(), k8sClient); err != nil {
 					log.Error(err, fmt.Sprintf("failed to delete RBACs for namespace: %s", e.ObjectOld.GetName()))
 				} else {
@@ -1292,7 +1281,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 				}
 
 				// Delete managed namespace from cluster secret
-				if err = deleteManagedNamespaceFromClusterSecret(ns, e.ObjectOld.GetName(), k8sClient); err != nil {
+				if err := deleteManagedNamespaceFromClusterSecret(ns, e.ObjectOld.GetName(), k8sClient); err != nil {
 					log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", e.ObjectOld.GetName()))
 				} else {
 					log.Info(fmt.Sprintf("Successfully deleted namespace %s from cluster secret", e.ObjectOld.GetName()))
@@ -1303,13 +1292,9 @@ func namespaceFilterPredicate() predicate.Predicate {
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			if ns, ok := e.Object.GetLabels()[common.ArgoCDManagedByLabel]; ok && ns != "" {
-				k8sClient, err := initK8sClient()
-
-				if err != nil {
-					return false
-				}
+				k8sClient := r.K8sClient
 				// Delete managed namespace from cluster secret
-				err = deleteManagedNamespaceFromClusterSecret(ns, e.Object.GetName(), k8sClient)
+				err := deleteManagedNamespaceFromClusterSecret(ns, e.Object.GetName(), k8sClient)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", e.Object.GetName()))
 				} else {
@@ -1427,22 +1412,6 @@ func deleteManagedNamespaceFromClusterSecret(ownerNS, sourceNS string, k8sClient
 	}
 
 	return nil
-}
-
-func initK8sClient() (*kubernetes.Clientset, error) {
-	cfg, err := config.GetConfig()
-	if err != nil {
-		log.Error(err, "unable to get k8s config")
-		return nil, err
-	}
-
-	k8sClient, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		log.Error(err, "unable to create k8s client")
-		return nil, err
-	}
-
-	return k8sClient, nil
 }
 
 // getLogLevel returns the log level for a specified component if it is set or returns the default log level if it is not set
@@ -1625,11 +1594,8 @@ func isProxyCluster() bool {
 	return false
 }
 
-func getOpenShiftAPIURL() string {
-	k8s, err := initK8sClient()
-	if err != nil {
-		log.Error(err, "failed to initialize k8s client")
-	}
+func (r *ReconcileArgoCD) getOpenShiftAPIURL() string {
+	k8s := r.K8sClient
 
 	cm, err := k8s.CoreV1().ConfigMaps("openshift-console").Get(context.TODO(), "console-config", metav1.GetOptions{})
 	if err != nil {
@@ -2008,4 +1974,201 @@ func (r *ReconcileArgoCD) reconcileArgoCDAgent(cr *argoproj.ArgoCD) error {
 	}
 
 	return nil
+}
+
+func (r *ReconcileArgoCD) namespaceManagementFilterPredicate() predicate.Predicate {
+	return predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			oldNSMgmt, okOld := e.ObjectOld.(*argoproj.NamespaceManagement)
+			newNSMgmt, okNew := e.ObjectNew.(*argoproj.NamespaceManagement)
+
+			if !okOld || !okNew {
+				return false
+			}
+
+			k8sClient := r.K8sClient
+			return r.handleNamespaceManagementUpdate(oldNSMgmt, newNSMgmt, k8sClient)
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			// If namespaceManagement CR is deleted, then delete RBACs for the namespace that was present in the NamespaceManagement CR.
+			nsMgmt, ok := e.Object.(*argoproj.NamespaceManagement)
+			if !ok {
+				return false
+			}
+			k8sClient := r.K8sClient
+			return r.handleNamespaceManagementDelete(nsMgmt, k8sClient)
+		},
+	}
+}
+
+func (r *ReconcileArgoCD) argoCDNamespaceManagementFilterPredicate() predicate.Predicate {
+	return predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			valNew, ok := e.ObjectNew.(*argoproj.ArgoCD)
+			if !ok {
+				return false
+			}
+			valOld, ok := e.ObjectOld.(*argoproj.ArgoCD)
+			if !ok {
+				return false
+			}
+
+			k8sClient := r.K8sClient
+			return r.handleArgoCDNamespaceManagementUpdate(valNew, valOld, k8sClient)
+		},
+	}
+}
+
+func (r *ReconcileArgoCD) handleArgoCDNamespaceManagementUpdate(valNew, valOld *argoproj.ArgoCD, k8sClient kubernetes.Interface) bool {
+	if !reflect.DeepEqual(valOld.Spec.NamespaceManagement, valNew.Spec.NamespaceManagement) {
+		// Fetch all namespaces from the cluster
+		namespaceList := &corev1.NamespaceList{}
+		if err := r.List(context.TODO(), namespaceList); err != nil {
+			log.Error(err, "Failed to list namespaces for NamespaceManagement update")
+			// Return false as we cannot proceed without namespace info
+			return false
+		}
+
+		// Extract all namespace names into a slice
+		var allNamespaces []string
+		for _, ns := range namespaceList.Items {
+			allNamespaces = append(allNamespaces, ns.Name)
+		}
+
+		namespacesToDelete := getNamespacesToDelete(valOld.Spec.NamespaceManagement, valNew.Spec.NamespaceManagement, allNamespaces)
+
+		if len(namespacesToDelete) > 0 {
+			for _, nsEntry := range namespacesToDelete {
+				ns := &corev1.Namespace{}
+				if err := r.Get(context.TODO(), types.NamespacedName{Name: nsEntry}, ns); err != nil {
+					continue // Could not fetch namespace; skip cleanup
+				}
+
+				// Skip cleanup if managed-by label exists
+				if labelVal, labelExists := ns.Labels[common.ArgoCDManagedByLabel]; labelExists && labelVal == valOld.Namespace {
+					log.Info(fmt.Sprintf("Skipping cleanup for namespace %s because it's still labeled as managed by this ArgoCD instance", nsEntry))
+					continue
+				}
+
+				log.Info(fmt.Sprintf("Cleaning up RBACs for namespace %s", nsEntry))
+				if err := cleanupRBACsForNamespaceManagement(valOld.Namespace, nsEntry, k8sClient); err != nil {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
+func (r *ReconcileArgoCD) handleNamespaceManagementUpdate(oldNSMgmt, newNSMgmt *argoproj.NamespaceManagement, k8sClient kubernetes.Interface) bool {
+	ns := &corev1.Namespace{}
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: oldNSMgmt.Spec.ManagedBy}, ns); err != nil {
+		return false
+	}
+
+	// Skip Update if managed-by label exists and matches .spec.managedBy
+	if labelVal, labelExists := ns.Labels[common.ArgoCDManagedByLabel]; labelExists && labelVal == oldNSMgmt.Spec.ManagedBy {
+		log.Info(fmt.Sprintf("Namespace %s still managed by same ArgoCD instance via label, skipping update cleanup", oldNSMgmt.Namespace))
+		return false
+	}
+
+	// If `.spec.managedBy` changes, trigger reconciliation
+	if oldNSMgmt.Spec.ManagedBy != newNSMgmt.Spec.ManagedBy {
+		if err := cleanupRBACsForNamespaceManagement(oldNSMgmt.Spec.ManagedBy, oldNSMgmt.Namespace, k8sClient); err != nil {
+			return false
+		}
+		return true
+	}
+	return false
+}
+
+func (r *ReconcileArgoCD) handleNamespaceManagementDelete(nsMgmt *argoproj.NamespaceManagement, k8sClient kubernetes.Interface) bool {
+	ns := &corev1.Namespace{}
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: nsMgmt.Spec.ManagedBy}, ns); err != nil {
+		return false
+	}
+
+	// Skip cleanup if managed-by label exists and matches .spec.managedBy
+	if labelVal, labelExists := ns.Labels[common.ArgoCDManagedByLabel]; labelExists && labelVal == nsMgmt.Spec.ManagedBy {
+		log.Info(fmt.Sprintf("Namespace %s still managed by same ArgoCD instance via label, skipping delete cleanup", nsMgmt.Namespace))
+		return false
+	}
+
+	// Retrieve the ArgoCD instance that was managing this namespace
+	argocdNamespace := nsMgmt.Spec.ManagedBy
+	if argocdNamespace == "" {
+		// If .spec.managedBy is not set, there is no ArgoCD instance managing this namespace, so no cleanup is needed
+		log.Info("No ArgoCD CR specified in .spec.managedBy, skipping cleanup")
+		return false
+	}
+
+	if err := cleanupRBACsForNamespaceManagement(argocdNamespace, nsMgmt.Namespace, k8sClient); err != nil {
+		return false
+	}
+	return false
+}
+
+func cleanupRBACsForNamespaceManagement(argocdNamespace, nms string, k8sClient kubernetes.Interface) error {
+	if err := deleteRBACsForNamespace(nms, k8sClient); err != nil {
+		log.Error(err, fmt.Sprintf("failed to delete RBACs for namespace: %s", nms))
+		return err
+	} else {
+		log.Info(fmt.Sprintf("Successfully removed the RBACs for namespace: %s", nms))
+	}
+	if err := deleteManagedNamespaceFromClusterSecret(argocdNamespace, nms, k8sClient); err != nil {
+		log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", nms))
+		return err
+	}
+	return nil
+}
+
+// updateStatusConditionOfArgoCD calls Set Condition of NamespaceManagement status
+func updateStatusConditionOfNamespaceManagement(ctx context.Context, condition metav1.Condition, cr *argoproj.NamespaceManagement, k8sClient client.Client, log logr.Logger) error {
+	changed, newConditions := insertOrUpdateConditionsInSlice(condition, cr.Status.Conditions)
+
+	if changed {
+		// get the latest version of namespacemanagement before updating
+		if err := k8sClient.Get(ctx, types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}, cr); err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
+		cr.Status.Conditions = newConditions
+		if err := k8sClient.Status().Update(ctx, cr); err != nil {
+			log.Error(err, "unable to update NamespaceManagement status condition")
+			return err
+		}
+	}
+	return nil
+}
+
+// getNamespacesToDelete determines which namespaces were removed or had allowManagedBy changed.
+// oldList, newList contain patterns in ns.Name, but allNamespaces contains real namespace names.
+func getNamespacesToDelete(oldList, newList []argoproj.ManagedNamespaces, allNamespaces []string) []string {
+	// expandNsPatterns expands namespace patterns into actual namespaces using glob match.
+	// Example: pattern "team-*" will match ["team-123", "team-567", "team-dev", "team-prod"]
+	expandNsPatterns := func(list []argoproj.ManagedNamespaces) map[string]bool {
+		result := make(map[string]bool)
+		for _, patternEntry := range list {
+			for _, ns := range allNamespaces {
+				if glob.MatchStringInList([]string{patternEntry.Name}, ns, glob.GLOB) {
+					result[ns] = patternEntry.AllowManagedBy
+				}
+			}
+		}
+		return result
+	}
+
+	oldExpanded := expandNsPatterns(oldList)
+	newExpanded := expandNsPatterns(newList)
+
+	var namespacesToDelete []string
+	for ns, oldAllowed := range oldExpanded {
+		newAllowed, exists := newExpanded[ns]
+		if !exists || newAllowed != oldAllowed {
+			namespacesToDelete = append(namespacesToDelete, ns)
+		}
+	}
+	return namespacesToDelete
 }

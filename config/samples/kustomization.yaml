@@ -7,4 +7,5 @@ resources:
 - argoproj.io_v1alpha1_appproject.yaml
 - argoproj.io_v1alpha1_notificationsconfiguration.yaml
 - argoproj.io_v1beta1_argocd.yaml
+- argoproj.io_v1beta1_namespacemanagement.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

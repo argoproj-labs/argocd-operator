@@ -1,0 +1,6 @@
+apiVersion: argoproj.io/v1beta1
+kind: NamespaceManagement
+metadata:
+  name: namespacemanagement-sample
+spec: 
+  managedBy: argocd-ns

@@ -10,13 +10,14 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	testclient "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func TestReconcileNetworkPolicies(t *testing.T) {
 
 	a := makeTestArgoCD()
-	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme))
+	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
 
 	err := r.ReconcileRedisNetworkPolicy(a)
 	assert.NoError(t, err)
@@ -27,7 +28,7 @@ func TestReconcileNetworkPolicies(t *testing.T) {
 
 func TestRedisNetworkPolicy(t *testing.T) {
 	a := makeTestArgoCD()
-	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme))
+	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
 
 	err := r.ReconcileRedisNetworkPolicy(a)
 	assert.NoError(t, err)
@@ -54,7 +55,7 @@ func TestRedisNetworkPolicy(t *testing.T) {
 
 func TestRedisHANetworkPolicy(t *testing.T) {
 	a := makeTestArgoCD()
-	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme))
+	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
 
 	err := r.ReconcileRedisHANetworkPolicy(a)
 	assert.NoError(t, err)

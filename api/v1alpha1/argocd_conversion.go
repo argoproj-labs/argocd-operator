@@ -100,6 +100,7 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.DefaultClusterScopedRoleDisabled = src.Spec.DefaultClusterScopedRoleDisabled
 	dst.Spec.AggregatedClusterRoles = src.Spec.AggregatedClusterRoles
 	dst.Spec.ArgoCDAgent = ConvertAlphaToBetaArgoCDAgent(src.Spec.ArgoCDAgent)
+	dst.Spec.NamespaceManagement = ConvertAlphaToBetaNamespaceManagement(src.Spec.NamespaceManagement)
 
 	// Status conversion
 	dst.Status = v1beta1.ArgoCDStatus(src.Status)
@@ -174,6 +175,7 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.DefaultClusterScopedRoleDisabled = src.Spec.DefaultClusterScopedRoleDisabled
 	dst.Spec.AggregatedClusterRoles = src.Spec.AggregatedClusterRoles
 	dst.Spec.ArgoCDAgent = ConvertBetaToAlphaArgoCDAgent(src.Spec.ArgoCDAgent)
+	dst.Spec.NamespaceManagement = ConvertBetaToAlphaNamespaceManagement(src.Spec.NamespaceManagement)
 
 	// Status conversion
 	dst.Status = ArgoCDStatus(src.Status)
@@ -720,6 +722,17 @@ func ConvertAlphaToBetaArgoCDAgent(src *ArgoCDAgentSpec) *v1beta1.ArgoCDAgentSpe
 	return dst
 }
 
+func ConvertBetaToAlphaNamespaceManagement(src []v1beta1.ManagedNamespaces) []ManagedNamespaces {
+	var dst []ManagedNamespaces
+	for _, s := range src {
+		dst = append(dst, ManagedNamespaces{
+			Name:           s.Name,
+			AllowManagedBy: s.AllowManagedBy,
+		})
+	}
+	return dst
+}
+
 func ConvertAlphaToBetaPrincipal(src *PrincipalSpec) *v1beta1.PrincipalSpec {
 	var dst *v1beta1.PrincipalSpec
 	if src != nil {
@@ -756,6 +769,18 @@ func ConvertBetaToAlphaPrincipal(src *v1beta1.PrincipalSpec) *PrincipalSpec {
 			LogLevel:          src.LogLevel,
 			Image:             src.Image,
 		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaNamespaceManagement(src []ManagedNamespaces) []v1beta1.ManagedNamespaces {
+	var dst []v1beta1.ManagedNamespaces
+	for _, s := range src {
+		dst = append(dst, v1beta1.ManagedNamespaces{
+			Name:           s.Name,
+			AllowManagedBy: s.AllowManagedBy,
+		},
+		)
 	}
 	return dst
 }

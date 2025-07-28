@@ -7,8 +7,12 @@ import (
 
 	"encoding/pem"
 
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/runtime"
+	testclient "k8s.io/client-go/kubernetes/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func TestKeycloak_testRealmCreation(t *testing.T) {
@@ -25,8 +29,16 @@ func TestKeycloak_testRealmCreation(t *testing.T) {
 		token:     "dummy",
 	}
 
+	a := makeTestArgoCD()
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
 	data := &keycloakConfig{}
-	realm, _ := createRealmConfig(data)
+	realm, _ := r.createRealmConfig(data)
 
 	_, err := h.post(realm)
 	assert.NoError(t, err)

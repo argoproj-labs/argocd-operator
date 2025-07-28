@@ -25,7 +25,7 @@ type httpclient struct {
 }
 
 // Creates a new realm for Keycloak.
-func createRealm(cfg *keycloakConfig) (string, error) {
+func (r *ReconcileArgoCD) createRealm(cfg *keycloakConfig) (string, error) {
 
 	req, err := defaultRequester(cfg.KeycloakServerCert, cfg.VerifyTLS)
 	if err != nil {
@@ -52,7 +52,7 @@ func createRealm(cfg *keycloakConfig) (string, error) {
 	log.Info(fmt.Sprintf("Access Token for keycloak of ArgoCD %s in namespace %s generated successfully",
 		cfg.ArgoName, cfg.ArgoNamespace))
 
-	realmConfig, err := createRealmConfig(cfg)
+	realmConfig, err := r.createRealmConfig(cfg)
 	if err != nil {
 		return "", err
 	}
