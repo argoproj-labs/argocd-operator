@@ -2143,32 +2143,6 @@ func updateStatusConditionOfNamespaceManagement(ctx context.Context, condition m
 	return nil
 }
 
-<<<<<<< HEAD
-func (r *ReconcileArgoCD) removeNamespaceManagementCRs(argocdNamespace string) error {
-	ctx := context.Background()
-	var nsMgmtList argoproj.NamespaceManagementList
-
-	// List all NamespaceManagement CRs
-	if err := r.Client.List(ctx, &nsMgmtList); err != nil {
-		return fmt.Errorf("failed to list NamespaceManagement CRs: %w", err)
-	}
-
-	if len(nsMgmtList.Items) > 0 {
-		for _, nsMgmt := range nsMgmtList.Items {
-			if nsMgmt.Spec.ManagedBy == argocdNamespace {
-				log.Info(fmt.Sprintf("Deleting NamespaceManagement CR %s in namespace %s", nsMgmt.Name, nsMgmt.Namespace))
-
-				// Delete the NamespaceManagement CR
-				if err := r.Client.Delete(ctx, &nsMgmt); err != nil && !apierrors.IsNotFound(err) {
-					log.Error(err, fmt.Sprintf("Failed to delete NamespaceManagement CR %s in namespace %s", nsMgmt.Name, nsMgmt.Namespace))
-					return err
-				}
-			}
-		}
-	}
-
-	return nil
-=======
 // getNamespacesToDelete determines which namespaces were removed or had allowManagedBy changed.
 // oldList, newList contain patterns in ns.Name, but allNamespaces contains real namespace names.
 func getNamespacesToDelete(oldList, newList []argoproj.ManagedNamespaces, allNamespaces []string) []string {
@@ -2197,5 +2171,4 @@ func getNamespacesToDelete(oldList, newList []argoproj.ManagedNamespaces, allNam
 		}
 	}
 	return namespacesToDelete
->>>>>>> 4b3e212 (Fix and update logic and tests of namespaceManagement)
 }
