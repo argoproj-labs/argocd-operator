@@ -853,6 +853,7 @@ type ArgoCDSpec struct {
 
 	// ArgoCDAgent defines configurations for the ArgoCD Agent component.
 	ArgoCDAgent *ArgoCDAgentSpec `json:"argoCDAgent,omitempty"`
+
 	// NamespaceManagement defines the list of namespaces that Argo CD is allowed to manage.
 	NamespaceManagement []ManagedNamespaces `json:"namespaceManagement,omitempty"`
 }

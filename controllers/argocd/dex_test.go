@@ -265,7 +265,7 @@ func TestReconcileArgoCD_reconcileDeployments_Dex_with_volumes(t *testing.T) {
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 			if test.setEnvFunc != nil {
 				test.setEnvFunc(t, "false")
