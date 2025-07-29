@@ -18,8 +18,6 @@ limitations under the License.
 package schema
 
 import (
-	"os"
-
 	appsv1 "github.com/openshift/api/apps/v1"
 	configv1 "github.com/openshift/api/config/v1"
 	oauthv1 "github.com/openshift/api/oauth/v1"
@@ -33,68 +31,68 @@ import (
 
 	v1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	v1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 )
 
 var (
 	schemeLog = ctrl.Log.WithName("scheme")
 )
 
-func SetupScheme(scheme *runtime.Scheme) {
+// SchemeOptions provides toggles to register optional APIs.
+type SchemeOptions struct {
+	EnablePrometheus bool
+	EnableRoutes     bool
+	EnableVersion    bool
+	EnableKeycloak   bool
+}
+
+func SetupScheme(scheme *runtime.Scheme, opts SchemeOptions) error {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	registerArgoCDAPIs(scheme)
-	registerPrometheusAPIsIfAvailable(scheme)
-	registerOpenShiftAPIsIfAvailable(scheme)
+	// Setup Scheme for Prometheus if enabled.
+	if opts.EnablePrometheus {
+		if err := monitoringv1.AddToScheme(scheme); err != nil {
+			schemeLog.Error(err, "Failed to register Prometheus API")
+			return err
+		}
+	}
+	// Setup Scheme for OpenShift Routes if enabled.
+	if opts.EnableRoutes {
+		if err := routev1.Install(scheme); err != nil {
+			schemeLog.Error(err, "Failed to register Route API")
+			return err
+		}
+	}
+	// Setup Scheme for OpenShift config if enabled.
+	if opts.EnableVersion {
+		if err := configv1.Install(scheme); err != nil {
+			schemeLog.Error(err, "Failed to register Version API")
+			return err
+		}
+	}
+	// Setup Schemes for SSO if template instance is available.
+	if opts.EnableKeycloak {
+		schemeLog.Info("Keycloak instance can be managed using OpenShift Template.")
+		if err := templatev1.Install(scheme); err != nil {
+			schemeLog.Error(err, "Failed to register Template API")
+			return err
+		}
+		if err := appsv1.Install(scheme); err != nil {
+			schemeLog.Error(err, "Failed to register DeploymentConfig API")
+			return err
+		}
+		if err := oauthv1.Install(scheme); err != nil {
+			schemeLog.Error(err, "Failed to register OAuth API")
+			return err
+		}
+	} else {
+		schemeLog.Info("Keycloak instance cannot be managed using OpenShift Template, as //DeploymentConfig/Template API is not present.")
+	}
+
 	schemeLog.Info("Scheme setup complete.")
+	return nil
 }
 
 func registerArgoCDAPIs(scheme *runtime.Scheme) {
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
 	utilruntime.Must(v1beta1.AddToScheme(scheme))
-}
-
-func registerPrometheusAPIsIfAvailable(scheme *runtime.Scheme) {
-	if argocd.IsPrometheusAPIAvailable() {
-		if err := monitoringv1.AddToScheme(scheme); err != nil {
-			schemeLog.Error(err, "")
-			os.Exit(1)
-		}
-	}
-}
-
-func registerOpenShiftAPIsIfAvailable(scheme *runtime.Scheme) {
-	// Setup Scheme for OpenShift Routes if available.
-	if argocd.IsRouteAPIAvailable() {
-		if err := routev1.Install(scheme); err != nil {
-			schemeLog.Error(err, "")
-			os.Exit(1)
-		}
-	}
-
-	// Setup the scheme for openshift config if available
-	if argocd.IsVersionAPIAvailable() {
-		if err := configv1.Install(scheme); err != nil {
-			schemeLog.Error(err, "")
-			os.Exit(1)
-		}
-	}
-
-	// Setup Schemes for SSO if template instance is available.
-	if argocd.CanUseKeycloakWithTemplate() {
-		schemeLog.Info("Keycloak instance can be managed using OpenShift Template.")
-		if err := appsv1.Install(scheme); err != nil {
-			schemeLog.Error(err, "")
-			os.Exit(1)
-		}
-		if err := templatev1.Install(scheme); err != nil {
-			schemeLog.Error(err, "")
-			os.Exit(1)
-		}
-		if err := oauthv1.Install(scheme); err != nil {
-			schemeLog.Error(err, "")
-			os.Exit(1)
-		}
-	} else {
-		schemeLog.Info("Keycloak instance cannot be managed using OpenShift Template, as //DeploymentConfig/Template API is not present.")
-	}
 }

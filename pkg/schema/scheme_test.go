@@ -14,7 +14,12 @@ func TestSetupScheme(t *testing.T) {
 		scheme := runtime.NewScheme()
 
 		// Call SetupScheme
-		SetupScheme(scheme)
+		SetupScheme(scheme, SchemeOptions{
+			EnablePrometheus: true,
+			EnableRoutes:     true,
+			EnableVersion:    true,
+			EnableKeycloak:   true,
+		})
 
 		// Verify the scheme is not nil
 		assert.NotNil(t, scheme, "Scheme should not be nil")
@@ -57,7 +62,12 @@ func TestSetupScheme(t *testing.T) {
 
 		// This should not panic
 		assert.NotPanics(t, func() {
-			SetupScheme(scheme)
+			SetupScheme(scheme, SchemeOptions{
+				EnablePrometheus: true,
+				EnableRoutes:     true,
+				EnableVersion:    true,
+				EnableKeycloak:   true,
+			})
 		}, "SetupScheme should not panic with empty scheme")
 	})
 }

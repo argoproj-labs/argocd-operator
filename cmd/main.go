@@ -34,7 +34,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdexport"
-	operatorscheme "github.com/argoproj-labs/argocd-operator/controllers/schema"
+	operatorscheme "github.com/argoproj-labs/argocd-operator/pkg/schema"
 
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
@@ -175,7 +175,17 @@ func main() {
 	setupLog.Info("Registering Components.")
 
 	// Setup Scheme for all resources using the centralized scheme package
-	operatorscheme.SetupScheme(mgr.GetScheme())
+	err1 := operatorscheme.SetupScheme(mgr.GetScheme(), operatorscheme.SchemeOptions{
+		EnablePrometheus: argocd.IsPrometheusAPIAvailable(),
+		EnableRoutes:     argocd.IsRouteAPIAvailable(),
+		EnableVersion:    argocd.IsVersionAPIAvailable(),
+		EnableKeycloak:   argocd.CanUseKeycloakWithTemplate(),
+	})
+
+	if err1 != nil {
+		setupLog.Error(err, "failed to set up scheme: %v")
+		os.Exit(1)
+	}
 
 	k8sClient, err := initK8sClient()
 	if err != nil {
