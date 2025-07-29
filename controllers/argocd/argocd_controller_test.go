@@ -17,10 +17,12 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	testclient "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/stretchr/testify/assert"
@@ -54,7 +56,7 @@ func TestReconcileArgoCD_Reconcile_with_deleted(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
@@ -88,7 +90,7 @@ func TestReconcileArgoCD_Reconcile(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
@@ -134,7 +136,7 @@ func TestReconcileArgoCD_LabelSelector(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	rt := makeTestReconciler(cl, sch)
+	rt := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	assert.NoError(t, createNamespace(rt, a.Namespace, ""))
 
@@ -251,7 +253,7 @@ func TestReconcileArgoCD_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *testi
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 			nsArgocd := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 				Name: a.Namespace,
@@ -315,7 +317,7 @@ func TestReconcileArgoCD_CleanUp(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resources, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
@@ -400,7 +402,7 @@ func TestReconcileArgoCD_Status_Condition(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	rt := makeTestReconciler(cl, sch)
+	rt := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 	rt.LabelSelector = "foo=bar"
 	assert.NoError(t, createNamespace(rt, a.Namespace, ""))
 
@@ -446,4 +448,74 @@ func TestReconcileArgoCD_Status_Condition(t *testing.T) {
 	assert.Equal(t, a.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonSuccess)
 	assert.Equal(t, a.Status.Conditions[0].Message, "")
 	assert.Equal(t, a.Status.Conditions[0].Status, metav1.ConditionTrue)
+}
+
+func TestReconcileArgoCD_Cleanup_RBACs_When_NamespaceManagement_Disabled(t *testing.T) {
+	namespace := testNamespace
+	argoCD := makeArgoCD()
+	argoCD.Spec.NamespaceManagement = nil
+
+	// Setup a NamespaceManagement CR managed by this ArgoCD
+	nsMgmt := &argoproj.NamespaceManagement{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-ns-mgmt",
+			Namespace: namespace,
+		},
+		Spec: argoproj.NamespaceManagementSpec{
+			ManagedBy: argoCD.Namespace,
+		},
+	}
+
+	resObjs := []client.Object{argoCD, nsMgmt}
+	subresObjs := []client.Object{argoCD}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
+
+	// Create Role and RoleBinding
+	client := r.K8sClient.(*testclient.Clientset)
+	role := newRole("test-role", policyRuleForApplicationController(), argoCD)
+	role.Namespace = namespace
+	_, err := client.RbacV1().Roles(namespace).Create(context.TODO(), role, metav1.CreateOptions{})
+	assert.NoError(t, err)
+
+	roleBinding := newRoleBindingWithname("test-rolebinding", argoCD)
+	roleBinding.Namespace = namespace
+	_, err = client.RbacV1().RoleBindings(namespace).Create(context.TODO(), roleBinding, metav1.CreateOptions{})
+	assert.NoError(t, err)
+
+	// Create secrets
+	secret := argoutil.NewSecretWithSuffix(argoCD, "test")
+	secret.Labels = map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}
+	secret.Data = map[string][]byte{
+		"server":     []byte(common.ArgoCDDefaultServer),
+		"namespaces": []byte(strings.Join([]string{namespace}, ",")),
+	}
+	_, err = client.CoreV1().Secrets(argoCD.Namespace).Create(context.TODO(), secret, metav1.CreateOptions{})
+	assert.NoError(t, err)
+
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      argoCD.Name,
+			Namespace: argoCD.Namespace,
+		},
+	}
+
+	_, err = r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+
+	// Roles and Rolebinding should be deleted
+	_, err = client.RbacV1().Roles(testNamespace).Get(context.TODO(), "test-role", metav1.GetOptions{})
+	assert.ErrorContains(t, err, "not found")
+
+	_, err = client.RbacV1().RoleBindings(testNamespace).Get(context.TODO(), "test-rolebinding", metav1.GetOptions{})
+	assert.ErrorContains(t, err, "not found")
+
+	// Secret should be deleted
+	updatedSecret, err := client.CoreV1().Secrets(argoCD.Namespace).Get(context.TODO(), secret.Name, metav1.GetOptions{})
+	assert.NoError(t, err)
+	assert.Equal(t, "", string(updatedSecret.Data["namespaces"]))
 }

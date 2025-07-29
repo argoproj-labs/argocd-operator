@@ -1616,6 +1616,8 @@ OpenShiftOAuth | false | Enable automatic configuration of OpenShift OAuth authe
 Resources | [Empty] | The container compute resources.
 Version | v2.21.0 (SHA) | The tag to use with the Dex container image.
 Env | [Empty] | Environment to set for Dex.
+Volumes | [Empty] | Configure addition volumes for the Dex component. This field is optional.
+VolumeMounts | [Empty] | Configure addition volume mounts for the Dex component. This field is optional.
 
 ### Dex Example
 

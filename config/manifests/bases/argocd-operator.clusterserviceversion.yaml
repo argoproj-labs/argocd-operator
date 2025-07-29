@@ -1403,6 +1403,12 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       version: v1alpha1
+    - description: NamespaceManagement is the Schema for the namespacemanagements
+        API
+      displayName: Namespace Management
+      kind: NamespaceManagement
+      name: namespacemanagements.argoproj.io
+      version: v1beta1
   description: '---description---'
   displayName: Argo CD
   icon:
