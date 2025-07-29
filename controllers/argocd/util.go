@@ -1977,11 +1977,6 @@ func (r *ReconcileArgoCD) reconcileArgoCDAgent(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
-	log.Info("reconciling ArgoCD Agent configmap")
-	if err := argocdagent.ReconcilePrincipalConfigMap(r.Client, compName, cr, r.Scheme); err != nil {
-		return err
-	}
-
 	log.Info("reconciling ArgoCD Agent service")
 	if err := argocdagent.ReconcilePrincipalService(r.Client, compName, cr, r.Scheme); err != nil {
 		return err

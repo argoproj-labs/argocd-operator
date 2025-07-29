@@ -8,12 +8,52 @@ spec:
   argoCDAgent:
     principal:
       enabled: true
-      allowedNamespaces:
-        - "*"
-      jwtAllowGenerate: true
       auth: "mtls:CN=([^,]+)"
-      logLevel: "trace"
+      metricsPort: 8000
+      pprofPort: 6060
+      healthzPort: 8003
+      listenHost: ""
+      listenPort: 8443
+      enableWebSocket: true
+      logLevel: "info"
+      logFormat: "text"
       image: "quay.io/user/argocd-agent:v1"
+      keepAliveMinInterval: "30s"
+      redis:
+        serverAddress: "redis:6379"
+        compressionType: "gzip"
+      namespace:
+        allowedNamespaces:
+          - "*"
+        createNamespace: true
+        namespaceCreatePattern: "some-pattern"
+        namespaceCreateLabels:
+          - "environment=agent"
+      tls:
+        secretName: "tls-secret"
+        server:
+          allowGenerate: true
+          certPath: "/path/to/cert"
+          keyPath: "/path/to/key"
+          rootCASecretName: "ca-secret"
+          rootCAPath: "/path/to/ca"
+        client:
+          require: true
+          matchSubject: true
+      resourceProxy:
+        enable: true
+        secretName: "proxy-secret"
+        tls:
+          certPath: "/path/to/proxy-cert"
+          keyPath: "/path/to/proxy-key"
+          caPath: "/path/to/proxy-ca"
+        ca:
+          secretName: "proxy-ca-secret"
+          caPath: "/path/to/proxy-ca"
+      jwt:
+        allowGenerate: true
+        secretName: "jwt-secret"
+        keyPath: "/path/to/key"
   sourceNamespaces:
     - "agent-managed"
     - "agent-autonomous"

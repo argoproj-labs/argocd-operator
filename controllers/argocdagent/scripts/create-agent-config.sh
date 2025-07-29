@@ -19,12 +19,15 @@ set -eo pipefail
 RECREATE="$1"
 
 export ARGOCD_AGENT_PRINCIPAL_NAMESPACE=argocd # Should be same as ArgoCD instance namespace
-KUBECTL=$(which kubectl)
+OC=$(which oc)
 OPENSSL=$(which openssl)
+
+# Create a secret for the redis password
+${OC} create secret generic argocd-redis -n argocd --from-literal=auth="$(oc get secret argocd-redis-initial-password -n argocd -o jsonpath='{.data.admin\.password}' | base64 -d)"
 
 IPADDR=""
 if test "$IPADDR" = ""; then
-       IPADDR=$(kubectl -n ${ARGOCD_AGENT_PRINCIPAL_NAMESPACE} get svc argocd-agent-principal -o jsonpath='{.spec.clusterIP}')
+       IPADDR=$(${OC} -n ${ARGOCD_AGENT_PRINCIPAL_NAMESPACE} get svc argocd-agent-principal -o jsonpath='{.spec.clusterIP}')
 fi
 
 if ! command -v argocd-agentctl >/dev/null 2>&1; then
@@ -54,14 +57,14 @@ echo "  -> Resource proxy TLS config created."
 
 echo "[*] Creating JWT signing key and secret"
 ${OPENSSL} genpkey -algorithm RSA -out /tmp/jwt.key -pkeyopt rsa_keygen_bits:2048
-${KUBECTL} create secret generic -n ${ARGOCD_AGENT_PRINCIPAL_NAMESPACE} argocd-agent-jwt --from-file=jwt.key=/tmp/jwt.key
+${OC} create secret generic -n ${ARGOCD_AGENT_PRINCIPAL_NAMESPACE} argocd-agent-jwt --from-file=jwt.key=/tmp/jwt.key
 
 AGENTS="agent-managed agent-autonomous"
 for agent in ${AGENTS}; do
 	echo "[*] Creating configuration for agent ${agent}"
 	if test "$RECREATE" = "--recreate"; then
 		echo "  -> Deleting existing cluster secret, if it exists"
-		kubectl -n ${ARGOCD_AGENT_PRINCIPAL_NAMESPACE} delete --ignore-not-found secret cluster-${agent}
+		${OC} -n ${ARGOCD_AGENT_PRINCIPAL_NAMESPACE} delete --ignore-not-found secret cluster-${agent}
 	fi
 	if ! argocd-agentctl agent inspect ${agent} >/dev/null 2>&1; then
 		echo "  -> Creating cluster secret for agent configuration"

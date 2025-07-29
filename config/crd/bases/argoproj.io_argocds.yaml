@@ -443,32 +443,202 @@ spec:
                     description: Principal defines configurations for the Principal
                       component of Argo CD Agent.
                     properties:
-                      allowedNamespaces:
-                        description: AllowedNamespaces is the list of namespaces that
-                          the Principal component is allowed to access.
-                        items:
-                          type: string
-                        type: array
                       auth:
                         description: Auth is the authentication method for the Principal
                           component.
                         type: string
+                      enableWebSocket:
+                        description: EnableWebSocket is the flag to enable the WebSocket
+                          on gRPC to stream events to the Agent.
+                        type: boolean
                       enabled:
                         description: Enabled is the flag to enable the Principal component
                           during Argo CD installation. (optional, default `false`)
                         type: boolean
+                      healthzPort:
+                        description: HealthzPort is the port number for the Principal
+                          component healthz.
+                        type: integer
                       image:
                         description: Image is the name of Argo CD Agent image
                         type: string
-                      jwtAllowGenerate:
-                        description: JWTAllowGenerate is the flag to enable the JWT
-                          generation during Argo CD installation.
-                        type: boolean
+                      jwt:
+                        description: JWT defines the JWT options for the Principal
+                          component.
+                        properties:
+                          allowGenerate:
+                            description: AllowGenerate is the flag to enable principal
+                              to generateits own private key for signing JWT tokens.
+                            type: boolean
+                          keyPath:
+                            description: KeyPath is the path to the private key to
+                              be used for signing JWT tokens.
+                            type: string
+                          secretName:
+                            description: SecretName is the name of the secret containing
+                              the JWT signing key.
+                            type: string
+                        type: object
+                      keepAliveMinInterval:
+                        description: KeepAliveMinInterval is the minimum interval
+                          between keep-alive messages sent by the Agent to the Principal.
+                        type: string
+                      listenHost:
+                        description: ListenHost is the interface address to listen
+                          on.
+                        type: string
+                      listenPort:
+                        description: ListenPort is the port gRPC server should listen
+                          on.
+                        type: integer
+                      logFormat:
+                        description: LogFormat refers to the log format used by the
+                          Principal component.
+                        type: string
                       logLevel:
                         description: LogLevel refers to the log level used by the
-                          Principal component. Defaults to info if not configured.
-                          Valid options are debug, info, trace, error, and warn.
+                          Principal component.
                         type: string
+                      metricsPort:
+                        description: MetricsPort is the port number for the Principal
+                          component metrics.
+                        type: integer
+                      namespace:
+                        description: Namespace is the configuration for the Principal
+                          component namespace.
+                        properties:
+                          allowedNamespaces:
+                            description: AllowedNamespaces is a list of namespaces
+                              the principal shall watch and process Argo CD resources
+                              in.
+                            items:
+                              type: string
+                            type: array
+                          createNamespace:
+                            description: CreateNamespace is the flag to enable the
+                              namespace creation for agents.
+                            type: boolean
+                          namespaceCreateLabels:
+                            description: 'NamespaceCreateLabels is the set of labels
+                              to apply to namespaces created for agents. Ex: "foo=bar,bar=baz"'
+                            items:
+                              type: string
+                            type: array
+                          namespaceCreatePattern:
+                            description: NamespaceCreatePattern is a regexp pattern
+                              to restrict the names of namespaces to be created.
+                            type: string
+                        type: object
+                      pprofPort:
+                        description: PprofPort is the port number for the Principal
+                          component pprof.
+                        type: integer
+                      redis:
+                        description: Redis defines the Redis options for the Principal
+                          component.
+                        properties:
+                          compressionType:
+                            description: CompressionType is the compression type to
+                              be used by Redis.
+                            type: string
+                          serverAddress:
+                            description: ServerAddress is the address of the Redis
+                              server to be used by the Principal component.
+                            type: string
+                        type: object
+                      resourceProxy:
+                        description: ResourceProxy defines the Resource Proxy options
+                          for the Principal component.
+                        properties:
+                          ca:
+                            description: CA defines the CA options for the Principal
+                              component resource proxy.
+                            properties:
+                              caPath:
+                                description: CAPath is the path to the CA certificate
+                                  to be used by the resource proxy.
+                                type: string
+                              secretName:
+                                description: SecretName is the name of the secret
+                                  containing the CA certificate for the resource proxy.
+                                type: string
+                            type: object
+                          enable:
+                            description: Enable is the flag to enable the resource
+                              proxy.
+                            type: boolean
+                          secretName:
+                            description: SecretName is the name of the secret containing
+                              the TLS certificate and key for the resource proxy.
+                            type: string
+                          tls:
+                            description: TLS defines the TLS options for the Principal
+                              component resource proxy.
+                            properties:
+                              caPath:
+                                description: CAPath is the path to the CA certificate
+                                  to be used by the resource proxy.
+                                type: string
+                              certPath:
+                                description: CertPath is the path to the TLS certificate
+                                  to be used by the resource proxy.
+                                type: string
+                              keyPath:
+                                description: KeyPath is the path to the TLS private
+                                  key to be used by the resource proxy.
+                                type: string
+                            type: object
+                        type: object
+                      tls:
+                        description: TLS defines the TLS options for the Principal
+                          component.
+                        properties:
+                          client:
+                            description: Client defines the TLS options for the Principal
+                              component client.
+                            properties:
+                              matchSubject:
+                                description: MatchSubject is the flag to mention whether
+                                  to match the subject field in a client certificate
+                                  presented by an agent to the agent's name.
+                                type: boolean
+                              require:
+                                description: Require is the flag to indicate whether
+                                  to require client certs from agents upon connection.
+                                type: boolean
+                            type: object
+                          secretName:
+                            description: SecretName is The name of the secret containing
+                              the TLS certificate and key.
+                            type: string
+                          server:
+                            description: Server defines the TLS options for the Principal
+                              component server.
+                            properties:
+                              allowGenerate:
+                                description: AllowGenerate is the flag to allow the
+                                  principal to generate its own set of TLS cert and
+                                  key on startup when none are configured
+                                type: boolean
+                              certPath:
+                                description: CertPath is the path to the TLS certificate
+                                  to be used by the gRPC server.
+                                type: string
+                              keyPath:
+                                description: KeyPath is the path to the TLS private
+                                  key to be used by the gRPC server
+                                type: string
+                              rootCAPath:
+                                description: RootCAPath is the path to a TLS root
+                                  certificate authority to be used to validate agent's
+                                  client certificates against.
+                                type: string
+                              rootCASecretName:
+                                description: RootCASecretName is the name of the secret
+                                  containing the root CA TLS certificate
+                                type: string
+                            type: object
+                        type: object
                     type: object
                 type: object
               banner:
@@ -10161,32 +10331,202 @@ spec:
                     description: Principal defines configurations for the Principal
                       component of Argo CD Agent.
                     properties:
-                      allowedNamespaces:
-                        description: AllowedNamespaces is the list of namespaces that
-                          the Principal component is allowed to access.
-                        items:
-                          type: string
-                        type: array
                       auth:
                         description: Auth is the authentication method for the Principal
                           component.
                         type: string
+                      enableWebSocket:
+                        description: EnableWebSocket is the flag to enable the WebSocket
+                          on gRPC to stream events to the Agent.
+                        type: boolean
                       enabled:
                         description: Enabled is the flag to enable the Principal component
                           during Argo CD installation. (optional, default `false`)
                         type: boolean
+                      healthzPort:
+                        description: HealthzPort is the port number for the Principal
+                          component healthz.
+                        type: integer
                       image:
                         description: Image is the name of Argo CD Agent image
                         type: string
-                      jwtAllowGenerate:
-                        description: JWTAllowGenerate is the flag to enable the JWT
-                          generation during Argo CD installation.
-                        type: boolean
+                      jwt:
+                        description: JWT defines the JWT options for the Principal
+                          component.
+                        properties:
+                          allowGenerate:
+                            description: AllowGenerate is the flag to enable principal
+                              to generateits own private key for signing JWT tokens.
+                            type: boolean
+                          keyPath:
+                            description: KeyPath is the path to the private key to
+                              be used for signing JWT tokens.
+                            type: string
+                          secretName:
+                            description: SecretName is the name of the secret containing
+                              the JWT signing key.
+                            type: string
+                        type: object
+                      keepAliveMinInterval:
+                        description: KeepAliveMinInterval is the minimum interval
+                          between keep-alive messages sent by the Agent to the Principal.
+                        type: string
+                      listenHost:
+                        description: ListenHost is the interface address to listen
+                          on.
+                        type: string
+                      listenPort:
+                        description: ListenPort is the port gRPC server should listen
+                          on.
+                        type: integer
+                      logFormat:
+                        description: LogFormat refers to the log format used by the
+                          Principal component.
+                        type: string
                       logLevel:
                         description: LogLevel refers to the log level used by the
-                          Principal component. Defaults to info if not configured.
-                          Valid options are debug, info, trace, error, and warn.
+                          Principal component.
                         type: string
+                      metricsPort:
+                        description: MetricsPort is the port number for the Principal
+                          component metrics.
+                        type: integer
+                      namespace:
+                        description: Namespace is the configuration for the Principal
+                          component namespace.
+                        properties:
+                          allowedNamespaces:
+                            description: AllowedNamespaces is a list of namespaces
+                              the principal shall watch and process Argo CD resources
+                              in.
+                            items:
+                              type: string
+                            type: array
+                          createNamespace:
+                            description: CreateNamespace is the flag to enable the
+                              namespace creation for agents.
+                            type: boolean
+                          namespaceCreateLabels:
+                            description: 'NamespaceCreateLabels is the set of labels
+                              to apply to namespaces created for agents. Ex: "foo=bar,bar=baz"'
+                            items:
+                              type: string
+                            type: array
+                          namespaceCreatePattern:
+                            description: NamespaceCreatePattern is a regexp pattern
+                              to restrict the names of namespaces to be created.
+                            type: string
+                        type: object
+                      pprofPort:
+                        description: PprofPort is the port number for the Principal
+                          component pprof.
+                        type: integer
+                      redis:
+                        description: Redis defines the Redis options for the Principal
+                          component.
+                        properties:
+                          compressionType:
+                            description: CompressionType is the compression type to
+                              be used by Redis.
+                            type: string
+                          serverAddress:
+                            description: ServerAddress is the address of the Redis
+                              server to be used by the Principal component.
+                            type: string
+                        type: object
+                      resourceProxy:
+                        description: ResourceProxy defines the Resource Proxy options
+                          for the Principal component.
+                        properties:
+                          ca:
+                            description: CA defines the CA options for the Principal
+                              component resource proxy.
+                            properties:
+                              caPath:
+                                description: CAPath is the path to the CA certificate
+                                  to be used by the resource proxy.
+                                type: string
+                              secretName:
+                                description: SecretName is the name of the secret
+                                  containing the CA certificate for the resource proxy.
+                                type: string
+                            type: object
+                          enable:
+                            description: Enable is the flag to enable the resource
+                              proxy.
+                            type: boolean
+                          secretName:
+                            description: SecretName is the name of the secret containing
+                              the TLS certificate and key for the resource proxy.
+                            type: string
+                          tls:
+                            description: TLS defines the TLS options for the Principal
+                              component resource proxy.
+                            properties:
+                              caPath:
+                                description: CAPath is the path to the CA certificate
+                                  to be used by the resource proxy.
+                                type: string
+                              certPath:
+                                description: CertPath is the path to the TLS certificate
+                                  to be used by the resource proxy.
+                                type: string
+                              keyPath:
+                                description: KeyPath is the path to the TLS private
+                                  key to be used by the resource proxy.
+                                type: string
+                            type: object
+                        type: object
+                      tls:
+                        description: TLS defines the TLS options for the Principal
+                          component.
+                        properties:
+                          client:
+                            description: Client defines the TLS options for the Principal
+                              component client.
+                            properties:
+                              matchSubject:
+                                description: MatchSubject is the flag to mention whether
+                                  to match the subject field in a client certificate
+                                  presented by an agent to the agent's name.
+                                type: boolean
+                              require:
+                                description: Require is the flag to indicate whether
+                                  to require client certs from agents upon connection.
+                                type: boolean
+                            type: object
+                          secretName:
+                            description: SecretName is The name of the secret containing
+                              the TLS certificate and key.
+                            type: string
+                          server:
+                            description: Server defines the TLS options for the Principal
+                              component server.
+                            properties:
+                              allowGenerate:
+                                description: AllowGenerate is the flag to allow the
+                                  principal to generate its own set of TLS cert and
+                                  key on startup when none are configured
+                                type: boolean
+                              certPath:
+                                description: CertPath is the path to the TLS certificate
+                                  to be used by the gRPC server.
+                                type: string
+                              keyPath:
+                                description: KeyPath is the path to the TLS private
+                                  key to be used by the gRPC server
+                                type: string
+                              rootCAPath:
+                                description: RootCAPath is the path to a TLS root
+                                  certificate authority to be used to validate agent's
+                                  client certificates against.
+                                type: string
+                              rootCASecretName:
+                                description: RootCASecretName is the name of the secret
+                                  containing the root CA TLS certificate
+                                type: string
+                            type: object
+                        type: object
                     type: object
                 type: object
               banner:
