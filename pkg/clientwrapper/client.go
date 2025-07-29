@@ -1,4 +1,4 @@
-package argoutil
+package clientwrapper
 
 import (
 	"context"

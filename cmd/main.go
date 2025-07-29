@@ -38,7 +38,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdexport"
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/clientwrapper"
 
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
@@ -198,7 +198,7 @@ func main() {
 		setupLog.Error(err, "unable to create live client")
 		os.Exit(1)
 	}
-	wrapperClient := argoutil.NewClientWrapper(cachedClient, liveClient)
+	wrapperClient := clientwrapper.NewClientWrapper(cachedClient, liveClient)
 
 	setupLog.Info("Registering Components.")
 
