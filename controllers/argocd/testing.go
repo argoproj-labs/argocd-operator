@@ -99,26 +99,6 @@ func makeTestArgoCD(opts ...argoCDOpt) *argoproj.ArgoCD {
 	return a
 }
 
-func makeTestArgoCDForKeycloak() *argoproj.ArgoCD {
-	a := &argoproj.ArgoCD{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      testArgoCDName,
-			Namespace: testNamespace,
-		},
-		Spec: argoproj.ArgoCDSpec{
-			SSO: &argoproj.ArgoCDSSOSpec{
-				Provider: "keycloak",
-			},
-			Server: argoproj.ArgoCDServerSpec{
-				Route: argoproj.ArgoCDRouteSpec{
-					Enabled: true,
-				},
-			},
-		},
-	}
-	return a
-}
-
 func makeTestArgoCDWithResources(opts ...argoCDOpt) *argoproj.ArgoCD {
 	a := &argoproj.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{

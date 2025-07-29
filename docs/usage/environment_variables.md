@@ -34,7 +34,6 @@ The following default value of images could be overridden by setting the environ
 | --- | --- |
 | `ARGOCD_IMAGE` | [quay.io/argoproj/argocd](quay.io/argoproj/argocd) |
 | `ARGOCD_DEX_IMAGE` | [ghcr.io/dexidp/dex](ghcr.io/dexidp/dex) |
-| `ARGOCD_KEYCLOAK_IMAGE` | [quay.io/keycloak/keycloak](quay.io/keycloak/keycloak) |
 | `ARGOCD_REDIS_IMAGE` | redis |
 | `ARGOCD_REDIS_HA_IMAGE` | redis |
 | `ARGOCD_REDIS_HA_PROXY_IMAGE` | haproxy |

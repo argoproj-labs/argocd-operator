@@ -2346,7 +2346,7 @@ Resource Types:
             </em>
          </td>
          <td>
-            <p>SSO is a simple, high-level summary of where the Argo CD SSO(Dex/Keycloak) component is in its lifecycle.
+            <p>SSO is a simple, high-level summary of where the Argo CD SSO(Dex) component is in its lifecycle.
                There are four possible server values:
                Pending: The Argo CD SSO component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
                Running: All of the required Pods for the Argo CD SSO component are in a Ready state.
