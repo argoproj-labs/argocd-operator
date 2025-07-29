@@ -15,6 +15,7 @@ COPY api/ api/
 COPY common/ common/
 COPY controllers/ controllers/
 COPY version/ version/
+COPY pkg/ pkg/
 
 # Build
 ARG LD_FLAGS
