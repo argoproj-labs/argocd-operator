@@ -765,6 +765,7 @@ type ArgoCDSSOSpec struct {
 	Dex *ArgoCDDexSpec `json:"dex,omitempty"`
 
 	// Keycloak contains the configuration for Argo CD keycloak authentication
+	// Removed: This field is no longer supported and the related functionality has been removed.
 	Keycloak *ArgoCDKeycloakSpec `json:"keycloak,omitempty"`
 }
 

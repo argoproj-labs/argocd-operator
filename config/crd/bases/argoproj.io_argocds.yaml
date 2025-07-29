@@ -7531,7 +7531,7 @@ spec:
                   keycloak:
                     description: |-
                       Keycloak contains the configuration for Argo CD keycloak authentication
-                      Deprecated: This field is planned for removal in a future release and will no longer be supported.
+                      Removed: This field is no longer supported and the related functionality has been removed.
                     properties:
                       host:
                         description: Host is the hostname to use for Ingress/Route
@@ -28708,8 +28708,9 @@ spec:
                         type: array
                     type: object
                   keycloak:
-                    description: Keycloak contains the configuration for Argo CD keycloak
-                      authentication
+                    description: |-
+                      Keycloak contains the configuration for Argo CD keycloak authentication
+                      Removed: This field is no longer supported and the related functionality has been removed.
                     properties:
                       host:
                         description: Host is the hostname to use for Ingress/Route

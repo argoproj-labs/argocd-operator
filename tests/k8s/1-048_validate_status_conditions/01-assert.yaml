@@ -8,7 +8,7 @@ metadata:
   name: argocd
 status:
   conditions:
-  - message: 'illegal SSO configuration: Unsupported SSO provider type. Supported providers are dex and keycloak'
+  - message: 'illegal SSO configuration: Unsupported SSO provider type. Supported provider is dex'
     reason: ErrorOccurred
     status: "False"
     type: Reconciled
