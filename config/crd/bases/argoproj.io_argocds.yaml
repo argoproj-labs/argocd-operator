@@ -443,32 +443,245 @@ spec:
                     description: Principal defines configurations for the Principal
                       component of Argo CD Agent.
                     properties:
-                      allowedNamespaces:
-                        description: AllowedNamespaces is the list of namespaces that
-                          the Principal component is allowed to access.
-                        items:
-                          type: string
-                        type: array
-                      auth:
-                        description: Auth is the authentication method for the Principal
-                          component.
-                        type: string
                       enabled:
                         description: Enabled is the flag to enable the Principal component
                           during Argo CD installation. (optional, default `false`)
                         type: boolean
-                      image:
-                        description: Image is the name of Argo CD Agent image
-                        type: string
-                      jwtAllowGenerate:
-                        description: JWTAllowGenerate is the flag to enable the JWT
-                          generation during Argo CD installation.
-                        type: boolean
-                      logLevel:
-                        description: LogLevel refers to the log level used by the
-                          Principal component. Defaults to info if not configured.
-                          Valid options are debug, info, trace, error, and warn.
-                        type: string
+                      jwt:
+                        description: JWT defines the JWT options for the Principal
+                          component.
+                        properties:
+                          insecureGenerate:
+                            description: InsecureGenerate is the flag to allow the
+                              principal to generate its own private key for signing
+                              JWT tokens (insecure).
+                            type: boolean
+                          secretName:
+                            description: SecretName is the name of the secret containing
+                              the JWT signing key.
+                            type: string
+                        type: object
+                      namespace:
+                        description: Namespace is the configuration for the Principal
+                          component namespace.
+                        properties:
+                          allowedNamespaces:
+                            description: AllowedNamespaces is a list of namespaces
+                              the principal shall watch and process Argo CD resources
+                              in.
+                            items:
+                              type: string
+                            type: array
+                          enableNamespaceCreate:
+                            description: EnableNamespaceCreate is the flag to enable
+                              namespace creation for agents.
+                            type: boolean
+                          namespaceCreateLabels:
+                            description: 'NamespaceCreateLabels is the set of labels
+                              to apply to namespaces created for agents. Ex: "foo=bar,bar=baz"'
+                            items:
+                              type: string
+                            type: array
+                          namespaceCreatePattern:
+                            description: NamespaceCreatePattern is a regexp pattern
+                              to restrict the names of namespaces to be created.
+                            type: string
+                        type: object
+                      redis:
+                        description: Redis defines the Redis options for the Principal
+                          component.
+                        properties:
+                          compressionType:
+                            description: CompressionType is the compression type to
+                              be used by Redis.
+                            type: string
+                          serverAddress:
+                            description: ServerAddress is the address of the Redis
+                              server to be used by the Principal component.
+                            type: string
+                        type: object
+                      resourceProxy:
+                        description: ResourceProxy defines the Resource Proxy options
+                          for the Principal component.
+                        properties:
+                          caSecretName:
+                            description: CASecretName is the name of the secret containing
+                              the CA certificate for the resource proxy.
+                            type: string
+                          secretName:
+                            description: SecretName is the name of the secret containing
+                              the TLS certificate and key for the resource proxy.
+                            type: string
+                        type: object
+                      server:
+                        description: Server defines the server options for the Principal
+                          component.
+                        properties:
+                          auth:
+                            description: Auth is the authentication method for the
+                              Principal component.
+                            type: string
+                          enableWebSocket:
+                            description: EnableWebSocket is the flag to enable the
+                              WebSocket on gRPC to stream events to the Agent.
+                            type: boolean
+                          env:
+                            description: Env lets you specify environment for principal
+                              pods
+                            items:
+                              description: EnvVar represents an environment variable
+                                present in a Container.
+                              properties:
+                                name:
+                                  description: Name of the environment variable. Must
+                                    be a C_IDENTIFIER.
+                                  type: string
+                                value:
+                                  description: |-
+                                    Variable references $(VAR_NAME) are expanded
+                                    using the previously defined environment variables in the container and
+                                    any service environment variables. If a variable cannot be resolved,
+                                    the reference in the input string will be unchanged. Double $$ are reduced
+                                    to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e.
+                                    "$$(VAR_NAME)" will produce the string literal "$(VAR_NAME)".
+                                    Escaped references will never be expanded, regardless of whether the variable
+                                    exists or not.
+                                    Defaults to "".
+                                  type: string
+                                valueFrom:
+                                  description: Source for the environment variable's
+                                    value. Cannot be used if value is not empty.
+                                  properties:
+                                    configMapKeyRef:
+                                      description: Selects a key of a ConfigMap.
+                                      properties:
+                                        key:
+                                          description: The key to select.
+                                          type: string
+                                        name:
+                                          default: ""
+                                          description: |-
+                                            Name of the referent.
+                                            This field is effectively required, but due to backwards compatibility is
+                                            allowed to be empty. Instances of this type with an empty value here are
+                                            almost certainly wrong.
+                                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                          type: string
+                                        optional:
+                                          description: Specify whether the ConfigMap
+                                            or its key must be defined
+                                          type: boolean
+                                      required:
+                                      - key
+                                      type: object
+                                      x-kubernetes-map-type: atomic
+                                    fieldRef:
+                                      description: |-
+                                        Selects a field of the pod: supports metadata.name, metadata.namespace, `metadata.labels['<KEY>']`, `metadata.annotations['<KEY>']`,
+                                        spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs.
+                                      properties:
+                                        apiVersion:
+                                          description: Version of the schema the FieldPath
+                                            is written in terms of, defaults to "v1".
+                                          type: string
+                                        fieldPath:
+                                          description: Path of the field to select
+                                            in the specified API version.
+                                          type: string
+                                      required:
+                                      - fieldPath
+                                      type: object
+                                      x-kubernetes-map-type: atomic
+                                    resourceFieldRef:
+                                      description: |-
+                                        Selects a resource of the container: only resources limits and requests
+                                        (limits.cpu, limits.memory, limits.ephemeral-storage, requests.cpu, requests.memory and requests.ephemeral-storage) are currently supported.
+                                      properties:
+                                        containerName:
+                                          description: 'Container name: required for
+                                            volumes, optional for env vars'
+                                          type: string
+                                        divisor:
+                                          anyOf:
+                                          - type: integer
+                                          - type: string
+                                          description: Specifies the output format
+                                            of the exposed resources, defaults to
+                                            "1"
+                                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                          x-kubernetes-int-or-string: true
+                                        resource:
+                                          description: 'Required: resource to select'
+                                          type: string
+                                      required:
+                                      - resource
+                                      type: object
+                                      x-kubernetes-map-type: atomic
+                                    secretKeyRef:
+                                      description: Selects a key of a secret in the
+                                        pod's namespace
+                                      properties:
+                                        key:
+                                          description: The key of the secret to select
+                                            from.  Must be a valid secret key.
+                                          type: string
+                                        name:
+                                          default: ""
+                                          description: |-
+                                            Name of the referent.
+                                            This field is effectively required, but due to backwards compatibility is
+                                            allowed to be empty. Instances of this type with an empty value here are
+                                            almost certainly wrong.
+                                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                          type: string
+                                        optional:
+                                          description: Specify whether the Secret
+                                            or its key must be defined
+                                          type: boolean
+                                      required:
+                                      - key
+                                      type: object
+                                      x-kubernetes-map-type: atomic
+                                  type: object
+                              required:
+                              - name
+                              type: object
+                            type: array
+                          image:
+                            description: Image is the name of Argo CD Agent image
+                            type: string
+                          keepAliveMinInterval:
+                            description: KeepAliveMinInterval is the minimum interval
+                              between keep-alive messages sent by the Agent to the
+                              Principal.
+                            type: string
+                          logFormat:
+                            description: LogFormat refers to the log format used by
+                              the Principal component.
+                            type: string
+                          logLevel:
+                            description: LogLevel refers to the log level used by
+                              the Principal component.
+                            type: string
+                        type: object
+                      tls:
+                        description: TLS defines the TLS options for the Principal
+                          component.
+                        properties:
+                          insecureGenerate:
+                            description: InsecureGenerate is the flag to allow the
+                              principal to generate its own set of TLS cert and key
+                              on startup when none are configured
+                            type: boolean
+                          rootCASecretName:
+                            description: RootCASecretName is the name of the secret
+                              containing the root CA TLS certificate
+                            type: string
+                          secretName:
+                            description: SecretName is The name of the secret containing
+                              the TLS certificate and key.
+                            type: string
+                        type: object
                     type: object
                 type: object
               banner:
@@ -10187,32 +10400,245 @@ spec:
                     description: Principal defines configurations for the Principal
                       component of Argo CD Agent.
                     properties:
-                      allowedNamespaces:
-                        description: AllowedNamespaces is the list of namespaces that
-                          the Principal component is allowed to access.
-                        items:
-                          type: string
-                        type: array
-                      auth:
-                        description: Auth is the authentication method for the Principal
-                          component.
-                        type: string
                       enabled:
                         description: Enabled is the flag to enable the Principal component
                           during Argo CD installation. (optional, default `false`)
                         type: boolean
-                      image:
-                        description: Image is the name of Argo CD Agent image
-                        type: string
-                      jwtAllowGenerate:
-                        description: JWTAllowGenerate is the flag to enable the JWT
-                          generation during Argo CD installation.
-                        type: boolean
-                      logLevel:
-                        description: LogLevel refers to the log level used by the
-                          Principal component. Defaults to info if not configured.
-                          Valid options are debug, info, trace, error, and warn.
-                        type: string
+                      jwt:
+                        description: JWT defines the JWT options for the Principal
+                          component.
+                        properties:
+                          insecureGenerate:
+                            description: InsecureGenerate is the flag to allow the
+                              principal to generate its own private key for signing
+                              JWT tokens (insecure).
+                            type: boolean
+                          secretName:
+                            description: SecretName is the name of the secret containing
+                              the JWT signing key.
+                            type: string
+                        type: object
+                      namespace:
+                        description: Namespace is the configuration for the Principal
+                          component namespace.
+                        properties:
+                          allowedNamespaces:
+                            description: AllowedNamespaces is a list of namespaces
+                              the principal shall watch and process Argo CD resources
+                              in.
+                            items:
+                              type: string
+                            type: array
+                          enableNamespaceCreate:
+                            description: EnableNamespaceCreate is the flag to enable
+                              namespace creation for agents.
+                            type: boolean
+                          namespaceCreateLabels:
+                            description: 'NamespaceCreateLabels is the set of labels
+                              to apply to namespaces created for agents. Ex: "foo=bar,bar=baz"'
+                            items:
+                              type: string
+                            type: array
+                          namespaceCreatePattern:
+                            description: NamespaceCreatePattern is a regexp pattern
+                              to restrict the names of namespaces to be created.
+                            type: string
+                        type: object
+                      redis:
+                        description: Redis defines the Redis options for the Principal
+                          component.
+                        properties:
+                          compressionType:
+                            description: CompressionType is the compression type to
+                              be used by Redis.
+                            type: string
+                          serverAddress:
+                            description: ServerAddress is the address of the Redis
+                              server to be used by the Principal component.
+                            type: string
+                        type: object
+                      resourceProxy:
+                        description: ResourceProxy defines the Resource Proxy options
+                          for the Principal component.
+                        properties:
+                          caSecretName:
+                            description: CASecretName is the name of the secret containing
+                              the CA certificate for the resource proxy.
+                            type: string
+                          secretName:
+                            description: SecretName is the name of the secret containing
+                              the TLS certificate and key for the resource proxy.
+                            type: string
+                        type: object
+                      server:
+                        description: Server defines the server options for the Principal
+                          component.
+                        properties:
+                          auth:
+                            description: Auth is the authentication method for the
+                              Principal component.
+                            type: string
+                          enableWebSocket:
+                            description: EnableWebSocket is the flag to enable the
+                              WebSocket on gRPC to stream events to the Agent.
+                            type: boolean
+                          env:
+                            description: Env lets you specify environment for principal
+                              pods
+                            items:
+                              description: EnvVar represents an environment variable
+                                present in a Container.
+                              properties:
+                                name:
+                                  description: Name of the environment variable. Must
+                                    be a C_IDENTIFIER.
+                                  type: string
+                                value:
+                                  description: |-
+                                    Variable references $(VAR_NAME) are expanded
+                                    using the previously defined environment variables in the container and
+                                    any service environment variables. If a variable cannot be resolved,
+                                    the reference in the input string will be unchanged. Double $$ are reduced
+                                    to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e.
+                                    "$$(VAR_NAME)" will produce the string literal "$(VAR_NAME)".
+                                    Escaped references will never be expanded, regardless of whether the variable
+                                    exists or not.
+                                    Defaults to "".
+                                  type: string
+                                valueFrom:
+                                  description: Source for the environment variable's
+                                    value. Cannot be used if value is not empty.
+                                  properties:
+                                    configMapKeyRef:
+                                      description: Selects a key of a ConfigMap.
+                                      properties:
+                                        key:
+                                          description: The key to select.
+                                          type: string
+                                        name:
+                                          default: ""
+                                          description: |-
+                                            Name of the referent.
+                                            This field is effectively required, but due to backwards compatibility is
+                                            allowed to be empty. Instances of this type with an empty value here are
+                                            almost certainly wrong.
+                                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                          type: string
+                                        optional:
+                                          description: Specify whether the ConfigMap
+                                            or its key must be defined
+                                          type: boolean
+                                      required:
+                                      - key
+                                      type: object
+                                      x-kubernetes-map-type: atomic
+                                    fieldRef:
+                                      description: |-
+                                        Selects a field of the pod: supports metadata.name, metadata.namespace, `metadata.labels['<KEY>']`, `metadata.annotations['<KEY>']`,
+                                        spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs.
+                                      properties:
+                                        apiVersion:
+                                          description: Version of the schema the FieldPath
+                                            is written in terms of, defaults to "v1".
+                                          type: string
+                                        fieldPath:
+                                          description: Path of the field to select
+                                            in the specified API version.
+                                          type: string
+                                      required:
+                                      - fieldPath
+                                      type: object
+                                      x-kubernetes-map-type: atomic
+                                    resourceFieldRef:
+                                      description: |-
+                                        Selects a resource of the container: only resources limits and requests
+                                        (limits.cpu, limits.memory, limits.ephemeral-storage, requests.cpu, requests.memory and requests.ephemeral-storage) are currently supported.
+                                      properties:
+                                        containerName:
+                                          description: 'Container name: required for
+                                            volumes, optional for env vars'
+                                          type: string
+                                        divisor:
+                                          anyOf:
+                                          - type: integer
+                                          - type: string
+                                          description: Specifies the output format
+                                            of the exposed resources, defaults to
+                                            "1"
+                                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                          x-kubernetes-int-or-string: true
+                                        resource:
+                                          description: 'Required: resource to select'
+                                          type: string
+                                      required:
+                                      - resource
+                                      type: object
+                                      x-kubernetes-map-type: atomic
+                                    secretKeyRef:
+                                      description: Selects a key of a secret in the
+                                        pod's namespace
+                                      properties:
+                                        key:
+                                          description: The key of the secret to select
+                                            from.  Must be a valid secret key.
+                                          type: string
+                                        name:
+                                          default: ""
+                                          description: |-
+                                            Name of the referent.
+                                            This field is effectively required, but due to backwards compatibility is
+                                            allowed to be empty. Instances of this type with an empty value here are
+                                            almost certainly wrong.
+                                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                          type: string
+                                        optional:
+                                          description: Specify whether the Secret
+                                            or its key must be defined
+                                          type: boolean
+                                      required:
+                                      - key
+                                      type: object
+                                      x-kubernetes-map-type: atomic
+                                  type: object
+                              required:
+                              - name
+                              type: object
+                            type: array
+                          image:
+                            description: Image is the name of Argo CD Agent image
+                            type: string
+                          keepAliveMinInterval:
+                            description: KeepAliveMinInterval is the minimum interval
+                              between keep-alive messages sent by the Agent to the
+                              Principal.
+                            type: string
+                          logFormat:
+                            description: LogFormat refers to the log format used by
+                              the Principal component.
+                            type: string
+                          logLevel:
+                            description: LogLevel refers to the log level used by
+                              the Principal component.
+                            type: string
+                        type: object
+                      tls:
+                        description: TLS defines the TLS options for the Principal
+                          component.
+                        properties:
+                          insecureGenerate:
+                            description: InsecureGenerate is the flag to allow the
+                              principal to generate its own set of TLS cert and key
+                              on startup when none are configured
+                            type: boolean
+                          rootCASecretName:
+                            description: RootCASecretName is the name of the secret
+                              containing the root CA TLS certificate
+                            type: string
+                          secretName:
+                            description: SecretName is The name of the secret containing
+                              the TLS certificate and key.
+                            type: string
+                        type: object
                     type: object
                 type: object
               banner:

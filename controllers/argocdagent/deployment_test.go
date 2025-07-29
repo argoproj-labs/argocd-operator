@@ -59,7 +59,10 @@ func withPrincipalImage(image string) argoCDOpt {
 		if a.Spec.ArgoCDAgent.Principal == nil {
 			a.Spec.ArgoCDAgent.Principal = &argoproj.PrincipalSpec{}
 		}
-		a.Spec.ArgoCDAgent.Principal.Image = image
+		if a.Spec.ArgoCDAgent.Principal.Server == nil {
+			a.Spec.ArgoCDAgent.Principal.Server = &argoproj.PrincipalServerSpec{}
+		}
+		a.Spec.ArgoCDAgent.Principal.Server.Image = image
 	}
 }
 
@@ -369,14 +372,26 @@ func TestReconcilePrincipalDeployment_VerifyDeploymentSpec(t *testing.T) {
 	// Verify args
 	assert.Equal(t, []string{testCompName}, container.Args)
 
-	// Verify environment variables are set from ConfigMap
+	// Verify environment variables are set
 	assert.True(t, len(container.Env) > 0)
-	// Check that environment variables reference the correct ConfigMap
+	// Verify some expected environment variables are present
+	envNames := make(map[string]bool)
 	for _, env := range container.Env {
-		if env.ValueFrom != nil && env.ValueFrom.ConfigMapKeyRef != nil {
-			assert.Equal(t, cr.Name+cmSuffix, env.ValueFrom.ConfigMapKeyRef.Name)
+		envNames[env.Name] = true
+		// Most environment variables should have direct values, except for secrets like Redis password
+		if env.Name == "REDIS_PASSWORD" {
+			assert.NotNil(t, env.ValueFrom, "REDIS_PASSWORD should reference a secret")
+			assert.NotNil(t, env.ValueFrom.SecretKeyRef, "REDIS_PASSWORD should reference a secret key")
+			assert.Equal(t, "argocd-redis", env.ValueFrom.SecretKeyRef.Name)
+			assert.Equal(t, "auth", env.ValueFrom.SecretKeyRef.Key)
+		} else {
+			// All other environment variables should have direct values, not references
+			assert.Nil(t, env.ValueFrom, "Environment variable %s should have direct value, not reference", env.Name)
 		}
 	}
+	// Check for some environment variables
+	assert.True(t, envNames["ARGOCD_PRINCIPAL_NAMESPACE"], "ARGOCD_PRINCIPAL_NAMESPACE should be set")
+	assert.True(t, envNames["REDIS_PASSWORD"], "REDIS_PASSWORD should be set")
 
 	// Verify volume mounts
 	assert.Len(t, container.VolumeMounts, 2)
@@ -454,7 +469,7 @@ func TestReconcilePrincipalDeployment_DefaultImage(t *testing.T) {
 		Namespace: cr.Namespace,
 	}, deployment)
 	assert.NoError(t, err)
-	assert.Equal(t, "quay.io/argoprojlabs/argocd-agent:v0.3.2", deployment.Spec.Template.Spec.Containers[0].Image)
+	assert.Equal(t, common.ArgoCDAgentPrincipalDefaultImageName, deployment.Spec.Template.Spec.Containers[0].Image)
 }
 
 func TestReconcilePrincipalDeployment_VolumeMountsAndVolumes(t *testing.T) {

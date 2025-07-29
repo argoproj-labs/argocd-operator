@@ -22,6 +22,9 @@ export ARGOCD_AGENT_PRINCIPAL_NAMESPACE=argocd # Should be same as ArgoCD instan
 KUBECTL=$(which kubectl)
 OPENSSL=$(which openssl)
 
+# Create a secret for the redis password
+${KUBECTL} create secret generic argocd-redis -n argocd --from-literal=auth="$(${KUBECTL} get secret argocd-redis-initial-password -n argocd -o jsonpath='{.data.admin\.password}' | base64 -d)"
+
 IPADDR=""
 if test "$IPADDR" = ""; then
        IPADDR=$(kubectl -n ${ARGOCD_AGENT_PRINCIPAL_NAMESPACE} get svc argocd-agent-principal -o jsonpath='{.spec.clusterIP}')

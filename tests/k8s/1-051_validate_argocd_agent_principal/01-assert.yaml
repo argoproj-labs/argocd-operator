@@ -84,56 +84,7 @@ metadata:
   name: argocd-agent-principal-redisproxy
   namespace: argocd-e2e-cluster-config  
 spec:
-  ports:
-  - name: redis
-    port: 6379
-    protocol: TCP
-    targetPort: 6379
-  selector:
-    app.kubernetes.io/name: argocd-agent-principal
-  sessionAffinity: None
   type: ClusterIP
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: argocd-agent-principal-params
-  namespace: argocd-e2e-cluster-config
-data:
-  principal.jwt.allow-generate: 'true'
-  principal.jwt.secret-name: argocd-agent-jwt
-  principal.log.format: text
-  principal.tls.server.root-ca-path: ''
-  principal.resource-proxy.tls.ca-path: ''
-  principal.namespace-create.enable: 'false'
-  principal.resource-proxy.tls.key-path: ''
-  principal.pprof-port: '0'
-  principal.keep-alive-min-interval: 30s
-  principal.listen.port: '8443'
-  principal.auth: 'mtls:CN=([^,]+)'
-  principal.resource-proxy.secret-name: argocd-agent-resource-proxy-tls
-  principal.tls.client-cert.match-subject: 'false'
-  principal.tls.client-cert.require: 'false'
-  principal.tls.server.key-path: ''
-  principal.tls.server.root-ca-secret-name: argocd-agent-ca
-  principal.metrics.port: '8000'
-  principal.listen.host: ''
-  principal.namespace-create.pattern: ''
-  principal.tls.server.allow-generate: 'false'
-  principal.redis-compression-type: gzip
-  principal.tls.secret-name: argocd-agent-principal-tls
-  principal.resource-proxy.ca.path: ''
-  principal.tls.server.cert-path: ''
-  principal.resource-proxy.ca.secret-name: argocd-agent-ca
-  principal.enable-resource-proxy: 'true'
-  principal.jwt.key-path: ''
-  principal.log.level: trace
-  principal.namespace: argocd-e2e-cluster-config
-  principal.resource-proxy.tls.cert-path: ''
-  principal.redis-server-address: 'argocd-redis:6379'
-  principal.allowed-namespaces: '*'
-  principal.enable-websocket: 'false'
-  principal.namespace-create.labels: ''
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -164,14 +115,55 @@ kind: Deployment
 metadata:
   name: argocd-agent-principal
   namespace: argocd-e2e-cluster-config
-  labels:
-    app.kubernetes.io/component: principal
-    app.kubernetes.io/managed-by: argocd
-    app.kubernetes.io/name: argocd-agent-principal
-    app.kubernetes.io/part-of: argocd-agent
 spec:
   template:
     spec:
       containers:
       - name: argocd-agent-principal
         image: quay.io/user/argocd-agent:v1
+        env:
+        - name: ARGOCD_PRINCIPAL_LOG_LEVEL
+          value: trace
+        - name: ARGOCD_PRINCIPAL_NAMESPACE
+          value: argocd-e2e-cluster-config
+        - name: ARGOCD_PRINCIPAL_ALLOWED_NAMESPACES
+          value: '*'
+        - name: ARGOCD_PRINCIPAL_NAMESPACE_CREATE_ENABLE
+          value: 'false'
+        - name: ARGOCD_PRINCIPAL_NAMESPACE_CREATE_PATTERN
+        - name: ARGOCD_PRINCIPAL_NAMESPACE_CREATE_LABELS
+        - name: ARGOCD_PRINCIPAL_TLS_SERVER_ALLOW_GENERATE
+          value: 'true'
+        - name: ARGOCD_PRINCIPAL_JWT_ALLOW_GENERATE
+          value: 'true'
+        - name: ARGOCD_PRINCIPAL_AUTH
+          value: 'mtls:CN=([^,]+)'
+        - name: ARGOCD_PRINCIPAL_ENABLE_RESOURCE_PROXY
+          value: 'true'
+        - name: ARGOCD_PRINCIPAL_KEEP_ALIVE_MIN_INTERVAL
+          value: 30s
+        - name: ARGOCD_PRINCIPAL_REDIS_SERVER_ADDRESS
+          value: 'argocd-redis:6379'
+        - name: ARGOCD_PRINCIPAL_REDIS_COMPRESSION_TYPE
+          value: gzip
+        - name: ARGOCD_PRINCIPAL_LOG_FORMAT
+          value: text
+        - name: ARGOCD_PRINCIPAL_ENABLE_WEBSOCKET
+          value: 'false'
+        - name: ARGOCD_PRINCIPAL_TLS_SECRET_NAME
+          value: argocd-agent-principal-tls
+        - name: ARGOCD_PRINCIPAL_TLS_SERVER_ROOT_CA_SECRET_NAME
+          value: argocd-agent-ca
+        - name: ARGOCD_PRINCIPAL_RESOURCE_PROXY_SECRET_NAME
+          value: argocd-agent-resource-proxy-tls
+        - name: ARGOCD_PRINCIPAL_RESOURCE_PROXY_CA_SECRET_NAME
+          value: argocd-agent-ca
+        - name: ARGOCD_PRINCIPAL_JWT_SECRET_NAME
+          value: argocd-agent-jwt
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: auth
+              name: argocd-redis
+              optional: true
+
