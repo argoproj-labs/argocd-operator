@@ -71,6 +71,7 @@ const (
 	PrincipalKeepAliveMinInterval      = "principal.keep-alive-min-interval"
 	PrincipalRedisCompressionType      = "principal.redis-compression-type"
 	PrincipalPprofPort                 = "principal.pprof-port"
+	PrincipalRedisPassword             = "auth"
 
 	// Environment variable names for Principal configuration
 	// These constants define the environment variable names that can override default values
@@ -108,6 +109,7 @@ const (
 	EnvArgoCDPrincipalResourceProxyCaSecretName = "ARGOCD_PRINCIPAL_RESOURCE_PROXY_CA_SECRET_NAME"
 	EnvArgoCDPrincipalResourceProxyCaPath       = "ARGOCD_PRINCIPAL_RESOURCE_PROXY_CA_PATH"
 	EnvArgoCDPrincipalJwtSecretName             = "ARGOCD_PRINCIPAL_JWT_SECRET_NAME"
+	EnvRedisPassword                            = "REDIS_PASSWORD"
 )
 
 const cmSuffix = "-agent-principal-params"

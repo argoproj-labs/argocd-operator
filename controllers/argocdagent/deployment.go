@@ -587,6 +587,17 @@ func buildPrincipalContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
 					Optional:             ptr.To(true),
 				},
 			},
+		}, {
+			Name: EnvRedisPassword,
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					Key: PrincipalRedisPassword,
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "argocd-redis",
+					},
+					Optional: ptr.To(true),
+				},
+			},
 		}}
 
 	return env
