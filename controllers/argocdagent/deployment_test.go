@@ -127,7 +127,7 @@ func TestReconcilePrincipalDeployment_DeploymentDoesNotExist_PrincipalEnabled(t 
 	assert.Equal(t, buildPrincipalImage(cr), container.Image)
 	assert.Equal(t, corev1.PullAlways, container.ImagePullPolicy)
 	assert.Equal(t, buildArgs(testCompName), container.Args)
-	assert.Equal(t, buildPrincipalContainerEnv(), container.Env)
+	assert.Equal(t, buildPrincipalContainerEnv(cr), container.Env)
 	assert.Equal(t, buildSecurityContext(), container.SecurityContext)
 	assert.Equal(t, buildPorts(testCompName), container.Ports)
 	assert.Equal(t, buildVolumeMounts(), container.VolumeMounts)
@@ -361,21 +361,47 @@ func TestReconcilePrincipalDeployment_VerifyDeploymentSpec(t *testing.T) {
 	principalPort := container.Ports[0]
 	assert.Equal(t, testCompName, principalPort.Name)
 	assert.Equal(t, int32(8443), principalPort.ContainerPort)
+	assert.Equal(t, corev1.ProtocolTCP, principalPort.Protocol)
+
 	metricsPort := container.Ports[1]
 	assert.Equal(t, "metrics", metricsPort.Name)
 	assert.Equal(t, int32(8000), metricsPort.ContainerPort)
+	assert.Equal(t, corev1.ProtocolTCP, metricsPort.Protocol)
+
+	redisPort := container.Ports[2]
+	assert.Equal(t, "redis", redisPort.Name)
+	assert.Equal(t, int32(6379), redisPort.ContainerPort)
+	assert.Equal(t, corev1.ProtocolTCP, redisPort.Protocol)
 
 	// Verify args
 	assert.Equal(t, []string{testCompName}, container.Args)
 
-	// Verify environment variables are set from ConfigMap
+	// Verify environment variables are set
 	assert.True(t, len(container.Env) > 0)
-	// Check that environment variables reference the correct ConfigMap
+
+	// Check for key environment variables
+	envMap := make(map[string]string)
 	for _, env := range container.Env {
-		if env.ValueFrom != nil && env.ValueFrom.ConfigMapKeyRef != nil {
-			assert.Equal(t, "argocd-agent-params", env.ValueFrom.ConfigMapKeyRef.Name)
-		}
+		envMap[env.Name] = env.Value
 	}
+
+	// Verify critical environment variables have expected default values
+	assert.Equal(t, "8443", envMap[EnvArgoCDPrincipalListenPort])
+	assert.Equal(t, "info", envMap[EnvArgoCDPrincipalLogLevel])
+	assert.Equal(t, "8000", envMap[EnvArgoCDPrincipalMetricsPort])
+	assert.Equal(t, cr.Namespace, envMap[EnvArgoCDPrincipalNamespace])
+	assert.Equal(t, "text", envMap[EnvArgoCDPrincipalLogFormat])
+	assert.Equal(t, "false", envMap[EnvArgoCDPrincipalTLSServerAllowGenerate])
+	assert.Equal(t, "false", envMap[EnvArgoCDPrincipalTLSClientCertRequire])
+	assert.Equal(t, "false", envMap[EnvArgoCDPrincipalJWTAllowGenerate])
+	assert.Equal(t, "mtls:CN=([^,]+)", envMap[EnvArgoCDPrincipalAuth])
+	assert.Equal(t, "false", envMap[EnvArgoCDPrincipalEnableWebSocket])
+	assert.Equal(t, "false", envMap[EnvArgoCDPrincipalEnableResourceProxy])
+	assert.Equal(t, "30s", envMap[EnvArgoCDPrincipalKeepAliveMinInterval])
+	assert.Equal(t, "argocd-redis:6379", envMap[EnvArgoCDPrincipalRedisServerAddress])
+	assert.Equal(t, "gzip", envMap[EnvArgoCDPrincipalRedisCompressionType])
+	assert.Equal(t, "0", envMap[EnvArgoCDPrincipalPprofPort])
+	assert.Equal(t, "8003", envMap[EnvArgoCDPrincipalHealthzPort])
 
 	// Verify volume mounts
 	assert.Len(t, container.VolumeMounts, 2)
