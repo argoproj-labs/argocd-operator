@@ -102,12 +102,12 @@ const (
 	EnvArgoCDPrincipalRedisServerAddress        = "ARGOCD_PRINCIPAL_REDIS_SERVER_ADDRESS"
 	EnvArgoCDPrincipalRedisCompressionType      = "ARGOCD_PRINCIPAL_REDIS_COMPRESSION_TYPE"
 	EnvArgoCDPrincipalPprofPort                 = "ARGOCD_PRINCIPAL_PPROF_PORT"
-	EncArgoCDPrincipalTlsSecretName             = "ARGOCD_PRINCIPAL_TLS_SECRET_NAME"
-	EncArgoCDPrincipalTlsServerRootCASecretName = "ARGOCD_PRINCIPAL_TLS_SERVER_ROOT_CA_SECRET_NAME"
-	EncArgoCDPrincipalResourceProxySecretName   = "ARGOCD_PRINCIPAL_RESOURCE_PROXY_SECRET_NAME"
-	EncArgoCDPrincipalResourceProxyCaSecretName = "ARGOCD_PRINCIPAL_RESOURCE_PROXY_CA_SECRET_NAME"
-	EncArgoCDPrincipalResourceProxyCaPath       = "ARGOCD_PRINCIPAL_RESOURCE_PROXY_CA_PATH"
-	EncArgoCDPrincipalJwtSecretName             = "ARGOCD_PRINCIPAL_JWT_SECRET_NAME"
+	EnvArgoCDPrincipalTlsSecretName             = "ARGOCD_PRINCIPAL_TLS_SECRET_NAME"
+	EnvArgoCDPrincipalTlsServerRootCASecretName = "ARGOCD_PRINCIPAL_TLS_SERVER_ROOT_CA_SECRET_NAME"
+	EnvArgoCDPrincipalResourceProxySecretName   = "ARGOCD_PRINCIPAL_RESOURCE_PROXY_SECRET_NAME"
+	EnvArgoCDPrincipalResourceProxyCaSecretName = "ARGOCD_PRINCIPAL_RESOURCE_PROXY_CA_SECRET_NAME"
+	EnvArgoCDPrincipalResourceProxyCaPath       = "ARGOCD_PRINCIPAL_RESOURCE_PROXY_CA_PATH"
+	EnvArgoCDPrincipalJwtSecretName             = "ARGOCD_PRINCIPAL_JWT_SECRET_NAME"
 )
 
 const cmSuffix = "-agent-principal-params"
@@ -413,42 +413,42 @@ func getPrincipalPprofPort() string {
 }
 
 func getPrincipalJwtSecretName() string {
-	if value := os.Getenv(EncArgoCDPrincipalJwtSecretName); value != "" {
+	if value := os.Getenv(EnvArgoCDPrincipalJwtSecretName); value != "" {
 		return value
 	}
 	return "argocd-agent-jwt"
 }
 
 func getPrincipalResourceProxyCaPath() string {
-	if value := os.Getenv(EncArgoCDPrincipalResourceProxyCaPath); value != "" {
+	if value := os.Getenv(EnvArgoCDPrincipalResourceProxyCaPath); value != "" {
 		return value
 	}
 	return ""
 }
 
 func getPrincipalResourceProxyCaSecretName() string {
-	if value := os.Getenv(EncArgoCDPrincipalResourceProxyCaSecretName); value != "" {
+	if value := os.Getenv(EnvArgoCDPrincipalResourceProxyCaSecretName); value != "" {
 		return value
 	}
 	return "argocd-agent-ca"
 }
 
 func getPrincipalResourceProxySecretName() string {
-	if value := os.Getenv(EncArgoCDPrincipalResourceProxySecretName); value != "" {
+	if value := os.Getenv(EnvArgoCDPrincipalResourceProxySecretName); value != "" {
 		return value
 	}
 	return "argocd-agent-resource-proxy-tls"
 }
 
 func getPrincipalTlsSecretName() string {
-	if value := os.Getenv(EncArgoCDPrincipalTlsSecretName); value != "" {
+	if value := os.Getenv(EnvArgoCDPrincipalTlsSecretName); value != "" {
 		return value
 	}
 	return "argocd-agent-principal-tls"
 }
 
 func getPrincipalTlsServerRootCASecretName() string {
-	if value := os.Getenv(EncArgoCDPrincipalTlsServerRootCASecretName); value != "" {
+	if value := os.Getenv(EnvArgoCDPrincipalTlsServerRootCASecretName); value != "" {
 		return value
 	}
 	return "argocd-agent-ca"

@@ -533,6 +533,60 @@ func buildPrincipalContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
 					Optional:             ptr.To(true),
 				},
 			},
+		}, {
+			Name: EnvArgoCDPrincipalTlsSecretName,
+			ValueFrom: &corev1.EnvVarSource{
+				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+					Key:                  PrincipalTLSSecretName,
+					LocalObjectReference: ref,
+					Optional:             ptr.To(true),
+				},
+			},
+		}, {
+			Name: EnvArgoCDPrincipalTlsServerRootCASecretName,
+			ValueFrom: &corev1.EnvVarSource{
+				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+					Key:                  PrincipalTLSServerRootCASecretName,
+					LocalObjectReference: ref,
+					Optional:             ptr.To(true),
+				},
+			},
+		}, {
+			Name: EnvArgoCDPrincipalResourceProxySecretName,
+			ValueFrom: &corev1.EnvVarSource{
+				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+					Key:                  PrincipalResourceProxySecretName,
+					LocalObjectReference: ref,
+					Optional:             ptr.To(true),
+				},
+			},
+		}, {
+			Name: EnvArgoCDPrincipalResourceProxyCaPath,
+			ValueFrom: &corev1.EnvVarSource{
+				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+					Key:                  PrincipalResourceProxyCAPath,
+					LocalObjectReference: ref,
+					Optional:             ptr.To(true),
+				},
+			},
+		}, {
+			Name: EnvArgoCDPrincipalResourceProxyCaSecretName,
+			ValueFrom: &corev1.EnvVarSource{
+				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+					Key:                  PrincipalResourceProxyCASecretName,
+					LocalObjectReference: ref,
+					Optional:             ptr.To(true),
+				},
+			},
+		}, {
+			Name: EnvArgoCDPrincipalJwtSecretName,
+			ValueFrom: &corev1.EnvVarSource{
+				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+					Key:                  PrincipalJwtSecretName,
+					LocalObjectReference: ref,
+					Optional:             ptr.To(true),
+				},
+			},
 		}}
 
 	return env
