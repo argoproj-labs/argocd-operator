@@ -37,8 +37,9 @@ func (cw *ClientWrapper) Get(ctx context.Context, key types.NamespacedName, obj 
 		// Found in cache, return successfully
 		return nil
 	}
-	// If not found in cache, check if it's a NotFound error
-	if errors.IsNotFound(err) {
+	// If not found in cache, check if it's a NotFound error aslo check if it is a configmap or secret
+	// This is to avoid unnecessary live lookups for objects that are not expected to be cached
+	if errors.IsNotFound(err) && (obj.GetObjectKind().GroupVersionKind().Kind == "ConfigMap" || obj.GetObjectKind().GroupVersionKind().Kind == "Secret") {
 		// Use liveClient to do a live lookup of resource
 		liveErr := cw.liveClient.Get(ctx, key, obj, opts...)
 		if liveErr == nil {
@@ -61,7 +62,6 @@ func (cw *ClientWrapper) Get(ctx context.Context, key types.NamespacedName, obj 
 		// Object not found in both cache and live - return the live error
 		return liveErr
 	}
-
 	// For other errors (e.g., API server down, permissions), return the original cache error
 	return err
 }
