@@ -354,7 +354,6 @@ func filterTransform(obj any) (any, error) {
 	if !ok {
 		return obj, nil // return non-secrets as-is
 	}
-
 	// Include secrets with either tracking label OR cluster type label
 	if secret.Labels[common.ArgoCDTrackedByOperatorLabel] == common.ArgoCDAppName ||
 		secret.Labels[common.ArgoCDSecretTypeLabel] == "cluster" {
