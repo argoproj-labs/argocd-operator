@@ -42,7 +42,7 @@ func TestReconcilePrincipalConfigMap_ConfigMapDoesNotExist_PrincipalDisabled(t *
 	// Verify ConfigMap was not created
 	cm := &corev1.ConfigMap{}
 	err = cl.Get(context.TODO(), types.NamespacedName{
-		Name:      cr.Name + "-agent-params",
+		Name:      cr.Name + cmSuffix,
 		Namespace: cr.Namespace,
 	}, cm)
 	assert.True(t, errors.IsNotFound(err))
@@ -64,13 +64,13 @@ func TestReconcilePrincipalConfigMap_ConfigMapDoesNotExist_PrincipalEnabled(t *t
 	// Verify ConfigMap was created
 	cm := &corev1.ConfigMap{}
 	err = cl.Get(context.TODO(), types.NamespacedName{
-		Name:      cr.Name + "-agent-params",
+		Name:      cr.Name + cmSuffix,
 		Namespace: cr.Namespace,
 	}, cm)
 	assert.NoError(t, err)
 
 	// Verify ConfigMap has expected metadata
-	assert.Equal(t, cr.Name+"-agent-params", cm.Name)
+	assert.Equal(t, cr.Name+cmSuffix, cm.Name)
 	assert.Equal(t, cr.Namespace, cm.Namespace)
 	assert.Equal(t, buildLabelsForAgentPrincipal(cr.Name, testCompName), cm.Labels)
 
@@ -96,7 +96,7 @@ func TestReconcilePrincipalConfigMap_ConfigMapExists_PrincipalDisabled(t *testin
 	// Create existing ConfigMap
 	existingCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-agent-params",
+			Name:      cr.Name + cmSuffix,
 			Namespace: cr.Namespace,
 			Labels:    buildLabelsForAgentPrincipal(cr.Name, testCompName),
 		},
@@ -113,7 +113,7 @@ func TestReconcilePrincipalConfigMap_ConfigMapExists_PrincipalDisabled(t *testin
 	// Verify ConfigMap was deleted
 	cm := &corev1.ConfigMap{}
 	err = cl.Get(context.TODO(), types.NamespacedName{
-		Name:      cr.Name + "-agent-params",
+		Name:      cr.Name + cmSuffix,
 		Namespace: cr.Namespace,
 	}, cm)
 	assert.True(t, errors.IsNotFound(err))
@@ -131,7 +131,7 @@ func TestReconcilePrincipalConfigMap_ConfigMapExists_PrincipalEnabled_SameData(t
 	expectedData := buildData(cr)
 	existingCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-agent-params",
+			Name:      cr.Name + cmSuffix,
 			Namespace: cr.Namespace,
 			Labels:    buildLabelsForAgentPrincipal(cr.Name, testCompName),
 		},
@@ -148,7 +148,7 @@ func TestReconcilePrincipalConfigMap_ConfigMapExists_PrincipalEnabled_SameData(t
 	// Verify ConfigMap still exists with same data
 	cm := &corev1.ConfigMap{}
 	err = cl.Get(context.TODO(), types.NamespacedName{
-		Name:      cr.Name + "-agent-params",
+		Name:      cr.Name + cmSuffix,
 		Namespace: cr.Namespace,
 	}, cm)
 	assert.NoError(t, err)
@@ -167,7 +167,7 @@ func TestReconcilePrincipalConfigMap_ConfigMapExists_PrincipalEnabled_DifferentD
 	}
 	existingCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-agent-params",
+			Name:      cr.Name + cmSuffix,
 			Namespace: cr.Namespace,
 			Labels:    buildLabelsForAgentPrincipal(cr.Name, testCompName),
 		},
@@ -184,7 +184,7 @@ func TestReconcilePrincipalConfigMap_ConfigMapExists_PrincipalEnabled_DifferentD
 	// Verify ConfigMap was updated with new data
 	cm := &corev1.ConfigMap{}
 	err = cl.Get(context.TODO(), types.NamespacedName{
-		Name:      cr.Name + "-agent-params",
+		Name:      cr.Name + cmSuffix,
 		Namespace: cr.Namespace,
 	}, cm)
 	assert.NoError(t, err)
@@ -205,7 +205,7 @@ func TestReconcilePrincipalConfigMap_ConfigMapExists_PrincipalNotSet(t *testing.
 
 	existingCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-agent-params",
+			Name:      cr.Name + cmSuffix,
 			Namespace: cr.Namespace,
 			Labels:    buildLabelsForAgentPrincipal(cr.Name, testCompName),
 		},
@@ -222,7 +222,7 @@ func TestReconcilePrincipalConfigMap_ConfigMapExists_PrincipalNotSet(t *testing.
 	// Verify ConfigMap was deleted
 	cm := &corev1.ConfigMap{}
 	err = cl.Get(context.TODO(), types.NamespacedName{
-		Name:      cr.Name + "-agent-params",
+		Name:      cr.Name + cmSuffix,
 		Namespace: cr.Namespace,
 	}, cm)
 	assert.True(t, errors.IsNotFound(err))
@@ -244,7 +244,7 @@ func TestReconcilePrincipalConfigMap_ConfigMapDoesNotExist_AgentNotSet(t *testin
 	// Verify ConfigMap was not created
 	cm := &corev1.ConfigMap{}
 	err = cl.Get(context.TODO(), types.NamespacedName{
-		Name:      cr.Name + "-agent-params",
+		Name:      cr.Name + cmSuffix,
 		Namespace: cr.Namespace,
 	}, cm)
 	assert.True(t, errors.IsNotFound(err))
