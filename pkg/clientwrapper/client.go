@@ -3,6 +3,7 @@ package clientwrapper
 import (
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client" // Renamed to avoid conflict with our wrapper's name
@@ -39,28 +40,42 @@ func (cw *ClientWrapper) Get(ctx context.Context, key types.NamespacedName, obj 
 	}
 	// If not found in cache, check if it's a NotFound error aslo check if it is a configmap or secret
 	// This is to avoid unnecessary live lookups for objects that are not expected to be cached
-	if errors.IsNotFound(err) && (obj.GetObjectKind().GroupVersionKind().Kind == "ConfigMap" || obj.GetObjectKind().GroupVersionKind().Kind == "Secret") {
-		// Use liveClient to do a live lookup of resource
-		liveErr := cw.liveClient.Get(ctx, key, obj, opts...)
-		if liveErr == nil {
-			// Resource found live - try to label it for future caching
-			// Create patch from the original live state
-			patch := ctrlclient.MergeFrom(obj.DeepCopyObject().(ctrlclient.Object))
-			// Add the tracking label to match cache filtering
-			labels := obj.GetLabels()
-			if labels == nil {
-				labels = make(map[string]string)
-			}
-			labels[common.ArgoCDTrackedByOperatorLabel] = common.ArgoCDAppName
-			obj.SetLabels(labels)
-			// Attempt to patch the live object with the new label
-			// If patching fails, we still succeeded in getting the resource
-			// Return success - we found the object live
-			_ = cw.liveClient.Patch(ctx, obj, patch)
-			return nil
+	if errors.IsNotFound(err) {
+		isConfigMapOrSecret := false
+		switch obj.(type) {
+		case *corev1.ConfigMap:
+			isConfigMapOrSecret = true
+		case *corev1.Secret:
+			isConfigMapOrSecret = true
 		}
-		// Object not found in both cache and live - return the live error
-		return liveErr
+		if isConfigMapOrSecret {
+			// Use liveClient to do a live lookup of resource
+			liveErr := cw.liveClient.Get(ctx, key, obj, opts...)
+			if liveErr == nil {
+				// Resource found live - try to label it for future caching
+				// Create a copy of the original object for the patch
+				original := obj.DeepCopyObject().(ctrlclient.Object)
+
+				// Add the tracking label to the object
+				labels := obj.GetLabels()
+				if labels == nil {
+					labels = make(map[string]string)
+				}
+				labels[common.ArgoCDTrackedByOperatorLabel] = common.ArgoCDAppName
+				obj.SetLabels(labels)
+
+				// Create patch from original to modified object
+				patch := ctrlclient.MergeFrom(original)
+
+				// Attempt to patch the live object with the new label
+				// If patching fails, we still succeeded in getting the resource
+				_ = cw.liveClient.Patch(ctx, obj, patch)
+
+				return nil
+			}
+			// Object not found in both cache and live - return the live error
+			return liveErr
+		}
 	}
 	// For other errors (e.g., API server down, permissions), return the original cache error
 	return err
