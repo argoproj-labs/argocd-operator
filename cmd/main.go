@@ -349,22 +349,42 @@ func getWatchNamespace() (string, error) {
 	return ns, nil
 }
 
-func setupCacheOptions() cache.Options {
-	cacheOpts := cache.Options{}
-
-	// Create label selector for ArgoCD-managed resources
-	watchedByArgoCDSelector := labels.SelectorFromSet(
-		labels.Set{common.ArgoCDTrackedByOperatorLabel: common.ArgoCDAppName},
-	)
-
-	setupLog.Info(fmt.Sprintf("Setting up cache with label selector: %s=%s", common.ArgoCDTrackedByOperatorLabel, common.ArgoCDAppName))
-
-	// Only cache ConfigMaps and Secrets that have the ArgoCD label
-	cacheOpts.ByObject = map[ctrlclient.Object]cache.ByObject{
-		&corev1.Secret{}:    {Label: watchedByArgoCDSelector},
-		&corev1.ConfigMap{}: {Label: watchedByArgoCDSelector},
+func filterTransform(obj any) (any, error) {
+	secret, ok := obj.(*corev1.Secret)
+	if !ok {
+		return obj, nil // return non-secrets as-is
 	}
 
+	// Include secrets with either tracking label OR cluster type label
+	if secret.Labels[common.ArgoCDTrackedByOperatorLabel] == common.ArgoCDAppName ||
+		secret.Labels[common.ArgoCDSecretTypeLabel] == "cluster" {
+		argocd.SecretsCached.Inc()
+		return obj, nil // include in cache
+	}
+	// Filtered out: do not cache
+	return nil, nil
+}
+
+func configMapFilterTransform(obj any) (any, error) {
+	configMap, ok := obj.(*corev1.ConfigMap)
+	if !ok {
+		return obj, nil // return non-configmaps as-is
+	}
+	// Only cache ConfigMaps with ArgoCD tracking label
+	if configMap.Labels[common.ArgoCDTrackedByOperatorLabel] == common.ArgoCDAppName {
+		argocd.ConfigMapsCached.Inc()
+		return obj, nil // include in cache
+	}
+	// Filtered out: do not cache
+	return nil, nil
+}
+
+func setupCacheOptions() cache.Options {
+	cacheOpts := cache.Options{}
+	cacheOpts.ByObject = map[ctrlclient.Object]cache.ByObject{
+		&corev1.Secret{}:    {Transform: filterTransform},
+		&corev1.ConfigMap{}: {Transform: configMapFilterTransform},
+	}
 	return cacheOpts
 }
 
