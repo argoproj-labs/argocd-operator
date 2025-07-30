@@ -97,7 +97,7 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: argocd-agent-params
+  name: argocd-agent-principal-params
   namespace: argocd-e2e-cluster-config
 data:
   principal.jwt.allow-generate: 'true'

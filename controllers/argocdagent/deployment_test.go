@@ -127,7 +127,7 @@ func TestReconcilePrincipalDeployment_DeploymentDoesNotExist_PrincipalEnabled(t 
 	assert.Equal(t, buildPrincipalImage(cr), container.Image)
 	assert.Equal(t, corev1.PullAlways, container.ImagePullPolicy)
 	assert.Equal(t, buildArgs(testCompName), container.Args)
-	assert.Equal(t, buildPrincipalContainerEnv(), container.Env)
+	assert.Equal(t, buildPrincipalContainerEnv(cr), container.Env)
 	assert.Equal(t, buildSecurityContext(), container.SecurityContext)
 	assert.Equal(t, buildPorts(testCompName), container.Ports)
 	assert.Equal(t, buildVolumeMounts(), container.VolumeMounts)
@@ -373,7 +373,7 @@ func TestReconcilePrincipalDeployment_VerifyDeploymentSpec(t *testing.T) {
 	// Check that environment variables reference the correct ConfigMap
 	for _, env := range container.Env {
 		if env.ValueFrom != nil && env.ValueFrom.ConfigMapKeyRef != nil {
-			assert.Equal(t, "argocd-agent-params", env.ValueFrom.ConfigMapKeyRef.Name)
+			assert.Equal(t, cr.Name+cmSuffix, env.ValueFrom.ConfigMapKeyRef.Name)
 		}
 	}
 

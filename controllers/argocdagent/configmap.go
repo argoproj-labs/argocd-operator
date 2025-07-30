@@ -110,6 +110,8 @@ const (
 	EncArgoCDPrincipalJwtSecretName             = "ARGOCD_PRINCIPAL_JWT_SECRET_NAME"
 )
 
+var cmSuffix = "-agent-principal-params"
+
 // ReconcilePrincipalConfigMap manages the lifecycle of the Principal component's ConfigMap.
 // It creates, updates, or deletes the ConfigMap based on the ArgoCD CR's Principal configuration.
 // The ConfigMap contains all the configuration parameters needed by the Principal component.
@@ -167,7 +169,7 @@ func ReconcilePrincipalConfigMap(client client.Client, compName string, cr *argo
 func buildConfigMap(cr *argoproj.ArgoCD, compName string) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-agent-params",
+			Name:      cr.Name + cmSuffix,
 			Namespace: cr.Namespace,
 			Labels:    buildLabelsForAgentPrincipal(cr.Name, compName),
 		},

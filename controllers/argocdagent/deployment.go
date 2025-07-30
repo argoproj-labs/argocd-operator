@@ -106,7 +106,7 @@ func buildPrincipalSpec(compName, saName string, cr *argoproj.ArgoCD) appsv1.Dep
 						Image:           buildPrincipalImage(cr),
 						ImagePullPolicy: corev1.PullAlways,
 						Name:            generateAgentResourceName(cr.Name, compName),
-						Env:             buildPrincipalContainerEnv(),
+						Env:             buildPrincipalContainerEnv(cr),
 						Args:            buildArgs(compName),
 						SecurityContext: buildSecurityContext(),
 						Ports:           buildPorts(compName),
@@ -147,14 +147,17 @@ func buildPorts(compName string) []corev1.ContainerPort {
 		{
 			ContainerPort: 8443,
 			Name:          compName,
+			Protocol:      corev1.ProtocolTCP,
 		},
 		{
 			ContainerPort: 8000,
 			Name:          "metrics",
+			Protocol:      corev1.ProtocolTCP,
 		},
 		{
 			ContainerPort: 6379,
 			Name:          "redis",
+			Protocol:      corev1.ProtocolTCP,
 		},
 	}
 }
@@ -246,10 +249,10 @@ func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, dep
 		deployment.Spec.Template.Spec.Containers[0].Name = generateAgentResourceName(cr.Name, compName)
 	}
 
-	if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Env, buildPrincipalContainerEnv()) {
+	if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Env, buildPrincipalContainerEnv(cr)) {
 		log.Info("deployment container env is being updated")
 		changed = true
-		deployment.Spec.Template.Spec.Containers[0].Env = buildPrincipalContainerEnv()
+		deployment.Spec.Template.Spec.Containers[0].Env = buildPrincipalContainerEnv(cr)
 	}
 
 	if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Args, buildArgs(compName)) {
@@ -279,10 +282,10 @@ func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, dep
 	return deployment, changed
 }
 
-func buildPrincipalContainerEnv() []corev1.EnvVar {
+func buildPrincipalContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
 
 	ref := corev1.LocalObjectReference{
-		Name: "argocd-agent-params",
+		Name: cr.Name + cmSuffix,
 	}
 
 	env := []corev1.EnvVar{
