@@ -110,7 +110,7 @@ const (
 	EncArgoCDPrincipalJwtSecretName             = "ARGOCD_PRINCIPAL_JWT_SECRET_NAME"
 )
 
-var cmSuffix = "-agent-principal-params"
+const cmSuffix = "-agent-principal-params"
 
 // ReconcilePrincipalConfigMap manages the lifecycle of the Principal component's ConfigMap.
 // It creates, updates, or deletes the ConfigMap based on the ArgoCD CR's Principal configuration.
