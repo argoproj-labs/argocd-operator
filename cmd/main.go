@@ -350,25 +350,34 @@ func getWatchNamespace() (string, error) {
 }
 
 func filterTransform(obj any) (any, error) {
-	secret, ok := obj.(*corev1.Secret)
-	if !ok {
-		return obj, nil // return non-secrets as-is
+	switch obj := obj.(type) {
+	case *corev1.Secret:
+		labels := obj.GetLabels()
+		if labels[common.ArgoCDTrackedByOperatorLabel] == common.ArgoCDAppName ||
+			labels[common.ArgoCDSecretTypeLabel] == "cluster" {
+			argocd.SecretsCached.Inc()
+			return obj, nil // include in cache
+		}
+		return nil, nil
+	case *corev1.ConfigMap:
+		labels := obj.GetLabels()
+		if labels[common.ArgoCDTrackedByOperatorLabel] == common.ArgoCDAppName {
+			argocd.ConfigMapsCached.Inc()
+			return obj, nil // include in cache
+		}
+		return nil, nil
+
+	default:
+		// Prevent caching of unknown types
+		return nil, nil
 	}
-	// Include secrets with either tracking label OR cluster type label
-	if secret.Labels[common.ArgoCDTrackedByOperatorLabel] == common.ArgoCDAppName ||
-		secret.Labels[common.ArgoCDSecretTypeLabel] == "cluster" {
-		argocd.SecretsCached.Inc()
-		return obj, nil // include in cache
-	}
-	// Filtered out: do not cache
-	return nil, nil
 }
 
 func setupCacheOptions() cache.Options {
 	cacheOpts := cache.Options{}
 	cacheOpts.ByObject = map[ctrlclient.Object]cache.ByObject{
 		&corev1.Secret{}:    {Transform: filterTransform},
-		&corev1.ConfigMap{}: {Label: labels.SelectorFromSet(labels.Set{common.ArgoCDTrackedByOperatorLabel: common.ArgoCDAppName})},
+		&corev1.ConfigMap{}: {Transform: filterTransform},
 	}
 	return cacheOpts
 }
