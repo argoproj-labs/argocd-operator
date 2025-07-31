@@ -364,25 +364,11 @@ func filterTransform(obj any) (any, error) {
 	return nil, nil
 }
 
-func configMapFilterTransform(obj any) (any, error) {
-	configMap, ok := obj.(*corev1.ConfigMap)
-	if !ok {
-		return obj, nil // return non-configmaps as-is
-	}
-	// Only cache ConfigMaps with ArgoCD tracking label
-	if configMap.Labels[common.ArgoCDTrackedByOperatorLabel] == common.ArgoCDAppName {
-		argocd.ConfigMapsCached.Inc()
-		return obj, nil // include in cache
-	}
-	// Filtered out: do not cache
-	return nil, nil
-}
-
 func setupCacheOptions() cache.Options {
 	cacheOpts := cache.Options{}
 	cacheOpts.ByObject = map[ctrlclient.Object]cache.ByObject{
 		&corev1.Secret{}:    {Transform: filterTransform},
-		&corev1.ConfigMap{}: {Transform: configMapFilterTransform},
+		&corev1.ConfigMap{}: {Transform: filterTransform},
 	}
 	return cacheOpts
 }
