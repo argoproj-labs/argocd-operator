@@ -368,7 +368,7 @@ func setupCacheOptions() cache.Options {
 	cacheOpts := cache.Options{}
 	cacheOpts.ByObject = map[ctrlclient.Object]cache.ByObject{
 		&corev1.Secret{}:    {Transform: filterTransform},
-		&corev1.ConfigMap{}: {Transform: filterTransform},
+		&corev1.ConfigMap{}: {Label: labels.SelectorFromSet(labels.Set{common.ArgoCDTrackedByOperatorLabel: common.ArgoCDAppName})},
 	}
 	return cacheOpts
 }
