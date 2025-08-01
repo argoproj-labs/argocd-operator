@@ -70,7 +70,7 @@ import (
 const (
 	grafanaDeprecatedWarning     = "Warning: grafana field is deprecated from ArgoCD: field will be ignored."
 	initialRepositoriesWarning   = "Warning: Argo CD InitialRepositories field is deprecated from ArgoCD, field will be ignored."
-	repositoryCredentialsWarning = "Warning: Argo CD RepositoryCredentials field is deprecated from ArgoCD, field will be ignored."
+	repositoryCredentialsWarning = "Warning: Argo CD RepositoryCredentials field is deprecated from ArgoCD, field will be ignored." // #nosec G101
 )
 
 var (
@@ -712,7 +712,7 @@ func (r *ReconcileArgoCD) reconcileCertificateAuthority(cr *argoproj.ArgoCD) err
 func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoproj.ArgoCD) bool {
 	var tlsSecretObj corev1.Secret
 	tlsSecretName := types.NamespacedName{Namespace: cr.Namespace, Name: common.ArgoCDRedisServerTLSSecretName}
-	err := r.Client.Get(context.TODO(), tlsSecretName, &tlsSecretObj)
+	err := r.Get(context.TODO(), tlsSecretName, &tlsSecretObj)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			log.Error(err, "error looking up redis tls secret")
@@ -731,7 +731,7 @@ func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoproj.ArgoCD) bool {
 				svc := &corev1.Service{}
 
 				// Get the owning object of the secret
-				err := r.Client.Get(context.TODO(), key, svc)
+				err := r.Get(context.TODO(), key, svc)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("could not get owner of secret %s", tlsSecretObj.GetName()))
 					return false
@@ -929,14 +929,14 @@ func (r *ReconcileArgoCD) removeManagedByLabelFromNamespaces(namespace string) e
 	listOption := client.MatchingLabels{
 		common.ArgoCDManagedByLabel: namespace,
 	}
-	if err := r.Client.List(context.TODO(), nsList, listOption); err != nil {
+	if err := r.List(context.TODO(), nsList, listOption); err != nil {
 		return err
 	}
 
 	nsList.Items = append(nsList.Items, corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})
 	for _, n := range nsList.Items {
 		ns := &corev1.Namespace{}
-		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: n.Name}, ns); err != nil {
+		if err := r.Get(context.TODO(), types.NamespacedName{Name: n.Name}, ns); err != nil {
 			return err
 		}
 
@@ -949,7 +949,7 @@ func (r *ReconcileArgoCD) removeManagedByLabelFromNamespaces(namespace string) e
 		}
 		delete(ns.Labels, common.ArgoCDManagedByLabel)
 		argoutil.LogResourceUpdate(log, ns, "removing 'managed-by' label")
-		if err := r.Client.Update(context.TODO(), ns); err != nil {
+		if err := r.Update(context.TODO(), ns); err != nil {
 			log.Error(err, fmt.Sprintf("failed to remove label from namespace [%s]", ns.Name))
 		}
 	}
@@ -972,7 +972,7 @@ func argocdInstanceSelector(name string) (labels.Selector, error) {
 func (r *ReconcileArgoCD) removeDeletionFinalizer(argocd *argoproj.ArgoCD) error {
 	argocd.Finalizers = removeString(argocd.GetFinalizers(), common.ArgoCDDeletionFinalizer)
 	argoutil.LogResourceUpdate(log, argocd, "removing deletion finalizer")
-	if err := r.Client.Update(context.TODO(), argocd); err != nil {
+	if err := r.Update(context.TODO(), argocd); err != nil {
 		return fmt.Errorf("failed to remove deletion finalizer from %s: %w", argocd.Name, err)
 	}
 	return nil
@@ -981,7 +981,7 @@ func (r *ReconcileArgoCD) removeDeletionFinalizer(argocd *argoproj.ArgoCD) error
 func (r *ReconcileArgoCD) addDeletionFinalizer(argocd *argoproj.ArgoCD) error {
 	argocd.Finalizers = append(argocd.Finalizers, common.ArgoCDDeletionFinalizer)
 	argoutil.LogResourceUpdate(log, argocd, "adding deletion finalizer")
-	if err := r.Client.Update(context.TODO(), argocd); err != nil {
+	if err := r.Update(context.TODO(), argocd); err != nil {
 		return fmt.Errorf("failed to add deletion finalizer for %s: %w", argocd.Name, err)
 	}
 	return nil
@@ -1444,7 +1444,7 @@ func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
 	}
 
 	// get the list of namespaces managed by the Argo CD instance
-	if err := r.Client.List(context.TODO(), namespaces, listOption); err != nil {
+	if err := r.List(context.TODO(), namespaces, listOption); err != nil {
 		return err
 	}
 
@@ -1459,7 +1459,7 @@ func (r *ReconcileArgoCD) getSourceNamespaces(cr *argoproj.ArgoCD) ([]string, er
 	sourceNamespaces := []string{}
 	namespaces := &corev1.NamespaceList{}
 
-	if err := r.Client.List(context.TODO(), namespaces, &client.ListOptions{}); err != nil {
+	if err := r.List(context.TODO(), namespaces, &client.ListOptions{}); err != nil {
 		return nil, err
 	}
 
@@ -1480,7 +1480,7 @@ func (r *ReconcileArgoCD) setManagedSourceNamespaces(cr *argoproj.ArgoCD) error 
 	}
 
 	// get the list of namespaces managed by the Argo CD instance
-	if err := r.Client.List(context.TODO(), namespaces, listOption); err != nil {
+	if err := r.List(context.TODO(), namespaces, listOption); err != nil {
 		return err
 	}
 
@@ -1523,7 +1523,7 @@ func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(cr *argoproj.A
 
 func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.ArgoCD, ns string) error {
 	namespace := corev1.Namespace{}
-	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: ns}, &namespace); err != nil {
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: ns}, &namespace); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return err
 		}
@@ -1532,35 +1532,35 @@ func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.
 	// Remove managed-by-cluster-argocd from the namespace
 	delete(namespace.Labels, common.ArgoCDManagedByClusterArgoCDLabel)
 	argoutil.LogResourceUpdate(log, &namespace, "removing 'managed-by-cluster-argocd' label from umanaged source namespace")
-	if err := r.Client.Update(context.TODO(), &namespace); err != nil {
+	if err := r.Update(context.TODO(), &namespace); err != nil {
 		log.Error(err, fmt.Sprintf("failed to remove label from namespace [%s]", namespace.Name))
 	}
 
 	// Delete Roles for SourceNamespaces
 	existingRole := v1.Role{}
 	roleName := getRoleNameForApplicationSourceNamespaces(namespace.Name, cr)
-	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleName, Namespace: namespace.Name}, &existingRole); err != nil {
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: roleName, Namespace: namespace.Name}, &existingRole); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to fetch the role for the service account associated with %s : %s", common.ArgoCDServerComponent, err)
 		}
 	}
 	if existingRole.Name != "" {
 		argoutil.LogResourceDeletion(log, &existingRole, "cleaning up unmanaged source namespace")
-		if err := r.Client.Delete(context.TODO(), &existingRole); err != nil {
+		if err := r.Delete(context.TODO(), &existingRole); err != nil {
 			return err
 		}
 	}
 	// Delete RoleBindings for SourceNamespaces
 	existingRoleBinding := &v1.RoleBinding{}
 	roleBindingName := getRoleBindingNameForSourceNamespaces(cr.Name, namespace.Name)
-	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBindingName, Namespace: namespace.Name}, existingRoleBinding); err != nil {
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: roleBindingName, Namespace: namespace.Name}, existingRoleBinding); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to get the rolebinding associated with %s : %s", common.ArgoCDServerComponent, err)
 		}
 	}
 	if existingRoleBinding.Name != "" {
 		argoutil.LogResourceDeletion(log, existingRoleBinding, "cleaning up unmanaged source namespace")
-		if err := r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
+		if err := r.Delete(context.TODO(), existingRoleBinding); err != nil {
 			return err
 		}
 	}

@@ -584,7 +584,7 @@ func TestReconcileArgoCD_namespaceResourceMapperWithManagedByLabel(t *testing.T)
 
 	// Fake client returns an error if ResourceVersion is not nil
 	a.ResourceVersion = ""
-	assert.NoError(t, r.Client.Create(context.TODO(), a))
+	assert.NoError(t, r.Create(context.TODO(), a))
 
 	type test struct {
 		name string
@@ -648,7 +648,7 @@ func TestReconcileArgoCD_namespaceResourceMapperForSpecificNamespaceWithoutManag
 	// Fake client returns an error if ResourceVersion is not nil
 	argocd1.ResourceVersion = ""
 
-	assert.NoError(t, r.Client.Create(context.TODO(), argocd1))
+	assert.NoError(t, r.Create(context.TODO(), argocd1))
 
 	type test struct {
 		name string
@@ -708,7 +708,7 @@ func TestReconcileArgoCD_namespaceResourceMapperForWildCardPatternNamespaceWitho
 	// Fake client returns an error if ResourceVersion is not nil
 	argocd1.ResourceVersion = ""
 
-	assert.NoError(t, r.Client.Create(context.TODO(), argocd1))
+	assert.NoError(t, r.Create(context.TODO(), argocd1))
 
 	type test struct {
 		name string
@@ -784,7 +784,7 @@ func TestReconcileArgoCD_namespaceResourceMapperForMultipleSourceNamespacesWitho
 	// Fake client returns an error if ResourceVersion is not nil
 	argocd1.ResourceVersion = ""
 
-	assert.NoError(t, r.Client.Create(context.TODO(), argocd1))
+	assert.NoError(t, r.Create(context.TODO(), argocd1))
 
 	type test struct {
 		name string
@@ -876,7 +876,7 @@ func TestReconcileArgoCD_namespaceResourceMapperForWildCardNamespaceWithoutManag
 	// Fake client returns an error if ResourceVersion is not nil
 	argocd1.ResourceVersion = ""
 
-	assert.NoError(t, r.Client.Create(context.TODO(), argocd1))
+	assert.NoError(t, r.Create(context.TODO(), argocd1))
 
 	type test struct {
 		name string

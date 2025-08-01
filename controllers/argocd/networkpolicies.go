@@ -147,7 +147,7 @@ func (r *ReconcileArgoCD) ReconcileRedisNetworkPolicy(cr *argoproj.ArgoCD) error
 
 		if modified {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
-			err := r.Client.Update(context.TODO(), existing)
+			err := r.Update(context.TODO(), existing)
 			if err != nil {
 				log.Error(err, "Failed to update redis network policy")
 				return fmt.Errorf("failed to update redis network policy. error: %w", err)
@@ -272,7 +272,7 @@ func (r *ReconcileArgoCD) ReconcileRedisHANetworkPolicy(cr *argoproj.ArgoCD) err
 
 		if modified {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
-			err := r.Client.Update(context.TODO(), existing)
+			err := r.Update(context.TODO(), existing)
 			if err != nil {
 				log.Error(err, "Failed to update redis ha network policy")
 				return fmt.Errorf("failed to update redis ha network policy. error: %w", err)

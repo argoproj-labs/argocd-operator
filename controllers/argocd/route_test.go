@@ -13,9 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	testclient "k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -59,7 +57,7 @@ func TestReconcileRouteSetLabels(t *testing.T) {
 	assert.NoError(t, err)
 
 	loaded := &routev1.Route{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
+	err = r.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
 	fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
 
 	if diff := cmp.Diff("my-value", loaded.Labels["my-key"]); diff != "" {
@@ -95,7 +93,7 @@ func TestReconcileRouteSetsInsecure(t *testing.T) {
 	assert.NoError(t, err)
 
 	loaded := &routev1.Route{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
+	err = r.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
 	fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
 
 	wantTLSConfig := &routev1.TLSConfig{
@@ -113,18 +111,18 @@ func TestReconcileRouteSetsInsecure(t *testing.T) {
 	}
 
 	// second reconciliation after changing the Insecure flag.
-	err = r.Client.Get(ctx, req.NamespacedName, argoCD)
+	err = r.Get(ctx, req.NamespacedName, argoCD)
 	fatalIfError(t, err, "failed to load ArgoCD %q: %s", testArgoCDName+"-server", err)
 
 	argoCD.Spec.Server.Insecure = true
-	err = r.Client.Update(ctx, argoCD)
+	err = r.Update(ctx, argoCD)
 	fatalIfError(t, err, "failed to update the ArgoCD: %s", err)
 
 	_, err = r.Reconcile(context.TODO(), req)
 	fatalIfError(t, err, "reconcile: (%v): %s", req, err)
 
 	loaded = &routev1.Route{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
+	err = r.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
 	fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
 
 	wantTLSConfig = &routev1.TLSConfig{
@@ -171,7 +169,7 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 	assert.NoError(t, err)
 
 	loaded := &routev1.Route{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
+	err = r.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
 	fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
 
 	wantTLSConfig := &routev1.TLSConfig{
@@ -189,18 +187,18 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 	}
 
 	// second reconciliation after changing the Insecure flag.
-	err = r.Client.Get(ctx, req.NamespacedName, argoCD)
+	err = r.Get(ctx, req.NamespacedName, argoCD)
 	fatalIfError(t, err, "failed to load ArgoCD %q: %s", testArgoCDName+"-server", err)
 
 	argoCD.Spec.Server.Insecure = false
-	err = r.Client.Update(ctx, argoCD)
+	err = r.Update(ctx, argoCD)
 	fatalIfError(t, err, "failed to update the ArgoCD: %s", err)
 
 	_, err = r.Reconcile(context.TODO(), req)
 	assert.NoError(t, err)
 
 	loaded = &routev1.Route{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
+	err = r.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
 	fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
 
 	wantTLSConfig = &routev1.TLSConfig{
@@ -254,7 +252,7 @@ func TestReconcileRouteApplicationSetHost(t *testing.T) {
 	assert.NoError(t, err)
 
 	loaded := &routev1.Route{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s", testArgoCDName, common.ApplicationSetControllerWebhookSuffix), Namespace: testNamespace}, loaded)
+	err = r.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s", testArgoCDName, common.ApplicationSetControllerWebhookSuffix), Namespace: testNamespace}, loaded)
 	fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
 
 	wantTLSConfig := &routev1.TLSConfig{
@@ -310,7 +308,7 @@ func TestReconcileRouteApplicationSetTlsTermination(t *testing.T) {
 	assert.NoError(t, err)
 
 	loaded := &routev1.Route{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s", testArgoCDName, common.ApplicationSetControllerWebhookSuffix), Namespace: testNamespace}, loaded)
+	err = r.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s", testArgoCDName, common.ApplicationSetControllerWebhookSuffix), Namespace: testNamespace}, loaded)
 	fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
 
 	wantTLSConfig := &routev1.TLSConfig{
@@ -388,7 +386,7 @@ func TestReconcileRouteApplicationSetTls(t *testing.T) {
 	}
 
 	loaded := &routev1.Route{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: expectedRouteName, Namespace: testNamespace}, loaded)
+	err = r.Get(ctx, types.NamespacedName{Name: expectedRouteName, Namespace: testNamespace}, loaded)
 	fatalIfError(t, err, "failed to load route %q: %s", expectedRouteName, err)
 
 	// Verify TLS configuration
@@ -492,18 +490,18 @@ func TestReconcileRouteForShorteningHostname(t *testing.T) {
 			assert.NoError(t, err)
 
 			// second reconciliation after changing the hostname.
-			err = r.Client.Get(ctx, req.NamespacedName, argoCD)
+			err = r.Get(ctx, req.NamespacedName, argoCD)
 			fatalIfError(t, err, "failed to load ArgoCD %q: %s", testArgoCDName+"-server", err)
 
 			argoCD.Spec.Server.Host = v.hostname
-			err = r.Client.Update(ctx, argoCD)
+			err = r.Update(ctx, argoCD)
 			fatalIfError(t, err, "failed to update the ArgoCD: %s", err)
 
 			_, err = r.Reconcile(context.TODO(), req)
 			assert.NoError(t, err)
 
 			loaded := &routev1.Route{}
-			err = r.Client.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
+			err = r.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
 			fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
 
 			if diff := cmp.Diff(v.expected, loaded.Spec.Host); diff != "" {
@@ -572,7 +570,7 @@ func TestReconcileRouteForShorteningRoutename(t *testing.T) {
 	}
 
 	loaded := &routev1.Route{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: expectedRouteName, Namespace: testNamespace}, loaded)
+	err = r.Get(ctx, types.NamespacedName{Name: expectedRouteName, Namespace: testNamespace}, loaded)
 	assert.NoError(t, err)
 	assert.LessOrEqual(t, len(loaded.Name), 63)
 }
@@ -683,7 +681,7 @@ func TestReconcileRouteTLSConfig(t *testing.T) {
 			assert.Nil(t, err)
 
 			route := &routev1.Route{}
-			err = reconciler.Client.Get(ctx, types.NamespacedName{Name: argoCD.Name + "-server", Namespace: argoCD.Namespace}, route)
+			err = reconciler.Get(ctx, types.NamespacedName{Name: argoCD.Name + "-server", Namespace: argoCD.Namespace}, route)
 			assert.Nil(t, err)
 			assert.Equal(t, test.want, route.Spec.TLS.Termination)
 
@@ -753,27 +751,6 @@ func TestIsCreatedByServiceCA(t *testing.T) {
 	}
 }
 
-func makeReconciler(t *testing.T, acd *argoproj.ArgoCD, objs ...runtime.Object) *ReconcileArgoCD {
-	t.Helper()
-	s := scheme.Scheme
-	s.AddKnownTypes(argoproj.GroupVersion, acd)
-	routev1.Install(s)
-	configv1.Install(s)
-
-	clientObjs := []client.Object{}
-	for _, obj := range objs {
-		clientObj := obj.(client.Object)
-		clientObjs = append(clientObjs, clientObj)
-	}
-
-	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).WithStatusSubresource(clientObjs...).Build()
-
-	return &ReconcileArgoCD{
-		Client: cl,
-		Scheme: s,
-	}
-}
-
 func makeArgoCD(opts ...func(*argoproj.ArgoCD)) *argoproj.ArgoCD {
 	argoCD := &argoproj.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
@@ -793,14 +770,6 @@ func fatalIfError(t *testing.T, err error, format string, a ...interface{}) {
 	if err != nil {
 		t.Fatalf(format, a...)
 	}
-}
-
-func loadSecret(t *testing.T, c client.Client, name string) *corev1.Secret {
-	t.Helper()
-	secret := &corev1.Secret{}
-	err := c.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: testNamespace}, secret)
-	fatalIfError(t, err, "failed to load secret %q", name)
-	return secret
 }
 
 func testNamespacedName(name string) types.NamespacedName {

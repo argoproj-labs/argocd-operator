@@ -51,11 +51,11 @@ func newIngress(cr *argoproj.ArgoCD) *networkingv1.Ingress {
 // newIngressWithName returns a new Ingress with the given name and ArgoCD.
 func newIngressWithName(name string, cr *argoproj.ArgoCD) *networkingv1.Ingress {
 	ingress := newIngress(cr)
-	ingress.ObjectMeta.Name = name
+	ingress.Name = name
 
-	lbls := ingress.ObjectMeta.Labels
+	lbls := ingress.Labels
 	lbls[common.ArgoCDKeyName] = name
-	ingress.ObjectMeta.Labels = lbls
+	ingress.Labels = lbls
 
 	return ingress
 }
@@ -104,7 +104,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error 
 		if objectFound {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			argoutil.LogResourceDeletion(log, ingress, "server ingress is disabled")
-			return r.Client.Delete(context.TODO(), ingress)
+			return r.Delete(context.TODO(), ingress)
 		}
 		return nil // Ingress not enabled, move along...
 	}
@@ -119,7 +119,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error 
 		atns = cr.Spec.Server.Ingress.Annotations
 	}
 
-	ingress.ObjectMeta.Annotations = atns
+	ingress.Annotations = atns
 
 	ingress.Spec.IngressClassName = cr.Spec.Server.Ingress.IngressClassName
 
@@ -172,8 +172,8 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error 
 			explanation = "ingress class name"
 			changed = true
 		}
-		if !reflect.DeepEqual(cr.Spec.Server.Ingress.Annotations, existingIngress.ObjectMeta.Annotations) {
-			existingIngress.ObjectMeta.Annotations = cr.Spec.Server.Ingress.Annotations
+		if !reflect.DeepEqual(cr.Spec.Server.Ingress.Annotations, existingIngress.Annotations) {
+			existingIngress.Annotations = cr.Spec.Server.Ingress.Annotations
 			if changed {
 				explanation += ", "
 			}
@@ -198,7 +198,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error 
 		}
 		if changed {
 			argoutil.LogResourceUpdate(log, existingIngress, "updating", explanation)
-			return r.Client.Update(context.TODO(), existingIngress)
+			return r.Update(context.TODO(), existingIngress)
 		}
 		return nil // Ingress with no changes to apply, do nothing
 	}
@@ -206,7 +206,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error 
 		return err
 	}
 	argoutil.LogResourceCreation(log, ingress)
-	return r.Client.Create(context.TODO(), ingress)
+	return r.Create(context.TODO(), ingress)
 }
 
 // reconcileArgoServerGRPCIngress will ensure that the ArgoCD Server GRPC Ingress is present.
@@ -221,7 +221,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoproj.ArgoCD) er
 		if !cr.Spec.Server.GRPC.Ingress.Enabled {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			argoutil.LogResourceDeletion(log, ingress, "server grpc ingress is disabled")
-			return r.Client.Delete(context.TODO(), ingress)
+			return r.Delete(context.TODO(), ingress)
 		}
 		return nil // Ingress found and enabled, do nothing
 	}
@@ -239,7 +239,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoproj.ArgoCD) er
 		atns = cr.Spec.Server.GRPC.Ingress.Annotations
 	}
 
-	ingress.ObjectMeta.Annotations = atns
+	ingress.Annotations = atns
 
 	ingress.Spec.IngressClassName = cr.Spec.Server.GRPC.Ingress.IngressClassName
 
@@ -288,7 +288,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoproj.ArgoCD) er
 		return err
 	}
 	argoutil.LogResourceCreation(log, ingress)
-	return r.Client.Create(context.TODO(), ingress)
+	return r.Create(context.TODO(), ingress)
 }
 
 // reconcileGrafanaIngress will ensure that the ArgoCD Server GRPC Ingress is present.
@@ -300,24 +300,24 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
 	}
 	if ingressExists {
 		//lint:ignore SA1019 known to be deprecated
-		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Ingress.Enabled {
+		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Ingress.Enabled { //nolint:staticcheck // SA1019: We must test deprecated fields.
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			var explanation string
 			//lint:ignore SA1019 known to be deprecated
-			if !cr.Spec.Grafana.Enabled {
+			if !cr.Spec.Grafana.Enabled { //nolint:staticcheck // SA1019: We must test deprecated fields.
 				explanation = "grafana is disabled"
 			} else {
 				explanation = "grafana ingress is disabled"
 			}
 			argoutil.LogResourceDeletion(log, ingress, explanation)
-			return r.Client.Delete(context.TODO(), ingress)
+			return r.Delete(context.TODO(), ingress)
 		}
 		log.Info(grafanaDeprecatedWarning)
 		return nil // Ingress found and enabled, do nothing
 	}
 
 	//lint:ignore SA1019 known to be deprecated
-	if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Ingress.Enabled {
+	if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Ingress.Enabled { //nolint:staticcheck // SA1019: We must test deprecated fields.
 		return nil // Grafana itself or Ingress not enabled, move along...
 	}
 
@@ -343,7 +343,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoproj.ArgoCD) error 
 				explanation = "prometheus ingress is disabled"
 			}
 			argoutil.LogResourceDeletion(log, ingress, explanation)
-			return r.Client.Delete(context.TODO(), ingress)
+			return r.Delete(context.TODO(), ingress)
 		}
 		return nil // Ingress found and enabled, do nothing
 	}
@@ -362,7 +362,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoproj.ArgoCD) error 
 		atns = cr.Spec.Prometheus.Ingress.Annotations
 	}
 
-	ingress.ObjectMeta.Annotations = atns
+	ingress.Annotations = atns
 
 	ingress.Spec.IngressClassName = cr.Spec.Prometheus.Ingress.IngressClassName
 
@@ -409,7 +409,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoproj.ArgoCD) error 
 		return err
 	}
 	argoutil.LogResourceCreation(log, ingress)
-	return r.Client.Create(context.TODO(), ingress)
+	return r.Create(context.TODO(), ingress)
 }
 
 // reconcileApplicationSetControllerIngress will ensure that the ApplicationSetController Ingress is present.
@@ -428,7 +428,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerIngress(cr *argoproj.
 				explanation = "applicationset webhook ingress is disabled"
 			}
 			argoutil.LogResourceDeletion(log, ingress, explanation)
-			return r.Client.Delete(context.TODO(), ingress)
+			return r.Delete(context.TODO(), ingress)
 		}
 		return nil // Ingress found and enabled, do nothing
 	}
@@ -448,7 +448,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerIngress(cr *argoproj.
 		atns = cr.Spec.ApplicationSet.WebhookServer.Ingress.Annotations
 	}
 
-	ingress.ObjectMeta.Annotations = atns
+	ingress.Annotations = atns
 
 	pathType := networkingv1.PathTypeImplementationSpecific
 	httpServerHost, err := getApplicationSetHTTPServerHost(cr)
@@ -490,5 +490,5 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerIngress(cr *argoproj.
 		return err
 	}
 	argoutil.LogResourceCreation(log, ingress)
-	return r.Client.Create(context.TODO(), ingress)
+	return r.Create(context.TODO(), ingress)
 }

@@ -5,8 +5,6 @@ import (
 	"os"
 	"testing"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,6 +13,9 @@ import (
 	testclient "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 func TestReconcileNamespaceManagement_FeatureEnabled(t *testing.T) {
@@ -60,10 +61,10 @@ func TestReconcileNamespaceManagement_FeatureEnabled(t *testing.T) {
 	defer os.Unsetenv(common.EnableManagedNamespace)
 
 	// Create both CRs
-	err := r.Client.Create(context.Background(), nm)
+	err := r.Create(context.Background(), nm)
 	assert.NoError(t, err)
 
-	err = r.Client.Create(context.Background(), nmDisallowed)
+	err = r.Create(context.Background(), nmDisallowed)
 	assert.NoError(t, err)
 
 	// Reconcile
@@ -72,7 +73,7 @@ func TestReconcileNamespaceManagement_FeatureEnabled(t *testing.T) {
 	assert.Contains(t, err.Error(), "Namespace disallowed-ns is not permitted for management by ArgoCD instance argocd based on NamespaceManagement rules")
 
 	// Verify success status on allowed namespace
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      nm.Name,
 		Namespace: nm.Namespace,
 	}, nm)
@@ -92,7 +93,7 @@ func TestReconcileNamespaceManagement_FeatureEnabled(t *testing.T) {
 	reconciledCondition = nil
 
 	// Verify error status on disallowed namespace
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      nmDisallowed.Name,
 		Namespace: nmDisallowed.Namespace,
 	}, nmDisallowed)
@@ -366,7 +367,7 @@ func TestReconcileNamespaceManagement_DifferentManagedBy(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	err := r.Client.Create(context.Background(), nmOther)
+	err := r.Create(context.Background(), nmOther)
 	assert.NoError(t, err)
 
 	os.Setenv(common.EnableManagedNamespace, "true")
@@ -405,7 +406,7 @@ func TestReconcileNamespaceManagement_ExplicitlyDisallowed(t *testing.T) {
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 	logf.SetLogger(ZapLogger(true))
 
-	err := r.Client.Create(context.Background(), nm)
+	err := r.Create(context.Background(), nm)
 	assert.NoError(t, err)
 
 	os.Setenv(common.EnableManagedNamespace, "true")
@@ -443,7 +444,7 @@ func TestReconcileNamespaceManagement_DeduplicateNamespaces(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	err := r.Client.Create(context.Background(), nm)
+	err := r.Create(context.Background(), nm)
 	assert.NoError(t, err)
 
 	r.ManagedNamespaces = &corev1.NamespaceList{

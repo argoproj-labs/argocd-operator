@@ -42,22 +42,22 @@ func TestReconcileArgoCD_reconcileRole(t *testing.T) {
 
 	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
 	reconciledRole := &v1.Role{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
 	assert.Equal(t, expectedRules, reconciledRole.Rules)
 
 	// check if roles are created for the new namespace as well
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newNamespaceTest"}, reconciledRole))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newNamespaceTest"}, reconciledRole))
 	assert.Equal(t, expectedRules, reconciledRole.Rules)
 
 	// update reconciledRole policy rules to RedisHa policy rules
 	reconciledRole.Rules = policyRuleForRedisHa(r.Client)
-	assert.NoError(t, r.Client.Update(context.TODO(), reconciledRole))
+	assert.NoError(t, r.Update(context.TODO(), reconciledRole))
 
 	// Check if the RedisHa policy rules are overwritten to Application Controller
 	// policy rules by the reconciler
 	_, err = r.reconcileRole(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
 	assert.Equal(t, expectedRules, reconciledRole.Rules)
 }
 func TestReconcileArgoCD_reconcileRole_for_new_namespace(t *testing.T) {
@@ -83,21 +83,21 @@ func TestReconcileArgoCD_reconcileRole_for_new_namespace(t *testing.T) {
 	dexRoles, err := r.reconcileRole(workloadIdentifier, expectedDexServerRules, a)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedNumberOfRoles, len(dexRoles))
-	assert.Equal(t, expectedRoleNamespace, dexRoles[0].ObjectMeta.Namespace)
+	assert.Equal(t, expectedRoleNamespace, dexRoles[0].Namespace)
 	// check no redisHa role is created for the new namespace with managed-by label
 	workloadIdentifier = common.ArgoCDRedisHAComponent
 	expectedRedisHaRules := policyRuleForRedisHa(r.Client)
 	redisHaRoles, err := r.reconcileRole(workloadIdentifier, expectedRedisHaRules, a)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedNumberOfRoles, len(redisHaRoles))
-	assert.Equal(t, expectedRoleNamespace, redisHaRoles[0].ObjectMeta.Namespace)
+	assert.Equal(t, expectedRoleNamespace, redisHaRoles[0].Namespace)
 	// check no redis role is created for the new namespace with managed-by label
 	workloadIdentifier = common.ArgoCDRedisComponent
 	expectedRedisRules := policyRuleForRedis(r.Client)
 	redisRoles, err := r.reconcileRole(workloadIdentifier, expectedRedisRules, a)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedNumberOfRoles, len(redisRoles))
-	assert.Equal(t, expectedRoleNamespace, redisRoles[0].ObjectMeta.Namespace)
+	assert.Equal(t, expectedRoleNamespace, redisRoles[0].Namespace)
 }
 
 func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
@@ -120,7 +120,7 @@ func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	// cluster role should not be created
 	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, &v1.ClusterRole{}), "not found")
 	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
-	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, &v1.ClusterRole{}))
+	assert.Error(t, r.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, &v1.ClusterRole{}))
 	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, &v1.ClusterRole{}).Error(), "not found")
 
 	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
@@ -128,18 +128,18 @@ func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	assert.NoError(t, err)
 
 	reconciledClusterRole := &v1.ClusterRole{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
 	assert.Equal(t, expectedRules, reconciledClusterRole.Rules)
 
 	// update reconciledRole policy rules to RedisHa policy rules
 	reconciledClusterRole.Rules = policyRuleForRedisHa(r.Client)
-	assert.NoError(t, r.Client.Update(context.TODO(), reconciledClusterRole))
+	assert.NoError(t, r.Update(context.TODO(), reconciledClusterRole))
 
 	// Check if the RedisHa policy rules are overwritten to Application Controller
 	// policy rules for cluster role by the reconciler
 	_, err = r.reconcileClusterRole(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
 	assert.Equal(t, expectedRules, reconciledClusterRole.Rules)
 
 	// Check if the CLuster Role gets deleted
@@ -148,7 +148,7 @@ func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	assert.NoError(t, err)
 	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole), "not found")
 	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
-	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
+	assert.Error(t, r.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
 	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole).Error(), "not found")
 }
 
@@ -171,7 +171,7 @@ func TestReconcileArgoCD_reconcileClusterRole_custom_cluster_role(t *testing.T) 
 
 	t.Log("Mode 1: Create a custom ClusterRole.")
 	customClusterRole := newClusterRole(clusterRoleName, []v1.PolicyRule{{APIGroups: []string{"*"}, Resources: []string{"*"}, Verbs: []string{"get"}}}, a)
-	assert.NoError(t, r.Client.Create(ctx, customClusterRole))
+	assert.NoError(t, r.Create(ctx, customClusterRole))
 
 	t.Log("Mode 2: Enable default ClusterRole")
 	enableDefaultClusterRoles(t, ctx, a, cl)
@@ -226,7 +226,7 @@ func TestReconcileArgoCD_reconcileRoleForApplicationSourceNamespaces(t *testing.
 	reconciledRole := &v1.Role{}
 
 	// check if roles are created for the new namespace
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: sourceNamespace}, reconciledRole))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: sourceNamespace}, reconciledRole))
 	assert.Equal(t, expectedRules, reconciledRole.Rules)
 
 	// check if appset rules are added for server-role when new appset namespace is added
@@ -241,7 +241,7 @@ func TestReconcileArgoCD_reconcileRoleForApplicationSourceNamespaces(t *testing.
 	err = r.reconcileRoleForApplicationSourceNamespaces(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
 	reconciledRole = &v1.Role{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: sourceNamespace}, reconciledRole))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: sourceNamespace}, reconciledRole))
 	assert.Equal(t, append(expectedRules, policyRuleForServerApplicationSetSourceNamespaces()...), reconciledRole.Rules)
 
 	// check if appset rules are removed for server-role when appset namespace is removed from the list
@@ -256,7 +256,7 @@ func TestReconcileArgoCD_reconcileRoleForApplicationSourceNamespaces(t *testing.
 	err = r.reconcileRoleForApplicationSourceNamespaces(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
 	reconciledRole = &v1.Role{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: sourceNamespace}, reconciledRole))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: sourceNamespace}, reconciledRole))
 	assert.Equal(t, expectedRules, reconciledRole.Rules)
 }
 
@@ -306,11 +306,11 @@ func TestReconcileArgoCD_reconcileRole_custom_role(t *testing.T) {
 
 	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
 	reconciledRole := &v1.Role{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
 	assert.Equal(t, expectedRules, reconciledRole.Rules)
 
 	// check if roles are created for the new namespace as well
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "namespace-custom-role"}, reconciledRole))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "namespace-custom-role"}, reconciledRole))
 	assert.Equal(t, expectedRules, reconciledRole.Rules)
 
 	// set the custom role as env variable
@@ -320,12 +320,12 @@ func TestReconcileArgoCD_reconcileRole_custom_role(t *testing.T) {
 	assert.NoError(t, err)
 
 	// check if the default cluster roles are removed
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole)
+	err = r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole)
 	if err == nil || !errors.IsNotFound(err) {
 		t.Fatal(err)
 	}
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "namespace-custom-role"}, reconciledRole)
+	err = r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "namespace-custom-role"}, reconciledRole)
 	if err == nil || !errors.IsNotFound(err) {
 		t.Fatal(err)
 	}
@@ -356,11 +356,11 @@ func TestReconcileRoles_ManagedTerminatingNamespace(t *testing.T) {
 
 	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
 	reconciledRole := &v1.Role{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
 	assert.Equal(t, expectedRules, reconciledRole.Rules)
 
 	// Check if roles are created for the new namespace as well
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "managedNS"}, reconciledRole))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "managedNS"}, reconciledRole))
 	assert.Equal(t, expectedRules, reconciledRole.Rules)
 
 	// Create a configmap with an invalid finalizer in the "managedNS".
@@ -373,24 +373,26 @@ func TestReconcileRoles_ManagedTerminatingNamespace(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, r.Client.Create(
+	assert.NoError(t, r.Create(
 		context.TODO(), configMap))
 
 	// Delete the newNamespaceTest ns.
 	// Verify that operator should not reconcile back to create the roles in terminating ns.
 	newNS := &corev1.Namespace{}
-	r.Client.Get(context.TODO(), types.NamespacedName{Namespace: "managedNS", Name: "managedNS"}, newNS)
-	r.Client.Delete(context.TODO(), newNS)
+	err = r.Get(context.TODO(), types.NamespacedName{Name: "managedNS"}, newNS)
+	assert.NoError(t, err)
+	err = r.Delete(context.TODO(), newNS)
+	assert.NoError(t, err)
 
 	// Verify that the namespace exists and is in terminating state.
-	r.Client.Get(context.TODO(), types.NamespacedName{Namespace: "managedNS", Name: "managedNS"}, newNS)
+	_ = r.Get(context.TODO(), types.NamespacedName{Name: "managedNS"}, newNS)
 	assert.NotEqual(t, newNS.DeletionTimestamp, nil)
 
 	_, err = r.reconcileRole(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
 
 	// Verify that the roles are deleted
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "managedNS2"}, reconciledRole)
+	err = r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "managedNS2"}, reconciledRole)
 	assert.ErrorContains(t, err, "not found")
 
 	// Create another managed namespace
@@ -400,7 +402,7 @@ func TestReconcileRoles_ManagedTerminatingNamespace(t *testing.T) {
 	_, err = r.reconcileRole(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
 
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "managedNS2"}, reconciledRole))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "managedNS2"}, reconciledRole))
 	assert.Equal(t, expectedRules, reconciledRole.Rules)
 }
 
@@ -455,9 +457,9 @@ func TestReconcileArgoCD_reconcileClusterRole_aggregated_view(t *testing.T) {
 
 	t.Log("Change ClusterRole fields.")
 	reconciledClusterRole := &v1.ClusterRole{}
-	assert.NoError(t, r.Client.Get(ctx, types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
+	assert.NoError(t, r.Get(ctx, types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
 	reconciledClusterRole.Labels = map[string]string{"test": "test"}
-	assert.NoError(t, r.Client.Update(ctx, reconciledClusterRole))
+	assert.NoError(t, r.Update(ctx, reconciledClusterRole))
 
 	t.Log("Reconcile ClusterRole.")
 	_, err = r.reconcileClusterRole(componentName, policyRuleForApplicationControllerView(), a)
@@ -485,10 +487,10 @@ func TestReconcileArgoCD_reconcileClusterRole_aggregated_admin(t *testing.T) {
 	validateAggregatedAdminClusterRole(t, ctx, r, a, reconciledClusterRole, clusterRoleName)
 
 	t.Log("Change ClusterRole fields.")
-	assert.NoError(t, r.Client.Get(ctx, types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
+	assert.NoError(t, r.Get(ctx, types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
 	reconciledClusterRole.Labels = map[string]string{"test": "test"}
 	reconciledClusterRole.AggregationRule = &v1.AggregationRule{}
-	assert.NoError(t, r.Client.Update(ctx, reconciledClusterRole))
+	assert.NoError(t, r.Update(ctx, reconciledClusterRole))
 
 	t.Log("Reconcile ClusterRole.")
 	_, err = r.reconcileClusterRole(componentName, policyRuleForApplicationControllerAdmin(), a)
@@ -526,7 +528,7 @@ func TestReconcileArgoCD_reconcileClusterRole_view_aggregated_and_default(t *tes
 	assert.NoError(t, err)
 
 	t.Log("Mode 2: Verify aggregated ClusterRole for View permission is deleted now.")
-	err = r.Client.Get(ctx, types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole)
+	err = r.Get(ctx, types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole)
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "not found")
 
@@ -570,7 +572,7 @@ func TestReconcileArgoCD_reconcileClusterRole_admin_aggregated_and_default(t *te
 	assert.NoError(t, err)
 
 	t.Log("Mode 2: Verify aggregated ClusterRole for Admin permission is deleted now.")
-	err = r.Client.Get(ctx, types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole)
+	err = r.Get(ctx, types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole)
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "not found")
 
@@ -617,13 +619,13 @@ func TestReconcileArgoCD_reconcileClusterRole_view_aggregated_and_custom(t *test
 	validateCustomClusterRole(t, ctx, r, clusterRoleName, reconciledClusterRole)
 
 	t.Log("Mode 2: Verify aggregated ClusterRole for View permission is deleted now.")
-	err = r.Client.Get(ctx, types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole)
+	err = r.Get(ctx, types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole)
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "not found")
 
 	t.Log("Mode 2: Create a custom ClusterRole.")
 	customClusterRole := newClusterRole(clusterRoleName, []v1.PolicyRule{{APIGroups: []string{"*"}, Resources: []string{"*"}, Verbs: []string{"get"}}}, a)
-	assert.NoError(t, r.Client.Create(ctx, customClusterRole))
+	assert.NoError(t, r.Create(ctx, customClusterRole))
 
 	//------- Aggregated Mode -------
 	t.Log("Mode 1: Switch back to aggregated ClusterRole.")
@@ -668,13 +670,13 @@ func TestReconcileArgoCD_reconcileClusterRole_admin_aggregated_and_custom(t *tes
 	validateCustomClusterRole(t, ctx, r, clusterRoleName, reconciledClusterRole)
 
 	t.Log("Mode 2: Verify aggregated ClusterRole for Admin permission is deleted now.")
-	err = r.Client.Get(ctx, types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole)
+	err = r.Get(ctx, types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole)
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "not found")
 
 	t.Log("Mode 2: Create a custom ClusterRole.")
 	customClusterRole := newClusterRole(clusterRoleName, []v1.PolicyRule{{APIGroups: []string{"*"}, Resources: []string{"*"}, Verbs: []string{"get"}}}, a)
-	assert.NoError(t, r.Client.Create(ctx, customClusterRole))
+	assert.NoError(t, r.Create(ctx, customClusterRole))
 
 	//------- Aggregated Mode -------
 	t.Log("Mode 1: Switch back to aggregated ClusterRole.")
@@ -756,7 +758,7 @@ func TestReconcileArgoCD_reconcileClusterRole_default_and_custom(t *testing.T) {
 
 	t.Log("Mode 2: Create a custom ClusterRole.")
 	customClusterRole := newClusterRole(clusterRoleName, []v1.PolicyRule{{APIGroups: []string{"*"}, Resources: []string{"*"}, Verbs: []string{"get"}}}, a)
-	assert.NoError(t, r.Client.Create(ctx, customClusterRole))
+	assert.NoError(t, r.Create(ctx, customClusterRole))
 
 	//----- Default Mode -----
 	t.Log("Mode 1: Switch back to default ClusterRole.")
@@ -791,7 +793,7 @@ func TestReconcileArgoCD_reconcileClusterRole_custom_and_aggregated(t *testing.T
 
 	t.Log("Mode 1: Create a custom ClusterRole.")
 	customClusterRole := newClusterRole(clusterRoleName, []v1.PolicyRule{{APIGroups: []string{"*"}, Resources: []string{"*"}, Verbs: []string{"get"}}}, a)
-	assert.NoError(t, r.Client.Create(ctx, customClusterRole))
+	assert.NoError(t, r.Create(ctx, customClusterRole))
 
 	//----- Aggregated Mode -----
 	t.Log("Mode 2: Switch to aggregated ClusterRole.")
@@ -845,7 +847,7 @@ func TestReconcileArgoCD_reconcileClusterRole_default_to_custom_to_aggregated(t 
 
 	t.Log("Mode 2: Create a custom ClusterRole.")
 	customClusterRole := newClusterRole(clusterRoleName, []v1.PolicyRule{{APIGroups: []string{"*"}, Resources: []string{"*"}, Verbs: []string{"get"}}}, a)
-	assert.NoError(t, r.Client.Create(ctx, customClusterRole))
+	assert.NoError(t, r.Create(ctx, customClusterRole))
 
 	//------- Aggregated Mode -------
 	t.Log("Mode 3: Switch to aggregated ClusterRole.")
@@ -899,7 +901,7 @@ func TestReconcileArgoCD_reconcileClusterRole_default_to_aggregated_to_custom(t 
 
 	t.Log("Mode 3: Create a custom ClusterRole.")
 	customClusterRole := newClusterRole(clusterRoleName, []v1.PolicyRule{{APIGroups: []string{"*"}, Resources: []string{"*"}, Verbs: []string{"get"}}}, a)
-	assert.NoError(t, r.Client.Create(ctx, customClusterRole))
+	assert.NoError(t, r.Create(ctx, customClusterRole))
 }
 
 // This test is to verify the scenario when user is switching from custom to default ClusterRole and then to aggregated ClusterRole.
@@ -923,7 +925,7 @@ func TestReconcileArgoCD_reconcileClusterRole_custom_to_default_to_aggregated(t 
 
 	t.Log("Mode 1: Create a custom ClusterRole.")
 	customClusterRole := newClusterRole(clusterRoleName, []v1.PolicyRule{{APIGroups: []string{"*"}, Resources: []string{"*"}, Verbs: []string{"get"}}}, a)
-	assert.NoError(t, r.Client.Create(ctx, customClusterRole))
+	assert.NoError(t, r.Create(ctx, customClusterRole))
 
 	//------- Default Mode -------
 	t.Log("Mode 2: Switch to default ClusterRole.")
@@ -966,7 +968,7 @@ func TestReconcileArgoCD_reconcileClusterRole_custom_to_aggregated_to_default(t 
 
 	t.Log("Mode 1: Create a custom ClusterRole.")
 	customClusterRole := newClusterRole(clusterRoleName, []v1.PolicyRule{{APIGroups: []string{"*"}, Resources: []string{"*"}, Verbs: []string{"get"}}}, a)
-	assert.NoError(t, r.Client.Create(ctx, customClusterRole))
+	assert.NoError(t, r.Create(ctx, customClusterRole))
 
 	//------- Aggregated Mode -------
 	t.Log("Mode 2: Switch to aggregated ClusterRole.")
@@ -1034,7 +1036,7 @@ func TestReconcileArgoCD_reconcileClusterRole_aggregated_to_default_to_custom(t 
 
 	t.Log("Mode 3: Create a custom ClusterRole.")
 	customClusterRole := newClusterRole(clusterRoleName, []v1.PolicyRule{{APIGroups: []string{"*"}, Resources: []string{"*"}, Verbs: []string{"get"}}}, a)
-	assert.NoError(t, r.Client.Create(ctx, customClusterRole))
+	assert.NoError(t, r.Create(ctx, customClusterRole))
 }
 
 // This test is to verify the scenario when user is switching from aggregated to custom ClusterRole and then to default ClusterRole.
@@ -1069,7 +1071,7 @@ func TestReconcileArgoCD_reconcileClusterRole_aggregated_to_custom_to_default(t 
 
 	t.Log("Mode 2: Create a custom ClusterRole.")
 	customClusterRole := newClusterRole(clusterRoleName, []v1.PolicyRule{{APIGroups: []string{"*"}, Resources: []string{"*"}, Verbs: []string{"get"}}}, a)
-	assert.NoError(t, r.Client.Create(ctx, customClusterRole))
+	assert.NoError(t, r.Create(ctx, customClusterRole))
 
 	//------- Default Mode -------
 	t.Log("Mode 3: Switch to default ClusterRole.")
@@ -1102,7 +1104,7 @@ func setup(t *testing.T) (context.Context, *ReconcileArgoCD, *argoproj.ArgoCD, c
 func validateAggregatedViewClusterRole(t *testing.T, ctx context.Context, r *ReconcileArgoCD, clusterRoleName string) {
 	// Ensure aggregated ClusterRole for view permission is created
 	reconciledClusterRole := &v1.ClusterRole{}
-	assert.NoError(t, r.Client.Get(ctx, types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
+	assert.NoError(t, r.Get(ctx, types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
 
 	// Ensure ClusterRole has expected Labels
 	assert.EqualValues(t, reconciledClusterRole.Labels[common.ArgoCDAggregateToControllerLabelKey], "true")
@@ -1113,7 +1115,7 @@ func validateAggregatedViewClusterRole(t *testing.T, ctx context.Context, r *Rec
 // validateAggregatedAdminClusterRole checks that ClusterRole for Admin permissions has field values configured in aggregated mode
 func validateAggregatedAdminClusterRole(t *testing.T, ctx context.Context, r *ReconcileArgoCD, a *argoproj.ArgoCD, reconciledClusterRole *v1.ClusterRole, clusterRoleName string) {
 
-	assert.NoError(t, r.Client.Get(ctx, types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
+	assert.NoError(t, r.Get(ctx, types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
 
 	// Ensure ClusterRole has expected AggregationRule
 	expectedAggregationRule := &v1.AggregationRule{ClusterRoleSelectors: []metav1.LabelSelector{{
@@ -1129,7 +1131,7 @@ func validateAggregatedAdminClusterRole(t *testing.T, ctx context.Context, r *Re
 // validateAggregatedControllerClusterRole checks that ClusterRole has field values configured in aggregated mode
 func validateAggregatedControllerClusterRole(t *testing.T, ctx context.Context, r *ReconcileArgoCD, a *argoproj.ArgoCD, reconciledClusterRole *v1.ClusterRole, clusterRoleName string) {
 
-	assert.NoError(t, r.Client.Get(ctx, types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
+	assert.NoError(t, r.Get(ctx, types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
 
 	// Ensure ClusterRole has expected AggregationRule
 	expectedAggregationRule := &v1.AggregationRule{ClusterRoleSelectors: []metav1.LabelSelector{{
@@ -1145,7 +1147,7 @@ func validateAggregatedControllerClusterRole(t *testing.T, ctx context.Context, 
 // validateDefaultClusterRole checks that ClusterRole has field values configured in default mode
 func validateDefaultClusterRole(t *testing.T, ctx context.Context, r *ReconcileArgoCD, reconciledClusterRole *v1.ClusterRole, clusterRoleName string) {
 
-	assert.NoError(t, r.Client.Get(ctx, types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
+	assert.NoError(t, r.Get(ctx, types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
 
 	// Ensure ClusterRole does not have AggregationRule
 	assert.Empty(t, reconciledClusterRole.AggregationRule)
@@ -1157,7 +1159,7 @@ func validateDefaultClusterRole(t *testing.T, ctx context.Context, r *ReconcileA
 
 // validateCustomClusterRole checks that default ClusterRole is deleted
 func validateCustomClusterRole(t *testing.T, ctx context.Context, r *ReconcileArgoCD, clusterRoleName string, reconciledClusterRole *v1.ClusterRole) {
-	err := r.Client.Get(ctx, types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole)
+	err := r.Get(ctx, types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole)
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "not found")
 }
@@ -1203,7 +1205,7 @@ func TestReconcileArgoCD_reconcileRole_enable_controller_role(t *testing.T) {
 
 	expectedName := fmt.Sprintf("%s-%s", a.Name, componentName)
 	reconciledRole := &v1.Role{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
 
 	flag := false
 	a.Spec.Controller.Enabled = &flag
@@ -1211,7 +1213,7 @@ func TestReconcileArgoCD_reconcileRole_enable_controller_role(t *testing.T) {
 	_, err = r.reconcileRole(componentName, []v1.PolicyRule{}, a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole)
+	err = r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole)
 	assert.Error(t, err)
 	assertNotFound(t, err)
 }
@@ -1236,7 +1238,7 @@ func TestReconcileArgoCD_reconcileRole_enable_redis_role(t *testing.T) {
 
 	expectedName := fmt.Sprintf("%s-%s", a.Name, componentName)
 	reconciledRole := &v1.Role{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
 
 	flag := false
 	a.Spec.Redis.Enabled = &flag
@@ -1244,7 +1246,7 @@ func TestReconcileArgoCD_reconcileRole_enable_redis_role(t *testing.T) {
 	_, err = r.reconcileRole(componentName, []v1.PolicyRule{}, a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole)
+	err = r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole)
 	assert.Error(t, err)
 	assertNotFound(t, err)
 }
@@ -1269,7 +1271,7 @@ func TestReconcileArgoCD_reconcileRole_enable_server_role(t *testing.T) {
 
 	expectedName := fmt.Sprintf("%s-%s", a.Name, componentName)
 	reconciledRole := &v1.Role{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
 
 	flag := false
 	a.Spec.Server.Enabled = &flag
@@ -1277,7 +1279,7 @@ func TestReconcileArgoCD_reconcileRole_enable_server_role(t *testing.T) {
 	_, err = r.reconcileRole(componentName, []v1.PolicyRule{}, a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole)
+	err = r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole)
 	assert.Error(t, err)
 	assertNotFound(t, err)
 }

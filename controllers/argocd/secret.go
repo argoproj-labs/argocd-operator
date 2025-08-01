@@ -116,18 +116,18 @@ func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.Pr
 		SecretName: secret.Name,
 		CommonName: secret.Name,
 		Subject: &certmanagerv1.X509Subject{
-			Organizations: []string{cr.ObjectMeta.Namespace},
+			Organizations: []string{cr.Namespace},
 		},
 	}
 
 	dnsNames := []string{
-		cr.ObjectMeta.Name,
+		cr.Name,
 		nameWithSuffix("grpc", cr),
-		fmt.Sprintf("%s.%s.svc.cluster.local", cr.ObjectMeta.Name, cr.ObjectMeta.Namespace),
+		fmt.Sprintf("%s.%s.svc.cluster.local", cr.Name, cr.Namespace),
 	}
 
 	//lint:ignore SA1019 known to be deprecated
-	if cr.Spec.Grafana.Enabled {
+	if cr.Spec.Grafana.Enabled { //nolint:staticcheck // SA1019: We must test deprecated fields.
 		log.Info(grafanaDeprecatedWarning)
 	}
 	if cr.Spec.Prometheus.Enabled {
@@ -210,7 +210,7 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoproj.ArgoCD) error {
 		return err
 	}
 	argoutil.LogResourceCreation(log, secret)
-	return r.Client.Create(context.TODO(), secret)
+	return r.Create(context.TODO(), secret)
 }
 
 // reconcileClusterMainSecret will ensure that the main Secret is present for the Argo CD cluster.
@@ -237,7 +237,7 @@ func (r *ReconcileArgoCD) reconcileClusterMainSecret(cr *argoproj.ArgoCD) error 
 		return err
 	}
 	argoutil.LogResourceCreation(log, secret)
-	return r.Client.Create(context.TODO(), secret)
+	return r.Create(context.TODO(), secret)
 }
 
 // reconcileClusterTLSSecret ensures the TLS Secret is created for the ArgoCD cluster.
@@ -277,7 +277,7 @@ func (r *ReconcileArgoCD) reconcileClusterTLSSecret(cr *argoproj.ArgoCD) error {
 	}
 
 	argoutil.LogResourceCreation(log, secret)
-	return r.Client.Create(context.TODO(), secret)
+	return r.Create(context.TODO(), secret)
 }
 
 // reconcileClusterCASecret ensures the CA Secret is created for the ArgoCD cluster.
@@ -300,7 +300,7 @@ func (r *ReconcileArgoCD) reconcileClusterCASecret(cr *argoproj.ArgoCD) error {
 		return err
 	}
 	argoutil.LogResourceCreation(log, secret)
-	return r.Client.Create(context.TODO(), secret)
+	return r.Create(context.TODO(), secret)
 }
 
 // reconcileClusterSecrets will reconcile all Secret resources for the ArgoCD cluster.
@@ -396,7 +396,7 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secre
 
 	if changed {
 		argoutil.LogResourceUpdate(log, secret, "updating", explanation)
-		if err := r.Client.Update(context.TODO(), secret); err != nil {
+		if err := r.Update(context.TODO(), secret); err != nil {
 			return err
 		}
 	}
@@ -407,7 +407,7 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secre
 // reconcileGrafanaSecret will ensure that the Grafana Secret is present.
 func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoproj.ArgoCD) error {
 	//lint:ignore SA1019 known to be deprecated
-	if !cr.Spec.Grafana.Enabled {
+	if !cr.Spec.Grafana.Enabled { //nolint:staticcheck // SA1019: We must test deprecated fields.
 		return nil // Grafana not enabled, do nothing.
 	}
 
@@ -575,7 +575,7 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoproj.ArgoCD)
 		if secretUpdateRequired {
 			// We found the Secret, and the field needs to be updated
 			argoutil.LogResourceUpdate(log, localClusterSecret, explanation)
-			return r.Client.Update(context.TODO(), localClusterSecret)
+			return r.Update(context.TODO(), localClusterSecret)
 		}
 
 		// We found the Secret, but the field hasn't changed: no update needed.
@@ -608,7 +608,7 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoproj.ArgoCD)
 		return err
 	}
 	argoutil.LogResourceCreation(log, secret)
-	return r.Client.Create(context.TODO(), secret)
+	return r.Create(context.TODO(), secret)
 }
 
 // reconcileRepoServerTLSSecret checks whether the argocd-repo-server-tls secret
@@ -622,7 +622,7 @@ func (r *ReconcileArgoCD) reconcileRepoServerTLSSecret(cr *argoproj.ArgoCD) erro
 	log.Info("reconciling repo-server TLS secret")
 
 	tlsSecretName := types.NamespacedName{Namespace: cr.Namespace, Name: common.ArgoCDRepoServerTLSSecretName}
-	err := r.Client.Get(context.TODO(), tlsSecretName, &tlsSecretObj)
+	err := r.Get(context.TODO(), tlsSecretName, &tlsSecretObj)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			return err
@@ -690,7 +690,7 @@ func (r *ReconcileArgoCD) reconcileRedisTLSSecret(cr *argoproj.ArgoCD, useTLSFor
 	log.Info("reconciling redis-server TLS secret")
 
 	tlsSecretName := types.NamespacedName{Namespace: cr.Namespace, Name: common.ArgoCDRedisServerTLSSecretName}
-	err := r.Client.Get(context.TODO(), tlsSecretName, &tlsSecretObj)
+	err := r.Get(context.TODO(), tlsSecretName, &tlsSecretObj)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			return err
@@ -748,7 +748,7 @@ func (r *ReconcileArgoCD) reconcileRedisTLSSecret(cr *argoproj.ArgoCD, useTLSFor
 			}
 			if ssExists {
 				argoutil.LogResourceDeletion(log, redisSts, "to trigger pods to restart")
-				err = r.Client.Delete(context.TODO(), redisSts)
+				err = r.Delete(context.TODO(), redisSts)
 				if err != nil {
 					return err
 				}
@@ -809,7 +809,7 @@ func (r *ReconcileArgoCD) getClusterSecrets(cr *argoproj.ArgoCD) (*corev1.Secret
 		Namespace: cr.Namespace,
 	}
 
-	if err := r.Client.List(context.TODO(), clusterSecrets, opts); err != nil {
+	if err := r.List(context.TODO(), clusterSecrets, opts); err != nil {
 		return nil, err
 	}
 
@@ -842,5 +842,5 @@ func (r *ReconcileArgoCD) reconcileRedisInitialPasswordSecret(cr *argoproj.ArgoC
 		return err
 	}
 	argoutil.LogResourceCreation(log, secret)
-	return r.Client.Create(context.TODO(), secret)
+	return r.Create(context.TODO(), secret)
 }

@@ -39,14 +39,16 @@ func TestReconcileArgoCD_reconcileStatusKeycloak_K8s(t *testing.T) {
 	assert.Equal(t, "Unknown", a.Status.SSO)
 
 	// keycloak installation started
-	r.Client.Create(context.TODO(), d)
+	err := r.Create(context.TODO(), d)
+	assert.NoError(t, err)
 
 	_ = r.reconcileStatusKeycloak(a)
 	assert.Equal(t, "Pending", a.Status.SSO)
 
 	// keycloak installation completed
 	d.Status.ReadyReplicas = *d.Spec.Replicas
-	r.Client.Status().Update(context.TODO(), d)
+	err = r.Client.Status().Update(context.TODO(), d)
+	assert.NoError(t, err)
 
 	_ = r.reconcileStatusKeycloak(a)
 	assert.Equal(t, "Running", a.Status.SSO)
@@ -72,7 +74,7 @@ func TestReconcileArgoCD_reconcileStatusKeycloak_OpenShift(t *testing.T) {
 	defer removeTemplateAPI()
 
 	dc := getKeycloakDeploymentConfigTemplate(a)
-	dc.ObjectMeta.Name = defaultKeycloakIdentifier
+	dc.Name = defaultKeycloakIdentifier
 
 	// keycloak not installed
 	_ = r.reconcileStatusKeycloak(a)
@@ -174,9 +176,9 @@ func TestReconcileArgoCD_reconcileStatusSSO(t *testing.T) {
 
 			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
 
-			r.reconcileSSO(test.argoCD)
+			_ = r.reconcileSSO(test.argoCD)
 
-			r.reconcileStatusSSO(test.argoCD)
+			_ = r.reconcileStatusSSO(test.argoCD)
 
 			assert.Equal(t, test.wantSSOStatus, test.argoCD.Status.SSO)
 		})
@@ -278,11 +280,11 @@ func TestReconcileArgoCD_reconcileStatusHost(t *testing.T) {
 			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 			if test.routeEnabled {
-				err := r.Client.Create(context.TODO(), route)
+				err := r.Create(context.TODO(), route)
 				assert.NoError(t, err)
 
 			} else if test.ingressEnabled {
-				err := r.Client.Create(context.TODO(), ingress)
+				err := r.Create(context.TODO(), ingress)
 				assert.NoError(t, err)
 				assert.NotEqual(t, "Pending", a.Status.Phase)
 			}

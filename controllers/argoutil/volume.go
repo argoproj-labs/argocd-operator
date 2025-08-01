@@ -49,7 +49,7 @@ func NewPersistentVolumeClaim(meta metav1.ObjectMeta) *corev1.PersistentVolumeCl
 // NewPersistentVolumeClaimWithName returns a new PersistentVolumeClaim instance with the given name.
 func NewPersistentVolumeClaimWithName(name string, meta metav1.ObjectMeta) *corev1.PersistentVolumeClaim {
 	pvc := NewPersistentVolumeClaim(meta)
-	pvc.ObjectMeta.Name = name
-	pvc.ObjectMeta.Labels[common.ArgoCDKeyName] = name
+	pvc.Name = name
+	pvc.Labels[common.ArgoCDKeyName] = name
 	return pvc
 }

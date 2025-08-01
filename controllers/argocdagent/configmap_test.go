@@ -91,7 +91,6 @@ func TestReconcilePrincipalConfigMap_ConfigMapExists_PrincipalDisabled(t *testin
 	cr := makeTestArgoCD(withPrincipalEnabled(false))
 
 	sch := makeTestReconcilerScheme()
-	cl := makeTestReconcilerClient(sch, []client.Object{cr})
 
 	// Create existing ConfigMap
 	existingCM := &corev1.ConfigMap{
@@ -105,7 +104,7 @@ func TestReconcilePrincipalConfigMap_ConfigMapExists_PrincipalDisabled(t *testin
 
 	// Recreate client with all objects
 	resObjs := []client.Object{cr, existingCM}
-	cl = makeTestReconcilerClient(sch, resObjs)
+	cl := makeTestReconcilerClient(sch, resObjs)
 
 	err := ReconcilePrincipalConfigMap(cl, testCompName, cr, sch)
 	assert.NoError(t, err)
@@ -126,7 +125,6 @@ func TestReconcilePrincipalConfigMap_ConfigMapExists_PrincipalEnabled_SameData(t
 	cr := makeTestArgoCD(withPrincipalEnabled(true))
 
 	sch := makeTestReconcilerScheme()
-	cl := makeTestReconcilerClient(sch, []client.Object{cr})
 
 	expectedData := buildData(cr)
 	existingCM := &corev1.ConfigMap{
@@ -140,7 +138,7 @@ func TestReconcilePrincipalConfigMap_ConfigMapExists_PrincipalEnabled_SameData(t
 
 	// Recreate client with all objects
 	resObjs := []client.Object{cr, existingCM}
-	cl = makeTestReconcilerClient(sch, resObjs)
+	cl := makeTestReconcilerClient(sch, resObjs)
 
 	err := ReconcilePrincipalConfigMap(cl, testCompName, cr, sch)
 	assert.NoError(t, err)
@@ -201,7 +199,6 @@ func TestReconcilePrincipalConfigMap_ConfigMapExists_PrincipalNotSet(t *testing.
 	cr := makeTestArgoCD() // No principal configuration
 
 	sch := makeTestReconcilerScheme()
-	cl := makeTestReconcilerClient(sch, []client.Object{cr})
 
 	existingCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -214,7 +211,7 @@ func TestReconcilePrincipalConfigMap_ConfigMapExists_PrincipalNotSet(t *testing.
 
 	// Recreate client with all objects
 	resObjs := []client.Object{cr, existingCM}
-	cl = makeTestReconcilerClient(sch, resObjs)
+	cl := makeTestReconcilerClient(sch, resObjs)
 
 	err := ReconcilePrincipalConfigMap(cl, testCompName, cr, sch)
 	assert.NoError(t, err)

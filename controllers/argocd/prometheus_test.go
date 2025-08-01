@@ -178,7 +178,8 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 			assert.NoError(t, err)
 
 			if test.existingPromRule {
-				r.Client.Create(context.TODO(), newPrometheusRule(test.argocd.Namespace, "argocd-component-status-alert"))
+				err := r.Create(context.TODO(), newPrometheusRule(test.argocd.Namespace, "argocd-component-status-alert"))
+				assert.NoError(t, err)
 			}
 
 			err = r.reconcilePrometheusRule(test.argocd)
@@ -191,7 +192,7 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 			} else {
 				// reconciler either needs to create rule or delete it
 				testRule := &monitoringv1.PrometheusRule{}
-				err = r.Client.Get(context.TODO(), types.NamespacedName{
+				err = r.Get(context.TODO(), types.NamespacedName{
 					Name:      "argocd-component-status-alert",
 					Namespace: test.argocd.Namespace,
 				}, testRule)

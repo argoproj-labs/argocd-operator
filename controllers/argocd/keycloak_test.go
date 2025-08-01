@@ -243,7 +243,7 @@ func TestNewKeycloakTemplate_testDeploymentConfig(t *testing.T) {
 	}
 	assert.Equal(t, dc.Spec.Strategy, strategy)
 
-	assert.Equal(t, dc.Spec.Template.ObjectMeta.Name, "${APPLICATION_NAME}")
+	assert.Equal(t, dc.Spec.Template.Name, "${APPLICATION_NAME}")
 	assert.Equal(t, dc.Spec.Template.Spec.Volumes, fakeVolumes)
 }
 
@@ -320,7 +320,7 @@ func TestKeycloakResources(t *testing.T) {
 func TestNewKeycloakTemplate_testConfigmap(t *testing.T) {
 	cm := getKeycloakConfigMapTemplate(fakeNs)
 	assert.Equal(t, cm.Name, "${APPLICATION_NAME}-service-ca")
-	assert.True(t, argoutil.IsTrackedByOperator(cm.ObjectMeta.Labels))
+	assert.True(t, argoutil.IsTrackedByOperator(cm.Labels))
 	assert.Equal(t, cm.Namespace, fakeNs)
 }
 
@@ -410,13 +410,14 @@ func TestKeycloak_testServerCert(t *testing.T) {
 			"tls.crt": []byte("asdasfsff"),
 		},
 	}
-	r.Client.Create(context.TODO(), sslCertsSecret)
+	err := r.Create(context.TODO(), sslCertsSecret)
+	assert.NoError(t, err)
 
-	_, err := r.getKCServerCert(a)
+	_, err = r.getKCServerCert(a)
 	assert.NoError(t, err)
 
 	sslCertsSecret.Data["tls.crt"] = nil
-	assert.NoError(t, r.Client.Update(context.TODO(), sslCertsSecret))
+	assert.NoError(t, r.Update(context.TODO(), sslCertsSecret))
 
 	_, err = r.getKCServerCert(a)
 	assert.NoError(t, err)
@@ -482,7 +483,8 @@ func TestKeycloakConfigVerifyTLSForOpenShift(t *testing.T) {
 					Host: "test-host",
 				},
 			}
-			r.Client.Create(context.TODO(), keycloakRoute)
+			err := r.Create(context.TODO(), keycloakRoute)
+			assert.NoError(t, err)
 
 			argoCDRoute := &routev1.Route{
 				ObjectMeta: metav1.ObjectMeta{
@@ -493,7 +495,8 @@ func TestKeycloakConfigVerifyTLSForOpenShift(t *testing.T) {
 					Host: "test-argocd-host",
 				},
 			}
-			r.Client.Create(context.TODO(), argoCDRoute)
+			err = r.Create(context.TODO(), argoCDRoute)
+			assert.NoError(t, err)
 
 			keycloakSecret := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
@@ -502,7 +505,8 @@ func TestKeycloakConfigVerifyTLSForOpenShift(t *testing.T) {
 				},
 				Data: map[string][]byte{"SSO_USERNAME": []byte("username"), "SSO_PASSWORD": []byte("password")},
 			}
-			r.Client.Create(context.TODO(), keycloakSecret)
+			err = r.Create(context.TODO(), keycloakSecret)
+			assert.NoError(t, err)
 
 			sslCertsSecret := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
@@ -513,7 +517,8 @@ func TestKeycloakConfigVerifyTLSForOpenShift(t *testing.T) {
 					"tls.crt": []byte("asdasfsff"),
 				},
 			}
-			r.Client.Create(context.TODO(), sslCertsSecret)
+			err = r.Create(context.TODO(), sslCertsSecret)
+			assert.NoError(t, err)
 
 			keyCloakConfig, err := r.prepareKeycloakConfig(test.argoCD)
 			assert.NoError(t, err)

@@ -124,7 +124,7 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 	reqLogger.Info("Reconciling ArgoCD")
 
 	argocd := &argoproj.ArgoCD{}
-	err := r.Client.Get(ctx, request.NamespacedName, argocd)
+	err := r.Get(ctx, request.NamespacedName, argocd)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -227,7 +227,7 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 	}
 
 	// get the latest version of argocd instance before reconciling
-	if err = r.Client.Get(ctx, request.NamespacedName, argocd); err != nil {
+	if err = r.Get(ctx, request.NamespacedName, argocd); err != nil {
 		return reconcile.Result{}, argocd, err
 	}
 

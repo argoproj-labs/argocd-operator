@@ -58,9 +58,9 @@ func NewSecret(cr *argoproj.ArgoCD) *corev1.Secret {
 func NewSecretWithName(cr *argoproj.ArgoCD, name string) *corev1.Secret {
 	secret := NewSecret(cr)
 
-	secret.ObjectMeta.Name = name
-	secret.ObjectMeta.Namespace = cr.Namespace
-	secret.ObjectMeta.Labels[common.ArgoCDKeyName] = name
+	secret.Name = name
+	secret.Namespace = cr.Namespace
+	secret.Labels[common.ArgoCDKeyName] = name
 
 	return secret
 }

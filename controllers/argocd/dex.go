@@ -76,7 +76,7 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string,
 		}
 		argoutil.AddTrackedByOperatorLabel(&secret.ObjectMeta)
 		argoutil.LogResourceCreation(log, secret)
-		err := r.Client.Create(context.TODO(), secret)
+		err := r.Create(context.TODO(), secret)
 		if err != nil {
 			return nil, e.New("unable to locate and create ServiceAccount token for OAuth client secret")
 		}
@@ -90,7 +90,7 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string,
 		}
 		sa.Secrets = append(sa.Secrets, *tokenSecret)
 		argoutil.LogResourceUpdate(log, sa, "adding ServiceAccount token for OAuth client secret")
-		err = r.Client.Update(context.TODO(), sa)
+		err = r.Update(context.TODO(), sa)
 		if err != nil {
 			return nil, e.New("failed to add ServiceAccount token for OAuth client secret")
 		}
@@ -124,7 +124,7 @@ func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *ar
 		// Update ConfigMap with desired configuration.
 		cm.Data[common.ArgoCDKeyDexConfig] = desired
 		argoutil.LogResourceUpdate(log, cm, "updating dex configuration")
-		if err := r.Client.Update(context.TODO(), cm); err != nil {
+		if err := r.Update(context.TODO(), cm); err != nil {
 			return err
 		}
 
@@ -139,9 +139,9 @@ func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *ar
 			return nil
 		}
 
-		deploy.Spec.Template.ObjectMeta.Labels["dex.config.changed"] = time.Now().UTC().Format("01022006-150406-MST")
+		deploy.Spec.Template.Labels["dex.config.changed"] = time.Now().UTC().Format("01022006-150406-MST")
 		argoutil.LogResourceUpdate(log, deploy, "to trigger dex deployment rollout")
-		return r.Client.Update(context.TODO(), deploy)
+		return r.Update(context.TODO(), deploy)
 	}
 	return nil
 }
@@ -228,7 +228,7 @@ func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoproj.ArgoCD) error 
 	log.Info(fmt.Sprintf("URI: %s", uri))
 
 	// Get the current redirect URI
-	ann := sa.ObjectMeta.Annotations
+	ann := sa.Annotations
 	currentURI, found := ann[common.ArgoCDKeyDexOAuthRedirectURI]
 	if found && currentURI == uri {
 		return nil // Redirect URI annotation found and correct, move along...
@@ -240,10 +240,10 @@ func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoproj.ArgoCD) error 
 	}
 
 	ann[common.ArgoCDKeyDexOAuthRedirectURI] = uri
-	sa.ObjectMeta.Annotations = ann
+	sa.Annotations = ann
 
 	argoutil.LogResourceUpdate(log, sa, "updating redirect uri")
-	return r.Client.Update(context.TODO(), sa)
+	return r.Update(context.TODO(), sa)
 }
 
 // reconcileDexDeployment will ensure the Deployment resource is present for the ArgoCD Dex component.
@@ -380,7 +380,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		// dex uninstallation requested
 		if !UseDex(cr) {
 			argoutil.LogResourceDeletion(log, existing, "dex uninstallation has been requested")
-			return r.Client.Delete(context.TODO(), existing)
+			return r.Delete(context.TODO(), existing)
 		}
 		changed := false
 		explanation := ""
@@ -389,7 +389,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		desiredImage := getDexContainerImage(cr)
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			explanation = "container image"
 			changed = true
 		}
@@ -398,7 +398,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		desiredImage = getArgoContainerImage(cr)
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.InitContainers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			if changed {
 				explanation += ", "
 			}
@@ -471,7 +471,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 
 		if changed {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
-			return r.Client.Update(context.TODO(), existing)
+			return r.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
 	}
@@ -486,7 +486,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 	}
 
 	argoutil.LogResourceCreation(log, deploy)
-	return r.Client.Create(context.TODO(), deploy)
+	return r.Create(context.TODO(), deploy)
 }
 
 // reconcileDexService will ensure that the Service for Dex is present.
@@ -502,7 +502,7 @@ func (r *ReconcileArgoCD) reconcileDexService(cr *argoproj.ArgoCD) error {
 		// dex uninstallation requested
 		if !UseDex(cr) {
 			argoutil.LogResourceDeletion(log, svc, "dex uninstallation has been requested")
-			return r.Client.Delete(context.TODO(), svc)
+			return r.Delete(context.TODO(), svc)
 		}
 		return nil
 	}
@@ -535,7 +535,7 @@ func (r *ReconcileArgoCD) reconcileDexService(cr *argoproj.ArgoCD) error {
 	}
 
 	argoutil.LogResourceCreation(log, svc)
-	return r.Client.Create(context.TODO(), svc)
+	return r.Create(context.TODO(), svc)
 }
 
 // reconcileDexResources consolidates all dex resources reconciliation calls. It serves as the single place to trigger both creation

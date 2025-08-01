@@ -1,6 +1,7 @@
 version: "2"
 linters:
   enable:
+    - ginkgolinter   # https://github.com/nunnatsa/ginkgolinter
     - govet
     - unused
     - ineffassign
@@ -14,7 +15,6 @@ linters:
       - legacy
       - std-error-handling
     paths:
-      - .*_test\.go
       - vendor/
       - third_party$
       - builtin$
@@ -29,7 +29,6 @@ formatters:
   exclusions:
     generated: lax
     paths:
-      - .*_test\.go
       - vendor/
       - third_party$
       - builtin$

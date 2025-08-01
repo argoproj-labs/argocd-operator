@@ -91,7 +91,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsConfigurationCR(cr *argoproj.Arg
 
 	if !cr.Spec.Notifications.Enabled {
 		argoutil.LogResourceDeletion(log, defaultNotificationsConfigurationCR, "notifications are disabled")
-		return r.Client.Delete(context.TODO(), defaultNotificationsConfigurationCR)
+		return r.Delete(context.TODO(), defaultNotificationsConfigurationCR)
 	}
 
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, DefaultNotificationsConfigurationInstanceName,
@@ -108,7 +108,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsConfigurationCR(cr *argoproj.Arg
 		}
 
 		argoutil.LogResourceCreation(log, defaultNotificationsConfigurationCR)
-		err := r.Client.Create(context.TODO(), defaultNotificationsConfigurationCR)
+		err := r.Create(context.TODO(), defaultNotificationsConfigurationCR)
 		if err != nil {
 			return err
 		}
@@ -204,7 +204,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsServiceAccount(cr *argoproj.Argo
 		}
 
 		argoutil.LogResourceCreation(log, sa)
-		err := r.Client.Create(context.TODO(), sa)
+		err := r.Create(context.TODO(), sa)
 		if err != nil {
 			return nil, err
 		}
@@ -213,7 +213,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsServiceAccount(cr *argoproj.Argo
 	// SA exists but shouldn't, so it should be deleted
 	if !cr.Spec.Notifications.Enabled {
 		argoutil.LogResourceDeletion(log, sa, "notifications are disabled")
-		return nil, r.Client.Delete(context.TODO(), sa)
+		return nil, r.Delete(context.TODO(), sa)
 	}
 
 	return sa, nil
@@ -241,7 +241,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsRole(cr *argoproj.ArgoCD) (*rbac
 		}
 
 		argoutil.LogResourceCreation(log, desiredRole)
-		err := r.Client.Create(context.TODO(), desiredRole)
+		err := r.Create(context.TODO(), desiredRole)
 		if err != nil {
 			return nil, err
 		}
@@ -251,7 +251,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsRole(cr *argoproj.ArgoCD) (*rbac
 	// role exists but shouldn't, so it should be deleted
 	if !cr.Spec.Notifications.Enabled {
 		argoutil.LogResourceDeletion(log, existingRole, "notifications are disabled")
-		return nil, r.Client.Delete(context.TODO(), existingRole)
+		return nil, r.Delete(context.TODO(), existingRole)
 	}
 
 	// role exists and should. Reconcile role if changed
@@ -261,7 +261,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsRole(cr *argoproj.ArgoCD) (*rbac
 			return nil, err
 		}
 		argoutil.LogResourceUpdate(log, existingRole, "updating policy rules")
-		return existingRole, r.Client.Update(context.TODO(), existingRole)
+		return existingRole, r.Update(context.TODO(), existingRole)
 	}
 
 	return desiredRole, nil
@@ -286,7 +286,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsRoleBinding(cr *argoproj.ArgoCD,
 
 	// fetch existing rolebinding by name
 	existingRoleBinding := &rbacv1.RoleBinding{}
-	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: desiredRoleBinding.Name, Namespace: cr.Namespace}, existingRoleBinding); err != nil {
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: desiredRoleBinding.Name, Namespace: cr.Namespace}, existingRoleBinding); err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to get the rolebinding associated with %s : %s", desiredRoleBinding.Name, err)
 		}
@@ -302,20 +302,20 @@ func (r *ReconcileArgoCD) reconcileNotificationsRoleBinding(cr *argoproj.ArgoCD,
 		}
 
 		argoutil.LogResourceCreation(log, desiredRoleBinding)
-		return r.Client.Create(context.TODO(), desiredRoleBinding)
+		return r.Create(context.TODO(), desiredRoleBinding)
 	}
 
 	// roleBinding exists but shouldn't, so it should be deleted
 	if !cr.Spec.Notifications.Enabled {
 		argoutil.LogResourceDeletion(log, existingRoleBinding, "notifications are disabled")
-		return r.Client.Delete(context.TODO(), existingRoleBinding)
+		return r.Delete(context.TODO(), existingRoleBinding)
 	}
 
 	// roleBinding exists and should. Reconcile roleBinding if changed
 	if !reflect.DeepEqual(existingRoleBinding.RoleRef, desiredRoleBinding.RoleRef) {
 		// if the RoleRef changes, delete the existing role binding and create a new one
 		argoutil.LogResourceDeletion(log, existingRoleBinding, "roleref changed, deleting rolebinding in order to recreate it")
-		if err := r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
+		if err := r.Delete(context.TODO(), existingRoleBinding); err != nil {
 			return err
 		}
 	} else if !reflect.DeepEqual(existingRoleBinding.Subjects, desiredRoleBinding.Subjects) {
@@ -324,7 +324,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsRoleBinding(cr *argoproj.ArgoCD,
 			return err
 		}
 		argoutil.LogResourceUpdate(log, existingRoleBinding, "updating subjects")
-		return r.Client.Update(context.TODO(), existingRoleBinding)
+		return r.Update(context.TODO(), existingRoleBinding)
 	}
 
 	return nil
@@ -347,7 +347,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, 
 		RunAsNonRoot: boolPtr(true),
 	}
 	AddSeccompProfileForOpenShift(r.Client, podSpec)
-	podSpec.ServiceAccountName = sa.ObjectMeta.Name
+	podSpec.ServiceAccountName = sa.Name
 	podSpec.Volumes = []corev1.Volume{
 		{
 			Name: "tls-certs",
@@ -416,7 +416,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, 
 	deploymentChanged := false
 	explanation := ""
 	existingDeployment := &appsv1.Deployment{}
-	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: desiredDeployment.Name, Namespace: cr.Namespace}, existingDeployment); err != nil {
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: desiredDeployment.Name, Namespace: cr.Namespace}, existingDeployment); err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to get the deployment associated with %s : %s", existingDeployment.Name, err)
 		}
@@ -432,13 +432,13 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, 
 		}
 
 		argoutil.LogResourceCreation(log, desiredDeployment)
-		return r.Client.Create(context.TODO(), desiredDeployment)
+		return r.Create(context.TODO(), desiredDeployment)
 	}
 
 	// deployment exists but shouldn't, so it should be deleted
 	if !cr.Spec.Notifications.Enabled {
 		argoutil.LogResourceDeletion(log, existingDeployment, "notifications are disabled")
-		return r.Client.Delete(context.TODO(), existingDeployment)
+		return r.Delete(context.TODO(), existingDeployment)
 	}
 
 	// deployment exists and should. Reconcile deployment if changed
@@ -446,7 +446,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, 
 
 	if existingDeployment.Spec.Template.Spec.Containers[0].Image != desiredDeployment.Spec.Template.Spec.Containers[0].Image {
 		existingDeployment.Spec.Template.Spec.Containers[0].Image = desiredDeployment.Spec.Template.Spec.Containers[0].Image
-		existingDeployment.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+		existingDeployment.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 		if deploymentChanged {
 			explanation = ", "
 		}
@@ -554,7 +554,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, 
 
 	if deploymentChanged {
 		argoutil.LogResourceUpdate(log, existingDeployment, "updating", explanation)
-		return r.Client.Update(context.TODO(), existingDeployment)
+		return r.Update(context.TODO(), existingDeployment)
 	}
 
 	return nil
@@ -594,7 +594,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsMetricsService(cr *argoproj.Argo
 		return err
 	}
 	argoutil.LogResourceCreation(log, svc)
-	return r.Client.Create(context.TODO(), svc)
+	return r.Create(context.TODO(), svc)
 }
 
 // reconcileNotificationsServiceMonitor will ensure that the ServiceMonitor for the Notifications controller metrics is present.
@@ -630,7 +630,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsServiceMonitor(cr *argoproj.Argo
 	}
 
 	argoutil.LogResourceCreation(log, serviceMonitor)
-	return r.Client.Create(context.TODO(), serviceMonitor)
+	return r.Create(context.TODO(), serviceMonitor)
 }
 
 // reconcileNotificationsSecret only creates/deletes the argocd-notifications-secret based on whether notifications is enabled/disabled in the CR
@@ -652,7 +652,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsSecret(cr *argoproj.ArgoCD) erro
 		// secret exists but shouldn't, so it should be deleted
 		if !cr.Spec.Notifications.Enabled {
 			argoutil.LogResourceDeletion(log, existingSecret, "notifications are disabled")
-			return r.Client.Delete(context.TODO(), existingSecret)
+			return r.Delete(context.TODO(), existingSecret)
 		}
 
 		// secret exists and should, nothing to do here
@@ -670,7 +670,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsSecret(cr *argoproj.ArgoCD) erro
 	}
 
 	argoutil.LogResourceCreation(log, desiredSecret)
-	err := r.Client.Create(context.TODO(), desiredSecret)
+	err := r.Create(context.TODO(), desiredSecret)
 	if err != nil {
 		return err
 	}

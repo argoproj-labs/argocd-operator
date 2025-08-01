@@ -57,7 +57,7 @@ const (
 	// ExpectedReplicas is used to identify the keycloak running status.
 	expectedReplicas int32 = 1
 	// ServingCertSecretName is a secret that holds the service certificate.
-	servingCertSecretName = "sso-x509-https-secret"
+	servingCertSecretName = "sso-x509-https-secret" // #nosec G101
 	// Authentication api path for keycloak.
 	authURL = "/auth/realms/master/protocol/openid-connect/token"
 	// Realm api path for keycloak.
@@ -654,7 +654,7 @@ func (r *ReconcileArgoCD) newKeycloakInstance(cr *argoproj.ArgoCD) error {
 
 	// Create Keycloak Ingress
 	ing := newKeycloakIngress(cr)
-	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: ing.Name,
+	err := r.Get(context.TODO(), types.NamespacedName{Name: ing.Name,
 		Namespace: ing.Namespace}, ing)
 
 	if err != nil {
@@ -663,7 +663,7 @@ func (r *ReconcileArgoCD) newKeycloakInstance(cr *argoproj.ArgoCD) error {
 				return err
 			}
 			argoutil.LogResourceCreation(log, ing)
-			err = r.Client.Create(context.TODO(), ing)
+			err = r.Create(context.TODO(), ing)
 			if err != nil {
 				return err
 			}
@@ -674,7 +674,7 @@ func (r *ReconcileArgoCD) newKeycloakInstance(cr *argoproj.ArgoCD) error {
 
 	// Create Keycloak Service
 	svc := newKeycloakService(cr)
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: svc.Name,
+	err = r.Get(context.TODO(), types.NamespacedName{Name: svc.Name,
 		Namespace: svc.Namespace}, svc)
 
 	if err != nil {
@@ -683,7 +683,7 @@ func (r *ReconcileArgoCD) newKeycloakInstance(cr *argoproj.ArgoCD) error {
 				return err
 			}
 			argoutil.LogResourceCreation(log, svc)
-			err = r.Client.Create(context.TODO(), svc)
+			err = r.Create(context.TODO(), svc)
 			if err != nil {
 				return err
 			}
@@ -694,7 +694,7 @@ func (r *ReconcileArgoCD) newKeycloakInstance(cr *argoproj.ArgoCD) error {
 
 	// Create Keycloak Deployment
 	dep := newKeycloakDeployment(cr)
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: dep.Name,
+	err = r.Get(context.TODO(), types.NamespacedName{Name: dep.Name,
 		Namespace: dep.Namespace}, dep)
 
 	if err != nil {
@@ -703,7 +703,7 @@ func (r *ReconcileArgoCD) newKeycloakInstance(cr *argoproj.ArgoCD) error {
 				return err
 			}
 			argoutil.LogResourceCreation(log, dep)
-			err = r.Client.Create(context.TODO(), dep)
+			err = r.Create(context.TODO(), dep)
 			if err != nil {
 				return err
 			}
@@ -728,7 +728,7 @@ func (r *ReconcileArgoCD) prepareKeycloakConfig(cr *argoproj.ArgoCD) (*keycloakC
 			Namespace: cr.Namespace,
 		},
 	}
-	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: existingKeycloakRoute.Name,
+	err := r.Get(context.TODO(), types.NamespacedName{Name: existingKeycloakRoute.Name,
 		Namespace: existingKeycloakRoute.Namespace}, existingKeycloakRoute)
 	if err != nil {
 		return nil, err
@@ -742,7 +742,7 @@ func (r *ReconcileArgoCD) prepareKeycloakConfig(cr *argoproj.ArgoCD) (*keycloakC
 			Namespace: cr.Namespace,
 		},
 	}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: existingArgoCDRoute.Name,
+	err = r.Get(context.TODO(), types.NamespacedName{Name: existingArgoCDRoute.Name,
 		Namespace: existingArgoCDRoute.Namespace}, existingArgoCDRoute)
 	if err != nil {
 		return nil, err
@@ -756,7 +756,7 @@ func (r *ReconcileArgoCD) prepareKeycloakConfig(cr *argoproj.ArgoCD) (*keycloakC
 			Namespace: cr.Namespace,
 		},
 	}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: existingSecret.Name,
+	err = r.Get(context.TODO(), types.NamespacedName{Name: existingSecret.Name,
 		Namespace: existingSecret.Namespace}, existingSecret)
 	if err != nil {
 		return nil, err
@@ -805,7 +805,7 @@ func (r *ReconcileArgoCD) prepareKeycloakConfigForK8s(cr *argoproj.ArgoCD) (*key
 			Namespace: cr.Namespace,
 		},
 	}
-	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: existingKeycloakIng.Name,
+	err := r.Get(context.TODO(), types.NamespacedName{Name: existingKeycloakIng.Name,
 		Namespace: existingKeycloakIng.Namespace}, existingKeycloakIng)
 	if err != nil {
 		return nil, err
@@ -819,7 +819,7 @@ func (r *ReconcileArgoCD) prepareKeycloakConfigForK8s(cr *argoproj.ArgoCD) (*key
 			Namespace: cr.Namespace,
 		},
 	}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: existingArgoCDIng.Name,
+	err = r.Get(context.TODO(), types.NamespacedName{Name: existingArgoCDIng.Name,
 		Namespace: existingArgoCDIng.Namespace}, existingArgoCDIng)
 	if err != nil {
 		return nil, err
@@ -973,7 +973,7 @@ func (r *ReconcileArgoCD) getKCServerCert(cr *argoproj.ArgoCD) ([]byte, error) {
 		},
 	}
 
-	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: sslCertsSecret.Name, Namespace: sslCertsSecret.Namespace}, sslCertsSecret)
+	err := r.Get(context.TODO(), types.NamespacedName{Name: sslCertsSecret.Name, Namespace: sslCertsSecret.Namespace}, sslCertsSecret)
 
 	switch {
 	case err == nil:
@@ -1000,7 +1000,7 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoproj.ArgoCD, kRouteU
 		},
 	}
 
-	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: argoCDSecret.Name, Namespace: argoCDSecret.Namespace}, argoCDSecret)
+	err := r.Get(context.TODO(), types.NamespacedName{Name: argoCDSecret.Name, Namespace: argoCDSecret.Namespace}, argoCDSecret)
 	if err != nil {
 		message := fmt.Sprintf("ArgoCD secret not found for ArgoCD %s in namespace %s", cr.Name, cr.Namespace)
 		log.Error(err, message)
@@ -1009,7 +1009,7 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoproj.ArgoCD, kRouteU
 
 	argoCDSecret.Data["oidc.keycloak.clientSecret"] = []byte(oAuthClientSecret)
 	argoutil.LogResourceUpdate(log, argoCDSecret, "updating client secret for keycloak oidc")
-	err = r.Client.Update(context.TODO(), argoCDSecret)
+	err = r.Update(context.TODO(), argoCDSecret)
 	if err != nil {
 		message := fmt.Sprintf("Error updating ArgoCD Secret for ArgoCD %s in namespace %s", cr.Name, cr.Namespace)
 		log.Error(err, message)
@@ -1038,11 +1038,11 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoproj.ArgoCD, kRouteU
 			return err
 		}
 
-		err = r.Client.Get(context.TODO(), types.NamespacedName{Name: oAuthClient.Name}, oAuthClient)
+		err = r.Get(context.TODO(), types.NamespacedName{Name: oAuthClient.Name}, oAuthClient)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				argoutil.LogResourceCreation(log, oAuthClient)
-				err = r.Client.Create(context.TODO(), oAuthClient)
+				err = r.Create(context.TODO(), oAuthClient)
 				if err != nil {
 					return err
 				}
@@ -1070,7 +1070,7 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoproj.ArgoCD, kRouteU
 	}
 
 	argoCDCM := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: argoCDCM.Name, Namespace: argoCDCM.Namespace}, argoCDCM)
+	err = r.Get(context.TODO(), types.NamespacedName{Name: argoCDCM.Name, Namespace: argoCDCM.Namespace}, argoCDCM)
 	if err != nil {
 		message := fmt.Sprintf("ArgoCD configmap not found for ArgoCD %s in namespace %s", cr.Name, cr.Namespace)
 		log.Error(err, message)
@@ -1079,7 +1079,7 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoproj.ArgoCD, kRouteU
 
 	argoCDCM.Data[common.ArgoCDKeyOIDCConfig] = string(o)
 	argoutil.LogResourceUpdate(log, argoCDCM, "updating oidc config with keycloak realm")
-	err = r.Client.Update(context.TODO(), argoCDCM)
+	err = r.Update(context.TODO(), argoCDCM)
 	if err != nil {
 		message := fmt.Sprintf("Error updating OIDC Configuration for ArgoCD %s in namespace %s", cr.Name, cr.Namespace)
 		log.Error(err, message)
@@ -1088,7 +1088,7 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoproj.ArgoCD, kRouteU
 
 	// Update RBAC for ArgoCD Instance.
 	argoRBACCM := newConfigMapWithName(common.ArgoCDRBACConfigMapName, cr)
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: argoRBACCM.Name, Namespace: argoRBACCM.Namespace}, argoRBACCM)
+	err = r.Get(context.TODO(), types.NamespacedName{Name: argoRBACCM.Name, Namespace: argoRBACCM.Namespace}, argoRBACCM)
 	if err != nil {
 		message := fmt.Sprintf("ArgoCD RBAC configmap not found for ArgoCD %s in namespace %s", cr.Name, cr.Namespace)
 		log.Error(err, message)
@@ -1097,7 +1097,7 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoproj.ArgoCD, kRouteU
 
 	argoRBACCM.Data["scopes"] = "[groups,email]"
 	argoutil.LogResourceUpdate(log, argoRBACCM, "updating rbac scopes for keycloak")
-	err = r.Client.Update(context.TODO(), argoRBACCM)
+	err = r.Update(context.TODO(), argoRBACCM)
 	if err != nil {
 		message := fmt.Sprintf("Error updating ArgoCD RBAC configmap %s in namespace %s", cr.Name, cr.Namespace)
 		log.Error(err, message)
@@ -1308,7 +1308,7 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoproj.ArgoCD) err
 	if err != nil {
 		return err
 	}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: templateInstanceRef.Name,
+	err = r.Get(context.TODO(), types.NamespacedName{Name: templateInstanceRef.Name,
 		Namespace: templateInstanceRef.Namespace}, &template.TemplateInstance{})
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -1320,7 +1320,7 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoproj.ArgoCD) err
 			}
 
 			argoutil.LogResourceCreation(log, templateInstanceRef)
-			err = r.Client.Create(context.TODO(), templateInstanceRef)
+			err = r.Create(context.TODO(), templateInstanceRef)
 			if err != nil {
 				return err
 			}
@@ -1335,7 +1335,7 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoproj.ArgoCD) err
 			Namespace: cr.Namespace,
 		},
 	}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: existingDC.Name, Namespace: existingDC.Namespace}, existingDC)
+	err = r.Get(context.TODO(), types.NamespacedName{Name: existingDC.Name, Namespace: existingDC.Namespace}, existingDC)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Keycloak Deployment not found or being created for ArgoCD %s in namespace %s",
 			cr.Name, cr.Namespace))
@@ -1363,7 +1363,7 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoproj.ArgoCD) err
 		if changed {
 			err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 				argoutil.LogResourceUpdate(log, existingDC, "updating", explanation)
-				return r.Client.Update(context.TODO(), existingDC)
+				return r.Update(context.TODO(), existingDC)
 			})
 
 			if err != nil {
@@ -1408,7 +1408,7 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoproj.ArgoCD) err
 				}
 
 				// Update Realm creation. This will avoid posting of realm configuration on further reconciliations.
-				err = r.Client.Get(context.TODO(), types.NamespacedName{Name: existingDC.Name, Namespace: existingDC.Namespace}, existingDC)
+				err = r.Get(context.TODO(), types.NamespacedName{Name: existingDC.Name, Namespace: existingDC.Namespace}, existingDC)
 				if err != nil {
 					return err
 				}
@@ -1416,7 +1416,7 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoproj.ArgoCD) err
 				existingDC.Annotations["argocd.argoproj.io/realm-created"] = "true"
 				err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 					argoutil.LogResourceUpdate(log, existingDC, "setting the realm created status annotation to true")
-					return r.Client.Update(context.TODO(), existingDC)
+					return r.Update(context.TODO(), existingDC)
 				})
 
 				if err != nil {
@@ -1456,7 +1456,7 @@ func (r *ReconcileArgoCD) reconcileKeycloak(cr *argoproj.ArgoCD) error {
 		},
 	}
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: existingDeployment.Name, Namespace: existingDeployment.Namespace}, existingDeployment)
+	err = r.Get(context.TODO(), types.NamespacedName{Name: existingDeployment.Name, Namespace: existingDeployment.Namespace}, existingDeployment)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Keycloak Deployment not found or being created for ArgoCD %s in namespace %s",
 			cr.Name, cr.Namespace))
@@ -1484,7 +1484,7 @@ func (r *ReconcileArgoCD) reconcileKeycloak(cr *argoproj.ArgoCD) error {
 		if changed {
 			err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 				argoutil.LogResourceUpdate(log, existingDeployment, "updating", explanation)
-				return r.Client.Update(context.TODO(), existingDeployment)
+				return r.Update(context.TODO(), existingDeployment)
 			})
 
 			if err != nil {
@@ -1520,7 +1520,7 @@ func (r *ReconcileArgoCD) reconcileKeycloak(cr *argoproj.ArgoCD) error {
 				// Update Realm creation. This will avoid posting of realm configuration on further reconciliations.
 				existingDeployment.Annotations["argocd.argoproj.io/realm-created"] = "true"
 				argoutil.LogResourceUpdate(log, existingDeployment, "setting the realm created status annotation to true")
-				err = r.Client.Update(context.TODO(), existingDeployment)
+				err = r.Update(context.TODO(), existingDeployment)
 				if err != nil {
 					return err
 				}

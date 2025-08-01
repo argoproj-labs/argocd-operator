@@ -43,7 +43,7 @@ func (r *ReconcileArgoCD) createRBACConfigMap(cm *corev1.ConfigMap, cr *argoproj
 		return err
 	}
 	argoutil.LogResourceCreation(log, cm)
-	return r.Client.Create(context.TODO(), cm)
+	return r.Create(context.TODO(), cm)
 }
 
 // getApplicationInstanceLabelKey will return the application instance label key  for the given ArgoCD.
@@ -284,11 +284,11 @@ func newConfigMap(cr *argoproj.ArgoCD) *corev1.ConfigMap {
 // newConfigMapWithName creates a new ConfigMap with the given name for the given ArgCD.
 func newConfigMapWithName(name string, cr *argoproj.ArgoCD) *corev1.ConfigMap {
 	cm := newConfigMap(cr)
-	cm.ObjectMeta.Name = name
+	cm.Name = name
 
-	lbls := cm.ObjectMeta.Labels
+	lbls := cm.Labels
 	lbls[common.ArgoCDKeyName] = name
-	cm.ObjectMeta.Labels = lbls
+	cm.Labels = lbls
 
 	return cm
 }
@@ -380,7 +380,7 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoproj.ArgoCD) error {
 		return err
 	}
 	argoutil.LogResourceCreation(log, cm)
-	return r.Client.Create(context.TODO(), cm)
+	return r.Create(context.TODO(), cm)
 }
 
 // reconcileConfiguration will ensure that the main ConfigMap for ArgoCD is present.
@@ -443,12 +443,12 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 
 	// deprecated: log warning for deprecated field InitialRepositories
 	//lint:ignore SA1019 known to be deprecated
-	if cr.Spec.InitialRepositories != "" {
+	if cr.Spec.InitialRepositories != "" { //nolint:staticcheck // SA1019: We must test deprecated fields.
 		log.Info(initialRepositoriesWarning)
 	}
 	// deprecated: log warning for deprecated field RepositoryCredential
 	//lint:ignore SA1019 known to be deprecated
-	if cr.Spec.RepositoryCredentials != "" {
+	if cr.Spec.RepositoryCredentials != "" { //nolint:staticcheck // SA1019: We must test deprecated fields.
 		log.Info(repositoryCredentialsWarning)
 	}
 
@@ -546,19 +546,19 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 				explanation += ", owner reference"
 			}
 			argoutil.LogResourceUpdate(log, existingCM, explanation)
-			return r.Client.Update(context.TODO(), existingCM)
+			return r.Update(context.TODO(), existingCM)
 		}
 		return nil // Do nothing as there is no change in the configmap.
 	}
 	argoutil.LogResourceCreation(log, cm)
-	return r.Client.Create(context.TODO(), cm)
+	return r.Create(context.TODO(), cm)
 
 }
 
 // reconcileGrafanaConfiguration will ensure that the Grafana configuration ConfigMap is present.
 func (r *ReconcileArgoCD) reconcileGrafanaConfiguration(cr *argoproj.ArgoCD) error {
 	//lint:ignore SA1019 known to be deprecated
-	if !cr.Spec.Grafana.Enabled {
+	if !cr.Spec.Grafana.Enabled { //nolint:staticcheck // SA1019: We must test deprecated fields.
 		return nil // Grafana not enabled, do nothing.
 	}
 
@@ -570,7 +570,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaConfiguration(cr *argoproj.ArgoCD) err
 // reconcileGrafanaDashboards will ensure that the Grafana dashboards ConfigMap is present.
 func (r *ReconcileArgoCD) reconcileGrafanaDashboards(cr *argoproj.ArgoCD) error {
 	//lint:ignore SA1019 known to be deprecated
-	if !cr.Spec.Grafana.Enabled {
+	if !cr.Spec.Grafana.Enabled { //nolint:staticcheck // SA1019: We must test deprecated fields.
 		return nil // Grafana not enabled, do nothing.
 	}
 
@@ -641,7 +641,7 @@ func (r *ReconcileArgoCD) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argop
 	if changed {
 		argoutil.LogResourceUpdate(log, cm, "updating", explanation)
 		// TODO: Reload server (and dex?) if RBAC settings change?
-		return r.Client.Update(context.TODO(), cm)
+		return r.Update(context.TODO(), cm)
 	}
 	return nil // ConfigMap exists and nothing to do, move along...
 }
@@ -720,7 +720,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAHealthConfigMap(cr *argoproj.ArgoCD, u
 		if exists {
 			// ConfigMap exists but HA enabled flag has been set to false, delete the ConfigMap
 			argoutil.LogResourceDeletion(log, cm, "redis ha is disabled")
-			return r.Client.Delete(context.TODO(), existingCM)
+			return r.Delete(context.TODO(), existingCM)
 		}
 		return nil // Nothing to do since HA is not enabled and ConfigMap does not exist
 	}
@@ -739,12 +739,12 @@ func (r *ReconcileArgoCD) reconcileRedisHAHealthConfigMap(cr *argoproj.ArgoCD, u
 		if !reflect.DeepEqual(cm.Data, existingCM.Data) {
 			existingCM.Data = cm.Data
 			argoutil.LogResourceUpdate(log, existingCM, "updating", "Redis HA Health ConfigMap")
-			return r.Client.Update(context.TODO(), existingCM)
+			return r.Update(context.TODO(), existingCM)
 		}
 		return nil // No changes detected
 	}
 	argoutil.LogResourceCreation(log, cm)
-	return r.Client.Create(context.TODO(), cm)
+	return r.Create(context.TODO(), cm)
 }
 
 // reconcileRedisHAConfigMap will ensure that the Redis HA ConfigMap is present for the given ArgoCD.
@@ -769,7 +769,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSF
 		if exists {
 			// ConfigMap exists but HA enabled flag has been set to false, delete the ConfigMap
 			argoutil.LogResourceDeletion(log, cm, "redis ha is disabled")
-			return r.Client.Delete(context.TODO(), existingCM)
+			return r.Delete(context.TODO(), existingCM)
 		}
 		return nil // Nothing to do since HA is not enabled and ConfigMap does not exist
 	}
@@ -789,13 +789,13 @@ func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSF
 		if !reflect.DeepEqual(cm.Data, existingCM.Data) {
 			existingCM.Data = cm.Data
 			argoutil.LogResourceUpdate(log, existingCM, "updating", "Redis HA ConfigMap")
-			return r.Client.Update(context.TODO(), existingCM)
+			return r.Update(context.TODO(), existingCM)
 		}
 		return nil // No changes detected
 	}
 	argoutil.LogResourceCreation(log, cm)
 	// Create the ConfigMap if it does not exist
-	return r.Client.Create(context.TODO(), cm)
+	return r.Create(context.TODO(), cm)
 }
 
 func (r *ReconcileArgoCD) recreateRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
@@ -807,7 +807,7 @@ func (r *ReconcileArgoCD) recreateRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSFo
 	}
 	if exists {
 		argoutil.LogResourceDeletion(log, cm, "deleting config map in order to recreate it")
-		if err := r.Client.Delete(context.TODO(), cm); err != nil {
+		if err := r.Delete(context.TODO(), cm); err != nil {
 			return err
 		}
 	}
@@ -823,7 +823,7 @@ func (r *ReconcileArgoCD) recreateRedisHAHealthConfigMap(cr *argoproj.ArgoCD, us
 	}
 	if exists {
 		argoutil.LogResourceDeletion(log, cm, "deleting config map in order to recreate it")
-		if err := r.Client.Delete(context.TODO(), cm); err != nil {
+		if err := r.Delete(context.TODO(), cm); err != nil {
 			return err
 		}
 	}
@@ -849,7 +849,7 @@ func (r *ReconcileArgoCD) reconcileSSHKnownHosts(cr *argoproj.ArgoCD) error {
 		return err
 	}
 	argoutil.LogResourceCreation(log, cm)
-	return r.Client.Create(context.TODO(), cm)
+	return r.Create(context.TODO(), cm)
 }
 
 // reconcileTLSCerts will ensure that the ArgoCD TLS Certs ConfigMap is present.
@@ -869,7 +869,7 @@ func (r *ReconcileArgoCD) reconcileTLSCerts(cr *argoproj.ArgoCD) error {
 		return err
 	}
 	argoutil.LogResourceCreation(log, cm)
-	return r.Client.Create(context.TODO(), cm)
+	return r.Create(context.TODO(), cm)
 }
 
 // reconcileGPGKeysConfigMap creates a gpg-keys config map
@@ -886,7 +886,7 @@ func (r *ReconcileArgoCD) reconcileGPGKeysConfigMap(cr *argoproj.ArgoCD) error {
 		return err
 	}
 	argoutil.LogResourceCreation(log, cm)
-	return r.Client.Create(context.TODO(), cm)
+	return r.Create(context.TODO(), cm)
 }
 
 // reconcileArgoCmdParamsConfigMap will ensure that the ConfigMap containing command line parameters for ArgoCD is present.

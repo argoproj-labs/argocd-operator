@@ -34,8 +34,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 func TestReconcile_testKeycloakTemplateInstance(t *testing.T) {
@@ -57,7 +58,7 @@ func TestReconcile_testKeycloakTemplateInstance(t *testing.T) {
 	assert.NoError(t, r.reconcileSSO(a))
 
 	templateInstance := &templatev1.TemplateInstance{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "rhsso",
@@ -292,7 +293,7 @@ func TestReconcile_KeycloakTemplateWithoutDeploymentConfig(t *testing.T) {
 
 	// Verify that the Template instance is not created.
 	templateInstance := &templatev1.TemplateInstance{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "rhsso", Namespace: a.Namespace}, templateInstance)
+	err = r.Get(context.TODO(), types.NamespacedName{Name: "rhsso", Namespace: a.Namespace}, templateInstance)
 	assert.NotNil(t, err)
 	assert.True(t, apierrors.IsNotFound(err))
 }
@@ -317,7 +318,7 @@ func TestReconcile_testKeycloakInstanceResources(t *testing.T) {
 
 	// Keycloak Deployment
 	deployment := &k8sappsv1.Deployment{}
-	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: defaultKeycloakIdentifier, Namespace: a.Namespace}, deployment)
+	err := r.Get(context.TODO(), types.NamespacedName{Name: defaultKeycloakIdentifier, Namespace: a.Namespace}, deployment)
 	assert.NoError(t, err)
 
 	assert.Equal(t, deployment.Name, defaultKeycloakIdentifier)
@@ -335,7 +336,7 @@ func TestReconcile_testKeycloakInstanceResources(t *testing.T) {
 	}
 	assert.Equal(t, deployment.Spec.Selector, testSelector)
 
-	assert.Equal(t, deployment.Spec.Template.ObjectMeta.Labels, testLabels)
+	assert.Equal(t, deployment.Spec.Template.Labels, testLabels)
 	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Name,
 		defaultKeycloakIdentifier)
 	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Image,
@@ -351,7 +352,7 @@ func TestReconcile_testKeycloakInstanceResources(t *testing.T) {
 
 	// Keycloak Service
 	svc := &corev1.Service{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: defaultKeycloakIdentifier, Namespace: a.Namespace}, svc)
+	err = r.Get(context.TODO(), types.NamespacedName{Name: defaultKeycloakIdentifier, Namespace: a.Namespace}, svc)
 	assert.NoError(t, err)
 
 	assert.Equal(t, svc.Name, defaultKeycloakIdentifier)
@@ -364,7 +365,7 @@ func TestReconcile_testKeycloakInstanceResources(t *testing.T) {
 	// Keycloak Ingress
 	ing := &networkingv1.Ingress{}
 	testPathType := networkingv1.PathTypeImplementationSpecific
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: defaultKeycloakIdentifier, Namespace: a.Namespace}, ing)
+	err = r.Get(context.TODO(), types.NamespacedName{Name: defaultKeycloakIdentifier, Namespace: a.Namespace}, ing)
 	assert.NoError(t, err)
 
 	assert.Equal(t, ing.Name, defaultKeycloakIdentifier)
@@ -425,7 +426,7 @@ func TestReconcile_testKeycloakIngressHost(t *testing.T) {
 	// Keycloak Ingress
 	ing := &networkingv1.Ingress{}
 	testPathType := networkingv1.PathTypeImplementationSpecific
-	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: defaultKeycloakIdentifier, Namespace: a.Namespace}, ing)
+	err := r.Get(context.TODO(), types.NamespacedName{Name: defaultKeycloakIdentifier, Namespace: a.Namespace}, ing)
 	assert.NoError(t, err)
 
 	assert.Equal(t, ing.Name, defaultKeycloakIdentifier)
@@ -497,7 +498,7 @@ func TestReconcile_testKeycloakRouteHost(t *testing.T) {
 			Namespace: a.Namespace,
 		},
 	}
-	err := r.Client.Get(context.Background(), client.ObjectKeyFromObject(&templ), &templ)
+	err := r.Get(context.Background(), client.ObjectKeyFromObject(&templ), &templ)
 	assert.NoError(t, err)
 
 	// TemplateInstance contains a set of Objects, but we only care about the Route

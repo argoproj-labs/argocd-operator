@@ -107,7 +107,7 @@ func TestReconcileServerService(t *testing.T) {
 	})
 	serverService := newServiceWithSuffix("server", "server", a)
 	t.Run("Server Service Created when the Server Service is not found ", func(t *testing.T) {
-		err := r.Client.Get(context.TODO(), types.NamespacedName{
+		err := r.Get(context.TODO(), types.NamespacedName{
 			Name:      "argocd-server",
 			Namespace: testNamespace,
 		}, serverService)
@@ -116,7 +116,7 @@ func TestReconcileServerService(t *testing.T) {
 		err = r.reconcileServerService(a)
 		assert.NoError(t, err)
 
-		err = r.Client.Get(context.TODO(), types.NamespacedName{
+		err = r.Get(context.TODO(), types.NamespacedName{
 			Name:      "argocd-server",
 			Namespace: testNamespace,
 		}, serverService)
@@ -133,7 +133,7 @@ func TestReconcileServerService(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Existing Server is found and has the argoCD new Server Service Type
-		err = r.Client.Get(context.TODO(), types.NamespacedName{
+		err = r.Get(context.TODO(), types.NamespacedName{
 			Name:      "argocd-server",
 			Namespace: testNamespace,
 		}, serverService)
@@ -160,7 +160,7 @@ func TestReconcileArgoCD_reconcileRedisWithRemoteEn(t *testing.T) {
 
 	s := &corev1.Service{}
 
-	assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, s),
+	assert.ErrorContains(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, s),
 		"services \"argocd-redis\" not found")
 }
 
@@ -181,6 +181,6 @@ func TestReconcileArgoCD_reconcileRepoServerWithRemoteEnabled(t *testing.T) {
 
 	s := &corev1.Service{}
 
-	assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, s),
+	assert.ErrorContains(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, s),
 		"services \"argocd-repo-server\" not found")
 }

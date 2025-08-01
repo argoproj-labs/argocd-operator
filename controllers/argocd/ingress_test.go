@@ -55,7 +55,7 @@ func TestReconcileArgoCD_reconcile_ServerIngress_ingressClassName(t *testing.T) 
 			assert.NoError(t, err)
 
 			ingress := &networkingv1.Ingress{}
-			err = r.Client.Get(context.TODO(), types.NamespacedName{
+			err = r.Get(context.TODO(), types.NamespacedName{
 				Name:      "argocd-server",
 				Namespace: testNamespace,
 			}, ingress)
@@ -99,7 +99,7 @@ func TestReconcileArgoCD_reconcile_ServerIngress_serverHost(t *testing.T) {
 			assert.NoError(t, err)
 
 			ingress := &networkingv1.Ingress{}
-			err = r.Client.Get(context.TODO(), types.NamespacedName{
+			err = r.Get(context.TODO(), types.NamespacedName{
 				Name:      "argocd-server",
 				Namespace: testNamespace,
 			}, ingress)
@@ -114,7 +114,7 @@ func TestReconcileArgoCD_reconcile_ServerIngress_serverHost(t *testing.T) {
 
 			err = r.reconcileArgoServerIngress(a)
 			assert.NoError(t, err)
-			err = r.Client.Get(context.TODO(), types.NamespacedName{
+			err = r.Get(context.TODO(), types.NamespacedName{
 				Name:      "argocd-server",
 				Namespace: testNamespace,
 			}, ingress)
@@ -158,7 +158,7 @@ func TestReconcileArgoCD_reconcile_ServerIngress_ingressClassName_update(t *test
 	assert.NoError(t, err)
 
 	updatedIngress := &networkingv1.Ingress{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-server",
 		Namespace: testNamespace,
 	}, updatedIngress)
@@ -205,7 +205,7 @@ func TestReconcileArgoCD_reconcile_ServerGRPCIngress_ingressClassName(t *testing
 			assert.NoError(t, err)
 
 			ingress := &networkingv1.Ingress{}
-			err = r.Client.Get(context.TODO(), types.NamespacedName{
+			err = r.Get(context.TODO(), types.NamespacedName{
 				Name:      "argocd-grpc",
 				Namespace: testNamespace,
 			}, ingress)
@@ -254,7 +254,7 @@ func TestReconcileArgoCD_reconcile_PrometheusIngress_ingressClassName(t *testing
 			assert.NoError(t, err)
 
 			ingress := &networkingv1.Ingress{}
-			err = r.Client.Get(context.TODO(), types.NamespacedName{
+			err = r.Get(context.TODO(), types.NamespacedName{
 				Name:      "argocd-prometheus",
 				Namespace: testNamespace,
 			}, ingress)
@@ -285,5 +285,5 @@ func TestReconcileApplicationSetService_Ingress(t *testing.T) {
 
 	ingress := newIngressWithSuffix(common.ApplicationSetServiceNameSuffix, a)
 	assert.NoError(t, r.reconcileApplicationSetControllerIngress(a))
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Namespace: ingress.Namespace, Name: ingress.Name}, ingress))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Namespace: ingress.Namespace, Name: ingress.Name}, ingress))
 }

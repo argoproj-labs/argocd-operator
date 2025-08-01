@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"testing"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/stretchr/testify/assert"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	testclient "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 func TestReconcileNetworkPolicies(t *testing.T) {

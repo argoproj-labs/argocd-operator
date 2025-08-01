@@ -70,11 +70,11 @@ func newRoute(cr *argoproj.ArgoCD) *routev1.Route {
 // newRouteWithName returns a new Route with the given name and ArgoCD.
 func newRouteWithName(name string, cr *argoproj.ArgoCD) *routev1.Route {
 	route := newRoute(cr)
-	route.ObjectMeta.Name = name
+	route.Name = name
 
-	lbls := route.ObjectMeta.Labels
+	lbls := route.Labels
 	lbls[common.ArgoCDKeyName] = name
-	route.ObjectMeta.Labels = lbls
+	route.Labels = lbls
 
 	return route
 }
@@ -114,17 +114,17 @@ func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 	}
 	if rExists {
 		//lint:ignore SA1019 known to be deprecated
-		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route.Enabled {
+		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route.Enabled { //nolint:staticcheck // SA1019: We must test deprecated fields.
 			// Route exists but enabled flag has been set to false, delete the Route
 			argoutil.LogResourceDeletion(log, route, "grafana or grafana route is disabled")
-			return r.Client.Delete(context.TODO(), route)
+			return r.Delete(context.TODO(), route)
 		}
 		log.Info(grafanaDeprecatedWarning)
 		return nil // Route found, do nothing
 	}
 
 	//lint:ignore SA1019 known to be deprecated
-	if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route.Enabled {
+	if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route.Enabled { //nolint:staticcheck // SA1019: We must test deprecated fields.
 		return nil // Grafana itself or Route not enabled, do nothing.
 	}
 
@@ -150,7 +150,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoproj.ArgoCD) error {
 				explanation = "prometheus route is disabled"
 			}
 			argoutil.LogResourceDeletion(log, route, explanation)
-			return r.Client.Delete(context.TODO(), route)
+			return r.Delete(context.TODO(), route)
 		}
 		return nil // Route found, do nothing
 	}
@@ -202,7 +202,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoproj.ArgoCD) error {
 		return err
 	}
 	argoutil.LogResourceCreation(log, route)
-	return r.Client.Create(context.TODO(), route)
+	return r.Create(context.TODO(), route)
 }
 
 // reconcileServerRoute will ensure that the ArgoCD Server Route is present.
@@ -217,7 +217,7 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 		if !cr.Spec.Server.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
 			argoutil.LogResourceDeletion(log, route, "server route is disabled")
-			return r.Client.Delete(context.TODO(), route)
+			return r.Delete(context.TODO(), route)
 		}
 	}
 
@@ -310,10 +310,10 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 	}
 	if !found {
 		argoutil.LogResourceCreation(log, route)
-		return r.Client.Create(context.TODO(), route)
+		return r.Create(context.TODO(), route)
 	}
 	argoutil.LogResourceUpdate(log, route)
-	return r.Client.Update(context.TODO(), route)
+	return r.Update(context.TODO(), route)
 }
 
 // isCreatedByServiceCA checks if the secret was created by the OpenShift Service CA
@@ -365,7 +365,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 				explanation = "applicationset webhook route is disabled"
 			}
 			argoutil.LogResourceDeletion(log, route, explanation)
-			return r.Client.Delete(context.TODO(), route)
+			return r.Delete(context.TODO(), route)
 		}
 	}
 
@@ -482,10 +482,10 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 	}
 	if !found {
 		argoutil.LogResourceCreation(log, route)
-		return r.Client.Create(context.TODO(), route)
+		return r.Create(context.TODO(), route)
 	}
 	argoutil.LogResourceUpdate(log, route)
-	return r.Client.Update(context.TODO(), route)
+	return r.Update(context.TODO(), route)
 }
 
 // The algorithm used by this function is:
@@ -574,13 +574,13 @@ func (r *ReconcileArgoCD) overrideRouteTLS(tls *routev1.TLSConfig, route *routev
 	// https://docs.openshift.com/container-platform/4.16/networking/routes/secured-routes.html#nw-ingress-route-secret-load-external-cert_secured-routes
 	if tls.ExternalCertificate != nil && tls.ExternalCertificate.Name != "" {
 		secret := &corev1.Secret{}
-		err := argoutil.FetchObject(r.Client, route.ObjectMeta.Namespace, tls.ExternalCertificate.Name, secret)
+		err := argoutil.FetchObject(r.Client, route.Namespace, tls.ExternalCertificate.Name, secret)
 		if err != nil {
 			return err
 		}
 		if secret.Type != corev1.SecretTypeTLS {
 			return fmt.Errorf("secret %s in namespace %s is not of type kubernetes.io/tls",
-				secret.ObjectMeta.Name, secret.ObjectMeta.Namespace)
+				secret.Name, secret.Namespace)
 		}
 
 		// No need to perform further checks on the secret data, as Kubernetes will reject

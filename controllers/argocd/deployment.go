@@ -62,7 +62,7 @@ func (r *ReconcileArgoCD) getArgoCDExport(cr *argoproj.ArgoCD) (*argoprojv1alpha
 		return nil, nil
 	}
 
-	namespace := cr.ObjectMeta.Namespace
+	namespace := cr.Namespace
 	if cr.Spec.Import.Namespace != nil && len(*cr.Spec.Import.Namespace) > 0 {
 		namespace = *cr.Spec.Import.Namespace
 	}
@@ -88,7 +88,7 @@ func getArgoExportSecretName(export *argoprojv1alpha1.ArgoCDExport) string {
 
 func getArgoImportBackend(client client.Client, cr *argoproj.ArgoCD) (string, error) {
 	backend := common.ArgoCDExportStorageBackendLocal
-	namespace := cr.ObjectMeta.Namespace
+	namespace := cr.Namespace
 	if cr.Spec.Import != nil && cr.Spec.Import.Namespace != nil && len(*cr.Spec.Import.Namespace) > 0 {
 		namespace = *cr.Spec.Import.Namespace
 	}
@@ -390,12 +390,12 @@ func newDeployment(cr *argoproj.ArgoCD) *appsv1.Deployment {
 // newDeploymentWithName returns a new Deployment instance for the given ArgoCD using the given name.
 func newDeploymentWithName(name string, component string, cr *argoproj.ArgoCD) *appsv1.Deployment {
 	deploy := newDeployment(cr)
-	deploy.ObjectMeta.Name = name
+	deploy.Name = name
 
-	lbls := deploy.ObjectMeta.Labels
+	lbls := deploy.Labels
 	lbls[common.ArgoCDKeyName] = name
 	lbls[common.ArgoCDKeyComponent] = component
-	deploy.ObjectMeta.Labels = lbls
+	deploy.Labels = lbls
 
 	deploy.Spec = appsv1.DeploymentSpec{
 		Selector: &metav1.LabelSelector{
@@ -467,7 +467,7 @@ func (r *ReconcileArgoCD) reconcileDeployments(cr *argoproj.ArgoCD, useTLSForRed
 func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error {
 
 	//lint:ignore SA1019 known to be deprecated
-	if !cr.Spec.Grafana.Enabled {
+	if !cr.Spec.Grafana.Enabled { //nolint:staticcheck // SA1019: We must test deprecated fields.
 		return nil // Grafana not enabled, do nothing.
 	}
 	log.Info(grafanaDeprecatedWarning)
@@ -557,15 +557,15 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 		if !cr.Spec.Redis.IsEnabled() {
 			// Deployment exists but component enabled flag has been set to false, delete the Deployment
 			argoutil.LogResourceDeletion(log, deploy, "redis is disabled but deployment exists")
-			return r.Client.Delete(context.TODO(), deploy)
+			return r.Delete(context.TODO(), deploy)
 		} else if cr.Spec.Redis.IsRemote() {
 			argoutil.LogResourceDeletion(log, deploy, "remote redis is configured")
-			return r.Client.Delete(context.TODO(), deploy)
+			return r.Delete(context.TODO(), deploy)
 		}
 		if cr.Spec.HA.Enabled {
 			// Deployment exists but HA enabled flag has been set to true, delete the Deployment
 			argoutil.LogResourceDeletion(log, deploy, "redis ha is enabled but non-ha deployment exists")
-			return r.Client.Delete(context.TODO(), deploy)
+			return r.Delete(context.TODO(), deploy)
 		}
 		changed := false
 		explanation := ""
@@ -573,7 +573,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 		desiredImage := getRedisContainerImage(cr)
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			explanation = "container image"
 			changed = true
 		}
@@ -627,7 +627,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 
 		if changed {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
-			return r.Client.Update(context.TODO(), existing)
+			return r.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
 	}
@@ -649,7 +649,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 		return err
 	}
 	argoutil.LogResourceCreation(log, deploy)
-	return r.Client.Create(context.TODO(), deploy)
+	return r.Create(context.TODO(), deploy)
 }
 
 // reconcileRedisHAProxyDeployment will ensure the Deployment resource is present for the Redis HA Proxy component.
@@ -872,7 +872,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 		if !cr.Spec.HA.Enabled {
 			// Deployment exists but HA enabled flag has been set to false, delete the Deployment
 			argoutil.LogResourceDeletion(log, existing, "redis ha is disabled")
-			return r.Client.Delete(context.TODO(), existing)
+			return r.Delete(context.TODO(), existing)
 		}
 		changed := false
 		explanation := ""
@@ -881,7 +881,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			explanation = "container image"
 			changed = true
 		}
@@ -938,7 +938,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 		}
 		if changed {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
-			return r.Client.Update(context.TODO(), existing)
+			return r.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found, do nothing
 	}
@@ -951,7 +951,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 		return err
 	}
 	argoutil.LogResourceCreation(log, deploy)
-	return r.Client.Create(context.TODO(), deploy)
+	return r.Create(context.TODO(), deploy)
 }
 
 // reconcileRepoDeployment will ensure the Deployment resource is present for the ArgoCD Repo component.
@@ -1253,10 +1253,10 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 		if !cr.Spec.Repo.IsEnabled() {
 			// Delete existing deployment for ArgoCD Repo Server, if any ..
 			argoutil.LogResourceDeletion(log, existing, "repo server is disabled")
-			return r.Client.Delete(context.TODO(), existing)
+			return r.Delete(context.TODO(), existing)
 		} else if cr.Spec.Repo.IsRemote() {
 			argoutil.LogResourceDeletion(log, deploy, "remote repo server is configured")
-			return r.Client.Delete(context.TODO(), deploy)
+			return r.Delete(context.TODO(), deploy)
 		}
 
 		changed := false
@@ -1265,12 +1265,12 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 		desiredImage := getRepoServerContainerImage(cr)
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
-			if existing.Spec.Template.ObjectMeta.Labels == nil {
-				existing.Spec.Template.ObjectMeta.Labels = map[string]string{
+			if existing.Spec.Template.Labels == nil {
+				existing.Spec.Template.Labels = map[string]string{
 					"image.upgraded": time.Now().UTC().Format("01022006-150406-MST"),
 				}
 			}
-			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			explanation = "container image"
 			changed = true
 		}
@@ -1394,7 +1394,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 
 		if changed {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
-			return r.Client.Update(context.TODO(), existing)
+			return r.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
 	}
@@ -1413,7 +1413,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 		return err
 	}
 	argoutil.LogResourceCreation(log, deploy)
-	return r.Client.Create(context.TODO(), deploy)
+	return r.Create(context.TODO(), deploy)
 }
 
 // reconcileServerDeployment will ensure the Deployment resource is present for the ArgoCD Server component.
@@ -1664,7 +1664,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		if !cr.Spec.Server.IsEnabled() {
 			// Delete existing deployment for ArgoCD Server, if any ..
 			argoutil.LogResourceDeletion(log, existing, "argocd server is disabled")
-			return r.Client.Delete(context.TODO(), existing)
+			return r.Delete(context.TODO(), existing)
 		}
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getArgoContainerImage(cr)
@@ -1672,7 +1672,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		explanation := ""
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			explanation = "container image"
 			changed = true
 		}
@@ -1782,7 +1782,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 
 		if changed {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
-			return r.Client.Update(context.TODO(), existing)
+			return r.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
 	}
@@ -1796,7 +1796,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		return err
 	}
 	argoutil.LogResourceCreation(log, deploy)
-	return r.Client.Create(context.TODO(), deploy)
+	return r.Create(context.TODO(), deploy)
 }
 
 // triggerDeploymentRollout will update the label with the given key to trigger a new rollout of the Deployment.
@@ -1811,9 +1811,9 @@ func (r *ReconcileArgoCD) triggerDeploymentRollout(deployment *appsv1.Deployment
 		return nil
 	}
 
-	deployment.Spec.Template.ObjectMeta.Labels[key] = nowNano()
+	deployment.Spec.Template.Labels[key] = nowNano()
 	argoutil.LogResourceUpdate(log, deployment, "to trigger rollout")
-	return r.Client.Update(context.TODO(), deployment)
+	return r.Update(context.TODO(), deployment)
 }
 
 func proxyEnvVars(vars ...corev1.EnvVar) []corev1.EnvVar {

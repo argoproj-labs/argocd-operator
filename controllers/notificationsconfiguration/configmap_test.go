@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,6 +12,8 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
@@ -100,14 +101,14 @@ func TestReconcileNotifications_CreateConfigMap(t *testing.T) {
 
 	// Verify if the ConfigMap is created
 	testCM := &corev1.ConfigMap{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      ArgoCDNotificationsConfigMap,
 			Namespace: a.Namespace,
 		},
 		testCM))
-	assert.True(t, argoutil.IsTrackedByOperator(testCM.ObjectMeta.Labels))
+	assert.True(t, argoutil.IsTrackedByOperator(testCM.Labels))
 
 	// Verify that the configmap has the default template
 	assert.NotEqual(t, testCM.Data["template.app-created"], "")
@@ -152,7 +153,7 @@ func TestReconcileNotifications_UpdateConfigMap(t *testing.T) {
 
 	// Verify if the ConfigMap is created
 	testCM := &corev1.ConfigMap{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      ArgoCDNotificationsConfigMap,
@@ -167,14 +168,14 @@ func TestReconcileNotifications_UpdateConfigMap(t *testing.T) {
 	assert.NoError(t, err)
 
 	testCM = &corev1.ConfigMap{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      ArgoCDNotificationsConfigMap,
 			Namespace: a.Namespace,
 		},
 		testCM))
-	assert.True(t, argoutil.IsTrackedByOperator(testCM.ObjectMeta.Labels))
+	assert.True(t, argoutil.IsTrackedByOperator(testCM.Labels))
 	// Verify that the updated configuration
 	assert.Equal(t, testCM.Data["trigger.on-sync-status-test"],
 		"- when: app.status.sync.status == 'Unknown' \n send: [my-custom-template]")
@@ -209,21 +210,21 @@ func TestReconcileNotifications_DeleteConfigMap(t *testing.T) {
 			Namespace: a.Namespace,
 		},
 	}
-	assert.NoError(t, r.Client.Delete(
+	assert.NoError(t, r.Delete(
 		context.TODO(), testCM))
 
 	// Reconcile to check if the ConfigMap is recreated
 	err = r.reconcileNotificationsConfigmap(a)
 	assert.NoError(t, err)
 
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      ArgoCDNotificationsConfigMap,
 			Namespace: a.Namespace,
 		},
 		testCM))
-	assert.True(t, argoutil.IsTrackedByOperator(testCM.ObjectMeta.Labels))
+	assert.True(t, argoutil.IsTrackedByOperator(testCM.Labels))
 	// Verify if ConfigMap is created with required data
 	assert.Equal(t, testCM.Data["trigger.on-sync-status-test"],
 		"- when: app.status.sync.status == 'Unknown' \n send: [my-custom-template]")
