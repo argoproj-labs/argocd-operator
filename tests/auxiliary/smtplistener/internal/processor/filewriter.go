@@ -26,7 +26,7 @@ var FileWriter = func() backends.Decorator {
 				stringer = e
 				data := []byte(stringer.String())
 				key := fmt.Sprintf("%s%s", "/tmp/", e.QueuedId)
-				err := os.WriteFile(key, data, 0666)
+				err := os.WriteFile(key, data, 0666) // #nosec G306
 				fmt.Println(err)
 				return p.Process(e, task)
 			} else {

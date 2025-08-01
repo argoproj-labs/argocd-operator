@@ -56,21 +56,21 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.ExtraConfig = src.Spec.ExtraConfig
 	dst.Spec.ApplicationInstanceLabelKey = src.Spec.ApplicationInstanceLabelKey
 	//lint:ignore SA1019 known to be deprecated
-	dst.Spec.ConfigManagementPlugins = src.Spec.ConfigManagementPlugins
+	dst.Spec.ConfigManagementPlugins = src.Spec.ConfigManagementPlugins //nolint:staticcheck // SA1019: We must test deprecated fields.
 	dst.Spec.Controller = *ConvertAlphaToBetaController(&src.Spec.Controller)
 	dst.Spec.DisableAdmin = src.Spec.DisableAdmin
 	dst.Spec.ExtraConfig = src.Spec.ExtraConfig
 	dst.Spec.GATrackingID = src.Spec.GATrackingID
 	dst.Spec.GAAnonymizeUsers = src.Spec.GAAnonymizeUsers
 	//lint:ignore SA1019 known to be deprecated
-	dst.Spec.Grafana = *ConvertAlphaToBetaGrafana(&src.Spec.Grafana)
+	dst.Spec.Grafana = *ConvertAlphaToBetaGrafana(&src.Spec.Grafana) //nolint:staticcheck // SA1019: We must test deprecated fields.
 	dst.Spec.HA = *ConvertAlphaToBetaHA(&src.Spec.HA)
 	dst.Spec.HelpChatURL = src.Spec.HelpChatURL
 	dst.Spec.HelpChatText = src.Spec.HelpChatText
 	dst.Spec.Image = src.Spec.Image
 	dst.Spec.Import = (*v1beta1.ArgoCDImportSpec)(src.Spec.Import)
 	//lint:ignore SA1019 known to be deprecated
-	dst.Spec.InitialRepositories = src.Spec.InitialRepositories
+	dst.Spec.InitialRepositories = src.Spec.InitialRepositories //nolint:staticcheck // SA1019: We must test deprecated fields.
 	dst.Spec.InitialSSHKnownHosts = v1beta1.SSHHostsSpec(src.Spec.InitialSSHKnownHosts)
 	dst.Spec.KustomizeBuildOptions = src.Spec.KustomizeBuildOptions
 	dst.Spec.KustomizeVersions = ConvertAlphaToBetaKustomizeVersions(src.Spec.KustomizeVersions)
@@ -83,7 +83,7 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.Redis = *ConvertAlphaToBetaRedis(&src.Spec.Redis)
 	dst.Spec.Repo = *ConvertAlphaToBetaRepo(&src.Spec.Repo)
 	//lint:ignore SA1019 known to be deprecated
-	dst.Spec.RepositoryCredentials = src.Spec.RepositoryCredentials
+	dst.Spec.RepositoryCredentials = src.Spec.RepositoryCredentials //nolint:staticcheck // SA1019: We must test deprecated fields.
 	dst.Spec.ResourceHealthChecks = ConvertAlphaToBetaResourceHealthChecks(src.Spec.ResourceHealthChecks)
 	dst.Spec.ResourceIgnoreDifferences = ConvertAlphaToBetaResourceIgnoreDifferences(src.Spec.ResourceIgnoreDifferences)
 	dst.Spec.ResourceActions = ConvertAlphaToBetaResourceActions(src.Spec.ResourceActions)
@@ -131,21 +131,21 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.ExtraConfig = src.Spec.ExtraConfig
 	dst.Spec.ApplicationInstanceLabelKey = src.Spec.ApplicationInstanceLabelKey
 	//lint:ignore SA1019 known to be deprecated
-	dst.Spec.ConfigManagementPlugins = src.Spec.ConfigManagementPlugins
+	dst.Spec.ConfigManagementPlugins = src.Spec.ConfigManagementPlugins //nolint:staticcheck // SA1019: We must test deprecated fields.
 	dst.Spec.Controller = *ConvertBetaToAlphaController(&src.Spec.Controller)
 	dst.Spec.DisableAdmin = src.Spec.DisableAdmin
 	dst.Spec.ExtraConfig = src.Spec.ExtraConfig
 	dst.Spec.GATrackingID = src.Spec.GATrackingID
 	dst.Spec.GAAnonymizeUsers = src.Spec.GAAnonymizeUsers
 	//lint:ignore SA1019 known to be deprecated
-	dst.Spec.Grafana = *ConvertBetaToAlphaGrafana(&src.Spec.Grafana)
+	dst.Spec.Grafana = *ConvertBetaToAlphaGrafana(&src.Spec.Grafana) //nolint:staticcheck // SA1019: We must test deprecated fields.
 	dst.Spec.HA = *ConvertBetaToAlphaHA(&src.Spec.HA)
 	dst.Spec.HelpChatURL = src.Spec.HelpChatURL
 	dst.Spec.HelpChatText = src.Spec.HelpChatText
 	dst.Spec.Image = src.Spec.Image
 	dst.Spec.Import = (*ArgoCDImportSpec)(src.Spec.Import)
 	//lint:ignore SA1019 known to be deprecated
-	dst.Spec.InitialRepositories = src.Spec.InitialRepositories
+	dst.Spec.InitialRepositories = src.Spec.InitialRepositories //nolint:staticcheck // SA1019: We must test deprecated fields.
 	dst.Spec.InitialSSHKnownHosts = SSHHostsSpec(src.Spec.InitialSSHKnownHosts)
 	dst.Spec.KustomizeBuildOptions = src.Spec.KustomizeBuildOptions
 	dst.Spec.KustomizeVersions = ConvertBetaToAlphaKustomizeVersions(src.Spec.KustomizeVersions)
@@ -158,7 +158,7 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.Redis = *ConvertBetaToAlphaRedis(&src.Spec.Redis)
 	dst.Spec.Repo = *ConvertBetaToAlphaRepo(&src.Spec.Repo)
 	//lint:ignore SA1019 known to be deprecated
-	dst.Spec.RepositoryCredentials = src.Spec.RepositoryCredentials
+	dst.Spec.RepositoryCredentials = src.Spec.RepositoryCredentials //nolint:staticcheck // SA1019: We must test deprecated fields.
 	dst.Spec.ResourceHealthChecks = ConvertBetaToAlphaResourceHealthChecks(src.Spec.ResourceHealthChecks)
 	dst.Spec.ResourceIgnoreDifferences = ConvertBetaToAlphaResourceIgnoreDifferences(src.Spec.ResourceIgnoreDifferences)
 	dst.Spec.ResourceActions = ConvertBetaToAlphaResourceActions(src.Spec.ResourceActions)

@@ -17,7 +17,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	testclient "k8s.io/client-go/kubernetes/fake"
@@ -635,18 +634,18 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 
 func TestGetArgoApplicationContainerEnv(t *testing.T) {
 
-	sync60s := []v1.EnvVar{
-		{Name: "HOME", Value: "/home/argocd", ValueFrom: (*v1.EnvVarSource)(nil)},
+	sync60s := []corev1.EnvVar{
+		{Name: "HOME", Value: "/home/argocd", ValueFrom: (*corev1.EnvVarSource)(nil)},
 		{Name: "REDIS_PASSWORD", Value: "",
-			ValueFrom: &v1.EnvVarSource{
-				SecretKeyRef: &v1.SecretKeySelector{
-					LocalObjectReference: v1.LocalObjectReference{
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
 						Name: "argocd-redis-initial-password",
 					},
 					Key: "admin.password",
 				},
 			}},
-		{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "60s", ValueFrom: (*v1.EnvVarSource)(nil)},
+		{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "60s", ValueFrom: (*corev1.EnvVarSource)(nil)},
 		{Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST", ValueFrom: &corev1.EnvVarSource{
 			ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
@@ -657,7 +656,7 @@ func TestGetArgoApplicationContainerEnv(t *testing.T) {
 	cmdTests := []struct {
 		name string
 		opts []argoCDOpt
-		want []v1.EnvVar
+		want []corev1.EnvVar
 	}{
 		{
 			"configured apsync to 60s",
@@ -774,47 +773,47 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	nsArgocd := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
+	nsArgocd := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: a.Namespace,
 	}}
-	err := r.Client.Create(context.TODO(), nsArgocd)
+	err := r.Create(context.TODO(), nsArgocd)
 	assert.NoError(t, err)
 
-	ns := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
+	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: "testNamespace",
 		Labels: map[string]string{
 			common.ArgoCDManagedByLabel: a.Namespace,
 		}},
 	}
 
-	err = r.Client.Create(context.TODO(), ns)
+	err = r.Create(context.TODO(), ns)
 	assert.NoError(t, err)
 
-	ns2 := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
+	ns2 := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: "testNamespace2",
 		Labels: map[string]string{
 			common.ArgoCDManagedByLabel: a.Namespace,
 		}},
 	}
 
-	err = r.Client.Create(context.TODO(), ns2)
+	err = r.Create(context.TODO(), ns2)
 	assert.NoError(t, err)
 
-	ns3 := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
+	ns3 := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: "testNamespace3",
 		Labels: map[string]string{
 			common.ArgoCDManagedByLabel: "newNamespace",
 		}},
 	}
 
-	err = r.Client.Create(context.TODO(), ns3)
+	err = r.Create(context.TODO(), ns3)
 	assert.NoError(t, err)
 
 	err = r.removeManagedByLabelFromNamespaces(a.Namespace)
 	assert.NoError(t, err)
 
-	nsList := &v1.NamespaceList{}
-	err = r.Client.List(context.TODO(), nsList)
+	nsList := &corev1.NamespaceList{}
+	err = r.List(context.TODO(), nsList)
 	assert.NoError(t, err)
 	for _, n := range nsList.Items {
 		if n.Name == ns3.Name {
@@ -830,7 +829,7 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 func TestSetManagedNamespaces(t *testing.T) {
 	a := makeTestArgoCD()
 
-	ns1 := v1.Namespace{
+	ns1 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-1",
 			Labels: map[string]string{
@@ -839,7 +838,7 @@ func TestSetManagedNamespaces(t *testing.T) {
 		},
 	}
 
-	ns2 := v1.Namespace{
+	ns2 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-2",
 			Labels: map[string]string{
@@ -848,7 +847,7 @@ func TestSetManagedNamespaces(t *testing.T) {
 		},
 	}
 
-	ns3 := v1.Namespace{
+	ns3 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-3",
 			Labels: map[string]string{
@@ -857,7 +856,7 @@ func TestSetManagedNamespaces(t *testing.T) {
 		},
 	}
 
-	ns4 := v1.Namespace{
+	ns4 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-4",
 		},
@@ -889,7 +888,7 @@ func TestSetManagedSourceNamespaces(t *testing.T) {
 			"test-namespace-1",
 		},
 	}
-	ns1 := v1.Namespace{
+	ns1 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-1",
 			Labels: map[string]string{
@@ -919,18 +918,18 @@ func TestGetSourceNamespacesWithWildcardPatternNamespace(t *testing.T) {
 			"test*",
 		},
 	}
-	ns1 := v1.Namespace{
+	ns1 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-1",
 		},
 	}
 
-	ns2 := v1.Namespace{
+	ns2 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-2",
 		},
 	}
-	ns3 := v1.Namespace{
+	ns3 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "other-namespace",
 		},
@@ -958,17 +957,17 @@ func TestGetSourceNamespacesWithSpecificNamespace(t *testing.T) {
 			"test",
 		},
 	}
-	ns1 := v1.Namespace{
+	ns1 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test",
 		},
 	}
-	ns2 := v1.Namespace{
+	ns2 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-1",
 		},
 	}
-	ns3 := v1.Namespace{
+	ns3 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "other-namespace",
 		},
@@ -997,22 +996,22 @@ func TestGetSourceNamespacesWithMultipleSourceNamespaces(t *testing.T) {
 			"dev*",
 		},
 	}
-	ns1 := v1.Namespace{
+	ns1 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test",
 		},
 	}
-	ns2 := v1.Namespace{
+	ns2 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-1",
 		},
 	}
-	ns3 := v1.Namespace{
+	ns3 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "dev-namespace-1",
 		},
 	}
-	ns4 := v1.Namespace{
+	ns4 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "other-namespace",
 		},
@@ -1041,17 +1040,17 @@ func TestGetSourceNamespacesWithWildCardNamespace(t *testing.T) {
 			"*",
 		},
 	}
-	ns1 := v1.Namespace{
+	ns1 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-1",
 		},
 	}
-	ns2 := v1.Namespace{
+	ns2 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-2",
 		},
 	}
-	ns3 := v1.Namespace{
+	ns3 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "other-namespace",
 		},
@@ -1078,17 +1077,17 @@ func TestGetSourceNamespacesWithRegExpNamespace(t *testing.T) {
 			"/^test.*test$/",
 		},
 	}
-	ns1 := v1.Namespace{
+	ns1 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "testtest",
 		},
 	}
-	ns2 := v1.Namespace{
+	ns2 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test123test",
 		},
 	}
-	ns3 := v1.Namespace{
+	ns3 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-abc-test",
 		},
@@ -1275,7 +1274,7 @@ func TestUpdateStatusConditionOfArgoCD_Success(t *testing.T) {
 	}
 
 	assert.NoError(t, createNamespace(r, argocd.Namespace, ""))
-	assert.NoError(t, r.Client.Create(ctx, &argocd))
+	assert.NoError(t, r.Create(ctx, &argocd))
 	assert.NoError(t, updateStatusConditionOfArgoCD(ctx, createCondition(""), &argocd, r.Client, log))
 
 	assert.Equal(t, argocd.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
@@ -1303,7 +1302,7 @@ func TestUpdateStatusConditionOfArgoCD_Fail(t *testing.T) {
 	}
 
 	assert.NoError(t, createNamespace(r, argocd.Namespace, ""))
-	assert.NoError(t, r.Client.Create(ctx, &argocd))
+	assert.NoError(t, r.Create(ctx, &argocd))
 	assert.NoError(t, updateStatusConditionOfArgoCD(ctx, createCondition("some error"), &argocd, r.Client, log))
 
 	assert.Equal(t, argocd.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
@@ -1514,7 +1513,7 @@ func TestNamespaceManagementHandlers(t *testing.T) {
 		})
 
 		// Remove the ArgoCDManagedBy label to allow cleanup to proceed
-		ns := &v1.Namespace{
+		ns := &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: testNamespace,
 			},
@@ -1558,7 +1557,7 @@ func TestNamespaceManagementHandlers(t *testing.T) {
 			Spec:       argoproj.NamespaceManagementSpec{ManagedBy: "new"},
 		}
 
-		ns := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
+		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 			Name: "old",
 		}}
 

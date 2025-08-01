@@ -63,7 +63,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_with_dex_disabled(t *testing.T) 
 			assert.NoError(t, r.reconcileDexDeployment(test.argoCD))
 
 			deployment := &appsv1.Deployment{}
-			err := r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-dex-server", Namespace: test.argoCD.Namespace}, deployment)
+			err := r.Get(context.TODO(), types.NamespacedName{Name: "argocd-dex-server", Namespace: test.argoCD.Namespace}, deployment)
 			assert.True(t, apierrors.IsNotFound(err))
 		})
 	}
@@ -135,7 +135,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_removes_dex_when_disabled(t *tes
 
 			// ensure deployment was created correctly
 			deployment := &appsv1.Deployment{}
-			err := r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-dex-server", Namespace: test.argoCD.Namespace}, deployment)
+			err := r.Get(context.TODO(), types.NamespacedName{Name: "argocd-dex-server", Namespace: test.argoCD.Namespace}, deployment)
 			assert.NoError(t, err)
 
 			if test.updateEnvFunc != nil {
@@ -147,7 +147,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_removes_dex_when_disabled(t *tes
 
 			assert.NoError(t, r.reconcileDexDeployment(test.argoCD))
 			deployment = &appsv1.Deployment{}
-			err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-dex-server", Namespace: test.argoCD.Namespace}, deployment)
+			err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-dex-server", Namespace: test.argoCD.Namespace}, deployment)
 
 			if test.wantDeploymentDeleted {
 				assertNotFound(t, err)
@@ -206,7 +206,7 @@ func TestReconcileArgoCD_reconcileDeployments_Dex_with_resources(t *testing.T) {
 			assert.NoError(t, r.reconcileDexDeployment(test.argoCD))
 
 			deployment := &appsv1.Deployment{}
-			assert.NoError(t, r.Client.Get(
+			assert.NoError(t, r.Get(
 				context.TODO(),
 				types.NamespacedName{
 					Name:      test.argoCD.Name + "-dex-server",
@@ -274,7 +274,7 @@ func TestReconcileArgoCD_reconcileDeployments_Dex_with_volumes(t *testing.T) {
 			assert.NoError(t, r.reconcileDexDeployment(test.argoCD))
 
 			deployment := &appsv1.Deployment{}
-			assert.NoError(t, r.Client.Get(
+			assert.NoError(t, r.Get(
 				context.TODO(),
 				types.NamespacedName{
 					Name:      test.argoCD.Name + "-dex-server",
@@ -334,7 +334,7 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 	assert.NoError(t, r.reconcileDexDeployment(a))
 
 	deployment := &appsv1.Deployment{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-dex-server",
@@ -758,7 +758,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 
 			// ensure deployment was created correctly
 			deployment := &appsv1.Deployment{}
-			assert.NoError(t, r.Client.Get(
+			assert.NoError(t, r.Get(
 				context.TODO(),
 				types.NamespacedName{
 					Name:      "argocd-dex-server",
@@ -837,7 +837,7 @@ func TestReconcileArgoCD_reconcileDexService_removes_dex_when_disabled(t *testin
 
 			// ensure service was created correctly
 			service := &corev1.Service{}
-			err := r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-dex-server", Namespace: test.argoCD.Namespace}, service)
+			err := r.Get(context.TODO(), types.NamespacedName{Name: "argocd-dex-server", Namespace: test.argoCD.Namespace}, service)
 			assert.NoError(t, err)
 
 			if test.updateEnvFunc != nil {
@@ -849,7 +849,7 @@ func TestReconcileArgoCD_reconcileDexService_removes_dex_when_disabled(t *testin
 
 			assert.NoError(t, r.reconcileDexService(test.argoCD))
 			service = &corev1.Service{}
-			err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-dex-server", Namespace: test.argoCD.Namespace}, service)
+			err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-dex-server", Namespace: test.argoCD.Namespace}, service)
 
 			if test.wantServiceDeleted {
 				assertNotFound(t, err)
@@ -926,7 +926,7 @@ func TestReconcileArgoCD_reconcileDexServiceAccount_removes_dex_when_disabled(t 
 			assert.NoError(t, err)
 
 			// ensure serviceaccount was created correctly
-			err = r.Client.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: test.argoCD.Namespace}, sa)
+			err = r.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: test.argoCD.Namespace}, sa)
 			assert.NoError(t, err)
 
 			if test.updateEnvFunc != nil {
@@ -939,7 +939,7 @@ func TestReconcileArgoCD_reconcileDexServiceAccount_removes_dex_when_disabled(t 
 			_, err = r.reconcileServiceAccount(common.ArgoCDDexServerComponent, test.argoCD)
 			assert.NoError(t, err)
 
-			err = r.Client.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: test.argoCD.Namespace}, sa)
+			err = r.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: test.argoCD.Namespace}, sa)
 
 			if test.wantServiceAccountDeleted {
 				assertNotFound(t, err)
@@ -1021,7 +1021,7 @@ func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
 			assert.NoError(t, err)
 
 			// ensure role was created correctly
-			err = r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: test.argoCD.Namespace}, role)
+			err = r.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: test.argoCD.Namespace}, role)
 			assert.NoError(t, err)
 
 			if test.updateEnvFunc != nil {
@@ -1034,7 +1034,7 @@ func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
 			_, err = r.reconcileRole(common.ArgoCDDexServerComponent, rules, test.argoCD)
 			assert.NoError(t, err)
 
-			err = r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: test.argoCD.Namespace}, role)
+			err = r.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: test.argoCD.Namespace}, role)
 
 			if test.wantRoleDeleted {
 				assertNotFound(t, err)
@@ -1113,10 +1113,10 @@ func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
 			}
 
 			assert.NoError(t, r.reconcileRoleBinding(common.ArgoCDDexServerComponent, rules, test.argoCD))
-			assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: test.argoCD.Namespace}, roleBinding))
+			assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: test.argoCD.Namespace}, roleBinding))
 
 			// ensure roleBinding was created correctly
-			err := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: test.argoCD.Namespace}, roleBinding)
+			err := r.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: test.argoCD.Namespace}, roleBinding)
 			assert.NoError(t, err)
 
 			if test.updateEnvFunc != nil {
@@ -1129,7 +1129,7 @@ func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
 			err = r.reconcileRoleBinding(common.ArgoCDDexServerComponent, rules, test.argoCD)
 			assert.NoError(t, err)
 
-			err = r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: test.argoCD.Namespace}, roleBinding)
+			err = r.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: test.argoCD.Namespace}, roleBinding)
 
 			if test.wantRoleBindingDeleted {
 				assertNotFound(t, err)

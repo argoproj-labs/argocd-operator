@@ -43,11 +43,11 @@ func newServiceAccount(cr *argoproj.ArgoCD) *corev1.ServiceAccount {
 // newServiceAccountWithName creates a new ServiceAccount with the given name for the given ArgCD.
 func newServiceAccountWithName(name string, cr *argoproj.ArgoCD) *corev1.ServiceAccount {
 	sa := newServiceAccount(cr)
-	sa.ObjectMeta.Name = getServiceAccountName(cr.Name, name)
+	sa.Name = getServiceAccountName(cr.Name, name)
 
-	lbls := sa.ObjectMeta.Labels
+	lbls := sa.Labels
 	lbls[common.ArgoCDKeyName] = name
-	sa.ObjectMeta.Labels = lbls
+	sa.Labels = lbls
 
 	return sa
 }
@@ -121,7 +121,7 @@ func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoproj.Argo
 		if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
 			// Delete any existing Service Account created for Dex since dex is disabled
 			argoutil.LogResourceDeletion(log, sa, "dex is being uninstalled")
-			return sa, r.Client.Delete(context.TODO(), sa)
+			return sa, r.Delete(context.TODO(), sa)
 		}
 		return sa, nil
 	}
@@ -131,7 +131,7 @@ func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoproj.Argo
 	}
 
 	argoutil.LogResourceCreation(log, sa)
-	err := r.Client.Create(context.TODO(), sa)
+	err := r.Create(context.TODO(), sa)
 	if err != nil {
 		return nil, err
 	}

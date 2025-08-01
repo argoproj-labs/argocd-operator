@@ -121,9 +121,9 @@ func NameWithSuffix(meta metav1.ObjectMeta, suffix string) string {
 
 func newEvent(meta metav1.ObjectMeta) *corev1.Event {
 	event := &corev1.Event{}
-	event.ObjectMeta.GenerateName = fmt.Sprintf("%s-", meta.Name)
-	event.ObjectMeta.Labels = meta.Labels
-	event.ObjectMeta.Namespace = meta.Namespace
+	event.GenerateName = fmt.Sprintf("%s-", meta.Name)
+	event.Labels = meta.Labels
+	event.Namespace = meta.Namespace
 	return event
 }
 
@@ -136,7 +136,7 @@ func LabelsForCluster(cr *argoproj.ArgoCD) map[string]string {
 // annotationsForCluster returns the annotations for all cluster resources.
 func AnnotationsForCluster(cr *argoproj.ArgoCD) map[string]string {
 	annotations := common.DefaultAnnotations(cr.Name, cr.Namespace)
-	for key, val := range cr.ObjectMeta.Annotations {
+	for key, val := range cr.Annotations {
 		annotations[key] = val
 	}
 	return annotations

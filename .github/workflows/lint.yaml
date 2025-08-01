@@ -15,9 +15,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v8
-        with:
-          version: v2.1.6
-          only-new-issues: true
-
+      - name: "Ensure code passes 'go-sec' - run 'make gosec' to identify issues"
+        run: |
+          make gosec
+      - name: "Ensure code passes 'golangci-lint' - run 'make lint' to identify issues"
+        run: |
+          make lint 
+      - name: Ensure there is no diff in code
+        run: |
+          git diff --ignore-matching-lines='.*createdAt:.*' --exit-code -- .

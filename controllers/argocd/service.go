@@ -53,12 +53,12 @@ func newService(cr *argoproj.ArgoCD) *corev1.Service {
 // newServiceWithName returns a new Service instance for the given ArgoCD using the given name.
 func newServiceWithName(name string, component string, cr *argoproj.ArgoCD) *corev1.Service {
 	svc := newService(cr)
-	svc.ObjectMeta.Name = name
+	svc.Name = name
 
-	lbls := svc.ObjectMeta.Labels
+	lbls := svc.Labels
 	lbls[common.ArgoCDKeyName] = name
 	lbls[common.ArgoCDKeyComponent] = component
-	svc.ObjectMeta.Labels = lbls
+	svc.Labels = lbls
 
 	return svc
 }
@@ -87,7 +87,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoproj.ArgoCD) error {
 	}
 
 	//lint:ignore SA1019 known to be deprecated
-	if !cr.Spec.Grafana.Enabled {
+	if !cr.Spec.Grafana.Enabled { //nolint:staticcheck // SA1019: We must test deprecated fields.
 		return nil // Grafana not enabled, do nothing.
 	}
 
@@ -124,7 +124,7 @@ func (r *ReconcileArgoCD) reconcileMetricsService(cr *argoproj.ArgoCD) error {
 		return err
 	}
 	argoutil.LogResourceCreation(log, svc)
-	return r.Client.Create(context.TODO(), svc)
+	return r.Create(context.TODO(), svc)
 }
 
 // reconcileRedisHAAnnounceServices will ensure that the announce Services are present for Redis when running in HA mode.
@@ -144,7 +144,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAAnnounceServices(cr *argoproj.ArgoCD) 
 					explanation = "redis is disabled"
 				}
 				argoutil.LogResourceDeletion(log, svc, explanation)
-				return r.Client.Delete(context.TODO(), svc)
+				return r.Delete(context.TODO(), svc)
 			}
 			return nil // Service found, do nothing
 		}
@@ -153,7 +153,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAAnnounceServices(cr *argoproj.ArgoCD) 
 			return nil //return as Ha is not enabled do nothing
 		}
 
-		svc.ObjectMeta.Annotations = map[string]string{
+		svc.Annotations = map[string]string{
 			common.ArgoCDKeyTolerateUnreadyEndpounts: "true",
 		}
 
@@ -183,7 +183,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAAnnounceServices(cr *argoproj.ArgoCD) 
 		}
 
 		argoutil.LogResourceCreation(log, svc)
-		if err := r.Client.Create(context.TODO(), svc); err != nil {
+		if err := r.Create(context.TODO(), svc); err != nil {
 			return err
 		}
 	}
@@ -206,7 +206,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAMasterService(cr *argoproj.ArgoCD) err
 				explanation = "redis is disabled"
 			}
 			argoutil.LogResourceDeletion(log, svc, explanation)
-			return r.Client.Delete(context.TODO(), svc)
+			return r.Delete(context.TODO(), svc)
 		}
 		return nil // Service found, do nothing
 	}
@@ -237,7 +237,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAMasterService(cr *argoproj.ArgoCD) err
 		return err
 	}
 	argoutil.LogResourceCreation(log, svc)
-	return r.Client.Create(context.TODO(), svc)
+	return r.Create(context.TODO(), svc)
 }
 
 // reconcileRedisHAProxyService will ensure that the HA Proxy Service is present for Redis when running in HA mode.
@@ -257,7 +257,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyService(cr *argoproj.ArgoCD) erro
 				explanation = "redis is disabled"
 			}
 			argoutil.LogResourceDeletion(log, svc, explanation)
-			return r.Client.Delete(context.TODO(), svc)
+			return r.Delete(context.TODO(), svc)
 		}
 
 		updated, err := ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS())
@@ -266,7 +266,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyService(cr *argoproj.ArgoCD) erro
 		}
 		if updated {
 			argoutil.LogResourceUpdate(log, svc, "updating auto tls annotation")
-			return r.Client.Update(context.TODO(), svc)
+			return r.Update(context.TODO(), svc)
 		}
 		return nil // Service found, do nothing
 	}
@@ -275,7 +275,10 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyService(cr *argoproj.ArgoCD) erro
 		return nil //return as Ha is not enabled do nothing
 	}
 
-	ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS())
+	_, err = ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS())
+	if err != nil {
+		return fmt.Errorf("unable to ensure AutoTLS annotation: %w", err)
+	}
 
 	svc.Spec.Selector = map[string]string{
 		common.ArgoCDKeyName: nameWithSuffix("redis-ha-haproxy", cr),
@@ -294,7 +297,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyService(cr *argoproj.ArgoCD) erro
 		return err
 	}
 	argoutil.LogResourceCreation(log, svc)
-	return r.Client.Create(context.TODO(), svc)
+	return r.Create(context.TODO(), svc)
 }
 
 // reconcileRedisHAServices will ensure that all required Services are present for Redis when running in HA mode.
@@ -325,7 +328,7 @@ func (r *ReconcileArgoCD) reconcileRedisService(cr *argoproj.ArgoCD) error {
 	if svcExists {
 		if !cr.Spec.Redis.IsEnabled() {
 			argoutil.LogResourceDeletion(log, svc, "redis is disabled")
-			return r.Client.Delete(context.TODO(), svc)
+			return r.Delete(context.TODO(), svc)
 		}
 		update, err := ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS())
 		if err != nil {
@@ -333,15 +336,15 @@ func (r *ReconcileArgoCD) reconcileRedisService(cr *argoproj.ArgoCD) error {
 		}
 		if update {
 			argoutil.LogResourceUpdate(log, svc, "updating auto tls annotation")
-			return r.Client.Update(context.TODO(), svc)
+			return r.Update(context.TODO(), svc)
 		}
 		if cr.Spec.HA.Enabled {
 			argoutil.LogResourceDeletion(log, svc, "ha is disabled")
-			return r.Client.Delete(context.TODO(), svc)
+			return r.Delete(context.TODO(), svc)
 		}
 		if cr.Spec.Redis.IsRemote() {
 			argoutil.LogResourceDeletion(log, svc, "remote redis is configured")
-			return r.Client.Delete(context.TODO(), svc)
+			return r.Delete(context.TODO(), svc)
 		}
 		return nil // Service found, do nothing
 	}
@@ -352,7 +355,10 @@ func (r *ReconcileArgoCD) reconcileRedisService(cr *argoproj.ArgoCD) error {
 		return nil //return as Ha is enabled do nothing
 	}
 
-	ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS())
+	_, err = ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS())
+	if err != nil {
+		return fmt.Errorf("unable to ensure AutoTLS annotation: %w", err)
+	}
 
 	svc.Spec.Selector = map[string]string{
 		common.ArgoCDKeyName: nameWithSuffix("redis", cr),
@@ -376,7 +382,7 @@ func (r *ReconcileArgoCD) reconcileRedisService(cr *argoproj.ArgoCD) error {
 		return err
 	}
 	argoutil.LogResourceCreation(log, svc)
-	return r.Client.Create(context.TODO(), svc)
+	return r.Create(context.TODO(), svc)
 }
 
 // ensureAutoTLSAnnotation ensures that the service svc has the desired state
@@ -412,13 +418,13 @@ func ensureAutoTLSAnnotation(k8sClient client.Client, svc *corev1.Service, secre
 				return false, nil
 			}
 			if !ok || val != secretName {
-				log.Info(fmt.Sprintf("requesting AutoTLS on service %s", svc.ObjectMeta.Name))
+				log.Info(fmt.Sprintf("requesting AutoTLS on service %s", svc.Name))
 				svc.Annotations[autoTLSAnnotationName] = autoTLSAnnotationValue
 				return true, nil
 			}
 		} else {
 			if ok {
-				log.Info(fmt.Sprintf("removing AutoTLS from service %s", svc.ObjectMeta.Name))
+				log.Info(fmt.Sprintf("removing AutoTLS from service %s", svc.Name))
 				delete(svc.Annotations, autoTLSAnnotationName)
 				return true, nil
 			}
@@ -439,7 +445,7 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *argoproj.ArgoCD) error {
 	if svcFound {
 		if !cr.Spec.Repo.IsEnabled() {
 			argoutil.LogResourceDeletion(log, svc, "repo server is disabled")
-			return r.Client.Delete(context.TODO(), svc)
+			return r.Delete(context.TODO(), svc)
 		}
 		update, err := ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDRepoServerTLSSecretName, cr.Spec.Repo.WantsAutoTLS())
 		if err != nil {
@@ -447,11 +453,11 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *argoproj.ArgoCD) error {
 		}
 		if update {
 			argoutil.LogResourceUpdate(log, svc, "updating auto tls annotation")
-			return r.Client.Update(context.TODO(), svc)
+			return r.Update(context.TODO(), svc)
 		}
 		if cr.Spec.Repo.IsRemote() {
 			argoutil.LogResourceDeletion(log, svc, "remote repo server is configured")
-			return r.Client.Delete(context.TODO(), svc)
+			return r.Delete(context.TODO(), svc)
 		}
 		return nil // Service found, do nothing
 	}
@@ -468,7 +474,10 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *argoproj.ArgoCD) error {
 		svc.Spec.Type = corev1.ServiceTypeClusterIP
 	}
 
-	ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDRepoServerTLSSecretName, cr.Spec.Repo.WantsAutoTLS())
+	_, err = ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDRepoServerTLSSecretName, cr.Spec.Repo.WantsAutoTLS())
+	if err != nil {
+		return fmt.Errorf("unable to ensure AutoTLS annotation: %w", err)
+	}
 
 	svc.Spec.Selector = map[string]string{
 		common.ArgoCDKeyName: nameWithSuffix("repo-server", cr),
@@ -497,7 +506,7 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *argoproj.ArgoCD) error {
 		return err
 	}
 	argoutil.LogResourceCreation(log, svc)
-	return r.Client.Create(context.TODO(), svc)
+	return r.Create(context.TODO(), svc)
 }
 
 // reconcileServerMetricsService will ensure that the Service for the Argo CD server metrics is present.
@@ -528,13 +537,16 @@ func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoproj.ArgoCD) err
 		return err
 	}
 	argoutil.LogResourceCreation(log, svc)
-	return r.Client.Create(context.TODO(), svc)
+	return r.Create(context.TODO(), svc)
 }
 
 // reconcileServerService will ensure that the Service is present for the Argo CD server component.
 func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
 	svc := newServiceWithSuffix("server", "server", cr)
-	ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS())
+
+	if _, err := ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS()); err != nil {
+		return fmt.Errorf("unable to ensure AutoTLS annotation: %w", err)
+	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
 		{
@@ -570,7 +582,7 @@ func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
 		explanation := ""
 		if !cr.Spec.Server.IsEnabled() {
 			argoutil.LogResourceDeletion(log, svc, "argocd server is disabled")
-			return r.Client.Delete(context.TODO(), svc)
+			return r.Delete(context.TODO(), svc)
 		}
 		update, err := ensureAutoTLSAnnotation(r.Client, existingSVC, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS())
 		if err != nil {
@@ -590,7 +602,7 @@ func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
 		}
 		if changed {
 			argoutil.LogResourceUpdate(log, existingSVC, "updating", explanation)
-			return r.Client.Update(context.TODO(), existingSVC)
+			return r.Update(context.TODO(), existingSVC)
 		}
 		return nil
 	}
@@ -599,7 +611,7 @@ func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
 		return nil
 	}
 	argoutil.LogResourceCreation(log, svc)
-	return r.Client.Create(context.TODO(), svc)
+	return r.Create(context.TODO(), svc)
 }
 
 // reconcileServices will ensure that all Services are present for the given ArgoCD.

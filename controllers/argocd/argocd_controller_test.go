@@ -66,14 +66,11 @@ func TestReconcileArgoCD_Reconcile_with_deleted(t *testing.T) {
 			Namespace: a.Namespace,
 		},
 	}
-	res, err := r.Reconcile(context.TODO(), req)
+	_, err := r.Reconcile(context.TODO(), req)
 	assert.NoError(t, err)
-	if res.Requeue {
-		t.Fatal("reconcile requeued request")
-	}
 
 	deployment := &appsv1.Deployment{}
-	if !apierrors.IsNotFound(r.Client.Get(context.TODO(), types.NamespacedName{
+	if !apierrors.IsNotFound(r.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-redis",
 		Namespace: testNamespace,
 	}, deployment)) {
@@ -101,14 +98,11 @@ func TestReconcileArgoCD_Reconcile(t *testing.T) {
 		},
 	}
 
-	res, err := r.Reconcile(context.TODO(), req)
+	_, err := r.Reconcile(context.TODO(), req)
 	assert.NoError(t, err)
-	if res.Requeue {
-		t.Fatal("reconcile requeued request")
-	}
 
 	deployment := &appsv1.Deployment{}
-	if err = r.Client.Get(context.TODO(), types.NamespacedName{
+	if err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-redis",
 		Namespace: testNamespace,
 	}, deployment); err != nil {
@@ -149,11 +143,8 @@ func TestReconcileArgoCD_LabelSelector(t *testing.T) {
 			Namespace: a.Namespace,
 		},
 	}
-	res1, err := rt.Reconcile(context.TODO(), req1)
+	_, err := rt.Reconcile(context.TODO(), req1)
 	assert.NoError(t, err)
-	if res1.Requeue {
-		t.Fatal("reconcile requeued request")
-	}
 
 	//Instance 'b'
 	req2 := reconcile.Request{
@@ -162,11 +153,8 @@ func TestReconcileArgoCD_LabelSelector(t *testing.T) {
 			Namespace: b.Namespace,
 		},
 	}
-	res2, err := rt.Reconcile(context.TODO(), req2)
+	_, err = rt.Reconcile(context.TODO(), req2)
 	assert.NoError(t, err)
-	if res2.Requeue {
-		t.Fatal("reconcile requeued request")
-	}
 
 	//Instance 'c'
 	req3 := reconcile.Request{
@@ -175,11 +163,8 @@ func TestReconcileArgoCD_LabelSelector(t *testing.T) {
 			Namespace: c.Namespace,
 		},
 	}
-	res3, err := rt.Reconcile(context.TODO(), req3)
+	_, err = rt.Reconcile(context.TODO(), req3)
 	assert.NoError(t, err)
-	if res3.Requeue {
-		t.Fatal("reconcile requeued request")
-	}
 
 	// Apply label-selector foo=bar to the operator.
 	// Only Instance a should reconcile with matching label "foo=bar"
@@ -191,11 +176,8 @@ func TestReconcileArgoCD_LabelSelector(t *testing.T) {
 			Namespace: a.Namespace,
 		},
 	}
-	resTest, err := rt.Reconcile(context.TODO(), reqTest)
+	_, err = rt.Reconcile(context.TODO(), reqTest)
 	assert.NoError(t, err)
-	if resTest.Requeue {
-		t.Fatal("reconcile requeued request")
-	}
 
 	// Instance 'b' is not reconciled as the label does not match, error expected
 	reqTest2 := reconcile.Request{
@@ -204,11 +186,8 @@ func TestReconcileArgoCD_LabelSelector(t *testing.T) {
 			Namespace: b.Namespace,
 		},
 	}
-	resTest2, err := rt.Reconcile(context.TODO(), reqTest2)
+	_, err = rt.Reconcile(context.TODO(), reqTest2)
 	assert.Error(t, err)
-	if resTest2.Requeue {
-		t.Fatal("reconcile requeued request")
-	}
 
 	//Instance 'c' is not reconciled as there is no label, error expected
 	reqTest3 := reconcile.Request{
@@ -217,11 +196,8 @@ func TestReconcileArgoCD_LabelSelector(t *testing.T) {
 			Namespace: c.Namespace,
 		},
 	}
-	resTest3, err := rt.Reconcile(context.TODO(), reqTest3)
+	_, err = rt.Reconcile(context.TODO(), reqTest3)
 	assert.Error(t, err)
-	if resTest3.Requeue {
-		t.Fatal("reconcile requeued request")
-	}
 }
 
 func TestReconcileArgoCD_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *testing.T) {
@@ -258,7 +234,7 @@ func TestReconcileArgoCD_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *testi
 			nsArgocd := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 				Name: a.Namespace,
 			}}
-			err := r.Client.Create(context.TODO(), nsArgocd)
+			err := r.Create(context.TODO(), nsArgocd)
 			assert.NoError(t, err)
 
 			if test.isRemoveManagedByLabelOnArgoCDDeletionSet {
@@ -271,7 +247,7 @@ func TestReconcileArgoCD_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *testi
 					common.ArgoCDManagedByLabel: a.Namespace,
 				}},
 			}
-			err = r.Client.Create(context.TODO(), ns)
+			err = r.Create(context.TODO(), ns)
 			assert.NoError(t, err)
 
 			req := reconcile.Request{
@@ -284,7 +260,7 @@ func TestReconcileArgoCD_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *testi
 			_, err = r.Reconcile(context.TODO(), req)
 			assert.NoError(t, err)
 
-			assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: ns.Name}, ns))
+			assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: ns.Name}, ns))
 			if test.isRemoveManagedByLabelOnArgoCDDeletionSet {
 				// Check if the managed-by label gets removed from the new namespace
 				if _, ok := ns.Labels[common.ArgoCDManagedByLabel]; ok {
@@ -301,7 +277,7 @@ func TestReconcileArgoCD_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *testi
 func deletedAt(now time.Time) argoCDOpt {
 	return func(a *argoproj.ArgoCD) {
 		wrapped := metav1.NewTime(now)
-		a.ObjectMeta.DeletionTimestamp = &wrapped
+		a.DeletionTimestamp = &wrapped
 		a.Finalizers = []string{"test: finalizaer"}
 	}
 }
@@ -327,11 +303,8 @@ func TestReconcileArgoCD_CleanUp(t *testing.T) {
 			Namespace: a.Namespace,
 		},
 	}
-	res, err := r.Reconcile(context.TODO(), req)
+	_, err := r.Reconcile(context.TODO(), req)
 	assert.NoError(t, err)
-	if res.Requeue {
-		t.Fatal("reconcile requeued request")
-	}
 
 	// check if cluster resources are deleted
 	tt := []struct {
@@ -368,15 +341,15 @@ func TestReconcileArgoCD_CleanUp(t *testing.T) {
 
 	// check if namespace label was removed
 	ns := &corev1.Namespace{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: a.Namespace}, ns))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: a.Namespace}, ns))
 	if _, ok := ns.Labels[common.ArgoCDManagedByLabel]; ok {
 		t.Errorf("Expected the label[%v] to be removed from the namespace[%v]", common.ArgoCDManagedByLabel, a.Namespace)
 	}
 }
 
-func addFinalizer(finalizer string) argoCDOpt {
+func addFinalizer(finalizerParam string) argoCDOpt { //nolint:unparam
 	return func(a *argoproj.ArgoCD) {
-		a.Finalizers = append(a.Finalizers, finalizer)
+		a.Finalizers = append(a.Finalizers, finalizerParam)
 	}
 }
 
@@ -413,14 +386,11 @@ func TestReconcileArgoCD_Status_Condition(t *testing.T) {
 			Namespace: a.Namespace,
 		},
 	}
-	resTest, err := rt.Reconcile(context.TODO(), reqTest)
+	_, err := rt.Reconcile(context.TODO(), reqTest)
 	assert.Error(t, err)
-	if resTest.Requeue {
-		t.Fatal("reconcile requeued request")
-	}
 
 	// Verify condition is updated
-	assert.NoError(t, rt.Client.Get(context.TODO(), types.NamespacedName{Name: a.Name, Namespace: a.Namespace}, a))
+	assert.NoError(t, rt.Get(context.TODO(), types.NamespacedName{Name: a.Name, Namespace: a.Namespace}, a))
 	assert.Equal(t, a.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
 	assert.Equal(t, a.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonErrorOccurred)
 	assert.Equal(t, a.Status.Conditions[0].Message, "the ArgoCD instance 'argocd/argo-test-2' does not match the label selector 'foo=bar' and skipping for reconciliation")
@@ -435,14 +405,11 @@ func TestReconcileArgoCD_Status_Condition(t *testing.T) {
 			Namespace: a.Namespace,
 		},
 	}
-	resTest, err = rt.Reconcile(context.TODO(), reqTest)
+	_, err = rt.Reconcile(context.TODO(), reqTest)
 	assert.NoError(t, err)
-	if resTest.Requeue {
-		t.Fatal("reconcile requeued request")
-	}
 
 	// Verify condition is updated
-	assert.NoError(t, rt.Client.Get(context.TODO(), types.NamespacedName{Name: a.Name, Namespace: a.Namespace}, a))
+	assert.NoError(t, rt.Get(context.TODO(), types.NamespacedName{Name: a.Name, Namespace: a.Namespace}, a))
 
 	assert.Equal(t, a.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
 	assert.Equal(t, a.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonSuccess)

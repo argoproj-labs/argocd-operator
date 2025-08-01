@@ -53,12 +53,12 @@ func newStatefulSet(cr *argoproj.ArgoCD) *appsv1.StatefulSet {
 // newStatefulSetWithName returns a new StatefulSet instance for the given ArgoCD using the given name.
 func newStatefulSetWithName(name string, component string, cr *argoproj.ArgoCD) *appsv1.StatefulSet {
 	ss := newStatefulSet(cr)
-	ss.ObjectMeta.Name = name
+	ss.Name = name
 
-	lbls := ss.ObjectMeta.Labels
+	lbls := ss.Labels
 	lbls[common.ArgoCDKeyName] = name
 	lbls[common.ArgoCDKeyComponent] = component
-	ss.ObjectMeta.Labels = lbls
+	ss.Labels = lbls
 
 	ss.Spec = appsv1.StatefulSetSpec{
 		Selector: &metav1.LabelSelector{
@@ -383,13 +383,13 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 	}}
 
 	if IsOpenShiftCluster() {
-		var runAsNonRoot bool = true
+		var runAsNonRoot = true
 		ss.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
 			RunAsNonRoot: &runAsNonRoot,
 		}
 	} else {
 		var fsGroup int64 = 1000
-		var runAsNonRoot bool = true
+		var runAsNonRoot = true
 		var runAsUser int64 = 1000
 
 		ss.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
@@ -459,7 +459,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 		return err
 	}
 	if ssExists {
-		if !(cr.Spec.HA.Enabled && cr.Spec.Redis.IsEnabled()) {
+		if !cr.Spec.HA.Enabled || !cr.Spec.Redis.IsEnabled() {
 			// StatefulSet exists but either HA or component enabled flag has been set to false, delete the StatefulSet
 			var explanation string
 			if !cr.Spec.HA.Enabled {
@@ -468,7 +468,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				explanation = "redis is disabled"
 			}
 			argoutil.LogResourceDeletion(log, existing, explanation)
-			return r.Client.Delete(context.TODO(), existing)
+			return r.Delete(context.TODO(), existing)
 		}
 
 		desiredImage := getRedisHAContainerImage(cr)
@@ -478,7 +478,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 		for i, container := range existing.Spec.Template.Spec.Containers {
 			if container.Image != desiredImage {
 				existing.Spec.Template.Spec.Containers[i].Image = getRedisHAContainerImage(cr)
-				existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+				existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 				if changed {
 					explanation += ", "
 				}
@@ -547,7 +547,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 		}
 		if changed {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
-			return r.Client.Update(context.TODO(), existing)
+			return r.Update(context.TODO(), existing)
 		}
 
 		return nil // StatefulSet found, do nothing
@@ -571,7 +571,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 		return err
 	}
 	argoutil.LogResourceCreation(log, ss)
-	return r.Client.Create(context.TODO(), ss)
+	return r.Create(context.TODO(), ss)
 }
 
 func getArgoControllerContainerEnv(cr *argoproj.ArgoCD, replicas int32) []corev1.EnvVar {
@@ -625,8 +625,8 @@ func getArgoControllerContainerEnv(cr *argoproj.ArgoCD, replicas int32) []corev1
 
 func (r *ReconcileArgoCD) getApplicationControllerReplicaCount(cr *argoproj.ArgoCD) int32 {
 	var replicas int32 = common.ArgocdApplicationControllerDefaultReplicas
-	var minShards int32 = cr.Spec.Controller.Sharding.MinShards
-	var maxShards int32 = cr.Spec.Controller.Sharding.MaxShards
+	var minShards = cr.Spec.Controller.Sharding.MinShards
+	var maxShards = cr.Spec.Controller.Sharding.MaxShards
 
 	if cr.Spec.Controller.Sharding.DynamicScalingEnabled != nil && *cr.Spec.Controller.Sharding.DynamicScalingEnabled {
 
@@ -654,7 +654,7 @@ func (r *ReconcileArgoCD) getApplicationControllerReplicaCount(cr *argoproj.Argo
 			return replicas
 		}
 
-		replicas = int32(len(clusterSecrets.Items)) / clustersPerShard
+		replicas = int32(len(clusterSecrets.Items)) / clustersPerShard // #nosec G115
 
 		if replicas < minShards {
 			replicas = minShards
@@ -894,7 +894,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		return err
 	} else if invalidImagePod {
 		argoutil.LogResourceDeletion(log, ss, "one or more pods has an invalid image")
-		if err := r.Client.Delete(context.TODO(), ss); err != nil {
+		if err := r.Delete(context.TODO(), ss); err != nil {
 			return err
 		}
 	}
@@ -920,7 +920,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		if !cr.Spec.Controller.IsEnabled() {
 			// Delete existing deployment for Application Controller, if any ..
 			argoutil.LogResourceDeletion(log, existing, "application controller is disabled")
-			return r.Client.Delete(context.TODO(), existing)
+			return r.Delete(context.TODO(), existing)
 		}
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getArgoContainerImage(cr)
@@ -928,7 +928,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		explanation := ""
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			explanation = "container image"
 			changed = true
 		}
@@ -1046,7 +1046,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		}
 		if changed {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
-			return r.Client.Update(context.TODO(), existing)
+			return r.Update(context.TODO(), existing)
 		}
 
 		return nil // StatefulSet found with nothing to do, move along...
@@ -1065,7 +1065,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 	}
 	if deplExists {
 		argoutil.LogResourceDeletion(log, deploy, "application controller is configured using stateful set, not deployment")
-		if err := r.Client.Delete(context.TODO(), deploy); err != nil {
+		if err := r.Delete(context.TODO(), deploy); err != nil {
 			return err
 		}
 	}
@@ -1074,7 +1074,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		return err
 	}
 	argoutil.LogResourceCreation(log, ss)
-	return r.Client.Create(context.TODO(), ss)
+	return r.Create(context.TODO(), ss)
 }
 
 // reconcileStatefulSets will ensure that all StatefulSets are present for the given ArgoCD.
@@ -1099,9 +1099,9 @@ func (r *ReconcileArgoCD) triggerStatefulSetRollout(sts *appsv1.StatefulSet, key
 		return nil
 	}
 
-	sts.Spec.Template.ObjectMeta.Labels[key] = nowNano()
+	sts.Spec.Template.Labels[key] = nowNano()
 	argoutil.LogResourceUpdate(log, sts, "to trigger rollout")
-	return r.Client.Update(context.TODO(), sts)
+	return r.Update(context.TODO(), sts)
 }
 
 // to update nodeSelector and tolerations in reconciler
@@ -1131,7 +1131,7 @@ func containsInvalidImage(cr argoproj.ArgoCD, r ReconcileArgoCD) (bool, error) {
 	podList := &corev1.PodList{}
 	applicationControllerListOption := client.MatchingLabels{common.ArgoCDKeyName: fmt.Sprintf("%s-%s", cr.Name, "application-controller")}
 
-	if err := r.Client.List(context.TODO(), podList, applicationControllerListOption, client.InNamespace(cr.Namespace)); err != nil {
+	if err := r.List(context.TODO(), podList, applicationControllerListOption, client.InNamespace(cr.Namespace)); err != nil {
 		log.Error(err, "Failed to list Pods")
 		return false, err
 	}

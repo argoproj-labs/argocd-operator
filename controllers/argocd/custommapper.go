@@ -21,9 +21,10 @@ func (r *ReconcileArgoCD) clusterResourceMapper(ctx context.Context, o client.Ob
 	namespacedArgoCDObject := client.ObjectKey{}
 
 	for k, v := range crbAnnotations {
-		if k == common.AnnotationName {
+		switch k {
+		case common.AnnotationName:
 			namespacedArgoCDObject.Name = v
-		} else if k == common.AnnotationNamespace {
+		case common.AnnotationNamespace:
 			namespacedArgoCDObject.Namespace = v
 		}
 	}
@@ -74,7 +75,7 @@ func (r *ReconcileArgoCD) isUserManagedSecret(ctx context.Context, o client.Obje
 
 	// List ArgoCD instances in the same namespace as the secret.
 	argocds := &argoproj.ArgoCDList{}
-	err := r.Client.List(ctx, argocds, &client.ListOptions{Namespace: o.GetNamespace()})
+	err := r.List(ctx, argocds, &client.ListOptions{Namespace: o.GetNamespace()})
 	if err != nil {
 		return namespacedName, false
 	}
@@ -124,7 +125,7 @@ func (r *ReconcileArgoCD) tlsSecretMapper(ctx context.Context, o client.Object) 
 				svc := &corev1.Service{}
 
 				// Get the owning object of the secret
-				err := r.Client.Get(context.TODO(), key, svc)
+				err := r.Get(context.TODO(), key, svc)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("could not get owner of secret %s", o.GetName()))
 					return result
@@ -136,7 +137,7 @@ func (r *ReconcileArgoCD) tlsSecretMapper(ctx context.Context, o client.Object) 
 				for _, serviceOwner := range serviceOwnerRefs {
 					if serviceOwner.Kind == "ArgoCD" {
 						namespacedArgoCDObject.Name = serviceOwner.Name
-						namespacedArgoCDObject.Namespace = svc.ObjectMeta.Namespace
+						namespacedArgoCDObject.Namespace = svc.Namespace
 						result = []reconcile.Request{
 							{NamespacedName: namespacedArgoCDObject},
 						}
@@ -174,7 +175,7 @@ func (r *ReconcileArgoCD) namespaceResourceMapper(ctx context.Context, o client.
 	labels := o.GetLabels()
 	namespaceName := o.GetName()
 	if v, ok := labels[common.ArgoCDManagedByLabel]; ok {
-		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: v}); err != nil {
+		if err := r.List(context.TODO(), argocds, &client.ListOptions{Namespace: v}); err != nil {
 			return result
 		}
 		if len(argocds.Items) != 1 {
@@ -193,7 +194,7 @@ func (r *ReconcileArgoCD) namespaceResourceMapper(ctx context.Context, o client.
 		// iterate through each ArgoCD instance to identify if the observed namespace
 		// matches any configured sourceNamespace pattern. If a match is found,
 		// generate a reconcile request for the instances.
-		if err := r.Client.List(ctx, argocds, &client.ListOptions{}); err != nil {
+		if err := r.List(ctx, argocds, &client.ListOptions{}); err != nil {
 			return result
 		}
 		for _, argocd := range argocds.Items {
@@ -218,7 +219,7 @@ func (r *ReconcileArgoCD) clusterSecretResourceMapper(ctx context.Context, o cli
 	labels := o.GetLabels()
 	if v, ok := labels[common.ArgoCDSecretTypeLabel]; ok && v == "cluster" {
 		argocds := &argoproj.ArgoCDList{}
-		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: o.GetNamespace()}); err != nil {
+		if err := r.List(context.TODO(), argocds, &client.ListOptions{Namespace: o.GetNamespace()}); err != nil {
 			return result
 		}
 
@@ -246,7 +247,7 @@ func (r *ReconcileArgoCD) applicationSetSCMTLSConfigMapMapper(ctx context.Contex
 
 	if o.GetName() == common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName {
 		argocds := &argoproj.ArgoCDList{}
-		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: o.GetNamespace()}); err != nil {
+		if err := r.List(context.TODO(), argocds, &client.ListOptions{Namespace: o.GetNamespace()}); err != nil {
 			return result
 		}
 

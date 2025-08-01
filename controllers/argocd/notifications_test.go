@@ -44,7 +44,7 @@ func TestReconcileNotifications_CreateRoles(t *testing.T) {
 	assert.NoError(t, err)
 
 	testRole := &rbacv1.Role{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
 		Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
 		Namespace: a.Namespace,
 	}, testRole))
@@ -57,7 +57,7 @@ func TestReconcileNotifications_CreateRoles(t *testing.T) {
 	_, err = r.reconcileNotificationsRole(a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
 		Namespace: a.Namespace,
 	}, testRole)
@@ -81,7 +81,7 @@ func TestReconcileNotifications_CreateServiceAccount(t *testing.T) {
 	assert.NoError(t, err)
 
 	testSa := &v1.ServiceAccount{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
 		Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
 		Namespace: a.Namespace,
 	}, testSa))
@@ -92,7 +92,7 @@ func TestReconcileNotifications_CreateServiceAccount(t *testing.T) {
 	_, err = r.reconcileNotificationsServiceAccount(a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
 		Namespace: a.Namespace,
 	}, testSa)
@@ -120,7 +120,7 @@ func TestReconcileNotifications_CreateRoleBinding(t *testing.T) {
 	assert.NoError(t, err)
 
 	roleBinding := &rbacv1.RoleBinding{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
@@ -135,7 +135,7 @@ func TestReconcileNotifications_CreateRoleBinding(t *testing.T) {
 	err = r.reconcileNotificationsRoleBinding(a, role, sa)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
 		Namespace: a.Namespace,
 	}, roleBinding)
@@ -159,7 +159,7 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
 
 	deployment := &appsv1.Deployment{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      a.Name + "-notifications-controller",
@@ -168,7 +168,7 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 		deployment))
 
 	// Ensure the created Deployment has the expected properties
-	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.ObjectMeta.Name)
+	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.Name)
 
 	want := []v1.Container{{
 		Command:         []string{"argocd-notifications", "--loglevel", "info", "--logformat", "text", "--argocd-repo-server", "argocd-repo-server.argocd.svc.cluster.local:8081"},
@@ -255,7 +255,7 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 	err := r.reconcileNotificationsDeployment(a, &sa)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
 		Namespace: a.Namespace,
 	}, deployment)
@@ -281,12 +281,12 @@ func TestReconcileNotifications_CreateMetricsService(t *testing.T) {
 	assert.NoError(t, err)
 
 	testService := &v1.Service{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
 		Name:      fmt.Sprintf("%s-%s", a.Name, "notifications-controller-metrics"),
 		Namespace: a.Namespace,
 	}, testService))
 
-	assert.Equal(t, testService.ObjectMeta.Labels["app.kubernetes.io/name"],
+	assert.Equal(t, testService.Labels["app.kubernetes.io/name"],
 		fmt.Sprintf("%s-%s", a.Name, "notifications-controller-metrics"))
 
 	assert.Equal(t, testService.Spec.Selector["app.kubernetes.io/name"],
@@ -310,19 +310,21 @@ func TestReconcileNotifications_CreateServiceMonitor(t *testing.T) {
 	subresObjs := []client.Object{a}
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	monitoringv1.AddToScheme(sch)
-	v1alpha1.AddToScheme(sch)
+	err := monitoringv1.AddToScheme(sch)
+	assert.NoError(t, err)
+	err = v1alpha1.AddToScheme(sch)
+	assert.NoError(t, err)
 
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	// Notifications controller service monitor should not be created when Prometheus API is not found.
 	prometheusAPIFound = false
-	err := r.reconcileNotificationsController(a)
+	err = r.reconcileNotificationsController(a)
 	assert.NoError(t, err)
 
 	testServiceMonitor := &monitoringv1.ServiceMonitor{}
-	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{
+	assert.Error(t, r.Get(context.TODO(), types.NamespacedName{
 		Name:      fmt.Sprintf("%s-%s", a.Name, "notifications-controller-metrics"),
 		Namespace: a.Namespace,
 	}, testServiceMonitor))
@@ -333,12 +335,12 @@ func TestReconcileNotifications_CreateServiceMonitor(t *testing.T) {
 	assert.NoError(t, err)
 
 	testServiceMonitor = &monitoringv1.ServiceMonitor{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
 		Name:      fmt.Sprintf("%s-%s", a.Name, "notifications-controller-metrics"),
 		Namespace: a.Namespace,
 	}, testServiceMonitor))
 
-	assert.Equal(t, testServiceMonitor.ObjectMeta.Labels["release"], "prometheus-operator")
+	assert.Equal(t, testServiceMonitor.Labels["release"], "prometheus-operator")
 
 	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Port, "metrics")
 	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Scheme, "http")
@@ -364,7 +366,7 @@ func TestReconcileNotifications_CreateSecret(t *testing.T) {
 	assert.NoError(t, err)
 
 	testSecret := &v1.Secret{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-notifications-secret",
 		Namespace: a.Namespace,
 	}, testSecret))
@@ -373,7 +375,7 @@ func TestReconcileNotifications_CreateSecret(t *testing.T) {
 	err = r.reconcileNotificationsSecret(a)
 	assert.NoError(t, err)
 	secret := &v1.Secret{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-notifications-secret", Namespace: a.Namespace}, secret)
+	err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-notifications-secret", Namespace: a.Namespace}, secret)
 	assertNotFound(t, err)
 }
 
@@ -401,7 +403,7 @@ func TestReconcileNotifications_testEnvVars(t *testing.T) {
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
 
 	deployment := &appsv1.Deployment{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      a.Name + "-notifications-controller",
@@ -426,13 +428,13 @@ func TestReconcileNotifications_testEnvVars(t *testing.T) {
 	}
 
 	deployment.Spec.Template.Spec.Containers[0].Env = unwantedEnv
-	assert.NoError(t, r.Client.Update(context.TODO(), deployment))
+	assert.NoError(t, r.Update(context.TODO(), deployment))
 
 	// Reconcile back
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
 
 	// Get the updated deployment
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      a.Name + "-notifications-controller",
@@ -464,7 +466,7 @@ func TestReconcileNotifications_testLogLevel(t *testing.T) {
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
 
 	deployment := &appsv1.Deployment{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      a.Name + "-notifications-controller",
@@ -494,13 +496,13 @@ func TestReconcileNotifications_testLogLevel(t *testing.T) {
 	}
 
 	deployment.Spec.Template.Spec.Containers[0].Command = unwantedCommand
-	assert.NoError(t, r.Client.Update(context.TODO(), deployment))
+	assert.NoError(t, r.Update(context.TODO(), deployment))
 
 	// Reconcile back
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
 
 	// Get the updated deployment
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      a.Name + "-notifications-controller",
@@ -531,7 +533,7 @@ func TestReconcileNotifications_testLogFormat(t *testing.T) {
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
 
 	deployment := &appsv1.Deployment{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      a.Name + "-notifications-controller",
@@ -561,13 +563,13 @@ func TestReconcileNotifications_testLogFormat(t *testing.T) {
 	}
 
 	deployment.Spec.Template.Spec.Containers[0].Command = unwantedCommand
-	assert.NoError(t, r.Client.Update(context.TODO(), deployment))
+	assert.NoError(t, r.Update(context.TODO(), deployment))
 
 	// Reconcile back
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
 
 	// Get the updated deployment
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      a.Name + "-notifications-controller",

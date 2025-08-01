@@ -38,7 +38,7 @@ func (r *NotificationsConfigurationReconciler) reconcileNotificationsConfigmap(c
 		}
 		argoutil.AddTrackedByOperatorLabel(&NotificationsConfigMap.ObjectMeta)
 		argoutil.LogResourceCreation(log, NotificationsConfigMap)
-		err := r.Client.Create(context.TODO(), NotificationsConfigMap)
+		err := r.Create(context.TODO(), NotificationsConfigMap)
 		if err != nil {
 			return err
 		}
@@ -79,7 +79,7 @@ func (r *NotificationsConfigurationReconciler) reconcileNotificationsConfigmap(c
 	if changed {
 		NotificationsConfigMap.Data = expectedConfiguration
 		argoutil.LogResourceUpdate(log, NotificationsConfigMap, "updating config map data")
-		err := r.Client.Update(context.TODO(), NotificationsConfigMap)
+		err := r.Update(context.TODO(), NotificationsConfigMap)
 		if err != nil {
 			return err
 		}
