@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
-  name: argocd-long-name-for-route-testiiiiiiiiiiiiiiiiiiiiiiiing
+  name: argocd-long-name-for-route-testiiiiiiing
 spec:
   applicationSet:
     webhookServer:
