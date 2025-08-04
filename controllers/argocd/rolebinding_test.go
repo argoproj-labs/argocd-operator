@@ -41,19 +41,19 @@ func TestReconcileArgoCD_reconcileRoleBinding(t *testing.T) {
 
 	roleBinding := &rbacv1.RoleBinding{}
 	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, roleBinding))
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, roleBinding))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))
 
 	// update role reference and subject of the rolebinding
 	roleBinding.RoleRef.Name = "not-xrb"
 	roleBinding.Subjects[0].Name = "not-xrb"
-	assert.NoError(t, r.Client.Update(context.TODO(), roleBinding))
+	assert.NoError(t, r.Update(context.TODO(), roleBinding))
 
 	// try reconciling it again and verify if the changes are overwritten
 	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, p, a))
 
 	roleBinding = &rbacv1.RoleBinding{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, roleBinding))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, roleBinding))
 }
 
 func TestReconcileArgoCD_reconcileRoleBinding_for_new_namespace(t *testing.T) {
@@ -76,19 +76,19 @@ func TestReconcileArgoCD_reconcileRoleBinding_for_new_namespace(t *testing.T) {
 	expectedDexServerRules := policyRuleForDexServer()
 	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
 	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, expectedDexServerRules, a))
-	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))
+	assert.Error(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))
 
 	// check no redisHa rolebinding is created for the new namespace with managed-by label
 	workloadIdentifier = common.ArgoCDRedisHAComponent
 	expectedRedisHaRules := policyRuleForRedisHa(r.Client)
 	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, expectedRedisHaRules, a))
-	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))
+	assert.Error(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))
 
 	// check no redis rolebinding is created for the new namespace with managed-by label
 	workloadIdentifier = common.ArgoCDRedisComponent
 	expectedRedisRules := policyRuleForRedis(r.Client)
 	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, expectedRedisRules, a))
-	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))
+	assert.Error(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))
 }
 
 // This test validates the behavior of the operator reconciliation when a managed namespace is not properly terminated
@@ -112,7 +112,7 @@ func TestReconcileRoleBinding_for_Managed_Teminating_Namespace(t *testing.T) {
 	expectedRules := policyRuleForApplicationController()
 	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
 	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, expectedRules, a))
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "managedNS"}, roleBinding))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "managedNS"}, roleBinding))
 
 	// Create a configmap with an invalid finalizer in the "managedNS".
 	configMap := &corev1.ConfigMap{
@@ -124,24 +124,26 @@ func TestReconcileRoleBinding_for_Managed_Teminating_Namespace(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, r.Client.Create(
+	assert.NoError(t, r.Create(
 		context.TODO(), configMap))
 
 	// Delete the newNamespaceTest ns.
 	// Verify that operator should not reconcile back to create the roleBindings in terminating ns.
 	newNS := &corev1.Namespace{}
-	r.Client.Get(context.TODO(), types.NamespacedName{Namespace: "managedNS", Name: "managedNS"}, newNS)
-	r.Client.Delete(context.TODO(), newNS)
+	err := r.Get(context.TODO(), types.NamespacedName{Name: "managedNS"}, newNS)
+	assert.NoError(t, err)
+	err = r.Delete(context.TODO(), newNS)
+	assert.NoError(t, err)
 
 	// Verify that the namespace exists and is in terminating state.
-	r.Client.Get(context.TODO(), types.NamespacedName{Namespace: "managedNS", Name: "managedNS"}, newNS)
+	_ = r.Get(context.TODO(), types.NamespacedName{Name: "managedNS"}, newNS)
 	assert.NotEqual(t, newNS.DeletionTimestamp, nil)
 
-	err := r.reconcileRoleBinding(workloadIdentifier, expectedRules, a)
+	err = r.reconcileRoleBinding(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
 
 	// Verify that the role bindings are deleted
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "managedNS2"}, roleBinding)
+	err = r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "managedNS2"}, roleBinding)
 	assert.ErrorContains(t, err, "not found")
 
 	// Create another managed namespace
@@ -150,7 +152,7 @@ func TestReconcileRoleBinding_for_Managed_Teminating_Namespace(t *testing.T) {
 	// Check if roleBindings are created for the new namespace as well
 	err = r.reconcileRoleBinding(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "managedNS2"}, roleBinding))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "managedNS2"}, roleBinding))
 }
 
 func TestReconcileArgoCD_reconcileClusterRoleBinding(t *testing.T) {
@@ -171,18 +173,18 @@ func TestReconcileArgoCD_reconcileClusterRoleBinding(t *testing.T) {
 
 	clusterRoleBinding := &rbacv1.ClusterRoleBinding{}
 	expectedName := fmt.Sprintf("%s-%s-%s", a.Name, a.Namespace, workloadIdentifier)
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, clusterRoleBinding))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName}, clusterRoleBinding))
 
 	// update role reference and subject of the clusterrolebinding
 	clusterRoleBinding.RoleRef.Name = "not-x"
 	clusterRoleBinding.Subjects[0].Name = "not-x"
-	assert.NoError(t, r.Client.Update(context.TODO(), clusterRoleBinding))
+	assert.NoError(t, r.Update(context.TODO(), clusterRoleBinding))
 
 	// try reconciling it again and verify if the changes are overwritten
 	assert.NoError(t, r.reconcileClusterRoleBinding(workloadIdentifier, expectedClusterRole, a))
 
 	clusterRoleBinding = &rbacv1.ClusterRoleBinding{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, clusterRoleBinding))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName}, clusterRoleBinding))
 }
 
 func TestReconcileArgoCD_reconcileClusterRoleBinding_disabled(t *testing.T) {
@@ -208,7 +210,7 @@ func TestReconcileArgoCD_reconcileClusterRoleBinding_disabled(t *testing.T) {
 	// Ensure default ClusterRoleBinding is not created
 	clusterRoleBinding := &rbacv1.ClusterRoleBinding{}
 	expectedName := fmt.Sprintf("%s-%s-%s", a.Name, a.Namespace, workloadIdentifier)
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, clusterRoleBinding)
+	err = r.Get(context.TODO(), types.NamespacedName{Name: expectedName}, clusterRoleBinding)
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "not found")
 
@@ -221,7 +223,7 @@ func TestReconcileArgoCD_reconcileClusterRoleBinding_disabled(t *testing.T) {
 	assert.NoError(t, r.reconcileClusterRoleBinding(workloadIdentifier, expectedClusterRole, a))
 
 	// Ensure default ClusterRoleBinding is created now
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, clusterRoleBinding))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName}, clusterRoleBinding))
 
 	// Once again disable creation of default ClusterRole
 	a.Spec.DefaultClusterScopedRoleDisabled = true
@@ -232,7 +234,7 @@ func TestReconcileArgoCD_reconcileClusterRoleBinding_disabled(t *testing.T) {
 	assert.NoError(t, r.reconcileClusterRoleBinding(workloadIdentifier, expectedClusterRole, a))
 
 	// Ensure default ClusterRoleBinding is deleted again
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, clusterRoleBinding)
+	err = r.Get(context.TODO(), types.NamespacedName{Name: expectedName}, clusterRoleBinding)
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "not found")
 }
@@ -260,9 +262,9 @@ func TestReconcileArgoCD_reconcileRoleBinding_custom_role(t *testing.T) {
 	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, p, a))
 
 	// check if the default rolebindings are created
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, &rbacv1.RoleBinding{}))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, &rbacv1.RoleBinding{}))
 
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: namespaceWithCustomRole}, &rbacv1.RoleBinding{}))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: namespaceWithCustomRole}, &rbacv1.RoleBinding{}))
 
 	checkForUpdatedRoleRef := func(t *testing.T, roleName, expectedName string) {
 		t.Helper()
@@ -272,10 +274,10 @@ func TestReconcileArgoCD_reconcileRoleBinding_custom_role(t *testing.T) {
 			Name:     roleName,
 		}
 		roleBinding := &rbacv1.RoleBinding{}
-		assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, roleBinding))
+		assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, roleBinding))
 		assert.Equal(t, roleBinding.RoleRef, expectedRoleRef)
 
-		assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: namespaceWithCustomRole}, roleBinding))
+		assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: namespaceWithCustomRole}, roleBinding))
 		assert.Equal(t, roleBinding.RoleRef, expectedRoleRef)
 	}
 
@@ -326,7 +328,7 @@ func TestReconcileArgoCD_reconcileRoleBinding_forSourceNamespaces(t *testing.T) 
 	assert.LessOrEqual(t, len(expectedName), maxLabelLength, "RoleBinding name should not exceed maxLabelLength")
 
 	// Verify the RoleBinding was created successfully
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: sourceNamespace}, roleBinding))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: sourceNamespace}, roleBinding))
 
 	// Verify the RoleBinding name is exactly 63 characters
 	assert.Equal(t, 63, len(roleBinding.Name), "RoleBinding name should be exactly 63 characters")

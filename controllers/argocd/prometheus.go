@@ -110,12 +110,12 @@ func newServiceMonitor(cr *argoproj.ArgoCD) *monitoringv1.ServiceMonitor {
 // newServiceMonitorWithName returns a new ServiceMonitor instance for the given ArgoCD using the given name.
 func newServiceMonitorWithName(name string, cr *argoproj.ArgoCD) *monitoringv1.ServiceMonitor {
 	svcmon := newServiceMonitor(cr)
-	svcmon.ObjectMeta.Name = name
+	svcmon.Name = name
 
-	lbls := svcmon.ObjectMeta.Labels
+	lbls := svcmon.Labels
 	lbls[common.ArgoCDKeyName] = name
 	lbls[common.ArgoCDKeyRelease] = "prometheus-operator"
-	svcmon.ObjectMeta.Labels = lbls
+	svcmon.Labels = lbls
 
 	return svcmon
 }
@@ -136,7 +136,7 @@ func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) er
 		if !cr.Spec.Prometheus.Enabled {
 			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
 			argoutil.LogResourceDeletion(log, sm, "prometheus is disabled")
-			return r.Client.Delete(context.TODO(), sm)
+			return r.Delete(context.TODO(), sm)
 		}
 		return nil // ServiceMonitor found, do nothing
 	}
@@ -160,7 +160,7 @@ func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) er
 		return err
 	}
 	argoutil.LogResourceCreation(log, sm)
-	return r.Client.Create(context.TODO(), sm)
+	return r.Create(context.TODO(), sm)
 }
 
 // reconcilePrometheus will ensure that Prometheus is present for ArgoCD metrics.
@@ -174,12 +174,12 @@ func (r *ReconcileArgoCD) reconcilePrometheus(cr *argoproj.ArgoCD) error {
 		if !cr.Spec.Prometheus.Enabled {
 			// Prometheus exists but enabled flag has been set to false, delete the Prometheus
 			argoutil.LogResourceDeletion(log, prometheus, "prometheus is disabled")
-			return r.Client.Delete(context.TODO(), prometheus)
+			return r.Delete(context.TODO(), prometheus)
 		}
 		if hasPrometheusSpecChanged(prometheus, cr) {
 			prometheus.Spec.Replicas = cr.Spec.Prometheus.Size
 			argoutil.LogResourceUpdate(log, prometheus, "updating replica count")
-			return r.Client.Update(context.TODO(), prometheus)
+			return r.Update(context.TODO(), prometheus)
 		}
 		return nil // Prometheus found, do nothing
 	}
@@ -196,7 +196,7 @@ func (r *ReconcileArgoCD) reconcilePrometheus(cr *argoproj.ArgoCD) error {
 		return err
 	}
 	argoutil.LogResourceCreation(log, prometheus)
-	return r.Client.Create(context.TODO(), prometheus)
+	return r.Create(context.TODO(), prometheus)
 }
 
 // reconcileRepoServerServiceMonitor will ensure that the ServiceMonitor is present for the Repo Server metrics Service.
@@ -210,7 +210,7 @@ func (r *ReconcileArgoCD) reconcileRepoServerServiceMonitor(cr *argoproj.ArgoCD)
 		if !cr.Spec.Prometheus.Enabled {
 			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
 			argoutil.LogResourceDeletion(log, sm, "prometheus is disabled")
-			return r.Client.Delete(context.TODO(), sm)
+			return r.Delete(context.TODO(), sm)
 		}
 		return nil // ServiceMonitor found, do nothing
 	}
@@ -234,7 +234,7 @@ func (r *ReconcileArgoCD) reconcileRepoServerServiceMonitor(cr *argoproj.ArgoCD)
 		return err
 	}
 	argoutil.LogResourceCreation(log, sm)
-	return r.Client.Create(context.TODO(), sm)
+	return r.Create(context.TODO(), sm)
 }
 
 // reconcileServerMetricsServiceMonitor will ensure that the ServiceMonitor is present for the ArgoCD Server metrics Service.
@@ -248,7 +248,7 @@ func (r *ReconcileArgoCD) reconcileServerMetricsServiceMonitor(cr *argoproj.Argo
 		if !cr.Spec.Prometheus.Enabled {
 			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
 			argoutil.LogResourceDeletion(log, sm, "prometheus is disabled")
-			return r.Client.Delete(context.TODO(), sm)
+			return r.Delete(context.TODO(), sm)
 		}
 		return nil // ServiceMonitor found, do nothing
 	}
@@ -272,7 +272,7 @@ func (r *ReconcileArgoCD) reconcileServerMetricsServiceMonitor(cr *argoproj.Argo
 		return err
 	}
 	argoutil.LogResourceCreation(log, sm)
-	return r.Client.Create(context.TODO(), sm)
+	return r.Create(context.TODO(), sm)
 }
 
 // reconcilePrometheusRule reconciles the PrometheusRule that triggers alerts based on workload statuses
@@ -291,7 +291,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoproj.ArgoCD) error {
 			// PrometheusRule exists but enabled flag has been set to false, delete the PrometheusRule
 			log.Info("instance monitoring disabled, deleting component status tracking prometheusRule")
 			argoutil.LogResourceDeletion(log, promRule, "instance monitoring is disabled")
-			return r.Client.Delete(context.TODO(), promRule)
+			return r.Delete(context.TODO(), promRule)
 		}
 		return nil // PrometheusRule found, do nothing
 	}
@@ -412,7 +412,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoproj.ArgoCD) error {
 	}
 
 	argoutil.LogResourceCreation(log, promRule, "for component status tracking, since instance monitoring is enabled")
-	return r.Client.Create(context.TODO(), promRule) // Create PrometheusRule
+	return r.Create(context.TODO(), promRule) // Create PrometheusRule
 }
 
 // newPrometheusRule returns an empty PrometheusRule

@@ -7,12 +7,13 @@ import (
 
 	"encoding/pem"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/runtime"
 	testclient "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 func TestKeycloak_testRealmCreation(t *testing.T) {

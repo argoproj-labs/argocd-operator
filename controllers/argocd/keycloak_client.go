@@ -147,14 +147,14 @@ func defaultRequester(serverCert []byte, verifyTLS bool) (requester, error) {
 // An Insecure config is returned also when .spec.SSO.verifyTLS is set to false.
 func createTLSConfig(serverCert []byte, verifyTLS bool) (*tls.Config, error) {
 	if serverCert == nil || !verifyTLS {
-		return &tls.Config{InsecureSkipVerify: true}, nil
+		return &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS12}, nil // #nosec G402
 	}
 
 	rootCAPool := x509.NewCertPool()
 	if ok := rootCAPool.AppendCertsFromPEM(serverCert); !ok {
 		return nil, errors.Errorf("unable to successfully load certificate")
 	}
-	return &tls.Config{RootCAs: rootCAPool}, nil
+	return &tls.Config{RootCAs: rootCAPool, MinVersion: tls.VersionTLS12}, nil
 }
 
 // Get Keycloak URL.

@@ -58,7 +58,7 @@ func TestReconcileHPA(t *testing.T) {
 		},
 	}
 
-	err := r.Client.Get(context.TODO(), types.NamespacedName{
+	err := r.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-server",
 		Namespace: testNamespace,
 	}, existingHPA)
@@ -69,7 +69,7 @@ func TestReconcileHPA(t *testing.T) {
 	err = r.reconcileServerHPA(a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-server",
 		Namespace: testNamespace,
 	}, existingHPA)
@@ -81,7 +81,7 @@ func TestReconcileHPA(t *testing.T) {
 	err = r.reconcileServerHPA(a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-server",
 		Namespace: testNamespace,
 	}, existingHPA)
@@ -93,7 +93,7 @@ func TestReconcileHPA(t *testing.T) {
 	err = r.reconcileServerHPA(a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-server",
 		Namespace: testNamespace,
 	}, existingHPA)

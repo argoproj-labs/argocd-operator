@@ -502,7 +502,7 @@ func TestAlphaToBetaConversion(t *testing.T) {
 					},
 				}
 				//lint:ignore SA1019 known to be deprecated
-				cr.Spec.Grafana.Route = v1beta1.ArgoCDRouteSpec{
+				cr.Spec.Grafana.Route = v1beta1.ArgoCDRouteSpec{ //nolint:staticcheck // SA1019: We must test deprecated fields.
 					Enabled: true,
 					TLS: &routev1.TLSConfig{
 						Termination: routev1.TLSTerminationEdge,
@@ -529,7 +529,8 @@ func TestAlphaToBetaConversion(t *testing.T) {
 			var hub conversion.Hub = &v1beta1.ArgoCD{}
 
 			// Call ConvertTo function to convert v1alpha1 version to v1beta1
-			test.input.ConvertTo(hub)
+			err := test.input.ConvertTo(hub)
+			assert.NoError(t, err)
 
 			// Fetch the converted object
 			result := hub.(*v1beta1.ArgoCD)
@@ -626,7 +627,8 @@ func TestBetaToAlphaConversion(t *testing.T) {
 
 			result := &ArgoCD{}
 			// Call ConvertFrom function to convert v1beta1 version to v1alpha
-			result.ConvertFrom(hub)
+			err := result.ConvertFrom(hub)
+			assert.NoError(t, err)
 
 			// Compare converted object with expected.
 			assert.Equal(t, test.expectedOutput, result)

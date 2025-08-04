@@ -133,7 +133,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_disabled(t *testing.T) {
 
 	assert.NoError(t, r.reconcileRedisStatefulSet(a))
 	// resource Creation should fail as HA was disabled
-	assert.Errorf(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s), "not found")
+	assert.Errorf(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s), "not found")
 }
 
 func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_enabled(t *testing.T) {
@@ -153,7 +153,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_enabled(t *testing.T) {
 	a.Spec.HA.Enabled = true
 	// test resource is Created when HA is enabled
 	assert.NoError(t, r.reconcileRedisStatefulSet(a))
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
 
 	// test resource is Updated on reconciliation
 	a.Spec.Redis.Image = testRedisImage
@@ -170,7 +170,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_enabled(t *testing.T) {
 	}
 	a.Spec.HA.Resources = &newResources
 	assert.NoError(t, r.reconcileRedisStatefulSet(a))
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
 	for _, container := range s.Spec.Template.Spec.Containers {
 		assert.Equal(t, container.Image, fmt.Sprintf("%s:%s", testRedisImage, testRedisImageVersion))
 		assert.Equal(t, container.Resources, newResources)
@@ -180,7 +180,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_enabled(t *testing.T) {
 	// test resource is Deleted, when HA is disabled
 	a.Spec.HA.Enabled = false
 	assert.NoError(t, r.reconcileRedisStatefulSet(a))
-	assert.Errorf(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s), "not found")
+	assert.Errorf(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s), "not found")
 }
 
 func TestReconcileArgoCD_reconcileApplicationController(t *testing.T) {
@@ -197,7 +197,7 @@ func TestReconcileArgoCD_reconcileApplicationController(t *testing.T) {
 	assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a, false))
 
 	ss := &appsv1.StatefulSet{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-application-controller",
@@ -243,7 +243,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withRedisTLS(t *testing.
 	assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a, true))
 
 	ss := &appsv1.StatefulSet{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-application-controller",
@@ -285,7 +285,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withUpdate(t *testing.T)
 	assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a, false))
 
 	ss := &appsv1.StatefulSet{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-application-controller",
@@ -320,10 +320,10 @@ func TestReconcileArgoCD_reconcileApplicationController_withUpgrade(t *testing.T
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	deploy := newDeploymentWithSuffix("application-controller", "application-controller", a)
-	assert.NoError(t, r.Client.Create(context.TODO(), deploy))
+	assert.NoError(t, r.Create(context.TODO(), deploy))
 
 	assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a, false))
-	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, deploy)
+	err := r.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, deploy)
 	assert.Errorf(t, err, "not found")
 }
 
@@ -354,7 +354,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withResources(t *testing
 	assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a, false))
 
 	ss := &appsv1.StatefulSet{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-application-controller",
@@ -526,7 +526,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 		assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a, false))
 
 		ss := &appsv1.StatefulSet{}
-		assert.NoError(t, r.Client.Get(
+		assert.NoError(t, r.Get(
 			context.TODO(),
 			types.NamespacedName{
 				Name:      "argocd-application-controller",
@@ -586,7 +586,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withAppSync(t *testing.T
 	assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a, false))
 
 	ss := &appsv1.StatefulSet{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-application-controller",
@@ -642,7 +642,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withEnv(t *testing.T) {
 	assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a, false))
 
 	ss := &appsv1.StatefulSet{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-application-controller",
@@ -832,13 +832,13 @@ func TestReconcileArgoCD_reconcileApplicationController_withDynamicSharding(t *t
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-		assert.NoError(t, r.Client.Create(context.TODO(), clusterSecret1))
-		assert.NoError(t, r.Client.Create(context.TODO(), clusterSecret2))
-		assert.NoError(t, r.Client.Create(context.TODO(), clusterSecret3))
+		assert.NoError(t, r.Create(context.TODO(), clusterSecret1))
+		assert.NoError(t, r.Create(context.TODO(), clusterSecret2))
+		assert.NoError(t, r.Create(context.TODO(), clusterSecret3))
 
 		replicas := r.getApplicationControllerReplicaCount(a)
 
-		assert.Equal(t, int32(st.expectedReplicas), replicas)
+		assert.Equal(t, st.expectedReplicas, replicas)
 
 	}
 }
@@ -863,7 +863,7 @@ func TestReconcileAppController_Initcontainer(t *testing.T) {
 	assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a, false))
 
 	ss := &appsv1.StatefulSet{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-application-controller",
@@ -880,7 +880,7 @@ func TestReconcileAppController_Initcontainer(t *testing.T) {
 	assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a, false))
 
 	ss = &appsv1.StatefulSet{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-application-controller",
@@ -911,7 +911,7 @@ func TestReconcileArgoCD_sidecarcontainer(t *testing.T) {
 	assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a, false))
 
 	ss := &appsv1.StatefulSet{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-application-controller",
@@ -928,7 +928,7 @@ func TestReconcileArgoCD_sidecarcontainer(t *testing.T) {
 	assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a, false))
 
 	ss = &appsv1.StatefulSet{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-application-controller",
@@ -955,18 +955,18 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_ModifyContainerSpec(t *testin
 	assert.NoError(t, r.reconcileRedisStatefulSet(a))
 
 	s := newStatefulSetWithSuffix("redis-ha-server", "redis", a)
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
 
 	// Modify the container environment variable
 	s.Spec.Template.Spec.Containers[0].Env = append(s.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
 		Name:  "NEW_ENV_VAR",
 		Value: "new-value",
 	})
-	assert.NoError(t, r.Client.Update(context.TODO(), s))
+	assert.NoError(t, r.Update(context.TODO(), s))
 
 	// Reconcile again and check if the environment variable is reverted
 	assert.NoError(t, r.reconcileRedisStatefulSet(a))
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
 
 	envVarFound := false
 	for _, env := range s.Spec.Template.Spec.Containers[0].Env {
@@ -978,17 +978,17 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_ModifyContainerSpec(t *testin
 	assert.False(t, envVarFound, "NEW_ENV_VAR should not be present")
 
 	// Modify the SecurityContext
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
 	expectedSecurityContext := s.Spec.Template.Spec.SecurityContext
 	fsGroup := int64(2000)
 	newSecurityContext := &corev1.PodSecurityContext{
 		FSGroup: &fsGroup,
 	}
 	s.Spec.Template.Spec.SecurityContext = newSecurityContext
-	assert.NoError(t, r.Client.Update(context.TODO(), s))
+	assert.NoError(t, r.Update(context.TODO(), s))
 	// Reconcile again and check if the SecurityContext is reverted
 	assert.NoError(t, r.reconcileRedisStatefulSet(a))
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
 	assert.Equal(t, true, reflect.DeepEqual(expectedSecurityContext, s.Spec.Template.Spec.SecurityContext))
 
 	// Modify the initcontainer environment variable
@@ -996,11 +996,11 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_ModifyContainerSpec(t *testin
 		Name:  "NEW_ENV_VAR",
 		Value: "new-value",
 	})
-	assert.NoError(t, r.Client.Update(context.TODO(), s))
+	assert.NoError(t, r.Update(context.TODO(), s))
 
 	// Reconcile again and check if the environment variable is reverted
 	assert.NoError(t, r.reconcileRedisStatefulSet(a))
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
 
 	envVarFound = false
 	for _, env := range s.Spec.Template.Spec.InitContainers[0].Env {
@@ -1022,10 +1022,10 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_ModifyContainerSpec(t *testin
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
 	})
-	assert.NoError(t, r.Client.Update(context.TODO(), s))
+	assert.NoError(t, r.Update(context.TODO(), s))
 	// Reconcile again and check if the volume mount is reverted
 	assert.NoError(t, r.reconcileRedisStatefulSet(a))
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
 
 	volumeMountFound := false
 	for _, vm := range s.Spec.Template.Spec.Containers[0].VolumeMounts {

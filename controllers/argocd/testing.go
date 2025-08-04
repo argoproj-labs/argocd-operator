@@ -290,7 +290,7 @@ func createNamespace(r *ReconcileArgoCD, n string, managedBy string) error {
 	}
 	r.ManagedNamespaces.Items = append(r.ManagedNamespaces.Items, *ns)
 
-	return r.Client.Create(context.TODO(), ns)
+	return r.Create(context.TODO(), ns)
 }
 
 func createNamespaceManagedByClusterArgoCDLabel(r *ReconcileArgoCD, n string, managedBy string) error {
@@ -304,7 +304,7 @@ func createNamespaceManagedByClusterArgoCDLabel(r *ReconcileArgoCD, n string, ma
 	}
 	r.ManagedSourceNamespaces[ns.Name] = ""
 
-	return r.Client.Create(context.TODO(), ns)
+	return r.Create(context.TODO(), ns)
 }
 
 func merge(base map[string]string, diff map[string]string) map[string]string {

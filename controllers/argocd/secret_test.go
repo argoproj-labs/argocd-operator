@@ -137,20 +137,23 @@ func Test_ReconcileArgoCD_ReconcileRepoTLSSecret(t *testing.T) {
 		}
 
 		// Workloads should have been requested to re-rollout on a change
-		r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd-operator"}, serverDepl)
-		deplRollout, ok := serverDepl.Spec.Template.ObjectMeta.Labels["repo.tls.cert.changed"]
+		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd-operator"}, serverDepl)
+		assert.NoError(t, err)
+		deplRollout, ok := serverDepl.Spec.Template.Labels["repo.tls.cert.changed"]
 		if !ok {
-			t.Errorf("Expected rollout of argocd-server, but it didn't happen: %v", serverDepl.Spec.Template.ObjectMeta.Labels)
+			t.Errorf("Expected rollout of argocd-server, but it didn't happen: %v", serverDepl.Spec.Template.Labels)
 		}
-		r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-repo-server", Namespace: "argocd-operator"}, repoDepl)
-		repoRollout, ok := repoDepl.Spec.Template.ObjectMeta.Labels["repo.tls.cert.changed"]
+		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-repo-server", Namespace: "argocd-operator"}, repoDepl)
+		assert.NoError(t, err)
+		repoRollout, ok := repoDepl.Spec.Template.Labels["repo.tls.cert.changed"]
 		if !ok {
-			t.Errorf("Expected rollout of argocd-repo-server, but it didn't happen: %v", repoDepl.Spec.Template.ObjectMeta.Labels)
+			t.Errorf("Expected rollout of argocd-repo-server, but it didn't happen: %v", repoDepl.Spec.Template.Labels)
 		}
-		r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-application-controller", Namespace: "argocd-operator"}, ctrlSts)
-		ctrlRollout, ok := ctrlSts.Spec.Template.ObjectMeta.Labels["repo.tls.cert.changed"]
+		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-application-controller", Namespace: "argocd-operator"}, ctrlSts)
+		assert.NoError(t, err)
+		ctrlRollout, ok := ctrlSts.Spec.Template.Labels["repo.tls.cert.changed"]
 		if !ok {
-			t.Errorf("Expected rollout of argocd-application-server, but it didn't happen: %v", ctrlSts.Spec.Template.ObjectMeta.Labels)
+			t.Errorf("Expected rollout of argocd-application-server, but it didn't happen: %v", ctrlSts.Spec.Template.Labels)
 		}
 
 		// Second run - no change
@@ -163,26 +166,31 @@ func Test_ReconcileArgoCD_ReconcileRepoTLSSecret(t *testing.T) {
 		}
 
 		// This time, label should not have changed
-		r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd-operator"}, serverDepl)
-		deplRolloutNew, ok := serverDepl.Spec.Template.ObjectMeta.Labels["repo.tls.cert.changed"]
+		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd-operator"}, serverDepl)
+		assert.NoError(t, err)
+		deplRolloutNew, ok := serverDepl.Spec.Template.Labels["repo.tls.cert.changed"]
 		if !ok || deplRollout != deplRolloutNew {
-			t.Errorf("Did not expect rollout of argocd-server, but it did happen: %v", serverDepl.Spec.Template.ObjectMeta.Labels)
+			t.Errorf("Did not expect rollout of argocd-server, but it did happen: %v", serverDepl.Spec.Template.Labels)
 		}
-		r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-repo-server", Namespace: "argocd-operator"}, repoDepl)
-		repoRolloutNew, ok := repoDepl.Spec.Template.ObjectMeta.Labels["repo.tls.cert.changed"]
+		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-repo-server", Namespace: "argocd-operator"}, repoDepl)
+		assert.NoError(t, err)
+		repoRolloutNew, ok := repoDepl.Spec.Template.Labels["repo.tls.cert.changed"]
 		if !ok || repoRollout != repoRolloutNew {
-			t.Errorf("Did not expect rollout of argocd-repo-server, but it did happen: %v", repoDepl.Spec.Template.ObjectMeta.Labels)
+			t.Errorf("Did not expect rollout of argocd-repo-server, but it did happen: %v", repoDepl.Spec.Template.Labels)
 		}
-		r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-application-controller", Namespace: "argocd-operator"}, ctrlSts)
-		ctrlRolloutNew, ok := ctrlSts.Spec.Template.ObjectMeta.Labels["repo.tls.cert.changed"]
+		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-application-controller", Namespace: "argocd-operator"}, ctrlSts)
+		assert.NoError(t, err)
+		ctrlRolloutNew, ok := ctrlSts.Spec.Template.Labels["repo.tls.cert.changed"]
 		if !ok || ctrlRollout != ctrlRolloutNew {
-			t.Errorf("Did not expect rollout of argocd-application-server, but it did happen: %v", ctrlSts.Spec.Template.ObjectMeta.Labels)
+			t.Errorf("Did not expect rollout of argocd-application-server, but it did happen: %v", ctrlSts.Spec.Template.Labels)
 		}
 
 		// Update certificate in the secret must trigger new rollout
-		r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-repo-server-tls", Namespace: "argocd-operator"}, secret)
+		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-repo-server-tls", Namespace: "argocd-operator"}, secret)
+		assert.NoError(t, err)
 		secret.Data["tls.crt"] = []byte("bar")
-		r.Client.Update(context.TODO(), secret)
+		err = r.Update(context.TODO(), secret)
+		assert.NoError(t, err)
 
 		sumOver = []byte{}
 		sumOver = append(sumOver, []byte("bar")...)
@@ -199,20 +207,23 @@ func Test_ReconcileArgoCD_ReconcileRepoTLSSecret(t *testing.T) {
 		}
 
 		// This time, label should have changed
-		r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd-operator"}, serverDepl)
-		deplRolloutNew, ok = serverDepl.Spec.Template.ObjectMeta.Labels["repo.tls.cert.changed"]
+		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd-operator"}, serverDepl)
+		assert.NoError(t, err)
+		deplRolloutNew, ok = serverDepl.Spec.Template.Labels["repo.tls.cert.changed"]
 		if !ok || deplRollout == deplRolloutNew {
-			t.Errorf("Expected rollout of argocd-server, but it didn't happen: %v", serverDepl.Spec.Template.ObjectMeta.Labels)
+			t.Errorf("Expected rollout of argocd-server, but it didn't happen: %v", serverDepl.Spec.Template.Labels)
 		}
-		r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-repo-server", Namespace: "argocd-operator"}, repoDepl)
-		repoRolloutNew, ok = repoDepl.Spec.Template.ObjectMeta.Labels["repo.tls.cert.changed"]
+		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-repo-server", Namespace: "argocd-operator"}, repoDepl)
+		assert.NoError(t, err)
+		repoRolloutNew, ok = repoDepl.Spec.Template.Labels["repo.tls.cert.changed"]
 		if !ok || repoRollout == repoRolloutNew {
-			t.Errorf("Expected rollout of argocd-repo-server, but it didn't happen: %v", repoDepl.Spec.Template.ObjectMeta.Labels)
+			t.Errorf("Expected rollout of argocd-repo-server, but it didn't happen: %v", repoDepl.Spec.Template.Labels)
 		}
-		r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-application-controller", Namespace: "argocd-operator"}, ctrlSts)
-		ctrlRolloutNew, ok = ctrlSts.Spec.Template.ObjectMeta.Labels["repo.tls.cert.changed"]
+		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-application-controller", Namespace: "argocd-operator"}, ctrlSts)
+		assert.NoError(t, err)
+		ctrlRolloutNew, ok = ctrlSts.Spec.Template.Labels["repo.tls.cert.changed"]
 		if !ok || ctrlRollout == ctrlRolloutNew {
-			t.Errorf("Expected rollout of argocd-application-controller, but it didn't happen: %v", ctrlSts.Spec.Template.ObjectMeta.Labels)
+			t.Errorf("Expected rollout of argocd-application-controller, but it didn't happen: %v", ctrlSts.Spec.Template.Labels)
 		}
 
 	})
@@ -238,23 +249,26 @@ func Test_ReconcileArgoCD_ReconcileExistingArgoSecret(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	r.Client.Create(context.TODO(), clusterSecret)
-	r.Client.Create(context.TODO(), tlsSecret)
+	err := r.Create(context.TODO(), clusterSecret)
+	assert.NoError(t, err)
+	err = r.Create(context.TODO(), tlsSecret)
+	assert.NoError(t, err)
 
-	err := r.reconcileArgoSecret(argocd)
+	err = r.reconcileArgoSecret(argocd)
 
 	assert.NoError(t, err)
 
 	testSecret := &corev1.Secret{}
-	secretErr := r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: "argocd-operator"}, testSecret)
+	secretErr := r.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: "argocd-operator"}, testSecret)
 	assert.NoError(t, secretErr)
 
 	// if you remove the secret.Data it should come back, including the secretKey
 	testSecret.Data = nil
-	r.Client.Update(context.TODO(), testSecret)
+	err = r.Update(context.TODO(), testSecret)
+	assert.NoError(t, err)
 
 	_ = r.reconcileExistingArgoSecret(argocd, testSecret, clusterSecret, tlsSecret)
-	_ = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: "argocd-operator"}, testSecret)
+	_ = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: "argocd-operator"}, testSecret)
 
 	if testSecret.Data == nil {
 		t.Errorf("Expected data for data.server but got nothing")
@@ -263,7 +277,7 @@ func Test_ReconcileArgoCD_ReconcileExistingArgoSecret(t *testing.T) {
 	if testSecret.Data[common.ArgoCDKeyServerSecretKey] == nil {
 		t.Errorf("Expected data for data.server.secretKey but got nothing")
 	}
-	assert.True(t, argoutil.IsTrackedByOperator(testSecret.ObjectMeta.Labels))
+	assert.True(t, argoutil.IsTrackedByOperator(testSecret.Labels))
 }
 
 func Test_ReconcileArgoCD_ReconcileShouldNotChangeWhenUpdatedAdminPass(t *testing.T) {
@@ -285,27 +299,30 @@ func Test_ReconcileArgoCD_ReconcileShouldNotChangeWhenUpdatedAdminPass(t *testin
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	r.Client.Create(context.TODO(), clusterSecret)
-	r.Client.Create(context.TODO(), tlsSecret)
+	err := r.Create(context.TODO(), clusterSecret)
+	assert.NoError(t, err)
+	err = r.Create(context.TODO(), tlsSecret)
+	assert.NoError(t, err)
 
-	err := r.reconcileArgoSecret(argocd)
+	err = r.reconcileArgoSecret(argocd)
 
 	assert.NoError(t, err)
 
 	testSecret := &corev1.Secret{}
-	secretErr := r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: "argocd-operator"}, testSecret)
+	secretErr := r.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: "argocd-operator"}, testSecret)
 	assert.NoError(t, secretErr)
-	assert.True(t, argoutil.IsTrackedByOperator(testSecret.ObjectMeta.Labels))
+	assert.True(t, argoutil.IsTrackedByOperator(testSecret.Labels))
 
 	// simulating update of argo-cd Admin password from cli or argocd dashboard
 	hashedPassword, _ := argopass.HashPassword("updated_password")
 	testSecret.Data[common.ArgoCDKeyAdminPassword] = []byte(hashedPassword)
 	mTime := nowBytes()
 	testSecret.Data[common.ArgoCDKeyAdminPasswordMTime] = mTime
-	r.Client.Update(context.TODO(), testSecret)
+	err = r.Update(context.TODO(), testSecret)
+	assert.NoError(t, err)
 
 	_ = r.reconcileExistingArgoSecret(argocd, testSecret, clusterSecret, tlsSecret)
-	_ = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: "argocd-operator"}, testSecret)
+	_ = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: "argocd-operator"}, testSecret)
 
 	// checking if reconciliation updates the ArgoCDKeyAdminPassword and ArgoCDKeyAdminPasswordMTime
 	if string(testSecret.Data[common.ArgoCDKeyAdminPassword]) != hashedPassword {
@@ -317,10 +334,11 @@ func Test_ReconcileArgoCD_ReconcileShouldNotChangeWhenUpdatedAdminPass(t *testin
 
 	// if you remove the secret.Data it should come back, including the secretKey
 	testSecret.Data = nil
-	r.Client.Update(context.TODO(), testSecret)
+	err = r.Update(context.TODO(), testSecret)
+	assert.NoError(t, err)
 
 	_ = r.reconcileExistingArgoSecret(argocd, testSecret, clusterSecret, tlsSecret)
-	_ = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: "argocd-operator"}, testSecret)
+	_ = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: "argocd-operator"}, testSecret)
 
 	if testSecret.Data == nil {
 		t.Errorf("Expected data for data.server but got nothing")
@@ -329,7 +347,7 @@ func Test_ReconcileArgoCD_ReconcileShouldNotChangeWhenUpdatedAdminPass(t *testin
 	if testSecret.Data[common.ArgoCDKeyServerSecretKey] == nil {
 		t.Errorf("Expected data for data.server.secretKey but got nothing")
 	}
-	assert.True(t, argoutil.IsTrackedByOperator(testSecret.ObjectMeta.Labels))
+	assert.True(t, argoutil.IsTrackedByOperator(testSecret.Labels))
 }
 
 func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
@@ -414,25 +432,29 @@ func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 		certChangedLabel := "redis.tls.cert.changed"
 
 		// Workloads should have been requested to re-rollout on a change
-		r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd-operator"}, serverDepl)
-		deplRollout, ok := serverDepl.Spec.Template.ObjectMeta.Labels[certChangedLabel]
+		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd-operator"}, serverDepl)
+		assert.NoError(t, err)
+		deplRollout, ok := serverDepl.Spec.Template.Labels[certChangedLabel]
 		if !ok {
-			t.Errorf("Expected rollout of argocd-server, but it didn't happen: %v", serverDepl.Spec.Template.ObjectMeta.Labels)
+			t.Errorf("Expected rollout of argocd-server, but it didn't happen: %v", serverDepl.Spec.Template.Labels)
 		}
-		r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-repo-server", Namespace: "argocd-operator"}, repoDepl)
-		repoRollout, ok := repoDepl.Spec.Template.ObjectMeta.Labels[certChangedLabel]
+		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-repo-server", Namespace: "argocd-operator"}, repoDepl)
+		assert.NoError(t, err)
+		repoRollout, ok := repoDepl.Spec.Template.Labels[certChangedLabel]
 		if !ok {
-			t.Errorf("Expected rollout of argocd-repo-server, but it didn't happen: %v", repoDepl.Spec.Template.ObjectMeta.Labels)
+			t.Errorf("Expected rollout of argocd-repo-server, but it didn't happen: %v", repoDepl.Spec.Template.Labels)
 		}
-		r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-redis", Namespace: "argocd-operator"}, redisDepl)
-		redisRollout, ok := redisDepl.Spec.Template.ObjectMeta.Labels[certChangedLabel]
+		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-redis", Namespace: "argocd-operator"}, redisDepl)
+		assert.NoError(t, err)
+		redisRollout, ok := redisDepl.Spec.Template.Labels[certChangedLabel]
 		if !ok {
-			t.Errorf("Expected rollout of argocd-redis, but it didn't happen: %v", redisDepl.Spec.Template.ObjectMeta.Labels)
+			t.Errorf("Expected rollout of argocd-redis, but it didn't happen: %v", redisDepl.Spec.Template.Labels)
 		}
-		r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-application-controller", Namespace: "argocd-operator"}, ctrlSts)
-		ctrlRollout, ok := ctrlSts.Spec.Template.ObjectMeta.Labels[certChangedLabel]
+		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-application-controller", Namespace: "argocd-operator"}, ctrlSts)
+		assert.NoError(t, err)
+		ctrlRollout, ok := ctrlSts.Spec.Template.Labels[certChangedLabel]
 		if !ok {
-			t.Errorf("Expected rollout of argocd-application-server, but it didn't happen: %v", ctrlSts.Spec.Template.ObjectMeta.Labels)
+			t.Errorf("Expected rollout of argocd-application-server, but it didn't happen: %v", ctrlSts.Spec.Template.Labels)
 		}
 
 		// Second run - no change
@@ -445,31 +467,36 @@ func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 		}
 
 		// This time, label should not have changed
-		r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd-operator"}, serverDepl)
-		deplRolloutNew, ok := serverDepl.Spec.Template.ObjectMeta.Labels[certChangedLabel]
+		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd-operator"}, serverDepl)
+		assert.NoError(t, err)
+		deplRolloutNew, ok := serverDepl.Spec.Template.Labels[certChangedLabel]
 		if !ok || deplRollout != deplRolloutNew {
-			t.Errorf("Did not expect rollout of argocd-server, but it did happen: %v", serverDepl.Spec.Template.ObjectMeta.Labels)
+			t.Errorf("Did not expect rollout of argocd-server, but it did happen: %v", serverDepl.Spec.Template.Labels)
 		}
-		r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-repo-server", Namespace: "argocd-operator"}, repoDepl)
-		repoRolloutNew, ok := repoDepl.Spec.Template.ObjectMeta.Labels[certChangedLabel]
+		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-repo-server", Namespace: "argocd-operator"}, repoDepl)
+		assert.NoError(t, err)
+		repoRolloutNew, ok := repoDepl.Spec.Template.Labels[certChangedLabel]
 		if !ok || repoRollout != repoRolloutNew {
-			t.Errorf("Did not expect rollout of argocd-repo-server, but it did happen: %v", repoDepl.Spec.Template.ObjectMeta.Labels)
+			t.Errorf("Did not expect rollout of argocd-repo-server, but it did happen: %v", repoDepl.Spec.Template.Labels)
 		}
-		r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-redis", Namespace: "argocd-operator"}, redisDepl)
-		redisRolloutNew, ok := redisDepl.Spec.Template.ObjectMeta.Labels[certChangedLabel]
+		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-redis", Namespace: "argocd-operator"}, redisDepl)
+		assert.NoError(t, err)
+		redisRolloutNew, ok := redisDepl.Spec.Template.Labels[certChangedLabel]
 		if !ok || redisRollout != redisRolloutNew {
-			t.Errorf("Did not expect rollout of argocd-redis, but it did happen: %v", redisDepl.Spec.Template.ObjectMeta.Labels)
+			t.Errorf("Did not expect rollout of argocd-redis, but it did happen: %v", redisDepl.Spec.Template.Labels)
 		}
-		r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-application-controller", Namespace: "argocd-operator"}, ctrlSts)
-		ctrlRolloutNew, ok := ctrlSts.Spec.Template.ObjectMeta.Labels[certChangedLabel]
+		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-application-controller", Namespace: "argocd-operator"}, ctrlSts)
+		assert.NoError(t, err)
+		ctrlRolloutNew, ok := ctrlSts.Spec.Template.Labels[certChangedLabel]
 		if !ok || ctrlRollout != ctrlRolloutNew {
-			t.Errorf("Did not expect rollout of argocd-application-server, but it did happen: %v", ctrlSts.Spec.Template.ObjectMeta.Labels)
+			t.Errorf("Did not expect rollout of argocd-application-server, but it did happen: %v", ctrlSts.Spec.Template.Labels)
 		}
 
 		// Update certificate in the secret must trigger new rollout
-		r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-repo-server-tls", Namespace: "argocd-operator"}, secret)
+		_ = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-repo-server-tls", Namespace: "argocd-operator"}, secret)
 		secret.Data["tls.crt"] = []byte("bar")
-		r.Client.Update(context.TODO(), secret)
+		err = r.Update(context.TODO(), secret)
+		assert.NoError(t, err)
 
 		sumOver = []byte{}
 		sumOver = append(sumOver, []byte("bar")...)
@@ -486,25 +513,29 @@ func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 		}
 
 		// This time, label should have changed
-		r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd-operator"}, serverDepl)
-		deplRolloutNew, ok = serverDepl.Spec.Template.ObjectMeta.Labels[certChangedLabel]
+		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd-operator"}, serverDepl)
+		assert.NoError(t, err)
+		deplRolloutNew, ok = serverDepl.Spec.Template.Labels[certChangedLabel]
 		if !ok || deplRollout == deplRolloutNew {
-			t.Errorf("Expected rollout of argocd-server, but it didn't happen: %v", serverDepl.Spec.Template.ObjectMeta.Labels)
+			t.Errorf("Expected rollout of argocd-server, but it didn't happen: %v", serverDepl.Spec.Template.Labels)
 		}
-		r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-repo-server", Namespace: "argocd-operator"}, repoDepl)
-		repoRolloutNew, ok = repoDepl.Spec.Template.ObjectMeta.Labels[certChangedLabel]
+		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-repo-server", Namespace: "argocd-operator"}, repoDepl)
+		assert.NoError(t, err)
+		repoRolloutNew, ok = repoDepl.Spec.Template.Labels[certChangedLabel]
 		if !ok || repoRollout == repoRolloutNew {
-			t.Errorf("Expected rollout of argocd-repo-server, but it didn't happen: %v", repoDepl.Spec.Template.ObjectMeta.Labels)
+			t.Errorf("Expected rollout of argocd-repo-server, but it didn't happen: %v", repoDepl.Spec.Template.Labels)
 		}
-		r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-redis", Namespace: "argocd-operator"}, redisDepl)
-		redisRolloutNew, ok = repoDepl.Spec.Template.ObjectMeta.Labels[certChangedLabel]
+		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-redis", Namespace: "argocd-operator"}, redisDepl)
+		assert.NoError(t, err)
+		redisRolloutNew, ok = repoDepl.Spec.Template.Labels[certChangedLabel]
 		if !ok || redisRollout == redisRolloutNew {
-			t.Errorf("Expected rollout of argocd-redis, but it didn't happen: %v", redisDepl.Spec.Template.ObjectMeta.Labels)
+			t.Errorf("Expected rollout of argocd-redis, but it didn't happen: %v", redisDepl.Spec.Template.Labels)
 		}
-		r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-application-controller", Namespace: "argocd-operator"}, ctrlSts)
-		ctrlRolloutNew, ok = ctrlSts.Spec.Template.ObjectMeta.Labels[certChangedLabel]
+		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-application-controller", Namespace: "argocd-operator"}, ctrlSts)
+		assert.NoError(t, err)
+		ctrlRolloutNew, ok = ctrlSts.Spec.Template.Labels[certChangedLabel]
 		if !ok || ctrlRollout == ctrlRolloutNew {
-			t.Errorf("Expected rollout of argocd-application-controller, but it didn't happen: %v", ctrlSts.Spec.Template.ObjectMeta.Labels)
+			t.Errorf("Expected rollout of argocd-application-controller, but it didn't happen: %v", ctrlSts.Spec.Template.Labels)
 		}
 	})
 }
@@ -525,27 +556,28 @@ func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 	testSecret := argoutil.NewSecretWithSuffix(a, "default-cluster-config")
 	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
 	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
-	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
+	assert.Error(t, r.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
 	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret).Error(), "not found")
 
 	assert.NoError(t, r.reconcileClusterPermissionsSecret(a))
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
 	assert.Equal(t, string(testSecret.Data["namespaces"]), a.Namespace)
 
 	want := "argocd,someRandomNamespace"
 	testSecret.Data["namespaces"] = []byte("someRandomNamespace")
-	r.Client.Update(context.TODO(), testSecret)
+	err := r.Update(context.TODO(), testSecret)
+	assert.NoError(t, err)
 
 	// reconcile to check namespace with the label gets added
 	assert.NoError(t, r.reconcileClusterPermissionsSecret(a))
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
 	assert.Equal(t, string(testSecret.Data["namespaces"]), want)
 
 	assert.NoError(t, createNamespace(r, "xyz", a.Namespace))
 	want = "argocd,someRandomNamespace,xyz"
 	// reconcile to check namespace with the label gets added
 	assert.NoError(t, r.reconcileClusterPermissionsSecret(a))
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
 	assert.Equal(t, string(testSecret.Data["namespaces"]), want)
 
 	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
@@ -553,9 +585,9 @@ func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 	assert.NoError(t, r.reconcileClusterPermissionsSecret(a))
 	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
 	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
-	assert.Nil(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
-	assert.True(t, argoutil.IsTrackedByOperator(testSecret.ObjectMeta.Labels))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
+	assert.Nil(t, r.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
+	assert.True(t, argoutil.IsTrackedByOperator(testSecret.Labels))
 }
 
 func TestGenerateSortedManagedNamespaceListForArgoCDCR(t *testing.T) {

@@ -55,7 +55,7 @@ func TestReconcileArgoCD_reconcileTLSCerts(t *testing.T) {
 	assert.NoError(t, r.reconcileTLSCerts(a))
 
 	configMap := &corev1.ConfigMap{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      common.ArgoCDTLSCertsConfigMapName,
@@ -83,7 +83,7 @@ func TestReconcileArgoCD_reconcileTLSCerts_configMapUpdate(t *testing.T) {
 	assert.NoError(t, r.reconcileTLSCerts(a))
 
 	configMap := &corev1.ConfigMap{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      common.ArgoCDTLSCertsConfigMapName,
@@ -100,7 +100,7 @@ func TestReconcileArgoCD_reconcileTLSCerts_configMapUpdate(t *testing.T) {
 	testPEM := generateEncodedPEM(t)
 
 	configMap.Data["example.com"] = string(testPEM)
-	assert.NoError(t, r.Client.Update(context.TODO(), configMap))
+	assert.NoError(t, r.Update(context.TODO(), configMap))
 
 	// verify that a new reconciliation does not remove example.com from
 	// argocd-tls-certs-cm
@@ -216,7 +216,7 @@ func TestReconcileArgoCD_reconcileTLSCerts_withInitialCertsUpdate(t *testing.T) 
 	assert.NoError(t, r.reconcileTLSCerts(a))
 
 	configMap := &corev1.ConfigMap{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      common.ArgoCDTLSCertsConfigMapName,
@@ -340,7 +340,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 		assert.NoError(t, err)
 
 		cm := &corev1.ConfigMap{}
-		err = r.Client.Get(context.TODO(), types.NamespacedName{
+		err = r.Get(context.TODO(), types.NamespacedName{
 			Name:      common.ArgoCDConfigMapName,
 			Namespace: testNamespace,
 		}, cm)
@@ -351,7 +351,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 		if diff := cmp.Diff(want, cm.Data); diff != "" {
 			t.Fatalf("reconcileArgoConfigMap (%s) failed:\n%s", tt.name, diff)
 		}
-		assert.True(t, argoutil.IsTrackedByOperator(cm.ObjectMeta.Labels))
+		assert.True(t, argoutil.IsTrackedByOperator(cm.Labels))
 	}
 }
 
@@ -375,19 +375,19 @@ func TestReconcileArgoCD_reconcileEmptyArgoConfigMap(t *testing.T) {
 	}
 	argoutil.AddTrackedByOperatorLabel(&emptyArgoConfigmap.ObjectMeta)
 
-	err := r.Client.Create(context.TODO(), emptyArgoConfigmap)
+	err := r.Create(context.TODO(), emptyArgoConfigmap)
 	assert.NoError(t, err)
 
 	err = r.reconcileArgoConfigMap(a)
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
 	assert.NoError(t, err)
-	assert.True(t, argoutil.IsTrackedByOperator(cm.ObjectMeta.Labels))
+	assert.True(t, argoutil.IsTrackedByOperator(cm.Labels))
 }
 
 func TestReconcileArgoCD_reconcileArgoConfigMap_withDisableAdmin(t *testing.T) {
@@ -407,7 +407,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDisableAdmin(t *testing.T) {
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
@@ -505,7 +505,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 			assert.NoError(t, err)
 
 			cm := &corev1.ConfigMap{}
-			err = r.Client.Get(context.TODO(), types.NamespacedName{
+			err = r.Get(context.TODO(), types.NamespacedName{
 				Name:      common.ArgoCDConfigMapName,
 				Namespace: testNamespace,
 			}, cm)
@@ -580,7 +580,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexDisabled(t *testing.T) {
 			assert.NoError(t, err)
 
 			cm := &corev1.ConfigMap{}
-			err = r.Client.Get(context.TODO(), types.NamespacedName{
+			err = r.Get(context.TODO(), types.NamespacedName{
 				Name:      common.ArgoCDConfigMapName,
 				Namespace: testNamespace,
 			}, cm)
@@ -659,7 +659,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_dexConfigDeletedwhenDexDisabled(
 			assert.NoError(t, err)
 
 			cm := &corev1.ConfigMap{}
-			err = r.Client.Get(context.TODO(), types.NamespacedName{
+			err = r.Get(context.TODO(), types.NamespacedName{
 				Name:      common.ArgoCDConfigMapName,
 				Namespace: testNamespace,
 			}, cm)
@@ -676,7 +676,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_dexConfigDeletedwhenDexDisabled(
 			err = r.reconcileDexConfiguration(cm, test.argoCD)
 			assert.NoError(t, err)
 
-			err = r.Client.Get(context.TODO(), types.NamespacedName{
+			err = r.Get(context.TODO(), types.NamespacedName{
 				Name:      common.ArgoCDConfigMapName,
 				Namespace: testNamespace,
 			}, cm)
@@ -714,7 +714,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withKustomizeVersions(t *testing
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
@@ -742,7 +742,7 @@ func TestReconcileArgoCD_reconcileGPGKeysConfigMap(t *testing.T) {
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDGPGKeysConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
@@ -766,7 +766,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceTrackingMethod(t *te
 
 	cm := &corev1.ConfigMap{}
 	t.Run("Check default tracking method", func(t *testing.T) {
-		err = r.Client.Get(context.TODO(), types.NamespacedName{
+		err = r.Get(context.TODO(), types.NamespacedName{
 			Name:      common.ArgoCDConfigMapName,
 			Namespace: testNamespace,
 		}, cm)
@@ -778,7 +778,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceTrackingMethod(t *te
 	})
 
 	t.Run("Tracking method label", func(t *testing.T) {
-		err = r.Client.Get(context.TODO(), types.NamespacedName{
+		err = r.Get(context.TODO(), types.NamespacedName{
 			Name:      common.ArgoCDConfigMapName,
 			Namespace: testNamespace,
 		}, cm)
@@ -794,7 +794,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceTrackingMethod(t *te
 		err = r.reconcileArgoConfigMap(a)
 		assert.NoError(t, err)
 
-		err = r.Client.Get(context.TODO(), types.NamespacedName{
+		err = r.Get(context.TODO(), types.NamespacedName{
 			Name:      common.ArgoCDConfigMapName,
 			Namespace: testNamespace,
 		}, cm)
@@ -810,7 +810,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceTrackingMethod(t *te
 		err = r.reconcileArgoConfigMap(a)
 		assert.NoError(t, err)
 
-		err = r.Client.Get(context.TODO(), types.NamespacedName{
+		err = r.Get(context.TODO(), types.NamespacedName{
 			Name:      common.ArgoCDConfigMapName,
 			Namespace: testNamespace,
 		}, cm)
@@ -827,7 +827,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceTrackingMethod(t *te
 		err = r.reconcileArgoConfigMap(a)
 		assert.NoError(t, err)
 
-		err = r.Client.Get(context.TODO(), types.NamespacedName{
+		err = r.Get(context.TODO(), types.NamespacedName{
 			Name:      common.ArgoCDConfigMapName,
 			Namespace: testNamespace,
 		}, cm)
@@ -860,7 +860,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceInclusions(t *testin
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
@@ -874,7 +874,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceInclusions(t *testin
 	err = r.reconcileArgoConfigMap(a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
@@ -980,7 +980,7 @@ managedfieldsmanagers:
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
@@ -1019,7 +1019,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withExtraConfig(t *testing.T) {
 
 	// Verify Argo CD configmap is created.
 	cm := &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
@@ -1027,13 +1027,13 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withExtraConfig(t *testing.T) {
 
 	// Verify that updates to the configmap are rejected(reconciled back to default) by the operator.
 	cm.Data["ping"] = "pong"
-	err = r.Client.Update(context.TODO(), cm)
+	err = r.Update(context.TODO(), cm)
 	assert.NoError(t, err)
 
 	err = r.reconcileArgoConfigMap(a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
@@ -1049,7 +1049,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withExtraConfig(t *testing.T) {
 	err = r.reconcileArgoConfigMap(a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
@@ -1064,7 +1064,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withExtraConfig(t *testing.T) {
 	err = r.reconcileArgoConfigMap(a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
@@ -1079,7 +1079,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withExtraConfig(t *testing.T) {
 	err = r.reconcileArgoConfigMap(a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
@@ -1106,7 +1106,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withRespectRBAC(t *testing.T) {
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: common.ArgoCDConfigMapName, Namespace: testNamespace}, cm))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: common.ArgoCDConfigMapName, Namespace: testNamespace}, cm))
 
 	if c := cm.Data["resource.respectRBAC"]; c != "normal" {
 		t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, "false")
@@ -1118,7 +1118,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withRespectRBAC(t *testing.T) {
 	err = r.reconcileArgoConfigMap(a)
 	assert.NoError(t, err)
 
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: common.ArgoCDConfigMapName, Namespace: testNamespace}, cm))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: common.ArgoCDConfigMapName, Namespace: testNamespace}, cm))
 	if c := cm.Data["resource.respectRBAC"]; c != "strict" {
 		t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, "false")
 	}
@@ -1129,7 +1129,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withRespectRBAC(t *testing.T) {
 	err = r.reconcileArgoConfigMap(a)
 	assert.NoError(t, err)
 
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: common.ArgoCDConfigMapName, Namespace: testNamespace}, cm))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: common.ArgoCDConfigMapName, Namespace: testNamespace}, cm))
 	if c := cm.Data["resource.respectRBAC"]; c != "" {
 		t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, "false")
 	}
@@ -1156,7 +1156,7 @@ func Test_reconcileRBAC(t *testing.T) {
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDRBACConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
@@ -1176,7 +1176,7 @@ func Test_reconcileRBAC(t *testing.T) {
 	assert.NoError(t, err)
 
 	cm = &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDRBACConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
@@ -1195,7 +1195,7 @@ func Test_reconcileRBAC(t *testing.T) {
 	assert.NoError(t, err)
 
 	cm = &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDRBACConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
@@ -1270,7 +1270,7 @@ func Test_validateOwnerReferences(t *testing.T) {
 	assert.Equal(t, cm.OwnerReferences[0].Kind, "ArgoCD")
 	assert.Equal(t, cm.OwnerReferences[0].Name, "argocd")
 	assert.Equal(t, cm.OwnerReferences[0].UID, uid)
-	assert.True(t, argoutil.IsTrackedByOperator(cm.ObjectMeta.Labels))
+	assert.True(t, argoutil.IsTrackedByOperator(cm.Labels))
 }
 
 func TestReconcileArgoCD_reconcileArgoConfigMap_withInstallationID(t *testing.T) {
@@ -1292,12 +1292,12 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withInstallationID(t *testing.T)
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
 	assert.NoError(t, err)
-	assert.True(t, argoutil.IsTrackedByOperator(cm.ObjectMeta.Labels))
+	assert.True(t, argoutil.IsTrackedByOperator(cm.Labels))
 	// Verify installationID is set as a top-level key
 	assert.Equal(t, "test-id", cm.Data[common.ArgoCDKeyInstallationID])
 
@@ -1307,7 +1307,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withInstallationID(t *testing.T)
 	assert.NoError(t, err)
 
 	cm = &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
@@ -1320,7 +1320,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withInstallationID(t *testing.T)
 	err = r.reconcileArgoConfigMap(a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
@@ -1328,7 +1328,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withInstallationID(t *testing.T)
 
 	// Verify installationID was removed
 	assert.NotContains(t, cm.Data, common.ArgoCDKeyInstallationID)
-	assert.True(t, argoutil.IsTrackedByOperator(cm.ObjectMeta.Labels))
+	assert.True(t, argoutil.IsTrackedByOperator(cm.Labels))
 }
 
 func TestReconcileArgoCD_reconcileArgoConfigMap_withMultipleInstances(t *testing.T) {
@@ -1360,7 +1360,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withMultipleInstances(t *testing
 	assert.NoError(t, err)
 
 	cm1 := &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm1)
@@ -1368,13 +1368,13 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withMultipleInstances(t *testing
 
 	// Verify first instance's installationID
 	assert.Equal(t, "instance-1", cm1.Data[common.ArgoCDKeyInstallationID])
-	assert.True(t, argoutil.IsTrackedByOperator(cm1.ObjectMeta.Labels))
+	assert.True(t, argoutil.IsTrackedByOperator(cm1.Labels))
 	// Test second instance
 	err = r.reconcileArgoConfigMap(argocd2)
 	assert.NoError(t, err)
 
 	cm2 := &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm2)
@@ -1382,7 +1382,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withMultipleInstances(t *testing
 
 	// Verify second instance's installationID
 	assert.Equal(t, "instance-2", cm2.Data[common.ArgoCDKeyInstallationID])
-	assert.True(t, argoutil.IsTrackedByOperator(cm2.ObjectMeta.Labels))
+	assert.True(t, argoutil.IsTrackedByOperator(cm2.Labels))
 }
 
 func TestReconcileArgoCD_RBACPolicyWithLogsPermissions(t *testing.T) {
@@ -1411,7 +1411,7 @@ func TestReconcileArgoCD_RBACPolicyWithLogsPermissions(t *testing.T) {
 	assert.NoError(t, err)
 
 	createdCM := &corev1.ConfigMap{}
-	err = r.Client.Get(ctx, types.NamespacedName{
+	err = r.Get(ctx, types.NamespacedName{
 		Name:      common.ArgoCDRBACConfigMapName,
 		Namespace: a.Namespace,
 	}, createdCM)
@@ -1431,7 +1431,7 @@ p, role:readonly, logs, get, */*, allow`
 	err = r.reconcileRBAC(a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(ctx, types.NamespacedName{
+	err = r.Get(ctx, types.NamespacedName{
 		Name:      common.ArgoCDRBACConfigMapName,
 		Namespace: a.Namespace,
 	}, createdCM)
@@ -1452,7 +1452,7 @@ p, role:admin, logs, get, */*, allow`
 	err = r.reconcileRBAC(a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(ctx, types.NamespacedName{
+	err = r.Get(ctx, types.NamespacedName{
 		Name:      common.ArgoCDRBACConfigMapName,
 		Namespace: a.Namespace,
 	}, createdCM)
@@ -1472,7 +1472,7 @@ p, role:admin, logs, get, */*, allow`
 	err = r.reconcileRBAC(a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(ctx, types.NamespacedName{
+	err = r.Get(ctx, types.NamespacedName{
 		Name:      common.ArgoCDRBACConfigMapName,
 		Namespace: a.Namespace,
 	}, createdCM)
@@ -1491,7 +1491,7 @@ p, role:custom-app-viewer, logs, get, */*, allow`
 	err = r.reconcileRBAC(a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(ctx, types.NamespacedName{
+	err = r.Get(ctx, types.NamespacedName{
 		Name:      common.ArgoCDRBACConfigMapName,
 		Namespace: a.Namespace,
 	}, createdCM)
@@ -1510,7 +1510,7 @@ p, role:custom-app-viewer, logs, get, */*, allow`
 	err = r.reconcileRBAC(a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(ctx, types.NamespacedName{
+	err = r.Get(ctx, types.NamespacedName{
 		Name:      common.ArgoCDRBACConfigMapName,
 		Namespace: a.Namespace,
 	}, createdCM)
@@ -1523,7 +1523,7 @@ p, role:custom-app-viewer, logs, get, */*, allow`
 
 	// Test 7: Verify no default policy is restored when custom policy is removed
 	// Clean up ConfigMap to simulate a reset state
-	err = r.Client.Delete(ctx, createdCM)
+	err = r.Delete(ctx, createdCM)
 	assert.NoError(t, err)
 
 	a.Spec.RBAC.Policy = nil
@@ -1532,7 +1532,7 @@ p, role:custom-app-viewer, logs, get, */*, allow`
 	err = r.reconcileRBAC(a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(ctx, types.NamespacedName{
+	err = r.Get(ctx, types.NamespacedName{
 		Name:      common.ArgoCDRBACConfigMapName,
 		Namespace: a.Namespace,
 	}, createdCM)
@@ -1544,7 +1544,7 @@ p, role:custom-app-viewer, logs, get, */*, allow`
 
 	// Test 8: Verify server.rbac.log.enforce.enable is not set in argocd-cm
 	cm := &corev1.ConfigMap{}
-	err = r.Client.Get(ctx, types.NamespacedName{
+	err = r.Get(ctx, types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: a.Namespace,
 	}, cm)
@@ -1640,7 +1640,7 @@ func TestReconcileArgoCD_reconcileArgoCmdParamsConfigMap(t *testing.T) {
 			assert.NoError(t, err)
 
 			cm := &corev1.ConfigMap{}
-			err = r.Client.Get(context.TODO(), types.NamespacedName{
+			err = r.Get(context.TODO(), types.NamespacedName{
 				Name:      common.ArgoCDCmdParamsConfigMapName,
 				Namespace: testNamespace,
 			}, cm)

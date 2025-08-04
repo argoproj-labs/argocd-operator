@@ -46,7 +46,7 @@ const (
 	PrincipalLogFormat                 = "principal.log.format"
 	PrincipalJwtAllowGenerate          = "principal.jwt.allow-generate"
 	PrincipalJWTKeyPath                = "principal.jwt.key-path"
-	PrincipalJwtSecretName             = "principal.jwt.secret-name"
+	PrincipalJwtSecretName             = "principal.jwt.secret-name" // #nosec G101
 	PrincipalListenHost                = "principal.listen.host"
 	PrincipalListenPort                = "principal.listen.port"
 	PrincipalNamespaceCreateEnable     = "principal.namespace-create.enable"
@@ -64,8 +64,8 @@ const (
 	PrincipalTLSServerRootCAPath       = "principal.tls.server.root-ca-path"
 	PrincipalTLSClientCertRequire      = "principal.tls.client-cert.require"
 	PrincipalTLSClientCertMatchSubject = "principal.tls.client-cert.match-subject"
-	PrincipalTLSSecretName             = "principal.tls.secret-name"
-	PrincipalTLSServerRootCASecretName = "principal.tls.server.root-ca-secret-name"
+	PrincipalTLSSecretName             = "principal.tls.secret-name"                // #nosec G101
+	PrincipalTLSServerRootCASecretName = "principal.tls.server.root-ca-secret-name" // #nosec G101
 	PrincipalEnableWebSocket           = "principal.enable-websocket"
 	PrincipalEnableResourceProxy       = "principal.enable-resource-proxy"
 	PrincipalKeepAliveMinInterval      = "principal.keep-alive-min-interval"

@@ -457,7 +457,7 @@ func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoproj.ArgoCD) error {
 			Namespace: cr.Namespace,
 		}
 
-		if err := r.Client.List(context.TODO(), routeList, opts); err != nil {
+		if err := r.List(context.TODO(), routeList, opts); err != nil {
 			return err
 		}
 
