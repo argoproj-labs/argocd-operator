@@ -29,7 +29,6 @@ spec:
               - ALL
             readOnlyRootFilesystem: true
             runAsNonRoot: true
-            runAsUser: 999
       volumes:
       - configMap:
           defaultMode: 420
