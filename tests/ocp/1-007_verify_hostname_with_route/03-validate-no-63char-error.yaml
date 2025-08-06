@@ -4,5 +4,5 @@ apiVersion: v1
 kind: Secret
 metadata:
   # This secret should exist with a truncated name, proving our fix works
-  name: argocd-long-name-for-route-testiiiiiiiiiiiiiiiii-a6407ac090b526
+  name: argocd-long-name-for-r-9800df6ee28bb4-cluster
 spec: {}
