@@ -1,5 +1,0 @@
-apiVersion: argoproj.io/v1beta1
-kind: ArgoCD
-metadata:
-  name: argocd-long-name-for-route-test-applicationset-controller-webho
-$delete: true
