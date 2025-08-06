@@ -96,7 +96,10 @@ func getRoleBindingNameForSourceNamespaces(argocdName, targetNamespace string) s
 // newRoleBindingWithname creates a new RoleBinding with the given name for the given ArgCD.
 func newRoleBindingWithname(name string, cr *argoproj.ArgoCD) *v1.RoleBinding {
 	roleBinding := newRoleBinding(cr)
-	roleBinding.Name = fmt.Sprintf("%s-%s", cr.Name, name)
+
+	// Truncate the name to stay within 63 character limit
+	fullName := fmt.Sprintf("%s-%s", cr.Name, name)
+	roleBinding.Name = truncateWithHash(fullName)
 
 	labels := roleBinding.Labels
 	labels[common.ArgoCDKeyName] = name

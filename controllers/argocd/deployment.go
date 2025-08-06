@@ -336,23 +336,26 @@ func newDeployment(cr *argoproj.ArgoCD) *appsv1.Deployment {
 // newDeploymentWithName returns a new Deployment instance for the given ArgoCD using the given name.
 func newDeploymentWithName(name string, component string, cr *argoproj.ArgoCD) *appsv1.Deployment {
 	deploy := newDeployment(cr)
-	deploy.Name = name
+
+	// Truncate the name for both deployment name and labels to stay within 63 character limit
+	truncatedName := argoutil.TruncateWithHash(name)
+	deploy.Name = truncatedName
 
 	lbls := deploy.Labels
-	lbls[common.ArgoCDKeyName] = name
+	lbls[common.ArgoCDKeyName] = truncatedName
 	lbls[common.ArgoCDKeyComponent] = component
 	deploy.Labels = lbls
 
 	deploy.Spec = appsv1.DeploymentSpec{
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				common.ArgoCDKeyName: name,
+				common.ArgoCDKeyName: truncatedName,
 			},
 		},
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					common.ArgoCDKeyName: name,
+					common.ArgoCDKeyName: truncatedName,
 				},
 				Annotations: make(map[string]string),
 			},

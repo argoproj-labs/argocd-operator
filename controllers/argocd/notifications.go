@@ -580,7 +580,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsMetricsService(cr *argoproj.Argo
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: nameWithSuffix(component, cr),
+		common.ArgoCDKeyName: argoutil.TruncateWithHash(nameWithSuffix(component, cr)),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{

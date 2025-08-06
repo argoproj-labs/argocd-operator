@@ -53,23 +53,26 @@ func newStatefulSet(cr *argoproj.ArgoCD) *appsv1.StatefulSet {
 // newStatefulSetWithName returns a new StatefulSet instance for the given ArgoCD using the given name.
 func newStatefulSetWithName(name string, component string, cr *argoproj.ArgoCD) *appsv1.StatefulSet {
 	ss := newStatefulSet(cr)
-	ss.Name = name
+
+	// Truncate the name for both statefulset name and labels to stay within 63 character limit
+	truncatedName := argoutil.TruncateWithHash(name)
+	ss.Name = truncatedName
 
 	lbls := ss.Labels
-	lbls[common.ArgoCDKeyName] = name
+	lbls[common.ArgoCDKeyName] = truncatedName
 	lbls[common.ArgoCDKeyComponent] = component
 	ss.Labels = lbls
 
 	ss.Spec = appsv1.StatefulSetSpec{
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				common.ArgoCDKeyName: name,
+				common.ArgoCDKeyName: truncatedName,
 			},
 		},
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					common.ArgoCDKeyName: name,
+					common.ArgoCDKeyName: truncatedName,
 				},
 				Annotations: make(map[string]string),
 			},
@@ -82,7 +85,7 @@ func newStatefulSetWithName(name string, component string, cr *argoproj.ArgoCD) 
 		ss.Spec.Template.Spec.NodeSelector = argoutil.AppendStringMap(ss.Spec.Template.Spec.NodeSelector, cr.Spec.NodePlacement.NodeSelector)
 		ss.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
 	}
-	ss.Spec.ServiceName = name
+	ss.Spec.ServiceName = truncatedName
 
 	return ss
 }
@@ -100,7 +103,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 		ValueFrom: &corev1.EnvVarSource{
 			SecretKeyRef: &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: fmt.Sprintf("%s-%s", cr.Name, "redis-initial-password"),
+					Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
 				},
 				Key: "admin.password",
 			},
@@ -341,7 +344,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{
-							Name: fmt.Sprintf("%s-%s", cr.Name, "redis-initial-password"),
+							Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
 						},
 						Key: "admin.password",
 					},
@@ -587,7 +590,7 @@ func getArgoControllerContainerEnv(cr *argoproj.ArgoCD, replicas int32) []corev1
 		ValueFrom: &corev1.EnvVarSource{
 			SecretKeyRef: &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: fmt.Sprintf("%s-%s", cr.Name, "redis-initial-password"),
+					Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
 				},
 				Key: "admin.password",
 			},

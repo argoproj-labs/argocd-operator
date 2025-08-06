@@ -16,6 +16,7 @@ package argoutil
 
 import (
 	"context"
+	"crypto/sha1"
 	"fmt"
 	"reflect"
 	"strings"
@@ -31,6 +32,11 @@ import (
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+)
+
+const (
+	hashLabelLength = 7
+	maxLabelLength  = 63
 )
 
 // AppendStringMap will append the map `add` to the given map `src` and return the result.
@@ -204,4 +210,21 @@ func AddTrackedByOperatorLabel(meta *metav1.ObjectMeta) {
 func IsTrackedByOperator(labels map[string]string) bool {
 	value, exists := labels[common.ArgoCDTrackedByOperatorLabel]
 	return exists && value == common.ArgoCDAppName
+}
+
+// TruncateWithHash truncates a string to a maximum of 63 characters and adds a hash suffix to ensure uniqueness
+func TruncateWithHash(input string) string {
+	if len(input) <= maxLabelLength {
+		return input
+	}
+
+	// Calculate hash of the original string
+	hash := sha1.Sum([]byte(input)) // #nosec G401
+	hashSuffix := fmt.Sprintf("-%x", hash[:hashLabelLength])
+
+	// Calculate how much we can truncate
+	maxBaseLength := maxLabelLength - len(hashSuffix)
+
+	// Truncate and add hash
+	return input[:maxBaseLength] + hashSuffix
 }

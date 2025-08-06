@@ -60,7 +60,8 @@ func NewSecretWithName(cr *argoproj.ArgoCD, name string) *corev1.Secret {
 
 	secret.Name = name
 	secret.Namespace = cr.Namespace
-	secret.Labels[common.ArgoCDKeyName] = name
+	// Truncate the name for labels to stay within 63 character limit
+	secret.Labels[common.ArgoCDKeyName] = TruncateWithHash(name)
 
 	return secret
 }
@@ -68,6 +69,13 @@ func NewSecretWithName(cr *argoproj.ArgoCD, name string) *corev1.Secret {
 // NewSecretWithSuffix returns a new Secret based on the given metadata with the provided suffix on the Name.
 func NewSecretWithSuffix(cr *argoproj.ArgoCD, suffix string) *corev1.Secret {
 	return NewSecretWithName(cr, fmt.Sprintf("%s-%s", cr.Name, suffix))
+}
+
+// GetSecretNameWithSuffix returns the truncated secret name for the given suffix.
+// This function should be used when referencing secret names in other resources.
+func GetSecretNameWithSuffix(cr *argoproj.ArgoCD, suffix string) string {
+	fullName := fmt.Sprintf("%s-%s", cr.Name, suffix)
+	return TruncateWithHash(fullName)
 }
 
 func CreateTLSSecret(client client.Client, name string, namespace string, data map[string][]byte) error {
