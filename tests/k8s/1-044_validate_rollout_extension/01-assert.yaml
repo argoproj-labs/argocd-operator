@@ -22,6 +22,8 @@ spec:
           volumeMounts:
             - name: rollout-extensions
               mountPath: /tmp/extensions/
+            - name: tmp
+              mountPath: /tmp
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

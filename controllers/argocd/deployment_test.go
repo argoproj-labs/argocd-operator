@@ -1614,7 +1614,47 @@ func TestReconcileServer_RolloutUI(t *testing.T) {
 	assert.Equal(t, "rollout-extension", deployment.Spec.Template.Spec.InitContainers[0].Name)
 	assert.Equal(t, common.ArgoCDExtensionInstallerImage, deployment.Spec.Template.Spec.InitContainers[0].Image)
 
-	// Check for the volume
+	// assert that rollout-extensions volume is mounted at /tmp/extensions for both the initContainer and container
+	foundExtensionsVolumeMount := false
+	for _, volMnt := range deployment.Spec.Template.Spec.InitContainers[0].VolumeMounts {
+		if volMnt.Name == "rollout-extensions" {
+			foundExtensionsVolumeMount = true
+			assert.NotNil(t, volMnt.MountPath)
+			assert.Equal(t, "/tmp/extensions/", volMnt.MountPath)
+		}
+	}
+	assert.True(t, foundExtensionsVolumeMount, "expected volume mount 'rollout-extensions' to be present in init container")
+	foundExtensionsVolumeMount = false
+	for _, vol := range deployment.Spec.Template.Spec.Containers[0].VolumeMounts {
+		if vol.Name == "rollout-extensions" {
+			foundExtensionsVolumeMount = true
+			assert.NotNil(t, vol.MountPath)
+			assert.Equal(t, "/tmp/extensions/", vol.MountPath)
+		}
+	}
+	assert.True(t, foundExtensionsVolumeMount, "expected volume mount 'rollout-extensions' to be present in container")
+
+	// assert that tmp volume is mounted at /tmp for both the initContainer and container
+	foundTmpVolumeMount := false
+	for _, volMnt := range deployment.Spec.Template.Spec.InitContainers[0].VolumeMounts {
+		if volMnt.Name == "tmp" {
+			foundTmpVolumeMount = true
+			assert.NotNil(t, volMnt.MountPath)
+			assert.Equal(t, volMnt.MountPath, "/tmp")
+		}
+	}
+	assert.True(t, foundTmpVolumeMount, "expected volume mount 'tmp' to be present in init container")
+	foundTmpVolumeMount = false
+	for _, vol := range deployment.Spec.Template.Spec.Containers[0].VolumeMounts {
+		if vol.Name == "tmp" {
+			foundTmpVolumeMount = true
+			assert.NotNil(t, vol.MountPath)
+			assert.Equal(t, vol.MountPath, "/tmp")
+		}
+	}
+	assert.True(t, foundTmpVolumeMount, "expected volume mount 'tmp' to be present in container")
+
+	// Check for the volumes
 	foundVolume := false
 	for _, vol := range deployment.Spec.Template.Spec.Volumes {
 		if vol.Name == "rollout-extensions" {
@@ -1623,6 +1663,14 @@ func TestReconcileServer_RolloutUI(t *testing.T) {
 		}
 	}
 	assert.True(t, foundVolume, "expected volume 'rollout-extensions' to be present")
+	foundTmpVolume := false
+	for _, vol := range deployment.Spec.Template.Spec.Volumes {
+		if vol.Name == "tmp" {
+			foundTmpVolume = true
+			assert.NotNil(t, vol.VolumeSource.EmptyDir)
+		}
+	}
+	assert.True(t, foundTmpVolume, "expected volume 'tmp' to be present")
 
 	// Disable rollouts UI
 	a.Spec.Server.EnableRolloutsUI = false
@@ -1638,6 +1686,7 @@ func TestReconcileServer_RolloutUI(t *testing.T) {
 
 	assert.Len(t, deployment.Spec.Template.Spec.InitContainers, 0)
 	assert.Len(t, deployment.Spec.Template.Spec.Containers, 1)
+
 	// Check that volume is removed
 	foundVolume = false
 	for _, vol := range deployment.Spec.Template.Spec.Volumes {
@@ -1647,6 +1696,26 @@ func TestReconcileServer_RolloutUI(t *testing.T) {
 	}
 	assert.False(t, foundVolume, "expected volume 'rollout-extension' to be removed")
 
+	// assert that the tmp volume is present even if rollouts UI extension is disabled.
+	foundTmpVolume = false
+	for _, vol := range deployment.Spec.Template.Spec.Volumes {
+		if vol.Name == "tmp" {
+			foundTmpVolume = true
+			assert.NotNil(t, vol.VolumeSource.EmptyDir)
+		}
+	}
+	assert.True(t, foundTmpVolume, "expected volume 'tmp' to be present even if rollouts is disabled")
+
+	// assert that tmp volume is mounted at /tmp for the container, when rollouts UI extension is disabled.
+	foundTmpVolumeMount = false
+	for _, vol := range deployment.Spec.Template.Spec.Containers[0].VolumeMounts {
+		if vol.Name == "tmp" {
+			foundTmpVolumeMount = true
+			assert.NotNil(t, vol.MountPath)
+			assert.Equal(t, vol.MountPath, "/tmp")
+		}
+	}
+	assert.True(t, foundTmpVolumeMount, "expected volume mount 'tmp' to be present in container")
 }
 
 func TestArgoCDServerCommand_isMergable(t *testing.T) {
