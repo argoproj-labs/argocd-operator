@@ -1,8 +1,11 @@
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: "argocd-long-name-for-route-testiiiiiiiiiiiiiiiiiiiiiiiing-appset"
-spec: {}
+  name: "argocd-long-name-for-route-testiiiiiiiiiiiiiiiiiiiiiiiing-appse"
+spec:
+  to:
+    kind: Service
+    name: argocd-long-name-for-route-testiiiiiiiiiiiiiiiiiiiiiiiing-applicationset-controller
 status:
   ingress:
-  - host: argocd-long-name-for-route-testiiiiiiiiiiiiiiiiiiiiiiiing-appset.apps.testing.lab.upshift.rdu2.redhat.com
+  - host: argocd-long-name-for-route-testiiiiiiiiiiiiiiiiiiiiiiiing-appse.apps.psi-418-4.ocp-gitops-qe.com
