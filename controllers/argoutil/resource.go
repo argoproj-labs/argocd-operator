@@ -16,7 +16,7 @@ package argoutil
 
 import (
 	"context"
-	"crypto/sha1"
+	"crypto/sha1" // #nosec G505 - SHA1 used for non-cryptographic name hashing only
 	"fmt"
 	"reflect"
 	"strings"
@@ -219,7 +219,7 @@ func TruncateWithHash(input string) string {
 	}
 
 	// Calculate hash of the original string
-	hash := sha1.Sum([]byte(input)) // #nosec G401
+	hash := sha1.Sum([]byte(input)) // #nosec G401 - SHA1 used for non-cryptographic name hashing only
 	hashSuffix := fmt.Sprintf("-%x", hash[:hashLabelLength])
 
 	// Calculate how much we can truncate
