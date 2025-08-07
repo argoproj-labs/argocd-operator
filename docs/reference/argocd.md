@@ -40,7 +40,7 @@ Name | Default | Description
 [**ResourceActions**](#resource-customizations) | [Empty] | Customizes resource action behavior.
 [**ResourceExclusions**](#resource-exclusions) | [Empty] | The configuration to completely ignore entire classes of resource group/kinds.
 [**ResourceInclusions**](#resource-inclusions) | [Empty] | The configuration to configure which resource group/kinds are applied.
-[**ResourceTrackingMethod**](#resource-tracking-method) | `label` | The resource tracking method Argo CD should use.
+[**ResourceTrackingMethod**](#resource-tracking-method) | `annotation` | The resource tracking method Argo CD should use.
 [**Server**](#server-options) | [Object] | Argo CD Server configuration options.
 [**SSO**](#single-sign-on-options) | [Object] | Single sign-on options.
 [**StatusBadgeEnabled**](#status-badge-enabled) | `true` | Enable application status badge feature.
@@ -1348,7 +1348,7 @@ Valid values are:
 * `annotation` - Track resources using an annotation
 * `annotation+label` - Track resources using both, an annotation and a label
 
-The default is to use `label` as tracking method.
+The default is to use `annotation` as tracking method.
 
 When this value is changed, existing managed resources will re-sync to apply the new tracking method.
 

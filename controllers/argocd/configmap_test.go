@@ -237,7 +237,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 
 	defaultConfigMapData := map[string]string{
 		"application.instanceLabelKey":       common.ArgoCDDefaultApplicationInstanceLabelKey,
-		"application.resourceTrackingMethod": argoproj.ResourceTrackingMethodLabel.String(),
+		"application.resourceTrackingMethod": argoproj.ResourceTrackingMethodAnnotation.String(),
 		"admin.enabled":                      "true",
 		"dex.config":                         "",
 		"ga.anonymizeusers":                  "false",
@@ -773,7 +773,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceTrackingMethod(t *te
 		assert.NoError(t, err)
 
 		rtm, ok := cm.Data[common.ArgoCDKeyResourceTrackingMethod]
-		assert.Equal(t, argoproj.ResourceTrackingMethodLabel.String(), rtm)
+		assert.Equal(t, argoproj.ResourceTrackingMethodAnnotation.String(), rtm)
 		assert.True(t, ok)
 	})
 
@@ -785,7 +785,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceTrackingMethod(t *te
 		assert.NoError(t, err)
 
 		rtm, ok := cm.Data[common.ArgoCDKeyResourceTrackingMethod]
-		assert.Equal(t, argoproj.ResourceTrackingMethodLabel.String(), rtm)
+		assert.Equal(t, argoproj.ResourceTrackingMethodAnnotation.String(), rtm)
 		assert.True(t, ok)
 	})
 
@@ -835,7 +835,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceTrackingMethod(t *te
 
 		rtm, ok := cm.Data[common.ArgoCDKeyResourceTrackingMethod]
 		assert.True(t, ok)
-		assert.Equal(t, argoproj.ResourceTrackingMethodLabel.String(), rtm)
+		assert.Equal(t, argoproj.ResourceTrackingMethodAnnotation.String(), rtm)
 	})
 
 }
