@@ -32,6 +32,7 @@ import (
 	templatev1 "github.com/openshift/api/template/v1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -40,6 +41,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdexport"
+	"github.com/argoproj-labs/argocd-operator/pkg/clientwrapper"
 
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
@@ -50,11 +52,13 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"go.uber.org/zap/zapcore"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -174,12 +178,15 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "b674928d.argoproj.io",
-	}
-
-	if watchedNsCache := getDefaultWatchedNamespacesCacheOptions(); watchedNsCache != nil {
-		options.Cache = cache.Options{
-			DefaultNamespaces: watchedNsCache,
-		}
+		NewCache: func(config *rest.Config, cacheOpts cache.Options) (cache.Cache, error) {
+			// Set up label-based filtering for ConfigMaps and Secrets
+			filteredCacheOpts := setupCacheOptions()
+			filteredCacheOpts.Scheme = scheme
+			if watchedNsCache := getDefaultWatchedNamespacesCacheOptions(); watchedNsCache != nil {
+				filteredCacheOpts.DefaultNamespaces = watchedNsCache
+			}
+			return cache.New(config, filteredCacheOpts)
+		},
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
@@ -187,6 +194,14 @@ func main() {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
+
+	cachedClient := mgr.GetClient()
+	liveClient, err := ctrlclient.New(ctrl.GetConfigOrDie(), ctrlclient.Options{Scheme: mgr.GetScheme()})
+	if err != nil {
+		setupLog.Error(err, "unable to create live client")
+		os.Exit(1)
+	}
+	wrapperClient := clientwrapper.NewClientWrapper(cachedClient, liveClient)
 
 	setupLog.Info("Registering Components.")
 
@@ -250,7 +265,7 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&argocd.ReconcileArgoCD{
-		Client:        mgr.GetClient(),
+		Client:        wrapperClient,
 		Scheme:        mgr.GetScheme(),
 		LabelSelector: labelSelectorFlag,
 		K8sClient:     k8sClient,
@@ -259,14 +274,14 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&argocdexport.ReconcileArgoCDExport{
-		Client: mgr.GetClient(),
+		Client: wrapperClient,
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ArgoCDExport")
 		os.Exit(1)
 	}
 	if err = (&notificationsConfig.NotificationsConfigurationReconciler{
-		Client: mgr.GetClient(),
+		Client: wrapperClient,
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NotificationsConfiguration")
@@ -332,6 +347,39 @@ func getWatchNamespace() (string, error) {
 		return "", fmt.Errorf("%s must be set", watchNamespaceEnvVar)
 	}
 	return ns, nil
+}
+
+func filterTransform(obj any) (any, error) {
+	switch obj := obj.(type) {
+	case *corev1.Secret:
+		labels := obj.GetLabels()
+		if labels[common.ArgoCDTrackedByOperatorLabel] == common.ArgoCDAppName ||
+			labels[common.ArgoCDSecretTypeLabel] == "cluster" {
+			argocd.SecretsCached.Inc()
+			return obj, nil // include in cache
+		}
+		return nil, nil
+	case *corev1.ConfigMap:
+		labels := obj.GetLabels()
+		if labels[common.ArgoCDTrackedByOperatorLabel] == common.ArgoCDAppName {
+			argocd.ConfigMapsCached.Inc()
+			return obj, nil // include in cache
+		}
+		return nil, nil
+
+	default:
+		// Prevent caching of unknown types
+		return nil, nil
+	}
+}
+
+func setupCacheOptions() cache.Options {
+	cacheOpts := cache.Options{}
+	cacheOpts.ByObject = map[ctrlclient.Object]cache.ByObject{
+		&corev1.Secret{}:    {Transform: filterTransform},
+		&corev1.ConfigMap{}: {Transform: filterTransform},
+	}
+	return cacheOpts
 }
 
 func initK8sClient() (*kubernetes.Clientset, error) {
