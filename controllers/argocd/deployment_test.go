@@ -1427,12 +1427,12 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 		"https://argocd-dex-server.argocd.svc.cluster.local:5556",
 		"--repo-server",
 		"argocd-repo-server.argocd.svc.cluster.local:8081",
-		"--redis",
-		"foo.scv.cluster.local:6379",
 		"--loglevel",
 		"info",
 		"--logformat",
 		"text",
+		"--redis",
+		"foo.scv.cluster.local:6379",
 	}
 
 	assert.NoError(t, r.reconcileServerDeployment(a, false))
@@ -2472,12 +2472,12 @@ func TestArgoCDRepoServerDeploymentCommand(t *testing.T) {
 	wantCmd := []string{
 		"uid_entrypoint.sh",
 		"argocd-repo-server",
-		"--redis",
-		"foo.scv.cluster.local:6379",
 		"--loglevel",
 		"info",
 		"--logformat",
 		"text",
+		"--redis",
+		"foo.scv.cluster.local:6379",
 	}
 
 	assert.NoError(t, r.reconcileRepoDeployment(a, false))
