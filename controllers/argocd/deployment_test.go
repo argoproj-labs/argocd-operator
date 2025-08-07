@@ -1645,11 +1645,11 @@ func TestReconcileServer_RolloutUI(t *testing.T) {
 	}
 	assert.True(t, foundTmpVolumeMount, "expected volume mount 'tmp' to be present in init container")
 	foundTmpVolumeMount = false
-	for _, vol := range deployment.Spec.Template.Spec.Containers[0].VolumeMounts {
-		if vol.Name == "tmp" {
+	for _, volMnt := range deployment.Spec.Template.Spec.Containers[0].VolumeMounts {
+		if volMnt.Name == "tmp" {
 			foundTmpVolumeMount = true
-			assert.NotNil(t, vol.MountPath)
-			assert.Equal(t, vol.MountPath, "/tmp")
+			assert.NotNil(t, volMnt.MountPath)
+			assert.Equal(t, volMnt.MountPath, "/tmp")
 		}
 	}
 	assert.True(t, foundTmpVolumeMount, "expected volume mount 'tmp' to be present in container")
@@ -1667,7 +1667,7 @@ func TestReconcileServer_RolloutUI(t *testing.T) {
 	for _, vol := range deployment.Spec.Template.Spec.Volumes {
 		if vol.Name == "tmp" {
 			foundTmpVolume = true
-			assert.NotNil(t, vol.VolumeSource.EmptyDir)
+			assert.NotNil(t, vol.EmptyDir)
 		}
 	}
 	assert.True(t, foundTmpVolume, "expected volume 'tmp' to be present")
@@ -1701,7 +1701,7 @@ func TestReconcileServer_RolloutUI(t *testing.T) {
 	for _, vol := range deployment.Spec.Template.Spec.Volumes {
 		if vol.Name == "tmp" {
 			foundTmpVolume = true
-			assert.NotNil(t, vol.VolumeSource.EmptyDir)
+			assert.NotNil(t, vol.EmptyDir)
 		}
 	}
 	assert.True(t, foundTmpVolume, "expected volume 'tmp' to be present even if rollouts is disabled")
