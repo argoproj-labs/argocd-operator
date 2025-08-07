@@ -17,6 +17,8 @@ spec:
           volumeMounts:
             - name: extensions
               mountPath: /tmp/extensions/
+            - name: tmp
+              mountPath: /tmp
       volumes:
       - configMap:
           defaultMode: 420
