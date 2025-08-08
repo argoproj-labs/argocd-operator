@@ -1729,20 +1729,29 @@ func UseServer(name string, cr *argoproj.ArgoCD) bool {
 	return true
 }
 
-// UpdateMapValues updates the values of an existing map with the values from a source map if they differ.
-// It returns true if any values were changed.
-func UpdateMapValues(existing *map[string]string, source map[string]string) bool {
-	changed := false
-	if *existing == nil {
-		*existing = make(map[string]string)
+// addKubernetesData checks for any Kubernetes-specific labels or annotations
+// in the live object and updates the source object to ensure critical metadata
+// (like scheduling, topology, or lifecycle information) is retained.
+// This helps avoid loss of important Kubernetes-managed metadata during updates.
+func addKubernetesData(source map[string]string, live map[string]string) {
+
+	// List of Kubernetes-specific substrings (wildcard match)
+	patterns := []string{
+		"*kubernetes.io*",
+		"*k8s.io*",
+		"*openshift.io*",
 	}
-	for key, value := range source {
-		if (*existing)[key] != value {
-			(*existing)[key] = value
-			changed = true
+
+	for key, value := range live {
+		found := glob.MatchStringInList(patterns, key, glob.GLOB)
+		if found {
+			// Don't override values already present in the source object.
+			// This allows the operator to update Kubernetes specific data when needed.
+			if _, ok := source[key]; !ok {
+				source[key] = value
+			}
 		}
 	}
-	return changed
 }
 
 // updateStatusConditionOfArgoCD calls Set Condition of ArgoCD status
