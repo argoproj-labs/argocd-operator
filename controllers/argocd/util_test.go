@@ -1169,60 +1169,53 @@ func TestReconcileArgoCD_reconcileDexOAuthClientSecret(t *testing.T) {
 	assert.True(t, tokenExists, "Dex is enabled but unable to create oauth client secret")
 }
 
-func TestUpdateMapValue(t *testing.T) {
+func TestRetainKubernetesData(t *testing.T) {
 	tests := []struct {
 		name     string
 		source   map[string]string
-		existing map[string]string
+		live     map[string]string
 		expected map[string]string
 	}{
 		{
-			name: "Retain non-operator-specific keys not in source",
+			name: "Add Kubernetes-specific keys not in source",
 			source: map[string]string{
+				"custom-label": "custom-value",
+			},
+			live: map[string]string{
 				"node.kubernetes.io/pod":             "true",
 				"kubectl.kubernetes.io/restartedAt":  "2024-12-05T09:46:46+05:30",
 				"openshift.openshift.io/restartedAt": "2024-12-05T09:46:46+05:30",
 			},
-			existing: map[string]string{
-				"node.kubernetes.io/pod":             "true",
-				"kubectl.kubernetes.io/restartedAt":  "2024-12-05T09:46:46+05:30",
-				"openshift.openshift.io/restartedAt": "2024-12-05T09:46:46+05:30",
-				"custom-label":                       "custom-value",
-			},
 			expected: map[string]string{
-				"custom-label":                       "custom-value",              // retained from existing
-				"node.kubernetes.io/pod":             "true",                      // unchanged
-				"kubectl.kubernetes.io/restartedAt":  "2024-12-05T09:46:46+05:30", // unchanged
-				"openshift.openshift.io/restartedAt": "2024-12-05T09:46:46+05:30", // unchanged
+				"custom-label":                       "custom-value",              // unchanged
+				"node.kubernetes.io/pod":             "true",                      // added
+				"kubectl.kubernetes.io/restartedAt":  "2024-12-05T09:46:46+05:30", // added
+				"openshift.openshift.io/restartedAt": "2024-12-05T09:46:46+05:30", // added
 			},
 		},
 		{
-			name: "Override operator-specific keys in live with source",
+			name: "Ignores non-Kubernetes-specific keys",
 			source: map[string]string{
-				"node.kubernetes.io/pod":            "source-true",
-				"kubectl.kubernetes.io/restartedAt": "2024-12-05T09:46:46+05:30",
+				"custom-label": "custom-value",
 			},
-			existing: map[string]string{
-				"node.kubernetes.io/pod":            "live-true", // should override
-				"kubectl.kubernetes.io/restartedAt": "2024-12-05T09:46:46+05:30",
+			live: map[string]string{
+				"non-k8s-key":  "non-k8s-value",
+				"custom-label": "live-value",
 			},
 			expected: map[string]string{
-				"node.kubernetes.io/pod":            "source-true",
-				"kubectl.kubernetes.io/restartedAt": "2024-12-05T09:46:46+05:30",
+				"custom-label": "custom-value", // unchanged
 			},
 		},
 		{
-			name: "Retain existing operator-specific keys from source",
+			name: "Do not override existing Kubernetes-specific keys in source",
 			source: map[string]string{
-				"node.kubernetes.io/pod":            "source-true",
-				"kubectl.kubernetes.io/restartedAt": "2024-12-05T09:46:46+05:30",
-			},
-			existing: map[string]string{
 				"node.kubernetes.io/pod": "source-true",
 			},
+			live: map[string]string{
+				"node.kubernetes.io/pod": "live-true", // should not override
+			},
 			expected: map[string]string{
-				"node.kubernetes.io/pod":            "source-true",
-				"kubectl.kubernetes.io/restartedAt": "2024-12-05T09:46:46+05:30",
+				"node.kubernetes.io/pod": "source-true", // source takes precedence
 			},
 		},
 		{
@@ -1230,7 +1223,7 @@ func TestUpdateMapValue(t *testing.T) {
 			source: map[string]string{
 				"custom-label": "custom-value",
 			},
-			existing: map[string]string{},
+			live: map[string]string{},
 			expected: map[string]string{
 				"custom-label": "custom-value", // unchanged
 			},
@@ -1238,7 +1231,7 @@ func TestUpdateMapValue(t *testing.T) {
 		{
 			name:   "Handles empty source map",
 			source: map[string]string{},
-			existing: map[string]string{
+			live: map[string]string{
 				"openshift.io/resource": "value",
 			},
 			expected: map[string]string{
@@ -1249,8 +1242,8 @@ func TestUpdateMapValue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			UpdateMapValues(&tt.existing, tt.source)
-			assert.Equal(t, tt.expected, tt.existing)
+			addKubernetesData(tt.source, tt.live)
+			assert.Equal(t, tt.expected, tt.source)
 		})
 	}
 }

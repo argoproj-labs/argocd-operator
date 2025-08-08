@@ -527,7 +527,8 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, 
 		deploymentChanged = true
 	}
 
-	if UpdateMapValues(&existingDeployment.Labels, desiredDeployment.Labels) {
+	if !reflect.DeepEqual(existingDeployment.Labels, desiredDeployment.Labels) {
+		existingDeployment.Labels = desiredDeployment.Labels
 		if deploymentChanged {
 			explanation = ", "
 		}
@@ -535,7 +536,8 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, 
 		deploymentChanged = true
 	}
 
-	if UpdateMapValues(&existingDeployment.Spec.Template.Labels, desiredDeployment.Spec.Template.Labels) {
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Labels, desiredDeployment.Spec.Template.Labels) {
+		existingDeployment.Spec.Template.Labels = desiredDeployment.Spec.Template.Labels
 		if deploymentChanged {
 			explanation = ", "
 		}
