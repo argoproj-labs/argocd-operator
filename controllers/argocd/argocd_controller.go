@@ -80,7 +80,7 @@ var ActiveInstanceMap = make(map[string]string)
 //+kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=create;delete;get;list;patch;update;watch;
 //+kubebuilder:rbac:groups=monitoring.coreos.com,resources=prometheuses;prometheusrules;servicemonitors,verbs=*
 //+kubebuilder:rbac:groups=route.openshift.io,resources=routes;routes/custom-host,verbs=*
-//+kubebuilder:rbac:groups=argoproj.io,resources=applications;appprojects,verbs=*
+//+kubebuilder:rbac:groups=argoproj.io,resources=applications;appprojects;applicationsets,verbs=*
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=*,verbs=*
 //+kubebuilder:rbac:groups="",resources=pods;pods/log,verbs=get
 //+kubebuilder:rbac:groups=template.openshift.io,resources=templates;templateinstances;templateconfigs,verbs=*
