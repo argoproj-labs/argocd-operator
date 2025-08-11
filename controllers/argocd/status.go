@@ -19,10 +19,8 @@ import (
 	"reflect"
 	"strings"
 
-	oappsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -133,72 +131,6 @@ func (r *ReconcileArgoCD) reconcileStatusDex(cr *argoproj.ArgoCD) error {
 	return nil
 }
 
-// reconcileStatusKeycloak will ensure that the Keycloak status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusKeycloak(cr *argoproj.ArgoCD) error {
-	status := "Unknown"
-
-	if CanUseKeycloakWithTemplate() {
-		// keycloak is installed using OpenShift templates.
-		dc := &oappsv1.DeploymentConfig{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      defaultKeycloakIdentifier,
-				Namespace: cr.Namespace,
-			},
-		}
-		dcExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, dc.Name, dc)
-		if err != nil {
-			return err
-		}
-		if dcExists {
-			status = "Pending"
-
-			if dc.Status.ReadyReplicas == dc.Spec.Replicas {
-				status = "Running"
-			} else if dc.Status.Conditions != nil {
-				for _, condition := range dc.Status.Conditions {
-					if condition.Type == oappsv1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue {
-						// Deployment has failed
-						status = "Failed"
-						break
-					}
-				}
-			}
-		}
-
-	} else {
-		d := newDeploymentWithName(defaultKeycloakIdentifier, defaultKeycloakIdentifier, cr)
-		deplExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, d.Name, d)
-		if err != nil {
-			return err
-		}
-		if deplExists {
-			status = "Pending"
-
-			if d.Spec.Replicas != nil {
-				if d.Status.ReadyReplicas == *d.Spec.Replicas {
-					status = "Running"
-				} else if d.Status.Conditions != nil {
-					for _, condition := range d.Status.Conditions {
-						if condition.Type == appsv1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue {
-							// Deployment has failed
-							status = "Failed"
-							break
-						}
-					}
-				}
-
-			}
-		}
-	}
-
-	if cr.Status.SSO != status {
-		cr.Status.SSO = status
-		return r.Client.Status().Update(context.TODO(), cr)
-	}
-
-	return nil
-}
-
 // reconcileStatusApplicationSetController will ensure that the ApplicationSet controller status is updated for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileStatusApplicationSetController(cr *argoproj.ArgoCD) error {
 	status := "Unknown"
@@ -244,8 +176,8 @@ func (r *ReconcileArgoCD) reconcileStatusSSO(cr *argoproj.ArgoCD) error {
 		if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeDex {
 			return r.reconcileStatusDex(cr)
 		} else if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeKeycloak {
-			log.Info("Keycloak SSO provider is deprecated and will be removed in a future release. Please migrate to Dex or another supported provider.")
-			return r.reconcileStatusKeycloak(cr)
+			log.Info("Keycloak SSO provider is no longer supported. RBAC scopes configuration is ignored.")
+			// Keycloak functionality has been removed, skipping reconciliation
 		}
 	} else {
 		// illegal/unknown sso configurations

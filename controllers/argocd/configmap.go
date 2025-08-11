@@ -493,9 +493,8 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 			}
 			cm.Data[common.ArgoCDKeyDexConfig] = existingCM.Data[common.ArgoCDKeyDexConfig]
 		} else if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeKeycloak {
-			log.Info("Keycloak SSO provider is deprecated and will be removed in a future release. Please migrate to Dex or another supported provider.")
-			// retain oidc.config during reconcilliation when keycloak is configured
-			cm.Data[common.ArgoCDKeyOIDCConfig] = existingCM.Data[common.ArgoCDKeyOIDCConfig]
+			log.Info("Keycloak SSO provider is no longer supported. Existing configuration will be ignored and not reconciled.")
+			// Keycloak functionality has been removed, skipping reconciliation
 		}
 
 		changed := false
@@ -602,7 +601,7 @@ func (r *ReconcileArgoCD) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argop
 	// Scopes
 	if cr.Spec.RBAC.Scopes != nil && cm.Data[common.ArgoCDKeyRBACScopes] != *cr.Spec.RBAC.Scopes {
 		if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeKeycloak {
-			log.Info("cr.Spec.RBAC.Scopes value could be out of sync with the RBACConfigMap, since keycloak sso is enabled and scopes are fixed to [groups,mails]")
+			log.Info("Keycloak SSO provider is no longer supported. RBAC scopes configuration is ignored.")
 		} else {
 			cm.Data[common.ArgoCDKeyRBACScopes] = *cr.Spec.RBAC.Scopes
 			if changed {

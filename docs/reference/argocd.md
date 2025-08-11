@@ -1599,9 +1599,8 @@ The following properties are available for configuring the Single sign-on compon
 
 Name | Default | Description
 --- | --- | ---
-[Keycloak](#keycloak-options) | [Object] | Configuration options for Keycloak SSO provider
 [Dex](#dex-options) | [Object] | Configuration options for Dex SSO provider
-Provider | [Empty] | The name of the provider used to configure Single sign-on. For now the supported options are "dex" and "keycloak".
+Provider | [Empty] | The name of the provider used to configure Single sign-on. For now the supported options is "dex".
 
 ## Dex Options
 
@@ -1684,39 +1683,6 @@ oc adm groups new cluster-admins
 oc adm groups add-users cluster-admins USER
 oc adm policy add-cluster-role-to-group cluster-admin cluster-admins
 ```
-
-## Keycloak Options
-
-The following properties are available for configuring Keycloak Single sign-on provider.
-
-Name | Default | Description
---- | --- | ---
-Image | OpenShift - `registry.redhat.io/rh-sso-7/sso76-openshift-rhel8` <br/> Kuberentes - `quay.io/keycloak/keycloak` | The container image for keycloak. This overrides the `ARGOCD_KEYCLOAK_IMAGE` environment variable.
-Resources | `Requests`: CPU=500m, Mem=512Mi, `Limits`: CPU=1000m, Mem=1024Mi | The container compute resources.
-RootCA | "" | root CA certificate for communicating with the OIDC provider
-VerifyTLS | true | Whether to enforce strict TLS checking when communicating with Keycloak service.
-Version | OpenShift - `sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3` (7.5.1) <br/> Kubernetes - `sha256:64fb81886fde61dee55091e6033481fa5ccdac62ae30a4fd29b54eb5e97df6a9` (15.0.2) | The tag to use with the keycloak container image.
-
-### Keycloak Single sign-on Example
-
-!!! note
-    `.spec.sso.Image`, `.spec.sso.Version`, `.spec.sso.Resources` and `.spec.sso.verifyTLS` fields are no longer supported in Argo CD operator v0.8.0 onwards. Please use equivalent fields under `.spec.sso.keycloak` to configure your keycloak instance.
-
-The following example uses keycloak as Single sign-on option for Argo CD.
-
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: example-argocd
-  labels:
-    example: status-badge-enabled
-spec:
-  sso:
-    provider: keycloak
-```
-
-Please refer to the [keycloak user guide](../usage/keycloak/kubernetes.md) to learn more about configuring keycloak as a Single sign-on provider.
 
 ## System-Level Configuration
 

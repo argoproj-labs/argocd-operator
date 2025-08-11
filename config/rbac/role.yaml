@@ -60,12 +60,6 @@ rules:
   verbs:
   - update
 - apiGroups:
-  - apps.openshift.io
-  resources:
-  - deploymentconfigs
-  verbs:
-  - '*'
-- apiGroups:
   - argoproj.io
   resources:
   - applications
