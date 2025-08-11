@@ -1304,7 +1304,7 @@ func (r *ReconcileArgoCD) storeRemovedLabelsForCleanup(obj client.Object, remove
 	obj.SetAnnotations(annotations)
 
 	// Update the object
-	return r.Client.Update(context.TODO(), obj)
+	return r.Update(context.TODO(), obj)
 }
 
 func (r *ReconcileArgoCD) processRemovedLabels(argocd *argoproj.ArgoCD) error {
@@ -1332,7 +1332,7 @@ func (r *ReconcileArgoCD) processRemovedLabels(argocd *argoproj.ArgoCD) error {
 		// Clear the annotation
 		delete(annotations, RemovedLabelsAnnotation)
 		argocd.SetAnnotations(annotations)
-		return r.Client.Update(context.TODO(), argocd)
+		return r.Update(context.TODO(), argocd)
 	}
 
 	return nil
@@ -1398,7 +1398,7 @@ func (r *ReconcileArgoCD) cleanupLabelsFromComponent(argocd *argoproj.ArgoCD, la
 		Name:      resourceName,
 	}
 
-	if err := r.Client.Get(context.TODO(), key, obj); err != nil {
+	if err := r.Get(context.TODO(), key, obj); err != nil {
 		if apierrors.IsNotFound(err) {
 			// Component doesn't exist, nothing to clean up
 			return nil
@@ -1425,7 +1425,7 @@ func (r *ReconcileArgoCD) cleanupLabelsFromComponent(argocd *argoproj.ArgoCD, la
 			}
 			if modified {
 				resource.Spec.Template.Labels = podTemplateLabels
-				if err := r.Client.Update(context.TODO(), resource); err != nil {
+				if err := r.Update(context.TODO(), resource); err != nil {
 					return fmt.Errorf("failed to update pod template labels for %s deployment: %w", componentName, err)
 				}
 				log.Info("Removed labels from pod template",
@@ -1445,7 +1445,7 @@ func (r *ReconcileArgoCD) cleanupLabelsFromComponent(argocd *argoproj.ArgoCD, la
 			}
 			if modified {
 				resource.Spec.Template.Labels = podTemplateLabels
-				if err := r.Client.Update(context.TODO(), resource); err != nil {
+				if err := r.Update(context.TODO(), resource); err != nil {
 					return fmt.Errorf("failed to update pod template labels for %s statefulset: %w", componentName, err)
 				}
 				log.Info("Removed labels from pod template",
@@ -1474,7 +1474,7 @@ func (r *ReconcileArgoCD) removeLabelsFromObject(obj client.Object, labelsToRemo
 
 	if modified {
 		obj.SetLabels(currentLabels)
-		return r.Client.Update(context.TODO(), obj)
+		return r.Update(context.TODO(), obj)
 	}
 
 	return nil
