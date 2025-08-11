@@ -80,20 +80,20 @@ func (r *ReconcileArgoCD) reconcileLocalUsers(cr *argoproj.ArgoCD) error {
 	return nil
 }
 
-func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.LocalUserSpec, signingKey []byte) error {
-	var err error
-	secretExists := true
+func userSecretName(user argoproj.LocalUserSpec) string {
+	return user.Name + "-local-user"
+}
 
-	// Get the user secret if it exists, else create a new one
+func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.LocalUserSpec, signingKey []byte) error {
+	// Get the user secret if it exists
 	userSecret := corev1.Secret{}
-	secretName := user.Name + "-local-user"
-	err = r.Get(context.TODO(), types.NamespacedName{Name: secretName, Namespace: cr.Namespace}, &userSecret)
+	secretName := userSecretName(user)
+	secretExists := true
+	err := r.Get(context.TODO(), types.NamespacedName{Name: secretName, Namespace: cr.Namespace}, &userSecret)
 	if apierrors.IsNotFound(err) {
 		secretExists = false
-		userSecret = *argoutil.NewSecretWithName(cr, secretName)
-		userSecret.Labels[common.ArgoCDKeyComponent] = "local-users"
 	} else if err != nil {
-		return err
+		return fmt.Errorf("failed to get or create user secret for user %s: %w", user.Name, err)
 	}
 
 	// If the ApiKey setting has been changed to false, delete the secret and
@@ -164,7 +164,7 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 							if renewalTimer.stop {
 								return
 							}
-							err := r.issueToken(*cr, user, userSecret, true, tokenLifetime, tokenDuration, "token automatically re-issued after expiration", signingKey)
+							err := r.issueToken(*cr, user, tokenLifetime, tokenDuration, "token automatically re-issued after expiration", signingKey)
 							if err != nil {
 								log.Error(err, fmt.Sprintf("when trying to re-issue token for user %s", key))
 							}
@@ -216,7 +216,7 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 					if renewalTimer.stop {
 						return
 					}
-					err := r.issueToken(*cr, user, userSecret, secretExists, tokenLifetime, tokenDuration, "token automatically re-issued after expiration", signingKey)
+					err := r.issueToken(*cr, user, tokenLifetime, tokenDuration, "token automatically re-issued after expiration", signingKey)
 					if err != nil {
 						log.Error(err, fmt.Sprintf("when trying to re-issue token for user %s/%s", cr.Namespace, user.Name))
 					}
@@ -245,13 +245,25 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 
 	err = nil
 	r.LocalUsers.UserTokensLock.protect(func() {
-		err = r.issueToken(*cr, user, userSecret, secretExists, tokenLifetime, tokenDuration, explanation, signingKey)
+		err = r.issueToken(*cr, user, tokenLifetime, tokenDuration, explanation, signingKey)
 	})
 	return nil
 }
 
-// *** THIS METHOD NEEDS TO BE CALLED UNDER THE PROTECTION OF userTokensLock ***
-func (r *ReconcileArgoCD) issueToken(cr argoproj.ArgoCD, user argoproj.LocalUserSpec, userSecret corev1.Secret, secretExists bool, tokenLifetime string, tokenDuration time.Duration, explanation string, signingKey []byte) error {
+// *** THIS METHOD NEEDS TO BE CALLED UNDER THE PROTECTION OF ReconcileArgoCD.UserTokensLock ***
+func (r *ReconcileArgoCD) issueToken(cr argoproj.ArgoCD, user argoproj.LocalUserSpec, tokenLifetime string, tokenDuration time.Duration, explanation string, signingKey []byte) error {
+	// Get the user secret if it exists, else create a new one
+	userSecret := corev1.Secret{}
+	secretName := userSecretName(user)
+	secretExists := true
+	err := r.Get(context.TODO(), types.NamespacedName{Name: secretName, Namespace: cr.Namespace}, &userSecret)
+	if apierrors.IsNotFound(err) {
+		secretExists = false
+		userSecret = *argoutil.NewSecretWithName(&cr, secretName)
+		userSecret.Labels[common.ArgoCDKeyComponent] = "local-users"
+	} else if err != nil {
+		return fmt.Errorf("failed to get or create user secret for user %s: %w", user.Name, err)
+	}
 
 	// Create the values from which the token is generated
 
@@ -352,7 +364,7 @@ func (r *ReconcileArgoCD) issueToken(cr argoproj.ArgoCD, user argoproj.LocalUser
 				if renewalTimer.stop {
 					return
 				}
-				err := r.issueToken(cr, user, userSecret, true, tokenLifetime, tokenDuration, "token automatically re-issued after expiration", signingKey)
+				err := r.issueToken(cr, user, tokenLifetime, tokenDuration, "token automatically re-issued after expiration", signingKey)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("when trying to re-issue token for user %s", key))
 				}
