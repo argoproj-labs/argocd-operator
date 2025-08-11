@@ -21,6 +21,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"hash"
 	"os"
@@ -1030,7 +1031,7 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 	}
 
 	// Watch for changes to primary resource ArgoCD
-	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(deleteNotificationsPred, r.argoCDNamespaceManagementFilterPredicate()))
+	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(deleteNotificationsPred, r.argoCDNamespaceManagementFilterPredicate(), r.argoCDSpecLabelCleanupPredicate()))
 
 	// Watch for changes to ConfigMap sub-resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.ConfigMap{})
@@ -1243,6 +1244,288 @@ func (r *ReconcileArgoCD) namespaceFilterPredicate() predicate.Predicate {
 			return false
 		},
 	}
+}
+
+// argoCDSpecLabelCleanupPredicate tracks label changes in ArgoCD CR specs and cleans up removed labels from managed resources
+func (r *ReconcileArgoCD) argoCDSpecLabelCleanupPredicate() predicate.Predicate {
+	return predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			newCR, ok := e.ObjectNew.(*argoproj.ArgoCD)
+			if !ok {
+				return false
+			}
+			oldCR, ok := e.ObjectOld.(*argoproj.ArgoCD)
+			if !ok {
+				return false
+			}
+
+			// Track removed labels from each component spec
+			removedLabels := r.calculateRemovedSpecLabels(oldCR, newCR)
+
+			if len(removedLabels) > 0 {
+				log.Info("Detected removed labels from ArgoCD spec",
+					"argocd", fmt.Sprintf("%s/%s", newCR.Namespace, newCR.Name),
+					"removedLabels", removedLabels)
+
+				// Store removed labels for cleanup during reconciliation
+				if err := r.storeRemovedLabelsForCleanup(newCR, removedLabels); err != nil {
+					log.Error(err, "failed to store removed labels for cleanup")
+				}
+			}
+
+			return true // Trigger reconciliation for ArgoCD updates
+		},
+	}
+}
+
+const RemovedLabelsAnnotation = "argocd.argoproj.io/removed-labels"
+
+// calculateRemovedSpecLabels compares old and new ArgoCD specs and returns labels that were removed
+func (r *ReconcileArgoCD) calculateRemovedSpecLabels(oldCR, newCR *argoproj.ArgoCD) map[string]string {
+	// Add nil checks to prevent panic
+	if r == nil || oldCR == nil || newCR == nil {
+		return map[string]string{}
+	}
+	removedLabels := make(map[string]string)
+
+	// Check Server labels
+	oldServerLabels := oldCR.Spec.Server.Labels
+	newServerLabels := newCR.Spec.Server.Labels
+	for key, value := range oldServerLabels {
+		if newServerLabels == nil || newServerLabels[key] == "" {
+			removedLabels[key] = value
+		}
+	}
+
+	// Check Repo Server labels
+	oldRepoLabels := oldCR.Spec.Repo.Labels
+	newRepoLabels := newCR.Spec.Repo.Labels
+	for key, value := range oldRepoLabels {
+		if newRepoLabels == nil || newRepoLabels[key] == "" {
+			removedLabels[key] = value
+		}
+	}
+
+	// Check Controller labels
+	oldControllerLabels := oldCR.Spec.Controller.Labels
+	newControllerLabels := newCR.Spec.Controller.Labels
+	for key, value := range oldControllerLabels {
+		if newControllerLabels == nil || newControllerLabels[key] == "" {
+			removedLabels[key] = value
+		}
+	}
+
+	// Check ApplicationSet labels
+	if oldCR.Spec.ApplicationSet != nil && newCR.Spec.ApplicationSet != nil {
+		oldAppSetLabels := oldCR.Spec.ApplicationSet.Labels
+		newAppSetLabels := newCR.Spec.ApplicationSet.Labels
+		for key, value := range oldAppSetLabels {
+			if newAppSetLabels == nil || newAppSetLabels[key] == "" {
+				removedLabels[key] = value
+			}
+		}
+	}
+
+	// Note: Notifications and Prometheus specs don't have Labels fields currently
+	// If they are added in the future, the logic can be uncommented and updated
+
+	return removedLabels
+}
+
+func (r *ReconcileArgoCD) storeRemovedLabelsForCleanup(obj client.Object, removedLabels map[string]string) error {
+	if len(removedLabels) == 0 {
+		return nil
+	}
+
+	// Serialize removed labels to JSON
+	removedLabelsJSON, err := json.Marshal(removedLabels)
+	if err != nil {
+		return fmt.Errorf("failed to marshal removed labels: %w", err)
+	}
+
+	// Add annotation with removed labels
+	annotations := obj.GetAnnotations()
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+	annotations[RemovedLabelsAnnotation] = string(removedLabelsJSON)
+	obj.SetAnnotations(annotations)
+
+	// Update the object
+	return r.Client.Update(context.TODO(), obj)
+}
+
+func (r *ReconcileArgoCD) processRemovedLabels(argocd *argoproj.ArgoCD) error {
+	annotations := argocd.GetAnnotations()
+	if annotations == nil {
+		return nil
+	}
+
+	removedLabelsJSON, exists := annotations[RemovedLabelsAnnotation]
+	if !exists {
+		return nil
+	}
+
+	var removedLabels map[string]string
+	if err := json.Unmarshal([]byte(removedLabelsJSON), &removedLabels); err != nil {
+		return fmt.Errorf("failed to unmarshal removed labels: %w", err)
+	}
+
+	if len(removedLabels) > 0 {
+		// Clean up from managed resources
+		if err := r.cleanupLabelsFromManagedResources(argocd, removedLabels); err != nil {
+			return err
+		}
+
+		// Clear the annotation
+		delete(annotations, RemovedLabelsAnnotation)
+		argocd.SetAnnotations(annotations)
+		return r.Client.Update(context.TODO(), argocd)
+	}
+
+	return nil
+}
+
+func (r *ReconcileArgoCD) cleanupLabelsFromManagedResources(argocd *argoproj.ArgoCD, labelsToRemove map[string]string) error {
+	log.Info("Cleaning up removed labels from managed resources",
+		"argocd", fmt.Sprintf("%s/%s", argocd.Namespace, argocd.Name),
+		"labelsToRemove", labelsToRemove)
+
+	// Clean up labels from ArgoCD Server Deployment
+	if err := r.cleanupLabelsFromComponent(argocd, labelsToRemove, "server", &appsv1.Deployment{}); err != nil {
+		log.Error(err, "failed to cleanup labels from server deployment")
+	}
+
+	// Clean up labels from ArgoCD Repo Server Deployment
+	if err := r.cleanupLabelsFromComponent(argocd, labelsToRemove, "repo-server", &appsv1.Deployment{}); err != nil {
+		log.Error(err, "failed to cleanup labels from repo-server deployment")
+	}
+
+	// Clean up labels from ArgoCD Application Controller StatefulSet
+	if err := r.cleanupLabelsFromComponent(argocd, labelsToRemove, "application-controller", &appsv1.StatefulSet{}); err != nil {
+		log.Error(err, "failed to cleanup labels from application-controller statefulset")
+	}
+
+	// Clean up labels from ArgoCD ApplicationSet Controller Deployment
+	if err := r.cleanupLabelsFromComponent(argocd, labelsToRemove, "applicationset-controller", &appsv1.Deployment{}); err != nil {
+		log.Error(err, "failed to cleanup labels from applicationset-controller deployment")
+	}
+
+	// Clean up labels from ArgoCD Notifications Controller Deployment (if enabled)
+	if argocd.Spec.Notifications.Enabled {
+		if err := r.cleanupLabelsFromComponent(argocd, labelsToRemove, "notifications-controller", &appsv1.Deployment{}); err != nil {
+			log.Error(err, "failed to cleanup labels from notifications-controller deployment")
+		}
+	}
+
+	// Use existing pattern for other managed resources
+	selector, err := argocdInstanceSelector(argocd.Name)
+	if err != nil {
+		return err
+	}
+
+	// Clean up ConfigMaps
+	configMapList := &corev1.ConfigMapList{}
+	if err := filterObjectsBySelector(r.Client, configMapList, selector); err == nil {
+		for _, cm := range configMapList.Items {
+			if err := r.removeLabelsFromObject(&cm, labelsToRemove); err != nil {
+				log.Error(err, "failed to remove labels from ConfigMap", "name", cm.Name)
+			}
+		}
+	}
+
+	// Add other resource types as needed...
+	return nil
+}
+
+// cleanupLabelsFromComponent removes specified labels from a specific ArgoCD component
+func (r *ReconcileArgoCD) cleanupLabelsFromComponent(argocd *argoproj.ArgoCD, labelsToRemove map[string]string, componentName string, obj client.Object) error {
+	resourceName := fmt.Sprintf("%s-%s", argocd.Name, componentName)
+	key := types.NamespacedName{
+		Namespace: argocd.Namespace,
+		Name:      resourceName,
+	}
+
+	if err := r.Client.Get(context.TODO(), key, obj); err != nil {
+		if apierrors.IsNotFound(err) {
+			// Component doesn't exist, nothing to clean up
+			return nil
+		}
+		return fmt.Errorf("failed to get %s: %w", componentName, err)
+	}
+
+	// Remove labels from the resource itself
+	if err := r.removeLabelsFromObject(obj, labelsToRemove); err != nil {
+		return fmt.Errorf("failed to remove labels from %s: %w", componentName, err)
+	}
+
+	// For Deployments and StatefulSets, also clean labels from pod template
+	switch resource := obj.(type) {
+	case *appsv1.Deployment:
+		podTemplateLabels := resource.Spec.Template.Labels
+		if podTemplateLabels != nil {
+			modified := false
+			for labelKey := range labelsToRemove {
+				if _, exists := podTemplateLabels[labelKey]; exists {
+					delete(podTemplateLabels, labelKey)
+					modified = true
+				}
+			}
+			if modified {
+				resource.Spec.Template.Labels = podTemplateLabels
+				if err := r.Client.Update(context.TODO(), resource); err != nil {
+					return fmt.Errorf("failed to update pod template labels for %s deployment: %w", componentName, err)
+				}
+				log.Info("Removed labels from pod template",
+					"component", componentName,
+					"removedLabels", labelsToRemove)
+			}
+		}
+	case *appsv1.StatefulSet:
+		podTemplateLabels := resource.Spec.Template.Labels
+		if podTemplateLabels != nil {
+			modified := false
+			for labelKey := range labelsToRemove {
+				if _, exists := podTemplateLabels[labelKey]; exists {
+					delete(podTemplateLabels, labelKey)
+					modified = true
+				}
+			}
+			if modified {
+				resource.Spec.Template.Labels = podTemplateLabels
+				if err := r.Client.Update(context.TODO(), resource); err != nil {
+					return fmt.Errorf("failed to update pod template labels for %s statefulset: %w", componentName, err)
+				}
+				log.Info("Removed labels from pod template",
+					"component", componentName,
+					"removedLabels", labelsToRemove)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (r *ReconcileArgoCD) removeLabelsFromObject(obj client.Object, labelsToRemove map[string]string) error {
+	currentLabels := obj.GetLabels()
+	if currentLabels == nil {
+		return nil
+	}
+
+	modified := false
+	for labelKey := range labelsToRemove {
+		if _, exists := currentLabels[labelKey]; exists {
+			delete(currentLabels, labelKey)
+			modified = true
+		}
+	}
+
+	if modified {
+		obj.SetLabels(currentLabels)
+		return r.Client.Update(context.TODO(), obj)
+	}
+
+	return nil
 }
 
 // deleteRBACsForNamespace deletes the RBACs when the label from the namespace is removed.
