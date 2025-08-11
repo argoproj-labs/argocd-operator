@@ -19,6 +19,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -40,6 +41,30 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+type lock struct {
+	lock sync.Mutex
+}
+
+func (l *lock) protect(code func()) {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+	code()
+}
+
+type TokenRenewalTimer struct {
+	timer *time.Timer
+	stop  bool
+}
+
+type LocalUsersInfo struct {
+	// Stores the the timers that will auto-renew the API tokens for local users
+	// after they expire. The key format is "argocd-namespace/user-name"
+	TokenRenewalTimers map[string]*TokenRenewalTimer
+	// Protects access to the token renewal timers and the K8S resources that
+	// get updated as part of renewing the user tokens
+	UserTokensLock lock
+}
+
 // blank assignment to verify that ReconcileArgoCD implements reconcile.Reconciler
 var _ reconcile.Reconciler = &ReconcileArgoCD{}
 
@@ -56,7 +81,8 @@ type ReconcileArgoCD struct {
 	// Stores label selector used to reconcile a subset of ArgoCD
 	LabelSelector string
 
-	K8sClient kubernetes.Interface
+	K8sClient  kubernetes.Interface
+	LocalUsers *LocalUsersInfo
 }
 
 var log = logr.Log.WithName("controller_argocd")
@@ -189,7 +215,7 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 		ReconcileTime.DeletePartialMatch(prometheus.Labels{"namespace": argocd.Namespace})
 
 		// Remove any local user token renewal timers for the namespace
-		cleanupNamespaceTokenTimers(argocd.Namespace)
+		r.cleanupNamespaceTokenTimers(argocd.Namespace)
 
 		if argocd.IsDeletionFinalizerPresent() {
 			if err := r.deleteClusterResources(argocd); err != nil {

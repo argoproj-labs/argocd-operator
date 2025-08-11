@@ -60,8 +60,17 @@ func createResources(cr *argoproj.ArgoCD, expect *assert.Assertions) *ReconcileA
 	return r
 }
 
+func cleanupAllTokenTimers(r *ReconcileArgoCD) {
+	r.LocalUsers.UserTokensLock.protect(func() {
+		for key, timer := range r.LocalUsers.TokenRenewalTimers {
+			timer.stop = true
+			timer.timer.Stop()
+			delete(r.LocalUsers.TokenRenewalTimers, key)
+		}
+	})
+}
+
 func TestReconcileArgoCD_reconcileArgoLocalUsersCreate(t *testing.T) {
-	defer cleanupAllTokenTimers()
 	logf.SetLogger(ZapLogger(true))
 	var err error
 
@@ -76,6 +85,7 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersCreate(t *testing.T) {
 	}
 
 	r := createResources(cr, expect)
+	defer cleanupAllTokenTimers(r)
 
 	argocdSecret := corev1.Secret{}
 	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: cr.Namespace}, &argocdSecret)
@@ -123,8 +133,8 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersCreate(t *testing.T) {
 
 	// Check that there's a timer to renew the token
 
-	expect.Len(tokenRenewalTimers, 1)
-	timer := tokenRenewalTimers[cr.Namespace+"/alice"]
+	expect.Len(r.LocalUsers.TokenRenewalTimers, 1)
+	timer := r.LocalUsers.TokenRenewalTimers[cr.Namespace+"/alice"]
 	expect.NotNil(timer)
 	expect.False(timer.stop)
 
@@ -144,13 +154,12 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersCreate(t *testing.T) {
 	expect.Equal(originalID, userSecret.Data["ID"])
 	expect.Equal(originalAPIToken, userSecret.Data["apiToken"])
 
-	expect.Len(tokenRenewalTimers, 1)
-	expect.True(timer == tokenRenewalTimers[cr.Namespace+"/alice"]) // testing pointer equality
+	expect.Len(r.LocalUsers.TokenRenewalTimers, 1)
+	expect.True(timer == r.LocalUsers.TokenRenewalTimers[cr.Namespace+"/alice"]) // testing pointer equality
 
 }
 
 func TestReconcileArgoCD_reconcileArgoLocalUsersCreateWithDefaultTokenLifetime(t *testing.T) {
-	defer cleanupAllTokenTimers()
 	logf.SetLogger(ZapLogger(true))
 	var err error
 
@@ -164,6 +173,7 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersCreateWithDefaultTokenLifetime(t
 	}
 
 	r := createResources(cr, expect)
+	defer cleanupAllTokenTimers(r)
 
 	argocdSecret := corev1.Secret{}
 	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: cr.Namespace}, &argocdSecret)
@@ -211,7 +221,7 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersCreateWithDefaultTokenLifetime(t
 
 	// Check no token renewal timer was created
 
-	expect.Empty(tokenRenewalTimers)
+	expect.Empty(r.LocalUsers.TokenRenewalTimers)
 
 	// Reconcile again to ensure nothing changes
 
@@ -228,11 +238,10 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersCreateWithDefaultTokenLifetime(t
 	expect.Equal("alice", string(userSecret.Data["user"]))
 	expect.Equal(originalID, userSecret.Data["ID"])
 	expect.Equal(originalAPIToken, userSecret.Data["apiToken"])
-	expect.Empty(tokenRenewalTimers)
+	expect.Empty(r.LocalUsers.TokenRenewalTimers)
 }
 
 func TestReconcileArgoCD_reconcileArgoLocalUsersUpdateTokenLifetime(t *testing.T) {
-	defer cleanupAllTokenTimers()
 	logf.SetLogger(ZapLogger(true))
 	var err error
 
@@ -249,6 +258,7 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersUpdateTokenLifetime(t *testing.T
 	// Reconcile to create the user secret and update the argocd-secret
 
 	r := createResources(cr, expect)
+	defer cleanupAllTokenTimers(r)
 	expect.NoError(r.reconcileLocalUsers(cr))
 
 	originalUserSecret := corev1.Secret{}
@@ -262,8 +272,8 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersUpdateTokenLifetime(t *testing.T
 
 	// Check that there's a timer to renew the token
 
-	expect.Len(tokenRenewalTimers, 1)
-	timer := tokenRenewalTimers[cr.Namespace+"/alice"]
+	expect.Len(r.LocalUsers.TokenRenewalTimers, 1)
+	timer := r.LocalUsers.TokenRenewalTimers[cr.Namespace+"/alice"]
 	expect.NotNil(timer)
 	expect.False(timer.stop)
 
@@ -285,8 +295,8 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersUpdateTokenLifetime(t *testing.T
 
 	// Check there is a new renewal timer
 
-	expect.Len(tokenRenewalTimers, 1)
-	timer1 := tokenRenewalTimers[cr.Namespace+"/alice"]
+	expect.Len(r.LocalUsers.TokenRenewalTimers, 1)
+	timer1 := r.LocalUsers.TokenRenewalTimers[cr.Namespace+"/alice"]
 	expect.NotNil(timer1)
 	expect.False(timer1.stop)
 
@@ -296,7 +306,6 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersUpdateTokenLifetime(t *testing.T
 }
 
 func TestReconcileArgoCD_reconcileArgoLocalUsersDelete(t *testing.T) {
-	defer cleanupAllTokenTimers()
 	logf.SetLogger(ZapLogger(true))
 	var err error
 
@@ -311,6 +320,7 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersDelete(t *testing.T) {
 	}
 
 	r := createResources(cr, expect)
+	defer cleanupAllTokenTimers(r)
 
 	argocdSecret := corev1.Secret{}
 	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: cr.Namespace}, &argocdSecret)
@@ -327,8 +337,8 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersDelete(t *testing.T) {
 
 	// Check that there's a timer to renew the token
 
-	expect.Len(tokenRenewalTimers, 1)
-	timer := tokenRenewalTimers[cr.Namespace+"/alice"]
+	expect.Len(r.LocalUsers.TokenRenewalTimers, 1)
+	timer := r.LocalUsers.TokenRenewalTimers[cr.Namespace+"/alice"]
 	expect.NotNil(timer)
 	expect.False(timer.stop)
 
@@ -347,13 +357,12 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersDelete(t *testing.T) {
 
 	// Check the renewal timer was removed
 
-	expect.Empty(tokenRenewalTimers)
+	expect.Empty(r.LocalUsers.TokenRenewalTimers)
 	expect.True(timer.stop)
 	expect.False(timer.timer.Stop()) // check that the timer was stopped
 }
 
 func TestReconcileArgoCD_reconcileArgoLocalUsersDeleteWithExtraConfigAPIKey(t *testing.T) {
-	defer cleanupAllTokenTimers()
 	logf.SetLogger(ZapLogger(true))
 	var err error
 
@@ -368,6 +377,7 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersDeleteWithExtraConfigAPIKey(t *t
 	}
 
 	r := createResources(cr, expect)
+	defer cleanupAllTokenTimers(r)
 
 	argocdSecret := corev1.Secret{}
 	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: cr.Namespace}, &argocdSecret)
@@ -384,8 +394,8 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersDeleteWithExtraConfigAPIKey(t *t
 
 	// Check that there's a timer to renew the token
 
-	expect.Len(tokenRenewalTimers, 1)
-	timer := tokenRenewalTimers[cr.Namespace+"/alice"]
+	expect.Len(r.LocalUsers.TokenRenewalTimers, 1)
+	timer := r.LocalUsers.TokenRenewalTimers[cr.Namespace+"/alice"]
 	expect.NotNil(timer)
 	expect.False(timer.stop)
 
@@ -408,13 +418,12 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersDeleteWithExtraConfigAPIKey(t *t
 
 	// Check the renewal timer was removed
 
-	expect.Empty(tokenRenewalTimers)
+	expect.Empty(r.LocalUsers.TokenRenewalTimers)
 	expect.True(timer.stop)
 	expect.False(timer.timer.Stop()) // check that the timer was stopped
 }
 
 func TestReconcileArgoCD_reconcileArgoLocalUsersDeleteWithExtraConfigLogin(t *testing.T) {
-	defer cleanupAllTokenTimers()
 	logf.SetLogger(ZapLogger(true))
 	var err error
 
@@ -429,6 +438,7 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersDeleteWithExtraConfigLogin(t *te
 	}
 
 	r := createResources(cr, expect)
+	defer cleanupAllTokenTimers(r)
 
 	argocdSecret := corev1.Secret{}
 	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: cr.Namespace}, &argocdSecret)
@@ -445,8 +455,8 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersDeleteWithExtraConfigLogin(t *te
 
 	// Check that there's a timer to renew the token
 
-	expect.Len(tokenRenewalTimers, 1)
-	timer := tokenRenewalTimers[cr.Namespace+"/alice"]
+	expect.Len(r.LocalUsers.TokenRenewalTimers, 1)
+	timer := r.LocalUsers.TokenRenewalTimers[cr.Namespace+"/alice"]
 	expect.NotNil(timer)
 	expect.False(timer.stop)
 
@@ -469,13 +479,12 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersDeleteWithExtraConfigLogin(t *te
 
 	// Check the renewal timer was removed
 
-	expect.Empty(tokenRenewalTimers)
+	expect.Empty(r.LocalUsers.TokenRenewalTimers)
 	expect.True(timer.stop)
 	expect.False(timer.timer.Stop()) // check that the timer was stopped
 }
 
 func TestReconcileArgoCD_reconcileArgoLocalUsersBasicAutoRenew(t *testing.T) {
-	defer cleanupAllTokenTimers()
 	logf.SetLogger(ZapLogger(true))
 	var err error
 
@@ -490,6 +499,7 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersBasicAutoRenew(t *testing.T) {
 	}
 
 	r := createResources(cr, expect)
+	defer cleanupAllTokenTimers(r)
 
 	// Reconcile to create the artifacts
 
@@ -497,8 +507,8 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersBasicAutoRenew(t *testing.T) {
 
 	// Check that the timer was created
 
-	expect.Len(tokenRenewalTimers, 1)
-	timer := tokenRenewalTimers[cr.Namespace+"/alice"]
+	expect.Len(r.LocalUsers.TokenRenewalTimers, 1)
+	timer := r.LocalUsers.TokenRenewalTimers[cr.Namespace+"/alice"]
 	expect.NotNil(timer)
 
 	// Retrieve the ID from the user secret
@@ -550,12 +560,11 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersBasicAutoRenew(t *testing.T) {
 
 	// Check that the timer was re-created
 
-	expect.Len(tokenRenewalTimers, 1)
-	expect.True(tokenRenewalTimers[cr.Namespace+"/alice"] != timer) // testing pointer inequality
+	expect.Len(r.LocalUsers.TokenRenewalTimers, 1)
+	expect.True(r.LocalUsers.TokenRenewalTimers[cr.Namespace+"/alice"] != timer) // testing pointer inequality
 }
 
 func TestReconcileArgoCD_reconcileArgoLocalUsersTurnOffAutoRenew(t *testing.T) {
-	defer cleanupAllTokenTimers()
 	logf.SetLogger(ZapLogger(true))
 
 	expect := assert.New(t)
@@ -571,6 +580,7 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersTurnOffAutoRenew(t *testing.T) {
 	}
 
 	r := createResources(cr, expect)
+	defer cleanupAllTokenTimers(r)
 
 	// Reconcile to create the artifacts
 
@@ -578,8 +588,8 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersTurnOffAutoRenew(t *testing.T) {
 
 	// Check that the timer was created
 
-	expect.Len(tokenRenewalTimers, 1)
-	timer := tokenRenewalTimers[cr.Namespace+"/alice"]
+	expect.Len(r.LocalUsers.TokenRenewalTimers, 1)
+	timer := r.LocalUsers.TokenRenewalTimers[cr.Namespace+"/alice"]
 	expect.NotNil(timer)
 	expect.False(timer.stop)
 
@@ -590,13 +600,12 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersTurnOffAutoRenew(t *testing.T) {
 
 	// Check that the timer was deleted
 
-	expect.Empty(tokenRenewalTimers)
+	expect.Empty(r.LocalUsers.TokenRenewalTimers)
 	expect.True(timer.stop)
 	expect.False(timer.timer.Stop()) // check that the timer was stopped
 }
 
 func TestReconcileArgoCD_reconcileArgoLocalUsersTurnOnAutoRenew(t *testing.T) {
-	defer cleanupAllTokenTimers()
 	logf.SetLogger(ZapLogger(true))
 
 	expect := assert.New(t)
@@ -612,6 +621,7 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersTurnOnAutoRenew(t *testing.T) {
 		},
 	}
 	r := createResources(cr, expect)
+	defer cleanupAllTokenTimers(r)
 
 	// Reconcile to create the artifacts
 
@@ -619,7 +629,7 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersTurnOnAutoRenew(t *testing.T) {
 
 	// Check that a timer was not created
 
-	expect.Empty(tokenRenewalTimers)
+	expect.Empty(r.LocalUsers.TokenRenewalTimers)
 
 	// Turn autorenew on
 
@@ -628,8 +638,8 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersTurnOnAutoRenew(t *testing.T) {
 
 	// Check that a timer was added
 
-	expect.Len(tokenRenewalTimers, 1)
-	timer := tokenRenewalTimers[cr.Namespace+"/alice"]
+	expect.Len(r.LocalUsers.TokenRenewalTimers, 1)
+	timer := r.LocalUsers.TokenRenewalTimers[cr.Namespace+"/alice"]
 	expect.NotNil(timer)
 	expect.False(timer.stop)
 }

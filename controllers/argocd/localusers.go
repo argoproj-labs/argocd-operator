@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -48,26 +47,6 @@ const (
 	localUserID            = "ID"
 	localUserTokenLifetime = "tokenLifetime"
 	localUserUser          = "user"
-)
-
-type lock struct {
-	lock sync.Mutex
-}
-
-func (l *lock) protect(code func()) {
-	l.lock.Lock()
-	defer l.lock.Unlock()
-	code()
-}
-
-type tokenRenewalTimer struct {
-	timer *time.Timer
-	stop  bool
-}
-
-var (
-	tokenRenewalTimers = map[string]*tokenRenewalTimer{}
-	userTokensLock     lock
 )
 
 func (r *ReconcileArgoCD) reconcileLocalUsers(cr *argoproj.ArgoCD) error {
@@ -121,13 +100,13 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 	// the token and the timer.
 	if secretExists && user.ApiKey != nil && !*user.ApiKey {
 		var err error
-		userTokensLock.protect(func() {
+		r.LocalUsers.UserTokensLock.protect(func() {
 			key := cr.Namespace + "/" + user.Name
-			existingTimer, ok := tokenRenewalTimers[key]
+			existingTimer, ok := r.LocalUsers.TokenRenewalTimers[key]
 			if ok {
 				existingTimer.stop = true
 				existingTimer.timer.Stop()
-				delete(tokenRenewalTimers, key)
+				delete(r.LocalUsers.TokenRenewalTimers, key)
 			}
 			err = r.cleanupUser(cr, user.Name, userSecret)
 		})
@@ -175,24 +154,24 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 			// If the secret exists and autoRenew is true, but there is no timer for the
 			// user, we need to add a timer for the remaining duration. This would
 			// happen when the operator is restared.
-			userTokensLock.protect(func() {
+			r.LocalUsers.UserTokensLock.protect(func() {
 				key := cr.Namespace + "/" + user.Name
-				if _, ok := tokenRenewalTimers[key]; !ok {
-					renewalTimer := &tokenRenewalTimer{}
+				if _, ok := r.LocalUsers.TokenRenewalTimers[key]; !ok {
+					renewalTimer := &TokenRenewalTimer{}
 					when := time.Until(time.Unix(expAt, 0))
 					timer := time.AfterFunc(when, func() {
-						userTokensLock.protect(func() {
+						r.LocalUsers.UserTokensLock.protect(func() {
 							if renewalTimer.stop {
 								return
 							}
 							err := r.issueToken(*cr, user, userSecret, true, tokenLifetime, tokenDuration, "token automatically re-issued after expiration", signingKey)
 							if err != nil {
-								log.Error(err, "when trying to re-issue token for user", user.Name)
+								log.Error(err, fmt.Sprintf("when trying to re-issue token for user %s", key))
 							}
 						})
 					})
 					renewalTimer.timer = timer
-					tokenRenewalTimers[key] = renewalTimer
+					r.LocalUsers.TokenRenewalTimers[key] = renewalTimer
 				}
 			})
 		}
@@ -204,13 +183,13 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 	// so just update the secret.
 	if autoRenewChanged && autoRenew == "false" {
 		var err error
-		userTokensLock.protect(func() {
+		r.LocalUsers.UserTokensLock.protect(func() {
 			key := cr.Namespace + "/" + user.Name
-			existingTimer, ok := tokenRenewalTimers[key]
+			existingTimer, ok := r.LocalUsers.TokenRenewalTimers[key]
 			if ok {
 				existingTimer.stop = true
 				existingTimer.timer.Stop()
-				delete(tokenRenewalTimers, key)
+				delete(r.LocalUsers.TokenRenewalTimers, key)
 			}
 			if !tokenLifetimeChanged {
 				userSecret.Data[localUserAutoRenew] = []byte(autoRenew)
@@ -229,22 +208,22 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 	if autoRenewChanged && autoRenew == "true" && !tokenLifetimeChanged && tokenDuration > 0 {
 		var err error
 
-		userTokensLock.protect(func() {
-			renewalTimer := &tokenRenewalTimer{}
+		r.LocalUsers.UserTokensLock.protect(func() {
+			renewalTimer := &TokenRenewalTimer{}
 			when := time.Until(time.Unix(expAt, 0))
 			timer := time.AfterFunc(when, func() {
-				userTokensLock.protect(func() {
+				r.LocalUsers.UserTokensLock.protect(func() {
 					if renewalTimer.stop {
 						return
 					}
 					err := r.issueToken(*cr, user, userSecret, secretExists, tokenLifetime, tokenDuration, "token automatically re-issued after expiration", signingKey)
 					if err != nil {
-						log.Error(err, "when trying to re-issue token for user", cr.Namespace+"/"+user.Name)
+						log.Error(err, fmt.Sprintf("when trying to re-issue token for user %s/%s", cr.Namespace, user.Name))
 					}
 				})
 			})
 			renewalTimer.timer = timer
-			tokenRenewalTimers[cr.Namespace+"/"+user.Name] = renewalTimer
+			r.LocalUsers.TokenRenewalTimers[cr.Namespace+"/"+user.Name] = renewalTimer
 			userSecret.Data[localUserAutoRenew] = []byte(autoRenew)
 			argoutil.LogResourceUpdate(log, &userSecret, "autoRenew set to true")
 			err = r.Update(context.TODO(), &userSecret)
@@ -265,7 +244,7 @@ func (r *ReconcileArgoCD) reconcileUser(cr *argoproj.ArgoCD, user argoproj.Local
 	}
 
 	err = nil
-	userTokensLock.protect(func() {
+	r.LocalUsers.UserTokensLock.protect(func() {
 		err = r.issueToken(*cr, user, userSecret, secretExists, tokenLifetime, tokenDuration, explanation, signingKey)
 	})
 	return nil
@@ -361,26 +340,26 @@ func (r *ReconcileArgoCD) issueToken(cr argoproj.ArgoCD, user argoproj.LocalUser
 	// Find the timer for the user and update it
 	if tokenDuration > 0 && autoRenew == "true" {
 		key := cr.Namespace + "/" + user.Name
-		existingTimer, ok := tokenRenewalTimers[key]
+		existingTimer, ok := r.LocalUsers.TokenRenewalTimers[key]
 		if ok {
 			existingTimer.stop = true
 			existingTimer.timer.Stop()
-			delete(tokenRenewalTimers, key)
+			delete(r.LocalUsers.TokenRenewalTimers, key)
 		}
-		renewalTimer := &tokenRenewalTimer{}
+		renewalTimer := &TokenRenewalTimer{}
 		timer := time.AfterFunc(tokenDuration, func() {
-			userTokensLock.protect(func() {
+			r.LocalUsers.UserTokensLock.protect(func() {
 				if renewalTimer.stop {
 					return
 				}
 				err := r.issueToken(cr, user, userSecret, true, tokenLifetime, tokenDuration, "token automatically re-issued after expiration", signingKey)
 				if err != nil {
-					log.Error(err, "when trying to re-issue token for user", user.Name)
+					log.Error(err, fmt.Sprintf("when trying to re-issue token for user %s", key))
 				}
 			})
 		})
 		renewalTimer.timer = timer
-		tokenRenewalTimers[cr.Namespace+"/"+user.Name] = renewalTimer
+		r.LocalUsers.TokenRenewalTimers[cr.Namespace+"/"+user.Name] = renewalTimer
 	}
 
 	return nil
@@ -412,13 +391,13 @@ func (r *ReconcileArgoCD) cleanupLocalUsers(cr *argoproj.ArgoCD) error {
 		}
 		if !found {
 			var err error
-			userTokensLock.protect(func() {
+			r.LocalUsers.UserTokensLock.protect(func() {
 				key := cr.Namespace + "/" + userName
-				existingTimer, ok := tokenRenewalTimers[key]
+				existingTimer, ok := r.LocalUsers.TokenRenewalTimers[key]
 				if ok {
 					existingTimer.stop = true
 					existingTimer.timer.Stop()
-					delete(tokenRenewalTimers, key)
+					delete(r.LocalUsers.TokenRenewalTimers, key)
 				}
 				err = r.cleanupUser(cr, userName, secret)
 			})
@@ -491,27 +470,16 @@ func localUsersInExtraConfig(cr *argoproj.ArgoCD) map[string]bool {
 	return localUsers
 }
 
-func cleanupNamespaceTokenTimers(namespace string) {
-	userTokensLock.protect(func() {
+func (r *ReconcileArgoCD) cleanupNamespaceTokenTimers(namespace string) {
+	r.LocalUsers.UserTokensLock.protect(func() {
 		log.Info(fmt.Sprintf("removing local user token renewal timers for namespace \"%s\"", namespace))
 		prefix := namespace + "/"
-		for key, timer := range tokenRenewalTimers {
+		for key, timer := range r.LocalUsers.TokenRenewalTimers {
 			if strings.HasPrefix(key, prefix) {
 				timer.stop = true
 				timer.timer.Stop()
-				delete(tokenRenewalTimers, key)
+				delete(r.LocalUsers.TokenRenewalTimers, key)
 			}
-		}
-	})
-}
-
-// For use by test code
-func cleanupAllTokenTimers() {
-	userTokensLock.protect(func() {
-		for key, timer := range tokenRenewalTimers {
-			timer.stop = true
-			timer.timer.Stop()
-			delete(tokenRenewalTimers, key)
 		}
 	})
 }
