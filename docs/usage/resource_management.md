@@ -65,13 +65,14 @@ spec:
         memory: 1Gi
 ```
 
-Note: The above mentioned resource requirements for the workloads are not the recommended values. Please do not consider them as defaults for your instance.
+!!! note
+    The above mentioned resource requirements for the workloads are not the recommended values. Please do not consider them as defaults for your instance.
 
 ## Patch the Argo CD instance to update the resource requirements
 
 A User can update the resource requirements for all or any of your workloads post installation.
 
-For example, A user can update the Application Controller resource requests of `example` Argo CD instance in `argocd` namespace using the below commands.
+For example, a user can update the Application Controller resource requests of `example` Argo CD instance in `argocd` namespace using the below commands.
 
 ```sh
 kubectl -n argocd patch argocd example --type='json' -p='[{"op": "replace", "path": "/spec/controller/resources/requests/cpu", "value":"1"}]'
