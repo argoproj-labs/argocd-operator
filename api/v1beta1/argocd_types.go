@@ -803,7 +803,7 @@ type LocalUserSpec struct {
 	TokenLifetime string `json:"tokenLifetime,omitempty"`
 
 	// AutoRenewToken specifies if a new token is to be issued once the existing
-	// one has expired
+	// one has expired. Default is true
 	AutoRenewToken *bool `json:"autoRenewToken,omitempty"`
 }
 
