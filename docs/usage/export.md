@@ -1,6 +1,12 @@
 # Export
 
-See the [ArgoCDExport Reference][argocdexport_reference] for the full list of properties to configure the export process for an Argo CD cluster.
+Argo CD can export the details of managed application periodically, facilitating operations tasks such as backups or migrations.
+The data consists of a series of Kubernetes manifests representing the various cluster resources in YAML format stored in a single file.
+This exported YAML file is then `AES` encrypted before being saved to the storage backend of choice.
+
+See the Argo CD [Disaster Recovery][argocd_dr] documentation for more information on the Argo CD recovery procedure.
+
+See the [ArgoCDExport Reference][argocdexport_reference] for the full list of properties to configure the export process.
 
 ## Requirements
 
@@ -39,12 +45,6 @@ come and go, starting up everytime by importing the same backup data, if desired
 
 See the `ArgoCD` [Import Reference][argocd_import] documentation for more information on importing the backup data when starting a new 
 Argo CD cluster.
-
-## Export Data
-
-The Argo CD export data consists of a series of Kubernetes manifests representing the various cluster resources in YAML format stored in a single file. This exported YAML file is then `AES` encrypted before being saved to the storage backend of choice.
-
-See the Argo CD [Disaster Recovery][argocd_dr] documentation for more information on the Argo CD export data.
 
 ## Export Secrets
 
