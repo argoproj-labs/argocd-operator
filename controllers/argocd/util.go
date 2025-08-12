@@ -29,8 +29,6 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
-	"gopkg.in/yaml.v2"
-
 	"github.com/argoproj/argo-cd/v3/util/glob"
 	"github.com/go-logr/logr"
 
@@ -40,10 +38,8 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdagent"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
-	oappsv1 "github.com/openshift/api/apps/v1"
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
-	configv1client "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/sethvargo/go-password/password"
 	"golang.org/x/mod/semver"
@@ -61,7 +57,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -295,23 +290,6 @@ func getArgoServerHost(cr *argoproj.ArgoCD) string {
 		host = cr.Spec.Server.Host
 	}
 	return host
-}
-
-// getKeycloakIngressHost will return the host for the given ArgoCD.
-func getKeycloakIngressHost(cr *argoproj.ArgoCDKeycloakSpec) string {
-	if cr != nil && len(cr.Host) > 0 {
-		return cr.Host
-	}
-	// If cr is nil or cr.Host is empty, return a default value or handle it accordingly.
-	return keycloakIngressHost
-}
-
-// getKeycloakIngressHost will return the host for the given ArgoCD.
-func getKeycloakOpenshiftHost(cr *argoproj.ArgoCDKeycloakSpec) string {
-	if cr != nil && len(cr.Host) > 0 {
-		return cr.Host
-	}
-	return ""
 }
 
 // getArgoServerResources will return the ResourceRequirements for the Argo CD server container.
@@ -685,10 +663,6 @@ func InspectCluster() error {
 		return err
 	}
 
-	if err := verifyKeycloakTemplateAPIs(); err != nil {
-		return err
-	}
-
 	if err := verifyVersionAPI(); err != nil {
 		return err
 	}
@@ -1001,38 +975,6 @@ func removeString(slice []string, s string) []string {
 // setResourceWatches will register Watches for each of the supported Resources.
 func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, clusterSecretResourceMapper, applicationSetGitlabSCMTLSConfigMapMapper, nmMapper handler.MapFunc) *builder.Builder {
 
-	deploymentConfigPred := predicate.Funcs{
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			// Ignore updates to CR status in which case metadata.Generation does not change
-			var count int32 = 1
-			newDC, ok := e.ObjectNew.(*oappsv1.DeploymentConfig)
-			if !ok {
-				return false
-			}
-			oldDC, ok := e.ObjectOld.(*oappsv1.DeploymentConfig)
-			if !ok {
-				return false
-			}
-			if newDC.Name == defaultKeycloakIdentifier {
-				if newDC.Status.AvailableReplicas == count {
-					return true
-				}
-				if newDC.Status.AvailableReplicas == int32(0) &&
-					!reflect.DeepEqual(oldDC.Status.AvailableReplicas, newDC.Status.AvailableReplicas) {
-					// Handle the deletion of keycloak pod.
-					log.Info(fmt.Sprintf("Handle the pod deletion event for keycloak deployment config %s in namespace %s",
-						newDC.Name, newDC.Namespace))
-					err := handleKeycloakPodDeletion(newDC)
-					if err != nil {
-						log.Error(err, fmt.Sprintf("Failed to update Deployment Config %s for keycloak pod deletion in namespace %s",
-							newDC.Name, newDC.Namespace))
-					}
-				}
-			}
-			return false
-		},
-	}
-
 	deleteSSOPred := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			newCR, ok := e.ObjectNew.(*argoproj.ArgoCD)
@@ -1159,12 +1101,6 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 
 		// Watch Prometheus ServiceMonitor sub-resources owned by ArgoCD instances.
 		bldr.Owns(&monitoringv1.ServiceMonitor{})
-	}
-
-	if CanUseKeycloakWithTemplate() {
-		// Watch for the changes to Deployment Config
-		bldr.Owns(&oappsv1.DeploymentConfig{}, builder.WithPredicates(deploymentConfigPred))
-
 	}
 
 	// Watch for changes to NotificationsConfiguration CR
@@ -1565,64 +1501,6 @@ func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.
 		}
 	}
 	return nil
-}
-
-func isProxyCluster() bool {
-	cfg, err := config.GetConfig()
-	if err != nil {
-		log.Error(err, "failed to get k8s config")
-	}
-
-	// Initialize config client.
-	configClient, err := configv1client.NewForConfig(cfg)
-	if err != nil {
-		log.Error(err, "failed to initialize openshift config client")
-		return false
-	}
-
-	proxy, err := configClient.Proxies().Get(context.TODO(), "cluster", metav1.GetOptions{})
-	if err != nil {
-		log.Error(err, "failed to get proxy configuration")
-		return false
-	}
-
-	if proxy.Spec.HTTPSProxy != "" {
-		log.Info("proxy configuration detected")
-		return true
-	}
-
-	return false
-}
-
-func (r *ReconcileArgoCD) getOpenShiftAPIURL() string {
-	k8s := r.K8sClient
-
-	cm, err := k8s.CoreV1().ConfigMaps("openshift-console").Get(context.TODO(), "console-config", metav1.GetOptions{})
-	if err != nil {
-		log.Error(err, "")
-	}
-
-	var cf string
-	if v, ok := cm.Data["console-config.yaml"]; ok {
-		cf = v
-	}
-
-	data := make(map[string]interface{})
-	err = yaml.Unmarshal([]byte(cf), data)
-	if err != nil {
-		log.Error(err, "")
-	}
-
-	var apiURL interface{}
-	var out string
-	if c, ok := data["clusterInfo"]; ok {
-		ci, _ := c.(map[interface{}]interface{})
-
-		apiURL = ci["masterPublicURL"]
-		out = fmt.Sprintf("%v", apiURL)
-	}
-
-	return out
 }
 
 func AddSeccompProfileForOpenShift(client client.Client, podspec *corev1.PodSpec) {

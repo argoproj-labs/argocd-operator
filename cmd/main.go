@@ -25,11 +25,8 @@ import (
 	"strings"
 
 	"github.com/argoproj/argo-cd/v3/util/env"
-	appsv1 "github.com/openshift/api/apps/v1"
 	configv1 "github.com/openshift/api/config/v1"
-	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
-	templatev1 "github.com/openshift/api/template/v1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -223,25 +220,6 @@ func main() {
 			setupLog.Error(err, "")
 			os.Exit(1)
 		}
-	}
-
-	// Setup Schemes for SSO if template instance is available.
-	if argocd.CanUseKeycloakWithTemplate() {
-		setupLog.Info("Keycloak instance can be managed using OpenShift Template")
-		if err := templatev1.Install(mgr.GetScheme()); err != nil {
-			setupLog.Error(err, "")
-			os.Exit(1)
-		}
-		if err := appsv1.Install(mgr.GetScheme()); err != nil {
-			setupLog.Error(err, "")
-			os.Exit(1)
-		}
-		if err := oauthv1.Install(mgr.GetScheme()); err != nil {
-			setupLog.Error(err, "")
-			os.Exit(1)
-		}
-	} else {
-		setupLog.Info("Keycloak instance cannot be managed using OpenShift Template, as DeploymentConfig/Template API is not present")
 	}
 
 	k8sClient, err := initK8sClient()

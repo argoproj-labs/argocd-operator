@@ -6,7 +6,6 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 
-	oappsv1 "github.com/openshift/api/apps/v1"
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/assert"
@@ -17,86 +16,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
-
-func TestReconcileArgoCD_reconcileStatusKeycloak_K8s(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-
-	a := makeTestArgoCDForKeycloak()
-
-	resObjs := []client.Object{a}
-	subresObjs := []client.Object{a}
-	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
-
-	assert.NoError(t, createNamespace(r, a.Namespace, ""))
-
-	d := newKeycloakDeployment(a)
-
-	// keycloak not installed
-	_ = r.reconcileStatusKeycloak(a)
-	assert.Equal(t, "Unknown", a.Status.SSO)
-
-	// keycloak installation started
-	err := r.Create(context.TODO(), d)
-	assert.NoError(t, err)
-
-	_ = r.reconcileStatusKeycloak(a)
-	assert.Equal(t, "Pending", a.Status.SSO)
-
-	// keycloak installation completed
-	d.Status.ReadyReplicas = *d.Spec.Replicas
-	err = r.Client.Status().Update(context.TODO(), d)
-	assert.NoError(t, err)
-
-	_ = r.reconcileStatusKeycloak(a)
-	assert.Equal(t, "Running", a.Status.SSO)
-}
-
-func TestReconcileArgoCD_reconcileStatusKeycloak_OpenShift(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-
-	a := makeTestArgoCDForKeycloak()
-
-	resObjs := []client.Object{a}
-	subresObjs := []client.Object{a}
-	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
-
-	assert.NoError(t, createNamespace(r, a.Namespace, ""))
-
-	assert.NoError(t, oappsv1.Install(r.Scheme))
-	templateAPIFound = true
-	deploymentConfigAPIFound = true
-	defer removeTemplateAPI()
-
-	dc := getKeycloakDeploymentConfigTemplate(a)
-	dc.Name = defaultKeycloakIdentifier
-
-	// keycloak not installed
-	_ = r.reconcileStatusKeycloak(a)
-	assert.Equal(t, "Unknown", a.Status.SSO)
-
-	// create new client with dc object already present, but with 0 ready replicas to simulate
-	// keycloak installation started
-	resObjs = append(resObjs, dc)
-	subresObjs = append(subresObjs, dc)
-	r.Client = makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-
-	_ = r.reconcileStatusKeycloak(a)
-	assert.Equal(t, "Pending", a.Status.SSO)
-
-	// create new client with dc object already present, with 1 ready replica to simulate
-	// keycloak installation completed
-	dc.Status.ReadyReplicas = dc.Spec.Replicas
-	r.Client = makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-
-	_ = r.reconcileStatusKeycloak(a)
-	assert.Equal(t, "Running", a.Status.SSO)
-}
 
 func TestReconcileArgoCD_reconcileStatusSSO(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))

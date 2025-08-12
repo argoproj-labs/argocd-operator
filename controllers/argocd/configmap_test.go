@@ -556,14 +556,6 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexDisabled(t *testing.T) {
 				cr.Spec.SSO = nil
 			}),
 		},
-		{
-			name: "dex disabled by switching provider",
-			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Provider: argoproj.SSOProviderTypeKeycloak,
-				}
-			}),
-		},
 	}
 
 	for _, test := range tests {
@@ -613,23 +605,6 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_dexConfigDeletedwhenDexDisabled(
 					Provider: argoproj.SSOProviderTypeDex,
 					Dex: &argoproj.ArgoCDDexSpec{
 						Config: "test-dex-config",
-					},
-				}
-			}),
-			wantConfigRemoved: true,
-		},
-		{
-			name: "dex disabled by switching provider",
-			updateCrFunc: func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Provider: argoproj.SSOProviderTypeKeycloak,
-				}
-			},
-			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Provider: argoproj.SSOProviderTypeDex,
-					Dex: &argoproj.ArgoCDDexSpec{
-						OpenShiftOAuth: true,
 					},
 				}
 			}),
@@ -1148,7 +1123,7 @@ func Test_reconcileRBAC(t *testing.T) {
 	err := r.reconcileRBAC(a)
 	assert.NoError(t, err)
 
-	// Verify ArgoCD CR can be used to configure the RBAC policy matcher mode.\
+	// Verify ArgoCD CR can be used to configure the RBAC policy matcher mode.
 	matcherMode := "regex"
 	a.Spec.RBAC.PolicyMatcherMode = &matcherMode
 
@@ -1164,7 +1139,7 @@ func Test_reconcileRBAC(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, cm.Data["policy.matchMode"], matcherMode)
 
-	// Verify when SSO different from keycloak it sync
+	// Verify when SSO is dex, RBAC scopes are synced
 	rbacScopes := "[groups,email]"
 	cmRbacScopes := ""
 	a.Spec.RBAC.Scopes = &rbacScopes
