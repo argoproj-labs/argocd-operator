@@ -18,7 +18,7 @@ When `ExtraConfig` is set, the entries specified are reconciled to the live Argo
 ## Example
 
 ```yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd

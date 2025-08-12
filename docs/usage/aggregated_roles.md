@@ -5,7 +5,7 @@ Using an aggregated cluster role enables users to easily add their own permissio
 A user can enable creation of aggregated ClusterRole by setting `argocd.spec.aggregatedClusterRoles` field to `true`.
 
 ```yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd

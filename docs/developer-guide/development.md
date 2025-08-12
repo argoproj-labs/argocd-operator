@@ -129,7 +129,7 @@ For more infomation see [build operator images to test on a cluster.](https://ar
 
 Once the operator is installed, you would need to configure an ArgoCD instance that the operator would manage. The sample instance configuration is below:
 ``` yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd

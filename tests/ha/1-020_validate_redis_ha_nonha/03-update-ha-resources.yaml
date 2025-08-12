@@ -1,4 +1,4 @@
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd
@@ -14,4 +14,3 @@ spec:
       requests:
         cpu: 200m
         memory: 128Mi
-  

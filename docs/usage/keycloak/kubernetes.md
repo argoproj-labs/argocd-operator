@@ -30,7 +30,7 @@ ingress-nginx       nginx-ingress-controller-6fc5bcc8c9-vg26z               1/1 
 The following example shows the most minimal valid manifest to create a new Argo CD cluster with Keycloak as a Single sign-on provider.
 
 ```yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd
@@ -54,7 +54,7 @@ Add the rootCA to your Argo CD custom resource `.spec.sso.keycloak.rootCA` field
 Please refer to the below example:
 
 ```yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd
@@ -170,7 +170,7 @@ You can delete the Keycloak resources and its relevant configuration by removing
 Example ArgoCD after removing the SSO field should look something like this.
 
 ```yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd
