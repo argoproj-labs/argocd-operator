@@ -492,12 +492,6 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
 
-	if !IsOpenShiftCluster() {
-		deploy.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
-			RunAsUser: int64Ptr(1000),
-		}
-	}
-
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Args:            getArgoRedisArgs(useTLS),
 		Image:           getRedisContainerImage(cr),
@@ -530,6 +524,10 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 			},
 		},
 	}}
+
+	if !IsOpenShiftCluster() {
+		deploy.Spec.Template.Spec.Containers[0].SecurityContext.RunAsUser = int64Ptr(999)
+	}
 
 	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "argocd-redis")
 	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{
