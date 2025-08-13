@@ -1,4 +1,4 @@
-name: Integration tests
+name: Code scans
 on:
   pull_request:
     paths-ignore:
@@ -10,7 +10,7 @@ on:
 
 jobs:
   lint_code:
-    name: Run golangci-lint on PR
+    name: Run golangci-lint and gosec
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
