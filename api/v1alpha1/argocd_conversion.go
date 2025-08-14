@@ -12,110 +12,110 @@ import (
 var conversionLogger = ctrl.Log.WithName("conversion-webhook")
 
 // ConvertTo converts this (v1alpha1) ArgoCD to the Hub version (v1beta1).
-func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
+func (argocd *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	conversionLogger.V(1).Info("v1alpha1 to v1beta1 conversion requested.")
 	dst := dstRaw.(*v1beta1.ArgoCD)
 
 	// ObjectMeta conversion
-	dst.ObjectMeta = src.ObjectMeta
+	dst.ObjectMeta = argocd.ObjectMeta
 
 	// Spec conversion
 
 	// sso field
-	sso := ConvertAlphaToBetaSSO(src.Spec.SSO)
+	sso := ConvertAlphaToBetaSSO(argocd.Spec.SSO)
 
 	// in case of conflict, deprecated fields will have more priority during conversion to beta
 	// deprecated keycloak configs set in alpha (.spec.sso.image, .spec.sso.version, .spec.sso.verifyTLS, .spec.sso.resources),
 	// override .spec.sso.keycloak in beta
-	if src.Spec.SSO != nil && !reflect.DeepEqual(src.Spec.SSO, &ArgoCDSSOSpec{}) {
-		if src.Spec.SSO.Image != "" || src.Spec.SSO.Version != "" || src.Spec.SSO.VerifyTLS != nil || src.Spec.SSO.Resources != nil {
+	if argocd.Spec.SSO != nil && !reflect.DeepEqual(argocd.Spec.SSO, &ArgoCDSSOSpec{}) {
+		if argocd.Spec.SSO.Image != "" || argocd.Spec.SSO.Version != "" || argocd.Spec.SSO.VerifyTLS != nil || argocd.Spec.SSO.Resources != nil {
 			if sso.Keycloak == nil {
 				sso.Keycloak = &v1beta1.ArgoCDKeycloakSpec{}
 			}
-			sso.Keycloak.Image = src.Spec.SSO.Image
-			sso.Keycloak.Version = src.Spec.SSO.Version
-			sso.Keycloak.VerifyTLS = src.Spec.SSO.VerifyTLS
-			sso.Keycloak.Resources = src.Spec.SSO.Resources
+			sso.Keycloak.Image = argocd.Spec.SSO.Image
+			sso.Keycloak.Version = argocd.Spec.SSO.Version
+			sso.Keycloak.VerifyTLS = argocd.Spec.SSO.VerifyTLS
+			sso.Keycloak.Resources = argocd.Spec.SSO.Resources
 
 		}
 	}
 
 	// deprecated dex configs set in alpha (.spec.dex), override .spec.sso.dex in beta
-	if src.Spec.Dex != nil && !reflect.DeepEqual(src.Spec.Dex, &ArgoCDDexSpec{}) && (src.Spec.Dex.Config != "" || src.Spec.Dex.OpenShiftOAuth) {
+	if argocd.Spec.Dex != nil && !reflect.DeepEqual(argocd.Spec.Dex, &ArgoCDDexSpec{}) && (argocd.Spec.Dex.Config != "" || argocd.Spec.Dex.OpenShiftOAuth) {
 		if sso == nil {
 			sso = &v1beta1.ArgoCDSSOSpec{}
 		}
 		sso.Provider = v1beta1.SSOProviderTypeDex
-		sso.Dex = ConvertAlphaToBetaDex(src.Spec.Dex)
+		sso.Dex = ConvertAlphaToBetaDex(argocd.Spec.Dex)
 	}
 
 	dst.Spec.SSO = sso
 
 	// rest of the fields
-	dst.Spec.ApplicationSet = ConvertAlphaToBetaApplicationSet(src.Spec.ApplicationSet)
-	dst.Spec.ExtraConfig = src.Spec.ExtraConfig
-	dst.Spec.ApplicationInstanceLabelKey = src.Spec.ApplicationInstanceLabelKey
+	dst.Spec.ApplicationSet = ConvertAlphaToBetaApplicationSet(argocd.Spec.ApplicationSet)
+	dst.Spec.ExtraConfig = argocd.Spec.ExtraConfig
+	dst.Spec.ApplicationInstanceLabelKey = argocd.Spec.ApplicationInstanceLabelKey
 	//lint:ignore SA1019 known to be deprecated
-	dst.Spec.ConfigManagementPlugins = src.Spec.ConfigManagementPlugins //nolint:staticcheck // SA1019: We must test deprecated fields.
-	dst.Spec.Controller = *ConvertAlphaToBetaController(&src.Spec.Controller)
-	dst.Spec.DisableAdmin = src.Spec.DisableAdmin
-	dst.Spec.ExtraConfig = src.Spec.ExtraConfig
-	dst.Spec.GATrackingID = src.Spec.GATrackingID
-	dst.Spec.GAAnonymizeUsers = src.Spec.GAAnonymizeUsers
+	dst.Spec.ConfigManagementPlugins = argocd.Spec.ConfigManagementPlugins //nolint:staticcheck // SA1019: We must test deprecated fields.
+	dst.Spec.Controller = *ConvertAlphaToBetaController(&argocd.Spec.Controller)
+	dst.Spec.DisableAdmin = argocd.Spec.DisableAdmin
+	dst.Spec.ExtraConfig = argocd.Spec.ExtraConfig
+	dst.Spec.GATrackingID = argocd.Spec.GATrackingID
+	dst.Spec.GAAnonymizeUsers = argocd.Spec.GAAnonymizeUsers
 	//lint:ignore SA1019 known to be deprecated
-	dst.Spec.Grafana = *ConvertAlphaToBetaGrafana(&src.Spec.Grafana) //nolint:staticcheck // SA1019: We must test deprecated fields.
-	dst.Spec.HA = *ConvertAlphaToBetaHA(&src.Spec.HA)
-	dst.Spec.HelpChatURL = src.Spec.HelpChatURL
-	dst.Spec.HelpChatText = src.Spec.HelpChatText
-	dst.Spec.Image = src.Spec.Image
-	dst.Spec.Import = (*v1beta1.ArgoCDImportSpec)(src.Spec.Import)
+	dst.Spec.Grafana = *ConvertAlphaToBetaGrafana(&argocd.Spec.Grafana) //nolint:staticcheck // SA1019: We must test deprecated fields.
+	dst.Spec.HA = *ConvertAlphaToBetaHA(&argocd.Spec.HA)
+	dst.Spec.HelpChatURL = argocd.Spec.HelpChatURL
+	dst.Spec.HelpChatText = argocd.Spec.HelpChatText
+	dst.Spec.Image = argocd.Spec.Image
+	dst.Spec.Import = (*v1beta1.ArgoCDImportSpec)(argocd.Spec.Import)
 	//lint:ignore SA1019 known to be deprecated
-	dst.Spec.InitialRepositories = src.Spec.InitialRepositories //nolint:staticcheck // SA1019: We must test deprecated fields.
-	dst.Spec.InitialSSHKnownHosts = v1beta1.SSHHostsSpec(src.Spec.InitialSSHKnownHosts)
-	dst.Spec.KustomizeBuildOptions = src.Spec.KustomizeBuildOptions
-	dst.Spec.KustomizeVersions = ConvertAlphaToBetaKustomizeVersions(src.Spec.KustomizeVersions)
-	dst.Spec.OIDCConfig = src.Spec.OIDCConfig
-	dst.Spec.Monitoring = v1beta1.ArgoCDMonitoringSpec(src.Spec.Monitoring)
-	dst.Spec.NodePlacement = (*v1beta1.ArgoCDNodePlacementSpec)(src.Spec.NodePlacement)
-	dst.Spec.Notifications = v1beta1.ArgoCDNotifications(src.Spec.Notifications)
-	dst.Spec.Prometheus = *ConvertAlphaToBetaPrometheus(&src.Spec.Prometheus)
-	dst.Spec.RBAC = v1beta1.ArgoCDRBACSpec(src.Spec.RBAC)
-	dst.Spec.Redis = *ConvertAlphaToBetaRedis(&src.Spec.Redis)
-	dst.Spec.Repo = *ConvertAlphaToBetaRepo(&src.Spec.Repo)
+	dst.Spec.InitialRepositories = argocd.Spec.InitialRepositories //nolint:staticcheck // SA1019: We must test deprecated fields.
+	dst.Spec.InitialSSHKnownHosts = v1beta1.SSHHostsSpec(argocd.Spec.InitialSSHKnownHosts)
+	dst.Spec.KustomizeBuildOptions = argocd.Spec.KustomizeBuildOptions
+	dst.Spec.KustomizeVersions = ConvertAlphaToBetaKustomizeVersions(argocd.Spec.KustomizeVersions)
+	dst.Spec.OIDCConfig = argocd.Spec.OIDCConfig
+	dst.Spec.Monitoring = v1beta1.ArgoCDMonitoringSpec(argocd.Spec.Monitoring)
+	dst.Spec.NodePlacement = (*v1beta1.ArgoCDNodePlacementSpec)(argocd.Spec.NodePlacement)
+	dst.Spec.Notifications = v1beta1.ArgoCDNotifications(argocd.Spec.Notifications)
+	dst.Spec.Prometheus = *ConvertAlphaToBetaPrometheus(&argocd.Spec.Prometheus)
+	dst.Spec.RBAC = v1beta1.ArgoCDRBACSpec(argocd.Spec.RBAC)
+	dst.Spec.Redis = *ConvertAlphaToBetaRedis(&argocd.Spec.Redis)
+	dst.Spec.Repo = *ConvertAlphaToBetaRepo(&argocd.Spec.Repo)
 	//lint:ignore SA1019 known to be deprecated
-	dst.Spec.RepositoryCredentials = src.Spec.RepositoryCredentials //nolint:staticcheck // SA1019: We must test deprecated fields.
-	dst.Spec.ResourceHealthChecks = ConvertAlphaToBetaResourceHealthChecks(src.Spec.ResourceHealthChecks)
-	dst.Spec.ResourceIgnoreDifferences = ConvertAlphaToBetaResourceIgnoreDifferences(src.Spec.ResourceIgnoreDifferences)
-	dst.Spec.ResourceActions = ConvertAlphaToBetaResourceActions(src.Spec.ResourceActions)
-	dst.Spec.ResourceExclusions = src.Spec.ResourceExclusions
-	dst.Spec.ResourceInclusions = src.Spec.ResourceInclusions
-	dst.Spec.ResourceTrackingMethod = src.Spec.ResourceTrackingMethod
-	dst.Spec.Server = *ConvertAlphaToBetaServer(&src.Spec.Server)
-	dst.Spec.SourceNamespaces = src.Spec.SourceNamespaces
-	dst.Spec.StatusBadgeEnabled = src.Spec.StatusBadgeEnabled
-	dst.Spec.TLS = *ConvertAlphaToBetaTLS(&src.Spec.TLS)
-	dst.Spec.UsersAnonymousEnabled = src.Spec.UsersAnonymousEnabled
-	dst.Spec.Version = src.Spec.Version
-	dst.Spec.Banner = (*v1beta1.Banner)(src.Spec.Banner)
-	dst.Spec.DefaultClusterScopedRoleDisabled = src.Spec.DefaultClusterScopedRoleDisabled
-	dst.Spec.AggregatedClusterRoles = src.Spec.AggregatedClusterRoles
-	dst.Spec.ArgoCDAgent = ConvertAlphaToBetaArgoCDAgent(src.Spec.ArgoCDAgent)
-	dst.Spec.NamespaceManagement = ConvertAlphaToBetaNamespaceManagement(src.Spec.NamespaceManagement)
+	dst.Spec.RepositoryCredentials = argocd.Spec.RepositoryCredentials //nolint:staticcheck // SA1019: We must test deprecated fields.
+	dst.Spec.ResourceHealthChecks = ConvertAlphaToBetaResourceHealthChecks(argocd.Spec.ResourceHealthChecks)
+	dst.Spec.ResourceIgnoreDifferences = ConvertAlphaToBetaResourceIgnoreDifferences(argocd.Spec.ResourceIgnoreDifferences)
+	dst.Spec.ResourceActions = ConvertAlphaToBetaResourceActions(argocd.Spec.ResourceActions)
+	dst.Spec.ResourceExclusions = argocd.Spec.ResourceExclusions
+	dst.Spec.ResourceInclusions = argocd.Spec.ResourceInclusions
+	dst.Spec.ResourceTrackingMethod = argocd.Spec.ResourceTrackingMethod
+	dst.Spec.Server = *ConvertAlphaToBetaServer(&argocd.Spec.Server)
+	dst.Spec.SourceNamespaces = argocd.Spec.SourceNamespaces
+	dst.Spec.StatusBadgeEnabled = argocd.Spec.StatusBadgeEnabled
+	dst.Spec.TLS = *ConvertAlphaToBetaTLS(&argocd.Spec.TLS)
+	dst.Spec.UsersAnonymousEnabled = argocd.Spec.UsersAnonymousEnabled
+	dst.Spec.Version = argocd.Spec.Version
+	dst.Spec.Banner = (*v1beta1.Banner)(argocd.Spec.Banner)
+	dst.Spec.DefaultClusterScopedRoleDisabled = argocd.Spec.DefaultClusterScopedRoleDisabled
+	dst.Spec.AggregatedClusterRoles = argocd.Spec.AggregatedClusterRoles
+	dst.Spec.ArgoCDAgent = ConvertAlphaToBetaArgoCDAgent(argocd.Spec.ArgoCDAgent)
+	dst.Spec.NamespaceManagement = ConvertAlphaToBetaNamespaceManagement(argocd.Spec.NamespaceManagement)
 
 	// Status conversion
-	dst.Status = v1beta1.ArgoCDStatus(src.Status)
+	dst.Status = v1beta1.ArgoCDStatus(argocd.Status)
 
 	return nil
 }
 
 // ConvertFrom converts from the Hub version (v1beta1) to this (v1alpha1) version.
-func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
+func (argocd *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	conversionLogger.V(1).Info("v1beta1 to v1alpha1 conversion requested.")
 
 	src := srcRaw.(*v1beta1.ArgoCD)
 
 	// ObjectMeta conversion
-	dst.ObjectMeta = src.ObjectMeta
+	argocd.ObjectMeta = src.ObjectMeta
 
 	// Spec conversion
 
@@ -124,66 +124,65 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	// there is no data loss since the new fields in v1beta1 are also present in v1alpha1 &
 	// v1alpha1 is not used in business logic & only exists for presentation
 	sso := ConvertBetaToAlphaSSO(src.Spec.SSO)
-	dst.Spec.SSO = sso
+	argocd.Spec.SSO = sso
 
 	// rest of the fields
-	dst.Spec.ApplicationSet = ConvertBetaToAlphaApplicationSet(src.Spec.ApplicationSet)
-	dst.Spec.ExtraConfig = src.Spec.ExtraConfig
-	dst.Spec.ApplicationInstanceLabelKey = src.Spec.ApplicationInstanceLabelKey
+	argocd.Spec.ApplicationSet = ConvertBetaToAlphaApplicationSet(src.Spec.ApplicationSet)
+	argocd.Spec.ExtraConfig = src.Spec.ExtraConfig
+	argocd.Spec.ApplicationInstanceLabelKey = src.Spec.ApplicationInstanceLabelKey
 	//lint:ignore SA1019 known to be deprecated
-	dst.Spec.ConfigManagementPlugins = src.Spec.ConfigManagementPlugins //nolint:staticcheck // SA1019: We must test deprecated fields.
-	dst.Spec.Controller = *ConvertBetaToAlphaController(&src.Spec.Controller)
-	dst.Spec.DisableAdmin = src.Spec.DisableAdmin
-	dst.Spec.ExtraConfig = src.Spec.ExtraConfig
-	dst.Spec.GATrackingID = src.Spec.GATrackingID
-	dst.Spec.GAAnonymizeUsers = src.Spec.GAAnonymizeUsers
+	argocd.Spec.ConfigManagementPlugins = src.Spec.ConfigManagementPlugins //nolint:staticcheck // SA1019: We must test deprecated fields.
+	argocd.Spec.Controller = *ConvertBetaToAlphaController(&src.Spec.Controller)
+	argocd.Spec.DisableAdmin = src.Spec.DisableAdmin
+	argocd.Spec.ExtraConfig = src.Spec.ExtraConfig
+	argocd.Spec.GATrackingID = src.Spec.GATrackingID
+	argocd.Spec.GAAnonymizeUsers = src.Spec.GAAnonymizeUsers
 	//lint:ignore SA1019 known to be deprecated
-	dst.Spec.Grafana = *ConvertBetaToAlphaGrafana(&src.Spec.Grafana) //nolint:staticcheck // SA1019: We must test deprecated fields.
-	dst.Spec.HA = *ConvertBetaToAlphaHA(&src.Spec.HA)
-	dst.Spec.HelpChatURL = src.Spec.HelpChatURL
-	dst.Spec.HelpChatText = src.Spec.HelpChatText
-	dst.Spec.Image = src.Spec.Image
-	dst.Spec.Import = (*ArgoCDImportSpec)(src.Spec.Import)
+	argocd.Spec.Grafana = *ConvertBetaToAlphaGrafana(&src.Spec.Grafana) //nolint:staticcheck // SA1019: We must test deprecated fields.
+	argocd.Spec.HA = *ConvertBetaToAlphaHA(&src.Spec.HA)
+	argocd.Spec.HelpChatURL = src.Spec.HelpChatURL
+	argocd.Spec.HelpChatText = src.Spec.HelpChatText
+	argocd.Spec.Image = src.Spec.Image
+	argocd.Spec.Import = (*ArgoCDImportSpec)(src.Spec.Import)
 	//lint:ignore SA1019 known to be deprecated
-	dst.Spec.InitialRepositories = src.Spec.InitialRepositories //nolint:staticcheck // SA1019: We must test deprecated fields.
-	dst.Spec.InitialSSHKnownHosts = SSHHostsSpec(src.Spec.InitialSSHKnownHosts)
-	dst.Spec.KustomizeBuildOptions = src.Spec.KustomizeBuildOptions
-	dst.Spec.KustomizeVersions = ConvertBetaToAlphaKustomizeVersions(src.Spec.KustomizeVersions)
-	dst.Spec.OIDCConfig = src.Spec.OIDCConfig
-	dst.Spec.Monitoring = ArgoCDMonitoringSpec(src.Spec.Monitoring)
-	dst.Spec.NodePlacement = (*ArgoCDNodePlacementSpec)(src.Spec.NodePlacement)
-	dst.Spec.Notifications = ArgoCDNotifications(src.Spec.Notifications)
-	dst.Spec.Prometheus = *ConvertBetaToAlphaPrometheus(&src.Spec.Prometheus)
-	dst.Spec.RBAC = ArgoCDRBACSpec(src.Spec.RBAC)
-	dst.Spec.Redis = *ConvertBetaToAlphaRedis(&src.Spec.Redis)
-	dst.Spec.Repo = *ConvertBetaToAlphaRepo(&src.Spec.Repo)
+	argocd.Spec.InitialRepositories = src.Spec.InitialRepositories //nolint:staticcheck // SA1019: We must test deprecated fields.
+	argocd.Spec.InitialSSHKnownHosts = SSHHostsSpec(src.Spec.InitialSSHKnownHosts)
+	argocd.Spec.KustomizeBuildOptions = src.Spec.KustomizeBuildOptions
+	argocd.Spec.KustomizeVersions = ConvertBetaToAlphaKustomizeVersions(src.Spec.KustomizeVersions)
+	argocd.Spec.OIDCConfig = src.Spec.OIDCConfig
+	argocd.Spec.Monitoring = ArgoCDMonitoringSpec(src.Spec.Monitoring)
+	argocd.Spec.NodePlacement = (*ArgoCDNodePlacementSpec)(src.Spec.NodePlacement)
+	argocd.Spec.Notifications = ArgoCDNotifications(src.Spec.Notifications)
+	argocd.Spec.Prometheus = *ConvertBetaToAlphaPrometheus(&src.Spec.Prometheus)
+	argocd.Spec.RBAC = ArgoCDRBACSpec(src.Spec.RBAC)
+	argocd.Spec.Redis = *ConvertBetaToAlphaRedis(&src.Spec.Redis)
+	argocd.Spec.Repo = *ConvertBetaToAlphaRepo(&src.Spec.Repo)
 	//lint:ignore SA1019 known to be deprecated
-	dst.Spec.RepositoryCredentials = src.Spec.RepositoryCredentials //nolint:staticcheck // SA1019: We must test deprecated fields.
-	dst.Spec.ResourceHealthChecks = ConvertBetaToAlphaResourceHealthChecks(src.Spec.ResourceHealthChecks)
-	dst.Spec.ResourceIgnoreDifferences = ConvertBetaToAlphaResourceIgnoreDifferences(src.Spec.ResourceIgnoreDifferences)
-	dst.Spec.ResourceActions = ConvertBetaToAlphaResourceActions(src.Spec.ResourceActions)
-	dst.Spec.ResourceExclusions = src.Spec.ResourceExclusions
-	dst.Spec.ResourceInclusions = src.Spec.ResourceInclusions
-	dst.Spec.ResourceTrackingMethod = src.Spec.ResourceTrackingMethod
-	dst.Spec.Server = *ConvertBetaToAlphaServer(&src.Spec.Server)
-	dst.Spec.SourceNamespaces = src.Spec.SourceNamespaces
-	dst.Spec.StatusBadgeEnabled = src.Spec.StatusBadgeEnabled
-	dst.Spec.TLS = *ConvertBetaToAlphaTLS(&src.Spec.TLS)
-	dst.Spec.UsersAnonymousEnabled = src.Spec.UsersAnonymousEnabled
-	dst.Spec.Version = src.Spec.Version
-	dst.Spec.Banner = (*Banner)(src.Spec.Banner)
-	dst.Spec.DefaultClusterScopedRoleDisabled = src.Spec.DefaultClusterScopedRoleDisabled
-	dst.Spec.AggregatedClusterRoles = src.Spec.AggregatedClusterRoles
-	dst.Spec.ArgoCDAgent = ConvertBetaToAlphaArgoCDAgent(src.Spec.ArgoCDAgent)
-	dst.Spec.NamespaceManagement = ConvertBetaToAlphaNamespaceManagement(src.Spec.NamespaceManagement)
+	argocd.Spec.RepositoryCredentials = src.Spec.RepositoryCredentials //nolint:staticcheck // SA1019: We must test deprecated fields.
+	argocd.Spec.ResourceHealthChecks = ConvertBetaToAlphaResourceHealthChecks(src.Spec.ResourceHealthChecks)
+	argocd.Spec.ResourceIgnoreDifferences = ConvertBetaToAlphaResourceIgnoreDifferences(src.Spec.ResourceIgnoreDifferences)
+	argocd.Spec.ResourceActions = ConvertBetaToAlphaResourceActions(src.Spec.ResourceActions)
+	argocd.Spec.ResourceExclusions = src.Spec.ResourceExclusions
+	argocd.Spec.ResourceInclusions = src.Spec.ResourceInclusions
+	argocd.Spec.ResourceTrackingMethod = src.Spec.ResourceTrackingMethod
+	argocd.Spec.Server = *ConvertBetaToAlphaServer(&src.Spec.Server)
+	argocd.Spec.SourceNamespaces = src.Spec.SourceNamespaces
+	argocd.Spec.StatusBadgeEnabled = src.Spec.StatusBadgeEnabled
+	argocd.Spec.TLS = *ConvertBetaToAlphaTLS(&src.Spec.TLS)
+	argocd.Spec.UsersAnonymousEnabled = src.Spec.UsersAnonymousEnabled
+	argocd.Spec.Version = src.Spec.Version
+	argocd.Spec.Banner = (*Banner)(src.Spec.Banner)
+	argocd.Spec.DefaultClusterScopedRoleDisabled = src.Spec.DefaultClusterScopedRoleDisabled
+	argocd.Spec.AggregatedClusterRoles = src.Spec.AggregatedClusterRoles
+	argocd.Spec.ArgoCDAgent = ConvertBetaToAlphaArgoCDAgent(src.Spec.ArgoCDAgent)
+	argocd.Spec.NamespaceManagement = ConvertBetaToAlphaNamespaceManagement(src.Spec.NamespaceManagement)
 
 	// Status conversion
-	dst.Status = ArgoCDStatus(src.Status)
+	argocd.Status = ArgoCDStatus(src.Status)
 
 	return nil
 }
 
-// Conversion funcs for v1alpha1 to v1beta1.
 func ConvertAlphaToBetaController(src *ArgoCDApplicationControllerSpec) *v1beta1.ArgoCDApplicationControllerSpec {
 	var dst *v1beta1.ArgoCDApplicationControllerSpec
 	if src != nil {
@@ -448,7 +447,6 @@ func ConvertAlphaToBetaResourceHealthChecks(src []ResourceHealthCheck) []v1beta1
 	return dst
 }
 
-// Conversion funcs for v1beta1 to v1alpha1.
 func ConvertBetaToAlphaController(src *v1beta1.ArgoCDApplicationControllerSpec) *ArgoCDApplicationControllerSpec {
 	var dst *ArgoCDApplicationControllerSpec
 	if src != nil {
