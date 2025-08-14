@@ -98,9 +98,12 @@ func (hc *HybridClient) List(ctx context.Context, list crclient.ObjectList, opts
 		}
 		out.Items = make([]corev1.Secret, len(metaList.Items))
 		for i := range metaList.Items {
+			// NOTE: Metadata-only list; data/spec omitted.
+			// TODO: If full objects are needed, call Get() for each before returning.
+			// For now, callers should Get() each item as needed.
 			out.Items[i] = corev1.Secret{ObjectMeta: metaList.Items[i].ObjectMeta}
 		}
-		// NOTE: metadata-only list by design
+		
 		return nil
 
 	case *corev1.ConfigMapList:
@@ -111,6 +114,9 @@ func (hc *HybridClient) List(ctx context.Context, list crclient.ObjectList, opts
 		}
 		out.Items = make([]corev1.ConfigMap, len(metaList.Items))
 		for i := range metaList.Items {
+			// NOTE: Metadata-only list; data/spec omitted.
+			// TODO: If full objects are needed, call Get() for each before returning.
+			// For now, callers should Get() each item as needed.
 			out.Items[i] = corev1.ConfigMap{ObjectMeta: metaList.Items[i].ObjectMeta}
 		}
 		return nil

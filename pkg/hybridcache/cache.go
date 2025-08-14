@@ -17,9 +17,7 @@ import (
 )
 
 // LabelFilteredCache provides a controller-runtime cache and client that only
-// cache/read corev1 Secrets and ConfigMaps bearing a specific label selector.
-// Reads go through the filtered cache; writes and status updates go to the API
-// server directly via the underlying client.
+// cache/read Secrets and ConfigMaps bearing a specific label selector.
 type LabelFilteredCache struct {
 	Cache  crcache.Cache
 	Client crclient.Client
