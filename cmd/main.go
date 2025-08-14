@@ -84,8 +84,6 @@ func printVersion() {
 }
 
 func main() {
-	ctrl.SetLogger(zap.New(zap.UseDevMode(true), zap.Level(zapcore.DebugLevel)))
-
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
@@ -176,6 +174,12 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "b674928d.argoproj.io",
+	}
+
+	if watchedNsCache := getDefaultWatchedNamespacesCacheOptions(); watchedNsCache != nil {
+		options.Cache = cache.Options{
+			DefaultNamespaces: watchedNsCache,
+		}
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
@@ -293,9 +297,6 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
-
-	// Monitor memory usage and cache stats
-	//go monitorSystemStats(mgr.GetCache())
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
