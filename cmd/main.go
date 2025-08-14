@@ -29,7 +29,6 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -38,11 +37,8 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdexport"
-	"github.com/argoproj-labs/argocd-operator/pkg/clientwrapper"
 
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
-
-	notificationsConfig "github.com/argoproj-labs/argocd-operator/controllers/notificationsconfiguration"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -60,8 +56,12 @@ import (
 
 	v1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	v1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	notificationsConfig "github.com/argoproj-labs/argocd-operator/controllers/notificationsconfiguration"
 	"github.com/argoproj-labs/argocd-operator/version"
+
 	//+kubebuilder:scaffold:imports
+
+	"github.com/argoproj-labs/argocd-operator/pkg/hybridcache"
 )
 
 var (
@@ -84,6 +84,8 @@ func printVersion() {
 }
 
 func main() {
+	ctrl.SetLogger(zap.New(zap.UseDevMode(true), zap.Level(zapcore.DebugLevel)))
+
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
@@ -174,15 +176,6 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "b674928d.argoproj.io",
-		NewCache: func(config *rest.Config, cacheOpts cache.Options) (cache.Cache, error) {
-			// Set up label-based filtering for ConfigMaps and Secrets
-			filteredCacheOpts := setupCacheOptions()
-			filteredCacheOpts.Scheme = scheme
-			if watchedNsCache := getDefaultWatchedNamespacesCacheOptions(); watchedNsCache != nil {
-				filteredCacheOpts.DefaultNamespaces = watchedNsCache
-			}
-			return cache.New(config, filteredCacheOpts)
-		},
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
@@ -191,13 +184,28 @@ func main() {
 		os.Exit(1)
 	}
 
-	cachedClient := mgr.GetClient()
+	// Set up a cache that only includes Secrets and ConfigMaps with the specified label
+	labelFilteredCache, err := hybridcache.NewLabelFilteredCache(ctrl.GetConfigOrDie())
+	if err != nil {
+		setupLog.Error(err, "unable to create filtered cache")
+		os.Exit(1)
+	}
+
+	if err := labelFilteredCache.AttachToManager(mgr); err != nil {
+		setupLog.Error(err, "unable to add filtered cache to manager")
+		os.Exit(1)
+	}
+
+	// Create a HybridClient to optimize storage and retrieval of Secrets and ConfigMaps
+	defaultClient := mgr.GetClient()
+	filteredClient := labelFilteredCache.Client
 	liveClient, err := ctrlclient.New(ctrl.GetConfigOrDie(), ctrlclient.Options{Scheme: mgr.GetScheme()})
 	if err != nil {
 		setupLog.Error(err, "unable to create live client")
 		os.Exit(1)
 	}
-	wrapperClient := clientwrapper.NewClientWrapper(cachedClient, liveClient)
+
+	client := hybridcache.NewHybridClient(defaultClient, filteredClient, liveClient)
 
 	setupLog.Info("Registering Components.")
 
@@ -241,8 +249,9 @@ func main() {
 		setupLog.Error(err, "Failed to initialize Kubernetes client")
 		os.Exit(1)
 	}
+
 	if err = (&argocd.ReconcileArgoCD{
-		Client:        wrapperClient,
+		Client:        client,
 		Scheme:        mgr.GetScheme(),
 		LabelSelector: labelSelectorFlag,
 		K8sClient:     k8sClient,
@@ -250,15 +259,17 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "ArgoCD")
 		os.Exit(1)
 	}
+
 	if err = (&argocdexport.ReconcileArgoCDExport{
-		Client: wrapperClient,
+		Client: client,
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ArgoCDExport")
 		os.Exit(1)
 	}
+
 	if err = (&notificationsConfig.NotificationsConfigurationReconciler{
-		Client: wrapperClient,
+		Client: client,
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NotificationsConfiguration")
@@ -282,6 +293,9 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
+
+	// Monitor memory usage and cache stats
+	//go monitorSystemStats(mgr.GetCache())
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

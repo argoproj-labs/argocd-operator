@@ -1034,10 +1034,10 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(deleteSSOPred, deleteNotificationsPred, r.argoCDNamespaceManagementFilterPredicate()))
 
 	// Watch for changes to ConfigMap sub-resources owned by ArgoCD instances.
-	bldr.Owns(&corev1.ConfigMap{})
+	bldr.Owns(&corev1.ConfigMap{}, builder.OnlyMetadata)
 
 	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
-	bldr.Owns(&corev1.Secret{})
+	bldr.Owns(&corev1.Secret{}, builder.OnlyMetadata)
 
 	// Watch for changes to Service sub-resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.Service{})
@@ -1070,16 +1070,16 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 
 	bldr.Watches(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{
 		Name: common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName,
-	}}, appSetGitlabSCMTLSConfigMapHandler)
+	}}, appSetGitlabSCMTLSConfigMapHandler, builder.OnlyMetadata)
 
 	// Watch for secrets of type TLS that might be created by external processes
-	bldr.Watches(&corev1.Secret{Type: corev1.SecretTypeTLS}, tlsSecretHandler)
+	bldr.Watches(&corev1.Secret{Type: corev1.SecretTypeTLS}, tlsSecretHandler, builder.OnlyMetadata)
 
 	// Watch for cluster secrets added to the argocd instance
 	bldr.Watches(&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
 		Labels: map[string]string{
 			common.ArgoCDManagedByClusterArgoCDLabel: "cluster",
-		}}}, clusterSecretResourceHandler)
+		}}}, clusterSecretResourceHandler, builder.OnlyMetadata)
 
 	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
 	bldr.Owns(&appsv1.StatefulSet{})

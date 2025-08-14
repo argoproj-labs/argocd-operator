@@ -53,7 +53,7 @@ func setResourceWatches(bld *builder.Builder) *builder.Builder {
 	bld.Owns(&corev1.PersistentVolumeClaim{})
 
 	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
-	bld.Owns(&corev1.Secret{})
+	bld.Owns(&corev1.Secret{}, builder.OnlyMetadata)
 
 	return bld
 }
