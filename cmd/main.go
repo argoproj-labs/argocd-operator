@@ -40,8 +40,6 @@ import (
 
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	notificationsConfig "github.com/argoproj-labs/argocd-operator/controllers/notificationsconfiguration"
-
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -52,13 +50,18 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	v1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	v1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	notificationsConfig "github.com/argoproj-labs/argocd-operator/controllers/notificationsconfiguration"
 	"github.com/argoproj-labs/argocd-operator/version"
+
 	//+kubebuilder:scaffold:imports
+
+	"github.com/argoproj-labs/argocd-operator/pkg/hybridcache"
 )
 
 var (
@@ -185,6 +188,29 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Set up a cache that only includes Secrets and ConfigMaps with the specified label
+	labelFilteredCache, err := hybridcache.NewLabelFilteredCache(ctrl.GetConfigOrDie())
+	if err != nil {
+		setupLog.Error(err, "unable to create filtered cache")
+		os.Exit(1)
+	}
+
+	if err := labelFilteredCache.AttachToManager(mgr); err != nil {
+		setupLog.Error(err, "unable to add filtered cache to manager")
+		os.Exit(1)
+	}
+
+	// Create a HybridClient to optimize storage and retrieval of Secrets and ConfigMaps
+	defaultClient := mgr.GetClient()
+	filteredClient := labelFilteredCache.Client
+	liveClient, err := ctrlclient.New(ctrl.GetConfigOrDie(), ctrlclient.Options{Scheme: mgr.GetScheme()})
+	if err != nil {
+		setupLog.Error(err, "unable to create live client")
+		os.Exit(1)
+	}
+
+	client := hybridcache.NewHybridClient(defaultClient, filteredClient, liveClient)
+
 	setupLog.Info("Registering Components.")
 
 	// Setup Scheme for all resources
@@ -227,8 +253,9 @@ func main() {
 		setupLog.Error(err, "Failed to initialize Kubernetes client")
 		os.Exit(1)
 	}
+
 	if err = (&argocd.ReconcileArgoCD{
-		Client:        mgr.GetClient(),
+		Client:        client,
 		Scheme:        mgr.GetScheme(),
 		LabelSelector: labelSelectorFlag,
 		K8sClient:     k8sClient,
@@ -236,15 +263,17 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "ArgoCD")
 		os.Exit(1)
 	}
+
 	if err = (&argocdexport.ReconcileArgoCDExport{
-		Client: mgr.GetClient(),
+		Client: client,
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ArgoCDExport")
 		os.Exit(1)
 	}
+
 	if err = (&notificationsConfig.NotificationsConfigurationReconciler{
-		Client: mgr.GetClient(),
+		Client: client,
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NotificationsConfiguration")

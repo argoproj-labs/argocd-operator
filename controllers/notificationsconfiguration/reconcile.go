@@ -35,7 +35,7 @@ func setResourceWatches(bld *builder.Builder) *builder.Builder {
 	// Watch for changes to primary resource NotificationsConfiguration
 	bld.For(&v1alpha1.NotificationsConfiguration{})
 	// Watch for changes to Configmap sub-resources owned by NotificationsConfigurationController.
-	bld.Owns(&corev1.ConfigMap{})
+	bld.Owns(&corev1.ConfigMap{}, builder.OnlyMetadata)
 
 	return bld
 }

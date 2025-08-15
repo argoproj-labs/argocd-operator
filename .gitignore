@@ -35,3 +35,5 @@ e2e.json
 
 # Desktop Services Store in macOS system
 .DS_Store
+
+tmp
