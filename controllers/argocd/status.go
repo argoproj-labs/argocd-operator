@@ -261,40 +261,6 @@ func (r *ReconcileArgoCD) reconcileStatusRedis(cr *argoproj.ArgoCD) error {
 	return nil
 }
 
-// reconcileStatusRepo will ensure that the Repo status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusRepo(cr *argoproj.ArgoCD) error {
-	status := "Unknown"
-
-	deploy := newDeploymentWithSuffix("repo-server", "repo-server", cr)
-	deplExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy)
-	if err != nil {
-		return err
-	}
-	if deplExists {
-		status = "Pending"
-
-		if deploy.Spec.Replicas != nil {
-			if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
-				status = "Running"
-			} else if deploy.Status.Conditions != nil {
-				for _, condition := range deploy.Status.Conditions {
-					if condition.Type == appsv1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue {
-						// Deployment has failed
-						status = "Failed"
-						break
-					}
-				}
-			}
-		}
-	}
-
-	if cr.Status.Repo != status {
-		cr.Status.Repo = status
-		return r.Client.Status().Update(context.TODO(), cr)
-	}
-	return nil
-}
-
 // reconcileStatusServer will ensure that the Server status is updated for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileStatusServer(cr *argoproj.ArgoCD) error {
 	status := "Unknown"
