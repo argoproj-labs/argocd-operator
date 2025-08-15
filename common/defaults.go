@@ -179,7 +179,7 @@ const (
 	ArgoCDDefaultRedisHAProxyVersion = "sha256:7392fbbbb53e9e063ca94891da6656e6062f9d021c0e514888a91535b9f73231" // 2.0.25-alpine
 
 	// ArgoCDDefaultRedisImage is the Redis container image to use when not specified.
-	ArgoCDDefaultRedisImage = "redis"
+	ArgoCDDefaultRedisImage = "public.ecr.aws/docker/library/redis"
 
 	// ArgoCDDefaultRedisPort is the default listen port for Redis.
 	ArgoCDDefaultRedisPort = 6379
@@ -191,10 +191,10 @@ const (
 	ArgoCDDefaultRedisSuffix = "redis"
 
 	// ArgoCDDefaultRedisVersion is the Redis container image tag to use when not specified.
-	ArgoCDDefaultRedisVersion = "sha256:8061ca607db2a0c80010aeb5fc9bed0253448bc68711eaa14253a392f6c48280" // 6.2.4-alpine
+	ArgoCDDefaultRedisVersion = "sha256:ddd16a9b1575a774c7e62956be8daa1de5b32cfb5c25b7a216aefed8e0919f9b" // 7.2.7-alpine
 
 	// ArgoCDDefaultRedisVersionHA is the Redis container image tag to use when not specified in HA mode.
-	ArgoCDDefaultRedisVersionHA = "sha256:8061ca607db2a0c80010aeb5fc9bed0253448bc68711eaa14253a392f6c48280" // 6.2.4-alpine
+	ArgoCDDefaultRedisVersionHA = "sha256:ddd16a9b1575a774c7e62956be8daa1de5b32cfb5c25b7a216aefed8e0919f9b" // 7.2.7-alpine
 
 	// ArgoCDDefaultRepoMetricsPort is the default listen port for the Argo CD repo server metrics.
 	ArgoCDDefaultRepoMetricsPort = 8084
