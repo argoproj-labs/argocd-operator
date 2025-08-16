@@ -83,7 +83,7 @@ The below section describes how to configure Argo CD SSO using GitHub (OAuth2) a
 
 2. Update the Argo CD CR.
 
-In the `sso.dex.config` key, add the github connector to the connectors sub field. See the Dex [GitHub connector documentation](https://github.com/dexidp/website/blob/main/content/docs/connectors/github.md) for explanation of the fields. A minimal config should populate the clientID, clientSecret generated in Step 1.
+In the `sso.dex.config` key, add the github connector to the connectors sub field. See the Dex [GitHub connector documentation](https://github.com/dexidp/website/blob/main/content/docs/connectors/github.md) for explanation of the fields. A minimal config should populate the `clientID`, `clientSecret` generated in Step 1.
 You will very likely want to restrict logins to one or more GitHub organization. In the
 `connectors.config.orgs` list, add one or more GitHub organizations. Any member of the org will then be able to login to Argo CD to perform management tasks.
 

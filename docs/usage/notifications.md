@@ -16,9 +16,9 @@ spec:
     enabled: True
 ```
 
-Users may also specify advanced configuration such as the number of replicas for the notifications controller, as well as the resource requirements for the same. The full list of available settings can be found in the [API spec](../reference/api.html.md#argoproj.io/v1alpha1.ArgoCDNotificationsSpec)
+Users may also specify advanced configuration such as the number of replicas for the notifications controller, as well as the resource requirements for the same. The full list of available settings can be found in the [API spec](../reference/api.html.md#argoproj.io/v1alpha1.ArgoCDNotificationsSpec).
 
-Notifications is disabled by default. Enabling notifications results in the operator creating the following resources on the cluster:
+Notifications are disabled by default. Enabling notifications results in the operator creating the following resources on the cluster:
 
 *  `<argocd-instance-name>-notifications-controller` deployment
 *  `<argocd-instance-name>-argocd-notifications-controller` serviceAccount
@@ -29,7 +29,7 @@ Notifications is disabled by default. Enabling notifications results in the oper
 
 The operator creates the `argocd-notifications-cm` configmap which is populated with a set of default templates and triggers out of the box, in line with what is provided by the upstream Argo CD project. `argocd-notifications-cm` is editable to users, and will not be reconciled/overwritten by the operator. The `argocd-notifications-secret` is an empty secret that can be used to configure credentials for the supported notifications services.
 
-Instructions for appropriate configuration of these resources can be found within [upstream documentation](https://argo-cd.readthedocs.io/en/stable/operator-manual/notifications/)
+Instructions for appropriate configuration of these resources can be found within [upstream documentation](https://argo-cd.readthedocs.io/en/stable/operator-manual/notifications/).
 
 
 ## Uninstallation

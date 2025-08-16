@@ -4,7 +4,7 @@ The Argo CD Operator aggregates, visualizes and exposes the metrics exported by 
 
 ## Overview
 
-Argo CD exports many metrics that can be used to monitor and provide insights into the state and health of the cluster. The operator makes use of the Prometheus Operator to provision a Prometheus instance for string the metrics from both Argo CD and the operator itself.
+Argo CD exports many metrics that can be used to monitor and provide insights into the state and health of the cluster. The operator makes use of the Prometheus Operator to provision a Prometheus instance for storing the metrics from both Argo CD and the operator itself.
 
 ## Cluster
 
