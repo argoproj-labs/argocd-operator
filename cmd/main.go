@@ -24,6 +24,7 @@ import (
 	goruntime "runtime"
 	"strings"
 
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	"github.com/argoproj/argo-cd/v3/util/env"
 	appsv1 "github.com/openshift/api/apps/v1"
 	configv1 "github.com/openshift/api/config/v1"
@@ -243,9 +244,10 @@ func main() {
 	}
 
 	if err = (&argocd.ReconcileArgoCD{
-		Client:        mgr.GetClient(),
-		Scheme:        mgr.GetScheme(),
-		LabelSelector: labelSelectorFlag,
+		Client:            mgr.GetClient(),
+		Scheme:            mgr.GetScheme(),
+		LabelSelector:     labelSelectorFlag,
+		FipsConfigChecker: argoutil.NewLinuxFipsConfigChecker(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ArgoCD")
 		os.Exit(1)
