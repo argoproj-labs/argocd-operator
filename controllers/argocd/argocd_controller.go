@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	"github.com/prometheus/client_golang/prometheus"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -51,6 +52,8 @@ type ReconcileArgoCD struct {
 	ManagedApplicationSetSourceNamespaces map[string]string
 	// Stores label selector used to reconcile a subset of ArgoCD
 	LabelSelector string
+	// FipsConfigChecker checks if the deployment needs FIPS specific environment variables set.
+	FipsConfigChecker argoutil.FipsConfigChecker
 }
 
 var log = logr.Log.WithName("controller_argocd")
