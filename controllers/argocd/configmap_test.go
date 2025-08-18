@@ -1130,7 +1130,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withLocalUsers(t *testing.T) {
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
@@ -1150,7 +1150,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withLocalUsers(t *testing.T) {
 	assert.NoError(t, err)
 
 	cm = &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
@@ -1187,7 +1187,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withLocalUsers_extraConfigOverri
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
@@ -1213,7 +1213,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withLocalUsers_extraConfigOverri
 	assert.NoError(t, err)
 
 	cm = &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
