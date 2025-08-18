@@ -53,7 +53,7 @@ func createResources(cr *argoproj.ArgoCD, expect *assert.Assertions) *ReconcileA
 	tlsSecret := argoutil.NewSecretWithSuffix(cr, "tls")
 	err = r.Client.Create(context.TODO(), clusterSecret)
 	expect.NoError(err)
-	r.Client.Create(context.TODO(), tlsSecret)
+	err = r.Client.Create(context.TODO(), tlsSecret)
 	expect.NoError(err)
 	err = r.reconcileArgoSecret(cr)
 	expect.NoError(err)
