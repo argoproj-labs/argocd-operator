@@ -68,7 +68,11 @@ const (
 func (r *ReconcileArgoCD) reconcileLocalUsers(cr *argoproj.ArgoCD) error {
 	// Retrieve the signing key from the argocd-secret
 	argoCDSecret := corev1.Secret{}
-	if !argoutil.IsObjectFound(r.Client, cr.Namespace, common.ArgoCDSecretName, &argoCDSecret) {
+	found, err := argoutil.IsObjectFound(r.Client, cr.Namespace, common.ArgoCDSecretName, &argoCDSecret)
+	if err != nil {
+		return fmt.Errorf("error retrieving secret %s: %w", common.ArgoCDSecretName, err)
+	}
+	if !found {
 		return fmt.Errorf("could not find secret %s", common.ArgoCDSecretName)
 	}
 	signingKey, ok := argoCDSecret.Data["server.secretkey"]
@@ -517,7 +521,7 @@ func localUsersInExtraConfig(cr *argoproj.ArgoCD) map[string]bool {
 			if !strings.Contains(user, ".") {
 				localUsers[user] = true
 			} else {
-				log.Error(nil, "ignoring invalid local user account name in extra config", "key:", k)
+				log.Info("ignoring invalid local user account name in extra config", "key:", k)
 			}
 		}
 	}
