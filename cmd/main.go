@@ -24,7 +24,6 @@ import (
 	goruntime "runtime"
 	"strings"
 
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	"github.com/argoproj/argo-cd/v3/util/env"
 	appsv1 "github.com/openshift/api/apps/v1"
 	configv1 "github.com/openshift/api/config/v1"
@@ -39,6 +38,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdexport"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
