@@ -530,11 +530,16 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoproj.ArgoCD)
 
 	// Find the cluster secret in the list that points to  common.ArgoCDDefaultServer (default server address)
 	var localClusterSecret *corev1.Secret
-	for x, clusterSecret := range clusterSecrets.Items {
-
+	for _, clusterSecret := range clusterSecrets.Items {
+		secret := corev1.Secret{}
+		secretName := types.NamespacedName{Namespace: clusterSecret.Namespace, Name: clusterSecret.Name}
+		err := r.Client.Get(context.TODO(), secretName, &secret)
+		if err != nil {
+			return err
+		}
 		// check if cluster secret with default server address exists
-		if string(clusterSecret.Data["server"]) == common.ArgoCDDefaultServer {
-			localClusterSecret = &clusterSecrets.Items[x]
+		if string(secret.Data["server"]) == common.ArgoCDDefaultServer {
+			localClusterSecret = &secret
 		}
 	}
 
