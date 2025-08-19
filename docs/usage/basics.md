@@ -5,7 +5,7 @@ See the [ArgoCD Reference][argocd_reference] for the full list of properties and
 The following example shows the most minimal valid manifest to create a new Argo CD cluster with the default configuration.
 
 ```yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd

@@ -25,7 +25,7 @@ Dex configuration has moved to `.spec.sso` in release v0.4.0. Dex can be enabled
 An example of correctly configured dex would look as follows:
 
 ```yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd
@@ -43,7 +43,7 @@ The below section describes how to configure Argo CD SSO using OpenShift connect
 The `openShiftOAuth` property can be used to trigger the operator to auto configure the built-in OpenShift OAuth server. The `groups` property is used to mandate users to be part of one or all the groups in the groups list. The RBAC `Policy` property is used to give the admin role in the Argo CD cluster to users in the OpenShift `cluster-admins` group.
 
 ``` yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd
@@ -88,7 +88,7 @@ You will very likely want to restrict logins to one or more GitHub organization.
 `connectors.config.orgs` list, add one or more GitHub organizations. Any member of the org will then be able to login to Argo CD to perform management tasks.
 
 ``` yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd
@@ -122,7 +122,7 @@ The below section describes how to configure Argo CD's Dex to accept authenticat
 In the `sso.dex.env` key, add the environment variable as shown in the [example manifests for authenticating against Argo CD's Dex](https://argoproj.github.io/argo-workflows/argo-server-sso-argocd/#example-manifests-for-authenticating-against-argo-cds-dex-kustomize).
 
 ``` yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd

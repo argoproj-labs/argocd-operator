@@ -7,7 +7,7 @@
 Argo CD Notifications controller can be enabled/disabled using a new toggle within the Argo CD CR with default specs as follows:
 
 ``` yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd
@@ -37,7 +37,7 @@ Instructions for appropriate configuration of these resources can be found withi
 Argo CD Notifications controller can be disabled by setting `.spec.notifications.enabled` to `false` :
 
 ``` yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd
