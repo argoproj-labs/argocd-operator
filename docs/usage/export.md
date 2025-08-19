@@ -1,6 +1,6 @@
 # Export
 
-Argo CD can export the details of managed application periodically, facilitating operations tasks such as backups or migrations.
+ArgoCDExport functionality can export details of managed application periodically, facilitating operations tasks such as backups or migrations.
 The data consists of a series of Kubernetes manifests representing the various cluster resources in YAML format stored in a single file.
 This exported YAML file is then `AES` encrypted before being saved to the storage backend of choice.
 
