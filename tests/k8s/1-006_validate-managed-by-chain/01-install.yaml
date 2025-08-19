@@ -8,7 +8,7 @@ kind: Namespace
 metadata:
   name: test-1-12-custom2
 ---
-apiVersion: argoproj.io/v1beta1
+apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
   name: argocd

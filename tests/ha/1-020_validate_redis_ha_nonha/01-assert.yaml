@@ -7,7 +7,7 @@ kind: Service
 metadata:
   name: example-argocd-redis
 ---
-apiVersion: argoproj.io/v1beta1
+apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
   name: example-argocd
