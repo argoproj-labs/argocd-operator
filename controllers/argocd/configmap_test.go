@@ -1110,6 +1110,119 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withRespectRBAC(t *testing.T) {
 	}
 }
 
+func TestReconcileArgoCD_reconcileArgoConfigMap_withLocalUsers(t *testing.T) {
+	a := makeTestArgoCD()
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	a.Spec.LocalUsers = []argoproj.LocalUserSpec{
+		{
+			Name: "alice",
+		},
+	}
+
+	err := r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "apiKey", cm.Data["accounts.alice"])
+	assert.Equal(t, "true", cm.Data["accounts.alice.enabled"])
+
+	a.Spec.LocalUsers = []argoproj.LocalUserSpec{
+		{
+			Name:    "alice",
+			Enabled: boolPtr(false),
+		},
+	}
+
+	err = r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	cm = &corev1.ConfigMap{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "apiKey", cm.Data["accounts.alice"])
+	assert.Equal(t, "false", cm.Data["accounts.alice.enabled"])
+}
+
+func TestReconcileArgoCD_reconcileArgoConfigMap_withLocalUsers_extraConfigOverride(t *testing.T) {
+	a := makeTestArgoCD()
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	a.Spec.LocalUsers = []argoproj.LocalUserSpec{
+		{
+			Name:    "alice",
+			ApiKey:  boolPtr(true),
+			Login:   false,
+			Enabled: boolPtr(false),
+		},
+	}
+
+	a.Spec.ExtraConfig = map[string]string{
+		"accounts.alice": "login",
+	}
+
+	err := r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "login", cm.Data["accounts.alice"])
+	assert.Equal(t, "", cm.Data["accounts.alice.enabled"])
+
+	a.Spec.LocalUsers = []argoproj.LocalUserSpec{
+		{
+			Name:    "alice",
+			ApiKey:  boolPtr(true),
+			Login:   false,
+			Enabled: boolPtr(false),
+		},
+	}
+
+	a.Spec.ExtraConfig = map[string]string{
+		"accounts.alice.enabled": "true",
+	}
+
+	err = r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	cm = &corev1.ConfigMap{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "apiKey", cm.Data["accounts.alice"])
+	assert.Equal(t, "true", cm.Data["accounts.alice.enabled"])
+}
+
 func Test_reconcileRBAC(t *testing.T) {
 	a := makeTestArgoCD()
 

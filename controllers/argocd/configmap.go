@@ -463,6 +463,30 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 		}
 	}
 
+	// Find all users explicitly defined via extraConfig
+	legacyUsers := localUsersInExtraConfig(cr)
+
+	// Create local users
+	for _, user := range cr.Spec.LocalUsers {
+		// Ignore any user defined via extraConfig
+		if legacyUsers[user.Name] {
+			continue
+		}
+		key := "accounts." + user.Name
+		if (user.ApiKey == nil || *user.ApiKey) && user.Login {
+			cm.Data[key] = "apiKey, login"
+		} else if user.ApiKey == nil || *user.ApiKey {
+			cm.Data[key] = "apiKey"
+		} else if user.Login {
+			cm.Data[key] = "login"
+		}
+		if user.Enabled == nil || *user.Enabled {
+			cm.Data[key+".enabled"] = "true"
+		} else {
+			cm.Data[key+".enabled"] = "false"
+		}
+	}
+
 	if len(cr.Spec.ExtraConfig) > 0 {
 		for k, v := range cr.Spec.ExtraConfig {
 			cm.Data[k] = v

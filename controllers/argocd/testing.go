@@ -58,6 +58,9 @@ func makeTestReconciler(client client.Client, sch *runtime.Scheme, k8sClient kub
 		Client:    client,
 		Scheme:    sch,
 		K8sClient: k8sClient,
+		LocalUsers: &LocalUsersInfo{
+			TokenRenewalTimers: map[string]*TokenRenewalTimer{},
+		},
 	}
 }
 
