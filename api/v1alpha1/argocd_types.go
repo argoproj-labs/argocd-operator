@@ -1072,9 +1072,9 @@ func (r *ArgoCDRedisSpec) WantsAutoTLS() bool {
 
 // ApplicationInstanceLabelKey returns either the custom application instance
 // label key if set, or the default value.
-func (a *ArgoCD) ApplicationInstanceLabelKey() string {
-	if a.Spec.ApplicationInstanceLabelKey != "" {
-		return a.Spec.ApplicationInstanceLabelKey
+func (argocd *ArgoCD) ApplicationInstanceLabelKey() string {
+	if argocd.Spec.ApplicationInstanceLabelKey != "" {
+		return argocd.Spec.ApplicationInstanceLabelKey
 	} else {
 		return common.ArgoCDDefaultApplicationInstanceLabelKey
 	}
