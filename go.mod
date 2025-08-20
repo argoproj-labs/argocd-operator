@@ -167,7 +167,7 @@ require (
 	k8s.io/component-helpers v0.33.1 // indirect
 	k8s.io/controller-manager v0.33.1 // indirect
 	k8s.io/kubectl v0.33.1 // indirect
-	k8s.io/kubernetes v1.33.1 // indirect
+	k8s.io/kubernetes v1.33.2 // indirect
 	oras.land/oras-go/v2 v2.6.0 // indirect
 	sigs.k8s.io/kustomize/api v0.19.0 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.19.0 // indirect
