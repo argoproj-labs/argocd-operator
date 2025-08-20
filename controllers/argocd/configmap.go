@@ -217,24 +217,21 @@ func getResourceActions(cr *argoproj.ArgoCD) map[string]string {
 }
 
 // getResourceExclusions returns resource exclusions from the CR or defaults if not set.
-func getResourceExclusions(cr *argoproj.ArgoCD) string {
-	var resources []filteredResource
+func getResourceExclusions(cr *argoproj.ArgoCD) (string, error) {
 
 	// Use CR value if provided
 	if cr.Spec.ResourceExclusions != "" {
-		return cr.Spec.ResourceExclusions
-	} else {
-		// Use defaults
-		resources = getDefaultResourceExclusions()
+		return cr.Spec.ResourceExclusions, nil
 	}
 
-	finalYaml, err := marshalWithYAML(resources)
+	// Use defaults
+	defaultExclusions := getDefaultResourceExclusions()
+	yamlData, err := yaml.Marshal(defaultExclusions)
 	if err != nil {
-		log.Error(err, "Failed to marshal resource exclusions")
-		return ""
+		return "", fmt.Errorf("failed to marshal resource exclusions: %v", err)
 	}
+	return string(yamlData), nil
 
-	return finalYaml
 }
 
 // getResourceInclusions will return the resource inclusions for the given ArgoCD.
@@ -441,7 +438,11 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 		}
 	}
 
-	cm.Data[common.ArgoCDKeyResourceExclusions] = getResourceExclusions(cr)
+	resourceExclusions, err := getResourceExclusions(cr)
+	if err != nil {
+		return err
+	}
+	cm.Data[common.ArgoCDKeyResourceExclusions] = resourceExclusions
 	cm.Data[common.ArgoCDKeyResourceInclusions] = getResourceInclusions(cr)
 	cm.Data[common.ArgoCDKeyResourceTrackingMethod] = getResourceTrackingMethod(cr)
 	cm.Data[common.ArgoCDKeyStatusBadgeEnabled] = fmt.Sprint(cr.Spec.StatusBadgeEnabled)
@@ -965,6 +966,11 @@ type filteredResource struct {
 }
 
 func getDefaultResourceExclusions() []filteredResource {
+	// See this URL for a description of why these resources are used:
+	// - https://argo-cd.readthedocs.io/en/stable/operator-manual/upgrading/2.14-3.0/#default-resourceexclusions-configurations
+
+	// See this URL for a current list of rules: https://github.com/argoproj/argo-cd/blob/master/manifests/base/config/argocd-cm.yaml
+
 	return []filteredResource{
 		{APIGroups: []string{"", "discovery.k8s.io"}, Kinds: []string{"Endpoints", "EndpointSlice"}},
 		{APIGroups: []string{"apiregistration.k8s.io"}, Kinds: []string{"APIService"}},
@@ -982,12 +988,4 @@ func getDefaultResourceExclusions() []filteredResource {
 				"AdmissionReport", "ClusterAdmissionReport", "BackgroundScanReport",
 				"ClusterBackgroundScanReport", "UpdateRequest"}},
 	}
-}
-
-func marshalWithYAML(resources []filteredResource) (string, error) {
-	yamlData, err := yaml.Marshal(resources)
-	if err != nil {
-		return "", err
-	}
-	return string(yamlData), nil
 }
