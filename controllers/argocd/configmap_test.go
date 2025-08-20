@@ -235,6 +235,9 @@ func TestReconcileArgoCD_reconcileTLSCerts_withInitialCertsUpdate(t *testing.T) 
 func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
+	defaultExclusions, err := yaml.Marshal(getDefaultResourceExclusions())
+	assert.NoError(t, err)
+
 	defaultConfigMapData := map[string]string{
 		"application.instanceLabelKey":       common.ArgoCDDefaultApplicationInstanceLabelKey,
 		"application.resourceTrackingMethod": argoproj.ResourceTrackingMethodLabel.String(),
@@ -247,7 +250,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 		"kustomize.buildOptions":             "",
 		"oidc.config":                        "",
 		"resource.inclusions":                "",
-		"resource.exclusions":                "",
+		"resource.exclusions":                string(defaultExclusions),
 		"server.rbac.disableApplicationFineGrainedRBACInheritance": "false",
 		"statusbadge.enabled":     "false",
 		"url":                     "https://argocd-server",
@@ -320,6 +323,22 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 				"ui.bannerpermanent": "true",
 				"ui.bannerposition":  "top",
 			},
+		},
+		{
+			"resource-exclusions",
+			[]argoCDOpt{func(a *argoproj.ArgoCD) {
+			}},
+			func() map[string]string {
+				all := getDefaultResourceExclusions()
+				raw, err := yaml.Marshal(all)
+				if err != nil {
+					panic(err)
+				}
+				fmt.Println(string(raw))
+				return map[string]string{
+					"resource.exclusions": string(raw),
+				}
+			}(),
 		},
 	}
 

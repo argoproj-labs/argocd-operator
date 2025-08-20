@@ -216,13 +216,22 @@ func getResourceActions(cr *argoproj.ArgoCD) map[string]string {
 	return action
 }
 
-// getResourceExclusions will return the resource exclusions for the given ArgoCD.
-func getResourceExclusions(cr *argoproj.ArgoCD) string {
-	re := common.ArgoCDDefaultResourceExclusions
+// getResourceExclusions returns resource exclusions from the CR or defaults if not set.
+func getResourceExclusions(cr *argoproj.ArgoCD) (string, error) {
+
+	// Use CR value if provided
 	if cr.Spec.ResourceExclusions != "" {
-		re = cr.Spec.ResourceExclusions
+		return cr.Spec.ResourceExclusions, nil
 	}
-	return re
+
+	// Use defaults
+	defaultExclusions := getDefaultResourceExclusions()
+	yamlData, err := yaml.Marshal(defaultExclusions)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal resource exclusions: %v", err)
+	}
+	return string(yamlData), nil
+
 }
 
 // getResourceInclusions will return the resource inclusions for the given ArgoCD.
@@ -410,7 +419,11 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 		}
 	}
 
-	cm.Data[common.ArgoCDKeyResourceExclusions] = getResourceExclusions(cr)
+	resourceExclusions, err := getResourceExclusions(cr)
+	if err != nil {
+		return err
+	}
+	cm.Data[common.ArgoCDKeyResourceExclusions] = resourceExclusions
 	cm.Data[common.ArgoCDKeyResourceInclusions] = getResourceInclusions(cr)
 	cm.Data[common.ArgoCDKeyResourceTrackingMethod] = getResourceTrackingMethod(cr)
 	cm.Data[common.ArgoCDKeyStatusBadgeEnabled] = fmt.Sprint(cr.Spec.StatusBadgeEnabled)
@@ -942,4 +955,35 @@ func (r *ReconcileArgoCD) reconcileArgoCmdParamsConfigMap(cr *argoproj.ArgoCD) e
 	}
 	argoutil.LogResourceCreation(log, cm)
 	return r.Create(context.TODO(), cm)
+}
+
+type filteredResource struct {
+	APIGroups []string `yaml:"apiGroups,omitempty"`
+	Kinds     []string `yaml:"kinds,omitempty"`
+	Clusters  []string `yaml:"clusters,omitempty"`
+}
+
+func getDefaultResourceExclusions() []filteredResource {
+	// See this URL for a description of why these resources are used:
+	// - https://argo-cd.readthedocs.io/en/stable/operator-manual/upgrading/2.14-3.0/#default-resourceexclusions-configurations
+
+	// See this URL for a current list of rules: https://github.com/argoproj/argo-cd/blob/master/manifests/base/config/argocd-cm.yaml
+
+	return []filteredResource{
+		{APIGroups: []string{"", "discovery.k8s.io"}, Kinds: []string{"Endpoints", "EndpointSlice"}},
+		{APIGroups: []string{"apiregistration.k8s.io"}, Kinds: []string{"APIService"}},
+		{APIGroups: []string{"coordination.k8s.io"}, Kinds: []string{"Lease"}},
+		{APIGroups: []string{"authentication.k8s.io", "authorization.k8s.io"},
+			Kinds: []string{
+				"SelfSubjectReview", "TokenReview", "LocalSubjectAccessReview",
+				"SelfSubjectAccessReview", "SelfSubjectRulesReview", "SubjectAccessReview"}},
+		{APIGroups: []string{"certificates.k8s.io"}, Kinds: []string{"CertificateSigningRequest"}},
+		{APIGroups: []string{"cert-manager.io"}, Kinds: []string{"CertificateRequest"}},
+		{APIGroups: []string{"cilium.io"}, Kinds: []string{"CiliumIdentity", "CiliumEndpoint", "CiliumEndpointSlice"}},
+		{APIGroups: []string{"kyverno.io", "reports.kyverno.io", "wgpolicyk8s.io"},
+			Kinds: []string{
+				"PolicyReport", "ClusterPolicyReport", "EphemeralReport", "ClusterEphemeralReport",
+				"AdmissionReport", "ClusterAdmissionReport", "BackgroundScanReport",
+				"ClusterBackgroundScanReport", "UpdateRequest"}},
+	}
 }
