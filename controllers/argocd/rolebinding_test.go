@@ -17,6 +17,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
 func TestReconcileArgoCD_reconcileRoleBinding(t *testing.T) {
@@ -325,7 +326,7 @@ func TestReconcileArgoCD_reconcileRoleBinding_forSourceNamespaces(t *testing.T) 
 	expectedName := getRoleBindingNameForSourceNamespaces(a.Name, sourceNamespace)
 
 	// Verify the name is truncated to 63 characters
-	assert.LessOrEqual(t, len(expectedName), maxLabelLength, "RoleBinding name should not exceed maxLabelLength")
+	assert.LessOrEqual(t, len(expectedName), 63, "RoleBinding name should not exceed maxLabelLength")
 
 	// Verify the RoleBinding was created successfully
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: sourceNamespace}, roleBinding))
@@ -369,25 +370,25 @@ func TestTruncateWithHash(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := truncateWithHash(tt.input)
+			result := argoutil.TruncateWithHash(tt.input)
 
 			// Check length constraint
-			assert.LessOrEqual(t, len(result), maxLabelLength, "Result should not exceed maxLabelLength")
+			assert.LessOrEqual(t, len(result), 63, "Result should not exceed maxLabelLength")
 
 			// Check that result is deterministic
-			result2 := truncateWithHash(tt.input)
+			result2 := argoutil.TruncateWithHash(tt.input)
 			assert.Equal(t, result, result2, "Function should be deterministic")
 
 			// For short strings, should be unchanged
-			if len(tt.input) <= maxLabelLength {
+			if len(tt.input) <= 63 {
 				assert.Equal(t, tt.input, result, "Short strings should not be modified")
 			} else {
 				// For long strings, should be different and shorter
 				assert.NotEqual(t, tt.input, result, "Long strings should be modified")
-				assert.LessOrEqual(t, len(result), maxLabelLength, "Result should be within length limit")
+				assert.LessOrEqual(t, len(result), 63, "Result should be within length limit")
 
 				// Should contain hash suffix if truncated
-				if len(tt.input) > maxLabelLength {
+				if len(tt.input) > 63 {
 					assert.Contains(t, result, "-", "Truncated strings should contain hash separator")
 				}
 			}
@@ -434,19 +435,19 @@ func TestGetRoleBindingNameForSourceNamespaces(t *testing.T) {
 			result := getRoleBindingNameForSourceNamespaces(tt.argocdName, tt.targetNamespace)
 
 			// Check length constraint
-			assert.LessOrEqual(t, len(result), maxLabelLength, "RoleBinding name should not exceed maxLabelLength")
+			assert.LessOrEqual(t, len(result), 63, "RoleBinding name should not exceed maxLabelLength")
 
 			// Check that result is deterministic
 			result2 := getRoleBindingNameForSourceNamespaces(tt.argocdName, tt.targetNamespace)
 			assert.Equal(t, result, result2, "Function should be deterministic")
 
 			// For short namespaces, should contain original namespace name
-			if len(tt.argocdName)+len(tt.targetNamespace)+1 <= maxLabelLength {
+			if len(tt.argocdName)+len(tt.targetNamespace)+1 <= 63 {
 				expected := fmt.Sprintf("%s_%s", tt.argocdName, tt.targetNamespace)
 				assert.Equal(t, expected, result, "Short namespaces should not be truncated")
 			} else {
 				// For long namespaces, should be truncated and contain hash
-				assert.LessOrEqual(t, len(result), maxLabelLength, "Long namespaces should be truncated")
+				assert.LessOrEqual(t, len(result), 63, "Long namespaces should be truncated")
 				assert.Contains(t, result, tt.argocdName, "Result should contain ArgoCD name")
 				assert.Contains(t, result, "-", "Truncated names should contain hash separator")
 			}
@@ -468,11 +469,11 @@ func TestTruncateWithHashUniqueness(t *testing.T) {
 	results := make(map[string]bool)
 
 	for _, input := range inputs {
-		result := truncateWithHash(input)
+		result := argoutil.TruncateWithHash(input)
 		assert.False(t, results[result], "Hash should be unique for different inputs: %s", input)
 		results[result] = true
 
 		// Verify length constraint
-		assert.LessOrEqual(t, len(result), maxLabelLength, "Result should not exceed maxLabelLength")
+		assert.LessOrEqual(t, len(result), 63, "Result should not exceed maxLabelLength")
 	}
 }
