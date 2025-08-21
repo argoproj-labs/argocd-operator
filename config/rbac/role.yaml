@@ -70,6 +70,9 @@ rules:
   - argocds
   - argocds/finalizers
   - argocds/status
+  - namespacemanagements
+  - namespacemanagements/finalizers
+  - namespacemanagements/status
   - notificationsconfigurations
   - notificationsconfigurations/finalizers
   verbs:
