@@ -55,7 +55,7 @@ func (r *ReconcileArgoCD) ReconcileRedisNetworkPolicy(cr *argoproj.ArgoCD) error
 		Spec: networkingv1.NetworkPolicySpec{
 			PodSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app.kubernetes.io/name": argoutil.TruncateWithHash(fmt.Sprintf("%s-%s", cr.Name, "redis")),
+					"app.kubernetes.io/name": argoutil.TruncateWithHash(nameWithSuffix("redis", cr)),
 				},
 			},
 			PolicyTypes: []networkingv1.PolicyType{
@@ -67,21 +67,21 @@ func (r *ReconcileArgoCD) ReconcileRedisNetworkPolicy(cr *argoproj.ArgoCD) error
 						{
 							PodSelector: &metav1.LabelSelector{
 								MatchLabels: map[string]string{
-									"app.kubernetes.io/name": argoutil.TruncateWithHash(fmt.Sprintf("%s-%s", cr.Name, "application-controller")),
+									"app.kubernetes.io/name": argoutil.TruncateWithHash(nameWithSuffix("application-controller", cr)),
 								},
 							},
 						},
 						{
 							PodSelector: &metav1.LabelSelector{
 								MatchLabels: map[string]string{
-									"app.kubernetes.io/name": argoutil.TruncateWithHash(fmt.Sprintf("%s-%s", cr.Name, "repo-server")),
+									"app.kubernetes.io/name": argoutil.TruncateWithHash(nameWithSuffix("repo-server", cr)),
 								},
 							},
 						},
 						{
 							PodSelector: &metav1.LabelSelector{
 								MatchLabels: map[string]string{
-									"app.kubernetes.io/name": argoutil.TruncateWithHash(fmt.Sprintf("%s-%s", cr.Name, "server")),
+									"app.kubernetes.io/name": argoutil.TruncateWithHash(nameWithSuffix("server", cr)),
 								},
 							},
 						},
@@ -101,7 +101,7 @@ func (r *ReconcileArgoCD) ReconcileRedisNetworkPolicy(cr *argoproj.ArgoCD) error
 		networkPolicy.Spec.Ingress[0].From = append(networkPolicy.Spec.Ingress[0].From, networkingv1.NetworkPolicyPeer{
 			PodSelector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app.kubernetes.io/name": argoutil.TruncateWithHash(fmt.Sprintf("%s-agent-%s", cr.Name, "principal")),
+					"app.kubernetes.io/name": argoutil.TruncateWithHash(nameWithSuffix("agent-principal", cr)),
 				},
 			},
 		})
@@ -186,7 +186,7 @@ func (r *ReconcileArgoCD) ReconcileRedisHANetworkPolicy(cr *argoproj.ArgoCD) err
 		Spec: networkingv1.NetworkPolicySpec{
 			PodSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app.kubernetes.io/name": argoutil.TruncateWithHash(fmt.Sprintf("%s-%s", cr.Name, "redis-ha-haproxy")),
+					"app.kubernetes.io/name": argoutil.TruncateWithHash(nameWithSuffix("redis-ha-haproxy", cr)),
 				},
 			},
 			PolicyTypes: []networkingv1.PolicyType{
@@ -198,21 +198,21 @@ func (r *ReconcileArgoCD) ReconcileRedisHANetworkPolicy(cr *argoproj.ArgoCD) err
 						{
 							PodSelector: &metav1.LabelSelector{
 								MatchLabels: map[string]string{
-									"app.kubernetes.io/name": argoutil.TruncateWithHash(fmt.Sprintf("%s-%s", cr.Name, "application-controller")),
+									"app.kubernetes.io/name": argoutil.TruncateWithHash(nameWithSuffix("application-controller", cr)),
 								},
 							},
 						},
 						{
 							PodSelector: &metav1.LabelSelector{
 								MatchLabels: map[string]string{
-									"app.kubernetes.io/name": argoutil.TruncateWithHash(fmt.Sprintf("%s-%s", cr.Name, "repo-server")),
+									"app.kubernetes.io/name": argoutil.TruncateWithHash(nameWithSuffix("repo-server", cr)),
 								},
 							},
 						},
 						{
 							PodSelector: &metav1.LabelSelector{
 								MatchLabels: map[string]string{
-									"app.kubernetes.io/name": argoutil.TruncateWithHash(fmt.Sprintf("%s-%s", cr.Name, "server")),
+									"app.kubernetes.io/name": argoutil.TruncateWithHash(nameWithSuffix("server", cr)),
 								},
 							},
 						},
