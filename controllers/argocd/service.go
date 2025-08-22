@@ -466,13 +466,8 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *argoproj.ArgoCD) error {
 		return nil
 	}
 
-	// If Principal is enabled, use LoadBalancer service type
-	if cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Principal != nil && cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
-		svc.Spec.Type = corev1.ServiceTypeLoadBalancer
-	} else {
-		// TODO: Existing and current service is not compared and updated
-		svc.Spec.Type = corev1.ServiceTypeClusterIP
-	}
+	// TODO: Existing and current service is not compared and updated
+	svc.Spec.Type = corev1.ServiceTypeClusterIP
 
 	_, err = ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDRepoServerTLSSecretName, cr.Spec.Repo.WantsAutoTLS())
 	if err != nil {
