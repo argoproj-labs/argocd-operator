@@ -113,7 +113,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 	ss.Spec.Replicas = getRedisHAReplicas()
 
 	// Preserve the labels set by newStatefulSetWithName and add annotations
-	ss.Spec.Template.ObjectMeta.Annotations = map[string]string{
+	ss.Spec.Template.Annotations = map[string]string{
 		"checksum/init-config": "7128bfbb51eafaffe3c33b1b463e15f0cf6514cec570f9d9c4f2396f28c724ac", // TODO: Should this be hard-coded?
 	}
 
