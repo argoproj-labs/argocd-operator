@@ -11,12 +11,22 @@ metadata:
 apiVersion: v1
 kind: Namespace
 metadata:
+  name: test-1-046-argocd-3
+---
+apiVersion: v1
+kind: Namespace
+metadata:
   name: source-ns-1
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
   name: source-ns-2
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: source-ns-3
 ---
 # First ArgoCD instance
 apiVersion: argoproj.io/v1beta1
@@ -37,3 +47,12 @@ metadata:
 spec:
   installationID: "instance-2"
   resourceTrackingMethod: "annotation+label"
+---
+# Third ArgoCD instance without resource tracking method (by default it is "annotation")
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd-3
+  namespace: test-1-046-argocd-3
+spec:
+  installationID: "instance-3"
