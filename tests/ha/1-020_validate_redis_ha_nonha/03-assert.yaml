@@ -73,5 +73,3 @@ spec:
             memory: 128Mi
 status:
   readyReplicas: 3
-
-
