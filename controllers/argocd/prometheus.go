@@ -147,7 +147,7 @@ func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) er
 
 	sm.Spec.Selector = metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			common.ArgoCDKeyName: argoutil.TruncateWithHash(nameWithSuffix(common.ArgoCDKeyMetrics, cr)),
+			common.ArgoCDKeyName: nameWithSuffix(common.ArgoCDKeyMetrics, cr),
 		},
 	}
 	sm.Spec.Endpoints = []monitoringv1.Endpoint{
@@ -221,7 +221,7 @@ func (r *ReconcileArgoCD) reconcileRepoServerServiceMonitor(cr *argoproj.ArgoCD)
 
 	sm.Spec.Selector = metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			common.ArgoCDKeyName: argoutil.TruncateWithHash(nameWithSuffix("repo-server", cr)),
+			common.ArgoCDKeyName: nameWithSuffix("repo-server", cr),
 		},
 	}
 	sm.Spec.Endpoints = []monitoringv1.Endpoint{
@@ -259,7 +259,7 @@ func (r *ReconcileArgoCD) reconcileServerMetricsServiceMonitor(cr *argoproj.Argo
 
 	sm.Spec.Selector = metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			common.ArgoCDKeyName: argoutil.TruncateWithHash(nameWithSuffix("server-metrics", cr)),
+			common.ArgoCDKeyName: nameWithSuffix("server-metrics", cr),
 		},
 	}
 	sm.Spec.Endpoints = []monitoringv1.Endpoint{

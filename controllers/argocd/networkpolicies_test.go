@@ -100,7 +100,7 @@ func TestRedisNetworkPolicyWithLongName(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Verify that the pod selector uses the truncated name with preserved suffix
-	expectedSelector := argoutil.TruncateWithHash(nameWithSuffix("redis", a))
+	expectedSelector := nameWithSuffix("redis", a)
 	assert.Equal(t, expectedSelector, np.Spec.PodSelector.MatchLabels["app.kubernetes.io/name"])
 
 	// Verify the suffix "redis" is preserved in the selector
@@ -124,7 +124,7 @@ func TestRedisHANetworkPolicyWithLongName(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Verify that the pod selector uses the truncated name with preserved suffix
-	expectedSelector := argoutil.TruncateWithHash(nameWithSuffix("redis-ha-haproxy", a))
+	expectedSelector := nameWithSuffix("redis-ha-haproxy", a)
 	assert.Equal(t, expectedSelector, np.Spec.PodSelector.MatchLabels["app.kubernetes.io/name"])
 
 	// Verify the suffix "redis-ha-haproxy" is preserved in the selector

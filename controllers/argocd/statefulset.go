@@ -54,25 +54,24 @@ func newStatefulSet(cr *argoproj.ArgoCD) *appsv1.StatefulSet {
 func newStatefulSetWithName(name string, component string, cr *argoproj.ArgoCD) *appsv1.StatefulSet {
 	ss := newStatefulSet(cr)
 
-	// Truncate the name for both statefulset name and labels to stay within 63 character limit
-	truncatedName := argoutil.TruncateWithHash(name)
-	ss.Name = truncatedName
+	// The name is already truncated by nameWithSuffix, so use it directly
+	ss.Name = name
 
 	lbls := ss.Labels
-	lbls[common.ArgoCDKeyName] = truncatedName
+	lbls[common.ArgoCDKeyName] = name
 	lbls[common.ArgoCDKeyComponent] = component
 	ss.Labels = lbls
 
 	ss.Spec = appsv1.StatefulSetSpec{
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				common.ArgoCDKeyName: truncatedName,
+				common.ArgoCDKeyName: name,
 			},
 		},
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					common.ArgoCDKeyName: truncatedName,
+					common.ArgoCDKeyName: name,
 				},
 				Annotations: make(map[string]string),
 			},
@@ -85,14 +84,14 @@ func newStatefulSetWithName(name string, component string, cr *argoproj.ArgoCD) 
 		ss.Spec.Template.Spec.NodeSelector = argoutil.AppendStringMap(ss.Spec.Template.Spec.NodeSelector, cr.Spec.NodePlacement.NodeSelector)
 		ss.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
 	}
-	ss.Spec.ServiceName = truncatedName
+	ss.Spec.ServiceName = name
 
 	return ss
 }
 
 // newStatefulSetWithSuffix returns a new StatefulSet instance for the given ArgoCD using the given suffix.
 func newStatefulSetWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) *appsv1.StatefulSet {
-	return newStatefulSetWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
+	return newStatefulSetWithName(nameWithSuffix(suffix, cr), component, cr)
 }
 
 func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
@@ -112,21 +111,10 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 
 	ss.Spec.PodManagementPolicy = appsv1.OrderedReadyPodManagement
 	ss.Spec.Replicas = getRedisHAReplicas()
-	ss.Spec.Selector = &metav1.LabelSelector{
-		MatchLabels: map[string]string{
-			common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
-		},
-	}
 
-	ss.Spec.ServiceName = nameWithSuffix("redis-ha", cr)
-
-	ss.Spec.Template.ObjectMeta = metav1.ObjectMeta{
-		Annotations: map[string]string{
-			"checksum/init-config": "7128bfbb51eafaffe3c33b1b463e15f0cf6514cec570f9d9c4f2396f28c724ac", // TODO: Should this be hard-coded?
-		},
-		Labels: map[string]string{
-			common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
-		},
+	// Preserve the labels set by newStatefulSetWithName and add annotations
+	ss.Spec.Template.ObjectMeta.Annotations = map[string]string{
+		"checksum/init-config": "7128bfbb51eafaffe3c33b1b463e15f0cf6514cec570f9d9c4f2396f28c724ac", // TODO: Should this be hard-coded?
 	}
 
 	ss.Spec.Template.Spec.Affinity = &corev1.Affinity{
@@ -134,7 +122,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
 				LabelSelector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{
-						common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
+						common.ArgoCDKeyName: ss.Name,
 					},
 				},
 				TopologyKey: common.ArgoCDKeyHostname,

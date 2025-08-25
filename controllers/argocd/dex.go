@@ -511,7 +511,7 @@ func (r *ReconcileArgoCD) reconcileDexService(cr *argoproj.ArgoCD) error {
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: argoutil.TruncateWithHash(nameWithSuffix("dex-server", cr)),
+		common.ArgoCDKeyName: nameWithSuffix("dex-server", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{

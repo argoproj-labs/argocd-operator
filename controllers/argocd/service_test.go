@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -183,4 +184,49 @@ func TestReconcileArgoCD_reconcileRepoServerWithRemoteEnabled(t *testing.T) {
 
 	assert.ErrorContains(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, s),
 		"services \"argocd-repo-server\" not found")
+}
+
+func TestServiceWithLongName(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	// Create ArgoCD with a very long name that will trigger truncation
+	longName := "this-is-a-very-long-argocd-instance-name-that-will-exceed-the-kubernetes-name-limit-and-require-truncation"
+	a := makeTestArgoCD()
+	a.Name = longName
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	// Test repo server service
+	err := r.reconcileRepoService(a)
+	assert.NoError(t, err)
+
+	// Get all services and find the repo server service
+	serviceList := &corev1.ServiceList{}
+	err = r.List(context.TODO(), serviceList, client.InNamespace(a.Namespace))
+	assert.NoError(t, err)
+
+	var repoService *corev1.Service
+	for i := range serviceList.Items {
+		if serviceList.Items[i].Labels[common.ArgoCDKeyComponent] == "repo-server" {
+			repoService = &serviceList.Items[i]
+			break
+		}
+	}
+	assert.NotNil(t, repoService, "Repo server service should exist")
+
+	// Verify that the service name is truncated and within limits
+	assert.LessOrEqual(t, len(repoService.Name), 63)
+	assert.Contains(t, repoService.Name, "repo-server")
+
+	// Verify that the labels are set correctly
+	assert.Equal(t, repoService.Name, repoService.Labels[common.ArgoCDKeyName])
+	assert.Equal(t, "repo-server", repoService.Labels[common.ArgoCDKeyComponent])
+
+	// Verify that the selector matches the labels
+	assert.Equal(t, repoService.Name, repoService.Spec.Selector[common.ArgoCDKeyName])
 }

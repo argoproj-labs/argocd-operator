@@ -337,25 +337,24 @@ func newDeployment(cr *argoproj.ArgoCD) *appsv1.Deployment {
 func newDeploymentWithName(name string, component string, cr *argoproj.ArgoCD) *appsv1.Deployment {
 	deploy := newDeployment(cr)
 
-	// Truncate the name for both deployment name and labels to stay within 63 character limit
-	truncatedName := argoutil.TruncateWithHash(name)
-	deploy.Name = truncatedName
+	// The name is already truncated by nameWithSuffix, so use it directly
+	deploy.Name = name
 
 	lbls := deploy.Labels
-	lbls[common.ArgoCDKeyName] = truncatedName
+	lbls[common.ArgoCDKeyName] = name
 	lbls[common.ArgoCDKeyComponent] = component
 	deploy.Labels = lbls
 
 	deploy.Spec = appsv1.DeploymentSpec{
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				common.ArgoCDKeyName: truncatedName,
+				common.ArgoCDKeyName: name,
 			},
 		},
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					common.ArgoCDKeyName: truncatedName,
+					common.ArgoCDKeyName: name,
 				},
 				Annotations: make(map[string]string),
 			},
@@ -374,7 +373,7 @@ func newDeploymentWithName(name string, component string, cr *argoproj.ArgoCD) *
 
 // newDeploymentWithSuffix returns a new Deployment instance for the given ArgoCD using the given suffix.
 func newDeploymentWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) *appsv1.Deployment {
-	return newDeploymentWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
+	return newDeploymentWithName(nameWithSuffix(suffix, cr), component, cr)
 }
 
 // reconcileDeployments will ensure that all Deployment resources are present for the given ArgoCD.

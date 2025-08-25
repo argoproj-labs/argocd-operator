@@ -325,14 +325,14 @@ func TestReconcileArgoCD_reconcileRoleBinding_forSourceNamespaces(t *testing.T) 
 	roleBinding := &rbacv1.RoleBinding{}
 	expectedName := getRoleBindingNameForSourceNamespaces(a.Name, sourceNamespace)
 
-	// Verify the name is truncated to 63 characters
-	assert.LessOrEqual(t, len(expectedName), 63, "RoleBinding name should not exceed maxLabelLength")
+	// Verify the name is truncated to maxLabelLength characters
+	assert.LessOrEqual(t, len(expectedName), argoutil.MaxLabelLength, "RoleBinding name should not exceed maxLabelLength")
 
 	// Verify the RoleBinding was created successfully
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: sourceNamespace}, roleBinding))
 
-	// Verify the RoleBinding name is exactly 63 characters
-	assert.Equal(t, 63, len(roleBinding.Name), "RoleBinding name should be exactly 63 characters")
+	// Verify the RoleBinding name is exactly maxLabelLength characters
+	assert.Equal(t, argoutil.MaxLabelLength, len(roleBinding.Name), "RoleBinding name should be exactly maxLabelLength characters")
 }
 
 func TestTruncateWithHash(t *testing.T) {

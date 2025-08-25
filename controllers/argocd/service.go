@@ -110,7 +110,7 @@ func (r *ReconcileArgoCD) reconcileMetricsService(cr *argoproj.ArgoCD) error {
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: argoutil.TruncateWithHash(nameWithSuffix("application-controller", cr)),
+		common.ArgoCDKeyName: nameWithSuffix("application-controller", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -162,8 +162,8 @@ func (r *ReconcileArgoCD) reconcileRedisHAAnnounceServices(cr *argoproj.ArgoCD) 
 		svc.Spec.PublishNotReadyAddresses = true
 
 		svc.Spec.Selector = map[string]string{
-			common.ArgoCDKeyName:               argoutil.TruncateWithHash(nameWithSuffix("redis-ha", cr)),
-			common.ArgoCDKeyStatefulSetPodName: argoutil.TruncateWithHash(nameWithSuffix(fmt.Sprintf("redis-ha-server-%d", i), cr)),
+			common.ArgoCDKeyName:               nameWithSuffix("redis-ha", cr),
+			common.ArgoCDKeyStatefulSetPodName: nameWithSuffix(fmt.Sprintf("redis-ha-server-%d", i), cr),
 		}
 
 		svc.Spec.Ports = []corev1.ServicePort{
@@ -218,7 +218,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAMasterService(cr *argoproj.ArgoCD) err
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: argoutil.TruncateWithHash(nameWithSuffix("redis-ha", cr)),
+		common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -283,7 +283,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyService(cr *argoproj.ArgoCD) erro
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: argoutil.TruncateWithHash(nameWithSuffix("redis-ha-haproxy", cr)),
+		common.ArgoCDKeyName: nameWithSuffix("redis-ha-haproxy", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -363,7 +363,7 @@ func (r *ReconcileArgoCD) reconcileRedisService(cr *argoproj.ArgoCD) error {
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: argoutil.TruncateWithHash(nameWithSuffix("redis", cr)),
+		common.ArgoCDKeyName: nameWithSuffix("redis", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -482,7 +482,7 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *argoproj.ArgoCD) error {
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: argoutil.TruncateWithHash(nameWithSuffix("repo-server", cr)),
+		common.ArgoCDKeyName: nameWithSuffix("repo-server", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -523,7 +523,7 @@ func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoproj.ArgoCD) err
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: argoutil.TruncateWithHash(nameWithSuffix("server", cr)),
+		common.ArgoCDKeyName: nameWithSuffix("server", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -565,7 +565,7 @@ func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: argoutil.TruncateWithHash(nameWithSuffix("server", cr)),
+		common.ArgoCDKeyName: nameWithSuffix("server", cr),
 	}
 
 	svc.Spec.Type = getArgoServerServiceType(cr)

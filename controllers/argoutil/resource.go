@@ -36,12 +36,13 @@ import (
 
 const (
 	hashLabelLength = 7
-	maxLabelLength  = 63
+	// MaxLabelLength is the maximum length for Kubernetes labels and names
+	MaxLabelLength = 63
 	// Maximum suffix length is "applicationset-controller" = 25 characters
 	// So CR name should be limited to 63 - 25 - 1 (hyphen) = 37 characters
 	maxSuffixLength = 25
 	// MaxCRNameLength is the maximum length for ArgoCD CR names to accommodate longest suffix
-	MaxCRNameLength = maxLabelLength - maxSuffixLength - 1 // -1 for hyphen separator
+	MaxCRNameLength = MaxLabelLength - maxSuffixLength - 1 // -1 for hyphen separator
 	// TruncatedNameAnnotation is the annotation key to store truncated CR name
 	TruncatedNameAnnotation = "argoproj.io/truncated-name"
 )
@@ -221,7 +222,7 @@ func IsTrackedByOperator(labels map[string]string) bool {
 
 // TruncateWithHash truncates a string to a maximum of 63 characters and adds a hash suffix to ensure uniqueness
 func TruncateWithHash(input string) string {
-	if len(input) <= maxLabelLength {
+	if len(input) <= MaxLabelLength {
 		return input
 	}
 
@@ -230,7 +231,7 @@ func TruncateWithHash(input string) string {
 	hashSuffix := fmt.Sprintf("-%x", hash[:hashLabelLength])
 
 	// Calculate how much we can truncate
-	maxBaseLength := maxLabelLength - len(hashSuffix)
+	maxBaseLength := MaxLabelLength - len(hashSuffix)
 
 	// Truncate and add hash
 	return input[:maxBaseLength] + hashSuffix
