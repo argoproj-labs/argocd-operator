@@ -1,0 +1,11 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+delete:
+- apiVersion: argoproj.io/v1beta1
+  kind: ArgoCD
+  name: argocd
+  namespace: argocd-e2e-cluster-config
+commands:
+  # Sleep to allow resources to be completely deleted
+  - command: sleep 30s

@@ -17,6 +17,7 @@ package argocdagent
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -29,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
@@ -169,12 +171,20 @@ func buildArgs(compName string) []string {
 }
 
 func buildPrincipalImage(cr *argoproj.ArgoCD) string {
+	// Value specified in the CR take precedence over everything else
 	if cr.Spec.ArgoCDAgent != nil &&
 		cr.Spec.ArgoCDAgent.Principal != nil &&
 		cr.Spec.ArgoCDAgent.Principal.Image != "" {
 		return cr.Spec.ArgoCDAgent.Principal.Image
 	}
-	return "quay.io/argoproj/argocd-agent:v1"
+
+	// Value specified in the environment take precedence over the default
+	if env := os.Getenv(EnvArgoCDPrincipalImage); env != "" {
+		return env
+	}
+
+	// Use the default image and version if not specified in the CR or environment variable
+	return common.ArgoCDAgentPrincipalDefaultImageName
 }
 
 func buildVolumeMounts() []corev1.VolumeMount {
