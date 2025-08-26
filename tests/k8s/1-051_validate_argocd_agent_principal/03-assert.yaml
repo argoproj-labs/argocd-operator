@@ -174,4 +174,4 @@ spec:
     spec:
       containers:
       - name: argocd-agent-principal
-        image: quay.io/repository/argoprojlabs/argocd-agent:v0.3.2
+        image: quay.io/argoprojlabs/argocd-agent:v0.3.2

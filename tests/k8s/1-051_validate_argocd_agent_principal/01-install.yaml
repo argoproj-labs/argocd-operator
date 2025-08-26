@@ -19,7 +19,7 @@ spec:
       jwtAllowGenerate: true
       auth: "mtls:CN=([^,]+)"
       logLevel: "trace"
-      image: "quay.io/user/argocd-agent:v1"
+      image: "quay.io/user/argocd-agent:v1"  # specify a custom image
   sourceNamespaces:
     - "agent-managed"
     - "agent-autonomous"

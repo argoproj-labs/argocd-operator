@@ -454,7 +454,7 @@ func TestReconcilePrincipalDeployment_DefaultImage(t *testing.T) {
 		Namespace: cr.Namespace,
 	}, deployment)
 	assert.NoError(t, err)
-	assert.Equal(t, "quay.io/repository/argoprojlabs/argocd-agent:v0.3.2", deployment.Spec.Template.Spec.Containers[0].Image)
+	assert.Equal(t, "quay.io/argoprojlabs/argocd-agent:v0.3.2", deployment.Spec.Template.Spec.Containers[0].Image)
 }
 
 func TestReconcilePrincipalDeployment_VolumeMountsAndVolumes(t *testing.T) {
