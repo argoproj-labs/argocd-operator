@@ -110,6 +110,7 @@ const (
 	EnvArgoCDPrincipalResourceProxyCaPath       = "ARGOCD_PRINCIPAL_RESOURCE_PROXY_CA_PATH"
 	EnvArgoCDPrincipalJwtSecretName             = "ARGOCD_PRINCIPAL_JWT_SECRET_NAME"
 	EnvRedisPassword                            = "REDIS_PASSWORD"
+	EnvArgoCDPrincipalImage                     = "ARGOCD_PRINCIPAL_IMAGE"
 )
 
 const cmSuffix = "-agent-principal-params"
