@@ -311,7 +311,7 @@ func getPrincipalTLSServerAllowGenerate() string {
 	if value := os.Getenv(EnvArgoCDPrincipalTLSServerAllowGenerate); value != "" {
 		return value
 	}
-	return "true"
+	return "false"
 }
 
 func getPrincipalTLSServerRootCAPath() string {
