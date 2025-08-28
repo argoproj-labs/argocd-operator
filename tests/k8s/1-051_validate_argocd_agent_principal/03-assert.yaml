@@ -119,7 +119,7 @@ data:
   principal.metrics.port: '8000'
   principal.listen.host: ''
   principal.namespace-create.pattern: ''
-  principal.tls.server.allow-generate: 'true'
+  principal.tls.server.allow-generate: 'false'
   principal.redis-compression-type: gzip
   principal.tls.secret-name: argocd-agent-principal-tls
   principal.resource-proxy.ca.path: ''
