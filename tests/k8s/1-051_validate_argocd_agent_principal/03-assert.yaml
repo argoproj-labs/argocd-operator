@@ -68,7 +68,7 @@ metadata:
   name: argocd-repo-server
   namespace: argocd-e2e-cluster-config
 spec:
-  type: LoadBalancer  
+  type: ClusterIP  
 ---
 apiVersion: v1
 kind: Service
