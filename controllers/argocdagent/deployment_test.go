@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 // Helper function to create a test deployment
@@ -127,7 +128,7 @@ func TestReconcilePrincipalDeployment_DeploymentDoesNotExist_PrincipalEnabled(t 
 	assert.Equal(t, buildPrincipalImage(cr), container.Image)
 	assert.Equal(t, corev1.PullAlways, container.ImagePullPolicy)
 	assert.Equal(t, buildArgs(testCompName), container.Args)
-	assert.Equal(t, buildPrincipalContainerEnv(), container.Env)
+	assert.Equal(t, buildPrincipalContainerEnv(cr), container.Env)
 	assert.Equal(t, buildSecurityContext(), container.SecurityContext)
 	assert.Equal(t, buildPorts(testCompName), container.Ports)
 	assert.Equal(t, buildVolumeMounts(), container.VolumeMounts)
@@ -373,7 +374,7 @@ func TestReconcilePrincipalDeployment_VerifyDeploymentSpec(t *testing.T) {
 	// Check that environment variables reference the correct ConfigMap
 	for _, env := range container.Env {
 		if env.ValueFrom != nil && env.ValueFrom.ConfigMapKeyRef != nil {
-			assert.Equal(t, "argocd-agent-params", env.ValueFrom.ConfigMapKeyRef.Name)
+			assert.Equal(t, cr.Name+cmSuffix, env.ValueFrom.ConfigMapKeyRef.Name)
 		}
 	}
 
@@ -453,7 +454,7 @@ func TestReconcilePrincipalDeployment_DefaultImage(t *testing.T) {
 		Namespace: cr.Namespace,
 	}, deployment)
 	assert.NoError(t, err)
-	assert.Equal(t, "quay.io/argoproj/argocd-agent:v1", deployment.Spec.Template.Spec.Containers[0].Image)
+	assert.Equal(t, "quay.io/argoprojlabs/argocd-agent:v0.3.2", deployment.Spec.Template.Spec.Containers[0].Image)
 }
 
 func TestReconcilePrincipalDeployment_VolumeMountsAndVolumes(t *testing.T) {
@@ -506,4 +507,78 @@ func TestReconcilePrincipalDeployment_VolumeMountsAndVolumes(t *testing.T) {
 	assert.Equal(t, "userpass-passwd", userpassVolume.Name)
 	assert.Equal(t, "argocd-agent-principal-userpass", userpassVolume.Secret.SecretName)
 	assert.Equal(t, ptr.To(true), userpassVolume.Secret.Optional)
+}
+
+func TestBuildPrincipalImage(t *testing.T) {
+	tests := []struct {
+		name          string
+		cr            *argoproj.ArgoCD
+		envImage      string
+		expectedImage string
+		description   string
+	}{
+		{
+			name: "CR specification takes precedence",
+			cr: makeTestArgoCD(
+				withPrincipalEnabled(true),
+				withPrincipalImage("custom-registry/argocd-agent:custom-tag"),
+			),
+			envImage:      "env-registry/argocd-agent:env-tag",
+			expectedImage: "custom-registry/argocd-agent:custom-tag",
+			description:   "When CR specifies an image, it should take precedence over environment variable and default",
+		},
+		{
+			name: "Environment variable used when CR image not specified",
+			cr: makeTestArgoCD(
+				withPrincipalEnabled(true),
+			),
+			envImage:      "env-registry/argocd-agent:env-tag",
+			expectedImage: "env-registry/argocd-agent:env-tag",
+			description:   "When CR doesn't specify an image but environment variable is set, use environment variable",
+		},
+		{
+			name: "Default image used when neither CR nor environment specified",
+			cr: makeTestArgoCD(
+				withPrincipalEnabled(true),
+			),
+			envImage:      "",
+			expectedImage: common.ArgoCDAgentPrincipalDefaultImageName,
+			description:   "When neither CR nor environment variable specifies an image, use default",
+		},
+		{
+			name: "Empty CR image should not override environment variable",
+			cr: makeTestArgoCD(
+				withPrincipalEnabled(true),
+				withPrincipalImage(""),
+			),
+			envImage:      "env-registry/argocd-agent:env-tag",
+			expectedImage: "env-registry/argocd-agent:env-tag",
+			description:   "When CR specifies empty image, environment variable should be used",
+		},
+		{
+			name: "Default image used when CR image is empty and no environment variable",
+			cr: makeTestArgoCD(
+				withPrincipalEnabled(true),
+				withPrincipalImage(""),
+			),
+			envImage:      "",
+			expectedImage: common.ArgoCDAgentPrincipalDefaultImageName,
+			description:   "When CR specifies empty image and no environment variable, use default",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set environment variable if specified
+			if tt.envImage != "" {
+				t.Setenv("ARGOCD_PRINCIPAL_IMAGE", tt.envImage)
+			} else {
+				// Clear environment variable
+				t.Setenv("ARGOCD_PRINCIPAL_IMAGE", "")
+			}
+
+			result := buildPrincipalImage(tt.cr)
+			assert.Equal(t, tt.expectedImage, result, tt.description)
+		})
+	}
 }

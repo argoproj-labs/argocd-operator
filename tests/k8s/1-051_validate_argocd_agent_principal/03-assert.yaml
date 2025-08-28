@@ -68,7 +68,7 @@ metadata:
   name: argocd-repo-server
   namespace: argocd-e2e-cluster-config
 spec:
-  type: ClusterIP
+  type: LoadBalancer  
 ---
 apiVersion: v1
 kind: Service
@@ -174,4 +174,4 @@ spec:
     spec:
       containers:
       - name: argocd-agent-principal
-        image: quay.io/user/argocd-agent:v1
+        image: quay.io/argoprojlabs/argocd-agent:v0.3.2
