@@ -17,6 +17,7 @@ package argocdagent
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -29,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
@@ -106,7 +108,7 @@ func buildPrincipalSpec(compName, saName string, cr *argoproj.ArgoCD) appsv1.Dep
 						Image:           buildPrincipalImage(cr),
 						ImagePullPolicy: corev1.PullAlways,
 						Name:            generateAgentResourceName(cr.Name, compName),
-						Env:             buildPrincipalContainerEnv(),
+						Env:             buildPrincipalContainerEnv(cr),
 						Args:            buildArgs(compName),
 						SecurityContext: buildSecurityContext(),
 						Ports:           buildPorts(compName),
@@ -147,14 +149,17 @@ func buildPorts(compName string) []corev1.ContainerPort {
 		{
 			ContainerPort: 8443,
 			Name:          compName,
+			Protocol:      corev1.ProtocolTCP,
 		},
 		{
 			ContainerPort: 8000,
 			Name:          "metrics",
+			Protocol:      corev1.ProtocolTCP,
 		},
 		{
 			ContainerPort: 6379,
 			Name:          "redis",
+			Protocol:      corev1.ProtocolTCP,
 		},
 	}
 }
@@ -166,12 +171,20 @@ func buildArgs(compName string) []string {
 }
 
 func buildPrincipalImage(cr *argoproj.ArgoCD) string {
+	// Value specified in the CR take precedence over everything else
 	if cr.Spec.ArgoCDAgent != nil &&
 		cr.Spec.ArgoCDAgent.Principal != nil &&
 		cr.Spec.ArgoCDAgent.Principal.Image != "" {
 		return cr.Spec.ArgoCDAgent.Principal.Image
 	}
-	return "quay.io/argoproj/argocd-agent:v1"
+
+	// Value specified in the environment take precedence over the default
+	if env := os.Getenv(EnvArgoCDPrincipalImage); env != "" {
+		return env
+	}
+
+	// Use the default image and version if not specified in the CR or environment variable
+	return common.ArgoCDAgentPrincipalDefaultImageName
 }
 
 func buildVolumeMounts() []corev1.VolumeMount {
@@ -246,10 +259,10 @@ func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, dep
 		deployment.Spec.Template.Spec.Containers[0].Name = generateAgentResourceName(cr.Name, compName)
 	}
 
-	if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Env, buildPrincipalContainerEnv()) {
+	if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Env, buildPrincipalContainerEnv(cr)) {
 		log.Info("deployment container env is being updated")
 		changed = true
-		deployment.Spec.Template.Spec.Containers[0].Env = buildPrincipalContainerEnv()
+		deployment.Spec.Template.Spec.Containers[0].Env = buildPrincipalContainerEnv(cr)
 	}
 
 	if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Args, buildArgs(compName)) {
@@ -279,10 +292,10 @@ func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, dep
 	return deployment, changed
 }
 
-func buildPrincipalContainerEnv() []corev1.EnvVar {
+func buildPrincipalContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
 
 	ref := corev1.LocalObjectReference{
-		Name: "argocd-agent-params",
+		Name: cr.Name + cmSuffix,
 	}
 
 	env := []corev1.EnvVar{
@@ -528,6 +541,71 @@ func buildPrincipalContainerEnv() []corev1.EnvVar {
 					Key:                  PrincipalEnableWebSocket,
 					LocalObjectReference: ref,
 					Optional:             ptr.To(true),
+				},
+			},
+		}, {
+			Name: EnvArgoCDPrincipalTlsSecretName,
+			ValueFrom: &corev1.EnvVarSource{
+				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+					Key:                  PrincipalTLSSecretName,
+					LocalObjectReference: ref,
+					Optional:             ptr.To(true),
+				},
+			},
+		}, {
+			Name: EnvArgoCDPrincipalTlsServerRootCASecretName,
+			ValueFrom: &corev1.EnvVarSource{
+				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+					Key:                  PrincipalTLSServerRootCASecretName,
+					LocalObjectReference: ref,
+					Optional:             ptr.To(true),
+				},
+			},
+		}, {
+			Name: EnvArgoCDPrincipalResourceProxySecretName,
+			ValueFrom: &corev1.EnvVarSource{
+				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+					Key:                  PrincipalResourceProxySecretName,
+					LocalObjectReference: ref,
+					Optional:             ptr.To(true),
+				},
+			},
+		}, {
+			Name: EnvArgoCDPrincipalResourceProxyCaPath,
+			ValueFrom: &corev1.EnvVarSource{
+				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+					Key:                  PrincipalResourceProxyCAPath,
+					LocalObjectReference: ref,
+					Optional:             ptr.To(true),
+				},
+			},
+		}, {
+			Name: EnvArgoCDPrincipalResourceProxyCaSecretName,
+			ValueFrom: &corev1.EnvVarSource{
+				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+					Key:                  PrincipalResourceProxyCASecretName,
+					LocalObjectReference: ref,
+					Optional:             ptr.To(true),
+				},
+			},
+		}, {
+			Name: EnvArgoCDPrincipalJwtSecretName,
+			ValueFrom: &corev1.EnvVarSource{
+				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+					Key:                  PrincipalJwtSecretName,
+					LocalObjectReference: ref,
+					Optional:             ptr.To(true),
+				},
+			},
+		}, {
+			Name: EnvRedisPassword,
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					Key: PrincipalRedisPassword,
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "argocd-redis",
+					},
+					Optional: ptr.To(true),
 				},
 			},
 		}}

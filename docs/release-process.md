@@ -8,7 +8,7 @@
 
 Before beginning, make sure you have push access to the following repositories in quay.io:
 
-  * [https://quay.io/repository/argoprojlabs/argocd-operator-util](https://quay.io/repository/argoprojlabs/argocd-operator-util)
+  * [https://quay.io/argoprojlabs/argocd-operator-util](https://quay.io/argoprojlabs/argocd-operator-util)
   * [http://quay.io/argoprojlabs/argocd-operator](http://quay.io/argoprojlabs/argocd-operator)
   * [http://quay.io/argoprojlabs/argocd-operator-registry](http://quay.io/argoprojlabs/argocd-operator-registry) 
 
