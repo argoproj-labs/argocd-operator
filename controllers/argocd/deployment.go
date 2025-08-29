@@ -390,6 +390,8 @@ func newDeployment(cr *argoproj.ArgoCD) *appsv1.Deployment {
 // newDeploymentWithName returns a new Deployment instance for the given ArgoCD using the given name.
 func newDeploymentWithName(name string, component string, cr *argoproj.ArgoCD) *appsv1.Deployment {
 	deploy := newDeployment(cr)
+
+	// The name is already truncated by nameWithSuffix, so use it directly
 	deploy.Name = name
 
 	lbls := deploy.Labels
@@ -425,7 +427,7 @@ func newDeploymentWithName(name string, component string, cr *argoproj.ArgoCD) *
 
 // newDeploymentWithSuffix returns a new Deployment instance for the given ArgoCD using the given suffix.
 func newDeploymentWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) *appsv1.Deployment {
-	return newDeploymentWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
+	return newDeploymentWithName(nameWithSuffix(suffix, cr), component, cr)
 }
 
 // reconcileDeployments will ensure that all Deployment resources are present for the given ArgoCD.
@@ -483,7 +485,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 		ValueFrom: &corev1.EnvVarSource{
 			SecretKeyRef: &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: fmt.Sprintf("%s-%s", cr.Name, "redis-initial-password"),
+					Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
 				},
 				Key: "admin.password",
 			},
@@ -661,7 +663,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 		ValueFrom: &corev1.EnvVarSource{
 			SecretKeyRef: &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: fmt.Sprintf("%s-%s", cr.Name, "redis-initial-password"),
+					Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
 				},
 				Key: "admin.password",
 			},
@@ -827,7 +829,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 			Name: "redis-initial-pass",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: fmt.Sprintf("%s-%s", cr.Name, "redis-initial-password"),
+					SecretName: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
 					Optional:   boolPtr(true),
 				},
 			},
@@ -975,7 +977,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 		ValueFrom: &corev1.EnvVarSource{
 			SecretKeyRef: &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: fmt.Sprintf("%s-%s", cr.Name, "redis-initial-password"),
+					Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
 				},
 				Key: "admin.password",
 			},
@@ -1426,7 +1428,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		ValueFrom: &corev1.EnvVarSource{
 			SecretKeyRef: &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: fmt.Sprintf("%s-%s", cr.Name, "redis-initial-password"),
+					Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
 				},
 				Key: "admin.password",
 			},
