@@ -1,0 +1,12 @@
+---
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+status:
+  phase: Available
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: alice-local-user

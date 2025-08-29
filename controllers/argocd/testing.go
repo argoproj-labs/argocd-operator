@@ -58,6 +58,9 @@ func makeTestReconciler(client client.Client, sch *runtime.Scheme, k8sClient kub
 		Client:    client,
 		Scheme:    sch,
 		K8sClient: k8sClient,
+		LocalUsers: &LocalUsersInfo{
+			TokenRenewalTimers: map[string]*TokenRenewalTimer{},
+		},
 	}
 }
 
@@ -95,26 +98,6 @@ func makeTestArgoCD(opts ...argoCDOpt) *argoproj.ArgoCD {
 	}
 	for _, o := range opts {
 		o(a)
-	}
-	return a
-}
-
-func makeTestArgoCDForKeycloak() *argoproj.ArgoCD {
-	a := &argoproj.ArgoCD{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      testArgoCDName,
-			Namespace: testNamespace,
-		},
-		Spec: argoproj.ArgoCDSpec{
-			SSO: &argoproj.ArgoCDSSOSpec{
-				Provider: "keycloak",
-			},
-			Server: argoproj.ArgoCDServerSpec{
-				Route: argoproj.ArgoCDRouteSpec{
-					Enabled: true,
-				},
-			},
-		},
 	}
 	return a
 }

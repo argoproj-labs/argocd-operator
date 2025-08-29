@@ -25,11 +25,8 @@ import (
 	"strings"
 
 	"github.com/argoproj/argo-cd/v3/util/env"
-	appsv1 "github.com/openshift/api/apps/v1"
 	configv1 "github.com/openshift/api/config/v1"
-	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
-	templatev1 "github.com/openshift/api/template/v1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -55,6 +52,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	controllerconfig "sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -91,6 +89,7 @@ func main() {
 
 	var secureMetrics = false
 	var enableHTTP2 = false
+	var skipControllerNameValidation = true
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", fmt.Sprintf(":%d", common.OperatorMetricsPort), "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
@@ -174,6 +173,12 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "b674928d.argoproj.io",
+		// With controller-runtime v0.19.0, unique controller name validation is
+		// enforced. The operator may fail to start due to this as we don't have unique
+		// names. Use SkipNameValidation to ingnore the uniquness check and prevent panic.
+		Controller: controllerconfig.Controller{
+			SkipNameValidation: &skipControllerNameValidation,
+		},
 	}
 
 	if watchedNsCache := getDefaultWatchedNamespacesCacheOptions(); watchedNsCache != nil {
@@ -225,25 +230,6 @@ func main() {
 		}
 	}
 
-	// Setup Schemes for SSO if template instance is available.
-	if argocd.CanUseKeycloakWithTemplate() {
-		setupLog.Info("Keycloak instance can be managed using OpenShift Template")
-		if err := templatev1.Install(mgr.GetScheme()); err != nil {
-			setupLog.Error(err, "")
-			os.Exit(1)
-		}
-		if err := appsv1.Install(mgr.GetScheme()); err != nil {
-			setupLog.Error(err, "")
-			os.Exit(1)
-		}
-		if err := oauthv1.Install(mgr.GetScheme()); err != nil {
-			setupLog.Error(err, "")
-			os.Exit(1)
-		}
-	} else {
-		setupLog.Info("Keycloak instance cannot be managed using OpenShift Template, as DeploymentConfig/Template API is not present")
-	}
-
 	k8sClient, err := initK8sClient()
 	if err != nil {
 		setupLog.Error(err, "Failed to initialize Kubernetes client")
@@ -254,6 +240,9 @@ func main() {
 		Scheme:        mgr.GetScheme(),
 		LabelSelector: labelSelectorFlag,
 		K8sClient:     k8sClient,
+		LocalUsers: &argocd.LocalUsersInfo{
+			TokenRenewalTimers: map[string]*argocd.TokenRenewalTimer{},
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ArgoCD")
 		os.Exit(1)

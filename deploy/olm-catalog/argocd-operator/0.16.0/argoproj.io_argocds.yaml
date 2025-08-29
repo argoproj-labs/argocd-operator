@@ -7542,7 +7542,7 @@ spec:
                   keycloak:
                     description: |-
                       Keycloak contains the configuration for Argo CD keycloak authentication
-                      Deprecated: This field is planned for removal in a future release and will no longer be supported.
+                      Removed: This field is no longer supported and the related functionality has been removed.
                     properties:
                       host:
                         description: Host is the hostname to use for Ingress/Route
@@ -15694,6 +15694,45 @@ spec:
                       description: Version is a configured kustomize version in the
                         format of vX.Y.Z
                       type: string
+                  type: object
+                type: array
+              localUsers:
+                description: LocalUsers is a listing of local users to be created
+                  by the operator for the purpose of issuing ArgoCD API keys.
+                items:
+                  description: LocalUserSpec is used to specify information about
+                    an ArgoCD local user to be created by the operator.
+                  properties:
+                    apiKey:
+                      description: |-
+                        ApiKey defines whether or not the user is configured to use an ArgoCD API
+                        key. Default is true
+                      type: boolean
+                    autoRenewToken:
+                      description: |-
+                        AutoRenewToken specifies if a new token is to be issued once the existing
+                        one has expired. Default is true
+                      type: boolean
+                    enabled:
+                      description: |-
+                        Enabled defines whether or not this local user is enabled. Default is
+                        true
+                      type: boolean
+                    login:
+                      description: Login defines whether or not the user is configured
+                        to be able to login. Default is false
+                      type: boolean
+                    name:
+                      description: Name of the local user
+                      type: string
+                    tokenLifetime:
+                      description: |-
+                        TokenLifetime defines the how long the token issued to this user is valid
+                        for. An empty string or the value 0 indicates an infinite lifetime.
+                        Examples: "30m", "8760h"
+                      type: string
+                  required:
+                  - name
                   type: object
                 type: array
               monitoring:
@@ -28719,8 +28758,9 @@ spec:
                         type: array
                     type: object
                   keycloak:
-                    description: Keycloak contains the configuration for Argo CD keycloak
-                      authentication
+                    description: |-
+                      Keycloak contains the configuration for Argo CD keycloak authentication
+                      Removed: This field is no longer supported and the related functionality has been removed.
                     properties:
                       host:
                         description: Host is the hostname to use for Ingress/Route

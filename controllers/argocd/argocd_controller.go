@@ -19,6 +19,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -40,6 +41,30 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+type lock struct {
+	lock sync.Mutex
+}
+
+func (l *lock) protect(code func()) {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+	code()
+}
+
+type TokenRenewalTimer struct {
+	timer   *time.Timer
+	stopped bool
+}
+
+type LocalUsersInfo struct {
+	// Stores the the timers that will auto-renew the API tokens for local users
+	// after they expire. The key format is "argocd-namespace/user-name"
+	TokenRenewalTimers map[string]*TokenRenewalTimer
+	// Protects access to the token renewal timers and the K8S resources that
+	// get updated as part of renewing the user tokens
+	UserTokensLock lock
+}
+
 // blank assignment to verify that ReconcileArgoCD implements reconcile.Reconciler
 var _ reconcile.Reconciler = &ReconcileArgoCD{}
 
@@ -56,7 +81,8 @@ type ReconcileArgoCD struct {
 	// Stores label selector used to reconcile a subset of ArgoCD
 	LabelSelector string
 
-	K8sClient kubernetes.Interface
+	K8sClient  kubernetes.Interface
+	LocalUsers *LocalUsersInfo
 }
 
 var log = logr.Log.WithName("controller_argocd")
@@ -69,7 +95,6 @@ var ActiveInstanceMap = make(map[string]string)
 
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;clusterrolebindings,verbs=*
 //+kubebuilder:rbac:groups="",resources=configmaps;endpoints;events;persistentvolumeclaims;pods;namespaces;secrets;serviceaccounts;services;services/finalizers,verbs=*
-//+kubebuilder:rbac:groups=apps.openshift.io,resources=deploymentconfigs,verbs=*
 //+kubebuilder:rbac:groups=apps,resources=deployments;replicasets;daemonsets;statefulsets,verbs=*
 //+kubebuilder:rbac:groups=apps,resourceNames=argocd-operator,resources=deployments/finalizers,verbs=update
 //+kubebuilder:rbac:groups=argoproj.io,resources=argocds;argocds/finalizers;argocds/status,verbs=*
@@ -87,6 +112,7 @@ var ActiveInstanceMap = make(map[string]string)
 //+kubebuilder:rbac:groups="oauth.openshift.io",resources=oauthclients,verbs=get;list;watch;create;delete;patch;update
 //+kubebuilder:rbac:groups=argoproj.io,resources=notificationsconfigurations;notificationsconfigurations/finalizers,verbs=*
 //+kubebuilder:rbac:groups="apiregistration.k8s.io",resources="apiservices",verbs=get;list
+//+kubebuilder:rbac:groups=argoproj.io,resources=namespacemanagements;namespacemanagements/finalizers;namespacemanagements/status,verbs=*
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -188,6 +214,9 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 		ActiveInstancesTotal.Dec()
 		ActiveInstanceReconciliationCount.DeleteLabelValues(argocd.Namespace)
 		ReconcileTime.DeletePartialMatch(prometheus.Labels{"namespace": argocd.Namespace})
+
+		// Remove any local user token renewal timers for the namespace
+		r.cleanupNamespaceTokenTimers(argocd.Namespace)
 
 		if argocd.IsDeletionFinalizerPresent() {
 			if err := r.deleteClusterResources(argocd); err != nil {

@@ -71,6 +71,7 @@ const (
 	PrincipalKeepAliveMinInterval      = "principal.keep-alive-min-interval"
 	PrincipalRedisCompressionType      = "principal.redis-compression-type"
 	PrincipalPprofPort                 = "principal.pprof-port"
+	PrincipalRedisPassword             = "auth"
 
 	// Environment variable names for Principal configuration
 	// These constants define the environment variable names that can override default values
@@ -102,13 +103,17 @@ const (
 	EnvArgoCDPrincipalRedisServerAddress        = "ARGOCD_PRINCIPAL_REDIS_SERVER_ADDRESS"
 	EnvArgoCDPrincipalRedisCompressionType      = "ARGOCD_PRINCIPAL_REDIS_COMPRESSION_TYPE"
 	EnvArgoCDPrincipalPprofPort                 = "ARGOCD_PRINCIPAL_PPROF_PORT"
-	EncArgoCDPrincipalTlsSecretName             = "ARGOCD_PRINCIPAL_TLS_SECRET_NAME"
-	EncArgoCDPrincipalTlsServerRootCASecretName = "ARGOCD_PRINCIPAL_TLS_SERVER_ROOT_CA_SECRET_NAME"
-	EncArgoCDPrincipalResourceProxySecretName   = "ARGOCD_PRINCIPAL_RESOURCE_PROXY_SECRET_NAME"
-	EncArgoCDPrincipalResourceProxyCaSecretName = "ARGOCD_PRINCIPAL_RESOURCE_PROXY_CA_SECRET_NAME"
-	EncArgoCDPrincipalResourceProxyCaPath       = "ARGOCD_PRINCIPAL_RESOURCE_PROXY_CA_PATH"
-	EncArgoCDPrincipalJwtSecretName             = "ARGOCD_PRINCIPAL_JWT_SECRET_NAME"
+	EnvArgoCDPrincipalTlsSecretName             = "ARGOCD_PRINCIPAL_TLS_SECRET_NAME"
+	EnvArgoCDPrincipalTlsServerRootCASecretName = "ARGOCD_PRINCIPAL_TLS_SERVER_ROOT_CA_SECRET_NAME"
+	EnvArgoCDPrincipalResourceProxySecretName   = "ARGOCD_PRINCIPAL_RESOURCE_PROXY_SECRET_NAME"
+	EnvArgoCDPrincipalResourceProxyCaSecretName = "ARGOCD_PRINCIPAL_RESOURCE_PROXY_CA_SECRET_NAME"
+	EnvArgoCDPrincipalResourceProxyCaPath       = "ARGOCD_PRINCIPAL_RESOURCE_PROXY_CA_PATH"
+	EnvArgoCDPrincipalJwtSecretName             = "ARGOCD_PRINCIPAL_JWT_SECRET_NAME"
+	EnvRedisPassword                            = "REDIS_PASSWORD"
+	EnvArgoCDPrincipalImage                     = "ARGOCD_PRINCIPAL_IMAGE"
 )
+
+const cmSuffix = "-agent-principal-params"
 
 // ReconcilePrincipalConfigMap manages the lifecycle of the Principal component's ConfigMap.
 // It creates, updates, or deletes the ConfigMap based on the ArgoCD CR's Principal configuration.
@@ -167,7 +172,7 @@ func ReconcilePrincipalConfigMap(client client.Client, compName string, cr *argo
 func buildConfigMap(cr *argoproj.ArgoCD, compName string) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-agent-params",
+			Name:      cr.Name + cmSuffix,
 			Namespace: cr.Namespace,
 			Labels:    buildLabelsForAgentPrincipal(cr.Name, compName),
 		},
@@ -306,7 +311,7 @@ func getPrincipalTLSServerAllowGenerate() string {
 	if value := os.Getenv(EnvArgoCDPrincipalTLSServerAllowGenerate); value != "" {
 		return value
 	}
-	return "true"
+	return "false"
 }
 
 func getPrincipalTLSServerRootCAPath() string {
@@ -411,42 +416,42 @@ func getPrincipalPprofPort() string {
 }
 
 func getPrincipalJwtSecretName() string {
-	if value := os.Getenv(EncArgoCDPrincipalJwtSecretName); value != "" {
+	if value := os.Getenv(EnvArgoCDPrincipalJwtSecretName); value != "" {
 		return value
 	}
 	return "argocd-agent-jwt"
 }
 
 func getPrincipalResourceProxyCaPath() string {
-	if value := os.Getenv(EncArgoCDPrincipalResourceProxyCaPath); value != "" {
+	if value := os.Getenv(EnvArgoCDPrincipalResourceProxyCaPath); value != "" {
 		return value
 	}
 	return ""
 }
 
 func getPrincipalResourceProxyCaSecretName() string {
-	if value := os.Getenv(EncArgoCDPrincipalResourceProxyCaSecretName); value != "" {
+	if value := os.Getenv(EnvArgoCDPrincipalResourceProxyCaSecretName); value != "" {
 		return value
 	}
 	return "argocd-agent-ca"
 }
 
 func getPrincipalResourceProxySecretName() string {
-	if value := os.Getenv(EncArgoCDPrincipalResourceProxySecretName); value != "" {
+	if value := os.Getenv(EnvArgoCDPrincipalResourceProxySecretName); value != "" {
 		return value
 	}
 	return "argocd-agent-resource-proxy-tls"
 }
 
 func getPrincipalTlsSecretName() string {
-	if value := os.Getenv(EncArgoCDPrincipalTlsSecretName); value != "" {
+	if value := os.Getenv(EnvArgoCDPrincipalTlsSecretName); value != "" {
 		return value
 	}
 	return "argocd-agent-principal-tls"
 }
 
 func getPrincipalTlsServerRootCASecretName() string {
-	if value := os.Getenv(EncArgoCDPrincipalTlsServerRootCASecretName); value != "" {
+	if value := os.Getenv(EnvArgoCDPrincipalTlsServerRootCASecretName); value != "" {
 		return value
 	}
 	return "argocd-agent-ca"

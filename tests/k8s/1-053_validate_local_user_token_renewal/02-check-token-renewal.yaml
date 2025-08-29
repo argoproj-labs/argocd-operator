@@ -1,0 +1,30 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: |
+    val=$(kubectl get -n $NAMESPACE secrets argocd-secret -o json | jq -r '.data["accounts.alice.tokens"]')
+    if test "$val" == "null"; then
+      echo "Entry 'alice.account.tokens' not found in argocd-secret"
+      exit 1
+    fi
+    sleep 12
+    val1=$(kubectl get -n $NAMESPACE secrets argocd-secret -o json | jq -r '.data["accounts.alice.tokens"]')
+    if test "$val1" == "null"; then
+      echo "Updated entry 'alice.account.tokens' not found in argocd-secret"
+      exit 1
+    fi
+    if test "$val" == "$val1"; then
+      echo "Token not re-issued first time"
+      exit 1
+    fi
+    sleep 10
+    val2=$(kubectl get -n $NAMESPACE secrets argocd-secret -o json | jq -r '.data["accounts.alice.tokens"]')
+    if test "$val1" == "null"; then
+      echo "Updated entry 'alice.account.tokens' not found in argocd-secret"
+      exit 1
+    fi
+    if test "$val1" == "$val2"; then
+      echo "Token not re-issued second time"
+      exit 1
+    fi
+    exit 0

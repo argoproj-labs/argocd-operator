@@ -24,7 +24,7 @@ metadata:
   name: example-argocd
 spec:
   extraConfig: 
-    "ping": "pong" // The same entry is reflected in Argo CD Configmap.
+    "ping": "pong" # The same entry is reflected in Argo CD Configmap.
   server:
     ingress:
       enabled: true

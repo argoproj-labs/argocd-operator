@@ -235,6 +235,9 @@ func TestReconcileArgoCD_reconcileTLSCerts_withInitialCertsUpdate(t *testing.T) 
 func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
+	defaultExclusions, err := yaml.Marshal(getDefaultResourceExclusions())
+	assert.NoError(t, err)
+
 	defaultConfigMapData := map[string]string{
 		"application.instanceLabelKey":       common.ArgoCDDefaultApplicationInstanceLabelKey,
 		"application.resourceTrackingMethod": argoproj.ResourceTrackingMethodLabel.String(),
@@ -247,7 +250,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 		"kustomize.buildOptions":             "",
 		"oidc.config":                        "",
 		"resource.inclusions":                "",
-		"resource.exclusions":                "",
+		"resource.exclusions":                string(defaultExclusions),
 		"server.rbac.disableApplicationFineGrainedRBACInheritance": "false",
 		"statusbadge.enabled":     "false",
 		"url":                     "https://argocd-server",
@@ -320,6 +323,22 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 				"ui.bannerpermanent": "true",
 				"ui.bannerposition":  "top",
 			},
+		},
+		{
+			"resource-exclusions",
+			[]argoCDOpt{func(a *argoproj.ArgoCD) {
+			}},
+			func() map[string]string {
+				all := getDefaultResourceExclusions()
+				raw, err := yaml.Marshal(all)
+				if err != nil {
+					panic(err)
+				}
+				fmt.Println(string(raw))
+				return map[string]string{
+					"resource.exclusions": string(raw),
+				}
+			}(),
 		},
 	}
 
@@ -556,14 +575,6 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexDisabled(t *testing.T) {
 				cr.Spec.SSO = nil
 			}),
 		},
-		{
-			name: "dex disabled by switching provider",
-			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Provider: argoproj.SSOProviderTypeKeycloak,
-				}
-			}),
-		},
 	}
 
 	for _, test := range tests {
@@ -613,23 +624,6 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_dexConfigDeletedwhenDexDisabled(
 					Provider: argoproj.SSOProviderTypeDex,
 					Dex: &argoproj.ArgoCDDexSpec{
 						Config: "test-dex-config",
-					},
-				}
-			}),
-			wantConfigRemoved: true,
-		},
-		{
-			name: "dex disabled by switching provider",
-			updateCrFunc: func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Provider: argoproj.SSOProviderTypeKeycloak,
-				}
-			},
-			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Provider: argoproj.SSOProviderTypeDex,
-					Dex: &argoproj.ArgoCDDexSpec{
-						OpenShiftOAuth: true,
 					},
 				}
 			}),
@@ -1135,6 +1129,119 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withRespectRBAC(t *testing.T) {
 	}
 }
 
+func TestReconcileArgoCD_reconcileArgoConfigMap_withLocalUsers(t *testing.T) {
+	a := makeTestArgoCD()
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	a.Spec.LocalUsers = []argoproj.LocalUserSpec{
+		{
+			Name: "alice",
+		},
+	}
+
+	err := r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "apiKey", cm.Data["accounts.alice"])
+	assert.Equal(t, "true", cm.Data["accounts.alice.enabled"])
+
+	a.Spec.LocalUsers = []argoproj.LocalUserSpec{
+		{
+			Name:    "alice",
+			Enabled: boolPtr(false),
+		},
+	}
+
+	err = r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	cm = &corev1.ConfigMap{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "apiKey", cm.Data["accounts.alice"])
+	assert.Equal(t, "false", cm.Data["accounts.alice.enabled"])
+}
+
+func TestReconcileArgoCD_reconcileArgoConfigMap_withLocalUsers_extraConfigOverride(t *testing.T) {
+	a := makeTestArgoCD()
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	a.Spec.LocalUsers = []argoproj.LocalUserSpec{
+		{
+			Name:    "alice",
+			ApiKey:  boolPtr(true),
+			Login:   false,
+			Enabled: boolPtr(false),
+		},
+	}
+
+	a.Spec.ExtraConfig = map[string]string{
+		"accounts.alice": "login",
+	}
+
+	err := r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "login", cm.Data["accounts.alice"])
+	assert.Equal(t, "", cm.Data["accounts.alice.enabled"])
+
+	a.Spec.LocalUsers = []argoproj.LocalUserSpec{
+		{
+			Name:    "alice",
+			ApiKey:  boolPtr(true),
+			Login:   false,
+			Enabled: boolPtr(false),
+		},
+	}
+
+	a.Spec.ExtraConfig = map[string]string{
+		"accounts.alice.enabled": "true",
+	}
+
+	err = r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	cm = &corev1.ConfigMap{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "apiKey", cm.Data["accounts.alice"])
+	assert.Equal(t, "true", cm.Data["accounts.alice.enabled"])
+}
+
 func Test_reconcileRBAC(t *testing.T) {
 	a := makeTestArgoCD()
 
@@ -1148,7 +1255,7 @@ func Test_reconcileRBAC(t *testing.T) {
 	err := r.reconcileRBAC(a)
 	assert.NoError(t, err)
 
-	// Verify ArgoCD CR can be used to configure the RBAC policy matcher mode.\
+	// Verify ArgoCD CR can be used to configure the RBAC policy matcher mode.
 	matcherMode := "regex"
 	a.Spec.RBAC.PolicyMatcherMode = &matcherMode
 
@@ -1164,7 +1271,7 @@ func Test_reconcileRBAC(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, cm.Data["policy.matchMode"], matcherMode)
 
-	// Verify when SSO different from keycloak it sync
+	// Verify when SSO is dex, RBAC scopes are synced
 	rbacScopes := "[groups,email]"
 	cmRbacScopes := ""
 	a.Spec.RBAC.Scopes = &rbacScopes
