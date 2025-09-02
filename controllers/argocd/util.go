@@ -1309,26 +1309,10 @@ func removeDropMetadataForNamespace(namespace string) {
 	delete(DropMetadataStore, namespace)
 }
 
-// getDropMetadataForResource retrieves DropMetadata for a specific resource in a namespace
-func getDropMetadataForResource(namespace, resource string) *DropMetadata {
-	if metadataList, exists := DropMetadataStore[namespace]; exists {
-		for _, metadata := range metadataList {
-			if metadata.Resource == resource {
-				return &metadata
-			}
-		}
-	}
-	return nil
-}
-
 // processDropMetadataForCleanup processes the DropMetadata store and cleans up removed labels from resources
-func (r *ReconcileArgoCD) processDropMetadataForCleanup(argocd *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) processDropMetadataForCleanup(argocd *argoproj.ArgoCD) {
 	namespace := argocd.GetNamespace()
 	dropMetadataList := getDropMetadataForNamespace(namespace)
-
-	if len(dropMetadataList) == 0 {
-		return nil
-	}
 
 	log.Info("Processing DropMetadata for cleanup",
 		"argocd", fmt.Sprintf("%s/%s", argocd.Namespace, argocd.Name),
@@ -1346,7 +1330,6 @@ func (r *ReconcileArgoCD) processDropMetadataForCleanup(argocd *argoproj.ArgoCD)
 
 	// Clear the DropMetadata for this namespace after cleanup
 	removeDropMetadataForNamespace(namespace)
-	return nil
 }
 
 // cleanupLabelsFromResourceType removes labels from specific resource types
@@ -1411,15 +1394,11 @@ func (r *ReconcileArgoCD) cleanupLabelsFromDeployment(argocd *argoproj.ArgoCD, d
 		return fmt.Errorf("failed to get deployment %s: %w", deploymentName, err)
 	}
 
-	if currentLabels, err := r.removeLabelsFromObject(deployment, labelsToRemove); err != nil {
-		log.Error(err, "failed to remove labels from deployment", "name", deploymentName)
+	currentLabels := r.removeLabelsFromObject(deployment, labelsToRemove)
+	deployment.Spec.Template.Labels = currentLabels
+	if err := r.Update(context.TODO(), deployment); err != nil {
+		log.Error(err, "failed to update deployment after removing labels", "name", deploymentName)
 		return err
-	} else {
-		deployment.Spec.Template.Labels = currentLabels
-		if err := r.Update(context.TODO(), deployment); err != nil {
-			log.Error(err, "failed to update deployment after removing labels", "name", deploymentName)
-			return err
-		}
 	}
 	return nil
 }
@@ -1438,16 +1417,13 @@ func (r *ReconcileArgoCD) cleanupLabelsFromStatefulSet(argocd *argoproj.ArgoCD, 
 		return fmt.Errorf("failed to get statefulset %s: %w", statefulSetName, err)
 	}
 
-	if currentLabels, err := r.removeLabelsFromObject(statefulSet, labelsToRemove); err != nil {
-		log.Error(err, "failed to remove labels from statefulset", "name", statefulSetName)
+	currentLabels := r.removeLabelsFromObject(statefulSet, labelsToRemove)
+	statefulSet.SetLabels(currentLabels)
+	if err := r.Update(context.TODO(), statefulSet); err != nil {
+		log.Error(err, "failed to update statefulset after removing labels", "name", statefulSetName)
 		return err
-	} else {
-		statefulSet.SetLabels(currentLabels)
-		if err := r.Update(context.TODO(), statefulSet); err != nil {
-			log.Error(err, "failed to update statefulset after removing labels", "name", statefulSetName)
-			return err
-		}
 	}
+
 	return nil
 }
 
@@ -1519,10 +1495,10 @@ func (r *ReconcileArgoCD) calculateRemovedSpecLabels(oldCR, newCR *argoproj.Argo
 
 }
 
-func (r *ReconcileArgoCD) removeLabelsFromObject(obj client.Object, labelsToRemove []string) (map[string]string, error) {
+func (r *ReconcileArgoCD) removeLabelsFromObject(obj client.Object, labelsToRemove []string) map[string]string {
 	currentLabels := obj.GetLabels()
 	if currentLabels == nil {
-		return nil, nil
+		return nil
 	}
 
 	modified := false
@@ -1533,9 +1509,9 @@ func (r *ReconcileArgoCD) removeLabelsFromObject(obj client.Object, labelsToRemo
 		}
 	}
 	if modified {
-		return currentLabels, nil
+		return currentLabels
 	}
-	return currentLabels, nil
+	return currentLabels
 }
 
 // deleteRBACsForNamespace deletes the RBACs when the label from the namespace is removed.
