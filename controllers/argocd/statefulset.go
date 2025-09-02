@@ -111,10 +111,22 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 
 	ss.Spec.PodManagementPolicy = appsv1.OrderedReadyPodManagement
 	ss.Spec.Replicas = getRedisHAReplicas()
+	ss.Spec.Selector = &metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
+		},
+	}
 
-	// Preserve the labels set by newStatefulSetWithName and add annotations
-	ss.Spec.Template.Annotations = map[string]string{
-		"checksum/init-config": "7128bfbb51eafaffe3c33b1b463e15f0cf6514cec570f9d9c4f2396f28c724ac", // TODO: Should this be hard-coded?
+	ss.Spec.ServiceName = nameWithSuffix("redis-ha", cr)
+
+	ss.Spec.Template.ObjectMeta = metav1.ObjectMeta{
+
+		Annotations: map[string]string{
+			"checksum/init-config": "7128bfbb51eafaffe3c33b1b463e15f0cf6514cec570f9d9c4f2396f28c724ac", // TODO: Should this be hard-coded?
+		},
+		Labels: map[string]string{
+			common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
+		},
 	}
 
 	ss.Spec.Template.Spec.Affinity = &corev1.Affinity{
@@ -122,7 +134,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
 				LabelSelector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{
-						common.ArgoCDKeyName: ss.Name,
+						common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
 					},
 				},
 				TopologyKey: common.ArgoCDKeyHostname,
