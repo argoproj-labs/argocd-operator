@@ -348,9 +348,9 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 		}
 	}
 
-	// Process any stored removed labels for cleanup from managed resources
-	if err := r.processRemovedLabels(argocd); err != nil {
-		reqLogger.Error(err, "failed to process removed labels cleanup")
+	// Process DropMetadata for namespace-based label cleanup
+	if err := r.processDropMetadataForCleanup(argocd); err != nil {
+		reqLogger.Error(err, "failed to process DropMetadata cleanup")
 		// Don't fail the reconciliation, just log the error and continue
 	}
 
