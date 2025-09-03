@@ -563,11 +563,9 @@ func TestReconcileRouteForShorteningRoutename(t *testing.T) {
 	_, err := r.Reconcile(context.TODO(), req)
 	assert.NoError(t, err)
 
-	// The route name should be truncated to 63 chars
-	expectedRouteName := longName + "-" + common.ApplicationSetControllerWebhookSuffix
-	if len(expectedRouteName) > 63 {
-		expectedRouteName = expectedRouteName[:63]
-	}
+	// The route name should use the new "better truncation" approach
+	// which truncates the CR name first, then appends the full suffix
+	expectedRouteName := argoutil.TruncateCRName(longName) + "-" + common.ApplicationSetControllerWebhookSuffix
 
 	loaded := &routev1.Route{}
 	err = r.Get(ctx, types.NamespacedName{Name: expectedRouteName, Namespace: testNamespace}, loaded)
