@@ -944,7 +944,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetService(cr *argoproj.ArgoCD) er
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: argoutil.TruncateWithHash(fmt.Sprintf("%s-%s", cr.Name, common.ApplicationSetServiceNameSuffix)),
+		common.ArgoCDKeyName: nameWithSuffix(common.ApplicationSetServiceNameSuffix, cr),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
