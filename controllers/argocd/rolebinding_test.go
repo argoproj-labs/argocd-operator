@@ -373,22 +373,22 @@ func TestTruncateWithHash(t *testing.T) {
 			result := argoutil.TruncateWithHash(tt.input)
 
 			// Check length constraint
-			assert.LessOrEqual(t, len(result), 63, "Result should not exceed maxLabelLength")
+			assert.LessOrEqual(t, len(result), maxLabelLength, "Result should not exceed maxLabelLength")
 
 			// Check that result is deterministic
 			result2 := argoutil.TruncateWithHash(tt.input)
 			assert.Equal(t, result, result2, "Function should be deterministic")
 
 			// For short strings, should be unchanged
-			if len(tt.input) <= 63 {
+			if len(tt.input) <= maxLabelLength {
 				assert.Equal(t, tt.input, result, "Short strings should not be modified")
 			} else {
 				// For long strings, should be different and shorter
 				assert.NotEqual(t, tt.input, result, "Long strings should be modified")
-				assert.LessOrEqual(t, len(result), 63, "Result should be within length limit")
+				assert.LessOrEqual(t, len(result), maxLabelLength, "Result should be within length limit")
 
 				// Should contain hash suffix if truncated
-				if len(tt.input) > 63 {
+				if len(tt.input) > maxLabelLength {
 					assert.Contains(t, result, "-", "Truncated strings should contain hash separator")
 				}
 			}
@@ -435,19 +435,19 @@ func TestGetRoleBindingNameForSourceNamespaces(t *testing.T) {
 			result := getRoleBindingNameForSourceNamespaces(tt.argocdName, tt.targetNamespace)
 
 			// Check length constraint
-			assert.LessOrEqual(t, len(result), 63, "RoleBinding name should not exceed maxLabelLength")
+			assert.LessOrEqual(t, len(result), maxLabelLength, "RoleBinding name should not exceed maxLabelLength")
 
 			// Check that result is deterministic
 			result2 := getRoleBindingNameForSourceNamespaces(tt.argocdName, tt.targetNamespace)
 			assert.Equal(t, result, result2, "Function should be deterministic")
 
 			// For short namespaces, should contain original namespace name
-			if len(tt.argocdName)+len(tt.targetNamespace)+1 <= 63 {
+			if len(tt.argocdName)+len(tt.targetNamespace)+1 <= maxLabelLength {
 				expected := fmt.Sprintf("%s_%s", tt.argocdName, tt.targetNamespace)
 				assert.Equal(t, expected, result, "Short namespaces should not be truncated")
 			} else {
 				// For long namespaces, should be truncated and contain hash
-				assert.LessOrEqual(t, len(result), 63, "Long namespaces should be truncated")
+				assert.LessOrEqual(t, len(result), maxLabelLength, "Long namespaces should be truncated")
 				assert.Contains(t, result, tt.argocdName, "Result should contain ArgoCD name")
 				assert.Contains(t, result, "-", "Truncated names should contain hash separator")
 			}
@@ -474,6 +474,6 @@ func TestTruncateWithHashUniqueness(t *testing.T) {
 		results[result] = true
 
 		// Verify length constraint
-		assert.LessOrEqual(t, len(result), 63, "Result should not exceed maxLabelLength")
+		assert.LessOrEqual(t, len(result), maxLabelLength, "Result should not exceed maxLabelLength")
 	}
 }
