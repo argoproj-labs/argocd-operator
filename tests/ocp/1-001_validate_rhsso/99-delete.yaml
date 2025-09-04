@@ -1,0 +1,4 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - command: oc delete argocd example-argocd-keycloak -n $NAMESPACE

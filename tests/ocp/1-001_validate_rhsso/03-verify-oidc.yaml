@@ -1,0 +1,28 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+# verify OIDC config
+# verify issuer
+- script: |
+    issuer=$(kubectl get configmap argocd-cm -o jsonpath='{.data.oidc\.config}' -n $NAMESPACE | grep issuer | awk -F' ' '{print $2}')
+    keycloakRoute=$(kubectl get route keycloak -n $NAMESPACE -o jsonpath='{.spec.host}')
+    if [[ "${issuer}" == "https://${keycloakRoute}/auth/realms/argocd" ]]; then 
+      echo "issuer matched"
+    else 
+      echo "issuer mismatched"
+      echo "${issuer} not equals ${keycloakRoute}/auth/realms/argocd"
+      exit 1
+    fi  
+# verify oidc config name, clientid
+- script: | 
+    clientid=$(kubectl get configmap argocd-cm -o jsonpath='{.data.oidc\.config}' -n $NAMESPACE | grep clientid | awk -F' ' '{print $2}')
+    name=$(kubectl get configmap argocd-cm -o jsonpath='{.data.oidc\.config}' -n $NAMESPACE | grep name | awk -F' ' '{print $2}')
+    rootCA=$(kubectl get configmap argocd-cm -o jsonpath='{.data.oidc\.config}' -n $NAMESPACE | grep rootca | awk -F' ' '{print $2}')
+
+    if [[ "${clientid}" == "argocd" && "${name}" == "Keycloak" && "${rootCA}" == "'---BEGIN---END---'"  ]]; then 
+      echo "oidc name, clientid and rootCA matched"
+    else 
+      echo "oidc name, clientid or rootCA mismatched"
+      echo "${clientid}, ${name} and ${rootCA}"
+      exit 1
+    fi
