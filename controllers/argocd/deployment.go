@@ -936,6 +936,14 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 			explanation += "container security context"
 			changed = true
 		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.SecurityContext, existing.Spec.Template.Spec.SecurityContext) {
+			existing.Spec.Template.Spec.SecurityContext = deploy.Spec.Template.Spec.SecurityContext
+			if changed {
+				explanation += ", "
+			}
+			explanation += "pod security context"
+			changed = true
+		}
 		if changed {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			return r.Update(context.TODO(), existing)
