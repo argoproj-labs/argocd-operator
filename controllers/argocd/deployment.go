@@ -1388,9 +1388,9 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 			changed = true
 		}
 
-		// Add Kubernetes-specific labels/annotations from the live object in the source to preserve metadata.
-		addKubernetesData(deploy.Spec.Template.Labels, existing.Spec.Template.Labels)
-		addKubernetesData(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations)
+		//Check if labels/annotations have changed
+		UpdateMapValues(&existing.Spec.Template.Labels, deploy.Spec.Template.Labels)
+		UpdateMapValues(&existing.Spec.Template.Annotations, deploy.Spec.Template.Annotations)
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
 			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
@@ -1400,9 +1400,8 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 			explanation += "annotations"
 			changed = true
 		}
-
-		if !reflect.DeepEqual(deploy.Spec.Template.Labels, existing.Spec.Template.Labels) {
-			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
+		// Preserve non-operator labels in the existing deployment.
+		if UpdateMapValues(&existing.Spec.Template.Labels, deploy.Spec.Template.Labels) {
 			if changed {
 				explanation += ", "
 			}
@@ -1774,9 +1773,9 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			}
 		}
 
-		// Add Kubernetes-specific labels/annotations from the live object in the source to preserve metadata.
-		addKubernetesData(deploy.Spec.Template.Labels, existing.Spec.Template.Labels)
-		addKubernetesData(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations)
+		//Check if labels/annotations have changed
+		UpdateMapValues(&existing.Spec.Template.Labels, deploy.Spec.Template.Labels)
+		UpdateMapValues(&existing.Spec.Template.Annotations, deploy.Spec.Template.Annotations)
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
 			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
@@ -1786,8 +1785,8 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			explanation += "annotations"
 			changed = true
 		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Labels, existing.Spec.Template.Labels) {
-			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
+		// Preserve non-operator labels in the existing deployment.
+		if UpdateMapValues(&existing.Spec.Template.Labels, deploy.Spec.Template.Labels) {
 			if changed {
 				explanation += ", "
 			}
