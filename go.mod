@@ -1,9 +1,9 @@
 module github.com/argoproj-labs/argocd-operator
 
-go 1.24.4
+go 1.24.6
 
 require (
-	github.com/argoproj/argo-cd/v3 v3.0.11
+	github.com/argoproj/argo-cd/v3 v3.0.16
 	github.com/cert-manager/cert-manager v1.14.4
 	github.com/go-logr/logr v1.4.2
 	github.com/google/go-cmp v0.7.0
