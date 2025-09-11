@@ -30,6 +30,7 @@ import (
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -57,8 +58,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	corev1 "k8s.io/api/core/v1"
+
 	v1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	v1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/pkg/cacheutils"
+	wc "github.com/argoproj-labs/argocd-operator/pkg/clientwrapper"
 	"github.com/argoproj-labs/argocd-operator/version"
 	//+kubebuilder:scaffold:imports
 )
@@ -180,6 +185,13 @@ func main() {
 		Controller: controllerconfig.Controller{
 			SkipNameValidation: &skipControllerNameValidation,
 		},
+		Cache: cache.Options{
+			Scheme: scheme,
+			ByObject: map[crclient.Object]cache.ByObject{
+				&corev1.Secret{}:    {Transform: cacheutils.StripSecretDataTranform()},
+				&corev1.ConfigMap{}: {Transform: cacheutils.StripConfigMapDataTransform()},
+			},
+		},
 	}
 
 	if watchedNsCache := getDefaultWatchedNamespacesCacheOptions(); watchedNsCache != nil {
@@ -193,6 +205,10 @@ func main() {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
+
+	liveClient, _ := crclient.New(ctrl.GetConfigOrDie(), crclient.Options{Scheme: mgr.GetScheme()})
+	client := wc.NewClientWrapper(mgr.GetClient(), liveClient)
+	//print(client)
 
 	setupLog.Info("Registering Components.")
 
@@ -237,7 +253,7 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&argocd.ReconcileArgoCD{
-		Client:        mgr.GetClient(),
+		Client:        client,
 		Scheme:        mgr.GetScheme(),
 		LabelSelector: labelSelectorFlag,
 		K8sClient:     k8sClient,
@@ -250,14 +266,14 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&argocdexport.ReconcileArgoCDExport{
-		Client: mgr.GetClient(),
+		Client: client,
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ArgoCDExport")
 		os.Exit(1)
 	}
 	if err = (&notificationsConfig.NotificationsConfigurationReconciler{
-		Client: mgr.GetClient(),
+		Client: client,
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NotificationsConfiguration")
