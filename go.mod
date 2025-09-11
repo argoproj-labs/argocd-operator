@@ -3,7 +3,7 @@ module github.com/argoproj-labs/argocd-operator
 go 1.24.6
 
 require (
-	github.com/argoproj/argo-cd/v3 v3.1.1
+	github.com/argoproj/argo-cd/v3 v3.1.4
 	github.com/cert-manager/cert-manager v1.14.4
 	github.com/go-logr/logr v1.4.3
 	github.com/google/go-cmp v0.7.0
@@ -98,7 +98,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.3.1 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ProtonMail/go-crypto v1.1.6 // indirect
-	github.com/argoproj/gitops-engine v0.7.1-0.20250617174952-093aef0dad58 // indirect
+	github.com/argoproj/gitops-engine v0.7.1-0.20250905160054-e48120133eec // indirect
 	github.com/argoproj/pkg v0.13.7-0.20250305113207-cbc37dc61de5 // indirect
 	github.com/argoproj/pkg/v2 v2.0.1 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.8.1 // indirect
