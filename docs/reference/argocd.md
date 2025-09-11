@@ -1746,7 +1746,7 @@ spec:
     initialCerts: []
 ```
 
-### IntialCerts Example
+### InitialCerts Example
 
 Initial set of repository certificates to be configured in Argo CD upon creation of the cluster.
 
@@ -1758,7 +1758,7 @@ kind: ArgoCD
 metadata:
   name: example-argocd
   labels:
-    example: intialCerts
+    example: initialCerts
 spec:
   tls:
     ca: {}
