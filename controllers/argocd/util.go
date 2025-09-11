@@ -211,63 +211,9 @@ func getArgoContainerImage(cr *argoproj.ArgoCD) string {
 	return argoutil.CombineImageTag(img, tag)
 }
 
-// getRepoServerContainerImage will return the container image for the Repo server.
-//
-// There are four possible options for configuring the image, and this is the
-// order of preference.
-//
-// 1. from the Spec, the spec.repo field has an image and version to use for
-// generating an image reference.
-// 2. from the Spec, the spec.version field has an image and version to use for
-// generating an image reference
-// 3. from the Environment, this looks for the `ARGOCD_IMAGE` field and uses
-// that if the spec is not configured.
-// 4. the default is configured in common.ArgoCDDefaultArgoVersion and
-// common.ArgoCDDefaultArgoImage.
-func getRepoServerContainerImage(cr *argoproj.ArgoCD) string {
-	defaultImg, defaultTag := false, false
-	img := cr.Spec.Repo.Image
-	if img == "" {
-		img = cr.Spec.Image
-		if img == "" {
-			img = common.ArgoCDDefaultArgoImage
-			defaultImg = true
-		}
-	}
-
-	tag := cr.Spec.Repo.Version
-	if tag == "" {
-		tag = cr.Spec.Version
-		if tag == "" {
-			tag = common.ArgoCDDefaultArgoVersion
-			defaultTag = true
-		}
-	}
-	if e := os.Getenv(common.ArgoCDImageEnvName); e != "" && (defaultTag && defaultImg) {
-		return e
-	}
-	return argoutil.CombineImageTag(img, tag)
-}
-
-// getArgoRepoResources will return the ResourceRequirements for the Argo CD Repo server container.
-func getArgoRepoResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
-	resources := corev1.ResourceRequirements{}
-
-	// Allow override of resource requirements from CR
-	if cr.Spec.Repo.Resources != nil {
-		resources = *cr.Spec.Repo.Resources
-	}
-
-	return resources
-}
-
 // getArgoServerInsecure returns the insecure value for the ArgoCD Server component.
 func getArgoServerInsecure(cr *argoproj.ArgoCD) bool {
 	return cr.Spec.Server.Insecure
-}
-
-func isRepoServerTLSVerificationRequested(cr *argoproj.ArgoCD) bool {
-	return cr.Spec.Repo.VerifyTLS
 }
 
 func isRedisTLSVerificationDisabled(cr *argoproj.ArgoCD) bool {
