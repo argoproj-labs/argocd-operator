@@ -14,12 +14,21 @@ spec:
   argoCDAgent:
     principal:
       enabled: true
-      allowedNamespaces:
-        - "*"
-      jwtAllowGenerate: true
-      auth: "mtls:CN=([^,]+)"
-      logLevel: "trace"
-      image: "quay.io/user/argocd-agent:v1"  # specify a custom image
+      server:
+        auth: "mtls:CN=([^,]+)"
+        logLevel: "trace"
+        image: "quay.io/user/argocd-agent:v1"  # specify a custom image
+      namespace:
+        allowedNamespaces:
+          - "*"  
+      resourceProxy:
+        enable: true
+      tls:
+        server:
+          insecureGenerate: true
+      jwt:
+        insecureGenerate: true
   sourceNamespaces:
     - "agent-managed"
     - "agent-autonomous"
+

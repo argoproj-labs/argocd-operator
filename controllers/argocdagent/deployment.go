@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strconv"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -50,7 +52,7 @@ func ReconcilePrincipalDeployment(client client.Client, compName, saName string,
 
 	// If deployment exists, handle updates or deletion
 	if exists {
-		if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
+		if !hasPrincipal(cr) || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
 			argoutil.LogResourceDeletion(log, deployment, "principal deployment is being deleted as principal is disabled")
 			if err := client.Delete(context.TODO(), deployment); err != nil {
 				return fmt.Errorf("failed to delete principal deployment %s in namespace %s: %v", deployment.Name, cr.Namespace, err)
@@ -69,7 +71,7 @@ func ReconcilePrincipalDeployment(client client.Client, compName, saName string,
 	}
 
 	// If deployment doesn't exist and principal is disabled, nothing to do
-	if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
+	if !hasPrincipal(cr) || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
 		return nil
 	}
 
@@ -171,11 +173,9 @@ func buildArgs(compName string) []string {
 }
 
 func buildPrincipalImage(cr *argoproj.ArgoCD) string {
-	// Value specified in the CR take precedence over everything else
-	if cr.Spec.ArgoCDAgent != nil &&
-		cr.Spec.ArgoCDAgent.Principal != nil &&
-		cr.Spec.ArgoCDAgent.Principal.Image != "" {
-		return cr.Spec.ArgoCDAgent.Principal.Image
+	// Check CR specification first
+	if hasServer(cr) && cr.Spec.ArgoCDAgent.Principal.Server.Image != "" {
+		return cr.Spec.ArgoCDAgent.Principal.Server.Image
 	}
 
 	// Value specified in the environment take precedence over the default
@@ -293,322 +293,473 @@ func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, dep
 }
 
 func buildPrincipalContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
-
-	ref := corev1.LocalObjectReference{
-		Name: cr.Name + cmSuffix,
-	}
-
 	env := []corev1.EnvVar{
 		{
-			Name: EnvArgoCDPrincipalListenHost,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalListenHost,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalListenHost,
+			Value: getPrincipalListenHost(cr),
 		}, {
-			Name: EnvArgoCDPrincipalListenPort,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalListenPort,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalListenPort,
+			Value: getPrincipalListenPort(cr),
 		}, {
-			Name: EnvArgoCDPrincipalLogLevel,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalLogLevel,
-					LocalObjectReference: ref,
-				},
-			},
+			Name:  EnvArgoCDPrincipalLogLevel,
+			Value: getPrincipalLogLevel(cr),
 		}, {
-			Name: EnvArgoCDPrincipalMetricsPort,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalMetricsPort,
-					LocalObjectReference: ref,
-				},
-			},
+			Name:  EnvArgoCDPrincipalMetricsPort,
+			Value: getPrincipalMetricsPort(cr),
 		}, {
-			Name: EnvArgoCDPrincipalNamespace,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalNamespace,
-					LocalObjectReference: ref,
-				},
-			},
+			Name:  EnvArgoCDPrincipalNamespace,
+			Value: cr.Namespace,
 		}, {
-			Name: EnvArgoCDPrincipalAllowedNamespaces,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalAllowedNamespaces,
-					LocalObjectReference: ref,
-				},
-			},
+			Name:  EnvArgoCDPrincipalAllowedNamespaces,
+			Value: getPrincipalAllowedNamespaces(cr),
 		}, {
-			Name: EnvArgoCDPrincipalNamespaceCreateEnable,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalNamespaceCreateEnable,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalNamespaceCreateEnable,
+			Value: getPrincipalNamespaceCreateEnable(cr),
 		}, {
-			Name: EnvArgoCDPrincipalNamespaceCreatePattern,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalNamespaceCreatePattern,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalNamespaceCreatePattern,
+			Value: getPrincipalNamespaceCreatePattern(cr),
 		}, {
-			Name: EnvArgoCDPrincipalNamespaceCreateLabels,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalNamespaceCreateLabels,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalNamespaceCreateLabels,
+			Value: getPrincipalNamespaceCreateLabels(cr),
 		}, {
-			Name: EnvArgoCDPrincipalTLSServerCertPath,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalTLSServerCertPath,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalTLSServerCertPath,
+			Value: getPrincipalTLSServerCertPath(cr),
 		}, {
-			Name: EnvArgoCDPrincipalTLSServerKeyPath,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalTLSServerKeyPath,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalTLSServerKeyPath,
+			Value: getPrincipalTLSServerKeyPath(cr),
 		}, {
-			Name: EnvArgoCDPrincipalTLSServerAllowGenerate,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalTLSServerAllowGenerate,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalTLSServerAllowGenerate,
+			Value: getPrincipalTLSServerAllowGenerate(cr),
 		}, {
-			Name: EnvArgoCDPrincipalTLSClientCertRequire,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalTLSClientCertRequire,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalTLSClientCertRequire,
+			Value: getPrincipalTLSClientCertRequire(cr),
 		}, {
-			Name: EnvArgoCDPrincipalTLSServerRootCAPath,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalTLSServerRootCAPath,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalTLSServerRootCAPath,
+			Value: getPrincipalTLSServerRootCAPath(cr),
 		}, {
-			Name: EnvArgoCDPrincipalTLSClientCertMatchSubject,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalTLSClientCertMatchSubject,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalTLSClientCertMatchSubject,
+			Value: getPrincipalTLSClientCertMatchSubject(cr),
 		}, {
-			Name: EnvArgoCDPrincipalJWTAllowGenerate,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalJwtAllowGenerate,
-					LocalObjectReference: ref,
-				},
-			},
+			Name:  EnvArgoCDPrincipalJWTAllowGenerate,
+			Value: getPrincipalJWTAllowGenerate(cr),
 		}, {
-			Name: EnvArgoCDPrincipalJWTKeyPath,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalJWTKeyPath,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalJWTKeyPath,
+			Value: getPrincipalJWTKeyPath(cr),
 		}, {
-			Name: EnvArgoCDPrincipalAuth,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalAuth,
-					LocalObjectReference: ref,
-				},
-			},
+			Name:  EnvArgoCDPrincipalAuth,
+			Value: getPrincipalAuth(cr),
 		}, {
-			Name: EnvArgoCDPrincipalEnableResourceProxy,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalEnableResourceProxy,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalEnableResourceProxy,
+			Value: getPrincipalEnableResourceProxy(cr),
 		}, {
-			Name: EnvArgoCDPrincipalKeepAliveMinInterval,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalKeepAliveMinInterval,
-					LocalObjectReference: ref,
-				},
-			},
+			Name:  EnvArgoCDPrincipalKeepAliveMinInterval,
+			Value: getPrincipalKeepAliveMinInterval(cr),
 		}, {
-			Name: EnvArgoCDPrincipalRedisServerAddress,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalRedisAddress,
-					LocalObjectReference: ref,
-				},
-			},
+			Name:  EnvArgoCDPrincipalRedisServerAddress,
+			Value: getPrincipalRedisServerAddress(cr),
 		}, {
-			Name: EnvArgoCDPrincipalRedisCompressionType,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalRedisCompressionType,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalRedisCompressionType,
+			Value: getPrincipalRedisCompressionType(cr),
 		}, {
-			Name: EnvArgoCDPrincipalPprofPort,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalPprofPort,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalPprofPort,
+			Value: getPrincipalPprofPort(cr),
 		}, {
-			Name: EnvArgoCDPrincipalLogFormat,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalLogFormat,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalLogFormat,
+			Value: getPrincipalLogFormat(cr),
 		}, {
-			Name: EnvArgoCDPrincipalResourceProxyTLSCertPath,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalResourceProxyTLSCertPath,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalResourceProxyTLSCertPath,
+			Value: getPrincipalResourceProxyTLSCertPath(cr),
 		}, {
-			Name: EnvArgoCDPrincipalResourceProxyTLSKeyPath,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalResourceProxyTLSKeyPath,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalResourceProxyTLSKeyPath,
+			Value: getPrincipalResourceProxyTLSKeyPath(cr),
 		}, {
-			Name: EnvArgoCDPrincipalResourceProxyTLSCAPath,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalResourceProxyTLSCAPath,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalResourceProxyTLSCAPath,
+			Value: getPrincipalResourceProxyTLSCAPath(cr),
 		}, {
-			Name: EnvArgoCDPrincipalEnableWebSocket,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalEnableWebSocket,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalEnableWebSocket,
+			Value: getPrincipalEnableWebSocket(cr),
 		}, {
-			Name: EnvArgoCDPrincipalTlsSecretName,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalTLSSecretName,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalTLSSecretName,
+			Value: getPrincipalTLSServerSecretName(cr),
 		}, {
-			Name: EnvArgoCDPrincipalTlsServerRootCASecretName,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalTLSServerRootCASecretName,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalTLSServerRootCASecretName,
+			Value: getPrincipalTlsServerRootCASecretName(cr),
 		}, {
-			Name: EnvArgoCDPrincipalResourceProxySecretName,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalResourceProxySecretName,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalResourceProxySecretName,
+			Value: getPrincipalResourceProxySecretName(cr),
 		}, {
-			Name: EnvArgoCDPrincipalResourceProxyCaPath,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalResourceProxyCAPath,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalResourceProxyCaSecretName,
+			Value: getPrincipalResourceProxyCaSecretName(cr),
 		}, {
-			Name: EnvArgoCDPrincipalResourceProxyCaSecretName,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalResourceProxyCASecretName,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalJwtSecretName,
+			Value: getPrincipalJWTSecretName(cr),
 		}, {
-			Name: EnvArgoCDPrincipalJwtSecretName,
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					Key:                  PrincipalJwtSecretName,
-					LocalObjectReference: ref,
-					Optional:             ptr.To(true),
-				},
-			},
+			Name:  EnvArgoCDPrincipalHealthzPort,
+			Value: getPrincipalHealthzPort(cr),
+		}, {
+			Name:  EnvArgoCDPrincipalResourceProxyCaPath,
+			Value: getPrincipalResourceProxyCaPath(cr),
 		}, {
 			Name: EnvRedisPassword,
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
-					Key: PrincipalRedisPassword,
+					Key: PrincipalRedisPasswordKey,
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: "argocd-redis",
 					},
 					Optional: ptr.To(true),
 				},
 			},
-		}}
+		},
+	}
+
+	// Add custom environment variables if specified in the CR
+	if hasServer(cr) && cr.Spec.ArgoCDAgent.Principal.Server.Env != nil {
+		env = append(env, cr.Spec.ArgoCDAgent.Principal.Server.Env...)
+	}
 
 	return env
+}
+
+const (
+	EnvArgoCDPrincipalListenHost                = "ARGOCD_PRINCIPAL_LISTEN_HOST"
+	EnvArgoCDPrincipalListenPort                = "ARGOCD_PRINCIPAL_LISTEN_PORT"
+	EnvArgoCDPrincipalLogLevel                  = "ARGOCD_PRINCIPAL_LOG_LEVEL"
+	EnvArgoCDPrincipalLogFormat                 = "ARGOCD_PRINCIPAL_LOG_FORMAT"
+	EnvArgoCDPrincipalMetricsPort               = "ARGOCD_PRINCIPAL_METRICS_PORT"
+	EnvArgoCDPrincipalNamespace                 = "ARGOCD_PRINCIPAL_NAMESPACE"
+	EnvArgoCDPrincipalAllowedNamespaces         = "ARGOCD_PRINCIPAL_ALLOWED_NAMESPACES"
+	EnvArgoCDPrincipalNamespaceCreateEnable     = "ARGOCD_PRINCIPAL_NAMESPACE_CREATE_ENABLE"
+	EnvArgoCDPrincipalNamespaceCreatePattern    = "ARGOCD_PRINCIPAL_NAMESPACE_CREATE_PATTERN"
+	EnvArgoCDPrincipalNamespaceCreateLabels     = "ARGOCD_PRINCIPAL_NAMESPACE_CREATE_LABELS"
+	EnvArgoCDPrincipalTLSServerCertPath         = "ARGOCD_PRINCIPAL_TLS_SERVER_CERT_PATH"
+	EnvArgoCDPrincipalTLSServerKeyPath          = "ARGOCD_PRINCIPAL_TLS_SERVER_KEY_PATH"
+	EnvArgoCDPrincipalTLSServerAllowGenerate    = "ARGOCD_PRINCIPAL_TLS_SERVER_ALLOW_GENERATE"
+	EnvArgoCDPrincipalTLSServerRootCAPath       = "ARGOCD_PRINCIPAL_TLS_SERVER_ROOT_CA_PATH"
+	EnvArgoCDPrincipalTLSClientCertRequire      = "ARGOCD_PRINCIPAL_TLS_CLIENT_CERT_REQUIRE"
+	EnvArgoCDPrincipalTLSClientCertMatchSubject = "ARGOCD_PRINCIPAL_TLS_CLIENT_CERT_MATCH_SUBJECT"
+	EnvArgoCDPrincipalResourceProxyTLSCertPath  = "ARGOCD_PRINCIPAL_RESOURCE_PROXY_TLS_CERT_PATH"
+	EnvArgoCDPrincipalResourceProxyTLSKeyPath   = "ARGOCD_PRINCIPAL_RESOURCE_PROXY_TLS_KEY_PATH"
+	EnvArgoCDPrincipalResourceProxyTLSCAPath    = "ARGOCD_PRINCIPAL_RESOURCE_PROXY_TLS_CA_PATH"
+	EnvArgoCDPrincipalJWTKeyPath                = "ARGOCD_PRINCIPAL_JWT_KEY_PATH"
+	EnvArgoCDPrincipalJWTAllowGenerate          = "ARGOCD_PRINCIPAL_JWT_ALLOW_GENERATE"
+	EnvArgoCDPrincipalAuth                      = "ARGOCD_PRINCIPAL_AUTH"
+	EnvArgoCDPrincipalEnableWebSocket           = "ARGOCD_PRINCIPAL_ENABLE_WEBSOCKET"
+	EnvArgoCDPrincipalEnableResourceProxy       = "ARGOCD_PRINCIPAL_ENABLE_RESOURCE_PROXY"
+	EnvArgoCDPrincipalKeepAliveMinInterval      = "ARGOCD_PRINCIPAL_KEEP_ALIVE_MIN_INTERVAL"
+	EnvArgoCDPrincipalRedisServerAddress        = "ARGOCD_PRINCIPAL_REDIS_SERVER_ADDRESS"
+	EnvArgoCDPrincipalRedisCompressionType      = "ARGOCD_PRINCIPAL_REDIS_COMPRESSION_TYPE"
+	EnvArgoCDPrincipalPprofPort                 = "ARGOCD_PRINCIPAL_PPROF_PORT"
+	EnvArgoCDPrincipalTLSSecretName             = "ARGOCD_PRINCIPAL_TLS_SECRET_NAME"
+	EnvArgoCDPrincipalTLSServerRootCASecretName = "ARGOCD_PRINCIPAL_TLS_SERVER_ROOT_CA_SECRET_NAME"
+	EnvArgoCDPrincipalResourceProxySecretName   = "ARGOCD_PRINCIPAL_RESOURCE_PROXY_SECRET_NAME"
+	EnvArgoCDPrincipalResourceProxyCaSecretName = "ARGOCD_PRINCIPAL_RESOURCE_PROXY_CA_SECRET_NAME"
+	EnvArgoCDPrincipalResourceProxyCaPath       = "ARGOCD_PRINCIPAL_RESOURCE_PROXY_CA_PATH"
+	EnvArgoCDPrincipalJwtSecretName             = "ARGOCD_PRINCIPAL_JWT_SECRET_NAME"
+	EnvArgoCDPrincipalHealthzPort               = "ARGOCD_PRINCIPAL_HEALTH_CHECK_PORT"
+	EnvArgoCDPrincipalImage                     = "ARGOCD_PRINCIPAL_IMAGE"
+	EnvRedisPassword                            = "REDIS_PASSWORD"
+	PrincipalRedisPasswordKey                   = "auth"
+)
+
+// Network and Server Configuration
+func getPrincipalListenHost(cr *argoproj.ArgoCD) string {
+	if hasServer(cr) && cr.Spec.ArgoCDAgent.Principal.Server.ListenHost != "" {
+		return cr.Spec.ArgoCDAgent.Principal.Server.ListenHost
+	}
+	return ""
+}
+
+func getPrincipalListenPort(cr *argoproj.ArgoCD) string {
+	if hasServer(cr) && cr.Spec.ArgoCDAgent.Principal.Server.ListenPort != 0 {
+		return strconv.Itoa(cr.Spec.ArgoCDAgent.Principal.Server.ListenPort)
+	}
+	return "8443"
+}
+
+// Logging Configuration
+func getPrincipalLogLevel(cr *argoproj.ArgoCD) string {
+	if hasServer(cr) && cr.Spec.ArgoCDAgent.Principal.Server.LogLevel != "" {
+		return cr.Spec.ArgoCDAgent.Principal.Server.LogLevel
+	}
+	return "info"
+}
+
+func getPrincipalLogFormat(cr *argoproj.ArgoCD) string {
+	if hasServer(cr) && cr.Spec.ArgoCDAgent.Principal.Server.LogFormat != "" {
+		return cr.Spec.ArgoCDAgent.Principal.Server.LogFormat
+	}
+	return "text"
+}
+
+// Metrics Configuration
+func getPrincipalMetricsPort(cr *argoproj.ArgoCD) string {
+	if hasServer(cr) && cr.Spec.ArgoCDAgent.Principal.Server.MetricsPort != 0 {
+		return strconv.Itoa(cr.Spec.ArgoCDAgent.Principal.Server.MetricsPort)
+	}
+	return "8000"
+}
+
+func getPrincipalAllowedNamespaces(cr *argoproj.ArgoCD) string {
+	if hasNamespace(cr) &&
+		cr.Spec.ArgoCDAgent.Principal.Namespace.AllowedNamespaces != nil &&
+		len(cr.Spec.ArgoCDAgent.Principal.Namespace.AllowedNamespaces) > 0 {
+		return strings.Join(cr.Spec.ArgoCDAgent.Principal.Namespace.AllowedNamespaces, ",")
+	}
+	return ""
+}
+
+func getPrincipalNamespaceCreateEnable(cr *argoproj.ArgoCD) string {
+	if hasNamespace(cr) && cr.Spec.ArgoCDAgent.Principal.Namespace.EnableNamespaceCreate != nil {
+		return strconv.FormatBool(*cr.Spec.ArgoCDAgent.Principal.Namespace.EnableNamespaceCreate)
+	}
+	return "false"
+}
+
+func getPrincipalNamespaceCreatePattern(cr *argoproj.ArgoCD) string {
+	if hasNamespace(cr) && cr.Spec.ArgoCDAgent.Principal.Namespace.NamespaceCreatePattern != "" {
+		return cr.Spec.ArgoCDAgent.Principal.Namespace.NamespaceCreatePattern
+	}
+	return ""
+}
+
+func getPrincipalNamespaceCreateLabels(cr *argoproj.ArgoCD) string {
+	if hasNamespace(cr) && len(cr.Spec.ArgoCDAgent.Principal.Namespace.NamespaceCreateLabels) > 0 {
+		return strings.Join(cr.Spec.ArgoCDAgent.Principal.Namespace.NamespaceCreateLabels, ",")
+	}
+	return ""
+}
+
+// TLS Server Configuration
+func getPrincipalTLSServerCertPath(cr *argoproj.ArgoCD) string {
+	if hasTLSServer(cr) && cr.Spec.ArgoCDAgent.Principal.TLS.Server.CertPath != "" {
+		return cr.Spec.ArgoCDAgent.Principal.TLS.Server.CertPath
+	}
+	return ""
+}
+
+func getPrincipalTLSServerKeyPath(cr *argoproj.ArgoCD) string {
+	if hasTLSServer(cr) && cr.Spec.ArgoCDAgent.Principal.TLS.Server.KeyPath != "" {
+		return cr.Spec.ArgoCDAgent.Principal.TLS.Server.KeyPath
+	}
+	return ""
+}
+
+func getPrincipalTLSServerAllowGenerate(cr *argoproj.ArgoCD) string {
+	if hasTLSServer(cr) && cr.Spec.ArgoCDAgent.Principal.TLS.Server.AllowGenerate != nil {
+		return strconv.FormatBool(*cr.Spec.ArgoCDAgent.Principal.TLS.Server.AllowGenerate)
+	}
+	return "false"
+}
+
+func getPrincipalTLSServerRootCAPath(cr *argoproj.ArgoCD) string {
+	if hasTLSClient(cr) && cr.Spec.ArgoCDAgent.Principal.TLS.Client.RootCAPath != "" {
+		return cr.Spec.ArgoCDAgent.Principal.TLS.Client.RootCAPath
+	}
+	return ""
+}
+
+// TLS Client Configuration
+func getPrincipalTLSClientCertRequire(cr *argoproj.ArgoCD) string {
+	if hasTLSClient(cr) && cr.Spec.ArgoCDAgent.Principal.TLS.Client.RequireClientCert != nil {
+		return strconv.FormatBool(*cr.Spec.ArgoCDAgent.Principal.TLS.Client.RequireClientCert)
+	}
+	return "false"
+}
+
+func getPrincipalTLSClientCertMatchSubject(cr *argoproj.ArgoCD) string {
+	if hasTLSClient(cr) && cr.Spec.ArgoCDAgent.Principal.TLS.Client.ClientMatchSubject != nil {
+		return strconv.FormatBool(*cr.Spec.ArgoCDAgent.Principal.TLS.Client.ClientMatchSubject)
+	}
+	return "false"
+}
+
+// Resource Proxy Configuration
+func getPrincipalResourceProxyTLSCertPath(cr *argoproj.ArgoCD) string {
+	if hasResourceProxy(cr) && cr.Spec.ArgoCDAgent.Principal.ResourceProxy.TLSCertPath != "" {
+		return cr.Spec.ArgoCDAgent.Principal.ResourceProxy.TLSCertPath
+	}
+	return ""
+}
+
+func getPrincipalResourceProxyTLSKeyPath(cr *argoproj.ArgoCD) string {
+	if hasResourceProxy(cr) && cr.Spec.ArgoCDAgent.Principal.ResourceProxy.TLSKeyPath != "" {
+		return cr.Spec.ArgoCDAgent.Principal.ResourceProxy.TLSKeyPath
+	}
+	return ""
+}
+
+func getPrincipalResourceProxyTLSCAPath(cr *argoproj.ArgoCD) string {
+	if hasResourceProxy(cr) && cr.Spec.ArgoCDAgent.Principal.ResourceProxy.TLSCAPath != "" {
+		return cr.Spec.ArgoCDAgent.Principal.ResourceProxy.TLSCAPath
+	}
+	return ""
+}
+
+// JWT Configuration
+func getPrincipalJWTKeyPath(cr *argoproj.ArgoCD) string {
+	if hasJWT(cr) && cr.Spec.ArgoCDAgent.Principal.JWT.Key != "" {
+		return cr.Spec.ArgoCDAgent.Principal.JWT.Key
+	}
+	return ""
+}
+
+func getPrincipalJWTAllowGenerate(cr *argoproj.ArgoCD) string {
+	if hasJWT(cr) && cr.Spec.ArgoCDAgent.Principal.JWT.InsecureGenerate != nil {
+		return strconv.FormatBool(*cr.Spec.ArgoCDAgent.Principal.JWT.InsecureGenerate)
+	}
+	return "false"
+}
+
+// Authentication Configuration
+func getPrincipalAuth(cr *argoproj.ArgoCD) string {
+	if hasServer(cr) && cr.Spec.ArgoCDAgent.Principal.Server.Auth != "" {
+		return cr.Spec.ArgoCDAgent.Principal.Server.Auth
+	}
+	return "mtls:CN=([^,]+)"
+}
+
+// WebSocket Configuration
+func getPrincipalEnableWebSocket(cr *argoproj.ArgoCD) string {
+	if hasServer(cr) && cr.Spec.ArgoCDAgent.Principal.Server.EnableWebSocket != nil {
+		return strconv.FormatBool(*cr.Spec.ArgoCDAgent.Principal.Server.EnableWebSocket)
+	}
+	return "false"
+}
+
+// Resource Proxy Enable/Disable
+func getPrincipalEnableResourceProxy(cr *argoproj.ArgoCD) string {
+	if hasResourceProxy(cr) && cr.Spec.ArgoCDAgent.Principal.ResourceProxy.Enable != nil {
+		return strconv.FormatBool(*cr.Spec.ArgoCDAgent.Principal.ResourceProxy.Enable)
+	}
+	return "false"
+}
+
+// Keep Alive Configuration
+func getPrincipalKeepAliveMinInterval(cr *argoproj.ArgoCD) string {
+	if hasServer(cr) && cr.Spec.ArgoCDAgent.Principal.Server.KeepAliveMinInterval != "" {
+		return cr.Spec.ArgoCDAgent.Principal.Server.KeepAliveMinInterval
+	}
+	return "30s"
+}
+
+// Redis Configuration
+func getPrincipalRedisServerAddress(cr *argoproj.ArgoCD) string {
+	if hasRedis(cr) && cr.Spec.ArgoCDAgent.Principal.Redis.ServerAddress != "" {
+		return cr.Spec.ArgoCDAgent.Principal.Redis.ServerAddress
+	}
+	return "argocd-redis:6379"
+}
+
+func getPrincipalRedisCompressionType(cr *argoproj.ArgoCD) string {
+	if hasRedis(cr) && cr.Spec.ArgoCDAgent.Principal.Redis.CompressionType != "" {
+		return cr.Spec.ArgoCDAgent.Principal.Redis.CompressionType
+	}
+	return "gzip"
+}
+
+// Profiling Configuration
+func getPrincipalPprofPort(cr *argoproj.ArgoCD) string {
+	if hasServer(cr) && cr.Spec.ArgoCDAgent.Principal.Server.PprofPort != 0 {
+		return strconv.Itoa(cr.Spec.ArgoCDAgent.Principal.Server.PprofPort)
+	}
+	return "0"
+}
+
+func getPrincipalJWTSecretName(cr *argoproj.ArgoCD) string {
+	if hasJWT(cr) && cr.Spec.ArgoCDAgent.Principal.JWT.SecretName != "" {
+		return cr.Spec.ArgoCDAgent.Principal.JWT.SecretName
+	}
+	return "argocd-agent-jwt"
+}
+
+func getPrincipalResourceProxyCaSecretName(cr *argoproj.ArgoCD) string {
+	if hasResourceProxy(cr) && cr.Spec.ArgoCDAgent.Principal.ResourceProxy.CASecretName != "" {
+		return cr.Spec.ArgoCDAgent.Principal.ResourceProxy.CASecretName
+	}
+	return "argocd-agent-ca"
+}
+
+func getPrincipalResourceProxySecretName(cr *argoproj.ArgoCD) string {
+	if hasResourceProxy(cr) && cr.Spec.ArgoCDAgent.Principal.ResourceProxy.SecretName != "" {
+		return cr.Spec.ArgoCDAgent.Principal.ResourceProxy.SecretName
+	}
+	return "argocd-agent-resource-proxy-tls"
+}
+
+func getPrincipalTLSServerSecretName(cr *argoproj.ArgoCD) string {
+	if hasTLSServer(cr) && cr.Spec.ArgoCDAgent.Principal.TLS.Server.SecretName != "" {
+		return cr.Spec.ArgoCDAgent.Principal.TLS.Server.SecretName
+	}
+	return "argocd-agent-principal-tls"
+}
+
+func getPrincipalTlsServerRootCASecretName(cr *argoproj.ArgoCD) string {
+	if hasTLSClient(cr) && cr.Spec.ArgoCDAgent.Principal.TLS.Client.RootCASecretName != "" {
+		return cr.Spec.ArgoCDAgent.Principal.TLS.Client.RootCASecretName
+	}
+	return "argocd-agent-ca"
+}
+
+func getPrincipalHealthzPort(cr *argoproj.ArgoCD) string {
+	if hasServer(cr) && cr.Spec.ArgoCDAgent.Principal.Server.HealthzPort != 0 {
+		return strconv.Itoa(cr.Spec.ArgoCDAgent.Principal.Server.HealthzPort)
+	}
+	return "8003"
+}
+
+func getPrincipalResourceProxyCaPath(cr *argoproj.ArgoCD) string {
+	if hasResourceProxy(cr) &&
+		cr.Spec.ArgoCDAgent.Principal.ResourceProxy.TLSCAPath != "" {
+		return cr.Spec.ArgoCDAgent.Principal.ResourceProxy.TLSCAPath
+	}
+	return ""
+}
+
+func hasPrincipal(cr *argoproj.ArgoCD) bool {
+	return cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Principal != nil
+}
+
+func hasServer(cr *argoproj.ArgoCD) bool {
+	return cr.Spec.ArgoCDAgent != nil &&
+		cr.Spec.ArgoCDAgent.Principal != nil &&
+		cr.Spec.ArgoCDAgent.Principal.Server != nil
+}
+
+func hasNamespace(cr *argoproj.ArgoCD) bool {
+	return cr.Spec.ArgoCDAgent != nil &&
+		cr.Spec.ArgoCDAgent.Principal != nil &&
+		cr.Spec.ArgoCDAgent.Principal.Namespace != nil
+}
+
+func hasTLSServer(cr *argoproj.ArgoCD) bool {
+	return cr.Spec.ArgoCDAgent != nil &&
+		cr.Spec.ArgoCDAgent.Principal != nil &&
+		cr.Spec.ArgoCDAgent.Principal.TLS != nil &&
+		cr.Spec.ArgoCDAgent.Principal.TLS.Server != nil
+}
+
+func hasTLSClient(cr *argoproj.ArgoCD) bool {
+	return cr.Spec.ArgoCDAgent != nil &&
+		cr.Spec.ArgoCDAgent.Principal != nil &&
+		cr.Spec.ArgoCDAgent.Principal.TLS != nil &&
+		cr.Spec.ArgoCDAgent.Principal.TLS.Client != nil
+}
+
+func hasResourceProxy(cr *argoproj.ArgoCD) bool {
+	return cr.Spec.ArgoCDAgent != nil &&
+		cr.Spec.ArgoCDAgent.Principal != nil &&
+		cr.Spec.ArgoCDAgent.Principal.ResourceProxy != nil
+}
+
+func hasJWT(cr *argoproj.ArgoCD) bool {
+	return cr.Spec.ArgoCDAgent != nil &&
+		cr.Spec.ArgoCDAgent.Principal != nil &&
+		cr.Spec.ArgoCDAgent.Principal.JWT != nil
+}
+
+func hasRedis(cr *argoproj.ArgoCD) bool {
+	return cr.Spec.ArgoCDAgent != nil &&
+		cr.Spec.ArgoCDAgent.Principal != nil &&
+		cr.Spec.ArgoCDAgent.Principal.Redis != nil
 }

@@ -3,16 +3,115 @@ kind: ArgoCD
 metadata:
   name: argocd
 spec:
+  # Disable the main controller since we're using the agent
   controller:
     enabled: false
+  
+  # ArgoCD Agent configuration
   argoCDAgent:
     principal:
+      # Enable the Principal component
       enabled: true
-      allowedNamespaces:
-        - "*"
-      jwtAllowGenerate: true
-      auth: "mtls:CN=([^,]+)"
-      logLevel: "trace"
+      
+      # Server configuration for the Principal component
+      server:
+        # Authentication method - mTLS with certificate common name extraction
+        auth: "mtls:CN=([^,]+)"
+        # Metrics endpoint port
+        metricsPort: 8000
+        # Pprof debugging port
+        pprofPort: 6060
+        # Health check port
+        healthzPort: 8003
+        # Interface to listen on (empty for all interfaces)
+        listenHost: ""
+        # gRPC server port
+        listenPort: 8443
+        # Enable WebSocket for real-time event streaming
+        enableWebSocket: true
+        # Log level for the Principal component
+        logLevel: "info"
+        # Log format (text or json)
+        logFormat: "text"
+        # Container image for the ArgoCD Agent
+        image: "quay.io/argoprojlabs/argocd-agent:v0.3.2" 
+        # Minimum interval between keep-alive messages
+        keepAliveMinInterval: "30s"
+        # Environment variables for the Principal component
+        env:
+          - name: GRPC_GO_LOG_VERBOSITY_LEVEL
+            value: "99"
+          - name: GRPC_GO_LOG_SEVERITY_LEVEL
+            value: "info"
+          - name: GODEBUG
+            value: "http2debug=2"
+      # Namespace management configuration
+      namespace:
+        # List of namespaces the principal can watch and manage
+        allowedNamespaces:
+          - "*"
+        # Enable automatic namespace creation for agents
+        enableNamespaceCreate: true
+        # Pattern to restrict namespace names (regex)
+        namespaceCreatePattern: "agent-.*"
+        # Labels to apply to created namespaces
+        namespaceCreateLabels:
+          - "environment=agent"
+          - "managed-by=argocd-agent"
+      
+      # Resource proxy configuration for external resource access
+      resourceProxy:
+        # Enable resource proxy functionality
+        enable: true
+        # Secret containing proxy TLS certificate and key
+        secretName: "argocd-agent-proxy-tls"
+        # Path to proxy TLS certificate
+        tlsCertPath: "/etc/argocd-agent/proxy/tls.crt"
+        # Path to proxy TLS private key
+        tlsKeyPath: "/etc/argocd-agent/proxy/tls.key"
+        # Path to proxy CA certificate
+        tlsCAPath: "/etc/argocd-agent/proxy/ca.crt"
+        # Secret containing proxy CA certificate
+        caSecretName: "argocd-agent-proxy-ca"
+      
+      # Redis configuration for caching and state management
+      redis:
+        # Redis server address
+        serverAddress: "redis:6379"
+        # Compression type for Redis data
+        compressionType: "gzip"
+      
+      # TLS configuration for secure communication
+      tls:
+        server:
+          # Secret containing TLS certificate and key
+          secretName: "argocd-agent-tls"
+          # Allow automatic certificate generation if not provided
+          allowGenerate: true
+          # Path to TLS certificate in container
+          certPath: "/etc/argocd-agent/tls/tls.crt"
+          # Path to TLS private key in container
+          keyPath: "/etc/argocd-agent/tls/tls.key"
+        client:
+          # Secret containing root CA for client certificate validation
+          rootCASecretName: "argocd-agent-ca"
+          # Path to root CA certificate in container
+          rootCAPath: "/etc/argocd-agent/tls/ca.crt"
+          # Require client certificates from agents
+          requireClientCert: true
+          # Match client certificate subject to agent name
+          clientMatchSubject: true
+      
+      # JWT configuration for token-based authentication
+      jwt:
+        # Allow insecure JWT key generation (for development only)
+        insecureGenerate: true
+        # Secret containing JWT signing key
+        secretName: "argocd-agent-jwt"
+        # Path to JWT private key in container
+        key: "/etc/argocd-agent/jwt/private.key"
+  
+  # Source namespaces for ArgoCD applications
   sourceNamespaces:
     - "agent-managed"
     - "agent-autonomous"

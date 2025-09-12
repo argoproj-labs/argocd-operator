@@ -1021,20 +1021,157 @@ type PrincipalSpec struct {
 	// Enabled is the flag to enable the Principal component during Argo CD installation. (optional, default `false`)
 	Enabled *bool `json:"enabled,omitempty"`
 
-	// AllowedNamespaces is the list of namespaces that the Principal component is allowed to access.
-	AllowedNamespaces []string `json:"allowedNamespaces,omitempty"`
+	// Server defines the server options for the Principal component.
+	Server *PrincipalServerSpec `json:"server,omitempty"`
 
-	// JWTAllowGenerate is the flag to enable the JWT generation during Argo CD installation.
-	JWTAllowGenerate bool `json:"jwtAllowGenerate,omitempty"`
+	// Namespace is the configuration for the Principal component namespace.
+	Namespace *PrincipalNamespaceSpec `json:"namespace,omitempty"`
 
+	// ResourceProxy defines the Resource Proxy options for the Principal component.
+	ResourceProxy *PrincipalResourceProxySpec `json:"resourceProxy,omitempty"`
+
+	// Redis defines the Redis options for the Principal component.
+	Redis *PrincipalRedisSpec `json:"redis,omitempty"`
+
+	// TLS defines the TLS options for the Principal component.
+	TLS *PrincipalTLSSpec `json:"tls,omitempty"`
+
+	// JWT defines the JWT options for the Principal component.
+	JWT *PrincipalJWTSpec `json:"jwt,omitempty"`
+}
+
+type PrincipalServerSpec struct {
 	// Auth is the authentication method for the Principal component.
 	Auth string `json:"auth,omitempty"`
 
-	// LogLevel refers to the log level used by the Principal component. Defaults to info if not configured. Valid options are debug, info, trace, error, and warn.
+	// MetricsPort is the port number for the Principal component metrics.
+	MetricsPort int `json:"metricsPort,omitempty"`
+
+	// PprofPort is the port number for the Principal component pprof.
+	PprofPort int `json:"pprofPort,omitempty"`
+
+	// HealthzPort is the port number for the Principal component healthz.
+	HealthzPort int `json:"healthzPort,omitempty"`
+
+	// ListenHost is the interface address to listen on.
+	ListenHost string `json:"listenHost,omitempty"`
+
+	// ListenPort is the port gRPC server should listen on.
+	ListenPort int `json:"listenPort,omitempty"`
+
+	// EnableWebSocket is the flag to enable the WebSocket on gRPC to stream events to the Agent.
+	EnableWebSocket *bool `json:"enableWebSocket,omitempty"`
+
+	// LogLevel refers to the log level used by the Principal component.
 	LogLevel string `json:"logLevel,omitempty"`
+
+	// LogFormat refers to the log format used by the Principal component.
+	LogFormat string `json:"logFormat,omitempty"`
+
+	// KeepAliveMinInterval is the minimum interval between keep-alive messages sent by the Agent to the Principal.
+	KeepAliveMinInterval string `json:"keepAliveMinInterval,omitempty"`
 
 	// Image is the name of Argo CD Agent image
 	Image string `json:"image,omitempty"`
+
+	// Env lets you specify environment for principal pods
+	Env []corev1.EnvVar `json:"env,omitempty"`
+}
+
+type PrincipalRedisSpec struct {
+
+	// ServerAddress is the address of the Redis server to be used by the Principal component.
+	ServerAddress string `json:"serverAddress,omitempty"`
+
+	// CompressionType is the compression type to be used by Redis.
+	CompressionType string `json:"compressionType,omitempty"`
+}
+
+type PrincipalJWTSpec struct {
+
+	// InsecureGenerate is the flag to allow the principal to generate its own private key for signing JWT tokens (insecure).
+	InsecureGenerate *bool `json:"insecureGenerate,omitempty"`
+
+	// SecretName is the name of the secret containing the JWT signing key.
+	SecretName string `json:"secretName,omitempty"`
+
+	// Key is the path to the private key to be used for signing JWT tokens.
+	Key string `json:"key,omitempty"`
+}
+
+type PrincipalNamespaceSpec struct {
+
+	// AllowedNamespaces is a list of namespaces the principal shall watch and process Argo CD resources in.
+	AllowedNamespaces []string `json:"allowedNamespaces,omitempty"`
+
+	// EnableNamespaceCreate is the flag to enable namespace creation for agents.
+	EnableNamespaceCreate *bool `json:"enableNamespaceCreate,omitempty"`
+
+	// NamespaceCreatePattern is a regexp pattern to restrict the names of namespaces to be created.
+	NamespaceCreatePattern string `json:"namespaceCreatePattern,omitempty"`
+
+	// NamespaceCreateLabels is the set of labels to apply to namespaces created for agents. Ex: "foo=bar,bar=baz"
+	NamespaceCreateLabels []string `json:"namespaceCreateLabels,omitempty"`
+}
+
+type PrincipalResourceProxySpec struct {
+
+	// Enable is the flag to enable the resource proxy.
+	Enable *bool `json:"enable,omitempty"`
+
+	// SecretName is the name of the secret containing the TLS certificate and key for the resource proxy.
+	SecretName string `json:"secretName,omitempty"`
+
+	// TLSCertPath is the path to the TLS certificate to be used by the resource proxy.
+	TLSCertPath string `json:"tlsCertPath,omitempty"`
+
+	// TLSKeyPath is the path to the TLS private key to be used by the resource proxy.
+	TLSKeyPath string `json:"tlsKeyPath,omitempty"`
+
+	// TLSCAPath is the path to the CA certificate to be used by the resource proxy.
+	TLSCAPath string `json:"tlsCAPath,omitempty"`
+
+	// CASecretName is the name of the secret containing the CA certificate for the resource proxy.
+	CASecretName string `json:"caSecretName,omitempty"`
+}
+
+type PrincipalTLSSpec struct {
+
+	// Server defines the TLS options for the Principal component server.
+	Server *PrincipalTLSServerSpec `json:"server,omitempty"`
+
+	// Client defines the TLS options for the Principal component client.
+	Client *PrincipalTLSClientSpec `json:"client,omitempty"`
+}
+
+type PrincipalTLSServerSpec struct {
+
+	// SecretName is The name of the secret containing the TLS certificate and key.
+	SecretName string `json:"secretName,omitempty"`
+
+	// AllowGenerate is the flag to allow the principal to generate its own set of TLS cert and key on startup when none are configured
+	AllowGenerate *bool `json:"allowGenerate,omitempty"`
+
+	// CertPath is the path to the TLS certificate to be used by the gRPC server.
+	CertPath string `json:"certPath,omitempty"`
+
+	// KeyPath is the path to the TLS private key to be used by the gRPC server
+	KeyPath string `json:"keyPath,omitempty"`
+}
+
+type PrincipalTLSClientSpec struct {
+
+	// RootCASecretName is the name of the secret containing the root CA TLS certificate
+	RootCASecretName string `json:"rootCASecretName,omitempty"`
+
+	// RootCAPath is the path to a TLS root certificate authority to be used to validate agent's client certificates against.
+	RootCAPath string `json:"rootCAPath,omitempty"`
+
+	// RequireClientCert is the flag to indicate whether to require client certs from agents upon connection.
+	RequireClientCert *bool `json:"requireClientCert,omitempty"`
+
+	// ClientMatchSubject is the flag to mention whether to match the subject field in a client certificate presented by an agent to the agent's name.
+	ClientMatchSubject *bool `json:"clientMatchSubject,omitempty"`
 }
 
 func (a *PrincipalSpec) IsEnabled() bool {

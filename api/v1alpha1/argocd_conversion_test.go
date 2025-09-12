@@ -520,6 +520,183 @@ func TestAlphaToBetaConversion(t *testing.T) {
 				}
 			}),
 		},
+		{
+			name: "ArgoCD Example - Agent Principal Basic",
+			input: makeTestArgoCDAlpha(func(cr *ArgoCD) {
+				enabled := true
+				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
+					Principal: &PrincipalSpec{
+						Enabled: &enabled,
+						Server: &PrincipalServerSpec{
+							Auth: "mtls:CN=([^,]+)",
+						},
+					},
+				}
+			}),
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				enabled := true
+				cr.Spec.ArgoCDAgent = &v1beta1.ArgoCDAgentSpec{
+					Principal: &v1beta1.PrincipalSpec{
+						Enabled: &enabled,
+						Server: &v1beta1.PrincipalServerSpec{
+							Auth: "mtls:CN=([^,]+)",
+						},
+					},
+				}
+			}),
+		},
+		{
+			name: "ArgoCD Example - Agent Principal Full Configuration",
+			input: makeTestArgoCDAlpha(func(cr *ArgoCD) {
+				enabled := true
+				enableWebSocket := true
+				enableNamespaceCreate := true
+				insecureGenerate := true
+				allowGenerate := true
+				require := true
+				matchSubject := true
+				enableProxy := true
+				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
+					Principal: &PrincipalSpec{
+						Enabled: &enabled,
+						Server: &PrincipalServerSpec{
+							Auth:                 "mtls:CN=([^,]+)",
+							MetricsPort:          8000,
+							PprofPort:            6060,
+							HealthzPort:          8003,
+							ListenHost:           "0.0.0.0",
+							ListenPort:           8443,
+							EnableWebSocket:      &enableWebSocket,
+							LogLevel:             "info",
+							LogFormat:            "text",
+							Image:                "quay.io/user/argocd-agent:v1",
+							KeepAliveMinInterval: "30s",
+						},
+						Redis: &PrincipalRedisSpec{
+							ServerAddress:   "redis:6379",
+							CompressionType: "gzip",
+						},
+						Namespace: &PrincipalNamespaceSpec{
+							AllowedNamespaces:      []string{"*"},
+							EnableNamespaceCreate:  &enableNamespaceCreate,
+							NamespaceCreatePattern: "agent-.*",
+							NamespaceCreateLabels:  []string{"environment=agent"},
+						},
+						TLS: &PrincipalTLSSpec{
+							Server: &PrincipalTLSServerSpec{
+								SecretName:    "tls-secret",
+								AllowGenerate: &allowGenerate,
+								CertPath:      "/path/to/cert",
+								KeyPath:       "/path/to/key",
+							},
+							Client: &PrincipalTLSClientSpec{
+								RequireClientCert:  &require,
+								ClientMatchSubject: &matchSubject,
+								RootCAPath:         "/path/to/ca",
+								RootCASecretName:   "ca-secret",
+							},
+						},
+						ResourceProxy: &PrincipalResourceProxySpec{
+							Enable:       &enableProxy,
+							SecretName:   "proxy-secret",
+							TLSCertPath:  "/path/to/proxy-cert",
+							TLSKeyPath:   "/path/to/proxy-key",
+							TLSCAPath:    "/path/to/proxy-ca",
+							CASecretName: "proxy-ca-secret",
+						},
+						JWT: &PrincipalJWTSpec{
+							InsecureGenerate: &insecureGenerate,
+							SecretName:       "jwt-secret",
+							Key:              "/path/to/key",
+						},
+					},
+				}
+			}),
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				enabled := true
+				enableWebSocket := true
+				enableNamespaceCreate := true
+				allowGenerate := true
+				insecureGenerate := true
+				require := true
+				matchSubject := true
+				enableProxy := true
+				cr.Spec.ArgoCDAgent = &v1beta1.ArgoCDAgentSpec{
+					Principal: &v1beta1.PrincipalSpec{
+						Enabled: &enabled,
+						Server: &v1beta1.PrincipalServerSpec{
+							Auth:                 "mtls:CN=([^,]+)",
+							MetricsPort:          8000,
+							PprofPort:            6060,
+							HealthzPort:          8003,
+							ListenHost:           "0.0.0.0",
+							ListenPort:           8443,
+							EnableWebSocket:      &enableWebSocket,
+							LogLevel:             "info",
+							LogFormat:            "text",
+							KeepAliveMinInterval: "30s",
+							Image:                "quay.io/user/argocd-agent:v1",
+						},
+						Redis: &v1beta1.PrincipalRedisSpec{
+							ServerAddress:   "redis:6379",
+							CompressionType: "gzip",
+						},
+						Namespace: &v1beta1.PrincipalNamespaceSpec{
+							AllowedNamespaces:      []string{"*"},
+							EnableNamespaceCreate:  &enableNamespaceCreate,
+							NamespaceCreatePattern: "agent-.*",
+							NamespaceCreateLabels:  []string{"environment=agent"},
+						},
+						TLS: &v1beta1.PrincipalTLSSpec{
+							Server: &v1beta1.PrincipalTLSServerSpec{
+								SecretName:    "tls-secret",
+								AllowGenerate: &allowGenerate,
+								CertPath:      "/path/to/cert",
+								KeyPath:       "/path/to/key",
+							},
+							Client: &v1beta1.PrincipalTLSClientSpec{
+								RequireClientCert:  &require,
+								ClientMatchSubject: &matchSubject,
+								RootCAPath:         "/path/to/ca",
+								RootCASecretName:   "ca-secret",
+							},
+						},
+						ResourceProxy: &v1beta1.PrincipalResourceProxySpec{
+							Enable:       &enableProxy,
+							SecretName:   "proxy-secret",
+							TLSCertPath:  "/path/to/proxy-cert",
+							TLSKeyPath:   "/path/to/proxy-key",
+							TLSCAPath:    "/path/to/proxy-ca",
+							CASecretName: "proxy-ca-secret",
+						},
+						JWT: &v1beta1.PrincipalJWTSpec{
+							InsecureGenerate: &insecureGenerate,
+							SecretName:       "jwt-secret",
+							Key:              "/path/to/key",
+						},
+					},
+				}
+			}),
+		},
+		{
+			name: "ArgoCD Example - Agent Principal Disabled",
+			input: makeTestArgoCDAlpha(func(cr *ArgoCD) {
+				enabled := false
+				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
+					Principal: &PrincipalSpec{
+						Enabled: &enabled,
+					},
+				}
+			}),
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				enabled := false
+				cr.Spec.ArgoCDAgent = &v1beta1.ArgoCDAgentSpec{
+					Principal: &v1beta1.PrincipalSpec{
+						Enabled: &enabled,
+					},
+				}
+			}),
+		},
 	}
 
 	for _, test := range tests {
@@ -614,6 +791,189 @@ func TestBetaToAlphaConversion(t *testing.T) {
 				cr.Spec.Server = ArgoCDServerSpec{
 					Route: ArgoCDRouteSpec{
 						Enabled: true,
+					},
+				}
+			}),
+		},
+		{
+			name: "ArgoCD Example - Agent Principal Basic",
+			input: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				enabled := true
+				cr.Spec.ArgoCDAgent = &v1beta1.ArgoCDAgentSpec{
+					Principal: &v1beta1.PrincipalSpec{
+						Enabled: &enabled,
+						Server: &v1beta1.PrincipalServerSpec{
+							Auth: "mtls:CN=([^,]+)",
+						},
+					},
+				}
+			}),
+			expectedOutput: makeTestArgoCDAlpha(func(cr *ArgoCD) {
+				enabled := true
+				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
+					Principal: &PrincipalSpec{
+						Enabled: &enabled,
+						Server: &PrincipalServerSpec{
+							Auth: "mtls:CN=([^,]+)",
+						},
+					},
+				}
+			}),
+		},
+		{
+			name: "ArgoCD Example - Agent Principal Full Configuration",
+			input: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				enabled := true
+				enableWebSocket := true
+				enableNamespaceCreate := true
+				allowGenerate := true
+				insecureGenerate := true
+				require := true
+				matchSubject := true
+				enableProxy := true
+				cr.Spec.ArgoCDAgent = &v1beta1.ArgoCDAgentSpec{
+					Principal: &v1beta1.PrincipalSpec{
+						Enabled: &enabled,
+						Server: &v1beta1.PrincipalServerSpec{
+							Auth:                 "mtls:CN=([^,]+)",
+							MetricsPort:          8000,
+							PprofPort:            6060,
+							HealthzPort:          8003,
+							ListenHost:           "0.0.0.0",
+							ListenPort:           8443,
+							EnableWebSocket:      &enableWebSocket,
+							LogLevel:             "info",
+							LogFormat:            "text",
+							KeepAliveMinInterval: "30s",
+							Image:                "quay.io/user/argocd-agent:v1",
+							Env: []corev1.EnvVar{
+								{Name: "TEST_ENV", Value: "test-value"},
+							},
+						},
+						Redis: &v1beta1.PrincipalRedisSpec{
+							ServerAddress:   "redis:6379",
+							CompressionType: "gzip",
+						},
+						Namespace: &v1beta1.PrincipalNamespaceSpec{
+							AllowedNamespaces:      []string{"*"},
+							EnableNamespaceCreate:  &enableNamespaceCreate,
+							NamespaceCreatePattern: "agent-.*",
+							NamespaceCreateLabels:  []string{"environment=agent"},
+						},
+						TLS: &v1beta1.PrincipalTLSSpec{
+							Server: &v1beta1.PrincipalTLSServerSpec{
+								SecretName:    "tls-secret",
+								AllowGenerate: &allowGenerate,
+								CertPath:      "/path/to/cert",
+								KeyPath:       "/path/to/key",
+							},
+							Client: &v1beta1.PrincipalTLSClientSpec{
+								RequireClientCert:  &require,
+								ClientMatchSubject: &matchSubject,
+								RootCAPath:         "/path/to/ca",
+								RootCASecretName:   "ca-secret",
+							},
+						},
+						ResourceProxy: &v1beta1.PrincipalResourceProxySpec{
+							Enable:       &enableProxy,
+							SecretName:   "proxy-secret",
+							TLSCertPath:  "/path/to/proxy-cert",
+							TLSKeyPath:   "/path/to/proxy-key",
+							TLSCAPath:    "/path/to/proxy-ca",
+							CASecretName: "proxy-ca-secret",
+						},
+						JWT: &v1beta1.PrincipalJWTSpec{
+							InsecureGenerate: &insecureGenerate,
+							SecretName:       "jwt-secret",
+							Key:              "/path/to/key",
+						},
+					},
+				}
+			}),
+			expectedOutput: makeTestArgoCDAlpha(func(cr *ArgoCD) {
+				enabled := true
+				enableWebSocket := true
+				enableNamespaceCreate := true
+				allowGenerate := true
+				insecureGenerate := true
+				require := true
+				matchSubject := true
+				enableProxy := true
+				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
+					Principal: &PrincipalSpec{
+						Enabled: &enabled,
+						Server: &PrincipalServerSpec{
+							Auth:                 "mtls:CN=([^,]+)",
+							MetricsPort:          8000,
+							PprofPort:            6060,
+							HealthzPort:          8003,
+							ListenHost:           "0.0.0.0",
+							ListenPort:           8443,
+							EnableWebSocket:      &enableWebSocket,
+							LogLevel:             "info",
+							LogFormat:            "text",
+							Image:                "quay.io/user/argocd-agent:v1",
+							KeepAliveMinInterval: "30s",
+							Env: []corev1.EnvVar{
+								{Name: "TEST_ENV", Value: "test-value"},
+							},
+						},
+						Redis: &PrincipalRedisSpec{
+							ServerAddress:   "redis:6379",
+							CompressionType: "gzip",
+						},
+						Namespace: &PrincipalNamespaceSpec{
+							AllowedNamespaces:      []string{"*"},
+							EnableNamespaceCreate:  &enableNamespaceCreate,
+							NamespaceCreatePattern: "agent-.*",
+							NamespaceCreateLabels:  []string{"environment=agent"},
+						},
+						TLS: &PrincipalTLSSpec{
+							Server: &PrincipalTLSServerSpec{
+								SecretName:    "tls-secret",
+								AllowGenerate: &allowGenerate,
+								CertPath:      "/path/to/cert",
+								KeyPath:       "/path/to/key",
+							},
+							Client: &PrincipalTLSClientSpec{
+								RequireClientCert:  &require,
+								ClientMatchSubject: &matchSubject,
+								RootCAPath:         "/path/to/ca",
+								RootCASecretName:   "ca-secret",
+							},
+						},
+						ResourceProxy: &PrincipalResourceProxySpec{
+							Enable:       &enableProxy,
+							SecretName:   "proxy-secret",
+							TLSCertPath:  "/path/to/proxy-cert",
+							TLSKeyPath:   "/path/to/proxy-key",
+							TLSCAPath:    "/path/to/proxy-ca",
+							CASecretName: "proxy-ca-secret",
+						},
+						JWT: &PrincipalJWTSpec{
+							InsecureGenerate: &insecureGenerate,
+							SecretName:       "jwt-secret",
+							Key:              "/path/to/key",
+						},
+					},
+				}
+			}),
+		},
+		{
+			name: "ArgoCD Example - Agent Principal Disabled",
+			input: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				enabled := false
+				cr.Spec.ArgoCDAgent = &v1beta1.ArgoCDAgentSpec{
+					Principal: &v1beta1.PrincipalSpec{
+						Enabled: &enabled,
+					},
+				}
+			}),
+			expectedOutput: makeTestArgoCDAlpha(func(cr *ArgoCD) {
+				enabled := false
+				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
+					Principal: &PrincipalSpec{
+						Enabled: &enabled,
 					},
 				}
 			}),
