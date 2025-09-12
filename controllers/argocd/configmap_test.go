@@ -224,7 +224,7 @@ func TestReconcileArgoCD_reconcileTLSCerts_withInitialCertsUpdate(t *testing.T) 
 		},
 		configMap))
 
-	// Any certs added to .spec.tls.intialCerts of Argo CD CR after the cluster creation
+	// Any certs added to .spec.tls.initialCerts of Argo CD CR after the cluster creation
 	// should not affect the argocd-tls-certs-cm configmap.
 	want := []string{}
 	if k := stringMapKeys(configMap.Data); !reflect.DeepEqual(want, k) {
