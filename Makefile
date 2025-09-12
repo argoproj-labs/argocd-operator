@@ -101,8 +101,12 @@ fmt: ## Run go fmt against code.
 vet: ## Run go vet against code.
 	go vet ./...
 
+
+# Exclude E2E tests from the list of unit test packages
+UNIT_TEST_PACKAGES := $(shell go list ./... | grep -E -v '/tests/ginkgo')
+
 test: manifests generate fmt vet envtest ## Run tests.
-	REDIS_CONFIG_PATH="$(shell pwd)/build/redis" go test ./... -coverprofile cover.out
+	REDIS_CONFIG_PATH="$(shell pwd)/build/redis" go test $(UNIT_TEST_PACKAGES) -coverprofile cover.out
 
 ##@ Build
 
@@ -167,6 +171,10 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 e2e: ## Run operator e2e tests
 	kubectl kuttl test ./tests/k8s --config ./tests/kuttl-tests.yaml
 
+
+start-e2e:
+	ARGOCD_CLUSTER_CONFIG_NAMESPACES="argocd-e2e-cluster-config, argocd-test-impersonation-1-046, argocd-agent-principal-1-051" make run
+
 all: test install run e2e ## UnitTest, Run the operator locally and execute e2e tests.
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
@@ -185,7 +193,7 @@ envtest: ## Download envtest-setup locally if necessary.
 
 .PHONY: gosec
 gosec: go_sec
-	$(GO_SEC) --exclude-dir "tests/auxiliary/smtplistener"  ./... 
+	$(GO_SEC) --exclude-dir "tests/auxiliary/smtplistener" --exclude-dir "hack/"  ./... 
 
 .PHONY: lint
 lint: golangci_lint
@@ -317,3 +325,35 @@ catalog-build: opm ## Build a catalog image.
 catalog-push: ## Push a catalog image.
 	$(MAKE) docker-push IMG=$(CATALOG_IMG)
 
+.PHONY: e2e-tests-sequential-ginkgo
+e2e-tests-sequential-ginkgo: ginkgo 
+	@echo "Running operator sequential Ginkgo E2E tests..."
+	$(GINKGO_CLI) -v --trace --timeout 90m -r ./tests/ginkgo/sequential
+
+.PHONY: e2e-tests-parallel-ginkgo 
+e2e-tests-parallel-ginkgo: ginkgo
+	@echo "Running operator parallel Ginkgo E2E tests..."
+	$(GINKGO_CLI) -p -v -procs=5 --trace --timeout 90m -r ./tests/ginkgo/parallel
+	
+	
+GINKGO_CLI = $(shell pwd)/bin/ginkgo
+.PHONY: ginkgo
+ginkgo: ## Download ginkgo locally if necessary.
+	$(call go-get-tool,$(GINKGO_CLI),github.com/onsi/ginkgo/v2/ginkgo@v2.22.2)
+
+
+# go-get-tool will 'go install' any package $2 and install it to $1.
+PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
+define go-get-tool
+@[ -f $(1) ] || { \
+set -e ;\
+TMP_DIR=$$(mktemp -d) ;\
+cd $$TMP_DIR ;\
+go mod init tmp ;\
+echo "Downloading $(2)" ;\
+currentver=$$(go version | { read _ _ v _; echo $$v; } | sed  's/go//g') ;\
+requiredver="1.19" ;\
+if [ $$(printf '%s\n' $$requiredver $$currentver | sort -V | head -n1) = $$requiredver ]; then export GOFLAGS=""; GOBIN=$(PROJECT_DIR)/bin go install $(2);  else  GOBIN=$(PROJECT_DIR)/bin go get $(2); fi;\
+rm -rf $$TMP_DIR ;\
+}
+endef
