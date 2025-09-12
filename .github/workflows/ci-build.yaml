@@ -99,23 +99,27 @@ jobs:
           set -o pipefail
           make install generate fmt vet
           # Use tee to flush output to the log.  Other solutions like stdbuf don't work, not sure why.
-          REDIS_CONFIG_PATH="build/redis" go run ./cmd/main.go 2>&1 | tee /tmp/e2e-operator-run.log &
-      - name: Run tests
+          make start-e2e 2>&1 | tee /tmp/e2e-operator-run.log &
+
+      - name: Run ginkgo tests
         run: |
           set -o pipefail
-          bash hack/test.sh 2>&1 | tee /tmp/e2e-test.log
+          LOCAL_RUN=true make e2e-tests-sequential-ginkgo  e2e-tests-parallel-ginkgo 2>&1 | tee /tmp/e2e-test-ginkgo.log
+
       - name: Upload operator logs
         uses: actions/upload-artifact@v4
         with:
           name: e2e-operator-run-${{ matrix.k3s-version }}.log
           path: /tmp/e2e-operator-run.log
         if: ${{ failure() }}
-      - name: Upload test logs
+
+      - name: Upload ginkgo test logs
         uses: actions/upload-artifact@v4
         with:
           name: e2e-test-${{ matrix.k3s-version }}.log
-          path: /tmp/e2e-test.log
+          path: /tmp/e2e-test-ginkgo.log
         if: ${{ failure() }}
+
       - name: Save application controller and server logs
         if: ${{ failure() }}
         run: |
