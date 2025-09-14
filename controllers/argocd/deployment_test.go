@@ -1295,20 +1295,8 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 					InitialDelaySeconds: 3,
 					PeriodSeconds:       30,
 				},
-				SecurityContext: &corev1.SecurityContext{
-					AllowPrivilegeEscalation: boolPtr(false),
-					Capabilities: &corev1.Capabilities{
-						Drop: []corev1.Capability{
-							"ALL",
-						},
-					},
-					ReadOnlyRootFilesystem: boolPtr(true),
-					RunAsNonRoot:           boolPtr(true),
-					SeccompProfile: &corev1.SeccompProfile{
-						Type: "RuntimeDefault",
-					},
-				},
-				VolumeMounts: serverDefaultVolumeMounts(),
+				SecurityContext: argoutil.DefaultSecurityContext(),
+				VolumeMounts:    serverDefaultVolumeMounts(),
 			},
 		},
 		Volumes:            serverDefaultVolumes(),
@@ -1809,20 +1797,8 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 					InitialDelaySeconds: 3,
 					PeriodSeconds:       30,
 				},
-				SecurityContext: &corev1.SecurityContext{
-					AllowPrivilegeEscalation: boolPtr(false),
-					Capabilities: &corev1.Capabilities{
-						Drop: []corev1.Capability{
-							"ALL",
-						},
-					},
-					ReadOnlyRootFilesystem: boolPtr(true),
-					RunAsNonRoot:           boolPtr(true),
-					SeccompProfile: &corev1.SeccompProfile{
-						Type: "RuntimeDefault",
-					},
-				},
-				VolumeMounts: serverDefaultVolumeMounts(),
+				SecurityContext: argoutil.DefaultSecurityContext(),
+				VolumeMounts:    serverDefaultVolumeMounts(),
 			},
 		},
 		Volumes:            serverDefaultVolumes(),
@@ -1917,20 +1893,8 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 					InitialDelaySeconds: 3,
 					PeriodSeconds:       30,
 				},
-				SecurityContext: &corev1.SecurityContext{
-					AllowPrivilegeEscalation: boolPtr(false),
-					Capabilities: &corev1.Capabilities{
-						Drop: []corev1.Capability{
-							"ALL",
-						},
-					},
-					ReadOnlyRootFilesystem: boolPtr(true),
-					RunAsNonRoot:           boolPtr(true),
-					SeccompProfile: &corev1.SeccompProfile{
-						Type: "RuntimeDefault",
-					},
-				},
-				VolumeMounts: serverDefaultVolumeMounts(),
+				SecurityContext: argoutil.DefaultSecurityContext(),
+				VolumeMounts:    serverDefaultVolumeMounts(),
 			},
 		},
 		Volumes:            serverDefaultVolumes(),

@@ -190,20 +190,8 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				SuccessThreshold:    int32(1),
 				TimeoutSeconds:      int32(15),
 			},
-			Resources: getRedisHAResources(cr),
-			SecurityContext: &corev1.SecurityContext{
-				AllowPrivilegeEscalation: boolPtr(false),
-				Capabilities: &corev1.Capabilities{
-					Drop: []corev1.Capability{
-						"ALL",
-					},
-				},
-				ReadOnlyRootFilesystem: boolPtr(true),
-				RunAsNonRoot:           boolPtr(true),
-				SeccompProfile: &corev1.SeccompProfile{
-					Type: "RuntimeDefault",
-				},
-			},
+			Resources:       getRedisHAResources(cr),
+			SecurityContext: argoutil.DefaultSecurityContext(),
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					MountPath: "/data",
@@ -266,20 +254,8 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				SuccessThreshold:    int32(1),
 				TimeoutSeconds:      int32(15),
 			},
-			Resources: getRedisHAResources(cr),
-			SecurityContext: &corev1.SecurityContext{
-				AllowPrivilegeEscalation: boolPtr(false),
-				Capabilities: &corev1.Capabilities{
-					Drop: []corev1.Capability{
-						"ALL",
-					},
-				},
-				ReadOnlyRootFilesystem: boolPtr(true),
-				RunAsNonRoot:           boolPtr(true),
-				SeccompProfile: &corev1.SeccompProfile{
-					Type: "RuntimeDefault",
-				},
-			},
+			Resources:       getRedisHAResources(cr),
+			SecurityContext: argoutil.DefaultSecurityContext(),
 			Lifecycle: &corev1.Lifecycle{
 				PostStart: &corev1.LifecycleHandler{
 					Exec: &corev1.ExecAction{
@@ -352,19 +328,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            "config-init",
 		Resources:       getRedisHAResources(cr),
-		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{
-					"ALL",
-				},
-			},
-			ReadOnlyRootFilesystem: boolPtr(true),
-			RunAsNonRoot:           boolPtr(true),
-			SeccompProfile: &corev1.SeccompProfile{
-				Type: "RuntimeDefault",
-			},
-		},
+		SecurityContext: argoutil.DefaultSecurityContext(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				MountPath: "/readonly-config",
@@ -738,21 +702,9 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			InitialDelaySeconds: 5,
 			PeriodSeconds:       10,
 		},
-		Resources: getArgoApplicationControllerResources(cr),
-		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{
-					"ALL",
-				},
-			},
-			ReadOnlyRootFilesystem: boolPtr(true),
-			RunAsNonRoot:           boolPtr(true),
-			SeccompProfile: &corev1.SeccompProfile{
-				Type: "RuntimeDefault",
-			},
-		},
-		VolumeMounts: controllerVolumeMounts,
+		Resources:       getArgoApplicationControllerResources(cr),
+		SecurityContext: argoutil.DefaultSecurityContext(),
+		VolumeMounts:    controllerVolumeMounts,
 	}}
 
 	if cr.Spec.Controller.SidecarContainers != nil {
@@ -870,20 +822,8 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			Image:           getArgoImportContainerImage(export),
 			ImagePullPolicy: corev1.PullAlways,
 			Name:            "argocd-import",
-			SecurityContext: &corev1.SecurityContext{
-				AllowPrivilegeEscalation: boolPtr(false),
-				Capabilities: &corev1.Capabilities{
-					Drop: []corev1.Capability{
-						"ALL",
-					},
-				},
-				ReadOnlyRootFilesystem: boolPtr(true),
-				RunAsNonRoot:           boolPtr(true),
-				SeccompProfile: &corev1.SeccompProfile{
-					Type: "RuntimeDefault",
-				},
-			},
-			VolumeMounts: getArgoImportVolumeMounts(),
+			SecurityContext: argoutil.DefaultSecurityContext(),
+			VolumeMounts:    getArgoImportVolumeMounts(),
 		}}
 
 		podSpec.Volumes = getArgoImportVolumes(export)
