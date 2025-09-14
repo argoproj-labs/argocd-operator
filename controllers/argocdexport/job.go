@@ -173,30 +173,14 @@ func newCronJob(cr *argoproj.ArgoCDExport) *batchv1.CronJob {
 func newExportPodSpec(cr *argoproj.ArgoCDExport, argocdName string, client client.Client) corev1.PodSpec {
 	pod := corev1.PodSpec{}
 
-	boolPtr := func(value bool) *bool {
-		return &value
-	}
-
 	pod.Containers = []corev1.Container{{
 		Command:         getArgoExportCommand(cr),
 		Env:             getArgoExportContainerEnv(cr),
 		Image:           getArgoExportContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-export",
-		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{
-					"ALL",
-				},
-			},
-			ReadOnlyRootFilesystem: boolPtr(true),
-			RunAsNonRoot:           boolPtr(true),
-			SeccompProfile: &corev1.SeccompProfile{
-				Type: "RuntimeDefault",
-			},
-		},
-		VolumeMounts: getArgoExportVolumeMounts(),
+		SecurityContext: argoutil.DefaultSecurityContext(),
+		VolumeMounts:    getArgoExportVolumeMounts(),
 	}}
 
 	pod.RestartPolicy = corev1.RestartPolicyOnFailure
