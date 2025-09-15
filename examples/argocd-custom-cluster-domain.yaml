@@ -1,0 +1,7 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  namespace: argocd
+spec:
+  clusterDomain: "abc123.cluster.local" 

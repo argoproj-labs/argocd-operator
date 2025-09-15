@@ -631,7 +631,7 @@ func getRedisServerAddress(cr *argoproj.ArgoCD) string {
 
 	// If principal is enabled, then Argo CD server/repo server should be configured to use redis proxy from principal (argo cd agent)
 	if cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Principal != nil && cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
-		return argoutil.GenerateAgentPrincipalRedisProxyServiceName(cr.Name) + "." + cr.Namespace + ".svc.cluster.local:6379"
+		return fmt.Sprintf("%s.%s.svc.%s:6379", argoutil.GenerateAgentPrincipalRedisProxyServiceName(cr.Name), cr.Namespace, getClusterDomain(cr))
 	}
 
 	if cr.Spec.HA.Enabled {
@@ -666,10 +666,19 @@ func nameWithSuffix(suffix string, cr *argoproj.ArgoCD) string {
 	return fmt.Sprintf("%s-%s", truncatedCRName, suffix)
 }
 
+// getClusterDomain returns the cluster domain suffix for the given ArgoCD instance.
+// If not specified in the CR, defaults to the standard cluster domain.
+func getClusterDomain(cr *argoproj.ArgoCD) string {
+	if cr.Spec.ClusterDomain != "" {
+		return cr.Spec.ClusterDomain
+	}
+	return common.ArgoCDDefaultClusterDomain
+}
+
 // fqdnServiceRef will return the FQDN referencing a specific service name, as set up by the operator, with the
 // given port.
 func fqdnServiceRef(service string, port int, cr *argoproj.ArgoCD) string {
-	return fmt.Sprintf("%s.%s.svc.cluster.local:%d", nameWithSuffix(service, cr), cr.Namespace, port)
+	return fmt.Sprintf("%s.%s.svc.%s:%d", nameWithSuffix(service, cr), cr.Namespace, getClusterDomain(cr), port)
 }
 
 // InspectCluster will verify the availability of extra features available to the cluster, such as Prometheus and

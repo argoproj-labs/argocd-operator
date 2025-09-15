@@ -298,6 +298,9 @@ vs-ssh.visualstudio.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7Hr1oTWqNqOlzGJOf
 
 	// DefaultImagePullPolicy is the default image pull policy to use when not specified.
 	DefaultImagePullPolicy = "IfNotPresent"
+
+	// ArgoCDDefaultClusterDomain is the default cluster domain suffix for service FQDNs.
+	ArgoCDDefaultClusterDomain = "cluster.local"
 )
 
 // DefaultLabels returns the default set of labels for controllers.
