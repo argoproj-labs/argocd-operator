@@ -289,6 +289,15 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: 'ClusterDomain is the cluster domain suffix used for constructing
+          service FQDNs. Defaults to "cluster.local". The full FQDN will be: <service>.<namespace>.svc.<clusterDomain>
+          This is useful for clusters that use a different DNS suffix (e.g., "CLUSTER_ID.cluster.local",
+          "edge.local").'
+        displayName: Cluster Domain'
+        path: clusterDomain
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: 'Deprecated: ConfigManagementPlugins field is no longer supported.
           Argo CD now requires plugins to be defined as sidecar containers of repo
           server component. See ''.spec.repo.sidecarContainers''. ConfigManagementPlugins
