@@ -1,6 +1,9 @@
 package application
 
 import (
+	"fmt"
+	"regexp"
+
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 	//lint:ignore ST1001 "This is a common practice in Gomega tests for readability."
 	. "github.com/onsi/gomega" //nolint:all
@@ -83,6 +86,40 @@ func HaveSyncStatusCode(expected appv1alpha1.SyncStatusCode) matcher.GomegaMatch
 
 	})
 
+}
+
+func HaveNoConditions() matcher.GomegaMatcher {
+	return expectedCondition(func(app *appv1alpha1.Application) bool {
+		count := len(app.Status.Conditions)
+		if count == 0 {
+			return true
+		}
+
+		GinkgoWriter.Printf("HaveNoConditions - have: %+v\n", app.Status.Conditions)
+		return false
+	})
+}
+
+func HaveConditionMatching(conditionType appv1alpha1.ApplicationConditionType, messagePattern string) matcher.GomegaMatcher {
+	pattern := regexp.MustCompile(messagePattern)
+
+	return expectedCondition(func(app *appv1alpha1.Application) bool {
+		conditions := app.Status.Conditions
+		var found []string
+		for _, condition := range conditions {
+			found = append(found, fmt.Sprintf("  -  `%s/%s", condition.Type, condition.Message))
+
+			if condition.Type == conditionType && pattern.MatchString(condition.Message) {
+				return true
+			}
+		}
+
+		GinkgoWriter.Printf("HaveConditionMatching - expected: `%s/%s; current(%d):\n", conditionType, messagePattern, len(conditions))
+		for _, f := range found {
+			GinkgoWriter.Println(f)
+		}
+		return false
+	})
 }
 
 // Update will keep trying to update object until it succeeds, or times out.
