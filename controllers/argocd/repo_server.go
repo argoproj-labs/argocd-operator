@@ -22,14 +22,14 @@ import (
 	"reflect"
 	"time"
 
-	v2 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	argocdoperatorv1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
@@ -37,7 +37,7 @@ import (
 // getArgoCDRepoServerReplicas will return the size value for the argocd-repo-server replica count if it
 // has been set in argocd CR. Otherwise, nil is returned if the replicas is not set in the argocd CR or
 // replicas value is < 0.
-func getArgoCDRepoServerReplicas(cr *v1beta1.ArgoCD) *int32 {
+func getArgoCDRepoServerReplicas(cr *argocdoperatorv1beta1.ArgoCD) *int32 {
 	if cr.Spec.Repo.Replicas != nil && *cr.Spec.Repo.Replicas >= 0 {
 		return cr.Spec.Repo.Replicas
 	}
@@ -46,7 +46,7 @@ func getArgoCDRepoServerReplicas(cr *v1beta1.ArgoCD) *int32 {
 }
 
 // getArgoRepoCommand will return the command for the ArgoCD Repo component.
-func getArgoRepoCommand(cr *v1beta1.ArgoCD, useTLSForRedis bool) []string {
+func getArgoRepoCommand(cr *argocdoperatorv1beta1.ArgoCD, useTLSForRedis bool) []string {
 	cmd := make([]string, 0)
 
 	cmd = append(cmd, "uid_entrypoint.sh")
@@ -81,7 +81,7 @@ func getArgoRepoCommand(cr *v1beta1.ArgoCD, useTLSForRedis bool) []string {
 }
 
 // getRepoServerAddress will return the Argo CD repo server address.
-func getRepoServerAddress(cr *v1beta1.ArgoCD) string {
+func getRepoServerAddress(cr *argocdoperatorv1beta1.ArgoCD) string {
 	if cr.Spec.Repo.IsRemote() {
 		return *cr.Spec.Repo.Remote
 	}
@@ -89,7 +89,7 @@ func getRepoServerAddress(cr *v1beta1.ArgoCD) string {
 }
 
 // reconcileRepoDeployment will ensure the Deployment resource is present for the ArgoCD Repo component.
-func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *v1beta1.ArgoCD, useTLSForRedis bool) error {
+func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.ArgoCD, useTLSForRedis bool) error {
 	deploy := newDeploymentWithSuffix("repo-server", "repo-server", cr)
 	automountToken := false
 	if cr.Spec.Repo.MountSAToken {
@@ -104,11 +104,11 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *v1beta1.ArgoCD, useTLSForR
 
 	// Global proxy env vars go first
 	repoEnv := cr.Spec.Repo.Env
-	repoEnv = append(repoEnv, v1.EnvVar{
+	repoEnv = append(repoEnv, corev1.EnvVar{
 		Name: "REDIS_PASSWORD",
-		ValueFrom: &v1.EnvVarSource{
-			SecretKeyRef: &v1.SecretKeySelector{
-				LocalObjectReference: v1.LocalObjectReference{
+		ValueFrom: &corev1.EnvVarSource{
+			SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
 					Name: fmt.Sprintf("%s-%s", cr.Name, "redis-initial-password"),
 				},
 				Key: "admin.password",
@@ -118,32 +118,32 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *v1beta1.ArgoCD, useTLSForR
 	// Environment specified in the CR take precedence over everything else
 	repoEnv = argoutil.EnvMerge(repoEnv, proxyEnvVars(), false)
 	if cr.Spec.Repo.ExecTimeout != nil {
-		repoEnv = argoutil.EnvMerge(repoEnv, []v1.EnvVar{{Name: "ARGOCD_EXEC_TIMEOUT", Value: fmt.Sprintf("%ds", *cr.Spec.Repo.ExecTimeout)}}, true)
+		repoEnv = argoutil.EnvMerge(repoEnv, []corev1.EnvVar{{Name: "ARGOCD_EXEC_TIMEOUT", Value: fmt.Sprintf("%ds", *cr.Spec.Repo.ExecTimeout)}}, true)
 	}
 
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
 
-	deploy.Spec.Template.Spec.InitContainers = []v1.Container{{
+	deploy.Spec.Template.Spec.InitContainers = []corev1.Container{{
 		Name:            "copyutil",
 		Image:           getArgoContainerImage(cr),
 		Command:         getArgoCmpServerInitCommand(),
-		ImagePullPolicy: v1.PullAlways,
+		ImagePullPolicy: corev1.PullAlways,
 		Resources:       getArgoRepoResources(cr),
 		Env:             proxyEnvVars(),
-		SecurityContext: &v1.SecurityContext{
+		SecurityContext: &corev1.SecurityContext{
 			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &v1.Capabilities{
-				Drop: []v1.Capability{
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{
 					"ALL",
 				},
 			},
 			ReadOnlyRootFilesystem: boolPtr(true),
 			RunAsNonRoot:           boolPtr(true),
-			SeccompProfile: &v1.SeccompProfile{
+			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
 		},
-		VolumeMounts: []v1.VolumeMount{
+		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "var-files",
 				MountPath: "/var/run/argocd",
@@ -164,7 +164,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *v1beta1.ArgoCD, useTLSForR
 		}
 	}
 
-	repoServerVolumeMounts := []v1.VolumeMount{
+	repoServerVolumeMounts := []corev1.VolumeMount{
 		{
 			Name:      "ssh-known-hosts",
 			MountPath: "/app/config/ssh",
@@ -197,7 +197,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *v1beta1.ArgoCD, useTLSForR
 
 	if !volumeMountOverridesTmpVolume {
 
-		repoServerVolumeMounts = append(repoServerVolumeMounts, v1.VolumeMount{
+		repoServerVolumeMounts = append(repoServerVolumeMounts, corev1.VolumeMount{
 			Name:      "tmp",
 			MountPath: "/tmp",
 		})
@@ -208,13 +208,13 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *v1beta1.ArgoCD, useTLSForR
 		repoServerVolumeMounts = append(repoServerVolumeMounts, cr.Spec.Repo.VolumeMounts...)
 	}
 
-	deploy.Spec.Template.Spec.Containers = []v1.Container{{
+	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command:         getArgoRepoCommand(cr, useTLSForRedis),
 		Image:           getRepoServerContainerImage(cr),
-		ImagePullPolicy: v1.PullAlways,
-		LivenessProbe: &v1.Probe{
-			ProbeHandler: v1.ProbeHandler{
-				TCPSocket: &v1.TCPSocketAction{
+		ImagePullPolicy: corev1.PullAlways,
+		LivenessProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				TCPSocket: &corev1.TCPSocketAction{
 					Port: intstr.FromInt(common.ArgoCDDefaultRepoServerPort),
 				},
 			},
@@ -223,7 +223,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *v1beta1.ArgoCD, useTLSForR
 		},
 		Env:  repoEnv,
 		Name: "argocd-repo-server",
-		Ports: []v1.ContainerPort{
+		Ports: []corev1.ContainerPort{
 			{
 				ContainerPort: common.ArgoCDDefaultRepoServerPort,
 				Name:          "server",
@@ -232,9 +232,9 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *v1beta1.ArgoCD, useTLSForR
 				Name:          "metrics",
 			},
 		},
-		ReadinessProbe: &v1.Probe{
-			ProbeHandler: v1.ProbeHandler{
-				TCPSocket: &v1.TCPSocketAction{
+		ReadinessProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				TCPSocket: &corev1.TCPSocketAction{
 					Port: intstr.FromInt(common.ArgoCDDefaultRepoServerPort),
 				},
 			},
@@ -242,16 +242,16 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *v1beta1.ArgoCD, useTLSForR
 			PeriodSeconds:       10,
 		},
 		Resources: getArgoRepoResources(cr),
-		SecurityContext: &v1.SecurityContext{
+		SecurityContext: &corev1.SecurityContext{
 			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &v1.Capabilities{
-				Drop: []v1.Capability{
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{
 					"ALL",
 				},
 			},
 			ReadOnlyRootFilesystem: boolPtr(true),
 			RunAsNonRoot:           boolPtr(true),
-			SeccompProfile: &v1.SeccompProfile{
+			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
 		},
@@ -262,7 +262,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *v1beta1.ArgoCD, useTLSForR
 		// If no image is specified for a sidecar container, use the default
 		// argo cd repo server image. Copy the containers to avoid changing the
 		// original CR.
-		containers := []v1.Container{}
+		containers := []corev1.Container{}
 		containers = append(containers, cr.Spec.Repo.SidecarContainers...)
 		image := getRepoServerContainerImage(cr)
 		for i := range containers {
@@ -276,12 +276,12 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *v1beta1.ArgoCD, useTLSForR
 		deploy.Spec.Template.Spec.Containers = append(deploy.Spec.Template.Spec.Containers, containers...)
 	}
 
-	repoServerVolumes := []v1.Volume{
+	repoServerVolumes := []corev1.Volume{
 		{
 			Name: "ssh-known-hosts",
-			VolumeSource: v1.VolumeSource{
-				ConfigMap: &v1.ConfigMapVolumeSource{
-					LocalObjectReference: v1.LocalObjectReference{
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
 						Name: common.ArgoCDKnownHostsConfigMapName,
 					},
 				},
@@ -289,9 +289,9 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *v1beta1.ArgoCD, useTLSForR
 		},
 		{
 			Name: "tls-certs",
-			VolumeSource: v1.VolumeSource{
-				ConfigMap: &v1.ConfigMapVolumeSource{
-					LocalObjectReference: v1.LocalObjectReference{
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
 						Name: common.ArgoCDTLSCertsConfigMapName,
 					},
 				},
@@ -299,9 +299,9 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *v1beta1.ArgoCD, useTLSForR
 		},
 		{
 			Name: "gpg-keys",
-			VolumeSource: v1.VolumeSource{
-				ConfigMap: &v1.ConfigMapVolumeSource{
-					LocalObjectReference: v1.LocalObjectReference{
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
 						Name: common.ArgoCDGPGKeysConfigMapName,
 					},
 				},
@@ -309,14 +309,14 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *v1beta1.ArgoCD, useTLSForR
 		},
 		{
 			Name: "gpg-keyring",
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: &v1.EmptyDirVolumeSource{},
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
 		{
 			Name: "argocd-repo-server-tls",
-			VolumeSource: v1.VolumeSource{
-				Secret: &v1.SecretVolumeSource{
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
 					Optional:   boolPtr(true),
 				},
@@ -324,8 +324,8 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *v1beta1.ArgoCD, useTLSForR
 		},
 		{
 			Name: common.ArgoCDRedisServerTLSSecretName,
-			VolumeSource: v1.VolumeSource{
-				Secret: &v1.SecretVolumeSource{
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
 					Optional:   boolPtr(true),
 				},
@@ -333,24 +333,24 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *v1beta1.ArgoCD, useTLSForR
 		},
 		{
 			Name: "var-files",
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: &v1.EmptyDirVolumeSource{},
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
 		{
 			Name: "plugins",
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: &v1.EmptyDirVolumeSource{},
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
 	}
 
 	// If the user is not used a custom /tmp mount, then just use the default
 	if !volumeMountOverridesTmpVolume {
-		repoServerVolumes = append(repoServerVolumes, v1.Volume{
+		repoServerVolumes = append(repoServerVolumes, corev1.Volume{
 			Name: "tmp",
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: &v1.EmptyDirVolumeSource{},
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		})
 	}
@@ -552,8 +552,8 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *v1beta1.ArgoCD, useTLSForR
 }
 
 // getArgoRepoResources will return the ResourceRequirements for the Argo CD Repo server container.
-func getArgoRepoResources(cr *v1beta1.ArgoCD) v1.ResourceRequirements {
-	resources := v1.ResourceRequirements{}
+func getArgoRepoResources(cr *argocdoperatorv1beta1.ArgoCD) corev1.ResourceRequirements {
+	resources := corev1.ResourceRequirements{}
 
 	// Allow override of resource requirements from CR
 	if cr.Spec.Repo.Resources != nil {
@@ -576,7 +576,7 @@ func getArgoRepoResources(cr *v1beta1.ArgoCD) v1.ResourceRequirements {
 // that if the spec is not configured.
 // 4. the default is configured in common.ArgoCDDefaultArgoVersion and
 // common.ArgoCDDefaultArgoImage.
-func getRepoServerContainerImage(cr *v1beta1.ArgoCD) string {
+func getRepoServerContainerImage(cr *argocdoperatorv1beta1.ArgoCD) string {
 	defaultImg, defaultTag := false, false
 	img := cr.Spec.Repo.Image
 	if img == "" {
@@ -601,12 +601,12 @@ func getRepoServerContainerImage(cr *v1beta1.ArgoCD) string {
 	return argoutil.CombineImageTag(img, tag)
 }
 
-func isRepoServerTLSVerificationRequested(cr *v1beta1.ArgoCD) bool {
+func isRepoServerTLSVerificationRequested(cr *argocdoperatorv1beta1.ArgoCD) bool {
 	return cr.Spec.Repo.VerifyTLS
 }
 
 // reconcileRepoService will ensure that the Service for the Argo CD repo server is present.
-func (r *ReconcileArgoCD) reconcileRepoService(cr *v1beta1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileRepoService(cr *argocdoperatorv1beta1.ArgoCD) error {
 	svc := newServiceWithSuffix("repo-server", "repo-server", cr)
 
 	svcFound, err := argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc)
@@ -638,7 +638,7 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *v1beta1.ArgoCD) error {
 	}
 
 	// TODO: Existing and current service is not compared and updated
-	svc.Spec.Type = v1.ServiceTypeClusterIP
+	svc.Spec.Type = corev1.ServiceTypeClusterIP
 
 	_, err = ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDRepoServerTLSSecretName, cr.Spec.Repo.WantsAutoTLS())
 	if err != nil {
@@ -649,16 +649,16 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *v1beta1.ArgoCD) error {
 		common.ArgoCDKeyName: nameWithSuffix("repo-server", cr),
 	}
 
-	svc.Spec.Ports = []v1.ServicePort{
+	svc.Spec.Ports = []corev1.ServicePort{
 		{
 			Name:       "server",
 			Port:       common.ArgoCDDefaultRepoServerPort,
-			Protocol:   v1.ProtocolTCP,
+			Protocol:   corev1.ProtocolTCP,
 			TargetPort: intstr.FromInt(common.ArgoCDDefaultRepoServerPort),
 		}, {
 			Name:       "metrics",
 			Port:       common.ArgoCDDefaultRepoMetricsPort,
-			Protocol:   v1.ProtocolTCP,
+			Protocol:   corev1.ProtocolTCP,
 			TargetPort: intstr.FromInt(common.ArgoCDDefaultRepoMetricsPort),
 		},
 	}
@@ -676,12 +676,13 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *v1beta1.ArgoCD) error {
 }
 
 // reconcileStatusRepo will ensure that the Repo status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusRepo(cr *v1beta1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileStatusRepo(cr *argocdoperatorv1beta1.ArgoCD, argocdStatus *argocdoperatorv1beta1.ArgoCDStatus) error {
 	status := "Unknown"
 
 	deploy := newDeploymentWithSuffix("repo-server", "repo-server", cr)
 	deplExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy)
 	if err != nil {
+		argocdStatus.Repo = "Failed"
 		return err
 	}
 	if deplExists {
@@ -692,7 +693,7 @@ func (r *ReconcileArgoCD) reconcileStatusRepo(cr *v1beta1.ArgoCD) error {
 				status = "Running"
 			} else if deploy.Status.Conditions != nil {
 				for _, condition := range deploy.Status.Conditions {
-					if condition.Type == v2.DeploymentReplicaFailure && condition.Status == v1.ConditionTrue {
+					if condition.Type == appsv1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue {
 						// Deployment has failed
 						status = "Failed"
 						break
@@ -702,10 +703,8 @@ func (r *ReconcileArgoCD) reconcileStatusRepo(cr *v1beta1.ArgoCD) error {
 		}
 	}
 
-	if cr.Status.Repo != status {
-		cr.Status.Repo = status
-		return r.Client.Status().Update(context.TODO(), cr)
-	}
+	argocdStatus.Repo = status
+
 	return nil
 }
 
@@ -713,8 +712,8 @@ func (r *ReconcileArgoCD) reconcileStatusRepo(cr *v1beta1.ArgoCD) error {
 // has changed since our last reconciliation loop. It does so by comparing the
 // checksum of tls.crt and tls.key in the status of the ArgoCD CR against the
 // values calculated from the live state in the cluster.
-func (r *ReconcileArgoCD) reconcileRepoServerTLSSecret(cr *v1beta1.ArgoCD) error {
-	var tlsSecretObj v1.Secret
+func (r *ReconcileArgoCD) reconcileRepoServerTLSSecret(cr *argocdoperatorv1beta1.ArgoCD) error {
+	var tlsSecretObj corev1.Secret
 	var sha256sum string
 
 	log.Info("reconciling repo-server TLS secret")
@@ -725,13 +724,13 @@ func (r *ReconcileArgoCD) reconcileRepoServerTLSSecret(cr *v1beta1.ArgoCD) error
 		if !errors.IsNotFound(err) {
 			return err
 		}
-	} else if tlsSecretObj.Type != v1.SecretTypeTLS {
+	} else if tlsSecretObj.Type != corev1.SecretTypeTLS {
 		// We only process secrets of type kubernetes.io/tls
 		return nil
 	} else {
 		// We do the checksum over a concatenated byte stream of cert + key
-		crt, crtOk := tlsSecretObj.Data[v1.TLSCertKey]
-		key, keyOk := tlsSecretObj.Data[v1.TLSPrivateKeyKey]
+		crt, crtOk := tlsSecretObj.Data[corev1.TLSCertKey]
+		key, keyOk := tlsSecretObj.Data[corev1.TLSPrivateKeyKey]
 		if crtOk && keyOk {
 			var sumBytes []byte
 			sumBytes = append(sumBytes, crt...)

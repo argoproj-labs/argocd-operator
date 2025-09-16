@@ -124,22 +124,32 @@ var ActiveInstanceMap = make(map[string]string)
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 
-	result, argocd, err := r.internalReconcile(ctx, request)
+	result, argocd, argocdStatus, err := r.internalReconcile(ctx, request)
 
 	message := ""
 	if err != nil {
 		message = err.Error()
+		argocdStatus.Phase = "Failed" // Any error should reset phase back to Failed
 	}
 
-	if error := updateStatusConditionOfArgoCD(ctx, createCondition(message), argocd, r.Client, log); error != nil {
-		log.Error(error, "unable to update status of ArgoCD")
-		return reconcile.Result{}, error
+	log.Info("reconciling status")
+	if reconcileStatusErr := r.reconcileStatus(argocd, argocdStatus); reconcileStatusErr != nil {
+		log.Error(reconcileStatusErr, "Unable to reconcile status")
+		argocdStatus.Phase = "Failed"
+		message = "unable to reconcile ArgoCD CR .status field"
+	}
+
+	if updateStatusErr := updateStatusConditionOfArgoCD(ctx, createCondition(message), argocd, argocdStatus, r.Client, log); updateStatusErr != nil {
+		log.Error(updateStatusErr, "unable to update status of ArgoCD")
+		return reconcile.Result{}, updateStatusErr
 	}
 
 	return result, err
 }
 
-func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, *argoproj.ArgoCD, error) {
+func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, *argoproj.ArgoCD, *argoproj.ArgoCDStatus, error) {
+
+	argoCDStatus := &argoproj.ArgoCDStatus{} // Start with a blank canvas
 
 	reconcileStartTS := time.Now()
 	defer func() {
@@ -156,10 +166,10 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			return reconcile.Result{}, argocd, nil
+			return reconcile.Result{}, argocd, argoCDStatus, nil
 		}
 		// Error reading the object - requeue the request.
-		return reconcile.Result{}, argocd, err
+		return reconcile.Result{}, argocd, argoCDStatus, err
 	}
 
 	// If the number of notification replicas is greater than 1, display a warning.
@@ -171,14 +181,14 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 	labelSelector, err := labels.Parse(r.LabelSelector)
 	if err != nil {
 		message := fmt.Sprintf("error parsing the labelSelector '%s'.", labelSelector)
-		reqLogger.Info(message)
-		return reconcile.Result{}, argocd, fmt.Errorf("%s error: %w", message, err)
+		reqLogger.Error(err, message)
+		return reconcile.Result{}, argocd, argoCDStatus, fmt.Errorf("%s error: %w", message, err)
 	}
 
 	// Match the value of labelSelector from ReconcileArgoCD to labels from the argocd instance
 	if !labelSelector.Matches(labels.Set(argocd.Labels)) {
-		reqLogger.Info(fmt.Sprintf("the ArgoCD instance '%s' does not match the label selector '%s' and skipping for reconciliation", request.NamespacedName, r.LabelSelector))
-		return reconcile.Result{}, argocd, fmt.Errorf("the ArgoCD instance '%s' does not match the label selector '%s' and skipping for reconciliation", request.NamespacedName, r.LabelSelector)
+		reqLogger.Error(nil, fmt.Sprintf("the ArgoCD instance '%s' does not match the label selector '%s' and skipping for reconciliation", request.NamespacedName, r.LabelSelector))
+		return reconcile.Result{}, argocd, argoCDStatus, fmt.Errorf("the ArgoCD instance '%s' does not match the label selector '%s' and skipping for reconciliation", request.NamespacedName, r.LabelSelector)
 	}
 
 	newPhase := argocd.Status.Phase
@@ -207,6 +217,8 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 
 	if argocd.GetDeletionTimestamp() != nil {
 
+		argoCDStatus.Phase = "Unknown" // Set to Unknown since we are in the process of deleting ArgoCD CR
+
 		// Argo CD instance marked for deletion; remove entry from activeInstances map and decrement active instance count
 		// by phase as well as total
 		delete(ActiveInstanceMap, argocd.Namespace)
@@ -220,25 +232,25 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 
 		if argocd.IsDeletionFinalizerPresent() {
 			if err := r.deleteClusterResources(argocd); err != nil {
-				return reconcile.Result{}, argocd, fmt.Errorf("failed to delete ClusterResources: %w", err)
+				return reconcile.Result{}, argocd, argoCDStatus, fmt.Errorf("failed to delete ClusterResources: %w", err)
 			}
 
 			if isRemoveManagedByLabelOnArgoCDDeletion() {
 				if err := r.removeManagedByLabelFromNamespaces(argocd.Namespace); err != nil {
-					return reconcile.Result{}, argocd, fmt.Errorf("failed to remove label from namespace[%v], error: %w", argocd.Namespace, err)
+					return reconcile.Result{}, argocd, argoCDStatus, fmt.Errorf("failed to remove label from namespace[%v], error: %w", argocd.Namespace, err)
 				}
 			}
 
 			if err := r.removeUnmanagedSourceNamespaceResources(argocd); err != nil {
-				return reconcile.Result{}, argocd, fmt.Errorf("failed to remove resources from sourceNamespaces, error: %w", err)
+				return reconcile.Result{}, argocd, argoCDStatus, fmt.Errorf("failed to remove resources from sourceNamespaces, error: %w", err)
 			}
 
 			if err := r.removeUnmanagedApplicationSetSourceNamespaceResources(argocd); err != nil {
-				return reconcile.Result{}, argocd, fmt.Errorf("failed to remove resources from applicationSetSourceNamespaces, error: %w", err)
+				return reconcile.Result{}, argocd, argoCDStatus, fmt.Errorf("failed to remove resources from applicationSetSourceNamespaces, error: %w", err)
 			}
 
 			if err := r.removeDeletionFinalizer(argocd); err != nil {
-				return reconcile.Result{}, argocd, err
+				return reconcile.Result{}, argocd, argoCDStatus, err
 			}
 
 			// remove namespace of deleted Argo CD instance from deprecationEventEmissionTracker (if exists) so that if another instance
@@ -246,48 +258,43 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 			delete(DeprecationEventEmissionTracker, argocd.Namespace)
 		}
 
-		return reconcile.Result{}, argocd, nil
+		return reconcile.Result{}, argocd, argoCDStatus, nil
 	}
 
 	if !argocd.IsDeletionFinalizerPresent() {
 		if err := r.addDeletionFinalizer(argocd); err != nil {
-			return reconcile.Result{}, argocd, err
+			return reconcile.Result{}, argocd, argoCDStatus, err
 		}
 	}
 
-	// get the latest version of argocd instance before reconciling
-	if err = r.Get(ctx, request.NamespacedName, argocd); err != nil {
-		return reconcile.Result{}, argocd, err
-	}
-
 	if err = r.setManagedNamespaces(argocd); err != nil {
-		return reconcile.Result{}, argocd, err
+		return reconcile.Result{}, argocd, argoCDStatus, err
 	}
 
 	if err = r.setManagedSourceNamespaces(argocd); err != nil {
-		return reconcile.Result{}, argocd, err
+		return reconcile.Result{}, argocd, argoCDStatus, err
 	}
 
 	if err = r.setManagedApplicationSetSourceNamespaces(argocd); err != nil {
-		return reconcile.Result{}, argocd, err
+		return reconcile.Result{}, argocd, argoCDStatus, err
 	}
 
 	// Handle NamespaceManagement reconciliation and check if Namespace Management is enabled via the Subscription env variable.
 	if isNamespaceManagementEnabled() {
 		if err := r.reconcileNamespaceManagement(argocd); err != nil {
-			return reconcile.Result{}, argocd, err
+			return reconcile.Result{}, argocd, argoCDStatus, err
 		}
 	} else if argocd.Spec.NamespaceManagement != nil {
 		k8sClient := r.K8sClient
 		if err := r.disableNamespaceManagement(argocd, k8sClient); err != nil {
 			log.Error(err, "Failed to disable NamespaceManagement feature")
-			return reconcile.Result{}, argocd, err
+			return reconcile.Result{}, argocd, argoCDStatus, err
 		}
 	} else if len(argocd.Spec.NamespaceManagement) == 0 {
 		// Handle cleanup of NamespaceManagement RBAC when the feature is removed from the ArgoCD CR.
 		nsMgmtList := &argoproj.NamespaceManagementList{}
 		if err := r.List(context.TODO(), nsMgmtList); err != nil {
-			return reconcile.Result{}, argocd, err
+			return reconcile.Result{}, argocd, argoCDStatus, err
 		}
 
 		k8sClient := r.K8sClient
@@ -301,7 +308,7 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 			namespace := &corev1.Namespace{}
 			if err := r.Get(ctx, types.NamespacedName{Name: nsMgmt.Namespace}, namespace); err != nil {
 				log.Error(err, fmt.Sprintf("unable to fetch namespace %s", nsMgmt.Namespace))
-				return reconcile.Result{}, argocd, err
+				return reconcile.Result{}, argocd, argoCDStatus, err
 			}
 
 			// Skip RBAC deletion if the namespace has the "managed-by" label
@@ -313,25 +320,25 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 			// Remove roles and rolebindings
 			if err := deleteRBACsForNamespace(nsMgmt.Namespace, k8sClient); err != nil {
 				log.Error(err, fmt.Sprintf("Failed to delete RBACs for namespace: %s", nsMgmt.Namespace))
-				return reconcile.Result{}, argocd, err
+				return reconcile.Result{}, argocd, argoCDStatus, err
 			}
 			log.Info(fmt.Sprintf("Successfully removed RBACs for namespace: %s", nsMgmt.Namespace))
 
 			if err := deleteManagedNamespaceFromClusterSecret(argocd.Namespace, nsMgmt.Namespace, k8sClient); err != nil {
 				log.Error(err, fmt.Sprintf("Unable to delete namespace %s from cluster secret", nsMgmt.Namespace))
-				return reconcile.Result{}, argocd, err
+				return reconcile.Result{}, argocd, argoCDStatus, err
 			}
 
 		}
 	}
 
-	if err := r.reconcileResources(argocd); err != nil {
+	if err := r.reconcileResources(argocd, argoCDStatus); err != nil {
 		// Error reconciling ArgoCD sub-resources - requeue the request.
-		return reconcile.Result{}, argocd, err
+		return reconcile.Result{}, argocd, argoCDStatus, err
 	}
 
 	// Return and don't requeue
-	return reconcile.Result{}, argocd, nil
+	return reconcile.Result{}, argocd, argoCDStatus, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

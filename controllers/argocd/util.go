@@ -679,15 +679,10 @@ func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoproj.ArgoCD) bool {
 }
 
 // reconcileResources will reconcile common ArgoCD resources.
-func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD) error {
-
-	log.Info("reconciling status")
-	if err := r.reconcileStatus(cr); err != nil {
-		log.Info(err.Error())
-	}
+func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus) error {
 
 	log.Info("reconciling SSO")
-	if err := r.reconcileSSO(cr); err != nil {
+	if err := r.reconcileSSO(cr, argocdStatus); err != nil {
 		log.Info(err.Error())
 		return err
 	}
@@ -926,38 +921,6 @@ func removeString(slice []string, s string) []string {
 // setResourceWatches will register Watches for each of the supported Resources.
 func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, clusterSecretResourceMapper, applicationSetGitlabSCMTLSConfigMapMapper, nmMapper handler.MapFunc) *builder.Builder {
 
-	deleteSSOPred := predicate.Funcs{
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			newCR, ok := e.ObjectNew.(*argoproj.ArgoCD)
-			if !ok {
-				return false
-			}
-			oldCR, ok := e.ObjectOld.(*argoproj.ArgoCD)
-			if !ok {
-				return false
-			}
-
-			// Handle deletion of SSO from Argo CD custom resource
-			if !reflect.DeepEqual(oldCR.Spec.SSO, newCR.Spec.SSO) && newCR.Spec.SSO == nil {
-				err := r.deleteSSOConfiguration(newCR, oldCR)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Failed to delete SSO Configuration for ArgoCD %s in namespace %s",
-						newCR.Name, newCR.Namespace))
-				}
-			}
-
-			// Trigger reconciliation of SSO on update event
-			if !reflect.DeepEqual(oldCR.Spec.SSO, newCR.Spec.SSO) && newCR.Spec.SSO != nil && oldCR.Spec.SSO != nil {
-				err := r.reconcileSSO(newCR)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Failed to update existing SSO Configuration for ArgoCD %s in namespace %s",
-						newCR.Name, newCR.Namespace))
-				}
-			}
-			return true
-		},
-	}
-
 	// Add new predicate to delete Notifications Resources. The predicate watches the Argo CD CR for changes to the `.spec.Notifications.Enabled`
 	// field. When a change is detected that results in notifications being disabled, we trigger deletion of notifications resources
 	deleteNotificationsPred := predicate.Funcs{
@@ -982,7 +945,7 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 	}
 
 	// Watch for changes to primary resource ArgoCD
-	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(deleteSSOPred, deleteNotificationsPred, r.argoCDNamespaceManagementFilterPredicate()))
+	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(deleteNotificationsPred, r.argoCDNamespaceManagementFilterPredicate()))
 
 	// Watch for changes to ConfigMap sub-resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.ConfigMap{})
@@ -1584,23 +1547,32 @@ func addKubernetesData(source map[string]string, live map[string]string) {
 }
 
 // updateStatusConditionOfArgoCD calls Set Condition of ArgoCD status
-func updateStatusConditionOfArgoCD(ctx context.Context, condition metav1.Condition, cr *argoproj.ArgoCD, k8sClient client.Client, log logr.Logger) error {
+func updateStatusConditionOfArgoCD(ctx context.Context, condition metav1.Condition, cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus, k8sClient client.Client, log logr.Logger) error {
 	changed, newConditions := insertOrUpdateConditionsInSlice(condition, cr.Status.Conditions)
 
-	if changed {
-		// get the latest version of argocd instance before updating
-		if err := k8sClient.Get(ctx, types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}, cr); err != nil {
-			if apierrors.IsNotFound(err) {
-				// if ArgoCD CR no longer exists, there is no status update needed, so just return.
-				return nil
-			}
-			return err
+	// get the latest version of argocd instance
+	if err := k8sClient.Get(ctx, types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}, cr); err != nil {
+		if apierrors.IsNotFound(err) {
+			// if ArgoCD CR no longer exists, there is no status update needed, so just return.
+			return nil
 		}
+		return err
+	}
 
+	// Determine if any of the values in the status field changed
+	crStatusClone := cr.Status.DeepCopy()
+	crStatusClone.Conditions = nil // Remove Conditions since we don't want to compare it, we only want to compare the other fields
+
+	if !reflect.DeepEqual(crStatusClone, argocdStatus) {
+		changed = true
+	}
+
+	if changed {
+		cr.Status = *argocdStatus
 		cr.Status.Conditions = newConditions
 
 		if err := k8sClient.Status().Update(ctx, cr); err != nil {
-			log.Error(err, "unable to update RolloutManager status condition")
+			log.Error(err, "unable to update ArgoCD status condition")
 			return err
 		}
 	}
@@ -1758,7 +1730,7 @@ func (r *ReconcileArgoCD) reconcileArgoCDAgent(cr *argoproj.ArgoCD) error {
 	compName := "principal"
 	log.Info("reconciling ArgoCD Agent resources")
 
-	log.Info("reconciling ArgoCD Agent servie account")
+	log.Info("reconciling ArgoCD Agent service account")
 	var sa *corev1.ServiceAccount
 	var err error
 

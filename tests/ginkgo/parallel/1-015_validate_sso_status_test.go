@@ -77,8 +77,8 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			})
 
 			By("verifying Argo CD is pending and SSO is failed, because we have not provided configuration details")
-			Eventually(argoCD).Should(argocdFixture.HavePhase("Pending"))
-			Consistently(argoCD, "15s", "1s").Should(argocdFixture.HavePhase("Pending"))
+			Eventually(argoCD).Should(argocdFixture.HavePhase("Failed"))
+			Consistently(argoCD, "15s", "1s").Should(argocdFixture.HavePhase("Failed"))
 			Eventually(argoCD).Should(argocdFixture.HaveSSOStatus("Failed"))
 
 			By("verifying dex is not ready for same reason")
@@ -173,8 +173,8 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				}
 			})
 
-			By("Argo CD should be Pending/Failed, as this is an invalid configuration")
-			Eventually(argoCD).Should(argocdFixture.HavePhase("Pending"))
+			By("Argo CD should be Failed/Failed, as this is an invalid configuration")
+			Eventually(argoCD).Should(argocdFixture.HavePhase("Failed"))
 			Eventually(argoCD).Should(argocdFixture.HaveSSOStatus("Failed"))
 
 			By("creating a new SSO secret")

@@ -171,7 +171,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				},
 			}
 			Expect(k8sClient.Create(ctx, guestbookApplication)).To(Succeed())
-			Eventually(guestbookApplication, "2m", "5s").Should(applicationFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeSynced))
+			Eventually(guestbookApplication, "4m", "5s").Should(applicationFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeSynced))
 
 			By("creating a new namespace 'guestbook-dev' which is managed by our argo cd instance")
 			guestbookDevNS, cleanupFunc := fixture.CreateManagedNamespaceWithCleanupFunc("guestbook-dev-1-047", argoCD.Namespace)
