@@ -36,15 +36,15 @@ import (
 
 const (
 	hashLabelLength = 7
-	// MaxLabelLength is the maximum length for Kubernetes labels and names
-	MaxLabelLength = 63
+	// maxLabelLength is the maximum length for Kubernetes labels and names
+	maxLabelLength = 63
 	// Maximum suffix length is "applicationset-controller" = 25 characters
 	// So CR name should be limited to 63 - 25 - 1 (hyphen) = 37 characters
 	maxSuffixLength = 25
-	// MaxCRNameLength is the maximum length for ArgoCD CR names to accommodate longest suffix
-	MaxCRNameLength = MaxLabelLength - maxSuffixLength - 1 // -1 for hyphen separator
-	// TruncatedNameAnnotation is the annotation key to store truncated CR name
-	TruncatedNameAnnotation = "argoproj.io/truncated-name"
+	// maxCRNameLength is the maximum length for ArgoCD CR names to accommodate longest suffix
+	maxCRNameLength = maxLabelLength - maxSuffixLength - 1 // -1 for hyphen separator
+	// truncatedNameAnnotation is the annotation key to store truncated CR name
+	truncatedNameAnnotation = "argoproj.io/truncated-name"
 )
 
 // AppendStringMap will append the map `add` to the given map `src` and return the result.
@@ -220,9 +220,27 @@ func IsTrackedByOperator(labels map[string]string) bool {
 	return exists && value == common.ArgoCDAppName
 }
 
+// GetMaxLabelLength returns the maximum length for Kubernetes labels and names
+// This is exposed for testing purposes
+func GetMaxLabelLength() int {
+	return maxLabelLength
+}
+
+// GetMaxCRNameLength returns the maximum length for ArgoCD CR names to accommodate longest suffix
+// This is exposed for external packages that need to check CR name length
+func GetMaxCRNameLength() int {
+	return maxCRNameLength
+}
+
+// GetTruncatedNameAnnotation returns the annotation key for storing truncated CR names
+// This is exposed for external packages that need to access the annotation
+func GetTruncatedNameAnnotation() string {
+	return truncatedNameAnnotation
+}
+
 // TruncateWithHash truncates a string to a maximum of 63 characters and adds a hash suffix to ensure uniqueness
 func TruncateWithHash(input string) string {
-	if len(input) <= MaxLabelLength {
+	if len(input) <= maxLabelLength {
 		return input
 	}
 
@@ -231,7 +249,7 @@ func TruncateWithHash(input string) string {
 	hashSuffix := fmt.Sprintf("-%x", hash[:hashLabelLength])
 
 	// Calculate how much we can truncate
-	maxBaseLength := MaxLabelLength - len(hashSuffix)
+	maxBaseLength := maxLabelLength - len(hashSuffix)
 
 	// Truncate and add hash
 	return input[:maxBaseLength] + hashSuffix
@@ -241,7 +259,7 @@ func TruncateWithHash(input string) string {
 // This ensures that when suffixes like "redis-initial-password" are appended,
 // the total length stays within Kubernetes 63-character limit
 func TruncateCRName(crName string) string {
-	if len(crName) <= MaxCRNameLength {
+	if len(crName) <= maxCRNameLength {
 		return crName
 	}
 
@@ -250,7 +268,7 @@ func TruncateCRName(crName string) string {
 	hashSuffix := fmt.Sprintf("-%x", hash[:hashLabelLength])
 
 	// Calculate how much we can truncate (accounting for hash suffix)
-	maxBaseLength := MaxCRNameLength - len(hashSuffix)
+	maxBaseLength := maxCRNameLength - len(hashSuffix)
 
 	// Truncate and add hash
 	return crName[:maxBaseLength] + hashSuffix
@@ -260,7 +278,7 @@ func TruncateCRName(crName string) string {
 func GetTruncatedCRName(cr *argoproj.ArgoCD) string {
 	// First check if we have a stored truncated name in annotations
 	if cr.Annotations != nil {
-		if truncatedName, exists := cr.Annotations[TruncatedNameAnnotation]; exists {
+		if truncatedName, exists := cr.Annotations[truncatedNameAnnotation]; exists {
 			return truncatedName
 		}
 	}

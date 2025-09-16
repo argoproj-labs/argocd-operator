@@ -683,7 +683,7 @@ func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoproj.ArgoCD) bool {
 // if its name exceeds the maximum length for proper suffix handling
 func (r *ReconcileArgoCD) reconcileTruncatedNameAnnotation(cr *argoproj.ArgoCD) error {
 	// Only add annotation if CR name is longer than maxCRNameLength
-	if len(cr.Name) <= argoutil.MaxCRNameLength {
+	if len(cr.Name) <= argoutil.GetMaxCRNameLength() {
 		return nil
 	}
 
@@ -695,12 +695,12 @@ func (r *ReconcileArgoCD) reconcileTruncatedNameAnnotation(cr *argoproj.ArgoCD) 
 	}
 
 	// Check if annotation already exists with correct value
-	if existingValue, exists := cr.Annotations[argoutil.TruncatedNameAnnotation]; exists && existingValue == truncatedName {
+	if existingValue, exists := cr.Annotations[argoutil.GetTruncatedNameAnnotation()]; exists && existingValue == truncatedName {
 		return nil // Already set correctly
 	}
 
 	// Set the annotation
-	cr.Annotations[argoutil.TruncatedNameAnnotation] = truncatedName
+	cr.Annotations[argoutil.GetTruncatedNameAnnotation()] = truncatedName
 
 	// Update the ArgoCD CR
 	return r.Update(context.TODO(), cr)

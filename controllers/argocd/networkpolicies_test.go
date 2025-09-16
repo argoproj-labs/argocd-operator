@@ -141,7 +141,7 @@ func TestTruncateCRName(t *testing.T) {
 	// Test with long name (should be truncated)
 	longName := "this-is-a-very-long-name-that-exceeds-the-maximum-length-for-kubernetes-resource-names"
 	truncated = argoutil.TruncateCRName(longName)
-	assert.Len(t, truncated, 37)       // MaxCRNameLength includes the hash suffix
+	assert.Len(t, truncated, 37)       // maxCRNameLength includes the hash suffix
 	assert.Contains(t, truncated, "-") // Should contain hash separator
 }
 
@@ -155,7 +155,7 @@ func TestGetTruncatedCRName(t *testing.T) {
 	// Test with long name
 	a.Name = "this-is-a-very-long-name-that-exceeds-the-maximum-length-for-kubernetes-resource-names"
 	truncated = argoutil.GetTruncatedCRName(a)
-	assert.Len(t, truncated, 37)       // MaxCRNameLength includes the hash suffix
+	assert.Len(t, truncated, 37)       // maxCRNameLength includes the hash suffix
 	assert.Contains(t, truncated, "-") // Should contain hash separator
 }
 
