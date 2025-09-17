@@ -237,9 +237,9 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&argocd.ReconcileArgoCD{
-		Client:            mgr.GetClient(),
-		Scheme:            mgr.GetScheme(),
-		LabelSelector:     labelSelectorFlag,
+		Client:        mgr.GetClient(),
+		Scheme:        mgr.GetScheme(),
+		LabelSelector: labelSelectorFlag,
 		K8sClient:     k8sClient,
 		LocalUsers: &argocd.LocalUsersInfo{
 			TokenRenewalTimers: map[string]*argocd.TokenRenewalTimer{},
