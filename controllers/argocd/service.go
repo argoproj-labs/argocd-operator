@@ -76,11 +76,11 @@ func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoproj.ArgoCD) error {
 		return err
 	}
 	if svcExists {
-		//nolint:staticcheck
-		if !cr.Spec.Grafana.Enabled {
+		//lint:ignore SA1019 known to be deprecated
+		if !cr.Spec.Grafana.Enabled { //nolint:staticcheck // SA1019: We must test deprecated fields.
 			// Service exists but enabled flag has been set to false, delete the Service
 			argoutil.LogResourceDeletion(log, svc, "grafana is disabled")
-			return r.Client.Delete(context.TODO(), svc)
+			return r.Delete(context.TODO(), svc)
 		}
 		log.Info(grafanaDeprecatedWarning)
 		return nil // Service found, do nothing

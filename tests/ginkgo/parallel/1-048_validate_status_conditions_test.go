@@ -64,7 +64,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			By("verifying that the invalid Argo CD CR shows the expected error message")
 
 			Eventually(argoCD, "2m", "5s").Should(
-				And(argocdFixture.HavePhase("Pending"),
+				And(argocdFixture.HavePhase("Failed"),
 					argocdFixture.HaveSSOStatus("Failed"),
 				))
 
@@ -116,7 +116,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("verifying .status.condition goes to invalid with expected error message")
 			Eventually(argoCD, "2m", "5s").Should(
-				And(argocdFixture.HavePhase("Pending"),
+				And(argocdFixture.HavePhase("Failed"),
 					argocdFixture.HaveSSOStatus("Failed"),
 				))
 
