@@ -526,8 +526,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 			changed = true
 		}
 
-		if !reflect.DeepEqual(deploy.Spec.Template.Labels, existing.Spec.Template.Labels) {
-			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
+		if UpdateMapValues(&existing.Spec.Template.Labels, deploy.Spec.Template.Labels) {
 			if changed {
 				explanation += ", "
 			}
