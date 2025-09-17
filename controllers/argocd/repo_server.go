@@ -514,8 +514,8 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 		}
 
 		// Add Kubernetes-specific labels/annotations from the live object in the source to preserve metadata.
-		addKubernetesData(deploy.Spec.Template.Labels, existing.Spec.Template.Labels)
-		addKubernetesData(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations)
+		UpdateMapValues(&existing.Spec.Template.Labels, deploy.Spec.Template.Labels)
+		UpdateMapValues(&existing.Spec.Template.Annotations, deploy.Spec.Template.Annotations)
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
 			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
