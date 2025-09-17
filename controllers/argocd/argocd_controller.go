@@ -26,13 +26,13 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-
 	"k8s.io/client-go/kubernetes"
 
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -83,6 +83,8 @@ type ReconcileArgoCD struct {
 
 	K8sClient  kubernetes.Interface
 	LocalUsers *LocalUsersInfo
+	// FipsConfigChecker checks if the deployment needs FIPS specific environment variables set.
+	FipsConfigChecker argoutil.FipsConfigChecker
 }
 
 var log = logr.Log.WithName("controller_argocd")

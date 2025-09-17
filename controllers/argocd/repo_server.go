@@ -121,6 +121,21 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 		repoEnv = argoutil.EnvMerge(repoEnv, []corev1.EnvVar{{Name: "ARGOCD_EXEC_TIMEOUT", Value: fmt.Sprintf("%ds", *cr.Spec.Repo.ExecTimeout)}}, true)
 	}
 
+	// if running in a FIPS enabled host, set the GODEBUG env wit appropriate value
+	fipsConfigChecker := r.FipsConfigChecker
+	if fipsConfigChecker != nil {
+		fipsEnabled, err := fipsConfigChecker.IsFipsEnabled()
+		if err != nil {
+			return err
+		}
+		if fipsEnabled {
+			repoEnv = append(repoEnv, corev1.EnvVar{
+				Name:  "GODEBUG",
+				Value: "fips140=on",
+			})
+		}
+	}
+
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
 
 	deploy.Spec.Template.Spec.InitContainers = []corev1.Container{{
