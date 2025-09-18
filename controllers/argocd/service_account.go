@@ -106,6 +106,7 @@ func (r *ReconcileArgoCD) reconcileServiceAccountPermissions(name string, rules 
 func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoproj.ArgoCD) (*corev1.ServiceAccount, error) {
 	sa := newServiceAccountWithName(name, cr)
 
+	// Attempt to retrieve the ServiceAccount
 	exists := true
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
 		if !errors.IsNotFound(err) {

@@ -115,6 +115,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 			continue
 		}
 
+		// Look for ArgoCD CRs in the managed namespace
 		list := &argoproj.ArgoCDList{}
 		listOption := &client.ListOptions{Namespace: namespace.Name}
 		err := r.List(context.TODO(), list, listOption)
@@ -315,7 +316,7 @@ func (r *ReconcileArgoCD) reconcileClusterRole(componentName string, policyRules
 
 	if err := verifyInstallationMode(cr, allowed); err != nil {
 		log.Error(err, "error occurred in reconcileClusterRole")
-		return nil, nil
+		return nil, err
 	}
 
 	// if custom ClusterRole mode is enabled then do nothing and return
@@ -362,8 +363,7 @@ func (r *ReconcileArgoCD) reconcileClusterRole(componentName string, policyRules
 
 	// if ClusterRole does not exist then create new, if it does then match required fields
 	existingClusterRole := &v1.ClusterRole{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRole.Name}, existingClusterRole)
-	if err != nil {
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRole.Name}, existingClusterRole); err != nil {
 		if !errors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to reconcile the cluster role for the service account associated with %s : %s", componentName, err)
 		}

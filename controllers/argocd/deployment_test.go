@@ -42,6 +42,18 @@ var (
 		"argocd-server"}
 )
 
+type MockTrueFipsChecker struct{}
+
+func (a *MockTrueFipsChecker) IsFipsEnabled() (bool, error) {
+	return true, nil
+}
+
+type MockFalseFipsChecker struct{}
+
+func (a *MockFalseFipsChecker) IsFipsEnabled() (bool, error) {
+	return false, nil
+}
+
 func TestReconcileArgoCD_reconcileRepoDeployment_replicas(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
@@ -2876,4 +2888,73 @@ func TestSetReplicasAndEnvVar_WhenServerReplicasIsDefined(t *testing.T) {
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_API_SERVER_REPLICAS", Value: "2"})
 	})
 
+}
+
+func TestReconcileArgoCD_reconcileRepoServerWithFipsEnabled(t *testing.T) {
+	cr := makeTestArgoCD()
+
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{cr}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r.FipsConfigChecker = &MockTrueFipsChecker{}
+	repoServerRemote := "https://remote.repo-server.instance"
+
+	cr.Spec.Repo.Remote = &repoServerRemote
+	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
+
+	d := &appsv1.Deployment{}
+
+	assert.ErrorContains(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d),
+		"deployments.apps \""+cr.Name+"-repo-server\" not found")
+
+	// once remote is set to nil, reconciliation should trigger deployment resource creation
+	cr.Spec.Repo.Remote = nil
+
+	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d))
+	foundEnv := false
+	for _, env := range d.Spec.Template.Spec.Containers[0].Env {
+		if env.Name == "GODEBUG" {
+			foundEnv = true
+			assert.Equal(t, env.Value, "fips140=on", "GODEBUG environment must be set to fips140=on when fips is enabled")
+		}
+	}
+	assert.True(t, foundEnv, "environment GODEBUG must be set when FIPS is enabled")
+}
+
+func TestReconcileArgoCD_reconcileRepoServerWithFipsDisabled(t *testing.T) {
+	cr := makeTestArgoCD()
+
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{cr}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r.FipsConfigChecker = &MockFalseFipsChecker{}
+	repoServerRemote := "https://remote.repo-server.instance"
+
+	cr.Spec.Repo.Remote = &repoServerRemote
+	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
+
+	d := &appsv1.Deployment{}
+
+	assert.ErrorContains(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d),
+		"deployments.apps \""+cr.Name+"-repo-server\" not found")
+
+	// once remote is set to nil, reconciliation should trigger deployment resource creation
+	cr.Spec.Repo.Remote = nil
+
+	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d))
+	foundEnv := false
+	for _, env := range d.Spec.Template.Spec.Containers[0].Env {
+		if env.Name == "GODEBUG" {
+			foundEnv = true
+		}
+	}
+	assert.False(t, foundEnv, "environment GODEBUG must NOT be set when FIPS is disabled")
 }

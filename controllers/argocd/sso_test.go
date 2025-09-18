@@ -44,7 +44,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			name:                     "no conflicts - no sso configured",
 			argoCD:                   makeTestArgoCD(func(ac *argoproj.ArgoCD) {}),
 			wantErr:                  false,
-			wantSSOConfigLegalStatus: "Unknown",
+			wantSSOConfigLegalStatus: "",
 		},
 		{
 			name: "no conflict - case insensitive sso provider value",
@@ -57,7 +57,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 				}
 			}),
 			wantErr:                  false,
-			wantSSOConfigLegalStatus: "Success",
+			wantSSOConfigLegalStatus: "",
 		},
 		{
 			name: "no conflict - valid dex sso configurations",
@@ -71,7 +71,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 				}
 			}),
 			wantErr:                  false,
-			wantSSOConfigLegalStatus: "Success",
+			wantSSOConfigLegalStatus: "",
 		},
 		{
 			name: "keycloak sso configurations are no longer supported",
@@ -141,14 +141,16 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 
 			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
 
-			err := r.reconcileSSO(test.argoCD)
-			assert.Equal(t, test.wantSSOConfigLegalStatus, ssoConfigLegalStatus)
+			argoCDStatus := argoproj.ArgoCDStatus{}
+
+			err := r.reconcileSSO(test.argoCD, &argoCDStatus)
+			assert.Equal(t, test.wantSSOConfigLegalStatus, argoCDStatus.SSO)
 			if err != nil {
 				if !test.wantErr {
 					// ignore unexpected errors for legal sso configurations.
 					// keycloak reconciliation code expects a live cluster &
 					// therefore throws unexpected errors during unit testing
-					if ssoConfigLegalStatus != ssoLegalSuccess {
+					if argoCDStatus.SSO != ssoLegalSuccess {
 						t.Errorf("Got unexpected error")
 					}
 				} else {

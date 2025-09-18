@@ -93,13 +93,17 @@ func TestReconcileArgoCD_reconcileStatusSSO(t *testing.T) {
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
+			argocdStatus := argoproj.ArgoCDStatus{}
+
 			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
 
-			_ = r.reconcileSSO(test.argoCD)
+			_ = r.reconcileSSO(test.argoCD, &argocdStatus)
 
-			_ = r.reconcileStatusSSO(test.argoCD)
+			if argocdStatus.SSO == "" { // only call statusSSO if reconcileSSO has not already set a value
+				_ = r.reconcileStatusSSO(test.argoCD, &argocdStatus)
+			}
 
-			assert.Equal(t, test.wantSSOStatus, test.argoCD.Status.SSO)
+			assert.Equal(t, test.wantSSOStatus, argocdStatus.SSO)
 		})
 	}
 }
@@ -208,10 +212,12 @@ func TestReconcileArgoCD_reconcileStatusHost(t *testing.T) {
 				assert.NotEqual(t, "Pending", a.Status.Phase)
 			}
 
-			err := r.reconcileStatusHost(a)
+			argocdStatus := a.DeepCopy().Status
+
+			err := r.reconcileStatusHost(a, &argocdStatus)
 			assert.NoError(t, err)
 
-			assert.Equal(t, test.host, a.Status.Host)
+			assert.Equal(t, test.host, argocdStatus.Host)
 		})
 	}
 }
@@ -227,18 +233,20 @@ func TestReconcileArgoCD_reconcileStatusNotificationsController(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	assert.NoError(t, r.reconcileStatusNotifications(a))
-	assert.Equal(t, "", a.Status.NotificationsController)
+	argocdStatus := a.DeepCopy().Status
+
+	assert.NoError(t, r.reconcileStatusNotifications(a, &argocdStatus))
+	assert.Equal(t, "", argocdStatus.NotificationsController)
 
 	a.Spec.Notifications.Enabled = true
 	assert.NoError(t, r.reconcileNotificationsController(a))
-	assert.NoError(t, r.reconcileStatusNotifications(a))
-	assert.Equal(t, "Pending", a.Status.NotificationsController)
+	assert.NoError(t, r.reconcileStatusNotifications(a, &argocdStatus))
+	assert.Equal(t, "Pending", argocdStatus.NotificationsController)
 
 	a.Spec.Notifications.Enabled = false
 	assert.NoError(t, r.deleteNotificationsResources(a))
-	assert.NoError(t, r.reconcileStatusNotifications(a))
-	assert.Equal(t, "", a.Status.NotificationsController)
+	assert.NoError(t, r.reconcileStatusNotifications(a, &argocdStatus))
+	assert.Equal(t, "", argocdStatus.NotificationsController)
 }
 
 func TestReconcileArgoCD_reconcileStatusApplicationSetController(t *testing.T) {
@@ -252,11 +260,13 @@ func TestReconcileArgoCD_reconcileStatusApplicationSetController(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	assert.NoError(t, r.reconcileStatusApplicationSetController(a))
-	assert.Equal(t, "Unknown", a.Status.ApplicationSetController)
+	argocdStatus := a.DeepCopy().Status
+
+	assert.NoError(t, r.reconcileStatusApplicationSetController(a, &argocdStatus))
+	assert.Equal(t, "Unknown", argocdStatus.ApplicationSetController)
 
 	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{}
 	assert.NoError(t, r.reconcileApplicationSetController(a))
-	assert.NoError(t, r.reconcileStatusApplicationSetController(a))
-	assert.Equal(t, "Pending", a.Status.ApplicationSetController)
+	assert.NoError(t, r.reconcileStatusApplicationSetController(a, &argocdStatus))
+	assert.Equal(t, "Pending", argocdStatus.ApplicationSetController)
 }

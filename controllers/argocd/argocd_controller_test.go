@@ -27,7 +27,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/rbac/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -76,6 +76,110 @@ func TestReconcileArgoCD_Reconcile_with_deleted(t *testing.T) {
 	}, deployment)) {
 		t.Fatalf("expected not found error, got %#v\n", err)
 	}
+}
+
+// TestReconcileArgoCD_DexWorkloads verifies that when dex is enabled, that the appropriate operator resources are created. When dex is disabled, the objects are verified to be removed.
+func TestReconcileArgoCD_DexWorkloads(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+
+	a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+		Provider: argoproj.SSOProviderTypeDex,
+		Dex: &argoproj.ArgoCDDexSpec{
+			Config:         "test-config",
+			OpenShiftOAuth: false,
+		},
+	}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      a.Name,
+			Namespace: a.Namespace,
+		},
+	}
+
+	_, err := r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+
+	objectsToVerify := []client.Object{}
+
+	dexRole := &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: "argocd-argocd-dex-server", Namespace: a.Namespace}}
+	objectsToVerify = append(objectsToVerify, dexRole)
+
+	dexRoleBinding := &rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: "argocd-argocd-dex-server", Namespace: a.Namespace}}
+	objectsToVerify = append(objectsToVerify, dexRoleBinding)
+
+	dexServiceAccount := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "argocd-argocd-dex-server", Namespace: a.Namespace}}
+	objectsToVerify = append(objectsToVerify, dexServiceAccount)
+
+	dexService := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "argocd-dex-server", Namespace: a.Namespace}}
+	objectsToVerify = append(objectsToVerify, dexService)
+
+	dexDeployment := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "argocd-dex-server", Namespace: a.Namespace}}
+	objectsToVerify = append(objectsToVerify, dexDeployment)
+
+	for _, objectToVerify := range objectsToVerify {
+		t.Logf("verifying object %s", objectToVerify.GetName())
+		err = r.Get(context.TODO(), client.ObjectKeyFromObject(objectToVerify), objectToVerify)
+		assert.NoError(t, err)
+		assert.True(t, len(objectToVerify.GetOwnerReferences()) > 0)
+	}
+
+	var secretList corev1.SecretList
+	err = r.List(context.TODO(), &secretList, client.InNamespace(a.Namespace))
+	assert.NoError(t, err)
+
+	configMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd-cm",
+			Namespace: a.Namespace,
+		},
+	}
+	err = r.Get(context.TODO(), client.ObjectKeyFromObject(configMap), configMap)
+	assert.NoError(t, err)
+
+	assert.Equal(t, configMap.Data["dex.config"], a.Spec.SSO.Dex.Config)
+
+	var dexSecret *corev1.Secret
+
+	for idx := range secretList.Items {
+		secret := secretList.Items[idx]
+		if strings.HasPrefix(secret.Name, "argocd-dex-server-token-") {
+			dexSecret = &secret
+			break
+		}
+	}
+	assert.NotNil(t, dexSecret)
+
+	err = r.Get(context.TODO(), client.ObjectKeyFromObject(a), a)
+	assert.NoError(t, err)
+
+	a.Spec.SSO = nil
+	err = r.Update(context.TODO(), a)
+	assert.NoError(t, err)
+
+	_, err = r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+
+	for _, objectToVerify := range objectsToVerify {
+		err = r.Get(context.TODO(), client.ObjectKeyFromObject(objectToVerify), objectToVerify)
+		assert.Error(t, err)
+	}
+
+	err = r.Get(context.TODO(), client.ObjectKeyFromObject(configMap), configMap)
+	assert.NoError(t, err)
+
+	assert.Equal(t, configMap.Data["dex.config"], "")
+
 }
 
 func TestReconcileArgoCD_Reconcile(t *testing.T) {
@@ -313,11 +417,11 @@ func TestReconcileArgoCD_CleanUp(t *testing.T) {
 	}{
 		{
 			fmt.Sprintf("ClusterRole %s", common.ArgoCDApplicationControllerComponent),
-			newClusterRole(common.ArgoCDApplicationControllerComponent, []v1.PolicyRule{}, a),
+			newClusterRole(common.ArgoCDApplicationControllerComponent, []rbacv1.PolicyRule{}, a),
 		},
 		{
 			fmt.Sprintf("ClusterRole %s", common.ArgoCDServerComponent),
-			newClusterRole(common.ArgoCDServerComponent, []v1.PolicyRule{}, a),
+			newClusterRole(common.ArgoCDServerComponent, []rbacv1.PolicyRule{}, a),
 		},
 		{
 			fmt.Sprintf("ClusterRoleBinding %s", common.ArgoCDApplicationControllerComponent),
@@ -355,8 +459,8 @@ func addFinalizer(finalizerParam string) argoCDOpt { //nolint:unparam
 
 func clusterResources(argocd *argoproj.ArgoCD) []client.Object {
 	return []client.Object{
-		newClusterRole(common.ArgoCDApplicationControllerComponent, []v1.PolicyRule{}, argocd),
-		newClusterRole(common.ArgoCDServerComponent, []v1.PolicyRule{}, argocd),
+		newClusterRole(common.ArgoCDApplicationControllerComponent, []rbacv1.PolicyRule{}, argocd),
+		newClusterRole(common.ArgoCDServerComponent, []rbacv1.PolicyRule{}, argocd),
 		newClusterRoleBindingWithname(common.ArgoCDApplicationControllerComponent, argocd),
 		newClusterRoleBindingWithname(common.ArgoCDServerComponent, argocd),
 	}
