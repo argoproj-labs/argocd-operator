@@ -39,7 +39,11 @@ func TestIsHostRunningInFipsMode(t *testing.T) {
 	if err := os.WriteFile(unreadableFile, []byte("1"), 0000); err != nil {
 		t.Fatalf("Failed to write unreadable file: %v", err)
 	}
-	t.Cleanup(func() { os.Chmod(unreadableFile, 0644) }) // Cleanup permissions
+	t.Cleanup(func() {
+		if err := os.Chmod(unreadableFile, 0644); err != nil {
+			t.Logf("Warning: could not restore permissions for cleanup: %v", err)
+		}
+	}) // Cleanup permissions
 
 	// --- Test Cases Table ---
 	testCases := []struct {
@@ -127,7 +131,9 @@ func TestFileExists(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		// We need to re-add permissions to be able to delete it.
-		os.Chmod(permDir, 0755)
+		if err := os.Chmod(permDir, 0755); err != nil {
+			t.Logf("Warning: could not restore permissions for cleanup: %v", err)
+		}
 		os.RemoveAll(permDir)
 	})
 
