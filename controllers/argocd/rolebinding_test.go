@@ -17,6 +17,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
 func TestReconcileArgoCD_reconcileRoleBinding(t *testing.T) {
@@ -324,14 +325,14 @@ func TestReconcileArgoCD_reconcileRoleBinding_forSourceNamespaces(t *testing.T) 
 	roleBinding := &rbacv1.RoleBinding{}
 	expectedName := getRoleBindingNameForSourceNamespaces(a.Name, sourceNamespace)
 
-	// Verify the name is truncated to 63 characters
-	assert.LessOrEqual(t, len(expectedName), maxLabelLength, "RoleBinding name should not exceed maxLabelLength")
+	// Verify the name is truncated to maxLabelLength characters
+	assert.LessOrEqual(t, len(expectedName), argoutil.GetMaxLabelLength(), "RoleBinding name should not exceed maxLabelLength")
 
 	// Verify the RoleBinding was created successfully
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: sourceNamespace}, roleBinding))
 
-	// Verify the RoleBinding name is exactly 63 characters
-	assert.Equal(t, 63, len(roleBinding.Name), "RoleBinding name should be exactly 63 characters")
+	// Verify the RoleBinding name is exactly maxLabelLength characters
+	assert.Equal(t, argoutil.GetMaxLabelLength(), len(roleBinding.Name), "RoleBinding name should be exactly maxLabelLength characters")
 }
 
 func TestTruncateWithHash(t *testing.T) {
@@ -369,13 +370,13 @@ func TestTruncateWithHash(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := truncateWithHash(tt.input)
+			result := argoutil.TruncateWithHash(tt.input)
 
 			// Check length constraint
 			assert.LessOrEqual(t, len(result), maxLabelLength, "Result should not exceed maxLabelLength")
 
 			// Check that result is deterministic
-			result2 := truncateWithHash(tt.input)
+			result2 := argoutil.TruncateWithHash(tt.input)
 			assert.Equal(t, result, result2, "Function should be deterministic")
 
 			// For short strings, should be unchanged
@@ -468,7 +469,7 @@ func TestTruncateWithHashUniqueness(t *testing.T) {
 	results := make(map[string]bool)
 
 	for _, input := range inputs {
-		result := truncateWithHash(input)
+		result := argoutil.TruncateWithHash(input)
 		assert.False(t, results[result], "Hash should be unique for different inputs: %s", input)
 		results[result] = true
 

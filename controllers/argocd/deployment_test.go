@@ -2958,3 +2958,51 @@ func TestReconcileArgoCD_reconcileRepoServerWithFipsDisabled(t *testing.T) {
 	}
 	assert.False(t, foundEnv, "environment GODEBUG must NOT be set when FIPS is disabled")
 }
+
+func TestDeploymentWithLongName(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	// Create ArgoCD with a very long name that will trigger truncation
+	longName := "this-is-a-very-long-argocd-instance-name-that-will-exceed-the-kubernetes-name-limit-and-require-truncation"
+	a := makeTestArgoCD()
+	a.Name = longName
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	// Test repo server deployment
+	err := r.reconcileRepoDeployment(a, false)
+	assert.NoError(t, err)
+
+	// Get all deployments and find the repo server deployment
+	deploymentList := &appsv1.DeploymentList{}
+	err = r.List(context.TODO(), deploymentList, client.InNamespace(a.Namespace))
+	assert.NoError(t, err)
+
+	var repoDeployment *appsv1.Deployment
+	for i := range deploymentList.Items {
+		if deploymentList.Items[i].Labels[common.ArgoCDKeyComponent] == "repo-server" {
+			repoDeployment = &deploymentList.Items[i]
+			break
+		}
+	}
+	assert.NotNil(t, repoDeployment, "Repo server deployment should exist")
+
+	// Verify that the deployment name is truncated and within limits
+	assert.LessOrEqual(t, len(repoDeployment.Name), 63)
+	assert.Contains(t, repoDeployment.Name, "repo-server")
+
+	// Verify that the labels are set correctly
+	assert.Equal(t, repoDeployment.Name, repoDeployment.Labels[common.ArgoCDKeyName])
+	assert.Equal(t, "repo-server", repoDeployment.Labels[common.ArgoCDKeyComponent])
+
+	// Verify that the selector matches the labels
+	assert.Equal(t, repoDeployment.Name, repoDeployment.Spec.Selector.MatchLabels[common.ArgoCDKeyName])
+
+	// Verify that the pod template labels match
+	assert.Equal(t, repoDeployment.Name, repoDeployment.Spec.Template.Labels[common.ArgoCDKeyName])
+}

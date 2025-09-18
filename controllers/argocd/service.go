@@ -53,6 +53,8 @@ func newService(cr *argoproj.ArgoCD) *corev1.Service {
 // newServiceWithName returns a new Service instance for the given ArgoCD using the given name.
 func newServiceWithName(name string, component string, cr *argoproj.ArgoCD) *corev1.Service {
 	svc := newService(cr)
+
+	// The name is already truncated by nameWithSuffix, so use it directly
 	svc.Name = name
 
 	lbls := svc.Labels
@@ -65,7 +67,7 @@ func newServiceWithName(name string, component string, cr *argoproj.ArgoCD) *cor
 
 // newServiceWithSuffix returns a new Service instance for the given ArgoCD using the given suffix.
 func newServiceWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) *corev1.Service {
-	return newServiceWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
+	return newServiceWithName(nameWithSuffix(suffix, cr), component, cr)
 }
 
 // reconcileGrafanaService will ensure that the Service for Grafana is present.
