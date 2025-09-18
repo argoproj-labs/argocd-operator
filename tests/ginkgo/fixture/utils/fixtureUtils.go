@@ -3,6 +3,7 @@ package utils
 import (
 	"os"
 
+	certificatesv1beta1 "k8s.io/api/certificates/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -119,6 +120,10 @@ func getKubeClient(config *rest.Config) (client.Client, *runtime.Scheme, error) 
 	}
 
 	if err := batchv1.AddToScheme(scheme); err != nil {
+		return nil, nil, err
+	}
+
+	if err := certificatesv1beta1.AddToScheme(scheme); err != nil {
 		return nil, nil, err
 	}
 
