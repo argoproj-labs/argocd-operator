@@ -2907,14 +2907,14 @@ func TestReconcileArgoCD_reconcileRepoServerWithFipsEnabled(t *testing.T) {
 
 	d := &appsv1.Deployment{}
 
-	assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d),
+	assert.ErrorContains(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d),
 		"deployments.apps \""+cr.Name+"-repo-server\" not found")
 
 	// once remote is set to nil, reconciliation should trigger deployment resource creation
 	cr.Spec.Repo.Remote = nil
 
 	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d))
 	foundEnv := false
 	for _, env := range d.Spec.Template.Spec.Containers[0].Env {
 		if env.Name == "GODEBUG" {
@@ -2942,14 +2942,14 @@ func TestReconcileArgoCD_reconcileRepoServerWithFipsDisabled(t *testing.T) {
 
 	d := &appsv1.Deployment{}
 
-	assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d),
+	assert.ErrorContains(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d),
 		"deployments.apps \""+cr.Name+"-repo-server\" not found")
 
 	// once remote is set to nil, reconciliation should trigger deployment resource creation
 	cr.Spec.Repo.Remote = nil
 
 	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d))
 	foundEnv := false
 	for _, env := range d.Spec.Template.Spec.Containers[0].Env {
 		if env.Name == "GODEBUG" {
