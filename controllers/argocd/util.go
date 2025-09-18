@@ -1394,11 +1394,26 @@ func (r *ReconcileArgoCD) cleanupLabelsFromDeployment(argocd *argoproj.ArgoCD, d
 		return fmt.Errorf("failed to get deployment %s: %w", deploymentName, err)
 	}
 
-	currentLabels := r.removeLabelsFromObject(deployment, labelsToRemove)
-	deployment.Spec.Template.Labels = currentLabels
-	if err := r.Update(context.TODO(), deployment); err != nil {
-		log.Error(err, "failed to update deployment after removing labels", "name", deploymentName)
-		return err
+	// Work on pod template labels directly, not deployment metadata labels
+	currentLabels := deployment.Spec.Template.Labels
+	if currentLabels == nil {
+		return nil // No labels to remove
+	}
+
+	modified := false
+	for _, labelKey := range labelsToRemove {
+		if _, exists := currentLabels[labelKey]; exists {
+			delete(currentLabels, labelKey)
+			modified = true
+		}
+	}
+
+	if modified {
+		deployment.Spec.Template.Labels = currentLabels
+		if err := r.Update(context.TODO(), deployment); err != nil {
+			log.Error(err, "failed to update deployment after removing labels", "name", deploymentName)
+			return err
+		}
 	}
 	return nil
 }
@@ -1417,11 +1432,26 @@ func (r *ReconcileArgoCD) cleanupLabelsFromStatefulSet(argocd *argoproj.ArgoCD, 
 		return fmt.Errorf("failed to get statefulset %s: %w", statefulSetName, err)
 	}
 
-	currentLabels := r.removeLabelsFromObject(statefulSet, labelsToRemove)
-	statefulSet.SetLabels(currentLabels)
-	if err := r.Update(context.TODO(), statefulSet); err != nil {
-		log.Error(err, "failed to update statefulset after removing labels", "name", statefulSetName)
-		return err
+	// Work on pod template labels directly, not StatefulSet metadata labels
+	currentLabels := statefulSet.Spec.Template.Labels
+	if currentLabels == nil {
+		return nil // No labels to remove
+	}
+
+	modified := false
+	for _, labelKey := range labelsToRemove {
+		if _, exists := currentLabels[labelKey]; exists {
+			delete(currentLabels, labelKey)
+			modified = true
+		}
+	}
+
+	if modified {
+		statefulSet.Spec.Template.Labels = currentLabels
+		if err := r.Update(context.TODO(), statefulSet); err != nil {
+			log.Error(err, "failed to update statefulset after removing labels", "name", statefulSetName)
+			return err
+		}
 	}
 
 	return nil
@@ -1493,25 +1523,6 @@ func (r *ReconcileArgoCD) calculateRemovedSpecLabels(oldCR, newCR *argoproj.Argo
 	// Note: Notifications and Prometheus specs don't have Labels fields currently
 	// If they are added in the future, the logic can be uncommented and updated
 
-}
-
-func (r *ReconcileArgoCD) removeLabelsFromObject(obj client.Object, labelsToRemove []string) map[string]string {
-	currentLabels := obj.GetLabels()
-	if currentLabels == nil {
-		return nil
-	}
-
-	modified := false
-	for _, labelKey := range labelsToRemove {
-		if _, exists := currentLabels[labelKey]; exists {
-			delete(currentLabels, labelKey)
-			modified = true
-		}
-	}
-	if modified {
-		return currentLabels
-	}
-	return currentLabels
 }
 
 // deleteRBACsForNamespace deletes the RBACs when the label from the namespace is removed.
