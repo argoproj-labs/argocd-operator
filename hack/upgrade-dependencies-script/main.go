@@ -419,7 +419,7 @@ func updateGoModAndRegenBundle(targetArgoCDVersion string, argocdOperatorRoot st
 	err = runCommandListWithWorkDir(argocdOperatorRoot,
 		[][]string{
 			{"go", "mod", "tidy"},
-			{"rm", argocdOperatorRoot + "/bin/controller-gen"}, // Erase the controller-gen binary to ensure it is re-downloaded to the correct version
+			{"rm", "-f", argocdOperatorRoot + "/bin/controller-gen"}, // Erase the controller-gen binary to ensure it is re-downloaded to the correct version
 			{"make", "generate", "manifests"},
 			{"make", "bundle"},
 			{"make", "fmt"},
