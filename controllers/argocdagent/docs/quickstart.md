@@ -49,12 +49,16 @@ spec:
   argoCDAgent:
     principal:
       enabled: true
-      allowedNamespaces: 
-        - "*"
-      jwtAllowGenerate: true
-      auth: "mtls:CN=([^,]+)"
-      logLevel: "trace"
-      image: "quay.io/user/argocd-agent:v1"
+      server:
+        auth: "mtls:CN=([^,]+)"
+        logLevel: "trace"
+      namespace:
+        allowedNamespaces:
+          - "*"
+      tls:
+        insecureGenerate: true   
+      jwt:
+        insecureGenerate: true     
   sourceNamespaces:
     - "agent-managed"
     - "agent-autonomous"
@@ -62,13 +66,7 @@ spec:
 
 ### Step 4: Generate Agent Configurations
 
-Create `argocd-redis` secret, because principal looks for it to fetch redis authentication details.
-
-```bash
-oc create secret generic argocd-redis -n argocd --from-literal=auth="$(oc get secret argocd-redis-initial-password -n argocd -o jsonpath='{.data.admin\.password}' | base64 -d)"
-```
-
-After this, run the agent configuration script to set up the necessary cluster secrets and other configurations.
+Run the agent configuration script to set up the necessary cluster secrets and other configurations.
 
 ```bash
 ./controllers/argocdagent/scripts/create-agent-config.sh
@@ -81,17 +79,14 @@ Now restart principal to pick up the new configurations.
 oc rollout -n argocd restart deployment argocd-agent-principal
 ```
 
-### Step 5: Get Principal Metrics Endpoint
+### Step 5: Create Principal Metrics Route
 
-Retrieve the metrics endpoint URL for monitoring the principal.
+A Service `argocd-agent-principal-metrics` will be created to expose principal metrics. You can create a Route to expose this Service.
 
-```bash
-echo "$(oc get svc argocd-agent-principal-metrics -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'):8000/metrics"
-```
 
 ### Step 6: Set up Workload Clusters
 
-Follow this doc (TODO: Link to helm chart documentation) to set up workload clusters.
+Follow this [doc](https://github.com/argoproj-labs/argocd-agent/blob/main/docs/getting-started/openshift/index.md#setting-up-agent-workload-cluster) to set up workload clusters.
 
 While installing managed agent you need to provide host names of principal's redis and repo server in [argocd-cmd-params-cm](https://github.com/argoproj-labs/argocd-agent/blob/main/hack/dev-env/agent-managed/argocd-cmd-params-cm.yaml#L6) ConfigMap to allow it to communicate with control plan's redis server.
 
