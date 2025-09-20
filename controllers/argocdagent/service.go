@@ -52,6 +52,18 @@ const (
 	PrincipalRedisProxyServicePort = 6379
 	// PrincipalRedisProxyServiceTargetPort is the target port for the principal Redis proxy service
 	PrincipalRedisProxyServiceTargetPort = 6379
+	// PrincipalResourceProxyServicePortName is the name of the resource proxy port
+	PrincipalResourceProxyServicePortName = "resource-proxy"
+	// PrincipalResourceProxyServicePort is the external port for the principal resource proxy service
+	PrincipalResourceProxyServicePort = 9090
+	// PrincipalResourceProxyServiceTargetPort is the target port for the principal resource proxy service
+	PrincipalResourceProxyServiceTargetPort = 9090
+	// PrincipalHealthzServicePortName is the name of the healthz port
+	PrincipalHealthzServicePortName = "healthz"
+	// PrincipalHealthzServicePort is the external port for the principal healthz service
+	PrincipalHealthzServicePort = 8003
+	// PrincipalHealthzServiceTargetPort is the target port for the principal healthz service
+	PrincipalHealthzServiceTargetPort = 8003
 )
 
 // ReconcilePrincipalService reconciles the principal service for the ArgoCD agent.
@@ -239,6 +251,130 @@ func ReconcilePrincipalRedisProxyService(client client.Client, compName string, 
 	return nil
 }
 
+// ReconcilePrincipalResourceProxyService reconciles the principal resource proxy service for the ArgoCD agent.
+// It creates, updates, or deletes the resource proxy service based on the principal configuration.
+func ReconcilePrincipalResourceProxyService(client client.Client, compName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme) error {
+
+	service := buildService(generateAgentResourceName(cr.Name, compName+"-resource-proxy"), compName, cr)
+	expectedSpec := buildPrincipalResourceProxyServiceSpec(compName, cr)
+
+	// Check if the resource proxy service already exists in the cluster
+	exists := true
+	if err := client.Get(context.TODO(), types.NamespacedName{Name: service.Name, Namespace: service.Namespace}, service); err != nil {
+		if !errors.IsNotFound(err) {
+			return fmt.Errorf("failed to get existing principal resource proxy service %s in namespace %s: %v", service.Name, service.Namespace, err)
+		}
+		exists = false
+	}
+
+	// If resource proxy service exists, handle updates or deletion
+	if exists {
+		if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
+			argoutil.LogResourceDeletion(log, service, "principal resource proxy service is being deleted as principal is disabled")
+			if err := client.Delete(context.TODO(), service); err != nil {
+				return fmt.Errorf("failed to delete principal resource proxy service %s: %v", service.Name, err)
+			}
+			return nil
+		}
+
+		if !reflect.DeepEqual(service.Spec.Ports, expectedSpec.Ports) ||
+			!reflect.DeepEqual(service.Spec.Selector, expectedSpec.Selector) ||
+			!reflect.DeepEqual(service.Spec.Type, expectedSpec.Type) {
+
+			service.Spec.Type = expectedSpec.Type
+			service.Spec.Ports = expectedSpec.Ports
+			service.Spec.Selector = expectedSpec.Selector
+
+			argoutil.LogResourceUpdate(log, service, "updating principal resource proxy service spec")
+			if err := client.Update(context.TODO(), service); err != nil {
+				return fmt.Errorf("failed to update principal resource proxy service %s: %v", service.Name, err)
+			}
+		}
+		return nil
+	}
+
+	// If resource proxy service doesn't exist and principal is disabled, nothing to do
+	if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
+		return nil
+	}
+
+	if err := controllerutil.SetControllerReference(cr, service, scheme); err != nil {
+		return fmt.Errorf("failed to set ArgoCD CR %s as owner for service %s: %w", cr.Name, service.Name, err)
+	}
+
+	service.Spec.Type = expectedSpec.Type
+	service.Spec.Ports = expectedSpec.Ports
+	service.Spec.Selector = expectedSpec.Selector
+
+	argoutil.LogResourceCreation(log, service)
+	if err := client.Create(context.TODO(), service); err != nil {
+		return fmt.Errorf("failed to create principal resource proxy service %s: %v", service.Name, err)
+	}
+	return nil
+}
+
+// ReconcilePrincipalHealthzService reconciles the principal healthz service for the ArgoCD agent.
+// It creates, updates, or deletes the healthz service based on the principal configuration.
+func ReconcilePrincipalHealthzService(client client.Client, compName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme) error {
+
+	service := buildService(generateAgentResourceName(cr.Name, compName+"-healthz"), compName, cr)
+	expectedSpec := buildPrincipalHealthzServiceSpec(compName, cr)
+
+	// Check if the healthz service already exists in the cluster
+	exists := true
+	if err := client.Get(context.TODO(), types.NamespacedName{Name: service.Name, Namespace: service.Namespace}, service); err != nil {
+		if !errors.IsNotFound(err) {
+			return fmt.Errorf("failed to get existing principal healthz service %s in namespace %s: %v", service.Name, service.Namespace, err)
+		}
+		exists = false
+	}
+
+	// If healthz service exists, handle updates or deletion
+	if exists {
+		if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
+			argoutil.LogResourceDeletion(log, service, "principal healthz service is being deleted as principal is disabled")
+			if err := client.Delete(context.TODO(), service); err != nil {
+				return fmt.Errorf("failed to delete principal healthz service %s: %v", service.Name, err)
+			}
+			return nil
+		}
+
+		if !reflect.DeepEqual(service.Spec.Ports, expectedSpec.Ports) ||
+			!reflect.DeepEqual(service.Spec.Selector, expectedSpec.Selector) ||
+			!reflect.DeepEqual(service.Spec.Type, expectedSpec.Type) {
+
+			service.Spec.Type = expectedSpec.Type
+			service.Spec.Ports = expectedSpec.Ports
+			service.Spec.Selector = expectedSpec.Selector
+
+			argoutil.LogResourceUpdate(log, service, "updating principal healthz service spec")
+			if err := client.Update(context.TODO(), service); err != nil {
+				return fmt.Errorf("failed to update principal healthz service %s: %v", service.Name, err)
+			}
+		}
+		return nil
+	}
+
+	// If healthz service doesn't exist and principal is disabled, nothing to do
+	if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
+		return nil
+	}
+
+	if err := controllerutil.SetControllerReference(cr, service, scheme); err != nil {
+		return fmt.Errorf("failed to set ArgoCD CR %s as owner for service %s: %w", cr.Name, service.Name, err)
+	}
+
+	service.Spec.Type = expectedSpec.Type
+	service.Spec.Ports = expectedSpec.Ports
+	service.Spec.Selector = expectedSpec.Selector
+
+	argoutil.LogResourceCreation(log, service)
+	if err := client.Create(context.TODO(), service); err != nil {
+		return fmt.Errorf("failed to create principal healthz service %s: %v", service.Name, err)
+	}
+	return nil
+}
+
 func buildPrincipalServiceSpec(compName string, cr *argoproj.ArgoCD) corev1.ServiceSpec {
 	return corev1.ServiceSpec{
 		Ports: []corev1.ServicePort{
@@ -281,6 +417,40 @@ func buildPrincipalRedisProxyServiceSpec(compName string, cr *argoproj.ArgoCD) c
 				Port:       PrincipalRedisProxyServicePort,
 				Protocol:   corev1.ProtocolTCP,
 				TargetPort: intstr.FromInt(PrincipalRedisProxyServiceTargetPort),
+			},
+		},
+		Selector: map[string]string{
+			common.ArgoCDKeyName: generateAgentResourceName(cr.Name, compName),
+		},
+		Type: corev1.ServiceTypeClusterIP,
+	}
+}
+
+func buildPrincipalResourceProxyServiceSpec(compName string, cr *argoproj.ArgoCD) corev1.ServiceSpec {
+	return corev1.ServiceSpec{
+		Ports: []corev1.ServicePort{
+			{
+				Name:       PrincipalResourceProxyServicePortName,
+				Port:       PrincipalResourceProxyServicePort,
+				Protocol:   corev1.ProtocolTCP,
+				TargetPort: intstr.FromInt(PrincipalResourceProxyServiceTargetPort),
+			},
+		},
+		Selector: map[string]string{
+			common.ArgoCDKeyName: generateAgentResourceName(cr.Name, compName),
+		},
+		Type: corev1.ServiceTypeClusterIP,
+	}
+}
+
+func buildPrincipalHealthzServiceSpec(compName string, cr *argoproj.ArgoCD) corev1.ServiceSpec {
+	return corev1.ServiceSpec{
+		Ports: []corev1.ServicePort{
+			{
+				Name:       PrincipalHealthzServicePortName,
+				Port:       PrincipalHealthzServicePort,
+				Protocol:   corev1.ProtocolTCP,
+				TargetPort: intstr.FromInt(PrincipalHealthzServiceTargetPort),
 			},
 		},
 		Selector: map[string]string{
