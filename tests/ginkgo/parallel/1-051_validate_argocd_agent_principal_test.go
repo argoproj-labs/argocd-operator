@@ -100,7 +100,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				_ = k8sClient.Delete(ctx, clusterRoleBinding)
 			}()
 
-			servicesExist := []string{"argocd-agent-principal", "argocd-agent-principal-metrics", "argocd-redis", "argocd-repo-server", "argocd-server"}
+			servicesExist := []string{"argocd-agent-principal", "argocd-agent-principal-metrics", "argocd-agent-principal-resource-proxy", "argocd-redis", "argocd-repo-server", "argocd-server"}
 
 			for _, serviceName := range servicesExist {
 				By("verifying Service '" + serviceName + "' exists and is a LoadBalancer or ClusterIP depending on which service")
