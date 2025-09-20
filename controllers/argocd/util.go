@@ -1778,6 +1778,11 @@ func (r *ReconcileArgoCD) reconcileArgoCDAgent(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
+	log.Info("reconciling ArgoCD Agent resource proxy service")
+	if err := argocdagent.ReconcilePrincipalResourceProxyService(r.Client, compName, cr, r.Scheme); err != nil {
+		return err
+	}
+
 	log.Info("reconciling ArgoCD Agent deployment")
 	if err := argocdagent.ReconcilePrincipalDeployment(r.Client, compName, sa.Name, cr, r.Scheme); err != nil {
 		return err
