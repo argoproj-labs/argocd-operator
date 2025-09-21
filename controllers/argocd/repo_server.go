@@ -587,39 +587,9 @@ func injectCATrustToContainers(cr *v1beta1.ArgoCD, deploy *v2.Deployment) (repoS
 		return []v1.Volume{}, nil
 	}
 
-	// Add a projected volume combining all the trust bundles configured + the init containers to start them
-	var sources []v1.VolumeProjection
-	var sourceNames []string
-	for _, bundle := range cr.Spec.Repo.SystemCATrust.ClusterTrustBundles {
-		bundle = *bundle.DeepCopy()
-		if !strings.HasSuffix(bundle.Path, ".crt") {
-			return nil, fmt.Errorf("invalid ClusterTrustBundle path suffix '%s' in %s, must be .crt", bundle.Path, cr.Name)
-		}
-
-		sources = append(sources, v1.VolumeProjection{
-			ClusterTrustBundle: &bundle,
-		})
-		path := "ClusterTrustBundle:" + bundle.Path // Using .Path, because .Name might not be specified
-		if bundle.Optional != nil && *bundle.Optional {
-			path += "(optional)"
-		}
-		sourceNames = append(sourceNames, path)
-	}
-	for _, secret := range cr.Spec.Repo.SystemCATrust.Secrets {
-		secret = *secret.DeepCopy()
-
-		sources = append(sources, v1.VolumeProjection{
-			Secret: &secret,
-		})
-		sourceNames = append(sourceNames, fmt.Sprintf("Secret:%s", secret.Name))
-	}
-	for _, cm := range cr.Spec.Repo.SystemCATrust.ConfigMaps {
-		cm = *cm.DeepCopy()
-
-		sources = append(sources, v1.VolumeProjection{
-			ConfigMap: &cm,
-		})
-		sourceNames = append(sourceNames, fmt.Sprintf("ConfigMap:%s", cm.Name))
+	sources, sourceNames, err := caTrustVolumes(cr)
+	if err != nil {
+		return []v1.Volume{}, err
 	}
 
 	volumeSource := "argocd-ca-trust-source"
@@ -644,12 +614,95 @@ func injectCATrustToContainers(cr *v1beta1.ArgoCD, deploy *v2.Deployment) (repoS
 
 	argoImage := getArgoContainerImage(cr)
 
+	deploy.Spec.Template.Spec.InitContainers = append(
+		deploy.Spec.Template.Spec.InitContainers,
+		caTrustInitContainer(cr, argoImage, volumeSource, volumeTarget),
+	)
+
+	prodVolumeMounts := func() []v1.VolumeMount {
+		return []v1.VolumeMount{
+			{Name: volumeSource, ReadOnly: true, MountPath: "/usr/local/share/ca-certificates/"},
+			{Name: volumeTarget, ReadOnly: true, MountPath: "/etc/ssl/certs/"},
+		}
+	}
+
+	// Inject to prod container and sidecars (plugins)
+	var containerNames []string
+	for i, container := range deploy.Spec.Template.Spec.Containers {
+		// This can only work with ubuntu or compatible, so do not inject to potentially incompatible containers
+		if container.Image == argoImage {
+			// Accessing by index because the container is a copy of the original struct
+			deploy.Spec.Template.Spec.Containers[i].VolumeMounts = append(deploy.Spec.Template.Spec.Containers[i].VolumeMounts, prodVolumeMounts()...)
+			containerNames = append(containerNames, container.Name)
+		}
+	}
+
+	log.Info(fmt.Sprintf(
+		"injecting system CA trust from %s to containers %s",
+		strings.Join(sourceNames, ", "),
+		strings.Join(containerNames, ", "),
+	))
+
+	return repoServerVolumes, nil
+}
+
+func caTrustVolumes(cr *v1beta1.ArgoCD) ([]v1.VolumeProjection, []string, error) {
+	checkPath := func(kind string, path string) error {
+		if !strings.HasSuffix(path, ".crt") {
+			return fmt.Errorf("invalid %s cert file name suffix '%s' in %s, must be .crt", kind, path, cr.Name)
+		}
+		return nil
+	}
+
+	var sources []v1.VolumeProjection
+	var sourceNames []string
+	for _, bundle := range cr.Spec.Repo.SystemCATrust.ClusterTrustBundles {
+		bundle = *bundle.DeepCopy()
+		if err := checkPath("ClusterTrustBundle", bundle.Path); err != nil {
+			return nil, nil, err
+		}
+
+		sources = append(sources, v1.VolumeProjection{ClusterTrustBundle: &bundle})
+
+		path := "ClusterTrustBundle:" + bundle.Path // Using .Path, because .Name might not be specified
+		if bundle.Optional != nil && *bundle.Optional {
+			path += "(optional)"
+		}
+		sourceNames = append(sourceNames, path)
+	}
+	for _, secret := range cr.Spec.Repo.SystemCATrust.Secrets {
+		secret = *secret.DeepCopy()
+		for _, item := range secret.Items {
+			if err := checkPath("Secret", item.Path); err != nil {
+				return nil, nil, err
+			}
+		}
+
+		sources = append(sources, v1.VolumeProjection{Secret: &secret})
+		sourceNames = append(sourceNames, fmt.Sprintf("Secret:%s", secret.Name))
+	}
+	for _, cm := range cr.Spec.Repo.SystemCATrust.ConfigMaps {
+		cm = *cm.DeepCopy()
+		for _, cmi := range cm.Items {
+			if err := checkPath("ConfigMap", cmi.Path); err != nil {
+				return nil, nil, err
+			}
+		}
+
+		sources = append(sources, v1.VolumeProjection{ConfigMap: &cm})
+		sourceNames = append(sourceNames, fmt.Sprintf("ConfigMap:%s", cm.Name))
+	}
+	return sources, sourceNames, nil
+}
+
+func caTrustInitContainer(cr *v1beta1.ArgoCD, argoImage string, volumeSource string, volumeTarget string) v1.Container {
 	// This is where the image keeps its vendored CAs, look elsewhere if DropImageCertificates
 	imageCertPath := "/usr/share/ca-certificates"
 	if cr.Spec.Repo.SystemCATrust.DropImageCertificates {
 		imageCertPath = "/SystemCATrust.DropImageCertificates"
 	}
-	deploy.Spec.Template.Spec.InitContainers = append(deploy.Spec.Template.Spec.InitContainers, v1.Container{
+
+	return v1.Container{
 		Name:            "update-ca-certificates",
 		Image:           argoImage,
 		ImagePullPolicy: v1.PullAlways,
@@ -699,33 +752,7 @@ func injectCATrustToContainers(cr *v1beta1.ArgoCD, deploy *v2.Deployment) (repoS
 				Type: "RuntimeDefault",
 			},
 		},
-	})
-
-	prodVolumeMounts := func() []v1.VolumeMount {
-		return []v1.VolumeMount{
-			{Name: volumeSource, ReadOnly: true, MountPath: "/usr/local/share/ca-certificates/"},
-			{Name: volumeTarget, ReadOnly: true, MountPath: "/etc/ssl/certs/"},
-		}
 	}
-
-	// Inject to prod container and sidecars (plugins)
-	var containerNames []string
-	for i, container := range deploy.Spec.Template.Spec.Containers {
-		// This can only work with ubuntu or compatible, so do not inject to potentially incompatible containers
-		if container.Image == argoImage {
-			// Accessing by index because the container is a copy of the original struct
-			deploy.Spec.Template.Spec.Containers[i].VolumeMounts = append(deploy.Spec.Template.Spec.Containers[i].VolumeMounts, prodVolumeMounts()...)
-			containerNames = append(containerNames, container.Name)
-		}
-	}
-
-	log.Info(fmt.Sprintf(
-		"injecting system CA trust from %s to containers %s",
-		strings.Join(sourceNames, ", "),
-		strings.Join(containerNames, ", "),
-	))
-
-	return repoServerVolumes, nil
 }
 
 // getArgoRepoResources will return the ResourceRequirements for the Argo CD Repo server container.
