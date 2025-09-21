@@ -132,7 +132,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			// The operator log contains the reason why reconciliation failed
 			Eventually(argoCD, "3m", "5s").Should(argocdFixture.HaveCondition(metav1.Condition{
-				Message: "invalid ClusterTrustBundle path suffix 'wrong-suffix.pem' in argocd, must be .crt",
+				Message: "invalid ClusterTrustBundle cert file name suffix 'wrong-suffix.pem' in argocd, must be .crt",
 				Reason:  "ErrorOccurred",
 				Status:  "False",
 				Type:    "Reconciled",
