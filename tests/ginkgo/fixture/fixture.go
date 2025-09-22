@@ -200,7 +200,9 @@ func DeleteNamespace(ns *corev1.Namespace) {
 
 	k8sClient, _, err := utils.GetE2ETestKubeClientWithError()
 	Expect(err).ToNot(HaveOccurred())
-	deleteNamespaceAndVerify(context.Background(), ns.Name, k8sClient)
+
+	err = deleteNamespaceAndVerify(context.Background(), ns.Name, k8sClient)
+	Expect(err).ToNot(HaveOccurred())
 
 }
 
