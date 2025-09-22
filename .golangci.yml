@@ -19,6 +19,13 @@ linters:
       - third_party$
       - builtin$
       - examples$
+  settings:
+    staticcheck:
+      # https://staticcheck.dev/docs/configuration/options/#dot_import_whitelist
+      dot-import-whitelist:
+        # Ginkgo testsuites
+        - github.com/onsi/gomega
+        - github.com/onsi/ginkgo/v2
 formatters:
   enable:
     - goimports
