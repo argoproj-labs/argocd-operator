@@ -18,7 +18,7 @@ func GetPodByNameRegexp(k8sClient client.Client, nameRegexp *regexp.Regexp, opti
 	var pods []corev1.Pod
 	list := &corev1.PodList{}
 	err := k8sClient.List(context.Background(), list, options...)
-	Expect(err).To(BeNil())
+	Expect(err).ToNot(HaveOccurred())
 	for _, pod := range list.Items {
 		if nameRegexp.MatchString(pod.Name) {
 			pods = append(pods, pod)
