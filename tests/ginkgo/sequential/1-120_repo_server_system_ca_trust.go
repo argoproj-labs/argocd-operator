@@ -49,7 +49,7 @@ import (
 
 var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
-	Context("1-120_repo_server_trust_ClusterTrustBundle", func() {
+	Context("1-120_repo_server_system_ca_trust", func() {
 
 		var (
 			k8sClient client.Client
