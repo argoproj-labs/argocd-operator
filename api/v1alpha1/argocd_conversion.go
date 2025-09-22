@@ -737,12 +737,13 @@ func ConvertAlphaToBetaPrincipal(src *PrincipalSpec) *v1beta1.PrincipalSpec {
 	var dst *v1beta1.PrincipalSpec
 	if src != nil {
 		dst = &v1beta1.PrincipalSpec{
-			Enabled:           src.Enabled,
-			AllowedNamespaces: src.AllowedNamespaces,
-			JWTAllowGenerate:  src.JWTAllowGenerate,
-			Auth:              src.Auth,
-			LogLevel:          src.LogLevel,
-			Image:             src.Image,
+			Enabled:       src.Enabled,
+			Server:        ConvertAlphaToBetaPrincipalServer(src.Server),
+			Redis:         ConvertAlphaToBetaPrincipalRedis(src.Redis),
+			Namespace:     ConvertAlphaToBetaPrincipalNamespace(src.Namespace),
+			TLS:           ConvertAlphaToBetaPrincipalTLS(src.TLS),
+			ResourceProxy: ConvertAlphaToBetaPrincipalResourceProxy(src.ResourceProxy),
+			JWT:           ConvertAlphaToBetaPrincipalJWT(src.JWT),
 		}
 	}
 	return dst
@@ -762,12 +763,161 @@ func ConvertBetaToAlphaPrincipal(src *v1beta1.PrincipalSpec) *PrincipalSpec {
 	var dst *PrincipalSpec
 	if src != nil {
 		dst = &PrincipalSpec{
-			Enabled:           src.Enabled,
-			AllowedNamespaces: src.AllowedNamespaces,
-			JWTAllowGenerate:  src.JWTAllowGenerate,
-			Auth:              src.Auth,
-			LogLevel:          src.LogLevel,
-			Image:             src.Image,
+			Enabled:       src.Enabled,
+			Server:        ConvertBetaToAlphaPrincipalServer(src.Server),
+			Redis:         ConvertBetaToAlphaPrincipalRedis(src.Redis),
+			Namespace:     ConvertBetaToAlphaPrincipalNamespace(src.Namespace),
+			TLS:           ConvertBetaToAlphaPrincipalTLS(src.TLS),
+			ResourceProxy: ConvertBetaToAlphaPrincipalResourceProxy(src.ResourceProxy),
+			JWT:           ConvertBetaToAlphaPrincipalJWT(src.JWT),
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaPrincipalServer(src *PrincipalServerSpec) *v1beta1.PrincipalServerSpec {
+	var dst *v1beta1.PrincipalServerSpec
+	if src != nil {
+		dst = &v1beta1.PrincipalServerSpec{
+			Auth:                 src.Auth,
+			EnableWebSocket:      src.EnableWebSocket,
+			LogLevel:             src.LogLevel,
+			LogFormat:            src.LogFormat,
+			KeepAliveMinInterval: src.KeepAliveMinInterval,
+			Image:                src.Image,
+			Env:                  src.Env,
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaPrincipalServer(src *v1beta1.PrincipalServerSpec) *PrincipalServerSpec {
+	var dst *PrincipalServerSpec
+	if src != nil {
+		dst = &PrincipalServerSpec{
+			Auth:                 src.Auth,
+			EnableWebSocket:      src.EnableWebSocket,
+			LogLevel:             src.LogLevel,
+			LogFormat:            src.LogFormat,
+			KeepAliveMinInterval: src.KeepAliveMinInterval,
+			Image:                src.Image,
+			Env:                  src.Env,
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaPrincipalNamespace(src *PrincipalNamespaceSpec) *v1beta1.PrincipalNamespaceSpec {
+	var dst *v1beta1.PrincipalNamespaceSpec
+	if src != nil {
+		dst = &v1beta1.PrincipalNamespaceSpec{
+			AllowedNamespaces:      src.AllowedNamespaces,
+			EnableNamespaceCreate:  src.EnableNamespaceCreate,
+			NamespaceCreatePattern: src.NamespaceCreatePattern,
+			NamespaceCreateLabels:  src.NamespaceCreateLabels,
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaPrincipalNamespace(src *v1beta1.PrincipalNamespaceSpec) *PrincipalNamespaceSpec {
+	var dst *PrincipalNamespaceSpec
+	if src != nil {
+		dst = &PrincipalNamespaceSpec{
+			AllowedNamespaces:      src.AllowedNamespaces,
+			EnableNamespaceCreate:  src.EnableNamespaceCreate,
+			NamespaceCreatePattern: src.NamespaceCreatePattern,
+			NamespaceCreateLabels:  src.NamespaceCreateLabels,
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaPrincipalRedis(src *PrincipalRedisSpec) *v1beta1.PrincipalRedisSpec {
+	var dst *v1beta1.PrincipalRedisSpec
+	if src != nil {
+		dst = &v1beta1.PrincipalRedisSpec{
+			ServerAddress:   src.ServerAddress,
+			CompressionType: src.CompressionType,
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaPrincipalTLS(src *PrincipalTLSSpec) *v1beta1.PrincipalTLSSpec {
+	var dst *v1beta1.PrincipalTLSSpec
+	if src != nil {
+		dst = &v1beta1.PrincipalTLSSpec{
+			SecretName:       src.SecretName,
+			RootCASecretName: src.RootCASecretName,
+			InsecureGenerate: src.InsecureGenerate,
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaPrincipalResourceProxy(src *PrincipalResourceProxySpec) *v1beta1.PrincipalResourceProxySpec {
+	var dst *v1beta1.PrincipalResourceProxySpec
+	if src != nil {
+		dst = &v1beta1.PrincipalResourceProxySpec{
+			SecretName:   src.SecretName,
+			CASecretName: src.CASecretName,
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaPrincipalJWT(src *PrincipalJWTSpec) *v1beta1.PrincipalJWTSpec {
+	var dst *v1beta1.PrincipalJWTSpec
+	if src != nil {
+		dst = &v1beta1.PrincipalJWTSpec{
+			SecretName:       src.SecretName,
+			InsecureGenerate: src.InsecureGenerate,
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaPrincipalRedis(src *v1beta1.PrincipalRedisSpec) *PrincipalRedisSpec {
+	var dst *PrincipalRedisSpec
+	if src != nil {
+		dst = &PrincipalRedisSpec{
+			ServerAddress:   src.ServerAddress,
+			CompressionType: src.CompressionType,
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaPrincipalTLS(src *v1beta1.PrincipalTLSSpec) *PrincipalTLSSpec {
+	var dst *PrincipalTLSSpec
+	if src != nil {
+		dst = &PrincipalTLSSpec{
+			SecretName:       src.SecretName,
+			RootCASecretName: src.RootCASecretName,
+			InsecureGenerate: src.InsecureGenerate,
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaPrincipalResourceProxy(src *v1beta1.PrincipalResourceProxySpec) *PrincipalResourceProxySpec {
+	var dst *PrincipalResourceProxySpec
+	if src != nil {
+		dst = &PrincipalResourceProxySpec{
+			SecretName:   src.SecretName,
+			CASecretName: src.CASecretName,
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaPrincipalJWT(src *v1beta1.PrincipalJWTSpec) *PrincipalJWTSpec {
+	var dst *PrincipalJWTSpec
+	if src != nil {
+		dst = &PrincipalJWTSpec{
+			SecretName:       src.SecretName,
+			InsecureGenerate: src.InsecureGenerate,
 		}
 	}
 	return dst

@@ -3,16 +3,84 @@ kind: ArgoCD
 metadata:
   name: argocd
 spec:
+  # Disable the main controller since we're using the agent
   controller:
     enabled: false
+  
+  # ArgoCD Agent configuration
   argoCDAgent:
     principal:
+      # Enable the Principal component
       enabled: true
-      allowedNamespaces:
-        - "*"
-      jwtAllowGenerate: true
-      auth: "mtls:CN=([^,]+)"
-      logLevel: "trace"
+      
+      # Server configuration for the Principal component
+      server:
+        # Authentication method - mTLS with certificate common name extraction
+        auth: "mtls:CN=([^,]+)"
+        # Enable WebSocket for real-time event streaming
+        enableWebSocket: true
+        # Log level for the Principal component
+        logLevel: "info"
+        # Log format (text or json)
+        logFormat: "text"
+        # Container image for the ArgoCD Agent
+        image: "quay.io/argoprojlabs/argocd-agent:v0.3.2" 
+        # Minimum interval between keep-alive messages
+        keepAliveMinInterval: "30s"
+        # Environment variables for the Principal component
+        env:
+          - name: GRPC_GO_LOG_VERBOSITY_LEVEL
+            value: "99"
+          - name: GRPC_GO_LOG_SEVERITY_LEVEL
+            value: "info"
+          - name: GODEBUG
+            value: "http2debug=2"
+      
+      # Namespace management configuration
+      namespace:
+        # List of namespaces the principal can watch and manage
+        allowedNamespaces:
+          - "*"
+        # Enable automatic namespace creation for agents
+        enableNamespaceCreate: true
+        # Pattern to restrict namespace names
+        namespaceCreatePattern: "agent-.*"
+        # Labels to apply to created namespaces
+        namespaceCreateLabels:
+          - "environment=agent"
+          - "managed-by=argocd-agent"
+      
+      # Resource proxy configuration for external resource access
+      resourceProxy:
+        # Secret containing proxy TLS certificate and key
+        secretName: "argocd-agent-proxy-tls"
+        # Secret containing proxy CA certificate
+        caSecretName: "argocd-agent-proxy-ca"
+      
+      # Redis configuration for caching and state management
+      redis:
+        # Redis server address
+        serverAddress: "redis:6379"
+        # Compression type for Redis data
+        compressionType: "gzip"
+      
+      # TLS configuration for secure communication
+      tls:
+        # Secret containing TLS certificate and key
+        secretName: "argocd-agent-tls"
+        # Secret containing root CA for certificate validation
+        rootCASecretName: "argocd-agent-ca"
+        # Allow automatic certificate generation if not provided
+        insecureGenerate: true
+      
+      # JWT configuration for token-based authentication
+      jwt:
+        # Allow insecure JWT key generation
+        insecureGenerate: true
+        # Secret containing JWT signing key
+        secretName: "argocd-agent-jwt"
+  
+  # Source namespaces for ArgoCD applications
   sourceNamespaces:
     - "agent-managed"
     - "agent-autonomous"
