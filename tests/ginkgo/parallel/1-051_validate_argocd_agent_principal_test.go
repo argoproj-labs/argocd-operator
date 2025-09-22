@@ -41,6 +41,7 @@ import (
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdagent"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
+	argocdFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/argocd"
 	deploymentFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/deployment"
 	k8sFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/k8s"
 	osFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/os"
@@ -426,8 +427,10 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			By("Disable principal")
 
 			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: argoCDName, Namespace: ns.Name}, argoCD)).To(Succeed())
-			argoCD.Spec.ArgoCDAgent.Principal.Enabled = ptr.To(false)
-			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
+
+			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
+				ac.Spec.ArgoCDAgent.Principal.Enabled = ptr.To(false)
+			})
 
 			By("Verify principal resources are deleted")
 
@@ -511,8 +514,10 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			By("Disable principal")
 
 			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: argoCDName, Namespace: ns.Name}, argoCD)).To(Succeed())
-			argoCD.Spec.ArgoCDAgent.Principal.Enabled = nil
-			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
+
+			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
+				ac.Spec.ArgoCDAgent.Principal.Enabled = nil
+			})
 
 			By("Verify principal resources are deleted")
 
@@ -545,29 +550,33 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			By("Update ArgoCD CR with new configuration")
 
 			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: argoCDName, Namespace: ns.Name}, argoCD)).To(Succeed())
-			argoCD.Spec.ArgoCDAgent.Principal.Server.LogLevel = "trace"
-			argoCD.Spec.ArgoCDAgent.Principal.Server.LogFormat = "json"
-			argoCD.Spec.ArgoCDAgent.Principal.Server.KeepAliveMinInterval = "60s"
-			argoCD.Spec.ArgoCDAgent.Principal.Server.EnableWebSocket = ptr.To(true)
-			argoCD.Spec.ArgoCDAgent.Principal.Server.Image = "quay.io/argoprojlabs/argocd-agent:v0.4.0"
 
-			argoCD.Spec.ArgoCDAgent.Principal.Namespace.AllowedNamespaces = []string{"agent-managed", "agent-autonomous"}
-			argoCD.Spec.ArgoCDAgent.Principal.Namespace.EnableNamespaceCreate = ptr.To(true)
-			argoCD.Spec.ArgoCDAgent.Principal.Namespace.NamespaceCreatePattern = "agent-.*"
-			argoCD.Spec.ArgoCDAgent.Principal.Namespace.NamespaceCreateLabels = []string{"environment=agent"}
+			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
 
-			argoCD.Spec.ArgoCDAgent.Principal.TLS.InsecureGenerate = ptr.To(false)
-			argoCD.Spec.ArgoCDAgent.Principal.TLS.SecretName = "argocd-agent-principal-tls-v2"
-			argoCD.Spec.ArgoCDAgent.Principal.TLS.RootCASecretName = "argocd-agent-ca-v2"
+				ac.Spec.ArgoCDAgent.Principal.Server.LogLevel = "trace"
+				ac.Spec.ArgoCDAgent.Principal.Server.LogFormat = "json"
+				ac.Spec.ArgoCDAgent.Principal.Server.KeepAliveMinInterval = "60s"
+				ac.Spec.ArgoCDAgent.Principal.Server.EnableWebSocket = ptr.To(true)
+				ac.Spec.ArgoCDAgent.Principal.Server.Image = "quay.io/argoprojlabs/argocd-agent:v0.4.0"
 
-			argoCD.Spec.ArgoCDAgent.Principal.JWT.InsecureGenerate = ptr.To(false)
-			argoCD.Spec.ArgoCDAgent.Principal.JWT.SecretName = "argocd-agent-jwt-v2"
+				ac.Spec.ArgoCDAgent.Principal.Namespace.AllowedNamespaces = []string{"agent-managed", "agent-autonomous"}
+				ac.Spec.ArgoCDAgent.Principal.Namespace.EnableNamespaceCreate = ptr.To(true)
+				ac.Spec.ArgoCDAgent.Principal.Namespace.NamespaceCreatePattern = "agent-.*"
+				ac.Spec.ArgoCDAgent.Principal.Namespace.NamespaceCreateLabels = []string{"environment=agent"}
 
-			argoCD.Spec.ArgoCDAgent.Principal.ResourceProxy = &argov1beta1api.PrincipalResourceProxySpec{
-				SecretName:   "argocd-agent-resource-proxy-tls-v2",
-				CASecretName: "argocd-agent-ca-v2",
-			}
-			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
+				ac.Spec.ArgoCDAgent.Principal.TLS.InsecureGenerate = ptr.To(false)
+				ac.Spec.ArgoCDAgent.Principal.TLS.SecretName = "argocd-agent-principal-tls-v2"
+				ac.Spec.ArgoCDAgent.Principal.TLS.RootCASecretName = "argocd-agent-ca-v2"
+
+				ac.Spec.ArgoCDAgent.Principal.JWT.InsecureGenerate = ptr.To(false)
+				ac.Spec.ArgoCDAgent.Principal.JWT.SecretName = "argocd-agent-jwt-v2"
+
+				ac.Spec.ArgoCDAgent.Principal.ResourceProxy = &argov1beta1api.PrincipalResourceProxySpec{
+					SecretName:   "argocd-agent-resource-proxy-tls-v2",
+					CASecretName: "argocd-agent-ca-v2",
+				}
+
+			})
 
 			By("Create required secrets and certificates for principal pod to start properly")
 
@@ -628,10 +637,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 		})
 
 		AfterEach(func() {
-			By("Delete ArgoCD instance and cleanup namespace")
-			Expect(k8sClient.Delete(ctx, argoCD)).To(Succeed())
-			Eventually(argoCD).Should(k8sFixture.NotExistByName())
-
+			By("Cleanup namespace")
 			if cleanupFunc != nil {
 				cleanupFunc()
 			}
