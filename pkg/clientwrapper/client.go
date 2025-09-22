@@ -9,15 +9,20 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/cacheutils"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+var log = logf.Log.WithName("clientwrapper")
 
 // ClientWrapper wraps a cached client and only falls back to
 // live GET when the cached object appears stripped OR is missing required labels.
+// We currently override GET only, but could extend to other methods if needed.
 type ClientWrapper struct {
 	ctrlclient.Client                   // cached client
 	liveClient        ctrlclient.Client // direct API client
 }
 
+// NewClientWrapper creates a new ClientWrapper instance.
 func NewClientWrapper(cached, live ctrlclient.Client) *ClientWrapper {
 	return &ClientWrapper{
 		Client:     cached,
@@ -25,34 +30,38 @@ func NewClientWrapper(cached, live ctrlclient.Client) *ClientWrapper {
 	}
 }
 
+// Get first tries to get from the cached client, and only falls back to live GET
+// if the cached object appears stripped or is missing required labels.
+// After a live GET, it also ensures the object has the tracking label (best-effort).
 func (cw *ClientWrapper) Get(ctx context.Context, key types.NamespacedName, obj ctrlclient.Object, opts ...ctrlclient.GetOption) error {
-	// 1) Cache read (no live fallback here on error)
+
 	if err := cw.Client.Get(ctx, key, obj, opts...); err != nil {
 		return err
 	}
 
-	// 2) Post-read check: only specific kinds may need live refresh
 	switch o := obj.(type) {
 	case *corev1.Secret:
 		if secretNeedsLiveRefresh(o) {
-			// Re-fetch from live to get the full object
+
 			if err := cw.liveClient.Get(ctx, key, obj, opts...); err != nil {
 				return err
 			}
-			// Ensure it becomes tracked for future full-caching (best-effort)
-			cw.ensureTrackedLabel(ctx, obj)
-		}
-	case *corev1.ConfigMap:
-		if configmapNeedsLiveRefresh(o) {
-			// Re-fetch from live to get the full object
-			if err := cw.liveClient.Get(ctx, key, obj, opts...); err != nil {
-				return err
-			}
-			// Ensure it becomes tracked for future full-caching (best-effort)
+
 			cw.ensureTrackedLabel(ctx, obj)
 		}
 
-		// add more kinds here (e.g., *corev1.ConfigMap) if you apply similar striping
+	case *corev1.ConfigMap:
+		if configmapNeedsLiveRefresh(o) {
+
+			if err := cw.liveClient.Get(ctx, key, obj, opts...); err != nil {
+				return err
+			}
+
+			cw.ensureTrackedLabel(ctx, obj)
+		}
+
+		// add more kinds here (e.g., *corev1.Deployment) if applying similar striping
+
 	}
 
 	return nil
@@ -60,12 +69,14 @@ func (cw *ClientWrapper) Get(ctx context.Context, key types.NamespacedName, obj 
 
 // secretNeedsLiveRefresh returns true if the cached secret looks stripped or untracked.
 func secretNeedsLiveRefresh(s *corev1.Secret) bool {
-	// Untracked → we likely cached a slimmed object; refresh live.
+
 	if !cacheutils.IsTrackedByOperator(s.GetLabels()) {
 		return true
 	}
-	// Heuristic: a "slimmed" secret from our transform has nil Data/StringData.
-	// (Note: a legitimately empty secret may also match; adjust if you add a marker label/annotation.)
+
+	// Heuristic: a "stripped" Secret from our transform has nil Data/StringData.
+	// A truly empty Secret may also match, but that only triggers an extra live GET,
+	// which is rare and acceptable.
 	if s.Data == nil && s.StringData == nil {
 		return true
 	}
@@ -77,13 +88,17 @@ func configmapNeedsLiveRefresh(cm *corev1.ConfigMap) bool {
 	if !cacheutils.IsTrackedByOperator(cm.GetLabels()) {
 		return true
 	}
+
+	// Heuristic: a "stripped" ConfigMap from our transform has nil Data/BinaryData.
+	// A truly empty ConfigMap may also match, but that only triggers an extra live GET,
+	// which is rare and acceptable.
 	if cm.Data == nil && cm.BinaryData == nil {
 		return true
 	}
 	return false
 }
 
-// ensureTrackedLabel adds the operator tracking label (best-effort, ignores patch error).
+// ensureTrackedLabel adds the operator tracking label.
 func (cw *ClientWrapper) ensureTrackedLabel(ctx context.Context, obj ctrlclient.Object) {
 	if cacheutils.IsTrackedByOperator(obj.GetLabels()) {
 		return
@@ -97,5 +112,10 @@ func (cw *ClientWrapper) ensureTrackedLabel(ctx context.Context, obj ctrlclient.
 	labels[common.ArgoCDTrackedByOperatorLabel] = common.ArgoCDAppName
 	obj.SetLabels(labels)
 
-	_ = cw.liveClient.Patch(ctx, obj, ctrlclient.MergeFrom(orig)) // best-effort
+	// Best-effort patch to add the operator tracking label.
+	// Non-fatal: a later reconcile will reattempt if this fails.
+	err := cw.liveClient.Patch(ctx, obj, ctrlclient.MergeFrom(orig))
+	if err != nil {
+		log.Error(err, "failed to add operator tracking label to object", "name", obj.GetName(), "namespace", obj.GetNamespace())
+	}
 }

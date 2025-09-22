@@ -63,7 +63,7 @@ import (
 	v1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	v1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/pkg/cacheutils"
-	wc "github.com/argoproj-labs/argocd-operator/pkg/clientwrapper"
+	cw "github.com/argoproj-labs/argocd-operator/pkg/clientwrapper"
 	"github.com/argoproj-labs/argocd-operator/version"
 	//+kubebuilder:scaffold:imports
 )
@@ -185,19 +185,19 @@ func main() {
 		Controller: controllerconfig.Controller{
 			SkipNameValidation: &skipControllerNameValidation,
 		},
+		// Use transformers to strip data from Secrets and ConfigMaps 
+		// that are not tracked by the operator to reduce memory usage.
 		Cache: cache.Options{
 			Scheme: scheme,
 			ByObject: map[crclient.Object]cache.ByObject{
-				&corev1.Secret{}:    {Transform: cacheutils.StripSecretDataTranform()},
+				&corev1.Secret{}:    {Transform: cacheutils.StripSecretDataTransform()},
 				&corev1.ConfigMap{}: {Transform: cacheutils.StripConfigMapDataTransform()},
 			},
 		},
 	}
 
 	if watchedNsCache := getDefaultWatchedNamespacesCacheOptions(); watchedNsCache != nil {
-		options.Cache = cache.Options{
-			DefaultNamespaces: watchedNsCache,
-		}
+		options.Cache.DefaultNamespaces = watchedNsCache
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
@@ -206,9 +206,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	liveClient, _ := crclient.New(ctrl.GetConfigOrDie(), crclient.Options{Scheme: mgr.GetScheme()})
-	client := wc.NewClientWrapper(mgr.GetClient(), liveClient)
-	//print(client)
+	liveClient, err := crclient.New(ctrl.GetConfigOrDie(), crclient.Options{Scheme: mgr.GetScheme()})
+	if err != nil {
+		setupLog.Error(err, "unable to create live client")
+		os.Exit(1)
+	}
+
+	// Wraps the controller runtime's default client to provide:
+	//   1. Fallback to the live client when a Secret/ConfigMap is stripped in the cache.
+	//   2. Automatic labeling of fetched objects, so they are retained in full form
+	//      in subsequent cache updates and avoid repeated live lookups.
+	client := cw.NewClientWrapper(mgr.GetClient(), liveClient)
 
 	setupLog.Info("Registering Components.")
 

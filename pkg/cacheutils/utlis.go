@@ -7,7 +7,10 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 )
 
-func StripSecretDataTranform() clientgotools.TransformFunc {
+// StripSecretDataTransform returns a TransformFunc that strips the data from Secrets
+// that are not tracked by the operator. This is useful for reducing memory usage
+// when caching Secrets that are not managed by the operator.
+func StripSecretDataTransform() clientgotools.TransformFunc {
 	return func(in interface{}) (interface{}, error) {
 		if s, ok := in.(*v1.Secret); ok {
 			if IsTrackedByOperator(s.Labels) {
@@ -28,6 +31,9 @@ func StripSecretDataTranform() clientgotools.TransformFunc {
 	}
 }
 
+// StripConfigMapDataTransform returns a TransformFunc that strips the data from ConfigMaps
+// that are not tracked by the operator. This is useful for reducing memory usage
+// when caching ConfigMaps that are not managed by the operator.
 func StripConfigMapDataTransform() clientgotools.TransformFunc {
 	return func(in interface{}) (interface{}, error) {
 		if cm, ok := in.(*v1.ConfigMap); ok {
@@ -47,6 +53,7 @@ func StripConfigMapDataTransform() clientgotools.TransformFunc {
 	}
 }
 
+// IsTrackedByOperator checks if the given labels indicate that the resource is tracked by the operator.
 func IsTrackedByOperator(labels map[string]string) bool {
 	trackedLabels := []string{
 		common.ArgoCDTrackedByOperatorLabel,
