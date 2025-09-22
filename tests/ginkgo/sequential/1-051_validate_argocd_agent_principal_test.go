@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package parallel
+package sequential
 
 import (
 	"context"
@@ -48,12 +48,12 @@ import (
 	fixtureUtils "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 )
 
-const (
-	argoCDName               = "argocd"
-	argoCDAgentPrincipalName = "argocd-agent-principal"
-)
+var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
-var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
+	const (
+		argoCDName               = "argocd"
+		argoCDAgentPrincipalName = "argocd-agent-principal"
+	)
 
 	Context("1-051_validate_argocd_agent_principal", func() {
 
@@ -76,7 +76,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 		)
 
 		BeforeEach(func() {
-			fixture.EnsureParallelCleanSlate()
+			fixture.EnsureSequentialCleanSlate()
 			k8sClient, _ = fixtureUtils.GetE2ETestKubeClient()
 			ctx = context.Background()
 			ns, cleanupFunc = fixture.CreateNamespaceWithCleanupFunc("argocd-agent-principal-1-051")
@@ -192,6 +192,13 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				argocdagent.EnvArgoCDPrincipalResourceProxySecretName:   "argocd-agent-resource-proxy-tls",
 				argocdagent.EnvArgoCDPrincipalResourceProxyCaSecretName: "argocd-agent-ca",
 				argocdagent.EnvArgoCDPrincipalJwtSecretName:             "argocd-agent-jwt",
+			}
+		})
+
+		AfterEach(func() {
+			By("Cleanup namespace")
+			if cleanupFunc != nil {
+				cleanupFunc()
 			}
 		})
 
@@ -636,11 +643,5 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			}
 		})
 
-		AfterEach(func() {
-			By("Cleanup namespace")
-			if cleanupFunc != nil {
-				cleanupFunc()
-			}
-		})
 	})
 })
