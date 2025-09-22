@@ -582,32 +582,32 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 //
 // The production container is then mounted with `/etc/ssl/certs/` (`argocd-ca-trust-target`) and
 // `/usr/local/share/ca-certificates/` (`argocd-ca-trust-source`) providing read-only CAs needed.
-func injectCATrustToContainers(cr *v1beta1.ArgoCD, deploy *v2.Deployment) (repoServerVolumes []v1.Volume, err error) {
+func injectCATrustToContainers(cr *argocdoperatorv1beta1.ArgoCD, deploy *appsv1.Deployment) (repoServerVolumes []corev1.Volume, err error) {
 	if cr.Spec.Repo.SystemCATrust == nil {
-		return []v1.Volume{}, nil
+		return []corev1.Volume{}, nil
 	}
 
 	sources, sourceNames, err := caTrustVolumes(cr)
 	if err != nil {
-		return []v1.Volume{}, err
+		return []corev1.Volume{}, err
 	}
 
 	volumeSource := "argocd-ca-trust-source"
 	volumeTarget := "argocd-ca-trust-target"
 
-	repoServerVolumes = []v1.Volume{
+	repoServerVolumes = []corev1.Volume{
 		{
 			Name: volumeSource,
-			VolumeSource: v1.VolumeSource{
-				Projected: &v1.ProjectedVolumeSource{
+			VolumeSource: corev1.VolumeSource{
+				Projected: &corev1.ProjectedVolumeSource{
 					Sources:     sources,
 					DefaultMode: ptr.To(int32(0o444)),
 				},
 			},
 		}, {
 			Name: volumeTarget,
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: &v1.EmptyDirVolumeSource{},
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
 	}
@@ -619,8 +619,8 @@ func injectCATrustToContainers(cr *v1beta1.ArgoCD, deploy *v2.Deployment) (repoS
 		caTrustInitContainer(cr, argoImage, volumeSource, volumeTarget),
 	)
 
-	prodVolumeMounts := func() []v1.VolumeMount {
-		return []v1.VolumeMount{
+	prodVolumeMounts := func() []corev1.VolumeMount {
+		return []corev1.VolumeMount{
 			{Name: volumeSource, ReadOnly: true, MountPath: "/usr/local/share/ca-certificates/"},
 			{Name: volumeTarget, ReadOnly: true, MountPath: "/etc/ssl/certs/"},
 		}
@@ -646,7 +646,7 @@ func injectCATrustToContainers(cr *v1beta1.ArgoCD, deploy *v2.Deployment) (repoS
 	return repoServerVolumes, nil
 }
 
-func caTrustVolumes(cr *v1beta1.ArgoCD) ([]v1.VolumeProjection, []string, error) {
+func caTrustVolumes(cr *argocdoperatorv1beta1.ArgoCD) ([]corev1.VolumeProjection, []string, error) {
 	checkPath := func(kind string, path string) error {
 		if !strings.HasSuffix(path, ".crt") {
 			return fmt.Errorf("invalid %s cert file name suffix '%s' in %s, must be .crt", kind, path, cr.Name)
@@ -654,7 +654,7 @@ func caTrustVolumes(cr *v1beta1.ArgoCD) ([]v1.VolumeProjection, []string, error)
 		return nil
 	}
 
-	var sources []v1.VolumeProjection
+	var sources []corev1.VolumeProjection
 	var sourceNames []string
 	for _, bundle := range cr.Spec.Repo.SystemCATrust.ClusterTrustBundles {
 		bundle = *bundle.DeepCopy()
@@ -662,7 +662,7 @@ func caTrustVolumes(cr *v1beta1.ArgoCD) ([]v1.VolumeProjection, []string, error)
 			return nil, nil, err
 		}
 
-		sources = append(sources, v1.VolumeProjection{ClusterTrustBundle: &bundle})
+		sources = append(sources, corev1.VolumeProjection{ClusterTrustBundle: &bundle})
 
 		path := "ClusterTrustBundle:" + bundle.Path // Using .Path, because .Name might not be specified
 		if bundle.Optional != nil && *bundle.Optional {
@@ -678,7 +678,7 @@ func caTrustVolumes(cr *v1beta1.ArgoCD) ([]v1.VolumeProjection, []string, error)
 			}
 		}
 
-		sources = append(sources, v1.VolumeProjection{Secret: &secret})
+		sources = append(sources, corev1.VolumeProjection{Secret: &secret})
 		sourceNames = append(sourceNames, fmt.Sprintf("Secret:%s", secret.Name))
 	}
 	for _, cm := range cr.Spec.Repo.SystemCATrust.ConfigMaps {
@@ -689,24 +689,24 @@ func caTrustVolumes(cr *v1beta1.ArgoCD) ([]v1.VolumeProjection, []string, error)
 			}
 		}
 
-		sources = append(sources, v1.VolumeProjection{ConfigMap: &cm})
+		sources = append(sources, corev1.VolumeProjection{ConfigMap: &cm})
 		sourceNames = append(sourceNames, fmt.Sprintf("ConfigMap:%s", cm.Name))
 	}
 	return sources, sourceNames, nil
 }
 
-func caTrustInitContainer(cr *v1beta1.ArgoCD, argoImage string, volumeSource string, volumeTarget string) v1.Container {
+func caTrustInitContainer(cr *argocdoperatorv1beta1.ArgoCD, argoImage string, volumeSource string, volumeTarget string) corev1.Container {
 	// This is where the image keeps its vendored CAs, look elsewhere if DropImageCertificates
 	imageCertPath := "/usr/share/ca-certificates"
 	if cr.Spec.Repo.SystemCATrust.DropImageCertificates {
 		imageCertPath = "/SystemCATrust.DropImageCertificates"
 	}
 
-	return v1.Container{
+	return corev1.Container{
 		Name:            "update-ca-certificates",
 		Image:           argoImage,
-		ImagePullPolicy: v1.PullAlways,
-		Env: []v1.EnvVar{
+		ImagePullPolicy: corev1.PullAlways,
+		Env: []corev1.EnvVar{
 			{
 				Name:  "IMAGE_CERT_PATH",
 				Value: imageCertPath,
@@ -726,7 +726,7 @@ func caTrustInitContainer(cr *v1beta1.ArgoCD, argoImage string, volumeSource str
                 ls -l /etc/ssl/certs/
                 echo "Done!"
         `},
-		VolumeMounts: []v1.VolumeMount{
+		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name: volumeSource,
 				// Source path for user additional certificates - empty in the image, so not shadowing anything.
@@ -738,17 +738,17 @@ func caTrustInitContainer(cr *v1beta1.ArgoCD, argoImage string, volumeSource str
 			},
 		},
 		Resources: getArgoRepoResources(cr),
-		SecurityContext: &v1.SecurityContext{
+		SecurityContext: &corev1.SecurityContext{
 			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &v1.Capabilities{
-				Drop: []v1.Capability{
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{
 					"ALL",
 				},
 			},
 			// Needed by update-ca-certificates for /tmp/
 			ReadOnlyRootFilesystem: boolPtr(false),
 			RunAsNonRoot:           boolPtr(true),
-			SeccompProfile: &v1.SeccompProfile{
+			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
 		},
