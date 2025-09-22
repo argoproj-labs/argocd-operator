@@ -29,7 +29,6 @@ import (
 	appFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/application"
 	osFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/os"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/pod"
-	"gopkg.in/yaml.v2"
 
 	"k8s.io/utils/ptr"
 
@@ -40,11 +39,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	appv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
+
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
 	argocdFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/argocd"
 	fixtureUtils "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
-	appv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
 )
 
 var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
@@ -172,8 +172,8 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			// Create a bundle with 2 CA certs in it. Ubuntu's update-ca-certificates issues a warning, but apparently it works
 			// It is desirable to test with multiple certs in one bundle because OpenShift permits it
 			combinedCtb := createCtbFromCerts(getCACert("github.com"), getCACert("github.io"))
-			k8sClient.Delete(ctx, combinedCtb)
-			defer k8sClient.Delete(ctx, combinedCtb)
+			Expect(k8sClient.Delete(ctx, combinedCtb)).To(Succeed())
+			defer func() { _ = k8sClient.Delete(ctx, combinedCtb) }()
 			Expect(k8sClient.Create(ctx, combinedCtb)).To(Succeed())
 
 			pluginCm, pluginContainer, pluginVolumes := createGitPullingPlugin(ns)
@@ -215,10 +215,10 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			cmCert := createCmFromCert(ns, getCACert("github.com"))
 			Expect(k8sClient.Create(ctx, cmCert)).To(Succeed())
-			defer k8sClient.Delete(ctx, cmCert)
+			defer func() { _ = k8sClient.Delete(ctx, cmCert) }()
 			secretCert := createSecretFromCert(ns, getCACert("github.io"))
 			Expect(k8sClient.Create(ctx, secretCert)).To(Succeed())
-			defer k8sClient.Delete(ctx, secretCert)
+			defer func() { _ = k8sClient.Delete(ctx, secretCert) }()
 
 			pluginCm, pluginContainer, pluginVolumes := createGitPullingPlugin(ns)
 			Expect(k8sClient.Create(ctx, pluginCm)).To(Succeed())
@@ -318,15 +318,6 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 		})
 	})
 })
-
-func printObject(k8sClient client.Client, ctx context.Context, obj client.Object) {
-	err := k8sClient.Get(ctx, client.ObjectKeyFromObject(obj), obj)
-	obj.SetManagedFields([]metav1.ManagedFieldsEntry{}) // Ignore
-	Expect(err).To(BeNil())
-	bytes, err := yaml.Marshal(obj)
-	Expect(err).To(BeNil())
-	println(string(bytes))
-}
 
 func createGitPullingPlugin(ns *corev1.Namespace) (*corev1.ConfigMap, *corev1.Container, []corev1.Volume) {
 	By("Creating ConfigManagementPlugin resources for git clone")
@@ -501,8 +492,8 @@ func createSecretFromCert(ns *corev1.Namespace, bundle string) *corev1.Secret {
 
 func getCACert(host string) string {
 	conn, err := tls.Dial("tcp", host+":443", &tls.Config{})
-	Expect(err).To(BeNil())
-	defer conn.Close()
+	Expect(err).ToNot(HaveOccurred())
+	defer func() { _ = conn.Close() }()
 
 	pcs := conn.ConnectionState().PeerCertificates
 
@@ -513,7 +504,7 @@ func getCACert(host string) string {
 func encodeCert(cert *x509.Certificate) string {
 	writer := strings.Builder{}
 	err := pem.Encode(&writer, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
-	Expect(err).To(BeNil())
+	Expect(err).ToNot(HaveOccurred())
 
 	return writer.String()
 }
@@ -526,9 +517,10 @@ func getPodCertFileCount(k8sClient client.Client, ns *corev1.Namespace) int {
 		// Using `ls -1` (one) for counting because `ls -l` produces a "total" line
 		"bash", "-c", "ls -1 /etc/ssl/certs | wc -l",
 	)
+	Expect(err).ToNot(HaveOccurred())
 
 	fileCount, err := strconv.Atoi(strings.TrimSpace(out))
-	Expect(err).To(BeNil())
+	Expect(err).ToNot(HaveOccurred())
 
 	return fileCount
 }
@@ -539,6 +531,6 @@ func getRepoCertGenerationLog(k8sClient client.Client, ns *corev1.Namespace) str
 		false,
 		"kubectl", "-n", ns.Name, "logs", "-c", "update-ca-certificates", rsPod.Name,
 	)
-	Expect(err).To(BeNil())
+	Expect(err).ToNot(HaveOccurred())
 	return out
 }
