@@ -43,8 +43,6 @@ const (
 	maxSuffixLength = 25
 	// maxCRNameLength is the maximum length for ArgoCD CR names to accommodate longest suffix
 	maxCRNameLength = maxLabelLength - maxSuffixLength - 1 // -1 for hyphen separator
-	// truncatedNameAnnotation is the annotation key to store truncated CR name
-	truncatedNameAnnotation = "argoproj.io/truncated-name"
 )
 
 // AppendStringMap will append the map `add` to the given map `src` and return the result.
@@ -232,24 +230,19 @@ func GetMaxCRNameLength() int {
 	return maxCRNameLength
 }
 
-// GetTruncatedNameAnnotation returns the annotation key for storing truncated CR names
-// This is exposed for external packages that need to access the annotation
-func GetTruncatedNameAnnotation() string {
-	return truncatedNameAnnotation
-}
-
-// TruncateWithHash truncates a string to a maximum of 63 characters and adds a hash suffix to ensure uniqueness
-func TruncateWithHash(input string) string {
-	if len(input) <= maxLabelLength {
+// TruncateWithHash truncates a string to a maximum length and adds a hash suffix to ensure uniqueness
+func TruncateWithHash(input string, maxLength int) string {
+	if len(input) <= maxLength {
 		return input
 	}
 
 	// Calculate hash of the original string
 	hash := sha1.Sum([]byte(input)) // #nosec G401 - SHA1 used for non-cryptographic name hashing only
-	hashSuffix := fmt.Sprintf("-%x", hash[:hashLabelLength])
+	// Take 4 bytes to get 8 hex chars, then truncate to 7 hex chars + hyphen
+	hashSuffix := fmt.Sprintf("-%x", hash[:4])[:hashLabelLength+1] // +1 for the hyphen
 
 	// Calculate how much we can truncate
-	maxBaseLength := maxLabelLength - len(hashSuffix)
+	maxBaseLength := maxLength - len(hashSuffix)
 
 	// Truncate and add hash
 	return input[:maxBaseLength] + hashSuffix
@@ -259,30 +252,11 @@ func TruncateWithHash(input string) string {
 // This ensures that when suffixes like "redis-initial-password" are appended,
 // the total length stays within Kubernetes 63-character limit
 func TruncateCRName(crName string) string {
-	if len(crName) <= maxCRNameLength {
-		return crName
-	}
-
-	// Calculate hash of the original CR name for uniqueness
-	hash := sha1.Sum([]byte(crName)) // #nosec G401 - SHA1 used for non-cryptographic name hashing only
-	hashSuffix := fmt.Sprintf("-%x", hash[:hashLabelLength])
-
-	// Calculate how much we can truncate (accounting for hash suffix)
-	maxBaseLength := maxCRNameLength - len(hashSuffix)
-
-	// Truncate and add hash
-	return crName[:maxBaseLength] + hashSuffix
+	return TruncateWithHash(crName, maxCRNameLength)
 }
 
-// GetTruncatedCRName returns the truncated CR name, either from annotation or by truncating
+// GetTruncatedCRName returns the truncated CR name using the deterministic truncate function
 func GetTruncatedCRName(cr *argoproj.ArgoCD) string {
-	// First check if we have a stored truncated name in annotations
-	if cr.Annotations != nil {
-		if truncatedName, exists := cr.Annotations[truncatedNameAnnotation]; exists {
-			return truncatedName
-		}
-	}
-
-	// Otherwise, truncate the current name
+	// Always use the deterministic truncate function as source of truth
 	return TruncateCRName(cr.Name)
 }

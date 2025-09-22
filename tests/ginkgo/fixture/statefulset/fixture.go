@@ -281,3 +281,16 @@ func fetchStatefulSet(f func(*appsv1.StatefulSet) bool) matcher.GomegaMatcher {
 	}, BeTrue())
 
 }
+
+func HavePodAntiAffinity() matcher.GomegaMatcher {
+	return fetchStatefulSet(func(ss *appsv1.StatefulSet) bool {
+		if ss.Spec.Template.Spec.Affinity == nil {
+			return false
+		}
+		if ss.Spec.Template.Spec.Affinity.PodAntiAffinity == nil {
+			return false
+		}
+		// Check if there's at least one required anti-affinity rule
+		return len(ss.Spec.Template.Spec.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution) > 0
+	})
+}

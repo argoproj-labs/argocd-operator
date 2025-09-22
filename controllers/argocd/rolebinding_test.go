@@ -337,46 +337,46 @@ func TestReconcileArgoCD_reconcileRoleBinding_forSourceNamespaces(t *testing.T) 
 
 func TestTruncateWithHash(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    string
-		expected string
-		length   int
+		name        string
+		input       string
+		length      int
+		description string
 	}{
 		{
-			name:     "exactly 63 characters - no truncation needed",
-			input:    "exactly-sixty-three-characters-long-string-that-is-perfect",
-			expected: "exactly-sixty-three-characters-long-string-that-is-perfect",
-			length:   63,
+			name:        "exactly 63 characters - no truncation needed",
+			input:       "exactly-sixty-three-characters-long-string-that-is-perfect",
+			length:      63,
+			description: "Strings exactly at maxLength should be returned unchanged",
 		},
 		{
-			name:     "64 characters - needs truncation",
-			input:    "exactly-sixty-four-characters-long-string-that-needs-truncation",
-			expected: "exactly-sixty-four-characters-long-string-that-needs-trunc-", // truncated + 7-char hash
-			length:   63,
+			name:        "64 characters - needs truncation",
+			input:       "exactly-sixty-four-characters-long-string-that-needs-truncation",
+			length:      63,
+			description: "Strings longer than maxLength should be truncated with hash",
 		},
 		{
-			name:     "very long string - needs significant truncation",
-			input:    "this-is-a-very-long-string-that-will-need-to-be-truncated-significantly-to-fit-within-the-kubernetes-label-limit",
-			expected: "this-is-a-very-long-string-that-will-need-to-be-truncated-", // truncated + 7-char hash
-			length:   63,
+			name:        "very long string - needs significant truncation",
+			input:       "this-is-a-very-long-string-that-will-need-to-be-truncated-significantly-to-fit-within-the-kubernetes-label-limit",
+			length:      63,
+			description: "Very long strings should be significantly truncated with hash",
 		},
 		{
-			name:     "extremely long string - hash only",
-			input:    "this-is-an-extremely-long-string-that-is-so-long-it-will-need-to-be-completely-replaced-by-a-hash-because-there-is-no-room-for-any-part-of-the-original-string",
-			expected: "rb-", // starts with rb- followed by hash
-			length:   63,
+			name:        "extremely long string - minimal base with hash",
+			input:       "this-is-an-extremely-long-string-that-is-so-long-it-will-need-to-be-completely-replaced-by-a-hash-because-there-is-no-room-for-any-part-of-the-original-string",
+			length:      63,
+			description: "Extremely long strings should be truncated to fit maxLength with hash",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := argoutil.TruncateWithHash(tt.input)
+			result := argoutil.TruncateWithHash(tt.input, argoutil.GetMaxLabelLength())
 
 			// Check length constraint
 			assert.LessOrEqual(t, len(result), maxLabelLength, "Result should not exceed maxLabelLength")
 
 			// Check that result is deterministic
-			result2 := argoutil.TruncateWithHash(tt.input)
+			result2 := argoutil.TruncateWithHash(tt.input, argoutil.GetMaxLabelLength())
 			assert.Equal(t, result, result2, "Function should be deterministic")
 
 			// For short strings, should be unchanged
@@ -469,7 +469,7 @@ func TestTruncateWithHashUniqueness(t *testing.T) {
 	results := make(map[string]bool)
 
 	for _, input := range inputs {
-		result := argoutil.TruncateWithHash(input)
+		result := argoutil.TruncateWithHash(input, argoutil.GetMaxLabelLength())
 		assert.False(t, results[result], "Hash should be unique for different inputs: %s", input)
 		results[result] = true
 

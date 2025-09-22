@@ -59,7 +59,7 @@ func NewSecretWithName(cr *argoproj.ArgoCD, name string) *corev1.Secret {
 	secret := NewSecret(cr)
 
 	// Truncate the name to stay within 63 character limit for both name and labels
-	truncatedName := TruncateWithHash(name)
+	truncatedName := TruncateWithHash(name, GetMaxLabelLength())
 	secret.Name = truncatedName
 	secret.Namespace = cr.Namespace
 	secret.Labels[common.ArgoCDKeyName] = truncatedName
