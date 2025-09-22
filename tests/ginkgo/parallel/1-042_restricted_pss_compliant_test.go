@@ -56,9 +56,10 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 		AfterEach(func() {
 			Expect(ns).ToNot(BeNil())
+			defer fixture.DeleteNamespace(ns)
 
 			fixture.OutputDebugOnFail(ns.Name)
-			fixture.DeleteNamespace(ns)
+
 		})
 
 		It("verifies that all Argo CD components can run with pod-security enforce, warn, and audit of 'restricted'", func() {
