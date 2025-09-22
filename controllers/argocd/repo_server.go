@@ -145,19 +145,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 		ImagePullPolicy: corev1.PullAlways,
 		Resources:       getArgoRepoResources(cr),
 		Env:             proxyEnvVars(),
-		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{
-					"ALL",
-				},
-			},
-			ReadOnlyRootFilesystem: boolPtr(true),
-			RunAsNonRoot:           boolPtr(true),
-			SeccompProfile: &corev1.SeccompProfile{
-				Type: "RuntimeDefault",
-			},
-		},
+		SecurityContext: argoutil.DefaultSecurityContext(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "var-files",
@@ -256,21 +244,9 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 			InitialDelaySeconds: 5,
 			PeriodSeconds:       10,
 		},
-		Resources: getArgoRepoResources(cr),
-		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{
-					"ALL",
-				},
-			},
-			ReadOnlyRootFilesystem: boolPtr(true),
-			RunAsNonRoot:           boolPtr(true),
-			SeccompProfile: &corev1.SeccompProfile{
-				Type: "RuntimeDefault",
-			},
-		},
-		VolumeMounts: repoServerVolumeMounts,
+		Resources:       getArgoRepoResources(cr),
+		SecurityContext: argoutil.DefaultSecurityContext(),
+		VolumeMounts:    repoServerVolumeMounts,
 	}}
 
 	if cr.Spec.Repo.SidecarContainers != nil {
