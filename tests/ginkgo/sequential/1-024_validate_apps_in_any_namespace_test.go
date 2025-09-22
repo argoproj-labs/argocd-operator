@@ -152,7 +152,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			longNSRoleBinding := &rbacv1.RoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "example-argocd_longns-abcdefghijklmnopqrstuvwxyz-9a19a95ffa6214",
+					Name:      "example-argocd_longns-abcdefghijklmnopqrstuvwxyz-123456-9a19a95",
 					Namespace: longnsNS.Name,
 				},
 			}
