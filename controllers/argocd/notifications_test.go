@@ -175,19 +175,7 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 		Image:           argoutil.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion),
 		ImagePullPolicy: v1.PullAlways,
 		Name:            "argocd-notifications-controller",
-		SecurityContext: &v1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &v1.Capabilities{
-				Drop: []v1.Capability{
-					"ALL",
-				},
-			},
-			ReadOnlyRootFilesystem: boolPtr(true),
-			RunAsNonRoot:           boolPtr(true),
-			SeccompProfile: &v1.SeccompProfile{
-				Type: "RuntimeDefault",
-			},
-		},
+		SecurityContext: argoutil.DefaultSecurityContext(),
 		VolumeMounts: []v1.VolumeMount{
 			{
 				Name:      "tls-certs",

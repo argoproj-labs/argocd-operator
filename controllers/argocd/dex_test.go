@@ -18,6 +18,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
 func TestReconcileArgoCD_reconcileDexDeployment_with_dex_disabled(t *testing.T) {
@@ -339,19 +340,7 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 					"/usr/local/bin/argocd",
 					"/shared/argocd-dex",
 				},
-				SecurityContext: &corev1.SecurityContext{
-					AllowPrivilegeEscalation: boolPtr(false),
-					Capabilities: &corev1.Capabilities{
-						Drop: []corev1.Capability{
-							"ALL",
-						},
-					},
-					ReadOnlyRootFilesystem: boolPtr(true),
-					RunAsNonRoot:           boolPtr(true),
-					SeccompProfile: &corev1.SeccompProfile{
-						Type: "RuntimeDefault",
-					},
-				},
+				SecurityContext: argoutil.DefaultSecurityContext(),
 				VolumeMounts: []corev1.VolumeMount{
 					{
 						Name:      "static-files",
@@ -397,19 +386,7 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 						ContainerPort: 5558,
 					},
 				},
-				SecurityContext: &corev1.SecurityContext{
-					AllowPrivilegeEscalation: boolPtr(false),
-					Capabilities: &corev1.Capabilities{
-						Drop: []corev1.Capability{
-							"ALL",
-						},
-					},
-					ReadOnlyRootFilesystem: boolPtr(true),
-					RunAsNonRoot:           boolPtr(true),
-					SeccompProfile: &corev1.SeccompProfile{
-						Type: "RuntimeDefault",
-					},
-				},
+				SecurityContext: argoutil.DefaultSecurityContext(),
 				VolumeMounts: []corev1.VolumeMount{
 					{Name: "static-files", MountPath: "/shared"},
 					{Name: "dexconfig", MountPath: "/tmp"},
@@ -479,19 +456,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 							"/usr/local/bin/argocd",
 							"/shared/argocd-dex",
 						},
-						SecurityContext: &corev1.SecurityContext{
-							AllowPrivilegeEscalation: boolPtr(false),
-							Capabilities: &corev1.Capabilities{
-								Drop: []corev1.Capability{
-									"ALL",
-								},
-							},
-							ReadOnlyRootFilesystem: boolPtr(true),
-							RunAsNonRoot:           boolPtr(true),
-							SeccompProfile: &corev1.SeccompProfile{
-								Type: "RuntimeDefault",
-							},
-						},
+						SecurityContext: argoutil.DefaultSecurityContext(),
 						VolumeMounts: []corev1.VolumeMount{
 							{
 								Name:      "static-files",
@@ -537,19 +502,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 								ContainerPort: 5558,
 							},
 						},
-						SecurityContext: &corev1.SecurityContext{
-							AllowPrivilegeEscalation: boolPtr(false),
-							Capabilities: &corev1.Capabilities{
-								Drop: []corev1.Capability{
-									"ALL",
-								},
-							},
-							ReadOnlyRootFilesystem: boolPtr(true),
-							RunAsNonRoot:           boolPtr(true),
-							SeccompProfile: &corev1.SeccompProfile{
-								Type: "RuntimeDefault",
-							},
-						},
+						SecurityContext: argoutil.DefaultSecurityContext(),
 						VolumeMounts: []corev1.VolumeMount{
 							{Name: "static-files", MountPath: "/shared"},
 							{Name: "dexconfig", MountPath: "/tmp"},
@@ -611,19 +564,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 							"/usr/local/bin/argocd",
 							"/shared/argocd-dex",
 						},
-						SecurityContext: &corev1.SecurityContext{
-							AllowPrivilegeEscalation: boolPtr(false),
-							Capabilities: &corev1.Capabilities{
-								Drop: []corev1.Capability{
-									"ALL",
-								},
-							},
-							ReadOnlyRootFilesystem: boolPtr(true),
-							RunAsNonRoot:           boolPtr(true),
-							SeccompProfile: &corev1.SeccompProfile{
-								Type: "RuntimeDefault",
-							},
-						},
+						SecurityContext: argoutil.DefaultSecurityContext(),
 						VolumeMounts: []corev1.VolumeMount{
 							{
 								Name:      "static-files",
@@ -682,19 +623,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 								},
 							},
 						},
-						SecurityContext: &corev1.SecurityContext{
-							AllowPrivilegeEscalation: boolPtr(false),
-							Capabilities: &corev1.Capabilities{
-								Drop: []corev1.Capability{
-									"ALL",
-								},
-							},
-							ReadOnlyRootFilesystem: boolPtr(true),
-							RunAsNonRoot:           boolPtr(true),
-							SeccompProfile: &corev1.SeccompProfile{
-								Type: "RuntimeDefault",
-							},
-						},
+						SecurityContext: argoutil.DefaultSecurityContext(),
 						VolumeMounts: []corev1.VolumeMount{
 							{Name: "static-files", MountPath: "/shared"},
 							{Name: "dexconfig", MountPath: "/tmp"},
