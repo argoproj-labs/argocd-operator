@@ -605,7 +605,7 @@ func (a *ArgoCDRepoSpec) IsRemote() bool {
 
 type ArgoCDSystemCATrustSpec struct {
 	// DropImageCertificates will remove all certs that are present in the image, leaving only those explicitly configured here.
-	DropImageCertificates bool `json:"dropImageCertificates,omitempty,default=false"`
+	DropImageCertificates bool `json:"dropImageCertificates,omitempty"`
 	// ClusterTrustBundles is a list of projected ClusterTrustBundle volume definitions from where to take the trust certs.
 	ClusterTrustBundles []corev1.ClusterTrustBundleProjection `json:"clusterTrustBundles,omitempty"`
 	// Secrets is a list of projected Secret volume definitions from where to take the trust certs.
