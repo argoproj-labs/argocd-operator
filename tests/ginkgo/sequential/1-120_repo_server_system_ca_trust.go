@@ -47,7 +47,7 @@ import (
 	fixtureUtils "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 )
 
-var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
+var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 	Context("1-120_repo_server_system_ca_trust", func() {
 
@@ -172,7 +172,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			// Create a bundle with 2 CA certs in it. Ubuntu's update-ca-certificates issues a warning, but apparently it works
 			// It is desirable to test with multiple certs in one bundle because OpenShift permits it
 			combinedCtb := createCtbFromCerts(getCACert("github.com"), getCACert("github.io"))
-			Expect(k8sClient.Delete(ctx, combinedCtb)).To(Succeed())
+			_ = k8sClient.Delete(ctx, combinedCtb) // Exists only in case of previous failures
 			defer func() { _ = k8sClient.Delete(ctx, combinedCtb) }()
 			Expect(k8sClient.Create(ctx, combinedCtb)).To(Succeed())
 
