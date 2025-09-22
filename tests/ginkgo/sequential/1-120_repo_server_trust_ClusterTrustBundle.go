@@ -491,13 +491,15 @@ func createSecretFromCert(ns *corev1.Namespace, bundle string) *corev1.Secret {
 }
 
 func getCACert(host string) string {
-	conn, err := tls.Dial("tcp", host+":443", &tls.Config{})
+	config := &tls.Config{MinVersion: tls.VersionTLS13}
+	conn, err := tls.Dial("tcp", host+":443", config)
 	Expect(err).ToNot(HaveOccurred())
 	defer func() { _ = conn.Close() }()
 
 	pcs := conn.ConnectionState().PeerCertificates
 
-	// ClusterTrustBundle cannot hold leaf certificates, so testing with CA cert at least.
+	// ClusterTrustBundle cannot hold leaf certificates, so testing with CA cert at least. In theory, some of the hosts
+	// we test against can share the same CA cert, so albeit not likely, rudimentary negative testing is needed.
 	return encodeCert(pcs[len(pcs)-1])
 }
 
