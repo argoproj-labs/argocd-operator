@@ -682,7 +682,7 @@ func caTrustInitContainer(cr *argocdoperatorv1beta1.ArgoCD, argoImage string, vo
 	// This is where the image keeps its vendored CAs, look elsewhere if DropImageCertificates
 	imageCertPath := "/usr/share/ca-certificates"
 	if cr.Spec.Repo.SystemCATrust.DropImageCertificates {
-		imageCertPath = "/SystemCATrust.DropImageCertificates"
+		imageCertPath = "/systemCATrust.dropImageCertificates"
 	}
 
 	return corev1.Container{
