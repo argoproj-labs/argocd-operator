@@ -885,3 +885,541 @@ func TestReconcilePrincipalRedisProxyService_VerifyRedisProxyServiceSpec(t *test
 	}
 	assert.Equal(t, expectedSelector, svc.Spec.Selector)
 }
+
+func TestReconcilePrincipalResourceProxyService_ServiceDoesNotExist_PrincipalDisabled(t *testing.T) {
+	// Test case: Principal is disabled, resource proxy service should not be created
+	// Expected behavior: No service should be created
+
+	cr := makeTestArgoCD(withPrincipalEnabled(false))
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalResourceProxyService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was not created
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName+"-resource-proxy"),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.True(t, errors.IsNotFound(err))
+}
+
+func TestReconcilePrincipalResourceProxyService_ServiceDoesNotExist_PrincipalEnabled(t *testing.T) {
+	// Test case: Principal is enabled, resource proxy service should be created
+	// Expected behavior: Service should be created with correct configuration
+
+	cr := makeTestArgoCD(withPrincipalEnabled(true))
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalResourceProxyService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was created
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName+"-resource-proxy"),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.NoError(t, err)
+
+	// Verify Service has correct resource proxy port configuration
+	assert.Len(t, svc.Spec.Ports, 1)
+	resourceProxyPort := svc.Spec.Ports[0]
+	assert.Equal(t, PrincipalResourceProxyServicePortName, resourceProxyPort.Name)
+	assert.Equal(t, int32(PrincipalResourceProxyServicePort), resourceProxyPort.Port)
+	assert.Equal(t, intstr.FromInt(PrincipalResourceProxyServiceTargetPort), resourceProxyPort.TargetPort)
+	assert.Equal(t, corev1.ProtocolTCP, resourceProxyPort.Protocol)
+
+	// Verify Service type is ClusterIP
+	assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
+
+	// Verify selector points to the correct component
+	expectedSelector := map[string]string{
+		common.ArgoCDKeyName: generateAgentResourceName(cr.Name, testCompName),
+	}
+	assert.Equal(t, expectedSelector, svc.Spec.Selector)
+}
+
+func TestReconcilePrincipalResourceProxyService_ServiceExists_PrincipalDisabled(t *testing.T) {
+	// Test case: Resource proxy service exists and principal is disabled
+	// Expected behavior: Should delete the resource proxy service
+
+	cr := makeTestArgoCD(withPrincipalEnabled(false))
+
+	// Create existing Service
+	existingSvc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      generateAgentResourceName(cr.Name, testCompName+"-resource-proxy"),
+			Namespace: cr.Namespace,
+			Labels:    buildLabelsForAgentPrincipal(cr.Name, testCompName),
+		},
+		Spec: buildPrincipalResourceProxyServiceSpec(testCompName, cr),
+	}
+
+	resObjs := []client.Object{cr, existingSvc}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalResourceProxyService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was deleted
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName+"-resource-proxy"),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.True(t, errors.IsNotFound(err))
+}
+
+func TestReconcilePrincipalResourceProxyService_ServiceExists_PrincipalEnabled_SameSpec(t *testing.T) {
+	// Test case: Resource proxy service exists, principal is enabled, and spec is the same
+	// Expected behavior: Should do nothing (no update)
+
+	cr := makeTestArgoCD(withPrincipalEnabled(true))
+
+	expectedSpec := buildPrincipalResourceProxyServiceSpec(testCompName, cr)
+	existingSvc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      generateAgentResourceName(cr.Name, testCompName+"-resource-proxy"),
+			Namespace: cr.Namespace,
+			Labels:    buildLabelsForAgentPrincipal(cr.Name, testCompName),
+		},
+		Spec: expectedSpec,
+	}
+
+	resObjs := []client.Object{cr, existingSvc}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalResourceProxyService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service still exists and spec is unchanged
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName+"-resource-proxy"),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedSpec, svc.Spec)
+}
+
+func TestReconcilePrincipalResourceProxyService_ServiceExists_PrincipalEnabled_DifferentSpec(t *testing.T) {
+	// Test case: Resource proxy service exists, principal is enabled, but spec is different
+	// Expected behavior: Should update the service spec
+
+	cr := makeTestArgoCD(withPrincipalEnabled(true))
+
+	// Create existing Service with different spec
+	existingSvc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      generateAgentResourceName(cr.Name, testCompName+"-resource-proxy"),
+			Namespace: cr.Namespace,
+			Labels:    buildLabelsForAgentPrincipal(cr.Name, testCompName),
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
+				{
+					Name:       PrincipalResourceProxyServicePortName,
+					Port:       PrincipalResourceProxyServicePort,
+					Protocol:   corev1.ProtocolTCP,
+					TargetPort: intstr.FromInt(8080), // Different target port
+				},
+			},
+			Selector: map[string]string{
+				common.ArgoCDKeyName: generateAgentResourceName(cr.Name, testCompName),
+			},
+			Type: corev1.ServiceTypeClusterIP,
+		},
+	}
+
+	resObjs := []client.Object{cr, existingSvc}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalResourceProxyService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was updated with correct spec
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName+"-resource-proxy"),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.NoError(t, err)
+
+	expectedSpec := buildPrincipalResourceProxyServiceSpec(testCompName, cr)
+	assert.Equal(t, expectedSpec, svc.Spec)
+}
+
+func TestReconcilePrincipalResourceProxyService_ServiceExists_PrincipalNotSet(t *testing.T) {
+	// Test case: Resource proxy service exists but principal is not set in CR
+	// Expected behavior: Should delete the service
+
+	cr := makeTestArgoCD()
+
+	// Create existing Service
+	existingSvc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      generateAgentResourceName(cr.Name, testCompName+"-resource-proxy"),
+			Namespace: cr.Namespace,
+			Labels:    buildLabelsForAgentPrincipal(cr.Name, testCompName),
+		},
+		Spec: buildPrincipalResourceProxyServiceSpec(testCompName, cr),
+	}
+
+	resObjs := []client.Object{cr, existingSvc}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalResourceProxyService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was deleted
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName+"-resource-proxy"),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.True(t, errors.IsNotFound(err))
+}
+
+func TestReconcilePrincipalResourceProxyService_ServiceDoesNotExist_AgentNotSet(t *testing.T) {
+	// Test case: Resource proxy service doesn't exist and agent is not set in CR
+	// Expected behavior: Should do nothing
+
+	cr := makeTestArgoCD()
+	cr.Spec.ArgoCDAgent = nil
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalResourceProxyService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was not created
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName+"-resource-proxy"),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.True(t, errors.IsNotFound(err))
+}
+
+func TestReconcilePrincipalResourceProxyService_VerifyResourceProxyServiceSpec(t *testing.T) {
+	// Test case: Verify the resource proxy service spec has correct resource proxy-specific configuration
+	// Expected behavior: Should create service with resource proxy port and correct selector
+
+	cr := makeTestArgoCD(withPrincipalEnabled(true))
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalResourceProxyService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was created
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName+"-resource-proxy"),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.NoError(t, err)
+
+	// Verify Service has correct resource proxy port configuration
+	assert.Len(t, svc.Spec.Ports, 1)
+	resourceProxyPort := svc.Spec.Ports[0]
+	assert.Equal(t, PrincipalResourceProxyServicePortName, resourceProxyPort.Name)
+	assert.Equal(t, int32(PrincipalResourceProxyServicePort), resourceProxyPort.Port)
+	assert.Equal(t, intstr.FromInt(PrincipalResourceProxyServiceTargetPort), resourceProxyPort.TargetPort)
+	assert.Equal(t, corev1.ProtocolTCP, resourceProxyPort.Protocol)
+
+	// Verify Service type is ClusterIP
+	assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
+
+	// Verify selector points to the correct component
+	expectedSelector := map[string]string{
+		common.ArgoCDKeyName: generateAgentResourceName(cr.Name, testCompName),
+	}
+	assert.Equal(t, expectedSelector, svc.Spec.Selector)
+}
+
+// Tests for ReconcilePrincipalHealthzService
+
+func TestReconcilePrincipalHealthzService_ServiceDoesNotExist_PrincipalDisabled(t *testing.T) {
+	// Test case: Principal is disabled, healthz service should not be created
+	// Expected behavior: No service should be created
+
+	cr := makeTestArgoCD(withPrincipalEnabled(false))
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalHealthzService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was not created
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName+"-healthz"),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.True(t, errors.IsNotFound(err))
+}
+
+func TestReconcilePrincipalHealthzService_ServiceDoesNotExist_PrincipalEnabled(t *testing.T) {
+	// Test case: Principal is enabled, healthz service should be created
+	// Expected behavior: Service should be created with correct configuration
+
+	cr := makeTestArgoCD(withPrincipalEnabled(true))
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalHealthzService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was created
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName+"-healthz"),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.NoError(t, err)
+
+	// Verify Service has correct healthz port configuration
+	assert.Len(t, svc.Spec.Ports, 1)
+	healthzPort := svc.Spec.Ports[0]
+	assert.Equal(t, PrincipalHealthzServicePortName, healthzPort.Name)
+	assert.Equal(t, int32(PrincipalHealthzServicePort), healthzPort.Port)
+	assert.Equal(t, intstr.FromInt(PrincipalHealthzServiceTargetPort), healthzPort.TargetPort)
+	assert.Equal(t, corev1.ProtocolTCP, healthzPort.Protocol)
+
+	// Verify Service type is ClusterIP
+	assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
+
+	// Verify selector points to the correct component
+	expectedSelector := map[string]string{
+		common.ArgoCDKeyName: generateAgentResourceName(cr.Name, testCompName),
+	}
+	assert.Equal(t, expectedSelector, svc.Spec.Selector)
+}
+
+func TestReconcilePrincipalHealthzService_ServiceExists_PrincipalDisabled(t *testing.T) {
+	// Test case: Healthz service exists and principal is disabled
+	// Expected behavior: Should delete the healthz service
+
+	cr := makeTestArgoCD(withPrincipalEnabled(false))
+
+	// Create existing Service
+	existingSvc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      generateAgentResourceName(cr.Name, testCompName+"-healthz"),
+			Namespace: cr.Namespace,
+			Labels:    buildLabelsForAgentPrincipal(cr.Name, testCompName),
+		},
+		Spec: buildPrincipalHealthzServiceSpec(testCompName, cr),
+	}
+
+	resObjs := []client.Object{cr, existingSvc}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalHealthzService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was deleted
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName+"-healthz"),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.True(t, errors.IsNotFound(err))
+}
+
+func TestReconcilePrincipalHealthzService_ServiceExists_PrincipalEnabled_SameSpec(t *testing.T) {
+	// Test case: Healthz service exists, principal is enabled, and spec is the same
+	// Expected behavior: Should do nothing (no update)
+
+	cr := makeTestArgoCD(withPrincipalEnabled(true))
+
+	expectedSpec := buildPrincipalHealthzServiceSpec(testCompName, cr)
+	existingSvc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      generateAgentResourceName(cr.Name, testCompName+"-healthz"),
+			Namespace: cr.Namespace,
+			Labels:    buildLabelsForAgentPrincipal(cr.Name, testCompName),
+		},
+		Spec: expectedSpec,
+	}
+
+	resObjs := []client.Object{cr, existingSvc}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalHealthzService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service still exists and spec is unchanged
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName+"-healthz"),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedSpec, svc.Spec)
+}
+
+func TestReconcilePrincipalHealthzService_ServiceExists_PrincipalEnabled_DifferentSpec(t *testing.T) {
+	// Test case: Healthz service exists, principal is enabled, but spec is different
+	// Expected behavior: Should update the service spec
+
+	cr := makeTestArgoCD(withPrincipalEnabled(true))
+
+	// Create existing Service with different spec
+	existingSvc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      generateAgentResourceName(cr.Name, testCompName+"-healthz"),
+			Namespace: cr.Namespace,
+			Labels:    buildLabelsForAgentPrincipal(cr.Name, testCompName),
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
+				{
+					Name:       PrincipalHealthzServicePortName,
+					Port:       PrincipalHealthzServicePort,
+					Protocol:   corev1.ProtocolTCP,
+					TargetPort: intstr.FromInt(8090), // Different target port
+				},
+			},
+			Selector: map[string]string{
+				common.ArgoCDKeyName: generateAgentResourceName(cr.Name, testCompName),
+			},
+			Type: corev1.ServiceTypeClusterIP,
+		},
+	}
+
+	resObjs := []client.Object{cr, existingSvc}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalHealthzService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was updated with correct spec
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName+"-healthz"),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.NoError(t, err)
+
+	expectedSpec := buildPrincipalHealthzServiceSpec(testCompName, cr)
+	assert.Equal(t, expectedSpec, svc.Spec)
+}
+
+func TestReconcilePrincipalHealthzService_ServiceExists_PrincipalNotSet(t *testing.T) {
+	// Test case: Healthz service exists but principal is not set in CR
+	// Expected behavior: Should delete the service
+
+	cr := makeTestArgoCD()
+
+	// Create existing Service
+	existingSvc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      generateAgentResourceName(cr.Name, testCompName+"-healthz"),
+			Namespace: cr.Namespace,
+			Labels:    buildLabelsForAgentPrincipal(cr.Name, testCompName),
+		},
+		Spec: buildPrincipalHealthzServiceSpec(testCompName, cr),
+	}
+
+	resObjs := []client.Object{cr, existingSvc}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalHealthzService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was deleted
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName+"-healthz"),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.True(t, errors.IsNotFound(err))
+}
+
+func TestReconcilePrincipalHealthzService_ServiceDoesNotExist_AgentNotSet(t *testing.T) {
+	// Test case: Healthz service doesn't exist and agent is not set in CR
+	// Expected behavior: Should do nothing
+
+	cr := makeTestArgoCD()
+	cr.Spec.ArgoCDAgent = nil
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalHealthzService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was not created
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName+"-healthz"),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.True(t, errors.IsNotFound(err))
+}
+
+func TestReconcilePrincipalHealthzService_VerifyHealthzServiceSpec(t *testing.T) {
+	// Test case: Verify the healthz service spec has correct healthz-specific configuration
+	// Expected behavior: Should create service with healthz port and correct selector
+
+	cr := makeTestArgoCD(withPrincipalEnabled(true))
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalHealthzService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was created
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName+"-healthz"),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.NoError(t, err)
+
+	// Verify Service has correct healthz port configuration
+	assert.Len(t, svc.Spec.Ports, 1)
+	healthzPort := svc.Spec.Ports[0]
+	assert.Equal(t, PrincipalHealthzServicePortName, healthzPort.Name)
+	assert.Equal(t, int32(PrincipalHealthzServicePort), healthzPort.Port)
+	assert.Equal(t, intstr.FromInt(PrincipalHealthzServiceTargetPort), healthzPort.TargetPort)
+	assert.Equal(t, corev1.ProtocolTCP, healthzPort.Protocol)
+
+	// Verify Service type is ClusterIP
+	assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
+
+	// Verify selector points to the correct component
+	expectedSelector := map[string]string{
+		common.ArgoCDKeyName: generateAgentResourceName(cr.Name, testCompName),
+	}
+	assert.Equal(t, expectedSelector, svc.Spec.Selector)
+}

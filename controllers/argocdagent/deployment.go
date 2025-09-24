@@ -163,6 +163,16 @@ func buildPorts(compName string) []corev1.ContainerPort {
 			Name:          "redis",
 			Protocol:      corev1.ProtocolTCP,
 		},
+		{
+			ContainerPort: 9090,
+			Name:          "resource-proxy",
+			Protocol:      corev1.ProtocolTCP,
+		},
+		{
+			ContainerPort: 8003,
+			Name:          "healthz",
+			Protocol:      corev1.ProtocolTCP,
+		},
 	}
 }
 

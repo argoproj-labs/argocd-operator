@@ -160,7 +160,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				"argocd-agent-resource-proxy-tls",
 			}
 
-			serviceNames = []string{argoCDAgentPrincipalName, "argocd-agent-principal-metrics", "argocd-redis", "argocd-repo-server", "argocd-server"}
+			serviceNames = []string{argoCDAgentPrincipalName, "argocd-agent-principal-metrics", "argocd-redis", "argocd-repo-server", "argocd-server", "argocd-agent-principal-resource-proxy", "argocd-agent-principal-healthz"}
 			deploymentNames = []string{"argocd-redis", "argocd-repo-server", "argocd-server"}
 
 			principalDeployment = &appsv1.Deployment{
@@ -642,6 +642,5 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				Expect(container.Env).To(ContainElement(corev1.EnvVar{Name: key, Value: value}), "Environment variable %s should be set to %s", key, value)
 			}
 		})
-
 	})
 })

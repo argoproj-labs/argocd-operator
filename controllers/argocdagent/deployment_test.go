@@ -361,13 +361,27 @@ func TestReconcilePrincipalDeployment_VerifyDeploymentSpec(t *testing.T) {
 	assert.Equal(t, corev1.SeccompProfileType("RuntimeDefault"), container.SecurityContext.SeccompProfile.Type)
 
 	// Verify ports configuration
-	assert.Len(t, container.Ports, 3)
+	assert.Len(t, container.Ports, 5)
 	principalPort := container.Ports[0]
 	assert.Equal(t, testCompName, principalPort.Name)
 	assert.Equal(t, int32(8443), principalPort.ContainerPort)
+	assert.Equal(t, corev1.ProtocolTCP, principalPort.Protocol)
 	metricsPort := container.Ports[1]
 	assert.Equal(t, "metrics", metricsPort.Name)
 	assert.Equal(t, int32(8000), metricsPort.ContainerPort)
+	assert.Equal(t, corev1.ProtocolTCP, metricsPort.Protocol)
+	redisPort := container.Ports[2]
+	assert.Equal(t, "redis", redisPort.Name)
+	assert.Equal(t, int32(6379), redisPort.ContainerPort)
+	assert.Equal(t, corev1.ProtocolTCP, redisPort.Protocol)
+	resourceProxyPort := container.Ports[3]
+	assert.Equal(t, "resource-proxy", resourceProxyPort.Name)
+	assert.Equal(t, int32(9090), resourceProxyPort.ContainerPort)
+	assert.Equal(t, corev1.ProtocolTCP, resourceProxyPort.Protocol)
+	healthzPort := container.Ports[4]
+	assert.Equal(t, "healthz", healthzPort.Name)
+	assert.Equal(t, int32(8003), healthzPort.ContainerPort)
+	assert.Equal(t, corev1.ProtocolTCP, healthzPort.Protocol)
 
 	// Verify args
 	assert.Equal(t, []string{testCompName}, container.Args)
