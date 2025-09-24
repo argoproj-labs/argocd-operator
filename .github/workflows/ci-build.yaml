@@ -48,8 +48,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        k3s-version: [ v1.27.1 ]
-        # k3s-version: [v1.20.2, v1.19.2, v1.18.9, v1.17.11, v1.16.15]
+        k3s-version:
+          - v1.27.1-k3s1
+          - v1.33.5-k3s1
     steps:
       - name: Download kuttl plugin
         env:
@@ -69,7 +70,20 @@ jobs:
           set -x
           curl -s https://raw.githubusercontent.com/rancher/k3d/main/install.sh | bash
           sudo mkdir -p $HOME/.kube && sudo chown -R runner $HOME/.kube
-          k3d cluster create --servers 3 --image rancher/k3s:${{ matrix.k3s-version }}-k3s1
+
+          feature_flags=()
+          case "${{ matrix.k3s-version }}" in
+          v1.3[3456789]*)
+              # Enable ClusterTrustBundle and ClusterTrustBundleProjection until it is enabled by default in kubernetes
+              feature_flags+=(
+                  "--k3s-arg" "--kube-apiserver-arg=feature-gates=ClusterTrustBundle=true,ClusterTrustBundleProjection=true@server:*"
+                  "--k3s-arg" "--kube-apiserver-arg=runtime-config=certificates.k8s.io/v1beta1/clustertrustbundles=true@server:*"
+                  "--k3s-arg" "--kubelet-arg=feature-gates=ClusterTrustBundle=true,ClusterTrustBundleProjection=true@agent:*"
+              )
+          ;;
+          esac
+
+          k3d cluster create --servers 3 --image "rancher/k3s:${{ matrix.k3s-version }}" "${feature_flags[@]}"
           kubectl version
           k3d version
       - name: Checkout code
