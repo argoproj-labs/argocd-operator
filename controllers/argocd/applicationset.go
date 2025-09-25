@@ -846,6 +846,7 @@ func (r *ReconcileArgoCD) getApplicationSetContainerImage(cr *argoproj.ArgoCD) s
 	var img string
 	var defaultImg, defaultTag bool
 	if r.EnableRedHatRegistryImages {
+		fmt.Println("Using Red Hat registry for ArgoCD ApplicationSet image")
 		img = common.RedHatRegistryArgoCDImage
 	} else {
 		defaultImg, defaultTag = false, false
