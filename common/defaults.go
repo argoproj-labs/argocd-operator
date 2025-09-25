@@ -69,6 +69,9 @@ const (
 	// ArgoCDDefaultArgoImage is the ArgoCD container image to use when not specified.
 	ArgoCDDefaultArgoImage = "quay.io/argoproj/argocd"
 
+	// RedHatRegistryArgoCDImage is the ArgoCD container image in Red Hat registry.
+	RedHatRegistryArgoCDImage = "registry.redhat.io/openshift-gitops-1/argocd-rhel8"
+
 	// ArgoCDDefaultArgoVersion is the Argo CD container image digest to use when version not specified.
 	ArgoCDDefaultArgoVersion = "sha256:a36ab0c0860c77159c16e04c7e786e7a282f04889ba9318052f0b8897d6d2040" // v3.1.1
 

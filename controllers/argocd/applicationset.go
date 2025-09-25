@@ -420,7 +420,7 @@ func (r *ReconcileArgoCD) applicationSetContainer(cr *argoproj.ArgoCD, addSCMGit
 	container := corev1.Container{
 		Command:         r.getArgoApplicationSetCommand(cr),
 		Env:             appSetEnv,
-		Image:           getApplicationSetContainerImage(cr),
+		Image:           r.getApplicationSetContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-applicationset-controller",
 		Resources:       getApplicationSetResources(cr),
@@ -842,15 +842,20 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRoleBinding(cr *argoproj.ArgoCD
 	return r.Create(context.TODO(), roleBinding)
 }
 
-func getApplicationSetContainerImage(cr *argoproj.ArgoCD) string {
-
-	defaultImg, defaultTag := false, false
-	img := cr.Spec.ApplicationSet.Image
-	if img == "" {
-		img = cr.Spec.Image
+func (r *ReconcileArgoCD) getApplicationSetContainerImage(cr *argoproj.ArgoCD) string {
+	var img string
+	var defaultImg, defaultTag bool
+	if r.EnableRedHatRegistryImages {
+		img = common.RedHatRegistryArgoCDImage
+	} else {
+		defaultImg, defaultTag = false, false
+		img = cr.Spec.ApplicationSet.Image
 		if img == "" {
-			img = common.ArgoCDDefaultArgoImage
-			defaultImg = true
+			img = cr.Spec.Image
+			if img == "" {
+				img = common.ArgoCDDefaultArgoImage
+				defaultImg = true
+			}
 		}
 	}
 
