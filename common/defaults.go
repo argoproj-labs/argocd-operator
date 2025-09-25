@@ -73,7 +73,7 @@ const (
 	RedHatRegistryArgoCDImage = "registry.redhat.io/openshift-gitops-1/argocd-rhel8"
 
 	// ArgoCDDefaultArgoVersion is the Argo CD container image digest to use when version not specified.
-	ArgoCDDefaultArgoVersion = "sha256:a36ab0c0860c77159c16e04c7e786e7a282f04889ba9318052f0b8897d6d2040" // v3.1.1
+	ArgoCDDefaultArgoVersion = "sha256:1efcd901b1d2bf967ccd8f48de4036492e55c31a5924abacd1d331dae0c0dfed" // v3.1.1
 
 	// ArgoCDDefaultBackupKeyLength is the length of the generated default backup key.
 	ArgoCDDefaultBackupKeyLength = 32
