@@ -134,7 +134,9 @@ func TestFileExists(t *testing.T) {
 		if err := os.Chmod(permDir, 0755); err != nil {
 			t.Logf("Warning: could not restore permissions for cleanup: %v", err)
 		}
-		os.RemoveAll(permDir)
+		if err := os.RemoveAll(permDir); err != nil {
+			t.Logf("Warning: could not remove permission test dir: %v", err)
+		}
 	})
 
 	permFile := filepath.Join(permDir, "unreachable.txt")
