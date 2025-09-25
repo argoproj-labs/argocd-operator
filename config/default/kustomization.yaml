@@ -72,3 +72,5 @@ vars:
 #    kind: Service
 #    version: v1
 #    name: webhook-service
+#- name: CLUSTER_DOMAIN
+#  value: cluster.local
