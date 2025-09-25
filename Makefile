@@ -193,7 +193,7 @@ envtest: ## Download envtest-setup locally if necessary.
 
 .PHONY: gosec
 gosec: go_sec
-	$(GO_SEC) --exclude-dir "tests/auxiliary/smtplistener" --exclude-dir "hack/"  ./... 
+	$(GO_SEC) --exclude-dir "tests/auxiliary/smtplistener" --exclude-dir "hack/"  ./...
 
 .PHONY: lint
 lint: golangci_lint
@@ -326,16 +326,16 @@ catalog-push: ## Push a catalog image.
 	$(MAKE) docker-push IMG=$(CATALOG_IMG)
 
 .PHONY: e2e-tests-sequential-ginkgo
-e2e-tests-sequential-ginkgo: ginkgo 
+e2e-tests-sequential-ginkgo: ginkgo
 	@echo "Running operator sequential Ginkgo E2E tests..."
 	$(GINKGO_CLI) -v --trace --timeout 90m -r ./tests/ginkgo/sequential
 
-.PHONY: e2e-tests-parallel-ginkgo 
+.PHONY: e2e-tests-parallel-ginkgo
 e2e-tests-parallel-ginkgo: ginkgo
 	@echo "Running operator parallel Ginkgo E2E tests..."
 	$(GINKGO_CLI) -p -v -procs=5 --trace --timeout 90m -r ./tests/ginkgo/parallel
-	
-	
+
+
 GINKGO_CLI = $(shell pwd)/bin/ginkgo
 .PHONY: ginkgo
 ginkgo: ## Download ginkgo locally if necessary.
