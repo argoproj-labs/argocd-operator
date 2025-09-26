@@ -65,10 +65,16 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			test_1_046_argocd_2_NS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("test-1-046-argocd-2")
 			defer cleanupFunc()
 
+			test_1_046_argocd_3_NS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("test-1-046-argocd-3")
+			defer cleanupFunc()
+
 			source_ns_1_NS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("source-ns-1")
 			defer cleanupFunc()
 
 			source_ns_2_NS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("source-ns-2")
+			defer cleanupFunc()
+
+			source_ns_3_NS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("source-ns-3")
 			defer cleanupFunc()
 
 			By("creating first Argo CD instance, with installationID 'instance-1', and annotation+label tracking")
@@ -96,9 +102,21 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				},
 			}
 			Expect(k8sClient.Create(ctx, argocd_2)).Should(Succeed())
+			By("creating second Argo CD instance, with instance-3 ID, and annotation tracking (by default it is annotation")
+			argocd_3 := &argov1beta1api.ArgoCD{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "argocd-3",
+					Namespace: test_1_046_argocd_3_NS.Name,
+				},
+				Spec: argov1beta1api.ArgoCDSpec{
+					InstallationID: "instance-3",
+				},
+			}
+			Expect(k8sClient.Create(ctx, argocd_3)).Should(Succeed())
 
 			Eventually(argocd_1, "5m", "5s").Should(argocdFixture.BeAvailable())
 			Eventually(argocd_2, "5m", "5s").Should(argocdFixture.BeAvailable())
+			Eventually(argocd_3, "5m", "5s").Should(argocdFixture.BeAvailable())
 
 			By("verifying argocd-cm for Argo CD instances contain the values defined in ArgoCD CR .spec field")
 			configMap_test_1_046_argocd_1 := &corev1.ConfigMap{
@@ -122,7 +140,18 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Expect(configMap_test_1_046_argocd_2).Should(configmapFixture.HaveStringDataKeyValue("installationID", "instance-2"))
 			Expect(configMap_test_1_046_argocd_2).Should(configmapFixture.HaveStringDataKeyValue("application.resourceTrackingMethod", "annotation+label"))
 
-			By("adding managed-by label to test-1-046-argocd-(1/2), managed by Argo CD instances 1 and 2")
+			configMap_test_1_046_argocd_3 := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "argocd-cm",
+					Namespace: "test-1-046-argocd-3",
+				},
+			}
+
+			Eventually(configMap_test_1_046_argocd_2).Should(k8sFixture.ExistByName())
+			Expect(configMap_test_1_046_argocd_3).Should(configmapFixture.HaveStringDataKeyValue("installationID", "instance-3"))
+			Expect(configMap_test_1_046_argocd_3).Should(configmapFixture.HaveStringDataKeyValue("application.resourceTrackingMethod", "annotation"))
+
+			By("adding managed-by label to test-1-046-argocd-(1/3), managed by Argo CD instances 1, 2 and 3")
 			namespace.Update(source_ns_1_NS, func(n *corev1.Namespace) {
 				if n.Labels == nil {
 					n.Labels = map[string]string{}
@@ -137,7 +166,15 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				n.Labels["argocd.argoproj.io/managed-by"] = "test-1-046-argocd-2"
 			})
 
-			By("verifying role is created in the correct source-ns-(1/2) namespaces, for instances")
+			namespace.Update(source_ns_3_NS, func(n *corev1.Namespace) {
+				n.Labels["argocd.argoproj.io/managed-by"] = "test-1-046-argocd-3"
+				if n.Annotations == nil {
+					n.Annotations = map[string]string{}
+				}
+				n.Annotations["argocd.argoproj.io/managed-by"] = "test-1-046-argocd-3"
+			})
+
+			By("verifying role is created in the correct source-ns-(1/3) namespaces, for instances")
 			role_appController_source_ns_1 := &rbacv1.Role{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "argocd-1-argocd-application-controller",
@@ -153,6 +190,14 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				},
 			}
 			Eventually(role_appController_source_ns_2).Should(k8sFixture.ExistByName())
+
+			role_appController_source_ns_3 := &rbacv1.Role{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "argocd-3-argocd-application-controller",
+					Namespace: "source-ns-3",
+				},
+			}
+			Eventually(role_appController_source_ns_3).Should(k8sFixture.ExistByName())
 
 			By("by defining a simple Argo CD Application for both Argo CD instances, to deploy to source namespaces 1/2 respectively")
 			application_test_1_046_argocd_1 := &argocdv1alpha1.Application{
@@ -200,6 +245,28 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				},
 			}
 			Expect(k8sClient.Create(ctx, application_test_1_046_argocd_2)).To(Succeed())
+			application_test_1_046_argocd_3 := &argocdv1alpha1.Application{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-app",
+					Namespace: "test-1-046-argocd-3",
+				},
+				Spec: argocdv1alpha1.ApplicationSpec{
+					Project: "default",
+					Source: &argocdv1alpha1.ApplicationSource{
+						RepoURL:        "https://github.com/redhat-developer/gitops-operator",
+						Path:           "test/examples/nginx",
+						TargetRevision: "HEAD",
+					},
+					Destination: argocdv1alpha1.ApplicationDestination{
+						Server:    "https://kubernetes.default.svc",
+						Namespace: "source-ns-3",
+					},
+					SyncPolicy: &argocdv1alpha1.SyncPolicy{
+						Automated: &argocdv1alpha1.SyncPolicyAutomated{},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, application_test_1_046_argocd_3)).To(Succeed())
 
 			By("verifying that the Applications successfully deployed, and that they have the correct installation-id and tracking-id, based on which Argo CD instance deployed them")
 
@@ -208,6 +275,9 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			Eventually(application_test_1_046_argocd_2, "4m", "5s").Should(application.HaveHealthStatusCode(health.HealthStatusHealthy))
 			Eventually(application_test_1_046_argocd_2, "4m", "5s").Should(application.HaveSyncStatusCode(argocdv1alpha1.SyncStatusCodeSynced))
+
+			Eventually(application_test_1_046_argocd_3, "4m", "5s").Should(application.HaveHealthStatusCode(health.HealthStatusHealthy))
+			Eventually(application_test_1_046_argocd_3, "4m", "5s").Should(application.HaveSyncStatusCode(argocdv1alpha1.SyncStatusCodeSynced))
 
 			deployment_source_ns_1 := &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
@@ -233,6 +303,17 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			Eventually(deployment_source_ns_2).Should(k8sFixture.HaveLabelWithValue("app.kubernetes.io/instance", "test-app"))
 
+			deployment_source_ns_3 := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "nginx-deployment",
+					Namespace: "source-ns-3",
+				},
+			}
+			Eventually(deployment_source_ns_3).Should(k8sFixture.ExistByName())
+			Eventually(deployment_source_ns_3).Should(k8sFixture.HaveAnnotationWithValue("argocd.argoproj.io/installation-id", "instance-3"))
+			Eventually(deployment_source_ns_3).Should(k8sFixture.HaveAnnotationWithValue("argocd.argoproj.io/tracking-id", "test-app:apps/Deployment:source-ns-3/nginx-deployment"))
+
+			Eventually(deployment_source_ns_3).Should(k8sFixture.NotHaveLabelWithValue("app.kubernetes.io/instance", "test-app"))
 		})
 
 	})
