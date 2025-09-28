@@ -3,8 +3,8 @@ module github.com/argoproj-labs/argocd-operator
 go 1.24.6
 
 require (
-	github.com/argoproj/argo-cd/v3 v3.1.1
-	github.com/argoproj/gitops-engine v0.7.1-0.20250617174952-093aef0dad58
+	github.com/argoproj/argo-cd/v3 v3.1.7
+	github.com/argoproj/gitops-engine v0.7.1-0.20250905160054-e48120133eec
 	github.com/cert-manager/cert-manager v1.14.4
 	github.com/go-logr/logr v1.4.3
 	github.com/google/go-cmp v0.7.0
