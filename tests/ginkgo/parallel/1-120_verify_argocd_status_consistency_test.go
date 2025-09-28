@@ -22,6 +22,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -38,8 +39,10 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 	Context("1-120_verify_argocd_status_consistency", func() {
 
 		var (
-			k8sClient client.Client
-			ctx       context.Context
+			k8sClient   client.Client
+			ctx         context.Context
+			cleanupFunc func()
+			ns          *corev1.Namespace
 		)
 
 		BeforeEach(func() {
@@ -50,9 +53,16 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 		})
 
+		AfterEach(func() {
+			fixture.OutputDebugOnFail(ns)
+
+			if cleanupFunc != nil {
+				cleanupFunc()
+			}
+		})
+
 		It("cycle throughs each component of .status.phase, and ensures that enabling/disabling the components will affect the .status.phase as expected.", func() {
-			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
-			defer cleanupFunc()
+			ns, cleanupFunc = fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 
 			type componentEnabler struct {
 				// name of the component to be enabled/disabled
@@ -215,36 +225,40 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				enabler.verify(argoCD, "Unknown")
 
 				By("verifying ArgoCD CR has phase Available")
-				Expect(argoCD).Should(argocdFixture.HavePhase("Available"))
+				Eventually(argoCD, "4m", "5s").Should(argocdFixture.HavePhase("Available"))
+				Consistently(argoCD, "10s", "1s").Should(argocdFixture.HavePhase("Available"))
 
 				By("enable " + enabler.name + ", setting it to succeed")
 				enabler.enable(argoCD, false)
 				By("verify 'Running' " + enabler.name)
 				enabler.verify(argoCD, "Running")
 				By("verifying ArgoCD CR has phase Available")
-				Expect(argoCD).Should(argocdFixture.HavePhase("Available"))
+				Eventually(argoCD, "4m", "5s").Should(argocdFixture.HavePhase("Available"))
+				Consistently(argoCD, "10s", "1s").Should(argocdFixture.HavePhase("Available"))
 
 				By("disable " + enabler.name)
 				enabler.disable(argoCD)
 				By("verify 'Unknown' " + enabler.name)
 				enabler.verify(argoCD, "Unknown")
 				By("verifying ArgoCD CR has phase Available")
-				Expect(argoCD).Should(argocdFixture.HavePhase("Available"))
+				Eventually(argoCD, "4m", "5s").Should(argocdFixture.HavePhase("Available"))
+				Consistently(argoCD, "10s", "1s").Should(argocdFixture.HavePhase("Available"))
 
 				By("enable " + enabler.name + ", setting it to fail")
 				enabler.enable(argoCD, true)
 				By("verify 'Pending' " + enabler.name)
 				enabler.verify(argoCD, "Pending")
 				By("verifying ArgoCD CR has phase Pending")
-				Eventually(argoCD).Should(argocdFixture.HavePhase("Pending"))
+				Eventually(argoCD, "4m", "5s").Should(argocdFixture.HavePhase("Pending"))
+				Consistently(argoCD, "10s", "1s").Should(argocdFixture.HavePhase("Pending"))
 
 				By("disable " + enabler.name)
 				enabler.disable(argoCD)
 				By("verify 'Unknown' " + enabler.name)
 				enabler.verify(argoCD, "Unknown")
 				By("verifying ArgoCD CR has phase Available")
-				Eventually(argoCD).Should(argocdFixture.HavePhase("Available"))
-
+				Eventually(argoCD, "4m", "5s").Should(argocdFixture.HavePhase("Available"))
+				Consistently(argoCD, "10s", "1s").Should(argocdFixture.HavePhase("Available"))
 			}
 
 		})
