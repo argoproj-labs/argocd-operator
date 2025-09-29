@@ -193,7 +193,7 @@ envtest: ## Download envtest-setup locally if necessary.
 
 .PHONY: gosec
 gosec: go_sec
-	$(GO_SEC) --exclude-dir "tests/auxiliary/smtplistener" --exclude-dir "hack/"  ./... 
+	$(GO_SEC) --exclude-dir "tests/auxiliary/smtplistener" --exclude-dir "hack/"  ./...
 
 .PHONY: lint
 lint: golangci_lint
@@ -318,7 +318,7 @@ endif
 # https://github.com/operator-framework/community-operators/blob/7f1438c/docs/packaging-operator.md#updating-your-existing-operator
 .PHONY: catalog-build
 catalog-build: opm ## Build a catalog image.
-	$(OPM) index add --container-tool $(CONTAINER_RUNTIME) --mode semver --tag $(CATALOG_IMG) --bundles $(BUNDLE_IMGS) $(FROM_INDEX_OPT)
+	$(OPM) index add --container-tool $(shell basename $(CONTAINER_RUNTIME)) --mode semver --tag $(CATALOG_IMG) --bundles $(BUNDLE_IMGS) $(FROM_INDEX_OPT)
 
 # Push the catalog image.
 .PHONY: catalog-push
@@ -326,16 +326,16 @@ catalog-push: ## Push a catalog image.
 	$(MAKE) docker-push IMG=$(CATALOG_IMG)
 
 .PHONY: e2e-tests-sequential-ginkgo
-e2e-tests-sequential-ginkgo: ginkgo 
+e2e-tests-sequential-ginkgo: ginkgo
 	@echo "Running operator sequential Ginkgo E2E tests..."
 	$(GINKGO_CLI) -v --trace --timeout 90m -r ./tests/ginkgo/sequential
 
-.PHONY: e2e-tests-parallel-ginkgo 
+.PHONY: e2e-tests-parallel-ginkgo
 e2e-tests-parallel-ginkgo: ginkgo
 	@echo "Running operator parallel Ginkgo E2E tests..."
 	$(GINKGO_CLI) -p -v -procs=5 --trace --timeout 90m -r ./tests/ginkgo/parallel
-	
-	
+
+
 GINKGO_CLI = $(shell pwd)/bin/ginkgo
 .PHONY: ginkgo
 ginkgo: ## Download ginkgo locally if necessary.
