@@ -1349,3 +1349,57 @@ func TestArgoCDApplicationSet_removeUnmanagedApplicationSetSourceNamespaceResour
 	assert.True(t, found)
 	assert.Equal(t, a.Namespace, val)
 }
+
+func TestGetApplicationSetContainerImage(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	// when env var is set and spec fields are not set, env var should be returned
+	cr := argoproj.ArgoCD{}
+	cr.Spec = argoproj.ArgoCDSpec{}
+	cr.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{}
+	os.Setenv(common.ArgoCDImageEnvName, "testingimage@sha123456")
+	out := getApplicationSetContainerImage(&cr)
+	assert.Equal(t, "testingimage@sha123456", out)
+
+	// when env var is set and also spec image and version fields are set, spec fields should be returned
+	cr.Spec.Image = "customimage"
+	cr.Spec.Version = "sha256:1234567890abcdef"
+	os.Setenv(common.ArgoCDImageEnvName, "testingimage@sha123456")
+	out = getApplicationSetContainerImage(&cr)
+	assert.Equal(t, "customimage@sha256:1234567890abcdef", out)
+
+	// when env var is set and also spec version field is set but image field is not set, should return env var image with spec version tag
+	cr.Spec.Image = ""
+	cr.Spec.Version = "customversion"
+	os.Setenv(common.ArgoCDImageEnvName, "testingimage@sha123456")
+	out = getApplicationSetContainerImage(&cr)
+	assert.Equal(t, "testingimage:customversion", out)
+
+	// when env var is not set and spec image and version fields are not set, default image should be returned
+	os.Setenv(common.ArgoCDImageEnvName, "")
+	cr.Spec.Image = ""
+	cr.Spec.Version = ""
+	out = getApplicationSetContainerImage(&cr)
+	assert.Equal(t, "quay.io/argoproj/argocd@sha256:1efcd901b1d2bf967ccd8f48de4036492e55c31a5924abacd1d331dae0c0dfed", out)
+
+	// when env var is not set and spec image and version fields are set, spec fields should be returned
+	cr.Spec.Image = "customimage"
+	cr.Spec.Version = "sha256:1234567890abcdef"
+	os.Setenv(common.ArgoCDImageEnvName, "")
+	out = getApplicationSetContainerImage(&cr)
+	assert.Equal(t, "customimage@sha256:1234567890abcdef", out)
+
+	// when env var is not set and spec version field is set but image field is not set, should return default image with spec version tag
+	cr.Spec.Image = ""
+	cr.Spec.Version = "customversion"
+	os.Setenv(common.ArgoCDImageEnvName, "")
+	out = getApplicationSetContainerImage(&cr)
+	assert.Equal(t, "quay.io/argoproj/argocd:customversion", out)
+
+	// when env var is not set and spec image field is set but version field is not set, should return spec image with default tag
+	cr.Spec.Image = "customimage"
+	cr.Spec.Version = ""
+	os.Setenv(common.ArgoCDImageEnvName, "")
+	out = getApplicationSetContainerImage(&cr)
+	assert.Equal(t, "customimage@sha256:1efcd901b1d2bf967ccd8f48de4036492e55c31a5924abacd1d331dae0c0dfed", out)
+}

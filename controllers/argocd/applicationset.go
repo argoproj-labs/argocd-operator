@@ -420,7 +420,7 @@ func (r *ReconcileArgoCD) applicationSetContainer(cr *argoproj.ArgoCD, addSCMGit
 	container := corev1.Container{
 		Command:         r.getArgoApplicationSetCommand(cr),
 		Env:             appSetEnv,
-		Image:           r.getApplicationSetContainerImage(cr),
+		Image:           getApplicationSetContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-applicationset-controller",
 		Resources:       getApplicationSetResources(cr),
@@ -842,21 +842,14 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRoleBinding(cr *argoproj.ArgoCD
 	return r.Create(context.TODO(), roleBinding)
 }
 
-func (r *ReconcileArgoCD) getApplicationSetContainerImage(cr *argoproj.ArgoCD) string {
-	var img string
-	var defaultImg, defaultTag bool
-	if r.EnableRedHatRegistryImages {
-		fmt.Println("Using Red Hat registry for ArgoCD ApplicationSet image")
-		img = common.RedHatRegistryArgoCDImage
-	} else {
-		defaultImg, defaultTag = false, false
-		img = cr.Spec.ApplicationSet.Image
+func getApplicationSetContainerImage(cr *argoproj.ArgoCD) string {
+	defaultImg, defaultTag := false, false
+	img := cr.Spec.ApplicationSet.Image
+	if img == "" {
+		img = cr.Spec.Image
 		if img == "" {
-			img = cr.Spec.Image
-			if img == "" {
-				img = common.ArgoCDDefaultArgoImage
-				defaultImg = true
-			}
+			img = common.ArgoCDDefaultArgoImage
+			defaultImg = true
 		}
 	}
 
@@ -868,10 +861,18 @@ func (r *ReconcileArgoCD) getApplicationSetContainerImage(cr *argoproj.ArgoCD) s
 			defaultTag = true
 		}
 	}
-
-	// If an env var is specified then use that, but don't override the spec values (if they are present)
-	if e := os.Getenv(common.ArgoCDImageEnvName); e != "" && (defaultTag && defaultImg) {
-		return e
+	// if env variable is not set, then use the default tag common.ArgoCDDefaultArgoVersion and default img common.ArgoCDDefaultArgoImage
+	if e := os.Getenv(common.ArgoCDImageEnvName); e != "" {
+		if defaultImg && !defaultTag {
+			image, _, found := strings.Cut(e, "@")
+			if found {
+				return argoutil.CombineImageTag(image, tag)
+			}
+		} else if !defaultImg && !defaultTag {
+			return argoutil.CombineImageTag(img, tag)
+		} else {
+			return e
+		}
 	}
 	return argoutil.CombineImageTag(img, tag)
 }

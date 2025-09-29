@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -586,8 +587,17 @@ func getRepoServerContainerImage(cr *argocdoperatorv1beta1.ArgoCD) string {
 			defaultTag = true
 		}
 	}
-	if e := os.Getenv(common.ArgoCDImageEnvName); e != "" && (defaultTag && defaultImg) {
-		return e
+	if e := os.Getenv(common.ArgoCDImageEnvName); e != "" {
+		if defaultImg && !defaultTag {
+			image, _, found := strings.Cut(e, "@")
+			if found {
+				return argoutil.CombineImageTag(image, tag)
+			}
+		} else if !defaultImg && !defaultTag {
+			return argoutil.CombineImageTag(img, tag)
+		} else {
+			return e
+		}
 	}
 	return argoutil.CombineImageTag(img, tag)
 }

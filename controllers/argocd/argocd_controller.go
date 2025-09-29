@@ -85,8 +85,6 @@ type ReconcileArgoCD struct {
 	LocalUsers *LocalUsersInfo
 	// FipsConfigChecker checks if the deployment needs FIPS specific environment variables set.
 	FipsConfigChecker argoutil.FipsConfigChecker
-	// EnableRedHatRegistryImages indicates whether to use Red Hat registry for container images.
-	EnableRedHatRegistryImages bool
 }
 
 var log = logr.Log.WithName("controller_argocd")
