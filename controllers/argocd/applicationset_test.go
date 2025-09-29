@@ -1380,7 +1380,7 @@ func TestGetApplicationSetContainerImage(t *testing.T) {
 	cr.Spec.Image = ""
 	cr.Spec.Version = ""
 	out = getApplicationSetContainerImage(&cr)
-	assert.Equal(t, "quay.io/argoproj/argocd@sha256:1efcd901b1d2bf967ccd8f48de4036492e55c31a5924abacd1d331dae0c0dfed", out)
+	assert.Equal(t, "quay.io/argoproj/argocd@sha256:a36ab0c0860c77159c16e04c7e786e7a282f04889ba9318052f0b8897d6d2040", out)
 
 	// when env var is not set and spec image and version fields are set, spec fields should be returned
 	cr.Spec.Image = "customimage"
@@ -1401,5 +1401,5 @@ func TestGetApplicationSetContainerImage(t *testing.T) {
 	cr.Spec.Version = ""
 	os.Setenv(common.ArgoCDImageEnvName, "")
 	out = getApplicationSetContainerImage(&cr)
-	assert.Equal(t, "customimage@sha256:1efcd901b1d2bf967ccd8f48de4036492e55c31a5924abacd1d331dae0c0dfed", out)
+	assert.Equal(t, "customimage@sha256:a36ab0c0860c77159c16e04c7e786e7a282f04889ba9318052f0b8897d6d2040", out)
 }
