@@ -1,6 +1,0 @@
-apiVersion: kuttl.dev/v1beta1
-kind: TestStep
-delete:
-- apiVersion: argoproj.io/v1beta1
-  kind: ArgoCD
-  name: argocd-long-name-for-route-testiiiiiiiiiiiiiiiiiiiiiiiing

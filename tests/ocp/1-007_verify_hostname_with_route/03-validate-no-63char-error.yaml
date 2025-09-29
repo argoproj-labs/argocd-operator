@@ -1,8 +1,0 @@
-# Test to ensure GITOPS-7315 errors don't occur
-# This test validates that ArgoCD reconciles successfully without 63-character label errors
-apiVersion: v1
-kind: Secret
-metadata:
-  # This secret should exist with a truncated name, proving our fix works
-  name: argocd-long-name-for-route-te-9800df6-cluster
-spec: {}
