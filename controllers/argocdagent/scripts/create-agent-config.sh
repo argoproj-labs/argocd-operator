@@ -30,6 +30,10 @@ if test "$IPADDR" = ""; then
        IPADDR=$(kubectl -n ${ARGOCD_AGENT_PRINCIPAL_NAMESPACE} get svc argocd-agent-principal -o jsonpath='{.spec.clusterIP}')
 fi
 
+ARGOCD_AGENT_GRPC_SAN="--ip 127.0.0.1,${IPADDR}"
+ARGOCD_AGENT_RESOURCE_PROXY=${IPADDR}
+ARGOCD_AGENT_RESOURCE_PROXY_SAN="--ip 127.0.0.1,${IPADDR}"
+
 if ! command -v argocd-agentctl >/dev/null 2>&1; then
 	echo "Please ensure argocd-agentctl binary is installed in your PATH" >&2
 	exit 1
@@ -46,18 +50,17 @@ fi
 echo "[*] Creating principal TLS configuration"
 argocd-agentctl pki issue principal --upsert \
 	--principal-namespace ${ARGOCD_AGENT_PRINCIPAL_NAMESPACE} \
-	--ip "127.0.0.1,${IPADDR}"
+	${ARGOCD_AGENT_GRPC_SAN}
 echo "  -> Principal TLS config created."
 
 echo "[*] Creating resouce proxy TLS configuration"
 argocd-agentctl pki issue resource-proxy --upsert \
 	--principal-namespace ${ARGOCD_AGENT_PRINCIPAL_NAMESPACE} \
-	--ip "127.0.0.1,${IPADDR}"
+	${ARGOCD_AGENT_RESOURCE_PROXY_SAN}
 echo "  -> Resource proxy TLS config created."
 
 echo "[*] Creating JWT signing key and secret"
-${OPENSSL} genpkey -algorithm RSA -out /tmp/jwt.key -pkeyopt rsa_keygen_bits:2048
-${KUBECTL} create secret generic -n ${ARGOCD_AGENT_PRINCIPAL_NAMESPACE} argocd-agent-jwt --from-file=jwt.key=/tmp/jwt.key
+argocd-agentctl jwt create-key --upsert
 
 AGENTS="agent-managed agent-autonomous"
 for agent in ${AGENTS}; do
@@ -69,9 +72,7 @@ for agent in ${AGENTS}; do
 	if ! argocd-agentctl agent inspect ${agent} >/dev/null 2>&1; then
 		echo "  -> Creating cluster secret for agent configuration"
 		argocd-agentctl agent create ${agent} \
-			--resource-proxy-username ${agent} \
-			--resource-proxy-password ${agent} \
-			--resource-proxy-server ${IPADDR}:443
+			--resource-proxy-server ${ARGOCD_AGENT_RESOURCE_PROXY}:9090
 	else
 		echo "  -> Reusing existing cluster secret for agent configuration"
 	fi

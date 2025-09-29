@@ -86,6 +86,36 @@ metadata:
 spec:
   type: ClusterIP
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-agent-principal-resource-proxy
+  namespace: argocd-e2e-cluster-config  
+spec:
+  ports:
+  - name: resource-proxy
+    port: 9090
+    protocol: TCP
+    targetPort: 9090
+  selector:
+    app.kubernetes.io/name: argocd-agent-principal
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-agent-principal-healthz
+  namespace: argocd-e2e-cluster-config
+spec:
+  ports:
+    - name: healthz
+      protocol: TCP
+      port: 8003
+      targetPort: 8003
+  selector:
+    app.kubernetes.io/name: argocd-agent-principal 
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
