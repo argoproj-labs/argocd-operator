@@ -143,27 +143,24 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Consistently(argoCD, "30s", "5s").ShouldNot(argocdFixture.BeAvailable())
 		})
 
-		It("ensures that missing ClusterTrustBundle aborts startup", func() {
-			if !clusterSupportsClusterTrustBundles(k8sClient, ctx) {
-				Skip("Cluster does not support ClusterTrustBundles")
-			}
-
+		It("ensures that missing Secret aborts startup", func() {
 			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 			defer cleanupFunc()
 
-			By("creating Argo CD instance with missing CTB")
+			By("creating Argo CD instance with missing Secret")
 			argoCD := &argov1beta1api.ArgoCD{
 				ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: ns.Name},
 				Spec: argov1beta1api.ArgoCDSpec{
 					Repo: argov1beta1api.ArgoCDRepoSpec{
 						SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
-							ClusterTrustBundles: []corev1.ClusterTrustBundleProjection{
-								{Name: ptr.To("no-such-ctb"), Path: "good-name.crt"},
+							Secrets: []corev1.SecretProjection{
+								{LocalObjectReference: corev1.LocalObjectReference{Name: "no-such-secret"}},
 							},
 						},
 					},
 				},
 			}
+
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 
 			Eventually(argoCD, "3m", "5s").Should(argocdFixture.HaveServerStatus("Running"))
@@ -209,6 +206,8 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					},
 				},
 			}
+
+			By("verifying correctly established system trust")
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
@@ -241,10 +240,10 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 						SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
 							DropImageCertificates: true, // So we can test against upstream sites that would otherwise be trusted by the image
 							Secrets: []corev1.SecretProjection{{
+								// No Items, Map all
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: secretCert.Name,
 								},
-								Items: []corev1.KeyToPath{}, // Map all
 							}},
 							ConfigMaps: []corev1.ConfigMapProjection{{
 								LocalObjectReference: corev1.LocalObjectReference{
@@ -329,9 +328,10 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 	})
 })
 
+// clusterSupportsClusterTrustBundles detects is the current cluster support ClusterTrustBundles and their projections.
+// This is to verify the behavior on a cluster with and without this not-yet-GA feature turned on.
 func clusterSupportsClusterTrustBundles(k8sClient client.Client, ctx context.Context) bool {
-	ctbl := &certificatesv1alpha1.ClusterTrustBundleList{}
-	err := k8sClient.List(ctx, ctbl)
+	err := k8sClient.List(ctx, &certificatesv1alpha1.ClusterTrustBundleList{})
 	if _, ok := err.(*apiutil.ErrResourceDiscoveryFailed); ok {
 		return false
 	}
@@ -532,7 +532,7 @@ func encodeCert(cert *x509.Certificate) string {
 }
 
 func getPodCertFileCount(k8sClient client.Client, ns *corev1.Namespace) int {
-	rsPod := pod.GetPodByNameRegexp(k8sClient, regexp.MustCompile(".*-repo-server.*"), client.InNamespace(ns.Name))
+	rsPod := findRepoServerPod(k8sClient, ns)
 	out, err := osFixture.ExecCommandWithOutputParam(
 		false,
 		"kubectl", "-n", ns.Name, "exec", "-c", "argocd-repo-server", rsPod.Name, "--",
@@ -548,11 +548,15 @@ func getPodCertFileCount(k8sClient client.Client, ns *corev1.Namespace) int {
 }
 
 func getRepoCertGenerationLog(k8sClient client.Client, ns *corev1.Namespace) string {
-	rsPod := pod.GetPodByNameRegexp(k8sClient, regexp.MustCompile(".*-repo-server.*"), client.InNamespace(ns.Name))
+	rsPod := findRepoServerPod(k8sClient, ns)
 	out, err := osFixture.ExecCommandWithOutputParam(
 		false,
 		"kubectl", "-n", ns.Name, "logs", "-c", "update-ca-certificates", rsPod.Name,
 	)
 	Expect(err).ToNot(HaveOccurred())
 	return out
+}
+
+func findRepoServerPod(k8sClient client.Client, ns *corev1.Namespace) *corev1.Pod {
+	return pod.GetPodByNameRegexp(k8sClient, regexp.MustCompile(".*-repo-server.*"), client.InNamespace(ns.Name))
 }
