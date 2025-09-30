@@ -5,7 +5,7 @@ go 1.24.6
 require (
 	github.com/argoproj/argo-cd/v3 v3.1.7
 	github.com/argoproj/gitops-engine v0.7.1-0.20250905160054-e48120133eec
-	github.com/cert-manager/cert-manager v1.14.4
+	github.com/cert-manager/cert-manager v1.18.2
 	github.com/go-logr/logr v1.4.3
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.1-0.20241114170450-2d3c2a9cc518
@@ -166,7 +166,7 @@ require (
 	k8s.io/kubectl v0.33.1 // indirect
 	k8s.io/kubernetes v1.33.1 // indirect
 	oras.land/oras-go/v2 v2.6.0 // indirect
-	sigs.k8s.io/gateway-api v1.0.0 // indirect
+	sigs.k8s.io/gateway-api v1.1.0 // indirect
 	sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8 // indirect
 	sigs.k8s.io/kustomize/api v0.19.0 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.19.0 // indirect
