@@ -50,7 +50,7 @@ as needed and have them applied across all cluster scoped instances. For example
 These customized ClusterRoles need to be created and referred in ClusterRoleBinding by admin. A user can disable creation of default ClusterRoles by setting `ArgoCD.Spec.DefaultClusterScopedRoleDisabled` field to `true`.
 
 ```yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd

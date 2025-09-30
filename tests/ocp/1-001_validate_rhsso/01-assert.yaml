@@ -1,0 +1,88 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 180
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd-keycloak
+status:
+  phase: Available
+---
+apiVersion: apps.openshift.io/v1
+kind: DeploymentConfig
+metadata:
+  name: keycloak
+spec:
+  selector:
+    deploymentConfig: keycloak
+  strategy:
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        application: keycloak
+        deploymentConfig: keycloak
+      name: keycloak
+    spec:
+      containers:
+      - image: registry.redhat.io/rh-sso-7/sso76-openshift-rhel8@sha256:ec9f60018694dcc5d431ba47d5536b761b71cb3f66684978fe6bb74c157679ac
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: 500m
+            memory: 512Mi
+        volumeMounts:
+        - mountPath: /etc/x509/https
+          name: sso-x509-https-volume
+          readOnly: true
+        - mountPath: /var/run/configmaps/service-ca
+          name: service-ca
+          readOnly: true
+      restartPolicy: Always
+      volumes:
+      - name: sso-x509-https-volume
+        secret:
+          defaultMode: 420
+          secretName: sso-x509-https-secret
+      - configMap:
+          defaultMode: 420
+          name: keycloak-service-ca
+        name: service-ca
+  triggers:
+  - type: ConfigChange
+status:
+  readyReplicas: 1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: keycloak
+spec:
+  tls:
+    termination: reencrypt
+  to:
+    kind: Service
+    name: keycloak
+    weight: 100
+  wildcardPolicy: None
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: keycloak-secret
+type: Opaque
