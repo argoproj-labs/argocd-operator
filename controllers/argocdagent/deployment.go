@@ -503,7 +503,7 @@ func getPrincipalRedisServerAddress(cr *argoproj.ArgoCD) string {
 	if hasRedis(cr) && cr.Spec.ArgoCDAgent.Principal.Redis.ServerAddress != "" {
 		return cr.Spec.ArgoCDAgent.Principal.Redis.ServerAddress
 	}
-	return "argocd-redis:6379"
+	return fmt.Sprintf("%s-%s:%d", cr.Name, "redis", common.ArgoCDDefaultRedisPort)
 }
 
 func getPrincipalRedisCompressionType(cr *argoproj.ArgoCD) string {

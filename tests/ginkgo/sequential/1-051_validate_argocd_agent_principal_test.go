@@ -23,6 +23,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"fmt"
 	"math/big"
 	"net"
 	"strings"
@@ -39,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdagent"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
 	argocdFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/argocd"
@@ -51,8 +53,8 @@ import (
 var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 	const (
-		argoCDName               = "argocd"
-		argoCDAgentPrincipalName = "argocd-agent-principal"
+		argoCDName               = "example"
+		argoCDAgentPrincipalName = "example-agent-principal" // argoCDName + "-agent-principal"
 	)
 
 	Context("1-051_validate_argocd_agent_principal", func() {
@@ -142,13 +144,13 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			clusterRole = &rbacv1.ClusterRole{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "argocd-argocd-agent-principal-1-051-agent-principal",
+					Name: fmt.Sprintf("%s-%s-agent-principal", argoCDName, ns.Name),
 				},
 			}
 
 			clusterRoleBinding = &rbacv1.ClusterRoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "argocd-argocd-agent-principal-1-051-agent-principal",
+					Name: fmt.Sprintf("%s-%s-agent-principal", argoCDName, ns.Name),
 				},
 			}
 
@@ -160,8 +162,8 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				"argocd-agent-resource-proxy-tls",
 			}
 
-			serviceNames = []string{argoCDAgentPrincipalName, "argocd-agent-principal-metrics", "argocd-redis", "argocd-repo-server", "argocd-server", "argocd-agent-principal-resource-proxy", "argocd-agent-principal-healthz"}
-			deploymentNames = []string{"argocd-redis", "argocd-repo-server", "argocd-server"}
+			serviceNames = []string{argoCDAgentPrincipalName, fmt.Sprintf("%s-agent-principal-metrics", argoCDName), fmt.Sprintf("%s-redis", argoCDName), fmt.Sprintf("%s-repo-server", argoCDName), fmt.Sprintf("%s-server", argoCDName), fmt.Sprintf("%s-agent-principal-resource-proxy", argoCDName), fmt.Sprintf("%s-agent-principal-healthz", argoCDName)}
+			deploymentNames = []string{fmt.Sprintf("%s-redis", argoCDName), fmt.Sprintf("%s-repo-server", argoCDName), fmt.Sprintf("%s-server", argoCDName)}
 
 			principalDeployment = &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
@@ -183,7 +185,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				argocdagent.EnvArgoCDPrincipalAuth:                      "mtls:CN=([^,]+)",
 				argocdagent.EnvArgoCDPrincipalEnableResourceProxy:       "true",
 				argocdagent.EnvArgoCDPrincipalKeepAliveMinInterval:      "30s",
-				argocdagent.EnvArgoCDPrincipalRedisServerAddress:        "argocd-redis:6379",
+				argocdagent.EnvArgoCDPrincipalRedisServerAddress:        fmt.Sprintf("%s-%s:%d", argoCDName, "redis", common.ArgoCDDefaultRedisPort),
 				argocdagent.EnvArgoCDPrincipalRedisCompressionType:      "gzip",
 				argocdagent.EnvArgoCDPrincipalLogFormat:                 "text",
 				argocdagent.EnvArgoCDPrincipalEnableWebSocket:           "false",
@@ -392,7 +394,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Eventually(clusterRoleBinding).Should(k8sFixture.NotExistByName())
 			Eventually(principalDeployment).Should(k8sFixture.NotExistByName())
 
-			for _, serviceName := range []string{argoCDAgentPrincipalName, "argocd-agent-principal-metrics"} {
+			for _, serviceName := range []string{argoCDAgentPrincipalName, fmt.Sprintf("%s-agent-principal-metrics", argoCDName)} {
 				service := &corev1.Service{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      serviceName,
