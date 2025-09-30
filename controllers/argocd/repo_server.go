@@ -374,6 +374,12 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 		}
 	}
 
+	log.Info("Applying ArgoCD Repo Server reconciler hook")
+	if err := applyReconcilerHook(cr, deploy, ""); err != nil {
+		log.Error(err, "ArgoCD Repo Server reconciler hook failed")
+		return err
+	}
+
 	existing := newDeploymentWithSuffix("repo-server", "repo-server", cr)
 	deplExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
 	if err != nil {
