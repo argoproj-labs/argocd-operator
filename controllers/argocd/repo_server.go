@@ -593,9 +593,7 @@ func getRepoServerContainerImage(cr *argocdoperatorv1beta1.ArgoCD) string {
 			if found {
 				return argoutil.CombineImageTag(image, tag)
 			}
-		} else if !defaultImg && !defaultTag {
-			return argoutil.CombineImageTag(img, tag)
-		} else {
+		} else if defaultImg && defaultTag {
 			return e
 		}
 	}
