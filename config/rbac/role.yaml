@@ -60,6 +60,13 @@ rules:
   verbs:
   - update
 - apiGroups:
+  - argocd-image-updater.argoproj.io
+  resources:
+  - imageupdaters
+  - imageupdaters/finalizers
+  verbs:
+  - '*'
+- apiGroups:
   - argoproj.io
   resources:
   - applications

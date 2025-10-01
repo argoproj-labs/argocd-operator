@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"time"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -14,6 +13,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
@@ -400,164 +400,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, 
 		WorkingDir: "/app",
 	}}
 
-	// fetch existing deployment by name
-	deploymentChanged := false
-	explanation := ""
-	existingDeployment := &appsv1.Deployment{}
-	if err := r.Get(context.TODO(), types.NamespacedName{Name: desiredDeployment.Name, Namespace: cr.Namespace}, existingDeployment); err != nil {
-		if !errors.IsNotFound(err) {
-			return fmt.Errorf("failed to get the deployment associated with %s : %s", existingDeployment.Name, err)
-		}
-
-		// deployment does not exist and shouldn't, nothing to do here
-		if !cr.Spec.Notifications.Enabled {
-			return nil
-		}
-
-		// deployment does not exist but should, so it should be created
-		if err := controllerutil.SetControllerReference(cr, desiredDeployment, r.Scheme); err != nil {
-			return err
-		}
-
-		argoutil.LogResourceCreation(log, desiredDeployment)
-		return r.Create(context.TODO(), desiredDeployment)
-	}
-
-	// deployment exists but shouldn't, so it should be deleted
-	if !cr.Spec.Notifications.Enabled {
-		argoutil.LogResourceDeletion(log, existingDeployment, "notifications are disabled")
-		return r.Delete(context.TODO(), existingDeployment)
-	}
-
-	// deployment exists and should. Reconcile deployment if changed
-	updateNodePlacement(existingDeployment, desiredDeployment, &deploymentChanged, &explanation)
-
-	if existingDeployment.Spec.Template.Spec.Containers[0].Image != desiredDeployment.Spec.Template.Spec.Containers[0].Image {
-		existingDeployment.Spec.Template.Spec.Containers[0].Image = desiredDeployment.Spec.Template.Spec.Containers[0].Image
-		existingDeployment.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-		if deploymentChanged {
-			explanation = ", "
-		}
-		explanation += "container image"
-		deploymentChanged = true
-	}
-
-	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Command, desiredDeployment.Spec.Template.Spec.Containers[0].Command) {
-		existingDeployment.Spec.Template.Spec.Containers[0].Command = desiredDeployment.Spec.Template.Spec.Containers[0].Command
-		if deploymentChanged {
-			explanation = ", "
-		}
-		explanation += "container command"
-		deploymentChanged = true
-	}
-
-	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Env,
-		desiredDeployment.Spec.Template.Spec.Containers[0].Env) {
-		existingDeployment.Spec.Template.Spec.Containers[0].Env = desiredDeployment.Spec.Template.Spec.Containers[0].Env
-		if deploymentChanged {
-			explanation = ", "
-		}
-		explanation += "container env"
-		deploymentChanged = true
-	}
-
-	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Volumes, desiredDeployment.Spec.Template.Spec.Volumes) {
-		existingDeployment.Spec.Template.Spec.Volumes = desiredDeployment.Spec.Template.Spec.Volumes
-		if deploymentChanged {
-			explanation = ", "
-		}
-		explanation += "volumes"
-		deploymentChanged = true
-	}
-
-	if !reflect.DeepEqual(existingDeployment.Spec.Replicas, desiredDeployment.Spec.Replicas) {
-		existingDeployment.Spec.Replicas = desiredDeployment.Spec.Replicas
-		if deploymentChanged {
-			explanation = ", "
-		}
-		explanation += "replicas"
-		deploymentChanged = true
-	}
-
-	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, desiredDeployment.Spec.Template.Spec.Containers[0].VolumeMounts) {
-		existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = desiredDeployment.Spec.Template.Spec.Containers[0].VolumeMounts
-		if deploymentChanged {
-			explanation = ", "
-		}
-		explanation += "container volume mounts"
-		deploymentChanged = true
-	}
-
-	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Resources, desiredDeployment.Spec.Template.Spec.Containers[0].Resources) {
-		existingDeployment.Spec.Template.Spec.Containers[0].Resources = desiredDeployment.Spec.Template.Spec.Containers[0].Resources
-		if deploymentChanged {
-			explanation = ", "
-		}
-		explanation += "container resources"
-		deploymentChanged = true
-	}
-
-	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].SecurityContext, desiredDeployment.Spec.Template.Spec.Containers[0].SecurityContext) {
-		existingDeployment.Spec.Template.Spec.Containers[0].SecurityContext = desiredDeployment.Spec.Template.Spec.Containers[0].SecurityContext
-		if deploymentChanged {
-			explanation = ", "
-		}
-		explanation += "container security context"
-		deploymentChanged = true
-	}
-
-	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.SecurityContext, desiredDeployment.Spec.Template.Spec.SecurityContext) {
-		existingDeployment.Spec.Template.Spec.SecurityContext = desiredDeployment.Spec.Template.Spec.SecurityContext
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "pod security context"
-		deploymentChanged = true
-	}
-
-	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.ServiceAccountName, desiredDeployment.Spec.Template.Spec.ServiceAccountName) {
-		existingDeployment.Spec.Template.Spec.ServiceAccountName = desiredDeployment.Spec.Template.Spec.ServiceAccountName
-		if deploymentChanged {
-			explanation = ", "
-		}
-		explanation += "service account name"
-		deploymentChanged = true
-	}
-
-	if !reflect.DeepEqual(existingDeployment.Labels, desiredDeployment.Labels) {
-		existingDeployment.Labels = desiredDeployment.Labels
-		if deploymentChanged {
-			explanation = ", "
-		}
-		explanation += "labels"
-		deploymentChanged = true
-	}
-
-	if !reflect.DeepEqual(existingDeployment.Spec.Template.Labels, desiredDeployment.Spec.Template.Labels) {
-		existingDeployment.Spec.Template.Labels = desiredDeployment.Spec.Template.Labels
-		if deploymentChanged {
-			explanation = ", "
-		}
-		explanation += "pod labels"
-		deploymentChanged = true
-	}
-
-	if !reflect.DeepEqual(existingDeployment.Spec.Selector, desiredDeployment.Spec.Selector) {
-		existingDeployment.Spec.Selector = desiredDeployment.Spec.Selector
-		if deploymentChanged {
-			explanation = ", "
-		}
-		explanation += "selector"
-		deploymentChanged = true
-	}
-
-	if deploymentChanged {
-		argoutil.LogResourceUpdate(log, existingDeployment, "updating", explanation)
-		return r.Update(context.TODO(), existingDeployment)
-	}
-
-	return nil
-
+	return r.reconcileDeploymentHelper(cr, desiredDeployment, "notifications", cr.Spec.Notifications.Enabled)
 }
 
 // reconcileNotificationsService will ensure that the Service for the Notifications controller metrics is present.

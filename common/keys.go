@@ -238,4 +238,8 @@ const (
 	// ALLOW_NAMESPACE_MANAGEMENT_IN_NAMESPACE_SCOPED_INSTANCES is an environment variable that controls whether
 	// the Namespace Management feature is enabled.
 	EnableManagedNamespace = "ALLOW_NAMESPACE_MANAGEMENT_IN_NAMESPACE_SCOPED_INSTANCES"
+
+	// ArgoCDImageUpdaterImageEnvName is the environment variable used to get the image
+	// to used for the Image Updater container.
+	ArgoCDImageUpdaterImageEnvName = "ARGOCD_IMAGE_UPDATER_IMAGE"
 )

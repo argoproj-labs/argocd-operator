@@ -7,6 +7,7 @@ resources:
 - bases/argoproj.io_applications.yaml
 - bases/argoproj.io_applicationsets.yaml
 - bases/argoproj.io_appprojects.yaml
+- bases/argocd-image-updater.argoproj.io_imageupdaters.yaml
 - bases/argoproj.io_notificationsconfigurations.yaml
 
 - bases/argoproj.io_namespacemanagements.yaml
