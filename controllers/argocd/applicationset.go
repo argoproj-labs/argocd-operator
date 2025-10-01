@@ -868,6 +868,10 @@ func getApplicationSetContainerImage(cr *argoproj.ArgoCD) string {
 			if found {
 				return argoutil.CombineImageTag(image, tag)
 			}
+			image, _, found = strings.Cut(e, ":")
+			if found {
+				return argoutil.CombineImageTag(image, tag)
+			}
 		} else if defaultImg && defaultTag {
 			return e
 		}

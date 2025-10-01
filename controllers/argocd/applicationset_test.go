@@ -1375,6 +1375,13 @@ func TestGetApplicationSetContainerImage(t *testing.T) {
 	out = getApplicationSetContainerImage(&cr)
 	assert.Equal(t, "testingimage:customversion", out)
 
+	// when env var in wrong format is set and also spec version field is set but image field is not set
+	cr.Spec.Image = ""
+	cr.Spec.Version = "customversion"
+	os.Setenv(common.ArgoCDImageEnvName, "testingimage:sha123456")
+	out = getApplicationSetContainerImage(&cr)
+	assert.Equal(t, "testingimage:customversion", out)
+
 	// when env var is not set and spec image and version fields are not set, default image should be returned
 	os.Setenv(common.ArgoCDImageEnvName, "")
 	cr.Spec.Image = ""
