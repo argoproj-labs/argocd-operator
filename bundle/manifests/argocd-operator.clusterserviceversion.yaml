@@ -257,7 +257,7 @@ metadata:
     capabilities: Deep Insights
     categories: Integration & Delivery
     certified: "false"
-    createdAt: "2025-08-28T14:32:44Z"
+    createdAt: "2025-10-14T18:26:44Z"
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v1.35.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
@@ -1565,6 +1565,9 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       version: v1beta1
+    - kind: ImageUpdater
+      name: imageupdaters.argocd-image-updater.argoproj.io
+      version: v1alpha1
     - description: NamespaceManagement is the Schema for the namespacemanagements
         API
       displayName: Namespace Management
@@ -1767,6 +1770,13 @@ spec:
           - deployments/finalizers
           verbs:
           - update
+        - apiGroups:
+          - argocd-image-updater.argoproj.io
+          resources:
+          - imageupdaters
+          - imageupdaters/finalizers
+          verbs:
+          - '*'
         - apiGroups:
           - argoproj.io
           resources:

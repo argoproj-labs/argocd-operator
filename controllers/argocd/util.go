@@ -29,6 +29,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
@@ -61,6 +62,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -73,12 +75,18 @@ const (
 )
 
 var (
-	versionAPIFound = false
+	versionAPIFound      = false
+	imageUpdaterAPIFound = false
 )
 
 // IsVersionAPIAvailable returns true if the version api is present
 func IsVersionAPIAvailable() bool {
 	return versionAPIFound
+}
+
+// IsImageUpdaterAPIAvailable returns true if the image updater api is present
+func IsImageUpdaterAPIAvailable() bool {
+	return imageUpdaterAPIFound
 }
 
 // verifyVersionAPI will verify that the template API is present.
@@ -88,6 +96,16 @@ func verifyVersionAPI() error {
 		return err
 	}
 	versionAPIFound = found
+	return nil
+}
+
+// verifyImageUpdaterAPI will verify that the ImageUpdater API is present.
+func verifyImageUpdaterAPI() error {
+	found, err := argoutil.VerifyAPI("argocd-image-updater.argoproj.io", "v1alpha1")
+	if err != nil {
+		return err
+	}
+	imageUpdaterAPIFound = found
 	return nil
 }
 
@@ -661,6 +679,11 @@ func InspectCluster() error {
 		return err
 	}
 
+	if err := verifyImageUpdaterAPI(); err != nil {
+		log.Error(err, "could not verify ImageUpdater API, disabling feature")
+		imageUpdaterAPIFound = false
+	}
+
 	if err := verifyVersionAPI(); err != nil {
 		return err
 	}
@@ -848,6 +871,15 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *
 		if err := r.reconcileNotificationsController(cr); err != nil {
 			return err
 		}
+	}
+
+	if IsImageUpdaterAPIAvailable() {
+		log.Info("reconciling Image Updater controller")
+		if err := r.reconcileImageUpdaterController(cr); err != nil {
+			return err
+		}
+	} else {
+		log.Info("ImageUpdater CRD not found, skipping reconciliation of Image Updater controller. Please install argocd-image-updater CRD to use this feature.")
 	}
 
 	if err := r.reconcileRepoServerTLSSecret(cr, argocdStatus); err != nil {
@@ -2038,4 +2070,167 @@ func getNamespacesToDelete(oldList, newList []argoproj.ManagedNamespaces, allNam
 		}
 	}
 	return namespacesToDelete
+}
+
+// reconcileDeploymentHelper is a generic helper that reconciles a Deployment resource.
+// It can be used for various components by passing in the desired deployment,
+// the component's name, and a boolean indicating if the component is enabled.
+func (r *ReconcileArgoCD) reconcileDeploymentHelper(cr *argoproj.ArgoCD, desiredDeployment *appsv1.Deployment, componentName string, enabled bool) error {
+	// fetch existing deployment by name
+	deploymentChanged := false
+	explanation := ""
+	existingDeployment := &appsv1.Deployment{}
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: desiredDeployment.Name, Namespace: cr.Namespace}, existingDeployment); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to get the deployment associated with %s : %s", desiredDeployment.Name, err)
+		}
+
+		// deployment does not exist and shouldn't, nothing to do here
+		if !enabled {
+			return nil
+		}
+
+		// deployment does not exist but should, so it should be created
+		if err := controllerutil.SetControllerReference(cr, desiredDeployment, r.Scheme); err != nil {
+			return err
+		}
+
+		argoutil.LogResourceCreation(log, desiredDeployment)
+		return r.Create(context.TODO(), desiredDeployment)
+	}
+
+	// deployment exists but shouldn't, so it should be deleted
+	if !enabled {
+		argoutil.LogResourceDeletion(log, existingDeployment, fmt.Sprintf("%s is disabled", componentName))
+		return r.Delete(context.TODO(), existingDeployment)
+	}
+
+	// deployment exists and should. Reconcile deployment if changed
+	updateNodePlacement(existingDeployment, desiredDeployment, &deploymentChanged, &explanation)
+
+	if existingDeployment.Spec.Template.Spec.Containers[0].Image != desiredDeployment.Spec.Template.Spec.Containers[0].Image {
+		existingDeployment.Spec.Template.Spec.Containers[0].Image = desiredDeployment.Spec.Template.Spec.Containers[0].Image
+		existingDeployment.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "container image"
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Command, desiredDeployment.Spec.Template.Spec.Containers[0].Command) {
+		existingDeployment.Spec.Template.Spec.Containers[0].Command = desiredDeployment.Spec.Template.Spec.Containers[0].Command
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "container command"
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Env,
+		desiredDeployment.Spec.Template.Spec.Containers[0].Env) {
+		existingDeployment.Spec.Template.Spec.Containers[0].Env = desiredDeployment.Spec.Template.Spec.Containers[0].Env
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "container env"
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Volumes, desiredDeployment.Spec.Template.Spec.Volumes) {
+		existingDeployment.Spec.Template.Spec.Volumes = desiredDeployment.Spec.Template.Spec.Volumes
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "volumes"
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Replicas, desiredDeployment.Spec.Replicas) {
+		existingDeployment.Spec.Replicas = desiredDeployment.Spec.Replicas
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "replicas"
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, desiredDeployment.Spec.Template.Spec.Containers[0].VolumeMounts) {
+		existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = desiredDeployment.Spec.Template.Spec.Containers[0].VolumeMounts
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "container volume mounts"
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Resources, desiredDeployment.Spec.Template.Spec.Containers[0].Resources) {
+		existingDeployment.Spec.Template.Spec.Containers[0].Resources = desiredDeployment.Spec.Template.Spec.Containers[0].Resources
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "container resources"
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].SecurityContext, desiredDeployment.Spec.Template.Spec.Containers[0].SecurityContext) {
+		existingDeployment.Spec.Template.Spec.Containers[0].SecurityContext = desiredDeployment.Spec.Template.Spec.Containers[0].SecurityContext
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "container security context"
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.SecurityContext, desiredDeployment.Spec.Template.Spec.SecurityContext) {
+		existingDeployment.Spec.Template.Spec.SecurityContext = desiredDeployment.Spec.Template.Spec.SecurityContext
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "pod security context"
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.ServiceAccountName, desiredDeployment.Spec.Template.Spec.ServiceAccountName) {
+		existingDeployment.Spec.Template.Spec.ServiceAccountName = desiredDeployment.Spec.Template.Spec.ServiceAccountName
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "service account name"
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Labels, desiredDeployment.Labels) {
+		existingDeployment.Labels = desiredDeployment.Labels
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "labels"
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Labels, desiredDeployment.Spec.Template.Labels) {
+		existingDeployment.Spec.Template.Labels = desiredDeployment.Spec.Template.Labels
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "pod labels"
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Selector, desiredDeployment.Spec.Selector) {
+		existingDeployment.Spec.Selector = desiredDeployment.Spec.Selector
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "selector"
+		deploymentChanged = true
+	}
+
+	if deploymentChanged {
+		argoutil.LogResourceUpdate(log, existingDeployment, "updating", explanation)
+		return r.Update(context.TODO(), existingDeployment)
+	}
+
+	return nil
 }

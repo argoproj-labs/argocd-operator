@@ -289,6 +289,9 @@ vs-ssh.visualstudio.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7Hr1oTWqNqOlzGJOf
 
 	// ArgoCDAgentPrincipalDefaultImageName is the default image name for the ArgoCD agent principal.
 	ArgoCDAgentPrincipalDefaultImageName = "quay.io/argoprojlabs/argocd-agent:v0.3.2"
+
+	// ArgoCDImageUpdaterControllerComponent is the name of the Image Updater controller control plane component
+	ArgoCDImageUpdaterControllerComponent = "argocd-image-updater-controller"
 )
 
 // DefaultLabels returns the default set of labels for controllers.
