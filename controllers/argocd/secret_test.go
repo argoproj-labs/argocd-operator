@@ -128,12 +128,13 @@ func Test_ReconcileArgoCD_ReconcileRepoTLSSecret(t *testing.T) {
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-		err := r.reconcileRepoServerTLSSecret(argocd)
+		argocdStatus := argoproj.ArgoCDStatus{}
+		err := r.reconcileRepoServerTLSSecret(argocd, &argocdStatus)
 		if err != nil {
 			t.Errorf("Error should be nil, but is %v", err)
 		}
-		if shasum != argocd.Status.RepoTLSChecksum {
-			t.Errorf("Error in SHA256 sum of secret, want=%s got=%s", shasum, argocd.Status.RepoTLSChecksum)
+		if shasum != argocdStatus.RepoTLSChecksum {
+			t.Errorf("Error in SHA256 sum of secret, want=%s got=%s", shasum, argocdStatus.RepoTLSChecksum)
 		}
 
 		// Workloads should have been requested to re-rollout on a change
@@ -156,8 +157,14 @@ func Test_ReconcileArgoCD_ReconcileRepoTLSSecret(t *testing.T) {
 			t.Errorf("Expected rollout of argocd-application-server, but it didn't happen: %v", ctrlSts.Spec.Template.Labels)
 		}
 
+		argocd.Status = argocdStatus
+		err = r.Status().Update(context.TODO(), argocd)
+		assert.NoError(t, err)
+		argocdStatus = argoproj.ArgoCDStatus{}
+
 		// Second run - no change
-		err = r.reconcileRepoServerTLSSecret(argocd)
+		err = r.reconcileRepoServerTLSSecret(argocd, &argocdStatus)
+
 		if err != nil {
 			t.Errorf("Error should be nil, but is %v", err)
 		}
@@ -197,12 +204,17 @@ func Test_ReconcileArgoCD_ReconcileRepoTLSSecret(t *testing.T) {
 		sumOver = append(sumOver, key...)
 		shasum = fmt.Sprintf("%x", sha256.Sum256(sumOver))
 
+		argocd.Status = argocdStatus
+		err = r.Status().Update(context.TODO(), argocd)
+		assert.NoError(t, err)
+		argocdStatus = argoproj.ArgoCDStatus{}
+
 		// Second run - no change
-		err = r.reconcileRepoServerTLSSecret(argocd)
+		err = r.reconcileRepoServerTLSSecret(argocd, &argocdStatus)
 		if err != nil {
 			t.Errorf("Error should be nil, but is %v", err)
 		}
-		if shasum != argocd.Status.RepoTLSChecksum {
+		if shasum != argocdStatus.RepoTLSChecksum {
 			t.Errorf("Error in SHA256 sum of secret, want=%s got=%s", shasum, argocd.Status.RepoTLSChecksum)
 		}
 
@@ -421,12 +433,13 @@ func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-		err := r.reconcileRedisTLSSecret(argocd, true)
+		argocdStatus := &argoproj.ArgoCDStatus{}
+		err := r.reconcileRedisTLSSecret(argocd, true, argocdStatus)
 		if err != nil {
 			t.Errorf("Error should be nil, but is %v", err)
 		}
-		if shasum != argocd.Status.RedisTLSChecksum {
-			t.Errorf("Error in SHA256 sum of secret, want=%s got=%s", shasum, argocd.Status.RedisTLSChecksum)
+		if shasum != argocdStatus.RedisTLSChecksum {
+			t.Errorf("Error in SHA256 sum of secret, want=%s got=%s", shasum, argocdStatus.RedisTLSChecksum)
 		}
 
 		certChangedLabel := "redis.tls.cert.changed"
@@ -457,13 +470,18 @@ func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 			t.Errorf("Expected rollout of argocd-application-server, but it didn't happen: %v", ctrlSts.Spec.Template.Labels)
 		}
 
+		argocd.Status = *argocdStatus
+		err = r.Status().Update(context.TODO(), argocd)
+		assert.NoError(t, err)
+		argocdStatus = &argoproj.ArgoCDStatus{}
+
 		// Second run - no change
-		err = r.reconcileRedisTLSSecret(argocd, true)
+		err = r.reconcileRedisTLSSecret(argocd, true, argocdStatus)
 		if err != nil {
 			t.Errorf("Error should be nil, but is %v", err)
 		}
-		if shasum != argocd.Status.RedisTLSChecksum {
-			t.Errorf("Error in SHA256 sum of secret, want=%s got=%s", shasum, argocd.Status.RepoTLSChecksum)
+		if argocdStatus.RedisTLSChecksum != "" { // The checksum should be "" because it has not changed.
+			t.Errorf("Error in SHA256 sum of secret, want='%s' got='%s'", "", argocdStatus.RedisTLSChecksum)
 		}
 
 		// This time, label should not have changed
@@ -503,13 +521,18 @@ func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 		sumOver = append(sumOver, key...)
 		shasum = fmt.Sprintf("%x", sha256.Sum256(sumOver))
 
+		argocd.Status = *argocdStatus
+		err = r.Status().Update(context.TODO(), argocd)
+		assert.NoError(t, err)
+		argocdStatus = &argoproj.ArgoCDStatus{}
+
 		// Second run - no change
-		err = r.reconcileRedisTLSSecret(argocd, true)
+		err = r.reconcileRedisTLSSecret(argocd, true, argocdStatus)
 		if err != nil {
 			t.Errorf("Error should be nil, but is %v", err)
 		}
-		if shasum != argocd.Status.RedisTLSChecksum {
-			t.Errorf("Error in SHA256 sum of secret, want=%s got=%s", shasum, argocd.Status.RedisTLSChecksum)
+		if shasum != argocdStatus.RedisTLSChecksum {
+			t.Errorf("Error in SHA256 sum of secret, want=%s got=%s", shasum, argocdStatus.RedisTLSChecksum)
 		}
 
 		// This time, label should have changed

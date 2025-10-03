@@ -615,7 +615,7 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoproj.ArgoCD)
 // has changed since our last reconciliation loop. It does so by comparing the
 // checksum of tls.crt and tls.key in the status of the ArgoCD CR against the
 // values calculated from the live state in the cluster.
-func (r *ReconcileArgoCD) reconcileRedisTLSSecret(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
+func (r *ReconcileArgoCD) reconcileRedisTLSSecret(cr *argoproj.ArgoCD, useTLSForRedis bool, argocdStatus *argoproj.ArgoCDStatus) error {
 	var tlsSecretObj corev1.Secret
 	var sha256sum string
 
@@ -645,15 +645,6 @@ func (r *ReconcileArgoCD) reconcileRedisTLSSecret(cr *argoproj.ArgoCD, useTLSFor
 	// The content of the TLS secret has changed since we last looked if the
 	// calculated checksum doesn't match the one stored in the status.
 	if cr.Status.RedisTLSChecksum != sha256sum {
-		// We store the value early to prevent a possible restart loop, for the
-		// cost of a possibly missed restart when we cannot update the status
-		// field of the resource.
-		cr.Status.RedisTLSChecksum = sha256sum
-		err = r.Client.Status().Update(context.TODO(), cr)
-		if err != nil {
-			return err
-		}
-
 		// Trigger rollout of redis
 		if cr.Spec.HA.Enabled {
 			err = r.recreateRedisHAConfigMap(cr, useTLSForRedis)
@@ -713,6 +704,11 @@ func (r *ReconcileArgoCD) reconcileRedisTLSSecret(cr *argoproj.ArgoCD, useTLSFor
 		if err != nil {
 			return err
 		}
+
+		// We set the value on ArgoCD status field (where it will be set on cluster object later in the process).
+		// This is set to prevent a possible restart loop.
+		argocdStatus.RedisTLSChecksum = sha256sum
+
 	}
 
 	return nil
