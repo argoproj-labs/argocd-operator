@@ -426,6 +426,15 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 			explanation += "container security context"
 			changed = true
 		}
+
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.SecurityContext, existing.Spec.Template.Spec.SecurityContext) {
+			existing.Spec.Template.Spec.SecurityContext = deploy.Spec.Template.Spec.SecurityContext
+			if changed {
+				explanation += ", "
+			}
+			explanation += "pod security context"
+			changed = true
+		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].VolumeMounts, existing.Spec.Template.Spec.Containers[0].VolumeMounts) {
 			existing.Spec.Template.Spec.Containers[0].VolumeMounts = deploy.Spec.Template.Spec.Containers[0].VolumeMounts
 			if changed {

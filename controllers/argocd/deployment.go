@@ -1188,6 +1188,14 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			explanation += "container security context"
 			changed = true
 		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.SecurityContext, existing.Spec.Template.Spec.SecurityContext) {
+			existing.Spec.Template.Spec.SecurityContext = deploy.Spec.Template.Spec.SecurityContext
+			if changed {
+				explanation += ", "
+			}
+			explanation += "pod security context"
+			changed = true
+		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[1:],
 			existing.Spec.Template.Spec.Containers[1:]) {
 			existing.Spec.Template.Spec.Containers = append(existing.Spec.Template.Spec.Containers[0:1],
