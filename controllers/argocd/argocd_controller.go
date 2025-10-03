@@ -141,7 +141,7 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 		message = "unable to reconcile ArgoCD CR .status field"
 	}
 
-	if updateStatusErr := updateStatusConditionOfArgoCD(ctx, createCondition(message), argocd, argocdStatus, r.Client, log); updateStatusErr != nil {
+	if updateStatusErr := updateStatusAndConditionsOfArgoCD(ctx, createCondition(message), argocd, argocdStatus, r.Client, log); updateStatusErr != nil {
 		log.Error(updateStatusErr, "unable to update status of ArgoCD")
 		return reconcile.Result{}, updateStatusErr
 	}
@@ -173,6 +173,10 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, argocd, argoCDStatus, err
 	}
+
+	// Redis TLS Checksum and Repo Server TLS Checksum should be preserved between reconcile calls (the lifecycle of these fields is greater than a single reconcile call, unlike the other fields in .status)
+	argoCDStatus.RepoTLSChecksum = argocd.Status.RepoTLSChecksum
+	argoCDStatus.RedisTLSChecksum = argocd.Status.RedisTLSChecksum
 
 	// If the number of notification replicas is greater than 1, display a warning.
 	if argocd.Spec.Notifications.Replicas != nil && *argocd.Spec.Notifications.Replicas > 1 {

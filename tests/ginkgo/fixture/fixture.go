@@ -594,3 +594,7 @@ func outputPodLog(podSubstring string) {
 	GinkgoWriter.Println("----------------------------------------------------------------")
 
 }
+
+func IsUpstreamOperatorTests() bool {
+	return true // This function should return true if running from argocd-operator repo, false if running from gitops-operator repo. This is to distinguish between tests in upstream argocd-operator and downstream gitops-operator repos.
+}

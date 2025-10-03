@@ -798,11 +798,11 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *
 		}
 	}
 
-	if err := r.reconcileRepoServerTLSSecret(cr); err != nil {
+	if err := r.reconcileRepoServerTLSSecret(cr, argocdStatus); err != nil {
 		return err
 	}
 
-	if err := r.reconcileRedisTLSSecret(cr, useTLSForRedis); err != nil {
+	if err := r.reconcileRedisTLSSecret(cr, useTLSForRedis, argocdStatus); err != nil {
 		return err
 	}
 
@@ -1546,8 +1546,8 @@ func addKubernetesData(source map[string]string, live map[string]string) {
 	}
 }
 
-// updateStatusConditionOfArgoCD calls Set Condition of ArgoCD status
-func updateStatusConditionOfArgoCD(ctx context.Context, condition metav1.Condition, cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus, k8sClient client.Client, log logr.Logger) error {
+// updateStatusAndConditionsOfArgoCD will update .status field with provided param, and upsert .status.conditions with provided condition
+func updateStatusAndConditionsOfArgoCD(ctx context.Context, condition metav1.Condition, cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus, k8sClient client.Client, log logr.Logger) error {
 	changed, newConditions := insertOrUpdateConditionsInSlice(condition, cr.Status.Conditions)
 
 	// get the latest version of argocd instance
