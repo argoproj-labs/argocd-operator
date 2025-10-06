@@ -1357,21 +1357,32 @@ func TestGetApplicationSetContainerImage(t *testing.T) {
 	cr := argoproj.ArgoCD{}
 	cr.Spec = argoproj.ArgoCDSpec{}
 	cr.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{}
-	os.Setenv(common.ArgoCDImageEnvName, "testingimage@sha123456")
+	os.Setenv(common.ArgoCDImageEnvName, "testingimage@sha:123456")
 	out := getApplicationSetContainerImage(&cr)
-	assert.Equal(t, "testingimage@sha123456", out)
+	assert.Equal(t, "testingimage@sha:123456", out)
 
 	// when env var is set and also spec image and version fields are set, spec fields should be returned
 	cr.Spec.Image = "customimage"
 	cr.Spec.Version = "sha256:1234567890abcdef"
-	os.Setenv(common.ArgoCDImageEnvName, "testingimage@sha123456")
+	os.Setenv(common.ArgoCDImageEnvName, "testingimage@sha:123456")
 	out = getApplicationSetContainerImage(&cr)
 	assert.Equal(t, "customimage@sha256:1234567890abcdef", out)
 
-	// when env var is set and also spec version field is set but image field is not set, should return env var image with spec version tag
+	// when spec.image and spec.applicationset.image is passed and also env is passed, container level image should take priority
+	cr.Spec.Image = "customimage"
+	cr.Spec.Version = "sha256:1234567890abcdef"
+	cr.Spec.ApplicationSet.Image = "containerImage"
+	cr.Spec.ApplicationSet.Version = "sha256:0.0.1"
+	os.Setenv(common.ArgoCDImageEnvName, "testingimage@sha:123456")
+	out = getApplicationSetContainerImage(&cr)
+	assert.Equal(t, "containerImage@sha256:0.0.1", out)
+
+	// when env var is set and also spec version field is set but image field is not set, should return env var image with spec version
 	cr.Spec.Image = ""
 	cr.Spec.Version = "customversion"
-	os.Setenv(common.ArgoCDImageEnvName, "testingimage@sha123456")
+	cr.Spec.ApplicationSet.Image = ""
+	cr.Spec.ApplicationSet.Version = ""
+	os.Setenv(common.ArgoCDImageEnvName, "testingimage@sha:123456")
 	out = getApplicationSetContainerImage(&cr)
 	assert.Equal(t, "testingimage:customversion", out)
 

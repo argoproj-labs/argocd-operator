@@ -190,33 +190,46 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 	return cmd
 }
 
-// getArgoContainerImage will return the container image for ArgoCD.
-func getArgoContainerImage(cr *argoproj.ArgoCD) string {
-	defaultTag, defaultImg := false, false
-	img := cr.Spec.Image
-	if img == "" {
-		img = common.ArgoCDDefaultArgoImage
-		defaultImg = true
-	}
+// getArgoCDImageAndTag determines the image and tag for an ArgoCD component, considering container-level and common-level overrides.
+// Returns: isDefaultImg, isDefaultTag, image, tag
+func GetArgoCDImageAndTag(envVar, containerSpecImage, containerSpecVersion, commonSpecImage, commonSpecVersion string) (string, string) {
+	img := common.ArgoCDDefaultArgoImage
+	tag := common.ArgoCDDefaultArgoVersion
 
-	tag := cr.Spec.Version
-	if tag == "" {
-		tag = common.ArgoCDDefaultArgoVersion
-		defaultTag = true
-	}
-	if e := os.Getenv(common.ArgoCDImageEnvName); e != "" {
-		if defaultImg && !defaultTag {
-			image, _, found := strings.Cut(e, "@")
-			if found {
-				return argoutil.CombineImageTag(image, tag)
-			}
-		} else if !defaultImg && !defaultTag {
-			return argoutil.CombineImageTag(img, tag)
-		} else {
-			return e
+	if envVal := os.Getenv(envVar); envVal != "" {
+		if envImage, envVersion, found := strings.Cut(envVal, "@"); found {
+			img, tag = envImage, envVersion
+		} else if envImage, envVersion, found := strings.Cut(envVal, ":"); found {
+			img, tag = envImage, envVersion
 		}
 	}
-	return argoutil.CombineImageTag(img, tag)
+	if containerSpecImage != "" {
+		img = containerSpecImage
+	} else if commonSpecImage != "" {
+		img = commonSpecImage
+	}
+
+	if containerSpecVersion != "" {
+		tag = containerSpecVersion
+	} else if commonSpecVersion != "" {
+		tag = commonSpecVersion
+	}
+	return img, tag
+}
+
+// resolveArgoCDImageFromEnv returns the final image string for an ArgoCD component, using environment variable overrides if present.
+// If the env var is set and the image/tag are defaults, it will use the env var and override the tag if needed.
+func ResolveArgoCDImageFromEnv(image, tag string) string {
+	return argoutil.CombineImageTag(image, tag)
+}
+
+// getArgoContainerImage will return the container image for ArgoCD.
+func getArgoContainerImage(cr *argoproj.ArgoCD) string {
+	img, tag := GetArgoCDImageAndTag(common.ArgoCDImageEnvName, "", "", cr.Spec.Image, cr.Spec.Version)
+	return ResolveArgoCDImageFromEnv(
+		img,
+		tag,
+	)
 }
 
 // getArgoServerInsecure returns the insecure value for the ArgoCD Server component.
