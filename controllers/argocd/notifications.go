@@ -506,6 +506,15 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, 
 		deploymentChanged = true
 	}
 
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.SecurityContext, desiredDeployment.Spec.Template.Spec.SecurityContext) {
+		existingDeployment.Spec.Template.Spec.SecurityContext = desiredDeployment.Spec.Template.Spec.SecurityContext
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "pod security context"
+		deploymentChanged = true
+	}
+
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.ServiceAccountName, desiredDeployment.Spec.Template.Spec.ServiceAccountName) {
 		existingDeployment.Spec.Template.Spec.ServiceAccountName = desiredDeployment.Spec.Template.Spec.ServiceAccountName
 		if deploymentChanged {
