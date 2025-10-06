@@ -39,6 +39,7 @@ const (
 	argocdInstanceName         = "argocd"
 	argocdNamespace            = "argocd"
 	defaultImage               = "argoproj/argocd@sha123456"
+	expectedDefaultImage       = "argoproj/argocd:sha123456"
 )
 
 // --- Local Helpers (kept inline for reuse in this test) ---
@@ -126,7 +127,7 @@ var _ = Describe("Validate deployment image and version", func() {
 			By("ensuring operator env variable ARGOCD_IMAGE is set")
 			deploy := &appsv1.Deployment{}
 			Expect(c.Get(ctx, types.NamespacedName{Name: controllerManagerName, Namespace: controllerManagerNamespace}, deploy)).To(Succeed())
-			image, added := ensureEnv(ctx, c, deploy)
+			_, added := ensureEnv(ctx, c, deploy)
 
 			By("creating namespace-scoped ArgoCD without image/version")
 			ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: argocdNamespace}}
@@ -159,10 +160,10 @@ var _ = Describe("Validate deployment image and version", func() {
 
 			By("verifying deployments/statefulset use env image")
 			checkImages(map[string]string{
-				"argocd-repo-server":               image,
-				"argocd-server":                    image,
-				"argocd-applicationset-controller": image,
-			}, image)
+				"argocd-repo-server":               expectedDefaultImage,
+				"argocd-server":                    expectedDefaultImage,
+				"argocd-applicationset-controller": expectedDefaultImage,
+			}, expectedDefaultImage)
 
 			By("updating spec.version")
 			Expect(c.Get(ctx, types.NamespacedName{Name: argocdInstanceName, Namespace: ns.Name}, argo)).To(Succeed())
