@@ -201,6 +201,8 @@ func GetArgoCDImageAndTag(envVar, containerSpecImage, containerSpecVersion, comm
 			img, tag = envImage, envVersion
 		} else if envImage, envVersion, found := strings.Cut(envVal, ":"); found {
 			img, tag = envImage, envVersion
+		} else {
+			img, tag = envVal, ""
 		}
 	}
 	if containerSpecImage != "" {
