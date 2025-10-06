@@ -842,12 +842,10 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRoleBinding(cr *argoproj.ArgoCD
 	return r.Create(context.TODO(), roleBinding)
 }
 
+// getApplicationSetContainerImage computes the image and tag based on the logic from env and CR spec and combines the image and tag obtained
 func getApplicationSetContainerImage(cr *argoproj.ArgoCD) string {
-	img, tag := GetArgoCDImageAndTag(common.ArgoCDImageEnvName, cr.Spec.ApplicationSet.Image, cr.Spec.ApplicationSet.Version, cr.Spec.Image, cr.Spec.Version)
-	return ResolveArgoCDImageFromEnv(
-		img,
-		tag,
-	)
+	img, tag := GetImageAndTag(common.ArgoCDImageEnvName, cr.Spec.ApplicationSet.Image, cr.Spec.ApplicationSet.Version, cr.Spec.Image, cr.Spec.Version)
+	return argoutil.CombineImageTag(img, tag)
 }
 
 // getApplicationSetResources will return the ResourceRequirements for the Application Sets container.

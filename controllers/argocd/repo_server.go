@@ -567,11 +567,8 @@ func getArgoRepoResources(cr *argocdoperatorv1beta1.ArgoCD) corev1.ResourceRequi
 // 4. the default is configured in common.ArgoCDDefaultArgoVersion and
 // common.ArgoCDDefaultArgoImage.
 func getRepoServerContainerImage(cr *argocdoperatorv1beta1.ArgoCD) string {
-	img, tag := GetArgoCDImageAndTag(common.ArgoCDImageEnvName, cr.Spec.Repo.Image, cr.Spec.Repo.Version, cr.Spec.Image, cr.Spec.Version)
-	return ResolveArgoCDImageFromEnv(
-		img,
-		tag,
-	)
+	img, tag := GetImageAndTag(common.ArgoCDImageEnvName, cr.Spec.Repo.Image, cr.Spec.Repo.Version, cr.Spec.Image, cr.Spec.Version)
+	return argoutil.CombineImageTag(img, tag)
 }
 
 func isRepoServerTLSVerificationRequested(cr *argocdoperatorv1beta1.ArgoCD) bool {
