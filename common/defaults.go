@@ -289,6 +289,9 @@ vs-ssh.visualstudio.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7Hr1oTWqNqOlzGJOf
 
 	// ArgoCDAgentPrincipalDefaultImageName is the default image name for the ArgoCD agent principal.
 	ArgoCDAgentPrincipalDefaultImageName = "quay.io/argoprojlabs/argocd-agent:v0.3.2"
+
+	// ArgoCDDefaultClusterDomain is the default cluster domain suffix for service FQDNs.
+	ArgoCDDefaultClusterDomain = "cluster.local"
 )
 
 // DefaultLabels returns the default set of labels for controllers.
