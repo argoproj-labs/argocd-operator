@@ -1,8 +1,12 @@
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: "argocd-long-name-for-route-testiiiiiiiiiiiiiiiiiiiiiiiing-appset"
-spec: {}
-status:
-  ingress:
-  - host: argocd-long-name-for-route-testiiiiiiiiiiiiiiiiiiiiiiiing-appset.apps.testing.lab.upshift.rdu2.redhat.com
+  name: "argocd-long-name-for-route-testiiiiiiing-appset-webhook"
+spec:
+  port:
+    targetPort: webhook
+  to:
+    kind: Service
+    name: argocd-long-name-for-route-testiiiiiiing-applicationset-controller
+    weight: 100
+
