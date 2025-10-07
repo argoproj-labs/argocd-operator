@@ -945,7 +945,7 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 	}
 
 	// Watch for changes to primary resource ArgoCD
-	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(deleteNotificationsPred, r.argoCDNamespaceManagementFilterPredicate()))
+	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(deleteNotificationsPred, r.argoCDNamespaceManagementFilterPredicate(), r.argoCDSpecLabelCleanupPredicate()))
 
 	// Watch for changes to ConfigMap sub-resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.ConfigMap{})
@@ -1158,6 +1158,286 @@ func (r *ReconcileArgoCD) namespaceFilterPredicate() predicate.Predicate {
 			return false
 		},
 	}
+}
+
+// DropMetadata stores metadata about removed labels for a specific resource type
+type DropMetadata struct {
+	Resource string   `json:"resource"`
+	Keys     []string `json:"keys"`
+}
+
+// Global map to store removed labels per namespace
+// Key: namespace, Value: slice of DropMetadata for different resources
+var DropMetadataStore = make(map[string][]DropMetadata)
+
+// addDropMetadata adds removed label information to the DropMetadataStore for a specific namespace
+func addDropMetadata(namespace, resource string, keys []string) {
+	if len(keys) == 0 {
+		return
+	}
+
+	dropMeta := DropMetadata{
+		Resource: resource,
+		Keys:     keys,
+	}
+
+	if DropMetadataStore[namespace] == nil {
+		DropMetadataStore[namespace] = []DropMetadata{}
+	}
+
+	// Check if the resource already exists in the slice and update it
+	found := false
+	for i, existing := range DropMetadataStore[namespace] {
+		if existing.Resource == resource {
+			// Merge keys if resource already exists
+			keySet := make(map[string]bool)
+			for _, key := range existing.Keys {
+				keySet[key] = true
+			}
+			for _, key := range keys {
+				keySet[key] = true
+			}
+
+			var mergedKeys []string
+			for key := range keySet {
+				mergedKeys = append(mergedKeys, key)
+			}
+
+			DropMetadataStore[namespace][i].Keys = mergedKeys
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		DropMetadataStore[namespace] = append(DropMetadataStore[namespace], dropMeta)
+	}
+}
+
+// getDropMetadataForNamespace retrieves all DropMetadata for a specific namespace
+func getDropMetadataForNamespace(namespace string) []DropMetadata {
+	return DropMetadataStore[namespace]
+}
+
+// removeDropMetadataForNamespace removes all DropMetadata for a specific namespace
+func removeDropMetadataForNamespace(namespace string) {
+	delete(DropMetadataStore, namespace)
+}
+
+// processDropMetadataForCleanup processes the DropMetadata store and cleans up removed labels from resources
+func (r *ReconcileArgoCD) processDropMetadataForCleanup(argocd *argoproj.ArgoCD) {
+	namespace := argocd.GetNamespace()
+	dropMetadataList := getDropMetadataForNamespace(namespace)
+
+	log.Info("Processing DropMetadata for cleanup",
+		"argocd", fmt.Sprintf("%s/%s", argocd.Namespace, argocd.Name),
+		"namespace", namespace,
+		"dropMetadataEntries", len(dropMetadataList))
+
+	for _, dropMeta := range dropMetadataList {
+		if err := r.cleanupLabelsFromResourceType(argocd, dropMeta); err != nil {
+			log.Error(err, "failed to cleanup labels from resource type",
+				"resource", dropMeta.Resource,
+				"keys", dropMeta.Keys)
+			continue
+		}
+	}
+
+	// Clear the DropMetadata for this namespace after cleanup
+	removeDropMetadataForNamespace(namespace)
+}
+
+// cleanupLabelsFromResourceType removes labels from specific resource types
+func (r *ReconcileArgoCD) cleanupLabelsFromResourceType(argocd *argoproj.ArgoCD, dropMeta DropMetadata) error {
+
+	switch dropMeta.Resource {
+	case "server-deployment":
+		// Clean up from ArgoCD server deployment only
+		deploymentName := fmt.Sprintf("%s-server", argocd.Name)
+		if err := r.cleanupLabelsFromDeployment(argocd, deploymentName, dropMeta.Keys); err != nil {
+			return fmt.Errorf("failed to cleanup labels from server deployment: %w", err)
+		}
+
+	case "repo-deployment":
+		// Clean up from ArgoCD repo server deployment only
+		deploymentName := fmt.Sprintf("%s-repo-server", argocd.Name)
+		if err := r.cleanupLabelsFromDeployment(argocd, deploymentName, dropMeta.Keys); err != nil {
+			return fmt.Errorf("failed to cleanup labels from repo deployment: %w", err)
+		}
+
+	case "applicationset-deployment":
+		// Clean up from ArgoCD applicationset controller deployment only
+		deploymentName := fmt.Sprintf("%s-applicationset-controller", argocd.Name)
+		if err := r.cleanupLabelsFromDeployment(argocd, deploymentName, dropMeta.Keys); err != nil {
+			return fmt.Errorf("failed to cleanup labels from applicationset deployment: %w", err)
+		}
+
+	case "notifications-deployment":
+		// Clean up from ArgoCD notifications controller deployment only
+		if argocd.Spec.Notifications.Enabled {
+			deploymentName := fmt.Sprintf("%s-notifications-controller", argocd.Name)
+			if err := r.cleanupLabelsFromDeployment(argocd, deploymentName, dropMeta.Keys); err != nil {
+				return fmt.Errorf("failed to cleanup labels from notifications deployment: %w", err)
+			}
+		}
+
+	case "controller-statefulset":
+		// Clean up from ArgoCD application controller StatefulSet
+		statefulSetName := fmt.Sprintf("%s-application-controller", argocd.Name)
+		if err := r.cleanupLabelsFromStatefulSet(argocd, statefulSetName, dropMeta.Keys); err != nil {
+			return fmt.Errorf("failed to cleanup labels from controller statefulset: %w", err)
+		}
+
+	default:
+		log.Info("Unknown resource type for cleanup", "resourceType", dropMeta.Resource)
+	}
+
+	return nil
+}
+
+// cleanupLabelsFromDeployment removes labels from a specific deployment
+func (r *ReconcileArgoCD) cleanupLabelsFromDeployment(argocd *argoproj.ArgoCD, deploymentName string, labelsToRemove []string) error {
+	namespace := argocd.GetNamespace()
+	deployment := &appsv1.Deployment{}
+	key := types.NamespacedName{Namespace: namespace, Name: deploymentName}
+
+	if err := r.Get(context.TODO(), key, deployment); err != nil {
+		if apierrors.IsNotFound(err) {
+			log.Info("Deployment not found, skipping label cleanup", "name", deploymentName)
+			return nil // Deployment doesn't exist, skip
+		}
+		return fmt.Errorf("failed to get deployment %s: %w", deploymentName, err)
+	}
+
+	// Work on pod template labels directly, not deployment metadata labels
+	currentLabels := deployment.Spec.Template.Labels
+	if currentLabels == nil {
+		return nil // No labels to remove
+	}
+
+	modified := false
+	for _, labelKey := range labelsToRemove {
+		if _, exists := currentLabels[labelKey]; exists {
+			delete(currentLabels, labelKey)
+			modified = true
+		}
+	}
+
+	if modified {
+		deployment.Spec.Template.Labels = currentLabels
+		if err := r.Update(context.TODO(), deployment); err != nil {
+			log.Error(err, "failed to update deployment after removing labels", "name", deploymentName)
+			return err
+		}
+	}
+	return nil
+}
+
+// cleanupLabelsFromStatefulSet removes labels from a specific statefulset
+func (r *ReconcileArgoCD) cleanupLabelsFromStatefulSet(argocd *argoproj.ArgoCD, statefulSetName string, labelsToRemove []string) error {
+	namespace := argocd.GetNamespace()
+	statefulSet := &appsv1.StatefulSet{}
+	key := types.NamespacedName{Namespace: namespace, Name: statefulSetName}
+
+	if err := r.Get(context.TODO(), key, statefulSet); err != nil {
+		if apierrors.IsNotFound(err) {
+			log.Info("StatefulSet not found, skipping label cleanup", "name", statefulSetName)
+			return nil // StatefulSet doesn't exist, nothing to clean
+		}
+		return fmt.Errorf("failed to get statefulset %s: %w", statefulSetName, err)
+	}
+
+	// Work on pod template labels directly, not StatefulSet metadata labels
+	currentLabels := statefulSet.Spec.Template.Labels
+	if currentLabels == nil {
+		return nil // No labels to remove
+	}
+
+	modified := false
+	for _, labelKey := range labelsToRemove {
+		if _, exists := currentLabels[labelKey]; exists {
+			delete(currentLabels, labelKey)
+			modified = true
+		}
+	}
+
+	if modified {
+		statefulSet.Spec.Template.Labels = currentLabels
+		if err := r.Update(context.TODO(), statefulSet); err != nil {
+			log.Error(err, "failed to update statefulset after removing labels", "name", statefulSetName)
+			return err
+		}
+	}
+
+	return nil
+}
+
+// argoCDSpecLabelCleanupPredicate tracks label changes in ArgoCD CR specs and cleans up removed labels from managed resources
+func (r *ReconcileArgoCD) argoCDSpecLabelCleanupPredicate() predicate.Predicate {
+	return predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			newCR, ok := e.ObjectNew.(*argoproj.ArgoCD)
+			if !ok {
+				return false
+			}
+			oldCR, ok := e.ObjectOld.(*argoproj.ArgoCD)
+			if !ok {
+				return false
+			}
+
+			// Track removed labels from each component spec
+			r.calculateRemovedSpecLabels(oldCR, newCR)
+
+			return true // Trigger reconciliation for ArgoCD updates
+		},
+	}
+}
+
+// calculateRemovedSpecLabels compares old and new ArgoCD specs and tracks removed labels by resource type
+func (r *ReconcileArgoCD) calculateRemovedSpecLabels(oldCR, newCR *argoproj.ArgoCD) {
+	// Add nil checks to prevent panic
+	if r == nil || oldCR == nil || newCR == nil {
+		return
+	}
+	//removedLabels := make(map[string]string)
+	namespace := newCR.GetNamespace()
+
+	// Helper function to check and store removed labels for a specific resource
+	checkAndStoreRemovedLabels := func(oldLabels, newLabels map[string]string, resourceType string) {
+		var removedKeys []string
+		for key := range oldLabels {
+			if newLabels == nil || newLabels[key] == "" {
+				removedKeys = append(removedKeys, key)
+			}
+		}
+		// Store removed keys for this resource type in the namespace
+		if len(removedKeys) > 0 {
+			addDropMetadata(namespace, resourceType, removedKeys)
+		}
+	}
+
+	// Check Server labels
+	checkAndStoreRemovedLabels(oldCR.Spec.Server.Labels, newCR.Spec.Server.Labels, "server-deployment")
+
+	// Check Repo Server labels
+	checkAndStoreRemovedLabels(oldCR.Spec.Repo.Labels, newCR.Spec.Repo.Labels, "repo-deployment")
+
+	// Check Controller labels (StatefulSet)
+	checkAndStoreRemovedLabels(oldCR.Spec.Controller.Labels, newCR.Spec.Controller.Labels, "controller-statefulset")
+
+	// Check ApplicationSet labels
+	if oldCR.Spec.ApplicationSet != nil && newCR.Spec.ApplicationSet != nil {
+		checkAndStoreRemovedLabels(oldCR.Spec.ApplicationSet.Labels, newCR.Spec.ApplicationSet.Labels, "applicationset-deployment")
+	}
+
+	// Check Notifications labels (if we add support for notifications labels in the future)
+	// if oldCR.Spec.Notifications != nil && newCR.Spec.Notifications != nil {
+	//     checkAndStoreRemovedLabels(oldCR.Spec.Notifications.Labels, newCR.Spec.Notifications.Labels, "notifications-deployment")
+	// }
+
+	// Note: Notifications and Prometheus specs don't have Labels fields currently
+	// If they are added in the future, the logic can be uncommented and updated
+
 }
 
 // deleteRBACsForNamespace deletes the RBACs when the label from the namespace is removed.
@@ -1521,29 +1801,20 @@ func UseServer(name string, cr *argoproj.ArgoCD) bool {
 	return true
 }
 
-// addKubernetesData checks for any Kubernetes-specific labels or annotations
-// in the live object and updates the source object to ensure critical metadata
-// (like scheduling, topology, or lifecycle information) is retained.
-// This helps avoid loss of important Kubernetes-managed metadata during updates.
-func addKubernetesData(source map[string]string, live map[string]string) {
-
-	// List of Kubernetes-specific substrings (wildcard match)
-	patterns := []string{
-		"*kubernetes.io*",
-		"*k8s.io*",
-		"*openshift.io*",
+// UpdateMapValues updates the values of an existing map with the values from a source map if they differ.
+// It returns true if any values were changed.
+func UpdateMapValues(existing *map[string]string, source map[string]string) bool {
+	changed := false
+	if *existing == nil {
+		*existing = make(map[string]string)
 	}
-
-	for key, value := range live {
-		found := glob.MatchStringInList(patterns, key, glob.GLOB)
-		if found {
-			// Don't override values already present in the source object.
-			// This allows the operator to update Kubernetes specific data when needed.
-			if _, ok := source[key]; !ok {
-				source[key] = value
-			}
+	for key, value := range source {
+		if (*existing)[key] != value {
+			(*existing)[key] = value
+			changed = true
 		}
 	}
+	return changed
 }
 
 // updateStatusAndConditionsOfArgoCD will update .status field with provided param, and upsert .status.conditions with provided condition
