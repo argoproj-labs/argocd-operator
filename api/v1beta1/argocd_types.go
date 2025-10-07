@@ -1331,16 +1331,16 @@ func (r ResourceTrackingMethod) String() string {
 		return stringResourceTrackingMethodAnnotationAndLabel
 	}
 
-	// Default is to use label
-	return stringResourceTrackingMethodLabel
+	// Default is to use Annotation
+	return stringResourceTrackingMethodAnnotation
 }
 
 // ParseResourceTrackingMethod parses a string into a resource tracking method
 func ParseResourceTrackingMethod(name string) ResourceTrackingMethod {
 	switch name {
-	case stringResourceTrackingMethodLabel, "":
+	case stringResourceTrackingMethodLabel:
 		return ResourceTrackingMethodLabel
-	case stringResourceTrackingMethodAnnotation:
+	case stringResourceTrackingMethodAnnotation, "":
 		return ResourceTrackingMethodAnnotation
 	case stringResourceTrackingMethodAnnotationAndLabel:
 		return ResourceTrackingMethodAnnotationAndLabel
