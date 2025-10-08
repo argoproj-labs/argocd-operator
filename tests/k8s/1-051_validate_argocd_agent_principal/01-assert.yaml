@@ -193,7 +193,7 @@ spec:
         - name: REDIS_PASSWORD
           valueFrom:
             secretKeyRef:
-              key: auth
-              name: argocd-redis
+              key: admin.password
+              name: argocd-redis-initial-password
               optional: true
 
