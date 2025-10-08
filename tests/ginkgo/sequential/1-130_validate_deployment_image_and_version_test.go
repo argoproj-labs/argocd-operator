@@ -123,10 +123,11 @@ var _ = Describe("Validate deployment image and version", func() {
 			ctx = context.Background()
 		})
 
-		if fixture.EnvLocalRun() {
-			Skip("This test is known not to work when running gitops operator locally, in both kuttl and ginkgo forms")
-			return
-		}
+		BeforeEach(func() {
+			if fixture.EnvLocalRun() {
+				Skip("This test is known not to work when running gitops operator locally, in both kuttl and ginkgo forms")
+			}
+		})
 
 		It("validates image resolution order", func() {
 			By("ensuring operator env variable ARGOCD_IMAGE is set")
