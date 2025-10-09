@@ -325,6 +325,18 @@ type ArgoCDHASpec struct {
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
+// ArgoCDImageUpdaterSpec defines whether the Argo CD Image Updater controller should be installed.
+type ArgoCDImageUpdaterSpec struct {
+	// Enabled defines whether argocd image updater controller should be deployed or not
+	Enabled bool `json:"enabled"`
+
+	// Env let you specify environment variables for ImageUpdater pods
+	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	// Resources defines the Compute Resources required by the container for Argo CD Image Updater.
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+}
+
 // ArgoCDImportSpec defines the desired state for the ArgoCD import/restore process.
 type ArgoCDImportSpec struct {
 	// Name of an ArgoCDExport from which to import data.
@@ -884,6 +896,9 @@ type ArgoCDSpec struct {
 	// Image is the ArgoCD container image for all ArgoCD components.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Image",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:ArgoCD","urn:alm:descriptor:com.tectonic.ui:text"}
 	Image string `json:"image,omitempty"`
+
+	// ImageUpdater defines whether the Argo CD ImageUpdater controller should be installed.
+	ImageUpdater ArgoCDImageUpdaterSpec `json:"imageUpdater,omitempty"`
 
 	// Import is the import/restore options for ArgoCD.
 	Import *ArgoCDImportSpec `json:"import,omitempty"`

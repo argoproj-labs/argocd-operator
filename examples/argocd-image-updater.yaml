@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: image-updater
+spec:
+  imageUpdater:
+    enabled: true
+    env:
+      - name: IMAGE_UPDATER_LOGLEVEL
+        value: trace
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 250m
+        memory: 128Mi
+

@@ -48,6 +48,7 @@ nav:
   - High Availability:
     - Redis: usage/ha/redis.md
     - Repo Server: usage/ha/repo-server.md
+  - Image Updater: usage/image-updater.md
   - Ingress: usage/ingress.md
   - Insights: usage/insights.md
   - Dex: usage/dex.md
