@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
 	"github.com/argoproj/argo-cd/v3/util/glob"
+	"github.com/distribution/reference"
 	"github.com/go-logr/logr"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
@@ -190,32 +191,81 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 	return cmd
 }
 
-// getArgoCDImageAndTag determines the image and tag for an ArgoCD component, considering container-level and common-level overrides.
+// GetImageAndTag determines the image and tag for an ArgoCD component, considering container-level and common-level overrides.
+// Priority order: containerSpec > commonSpec > environment variable > defaults
 // Returns: image, tag
 func GetImageAndTag(envVar, containerSpecImage, containerSpecVersion, commonSpecImage, commonSpecVersion string) (string, string) {
-	img := common.ArgoCDDefaultArgoImage
+	// Start with defaults
+	image := common.ArgoCDDefaultArgoImage
 	tag := common.ArgoCDDefaultArgoVersion
-	if envVal := os.Getenv(envVar); envVal != "" {
-		if envImage, envVersion, found := strings.Cut(envVal, "@"); found {
-			img, tag = envImage, envVersion
-		} else if envImage, envVersion, found := strings.Cut(envVal, ":"); found {
-			img, tag = envImage, envVersion
-		} else {
-			img, tag = envVal, ""
-		}
-	}
-	if containerSpecImage != "" {
-		img = containerSpecImage
-	} else if commonSpecImage != "" {
-		img = commonSpecImage
+
+	// Check if environment variable is set
+	envVal := os.Getenv(envVar)
+
+	// If no spec values are provided and env var is set, use env var as-is
+	if envVal != "" && containerSpecImage == "" && commonSpecImage == "" &&
+		containerSpecVersion == "" && commonSpecVersion == "" {
+		return envVal, ""
 	}
 
-	if containerSpecVersion != "" {
-		tag = containerSpecVersion
-	} else if commonSpecVersion != "" {
-		tag = commonSpecVersion
+	// Parse environment variable image if it exists and we need to extract the base image name
+	if envVal != "" {
+		log.Info("Processing environment variable image", "envVal", envVal)
+		baseImageName, err := extractBaseImageName(envVal)
+		if err != nil {
+			log.Error(err, "Failed to parse environment variable image", "envVal", envVal)
+			return "", ""
+		}
+		image = baseImageName
 	}
-	return img, tag
+
+	// Apply spec overrides with container spec taking precedence over common spec
+	image = selectImage(containerSpecImage, commonSpecImage, image)
+	tag = selectVersion(containerSpecVersion, commonSpecVersion, tag)
+
+	return image, tag
+}
+
+// extractBaseImageName extracts the base image name from a full image reference (removing tag/digest)
+func extractBaseImageName(imageRef string) (string, error) {
+	// Handle digest format (image@sha256:...)
+	if strings.Contains(imageRef, "@") {
+		parts := strings.SplitN(imageRef, "@", 2)
+		named, err := reference.ParseNamed(parts[0])
+		if err != nil {
+			return "", err
+		}
+		return named.Name(), nil
+	}
+
+	// Handle tag format (image:tag) or just image name
+	named, err := reference.ParseNamed(imageRef)
+	if err != nil {
+		return "", err
+	}
+	return named.Name(), nil
+}
+
+// selectImage returns the highest priority image from container spec, common spec, or fallback
+func selectImage(containerSpecImage, commonSpecImage, fallback string) string {
+	if containerSpecImage != "" {
+		return containerSpecImage
+	}
+	if commonSpecImage != "" {
+		return commonSpecImage
+	}
+	return fallback
+}
+
+// selectVersion returns the highest priority version from container spec, common spec, or fallback
+func selectVersion(containerSpecVersion, commonSpecVersion, fallback string) string {
+	if containerSpecVersion != "" {
+		return containerSpecVersion
+	}
+	if commonSpecVersion != "" {
+		return commonSpecVersion
+	}
+	return fallback
 }
 
 // getArgoContainerImage will return the container image for ArgoCD.

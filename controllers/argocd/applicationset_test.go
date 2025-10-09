@@ -1363,35 +1363,59 @@ func TestGetApplicationSetContainerImage(t *testing.T) {
 
 	// when env var is set and also spec image and version fields are set, spec fields should be returned
 	cr.Spec.Image = "customimage"
-	cr.Spec.Version = "sha256:1234567890abcdef"
-	os.Setenv(common.ArgoCDImageEnvName, "testingimage@sha:123456")
+	cr.Spec.Version = "sha256:7e0aa2f42232f6b2f0a9d5f98b2e3a9a6b8c9b7f3a4c1d2e5f6a7b8c9d0e1f2a"
+	os.Setenv(common.ArgoCDImageEnvName, "quay.io/project/registry@sha256:7e0aa2f42232f6b2f0a9d5f98b2e3a9a6b8c9b7f3a4c1d2e5f6a7b8c9d0e1f2a")
 	out = getApplicationSetContainerImage(&cr)
-	assert.Equal(t, "customimage@sha256:1234567890abcdef", out)
+	assert.Equal(t, "customimage@sha256:7e0aa2f42232f6b2f0a9d5f98b2e3a9a6b8c9b7f3a4c1d2e5f6a7b8c9d0e1f2a", out)
 
 	// when spec.image and spec.applicationset.image is passed and also env is passed, container level image should take priority
 	cr.Spec.Image = "customimage"
-	cr.Spec.Version = "sha256:1234567890abcdef"
+	cr.Spec.Version = "sha256:7e0aa2f42232f6b2f0a9d5f98b2e3a9a6b8c9b7f3a4c1d2e5f6a7b8c9d0e1f2a"
 	cr.Spec.ApplicationSet.Image = "containerImage"
-	cr.Spec.ApplicationSet.Version = "sha256:0.0.1"
-	os.Setenv(common.ArgoCDImageEnvName, "testingimage@sha:123456")
+	cr.Spec.ApplicationSet.Version = "sha256:7e0aa2f42232f6b2f0a9d5f98b2e3a9a6b8c9b7f3a4c1d2e5f6a7b8c9d0e1f2b"
+	os.Setenv(common.ArgoCDImageEnvName, "quay.io/project/registry@sha256:7e0aa2f42232f6b2f0a9d5f98b2e3a9a6b8c9b7f3a4c1d2e5f6a7b8c9d0e1f2c")
 	out = getApplicationSetContainerImage(&cr)
-	assert.Equal(t, "containerImage@sha256:0.0.1", out)
+	assert.Equal(t, "containerImage@sha256:7e0aa2f42232f6b2f0a9d5f98b2e3a9a6b8c9b7f3a4c1d2e5f6a7b8c9d0e1f2b", out)
 
 	// when env var is set and also spec version field is set but image field is not set, should return env var image with spec version
 	cr.Spec.Image = ""
-	cr.Spec.Version = "customversion"
+	cr.Spec.Version = "sha256:7e0aa2f42232f6b2f0a9d5f98b2e3a9a6b8c9b7f3a4c1d2e5f6a7b8c9d0e1f2a"
 	cr.Spec.ApplicationSet.Image = ""
 	cr.Spec.ApplicationSet.Version = ""
-	os.Setenv(common.ArgoCDImageEnvName, "testingimage@sha:123456")
+	os.Setenv(common.ArgoCDImageEnvName, "quay.io/project/registry@sha256:7e0aa2f42232f6b2f0a9d5f98b2e3a9a6b8c9b7f3a4c1d2e5f6a7b8c9d0e1f2b")
 	out = getApplicationSetContainerImage(&cr)
-	assert.Equal(t, "testingimage:customversion", out)
+	assert.Equal(t, "quay.io/project/registry@sha256:7e0aa2f42232f6b2f0a9d5f98b2e3a9a6b8c9b7f3a4c1d2e5f6a7b8c9d0e1f2a", out)
 
 	// when env var in wrong format is set and also spec version field is set but image field is not set
 	cr.Spec.Image = ""
-	cr.Spec.Version = "customversion"
-	os.Setenv(common.ArgoCDImageEnvName, "testingimage:sha123456")
+	cr.Spec.Version = "sha256:7e0aa2f42232f6b2f0a9d5f98b2e3a9a6b8c9b7f3a4c1d2e5f6a7b8c9d0e1f2a"
+	os.Setenv(common.ArgoCDImageEnvName, "quay.io/project/registry:latest")
 	out = getApplicationSetContainerImage(&cr)
-	assert.Equal(t, "testingimage:customversion", out)
+	assert.Equal(t, "quay.io/project/registry@sha256:7e0aa2f42232f6b2f0a9d5f98b2e3a9a6b8c9b7f3a4c1d2e5f6a7b8c9d0e1f2a", out)
+
+	cr.Spec.Image = ""
+	cr.Spec.Version = ""
+	os.Setenv(common.ArgoCDImageEnvName, "quay.io/project/registry:latest@sha256:7e0aa2f42232f6b2f0a9d5f98b2e3a9a6b8c9b7f3a4c1d2e5f6a7b8c9d0e1f2a")
+	out = getApplicationSetContainerImage(&cr)
+	assert.Equal(t, "quay.io/project/registry:latest@sha256:7e0aa2f42232f6b2f0a9d5f98b2e3a9a6b8c9b7f3a4c1d2e5f6a7b8c9d0e1f2a", out)
+
+	cr.Spec.Image = ""
+	cr.Spec.Version = ""
+	os.Setenv(common.ArgoCDImageEnvName, "docker.io/library/ubuntu")
+	out = getApplicationSetContainerImage(&cr)
+	assert.Equal(t, "docker.io/library/ubuntu", out)
+
+	cr.Spec.Image = ""
+	cr.Spec.Version = "v0.0.1"
+	os.Setenv(common.ArgoCDImageEnvName, "quay.io/project/registry:latest@sha256:7e0aa2f42232f6b2f0a9d5f98b2e3a9a6b8c9b7f3a4c1d2e5f6a7b8c9d0e1f2a")
+	out = getApplicationSetContainerImage(&cr)
+	assert.Equal(t, "quay.io/project/registry:v0.0.1", out)
+
+	cr.Spec.Image = ""
+	cr.Spec.Version = "v0.0.1"
+	os.Setenv(common.ArgoCDImageEnvName, "docker.io/library/ubuntu")
+	out = getApplicationSetContainerImage(&cr)
+	assert.Equal(t, "docker.io/library/ubuntu:v0.0.1", out)
 
 	// when env var is not set and spec image and version fields are not set, default image should be returned
 	os.Setenv(common.ArgoCDImageEnvName, "")
