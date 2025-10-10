@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -27,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	argocdoperatorv1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -350,7 +352,12 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 		repoServerVolumes = append(repoServerVolumes, cr.Spec.Repo.Volumes...)
 	}
 
-	deploy.Spec.Template.Spec.Volumes = repoServerVolumes
+	moreRepoServerVolumes, err := injectCATrustToContainers(cr, deploy)
+	if err != nil {
+		return err
+	}
+
+	deploy.Spec.Template.Spec.Volumes = append(repoServerVolumes, moreRepoServerVolumes...)
 
 	if replicas := getArgoCDRepoServerReplicas(cr); replicas != nil {
 		deploy.Spec.Replicas = replicas
@@ -366,6 +373,12 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 		for key, value := range cr.Spec.Repo.Labels {
 			deploy.Spec.Template.Labels[key] = value
 		}
+	}
+
+	log.Info("Applying ArgoCD Repo Server reconciler hook")
+	if err := applyReconcilerHook(cr, deploy, ""); err != nil {
+		log.Error(err, "ArgoCD Repo Server reconciler hook failed")
+		return err
 	}
 
 	existing := newDeploymentWithSuffix("repo-server", "repo-server", cr)
@@ -548,6 +561,195 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 	}
 	argoutil.LogResourceCreation(log, deploy)
 	return r.Create(context.TODO(), deploy)
+}
+
+// injectCATrustToContainers Creates the init container and volumes to trust CAs specified by `spec.repo.systemCATrust`.
+//
+// Take CAs from the `argocd-ca-trust-source` volume and mix it with the distro CAs into `argocd-ca-trust-target` volumes.
+// Several ubuntu-specific problems exist:
+// 1. /etc/ssl/certs/ cannot be updated by `update-ca-certificates` without root - desirable in the production container.
+// 2. /etc/ssl/certs/ symlinkes to /usr/local/share/ca-certificates/, so mounting one without the other is futile.
+//
+// All source certs are projected into the `argocd-ca-trust-source` volume that is ultimately mounted in the prod container (addresses #2).
+//
+// To amend content of /etc/ssl/certs/ (ca-trust-target), an init container is used:
+//   - it mounts `argocd-ca-trust-target` over `/etc/ssl/certs/` (addressing #1 by making it writable volume),
+//     and `ca-trust-source` over `/usr/local/share/ca-certificates/`,
+//     and amends it with user-added certs using `update-ca-certificates`.
+//
+// The production container is then mounted with `/etc/ssl/certs/` (`argocd-ca-trust-target`) and
+// `/usr/local/share/ca-certificates/` (`argocd-ca-trust-source`) providing read-only CAs needed.
+func injectCATrustToContainers(cr *argocdoperatorv1beta1.ArgoCD, deploy *appsv1.Deployment) (repoServerVolumes []corev1.Volume, err error) {
+	if cr.Spec.Repo.SystemCATrust == nil {
+		return []corev1.Volume{}, nil
+	}
+
+	sources, sourceNames, err := caTrustVolumes(cr)
+	if err != nil {
+		return []corev1.Volume{}, err
+	}
+
+	volumeSource := "argocd-ca-trust-source"
+	volumeTarget := "argocd-ca-trust-target"
+
+	repoServerVolumes = []corev1.Volume{
+		{
+			Name: volumeSource,
+			VolumeSource: corev1.VolumeSource{
+				Projected: &corev1.ProjectedVolumeSource{
+					Sources:     sources,
+					DefaultMode: ptr.To(int32(0o444)),
+				},
+			},
+		}, {
+			Name: volumeTarget,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+	}
+
+	argoImage := getArgoContainerImage(cr)
+
+	deploy.Spec.Template.Spec.InitContainers = append(
+		deploy.Spec.Template.Spec.InitContainers,
+		caTrustInitContainer(cr, argoImage, volumeSource, volumeTarget),
+	)
+
+	prodVolumeMounts := func() []corev1.VolumeMount {
+		return []corev1.VolumeMount{
+			{Name: volumeSource, ReadOnly: true, MountPath: "/usr/local/share/ca-certificates/"},
+			{Name: volumeTarget, ReadOnly: true, MountPath: "/etc/ssl/certs/"},
+		}
+	}
+
+	// Inject to prod container and sidecars (plugins)
+	var containerNames []string
+	for i, container := range deploy.Spec.Template.Spec.Containers {
+		// This can only work with ubuntu or compatible, so do not inject to potentially incompatible containers
+		if container.Image == argoImage {
+			// Accessing by index because the container is a copy of the original struct
+			deploy.Spec.Template.Spec.Containers[i].VolumeMounts = append(deploy.Spec.Template.Spec.Containers[i].VolumeMounts, prodVolumeMounts()...)
+			containerNames = append(containerNames, container.Name)
+		}
+	}
+
+	log.Info(fmt.Sprintf(
+		"injecting system CA trust from %s to containers %s",
+		strings.Join(sourceNames, ", "),
+		strings.Join(containerNames, ", "),
+	))
+
+	return repoServerVolumes, nil
+}
+
+func caTrustVolumes(cr *argocdoperatorv1beta1.ArgoCD) ([]corev1.VolumeProjection, []string, error) {
+	checkPath := func(kind string, path string) error {
+		if !strings.HasSuffix(path, ".crt") {
+			return fmt.Errorf("invalid %s cert file name suffix '%s' in %s, must be .crt", kind, path, cr.Name)
+		}
+		return nil
+	}
+
+	var sources []corev1.VolumeProjection
+	var sourceNames []string
+	for _, bundle := range cr.Spec.Repo.SystemCATrust.ClusterTrustBundles {
+		bundle = *bundle.DeepCopy()
+		if err := checkPath("ClusterTrustBundle", bundle.Path); err != nil {
+			return nil, nil, err
+		}
+
+		sources = append(sources, corev1.VolumeProjection{ClusterTrustBundle: &bundle})
+
+		path := "ClusterTrustBundle:" + bundle.Path // Using .Path, because .Name might not be specified
+		if bundle.Optional != nil && *bundle.Optional {
+			path += "(optional)"
+		}
+		sourceNames = append(sourceNames, path)
+	}
+	for _, secret := range cr.Spec.Repo.SystemCATrust.Secrets {
+		secret = *secret.DeepCopy()
+		for _, item := range secret.Items {
+			if err := checkPath("Secret", item.Path); err != nil {
+				return nil, nil, err
+			}
+		}
+
+		sources = append(sources, corev1.VolumeProjection{Secret: &secret})
+		sourceNames = append(sourceNames, fmt.Sprintf("Secret:%s", secret.Name))
+	}
+	for _, cm := range cr.Spec.Repo.SystemCATrust.ConfigMaps {
+		cm = *cm.DeepCopy()
+		for _, cmi := range cm.Items {
+			if err := checkPath("ConfigMap", cmi.Path); err != nil {
+				return nil, nil, err
+			}
+		}
+
+		sources = append(sources, corev1.VolumeProjection{ConfigMap: &cm})
+		sourceNames = append(sourceNames, fmt.Sprintf("ConfigMap:%s", cm.Name))
+	}
+	return sources, sourceNames, nil
+}
+
+func caTrustInitContainer(cr *argocdoperatorv1beta1.ArgoCD, argoImage string, volumeSource string, volumeTarget string) corev1.Container {
+	// This is where the image keeps its vendored CAs, look elsewhere if DropImageCertificates
+	imageCertPath := "/usr/share/ca-certificates"
+	if cr.Spec.Repo.SystemCATrust.DropImageCertificates {
+		imageCertPath = "/systemCATrust.dropImageCertificates"
+	}
+
+	return corev1.Container{
+		Name:            "update-ca-certificates",
+		Image:           argoImage,
+		ImagePullPolicy: corev1.PullAlways,
+		Env: []corev1.EnvVar{
+			{
+				Name:  "IMAGE_CERT_PATH",
+				Value: imageCertPath,
+			},
+		},
+		Command: []string{"/bin/bash", "-c"},
+		Args: []string{`
+                #!/usr/bin/env bash
+                # https://github.com/olivergondza/bash-strict-mode
+                set -eEuo pipefail
+                trap 's=$?; echo >&2 "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
+
+                echo "User defined CA files:"
+                ls -l /usr/local/share/ca-certificates/
+                update-ca-certificates --verbose --certsdir "$IMAGE_CERT_PATH"
+                echo "Resulting /etc/ssl/certs/"
+                ls -l /etc/ssl/certs/
+                echo "Done!"
+        `},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name: volumeSource,
+				// Source path for user additional certificates - empty in the image, so not shadowing anything.
+				MountPath: "/usr/local/share/ca-certificates/",
+				ReadOnly:  true,
+			}, {
+				Name:      volumeTarget,
+				MountPath: "/etc/ssl/certs/",
+			},
+		},
+		Resources: getArgoRepoResources(cr),
+		SecurityContext: &corev1.SecurityContext{
+			AllowPrivilegeEscalation: boolPtr(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{
+					"ALL",
+				},
+			},
+			// Needed by update-ca-certificates for /tmp/
+			ReadOnlyRootFilesystem: boolPtr(false),
+			RunAsNonRoot:           boolPtr(true),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: "RuntimeDefault",
+			},
+		},
+	}
 }
 
 // getArgoRepoResources will return the ResourceRequirements for the Argo CD Repo server container.
