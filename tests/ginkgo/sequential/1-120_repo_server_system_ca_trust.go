@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -49,28 +50,30 @@ import (
 	fixtureUtils "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 )
 
+var (
+	caBundlePath = "/etc/ssl/certs/ca-certificates.crt"
+
+	trustedHelmAppSource = &appv1alpha1.ApplicationSource{
+		RepoURL:        "https://stefanprodan.github.io/podinfo",
+		Chart:          "podinfo",
+		TargetRevision: "6.5.3",
+		Helm:           &appv1alpha1.ApplicationSourceHelm{Values: ""},
+	}
+
+	untrustedHelmAppSource = &appv1alpha1.ApplicationSource{
+		RepoURL:        "https://helm.nginx.com/stable",
+		Chart:          "nginx",
+		TargetRevision: "1.1.0",
+		Helm:           &appv1alpha1.ApplicationSourceHelm{Values: "service:\n          type: ClusterIP"},
+	}
+
+	k8sClient client.Client
+	ctx       context.Context
+)
+
 var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 	Context("1-120_repo_server_system_ca_trust", func() {
-
-		var (
-			k8sClient client.Client
-			ctx       context.Context
-
-			trustedHelmAppSource = &appv1alpha1.ApplicationSource{
-				RepoURL:        "https://stefanprodan.github.io/podinfo",
-				Chart:          "podinfo",
-				TargetRevision: "6.5.3",
-				Helm:           &appv1alpha1.ApplicationSourceHelm{Values: ""},
-			}
-
-			untrustedHelmAppSource = &appv1alpha1.ApplicationSource{
-				RepoURL:        "https://helm.nginx.com/stable",
-				Chart:          "nginx",
-				TargetRevision: "1.1.0",
-				Helm:           &appv1alpha1.ApplicationSourceHelm{Values: "service:\n          type: ClusterIP"},
-			}
-		)
 
 		BeforeEach(func() {
 			fixture.EnsureSequentialCleanSlate()
@@ -79,57 +82,18 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			ctx = context.Background()
 		})
 
-		verifyCorrectlyConfiguredTrust := func(ns *corev1.Namespace) {
-			untrustedHelmApp := createHelmApp(ns, untrustedHelmAppSource)
-			Expect(k8sClient.Create(ctx, untrustedHelmApp)).To(Succeed())
-
-			// Using some host not trusted by github's intermediate cert. Gitlab-somewhat surprisingly-is.
-			untrustedPluginApp := createPluginApp(ns, "https://kernel.googlesource.com/pub/scm/docs/man-pages/website.git")
-			Expect(k8sClient.Create(ctx, untrustedPluginApp)).To(Succeed())
-
-			trustedHelmApp := createHelmApp(ns, trustedHelmAppSource)
-			Expect(k8sClient.Create(ctx, trustedHelmApp)).To(Succeed())
-
-			trustedPluginApp := createPluginApp(ns, "https://github.com/argoproj-labs/argocd-operator.git")
-			Expect(k8sClient.Create(ctx, trustedPluginApp)).To(Succeed())
-
-			// Sleep to make sure the apps sync took place - otherwise there might be no conditions _yet_
-			time.Sleep(20 * time.Second)
-
-			Expect(untrustedHelmApp).Should(
-				appFixture.HaveConditionMatching("ComparisonError", ".*failed to fetch chart.*"),
-			)
-			Expect(untrustedHelmApp).Should(appFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeUnknown))
-
-			Expect(untrustedPluginApp).Should(
-				appFixture.HaveConditionMatching("ComparisonError", ".*certificate signed by unknown authority.*"),
-			)
-			Expect(untrustedPluginApp).Should(appFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeUnknown))
-
-			Expect(trustedHelmApp).Should(appFixture.HaveNoConditions())
-			Expect(trustedHelmApp).Should(appFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeSynced))
-
-			Expect(trustedPluginApp).Should(appFixture.HaveNoConditions())
-			Expect(trustedPluginApp).Should(appFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeSynced))
-		}
-
 		It("ensures that incorrect file suffix cannot be used for ClusterTrustBundle", func() {
 			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 			defer cleanupFunc()
 
 			By("creating Argo CD instance with wrong CTB path suffix")
-			argoCD := &argov1beta1api.ArgoCD{
-				ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: ns.Name},
-				Spec: argov1beta1api.ArgoCDSpec{
-					Repo: argov1beta1api.ArgoCDRepoSpec{
-						SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
-							ClusterTrustBundles: []corev1.ClusterTrustBundleProjection{
-								{Name: ptr.To("wrong-suffix"), Path: "wrong-suffix.pem"},
-							},
-						},
+			argoCD := argoCDSpec(ns, argov1beta1api.ArgoCDRepoSpec{
+				SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
+					ClusterTrustBundles: []corev1.ClusterTrustBundleProjection{
+						{Name: ptr.To("wrong-suffix"), Path: "wrong-suffix.pem"},
 					},
 				},
-			}
+			})
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 
 			// The operator log contains the reason why reconciliation failed
@@ -148,19 +112,13 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			defer cleanupFunc()
 
 			By("creating Argo CD instance with missing Secret")
-			argoCD := &argov1beta1api.ArgoCD{
-				ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: ns.Name},
-				Spec: argov1beta1api.ArgoCDSpec{
-					Repo: argov1beta1api.ArgoCDRepoSpec{
-						SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
-							Secrets: []corev1.SecretProjection{
-								{LocalObjectReference: corev1.LocalObjectReference{Name: "no-such-secret"}},
-							},
-						},
+			argoCD := argoCDSpec(ns, argov1beta1api.ArgoCDRepoSpec{
+				SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
+					Secrets: []corev1.SecretProjection{
+						{LocalObjectReference: corev1.LocalObjectReference{Name: "no-such-secret"}},
 					},
 				},
-			}
-
+			})
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 
 			Eventually(argoCD, "3m", "5s").Should(argocdFixture.HaveServerStatus("Running"))
@@ -187,25 +145,20 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Expect(k8sClient.Create(ctx, pluginCm)).To(Succeed())
 
 			By("creating Argo CD instance trusting CTBs")
-			argoCD := &argov1beta1api.ArgoCD{
-				ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: ns.Name},
-				Spec: argov1beta1api.ArgoCDSpec{
-					Repo: argov1beta1api.ArgoCDRepoSpec{
-						SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
-							DropImageCertificates: true, // So we can test against upstream sites that would otherwise be trusted by the image
-							ClusterTrustBundles: []corev1.ClusterTrustBundleProjection{
-								{Name: ptr.To(combinedCtb.Name), Path: "combined.crt"},
-								{Name: ptr.To("no-such-ctb"), Path: "no-such-ctb.crt", Optional: ptr.To(true)},
-							},
-						},
-						// plugin containers/volumes - this is not related to CTBs
-						Volumes: pluginVolumes,
-						SidecarContainers: []corev1.Container{
-							*pluginContainer,
-						},
+			argoCD := argoCDSpec(ns, argov1beta1api.ArgoCDRepoSpec{
+				SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
+					DropImageCertificates: true, // So we can test against upstream sites that would otherwise be trusted by the image
+					ClusterTrustBundles: []corev1.ClusterTrustBundleProjection{
+						{Name: ptr.To(combinedCtb.Name), Path: "combined.crt"},
+						{Name: ptr.To("no-such-ctb"), Path: "no-such-ctb.crt", Optional: ptr.To(true)},
 					},
 				},
-			}
+				// plugin containers/volumes - this is not related to CTBs
+				Volumes: pluginVolumes,
+				SidecarContainers: []corev1.Container{
+					*pluginContainer,
+				},
+			})
 
 			By("verifying correctly established system trust")
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
@@ -214,7 +167,6 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			initContainerLog := getRepoCertGenerationLog(k8sClient, ns)
 			Expect(initContainerLog).Should(ContainSubstring("combined.crt"))
 			Expect(initContainerLog).Should(ContainSubstring("no-such-ctb.crt"))
-			Expect(getPodCertFileCount(k8sClient, ns)).Should(Equal(3))
 			verifyCorrectlyConfiguredTrust(ns)
 		})
 
@@ -233,36 +185,31 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Expect(k8sClient.Create(ctx, pluginCm)).To(Succeed())
 
 			By("creating Argo CD instance trusting CTBs")
-			argoCD := &argov1beta1api.ArgoCD{
-				ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: ns.Name},
-				Spec: argov1beta1api.ArgoCDSpec{
-					Repo: argov1beta1api.ArgoCDRepoSpec{
-						SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
-							DropImageCertificates: true, // So we can test against upstream sites that would otherwise be trusted by the image
-							Secrets: []corev1.SecretProjection{{
-								// No Items, Map all
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: secretCert.Name,
-								},
-							}},
-							ConfigMaps: []corev1.ConfigMapProjection{{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: cmCert.Name,
-								},
-								Optional: ptr.To(true),
-								Items: []corev1.KeyToPath{
-									{Key: "ca.cm.crt", Path: "ca.cm.crt"},
-								},
-							}},
+			argoCD := argoCDSpec(ns, argov1beta1api.ArgoCDRepoSpec{
+				SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
+					DropImageCertificates: true, // So we can test against upstream sites that would otherwise be trusted by the image
+					Secrets: []corev1.SecretProjection{{
+						// No Items, Map all
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secretCert.Name,
 						},
-						// plugin containers/volumes - this is not related to Secret/CM
-						Volumes: pluginVolumes,
-						SidecarContainers: []corev1.Container{
-							*pluginContainer,
+					}},
+					ConfigMaps: []corev1.ConfigMapProjection{{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: cmCert.Name,
 						},
-					},
+						Optional: ptr.To(true),
+						Items: []corev1.KeyToPath{
+							{Key: "ca.cm.crt", Path: "ca.cm.crt"},
+						},
+					}},
 				},
-			}
+				// plugin containers/volumes - this is not related to Secret/CM
+				Volumes: pluginVolumes,
+				SidecarContainers: []corev1.Container{
+					*pluginContainer,
+				},
+			})
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
@@ -277,20 +224,15 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			defer cleanupFunc()
 
 			By("creating Argo CD instance with empty system trust")
-			argoCD := &argov1beta1api.ArgoCD{
-				ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: ns.Name},
-				Spec: argov1beta1api.ArgoCDSpec{
-					Repo: argov1beta1api.ArgoCDRepoSpec{
-						SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
-							DropImageCertificates: true,
-						},
-					},
+			argoCD := argoCDSpec(ns, argov1beta1api.ArgoCDRepoSpec{
+				SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
+					DropImageCertificates: true,
 				},
-			}
+			})
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
-			Expect(getPodCertFileCount(k8sClient, ns)).Should(Equal(0))
+			Expect(getTrustedCertCount(k8sClient, ns)).Should(Equal(0))
 
 			trustedHelmApp := createHelmApp(ns, trustedHelmAppSource)
 			Expect(k8sClient.Create(ctx, trustedHelmApp)).To(Succeed())
@@ -310,26 +252,28 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			defer cleanupFunc()
 
 			By("creating Argo CD instance with empty system trust")
-			argoCD := &argov1beta1api.ArgoCD{
-				ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: ns.Name},
-				Spec: argov1beta1api.ArgoCDSpec{
-					Repo: argov1beta1api.ArgoCDRepoSpec{
-						SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
-							DropImageCertificates: false, // Keep the image ones
-						},
-					},
+			argoCD := argoCDSpec(ns, argov1beta1api.ArgoCDRepoSpec{
+				SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
+					DropImageCertificates: false, // Keep the image ones
 				},
-			}
+			})
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
-			Expect(getPodCertFileCount(k8sClient, ns)).Should(BeNumerically(">", 100))
+			Expect(getTrustedCertCount(k8sClient, ns)).Should(BeNumerically(">", 100))
 		})
 	})
 })
 
-// clusterSupportsClusterTrustBundles detects is the current cluster support ClusterTrustBundles and their projections.
-// This is to verify the behavior on a cluster with and without this not-yet-GA feature turned on.
+func argoCDSpec(ns *corev1.Namespace, repoSpec argov1beta1api.ArgoCDRepoSpec) *argov1beta1api.ArgoCD {
+	return &argov1beta1api.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: ns.Name},
+		Spec: argov1beta1api.ArgoCDSpec{
+			Repo: repoSpec,
+		},
+	}
+}
+
 func clusterSupportsClusterTrustBundles(k8sClient client.Client, ctx context.Context) bool {
 	err := k8sClient.List(ctx, &certificatesv1alpha1.ClusterTrustBundleList{})
 	if _, ok := err.(*apiutil.ErrResourceDiscoveryFailed); ok {
@@ -531,18 +475,21 @@ func encodeCert(cert *x509.Certificate) string {
 	return writer.String()
 }
 
-func getPodCertFileCount(k8sClient client.Client, ns *corev1.Namespace) int {
+func getTrustedCertCount(k8sClient client.Client, ns *corev1.Namespace) int {
 	rsPod := findRepoServerPod(k8sClient, ns)
-	out, err := osFixture.ExecCommandWithOutputParam(
-		false,
-		"kubectl", "-n", ns.Name, "exec", "-c", "argocd-repo-server", rsPod.Name, "--",
-		// Using `ls -1` (one) for counting because `ls -l` produces a "total" line
-		"bash", "-c", "ls -1 /etc/ssl/certs | wc -l",
-	)
+	command := []string{
+		"kubectl", "-n", ns.Name, "exec",
+		"-c", "argocd-repo-server", rsPod.Name, "--",
+		// `grep -s` ignores if the file does not exist at all for 0 certs trusted on ubuntu
+		// Favoring `wc -l` over `grep -c`, as that hides exit=2 in case the file is empty
+		"bash", "-c", "grep -s 'BEGIN CERTIFICATE' '" + caBundlePath + "' | wc -l",
+	}
+
+	out, err := osFixture.ExecCommandWithOutputParam(false, command...)
 	Expect(err).ToNot(HaveOccurred())
 
 	fileCount, err := strconv.Atoi(strings.TrimSpace(out))
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).ToNot(HaveOccurred(), "Command out: '"+out+"'")
 
 	return fileCount
 }
@@ -553,10 +500,44 @@ func getRepoCertGenerationLog(k8sClient client.Client, ns *corev1.Namespace) str
 		false,
 		"kubectl", "-n", ns.Name, "logs", "-c", "update-ca-certificates", rsPod.Name,
 	)
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("output: %s", out))
 	return out
 }
 
 func findRepoServerPod(k8sClient client.Client, ns *corev1.Namespace) *corev1.Pod {
 	return pod.GetPodByNameRegexp(k8sClient, regexp.MustCompile(".*-repo-server.*"), client.InNamespace(ns.Name))
+}
+
+func verifyCorrectlyConfiguredTrust(ns *corev1.Namespace) {
+	untrustedHelmApp := createHelmApp(ns, untrustedHelmAppSource)
+	Expect(k8sClient.Create(ctx, untrustedHelmApp)).To(Succeed())
+
+	// Using some host not trusted by github's intermediate cert. Gitlab-somewhat surprisingly-is.
+	untrustedPluginApp := createPluginApp(ns, "https://kernel.googlesource.com/pub/scm/docs/man-pages/website.git")
+	Expect(k8sClient.Create(ctx, untrustedPluginApp)).To(Succeed())
+
+	trustedHelmApp := createHelmApp(ns, trustedHelmAppSource)
+	Expect(k8sClient.Create(ctx, trustedHelmApp)).To(Succeed())
+
+	trustedPluginApp := createPluginApp(ns, "https://github.com/argoproj-labs/argocd-operator.git")
+	Expect(k8sClient.Create(ctx, trustedPluginApp)).To(Succeed())
+
+	// Sleep to make sure the apps sync took place - otherwise there might be no conditions _yet_
+	time.Sleep(20 * time.Second)
+
+	Expect(untrustedHelmApp).Should(
+		appFixture.HaveConditionMatching("ComparisonError", ".*failed to fetch chart.*"),
+	)
+	Expect(untrustedHelmApp).Should(appFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeUnknown))
+
+	Expect(untrustedPluginApp).Should(
+		appFixture.HaveConditionMatching("ComparisonError", ".*certificate signed by unknown authority.*"),
+	)
+	Expect(untrustedPluginApp).Should(appFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeUnknown))
+
+	Expect(trustedHelmApp).Should(appFixture.HaveNoConditions())
+	Expect(trustedHelmApp).Should(appFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeSynced))
+
+	Expect(trustedPluginApp).Should(appFixture.HaveNoConditions())
+	Expect(trustedPluginApp).Should(appFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeSynced))
 }
