@@ -16,6 +16,7 @@ package argoutil
 
 import (
 	"context"
+	"crypto/sha1" // #nosec G505 - SHA1 used for non-cryptographic name hashing only
 	"fmt"
 	"reflect"
 	"strings"
@@ -31,6 +32,17 @@ import (
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+)
+
+const (
+	hashLabelLength = 7
+	// maxLabelLength is the maximum length for Kubernetes labels and names
+	maxLabelLength = 63
+	// Maximum suffix length is "applicationset-controller" = 25 characters
+	// So CR name should be limited to 63 - 25 - 1 (hyphen) = 37 characters
+	maxSuffixLength = 25
+	// maxCRNameLength is the maximum length for ArgoCD CR names to accommodate longest suffix
+	maxCRNameLength = maxLabelLength - maxSuffixLength - 1 // -1 for hyphen separator
 )
 
 // AppendStringMap will append the map `add` to the given map `src` and return the result.
@@ -204,4 +216,47 @@ func AddTrackedByOperatorLabel(meta *metav1.ObjectMeta) {
 func IsTrackedByOperator(labels map[string]string) bool {
 	value, exists := labels[common.ArgoCDTrackedByOperatorLabel]
 	return exists && value == common.ArgoCDAppName
+}
+
+// GetMaxLabelLength returns the maximum length for Kubernetes labels and names
+// This is exposed for testing purposes
+func GetMaxLabelLength() int {
+	return maxLabelLength
+}
+
+// GetMaxCRNameLength returns the maximum length for ArgoCD CR names to accommodate longest suffix
+// This is exposed for external packages that need to check CR name length
+func GetMaxCRNameLength() int {
+	return maxCRNameLength
+}
+
+// TruncateWithHash truncates a string to a maximum length and adds a hash suffix to ensure uniqueness
+func TruncateWithHash(input string, maxLength int) string {
+	if len(input) <= maxLength {
+		return input
+	}
+
+	// Calculate hash of the original string
+	hash := sha1.Sum([]byte(input)) // #nosec G401 - SHA1 used for non-cryptographic name hashing only
+	// Take 4 bytes to get 8 hex chars, then truncate to 7 hex chars + hyphen
+	hashSuffix := fmt.Sprintf("-%x", hash[:4])[:hashLabelLength+1] // +1 for the hyphen
+
+	// Calculate how much we can truncate
+	maxBaseLength := maxLength - len(hashSuffix)
+
+	// Truncate and add hash
+	return input[:maxBaseLength] + hashSuffix
+}
+
+// TruncateCRName truncates an ArgoCD CR name to allow for the longest possible suffix
+// This ensures that when suffixes like "redis-initial-password" are appended,
+// the total length stays within Kubernetes 63-character limit
+func TruncateCRName(crName string) string {
+	return TruncateWithHash(crName, maxCRNameLength)
+}
+
+// GetTruncatedCRName returns the truncated CR name using the deterministic truncate function
+func GetTruncatedCRName(cr *argoproj.ArgoCD) string {
+	// Always use the deterministic truncate function as source of truth
+	return TruncateCRName(cr.Name)
 }
