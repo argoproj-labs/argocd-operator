@@ -17,9 +17,12 @@ package argocd
 import (
 	"bytes"
 	"context"
+	"crypto"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"hash"
 	"os"
 	"reflect"
 	"sort"
@@ -216,7 +219,9 @@ func GetImageAndTag(envVar, containerSpecImage, containerSpecVersion, commonSpec
 			log.Error(err, "Failed to parse environment variable image", "envVal", envVal)
 			return "", ""
 		}
-		image = baseImageName
+		if baseImageName != "" {
+			image = baseImageName
+		}
 	}
 
 	// Apply spec overrides with container spec taking precedence over common spec
@@ -229,21 +234,16 @@ func GetImageAndTag(envVar, containerSpecImage, containerSpecVersion, commonSpec
 // extractBaseImageName extracts the base image name from a full image reference (removing tag/digest)
 func extractBaseImageName(imageRef string) (string, error) {
 	// Handle digest format (image@sha256:...)
-	if strings.Contains(imageRef, "@") {
-		parts := strings.SplitN(imageRef, "@", 2)
-		named, err := reference.ParseNamed(parts[0])
-		if err != nil {
-			return "", err
-		}
-		return named.Name(), nil
-	}
-
-	// Handle tag format (image:tag) or just image name
-	named, err := reference.ParseNamed(imageRef)
+	crypto.RegisterHash(crypto.SHA256, func() hash.Hash { return sha256.New() })
+	ref, err := reference.Parse(imageRef)
 	if err != nil {
 		return "", err
 	}
-	return named.Name(), nil
+	var name string
+	if named, ok := ref.(reference.Named); ok {
+		name = named.Name()
+	}
+	return name, nil
 }
 
 // selectImage returns the highest priority image from container spec, common spec, or fallback

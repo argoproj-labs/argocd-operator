@@ -1417,6 +1417,12 @@ func TestGetApplicationSetContainerImage(t *testing.T) {
 	out = getApplicationSetContainerImage(&cr)
 	assert.Equal(t, "docker.io/library/ubuntu:v0.0.1", out)
 
+	cr.Spec.Image = ""
+	cr.Spec.Version = "v0.0.1"
+	os.Setenv(common.ArgoCDImageEnvName, "ubuntu")
+	out = getApplicationSetContainerImage(&cr)
+	assert.Equal(t, "ubuntu:v0.0.1", out)
+
 	// when env var is not set and spec image and version fields are not set, default image should be returned
 	os.Setenv(common.ArgoCDImageEnvName, "")
 	cr.Spec.Image = ""
