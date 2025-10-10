@@ -175,6 +175,7 @@ require (
 )
 
 replace (
+	// This replace block is from Argo CD v3.1.8 go.mod
 	github.com/golang/protobuf => github.com/golang/protobuf v1.5.4
 	github.com/grpc-ecosystem/grpc-gateway => github.com/grpc-ecosystem/grpc-gateway v1.16.0
 
