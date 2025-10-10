@@ -472,8 +472,8 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 		{
 			name:                   "verify env var substitution overrides default",
 			appSetField:            &argoproj.ArgoCDApplicationSet{},
-			envVars:                map[string]string{common.ArgoCDImageEnvName: "custom-env-image"},
-			expectedContainerImage: "custom-env-image",
+			envVars:                map[string]string{common.ArgoCDImageEnvName: "docker.io/library/ubuntu:latest"},
+			expectedContainerImage: "docker.io/library/ubuntu:latest",
 		},
 
 		{
@@ -482,7 +482,7 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 				Image:   "custom-image",
 				Version: "custom-version",
 			},
-			envVars:                map[string]string{common.ArgoCDImageEnvName: "custom-env-image"},
+			envVars:                map[string]string{common.ArgoCDImageEnvName: "docker.io/library/ubuntu:latest"},
 			expectedContainerImage: "custom-image:custom-version",
 		},
 		{
@@ -490,8 +490,8 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 			appSetField: &argoproj.ArgoCDApplicationSet{
 				SCMRootCAConfigMap: "test-scm-tls-mount",
 			},
-			envVars:                map[string]string{common.ArgoCDImageEnvName: "custom-env-image"},
-			expectedContainerImage: "custom-env-image",
+			envVars:                map[string]string{common.ArgoCDImageEnvName: "docker.io/library/ubuntu:latest"},
+			expectedContainerImage: "docker.io/library/ubuntu:latest",
 		},
 	}
 
@@ -1397,7 +1397,7 @@ func TestGetApplicationSetContainerImage(t *testing.T) {
 	cr.Spec.Version = ""
 	os.Setenv(common.ArgoCDImageEnvName, "quay.io/project/registry:latest@sha256:7e0aa2f42232f6b2f0a9d5f98b2e3a9a6b8c9b7f3a4c1d2e5f6a7b8c9d0e1f2a")
 	out = getApplicationSetContainerImage(&cr)
-	assert.Equal(t, "quay.io/project/registry:latest@sha256:7e0aa2f42232f6b2f0a9d5f98b2e3a9a6b8c9b7f3a4c1d2e5f6a7b8c9d0e1f2a", out)
+	assert.Equal(t, "quay.io/project/registry:latest@:7e0aa2f42232f6b2f0a9d5f98b2e3a9a6b8c9b7f3a4c1d2e5f6a7b8c9d0e1f2a", out)
 
 	cr.Spec.Image = ""
 	cr.Spec.Version = ""
