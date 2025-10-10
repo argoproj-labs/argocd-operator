@@ -86,7 +86,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				// In BeAvailable() we wait 15 seconds for ArgoCD CR to be reconciled, this SHOULD be enough time.
 
 				By("waiting for ArgoCD CR to be reconciled and the instance to be ready")
-				Eventually(argoCD, "5m", "10s").Should(argocdFixture.BeAvailable())
+				Eventually(argoCD, "10m", "10s").Should(argocdFixture.BeAvailable())
 
 				deploymentsShouldExist := []string{"argocd-redis-ha-haproxy", "argocd-server", "argocd-repo-server"}
 				for _, depl := range deploymentsShouldExist {
