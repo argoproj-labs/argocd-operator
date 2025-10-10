@@ -18,7 +18,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"os"
 	"reflect"
 	"time"
 
@@ -576,27 +575,7 @@ func getArgoRepoResources(cr *argocdoperatorv1beta1.ArgoCD) corev1.ResourceRequi
 // 4. the default is configured in common.ArgoCDDefaultArgoVersion and
 // common.ArgoCDDefaultArgoImage.
 func getRepoServerContainerImage(cr *argocdoperatorv1beta1.ArgoCD) string {
-	defaultImg, defaultTag := false, false
-	img := cr.Spec.Repo.Image
-	if img == "" {
-		img = cr.Spec.Image
-		if img == "" {
-			img = common.ArgoCDDefaultArgoImage
-			defaultImg = true
-		}
-	}
-
-	tag := cr.Spec.Repo.Version
-	if tag == "" {
-		tag = cr.Spec.Version
-		if tag == "" {
-			tag = common.ArgoCDDefaultArgoVersion
-			defaultTag = true
-		}
-	}
-	if e := os.Getenv(common.ArgoCDImageEnvName); e != "" && (defaultTag && defaultImg) {
-		return e
-	}
+	img, tag := GetImageAndTag(common.ArgoCDImageEnvName, cr.Spec.Repo.Image, cr.Spec.Repo.Version, cr.Spec.Image, cr.Spec.Version)
 	return argoutil.CombineImageTag(img, tag)
 }
 
