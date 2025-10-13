@@ -185,13 +185,13 @@ func main() {
 		Controller: controllerconfig.Controller{
 			SkipNameValidation: &skipControllerNameValidation,
 		},
-		// Use transformers to strip data from Secrets and ConfigMaps 
+		// Use transformers to strip data from Secrets and ConfigMaps
 		// that are not tracked by the operator to reduce memory usage.
 		Cache: cache.Options{
 			Scheme: scheme,
 			ByObject: map[crclient.Object]cache.ByObject{
-				&corev1.Secret{}:    {Transform: cacheutils.StripSecretDataTransform()},
-				&corev1.ConfigMap{}: {Transform: cacheutils.StripConfigMapDataTransform()},
+				&corev1.Secret{}:    {Transform: cacheutils.StripDataFromSecretOrConfigMapTransform()},
+				&corev1.ConfigMap{}: {Transform: cacheutils.StripDataFromSecretOrConfigMapTransform()},
 			},
 		},
 	}
