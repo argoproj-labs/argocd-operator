@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -692,6 +693,16 @@ func getNotificationsCommand(cr *argoproj.ArgoCD) []string {
 		cmd = append(cmd, "--argocd-repo-server", getRepoServerAddress(cr))
 	} else {
 		log.Info("Repo Server is disabled. This would affect the functioning of Notification Controller.")
+	}
+
+	// This flag allows the notification controller to watch
+	if len(cr.Spec.SourceNamespaces) > 0 {
+		cmd = append(cmd, "--self-service-notification-enabled")
+	}
+
+	// This flag allows the notification controller to watch all namespaces
+	if len(cr.Spec.SourceNamespaces) > 0 {
+		cmd = append(cmd, "--application-namespaces", fmt.Sprint(strings.Join(cr.Spec.SourceNamespaces, ",")))
 	}
 
 	return cmd
