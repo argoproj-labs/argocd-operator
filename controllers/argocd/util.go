@@ -585,11 +585,12 @@ func loadTemplateFile(path string, params map[string]string) (string, error) {
 	return buf.String(), nil
 }
 
-// nameWithSuffix will return a name based on the given ArgoCD. The given suffix is appended to the generated name.
-// Example: Given an ArgoCD with the name "example-argocd", providing the suffix "foo" would result in the value of
-// "example-argocd-foo" being returned.
+// nameWithSuffix will return a name based on the given ArgoCD using the better truncation approach.
+// The CR name is truncated first, then the full suffix is appended to preserve suffix readability.
+// Example: Given a long ArgoCD name, this ensures suffixes like "redis-initial-password" remain intact.
 func nameWithSuffix(suffix string, cr *argoproj.ArgoCD) string {
-	return fmt.Sprintf("%s-%s", cr.Name, suffix)
+	truncatedCRName := argoutil.GetTruncatedCRName(cr)
+	return fmt.Sprintf("%s-%s", truncatedCRName, suffix)
 }
 
 // fqdnServiceRef will return the FQDN referencing a specific service name, as set up by the operator, with the

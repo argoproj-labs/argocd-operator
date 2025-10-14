@@ -995,6 +995,59 @@ func TestReconcileApplicationSet_Service(t *testing.T) {
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Namespace: s.Namespace, Name: s.Name}, s))
 }
 
+func TestReconcileApplicationSet_ServiceWithLongName(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	// Create ArgoCD with a very long name that will trigger truncation
+	longName := "argocd-long-name-for-route-testiiiiiiiiiiiiiiiiiiiiiiiing"
+	a := makeTestArgoCD()
+	a.Name = longName
+	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	// Test ApplicationSet Service reconciliation
+	err := r.reconcileApplicationSetService(a)
+	assert.NoError(t, err)
+
+	// Get the created service
+	serviceList := &v1.ServiceList{}
+	err = r.List(context.TODO(), serviceList, client.InNamespace(a.Namespace))
+	assert.NoError(t, err)
+
+	var applicationSetService *v1.Service
+	for i := range serviceList.Items {
+		if serviceList.Items[i].Labels[common.ArgoCDKeyComponent] == common.ApplicationSetServiceNameSuffix {
+			applicationSetService = &serviceList.Items[i]
+			break
+		}
+	}
+	assert.NotNil(t, applicationSetService, "ApplicationSet service should exist")
+
+	// Verify that the service name is truncated and within limits
+	assert.LessOrEqual(t, len(applicationSetService.Name), 63)
+	assert.Contains(t, applicationSetService.Name, "applicationset-controller")
+
+	// Verify that the service selector uses the component name (our fix)
+	expectedComponentName := nameWithSuffix(common.ApplicationSetServiceNameSuffix, a)
+	assert.Equal(t, expectedComponentName, applicationSetService.Spec.Selector[common.ArgoCDKeyName])
+
+	// Verify that the suffix "applicationset-controller" is not truncated in the selector
+	assert.Contains(t, applicationSetService.Spec.Selector[common.ArgoCDKeyName], "applicationset-controller")
+
+	// Verify that the selector name is truncated and within limits
+	selectorName := applicationSetService.Spec.Selector[common.ArgoCDKeyName]
+	assert.LessOrEqual(t, len(selectorName), 63)
+
+	// Verify that the component label is set correctly
+	assert.Equal(t, common.ApplicationSetServiceNameSuffix, applicationSetService.Labels[common.ArgoCDKeyComponent])
+}
+
 func TestArgoCDApplicationSetCommand(t *testing.T) {
 	a := makeTestArgoCD()
 	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{}

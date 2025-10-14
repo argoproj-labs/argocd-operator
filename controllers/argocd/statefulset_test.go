@@ -1045,3 +1045,64 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_ModifyContainerSpec(t *testin
 	}
 	assert.False(t, volumeFound, "new-volume should not be present in volumes")
 }
+
+func TestStatefulSetWithLongName(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	// Create ArgoCD with a very long name that will trigger truncation
+	longName := "this-is-a-very-long-argocd-instance-name-that-will-exceed-the-kubernetes-name-limit-and-require-truncation"
+	a := makeTestArgoCD()
+	a.Name = longName
+
+	// Enable HA and Redis to ensure the statefulset is created
+	a.Spec.HA.Enabled = true
+	enabled := true
+	a.Spec.Redis = argoproj.ArgoCDRedisSpec{
+		Enabled: &enabled,
+	}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	// Test Redis HA StatefulSet
+	err := r.reconcileRedisStatefulSet(a)
+	assert.NoError(t, err)
+
+	// Get all statefulsets and find the Redis HA statefulset
+	statefulsetList := &appsv1.StatefulSetList{}
+	err = r.List(context.TODO(), statefulsetList, client.InNamespace(a.Namespace))
+	assert.NoError(t, err)
+
+	var redisStatefulset *appsv1.StatefulSet
+	for i := range statefulsetList.Items {
+		if statefulsetList.Items[i].Labels[common.ArgoCDKeyComponent] == "redis" {
+			redisStatefulset = &statefulsetList.Items[i]
+			break
+		}
+	}
+	assert.NotNil(t, redisStatefulset, "Redis HA statefulset should exist")
+
+	// Verify that the StatefulSet name is truncated and within limits
+	assert.LessOrEqual(t, len(redisStatefulset.Name), 63)
+	assert.Contains(t, redisStatefulset.Name, "redis")
+
+	// Verify that the StatefulSet name contains the "server" suffix (unique identifier)
+	assert.Contains(t, redisStatefulset.Name, "redis-ha-server", "StatefulSet name should contain the full suffix for uniqueness")
+
+	// Verify that the component label is set correctly
+	assert.Equal(t, "redis", redisStatefulset.Labels[common.ArgoCDKeyComponent])
+
+	// Verify that the selector uses the component name (our fix)
+	expectedComponentName := nameWithSuffix("redis-ha", a)
+	assert.Equal(t, expectedComponentName, redisStatefulset.Spec.Selector.MatchLabels[common.ArgoCDKeyName])
+
+	// Verify that the pod template labels use the component name (our fix)
+	assert.Equal(t, expectedComponentName, redisStatefulset.Spec.Template.Labels[common.ArgoCDKeyName])
+
+	// Verify that the service name uses the component name (our fix)
+	assert.Equal(t, expectedComponentName, redisStatefulset.Spec.ServiceName)
+}

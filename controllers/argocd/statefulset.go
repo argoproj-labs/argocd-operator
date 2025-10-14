@@ -53,6 +53,8 @@ func newStatefulSet(cr *argoproj.ArgoCD) *appsv1.StatefulSet {
 // newStatefulSetWithName returns a new StatefulSet instance for the given ArgoCD using the given name.
 func newStatefulSetWithName(name string, component string, cr *argoproj.ArgoCD) *appsv1.StatefulSet {
 	ss := newStatefulSet(cr)
+
+	// The name is already truncated by nameWithSuffix, so use it directly
 	ss.Name = name
 
 	lbls := ss.Labels
@@ -89,7 +91,7 @@ func newStatefulSetWithName(name string, component string, cr *argoproj.ArgoCD) 
 
 // newStatefulSetWithSuffix returns a new StatefulSet instance for the given ArgoCD using the given suffix.
 func newStatefulSetWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) *appsv1.StatefulSet {
-	return newStatefulSetWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
+	return newStatefulSetWithName(nameWithSuffix(suffix, cr), component, cr)
 }
 
 func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
@@ -100,7 +102,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 		ValueFrom: &corev1.EnvVarSource{
 			SecretKeyRef: &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: fmt.Sprintf("%s-%s", cr.Name, "redis-initial-password"),
+					Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
 				},
 				Key: "admin.password",
 			},
@@ -118,6 +120,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 	ss.Spec.ServiceName = nameWithSuffix("redis-ha", cr)
 
 	ss.Spec.Template.ObjectMeta = metav1.ObjectMeta{
+
 		Annotations: map[string]string{
 			"checksum/init-config": "7128bfbb51eafaffe3c33b1b463e15f0cf6514cec570f9d9c4f2396f28c724ac", // TODO: Should this be hard-coded?
 		},
@@ -317,7 +320,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{
-							Name: fmt.Sprintf("%s-%s", cr.Name, "redis-initial-password"),
+							Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
 						},
 						Key: "admin.password",
 					},
@@ -551,7 +554,7 @@ func getArgoControllerContainerEnv(cr *argoproj.ArgoCD, replicas int32) []corev1
 		ValueFrom: &corev1.EnvVarSource{
 			SecretKeyRef: &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: fmt.Sprintf("%s-%s", cr.Name, "redis-initial-password"),
+					Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
 				},
 				Key: "admin.password",
 			},

@@ -342,12 +342,8 @@ func isCreatedByServiceCA(crName string, secret corev1.Secret) bool {
 
 // reconcileApplicationSetControllerWebhookRoute will ensure that the ArgoCD Server Route is present.
 func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argoproj.ArgoCD) error {
-	// Generate a base name for the route
-	baseName := fmt.Sprintf("%s-%s", cr.Name, common.ApplicationSetControllerWebhookSuffix)
-	// Truncate to 63 characters if needed (Kubernetes label value limit)
-	if len(baseName) > maxLabelLength {
-		baseName = baseName[:maxLabelLength]
-	}
+	// Generate a base name for the route using the better truncation approach
+	baseName := nameWithSuffix(common.ApplicationSetControllerWebhookSuffix, cr)
 	route := newRouteWithName(baseName, cr)
 
 	found, err := argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
