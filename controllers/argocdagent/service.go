@@ -388,7 +388,7 @@ func buildPrincipalServiceSpec(compName string, cr *argoproj.ArgoCD) corev1.Serv
 		Selector: map[string]string{
 			common.ArgoCDKeyName: generateAgentResourceName(cr.Name, compName),
 		},
-		Type: corev1.ServiceTypeLoadBalancer,
+		Type: corev1.ServiceTypeClusterIP,
 	}
 }
 

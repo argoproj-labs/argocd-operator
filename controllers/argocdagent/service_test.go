@@ -93,8 +93,8 @@ func TestReconcilePrincipalService_ServiceDoesNotExist_PrincipalEnabled(t *testi
 	assert.Equal(t, intstr.FromInt(PrincipalServiceTargetPort), port.TargetPort)
 	assert.Equal(t, corev1.ProtocolTCP, port.Protocol)
 
-	// Verify Service type is LoadBalancer
-	assert.Equal(t, corev1.ServiceTypeLoadBalancer, svc.Spec.Type)
+	// Verify Service type is ClusterIP
+	assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
 
 	// Verify owner reference is set
 	assert.Len(t, svc.OwnerReferences, 1)
@@ -590,8 +590,8 @@ func TestReconcilePrincipalService_VerifyPrincipalServiceSpec(t *testing.T) {
 	assert.Equal(t, intstr.FromInt(PrincipalServiceTargetPort), httpsPort.TargetPort)
 	assert.Equal(t, corev1.ProtocolTCP, httpsPort.Protocol)
 
-	// Verify Service type is LoadBalancer
-	assert.Equal(t, corev1.ServiceTypeLoadBalancer, svc.Spec.Type)
+	// Verify Service type is ClusterIP
+	assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
 
 	// Verify selector points to the correct component
 	expectedSelector := map[string]string{

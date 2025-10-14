@@ -27,7 +27,7 @@ import (
 )
 
 func TestReconcileRouteSetLabels(t *testing.T) {
-	routeAPIFound = true
+	argoutil.SetRouteAPIFound(true)
 	ctx := context.Background()
 	logf.SetLogger(ZapLogger(true))
 	argoCD := makeArgoCD(func(a *argoproj.ArgoCD) {
@@ -66,7 +66,7 @@ func TestReconcileRouteSetLabels(t *testing.T) {
 
 }
 func TestReconcileRouteSetsInsecure(t *testing.T) {
-	routeAPIFound = true
+	argoutil.SetRouteAPIFound(true)
 	ctx := context.Background()
 	logf.SetLogger(ZapLogger(true))
 	argoCD := makeArgoCD(func(a *argoproj.ArgoCD) {
@@ -141,7 +141,7 @@ func TestReconcileRouteSetsInsecure(t *testing.T) {
 }
 
 func TestReconcileRouteUnsetsInsecure(t *testing.T) {
-	routeAPIFound = true
+	argoutil.SetRouteAPIFound(true)
 	ctx := context.Background()
 	logf.SetLogger(ZapLogger(true))
 	argoCD := makeArgoCD(func(a *argoproj.ArgoCD) {
@@ -217,7 +217,7 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 }
 
 func TestReconcileRouteApplicationSetHost(t *testing.T) {
-	routeAPIFound = true
+	argoutil.SetRouteAPIFound(true)
 	ctx := context.Background()
 	logf.SetLogger(ZapLogger(true))
 	argoCD := makeArgoCD(func(a *argoproj.ArgoCD) {
@@ -269,7 +269,7 @@ func TestReconcileRouteApplicationSetHost(t *testing.T) {
 }
 
 func TestReconcileRouteApplicationSetTlsTermination(t *testing.T) {
-	routeAPIFound = true
+	argoutil.SetRouteAPIFound(true)
 	ctx := context.Background()
 	logf.SetLogger(ZapLogger(true))
 	argoCD := makeArgoCD(func(a *argoproj.ArgoCD) {
@@ -325,7 +325,7 @@ func TestReconcileRouteApplicationSetTlsTermination(t *testing.T) {
 }
 
 func TestReconcileRouteApplicationSetTls(t *testing.T) {
-	routeAPIFound = true
+	argoutil.SetRouteAPIFound(true)
 	ctx := context.Background()
 	logf.SetLogger(ZapLogger(true))
 	wildcardPolicy := routev1.WildcardPolicyType("subdomain")
@@ -433,7 +433,7 @@ func TestReconcileRouteApplicationSetTls(t *testing.T) {
 }
 
 func TestReconcileRouteForShorteningHostname(t *testing.T) {
-	routeAPIFound = true
+	argoutil.SetRouteAPIFound(true)
 	ctx := context.Background()
 	logf.SetLogger(ZapLogger(true))
 
@@ -517,7 +517,7 @@ func TestReconcileRouteForShorteningHostname(t *testing.T) {
 }
 
 func TestReconcileRouteForShorteningRoutename(t *testing.T) {
-	routeAPIFound = true
+	argoutil.SetRouteAPIFound(true)
 	ctx := context.Background()
 	logf.SetLogger(ZapLogger(true))
 
@@ -574,7 +574,7 @@ func TestReconcileRouteForShorteningRoutename(t *testing.T) {
 }
 
 func TestReconcileRouteTLSConfig(t *testing.T) {
-	routeAPIFound = true
+	argoutil.SetRouteAPIFound(true)
 	ctx := context.Background()
 	logf.SetLogger(ZapLogger(true))
 
@@ -778,7 +778,7 @@ func testNamespacedName(name string) types.NamespacedName {
 }
 
 func TestOverrideRouteTLSData(t *testing.T) {
-	routeAPIFound = true
+	argoutil.SetRouteAPIFound(true)
 	logf.SetLogger(ZapLogger(true))
 
 	argoCD := makeArgoCD()
@@ -968,7 +968,7 @@ func TestReconilePrometheusRouteWithExternalTLSData(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			routeAPIFound = true
+			argoutil.SetRouteAPIFound(true)
 			ctx := context.TODO()
 			a := &test.argocd
 			logf.SetLogger(ZapLogger(true))

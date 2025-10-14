@@ -354,7 +354,7 @@ func (r *ReconcileArgoCD) getArgoServerURI(cr *argoproj.ArgoCD) (string, error) 
 		}
 	}
 
-	if cr.Spec.Server.Route.Enabled && IsRouteAPIAvailable() {
+	if cr.Spec.Server.Route.Enabled && argoutil.IsRouteAPIAvailable() {
 		// Use Route host if available, override Ingress if both exist
 		route := newRouteWithSuffix("server", cr)
 		routeExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
@@ -675,7 +675,7 @@ func InspectCluster() error {
 		return err
 	}
 
-	if err := verifyRouteAPI(); err != nil {
+	if err := argoutil.VerifyRouteAPI(); err != nil {
 		return err
 	}
 
@@ -827,7 +827,7 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *
 		return err
 	}
 
-	if IsRouteAPIAvailable() {
+	if argoutil.IsRouteAPIAvailable() {
 		log.Info("reconciling routes")
 		if err := r.reconcileRoutes(cr); err != nil {
 			return err
@@ -1088,7 +1088,7 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 		log.Info("unable to inspect cluster")
 	}
 
-	if IsRouteAPIAvailable() {
+	if argoutil.IsRouteAPIAvailable() {
 		// Watch OpenShift Route sub-resources owned by ArgoCD instances.
 		bldr.Owns(&routev1.Route{})
 	}
@@ -1864,6 +1864,11 @@ func (r *ReconcileArgoCD) reconcileArgoCDAgent(cr *argoproj.ArgoCD) error {
 
 	log.Info("reconciling ArgoCD Agent healthz service")
 	if err := argocdagent.ReconcilePrincipalHealthzService(r.Client, compName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent route")
+	if err := argocdagent.ReconcilePrincipalRoute(r.Client, compName, cr, r.Scheme); err != nil {
 		return err
 	}
 

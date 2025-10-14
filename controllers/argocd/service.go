@@ -399,7 +399,7 @@ func ensureAutoTLSAnnotation(k8sClient client.Client, svc *corev1.Service, secre
 	var autoTLSAnnotationName, autoTLSAnnotationValue string
 
 	// We currently only support OpenShift for automatic TLS
-	if IsRouteAPIAvailable() {
+	if argoutil.IsRouteAPIAvailable() {
 		autoTLSAnnotationName = common.AnnotationOpenShiftServiceCA
 		if svc.Annotations == nil {
 			svc.Annotations = make(map[string]string)

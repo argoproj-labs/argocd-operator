@@ -254,11 +254,11 @@ var argoServerURITests = []struct {
 }
 
 func setRouteAPIFound(t *testing.T, routeEnabled bool) {
-	routeAPIEnabledTemp := routeAPIFound
+	routeAPIEnabledTemp := argoutil.IsRouteAPIAvailable()
 	t.Cleanup(func() {
-		routeAPIFound = routeAPIEnabledTemp
+		argoutil.SetRouteAPIFound(routeAPIEnabledTemp)
 	})
-	routeAPIFound = routeEnabled
+	argoutil.SetRouteAPIFound(routeEnabled)
 }
 
 func TestGetArgoServerURI(t *testing.T) {

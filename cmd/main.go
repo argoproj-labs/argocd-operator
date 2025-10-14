@@ -216,7 +216,7 @@ func main() {
 	}
 
 	// Setup Scheme for OpenShift Routes if available.
-	if argocd.IsRouteAPIAvailable() {
+	if argoutil.IsRouteAPIAvailable() {
 		if err := routev1.Install(mgr.GetScheme()); err != nil {
 			setupLog.Error(err, "")
 			os.Exit(1)
