@@ -9,6 +9,8 @@ The following environment variables are available in `argocd-operator`:
 | `REMOVE_MANAGED_BY_LABEL_ON_ARGOCD_DELETION` | false | When an Argo CD instance is deleted, namespaces managed by that instance (via the `argocd.argoproj.io/managed-by` label ) will retain the label by default. Users can change this behavior by setting the environment variable `REMOVE_MANAGED_BY_LABEL_ON_ARGOCD_DELETION` to `true` in the Subscription. |
 | `ARGOCD_LABEL_SELECTOR` | none | The label selector can be set on argocd-opertor by exporting `ARGOCD_LABEL_SELECTOR` (eg: `export ARGOCD_LABEL_SELECTOR=foo=bar`). The labels can be added to the argocd instances using the command `kubectl label argocd test1 foo=bar -n test-argocd`. This will enable the operator instance to be tailored to oversee only the corresponding ArgoCD instances having the matching label selector. |
 | `LOG_LEVEL` | info | This sets the logging level of the manager (operator) pod. Valid values are "debug", "info", "warn", "error", "panic" and "fatal". |
+| `MEMORY_OPTIMIZATION_ENABLED` | true | Enables memory optimization by stripping data from Secrets and ConfigMaps that are not tracked by the operator, reducing memory usage. Set to `false` to disable this optimization. |
+
 
 Custom Environment Variables are supported in `applicationSet`, `controller`, `notifications`, `repo` and `server` components. For example:
 
