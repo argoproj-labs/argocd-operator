@@ -213,7 +213,6 @@ func GetImageAndTag(envVar, containerSpecImage, containerSpecVersion, commonSpec
 
 	// Parse environment variable image if it exists and we need to extract the base image name
 	if envVal != "" {
-		log.Info("Processing environment variable image", "envVal", envVal)
 		baseImageName, err := extractBaseImageName(envVal)
 		if err != nil {
 			log.Error(err, "Failed to parse environment variable image", "envVal", envVal)
@@ -225,8 +224,8 @@ func GetImageAndTag(envVar, containerSpecImage, containerSpecVersion, commonSpec
 	}
 
 	// Apply spec overrides with container spec taking precedence over common spec
-	image = selectImage(containerSpecImage, commonSpecImage, image)
-	tag = selectVersion(containerSpecVersion, commonSpecVersion, tag)
+	image = getPriorityValue(containerSpecImage, commonSpecImage, image)
+	tag = getPriorityValue(containerSpecVersion, commonSpecVersion, tag)
 
 	return image, tag
 }
@@ -246,24 +245,13 @@ func extractBaseImageName(imageRef string) (string, error) {
 	return name, nil
 }
 
-// selectImage returns the highest priority image from container spec, common spec, or fallback
-func selectImage(containerSpecImage, commonSpecImage, fallback string) string {
-	if containerSpecImage != "" {
-		return containerSpecImage
+// getPriorityValue returns the highest priority value from container spec, common spec, or fallback
+func getPriorityValue(containerLevelSpec, commonLevelSpec, fallback string) string {
+	if containerLevelSpec != "" {
+		return containerLevelSpec
 	}
-	if commonSpecImage != "" {
-		return commonSpecImage
-	}
-	return fallback
-}
-
-// selectVersion returns the highest priority version from container spec, common spec, or fallback
-func selectVersion(containerSpecVersion, commonSpecVersion, fallback string) string {
-	if containerSpecVersion != "" {
-		return containerSpecVersion
-	}
-	if commonSpecVersion != "" {
-		return commonSpecVersion
+	if commonLevelSpec != "" {
+		return commonLevelSpec
 	}
 	return fallback
 }
