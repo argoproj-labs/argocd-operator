@@ -22,6 +22,7 @@ Name | Default | Description
 [**HelpChatURL**](#help-chat-url) | `https://mycorp.slack.com/argo-cd` | URL for getting chat help, this will typically be your Slack channel for support.
 [**HelpChatText**](#help-chat-text) | `Chat now!` | The text for getting chat help.
 [**Image**](#image) | `argoproj/argocd` | The container image for all Argo CD components. This overrides the `ARGOCD_IMAGE` environment variable.
+[**ImageUpdater**](#image-updater-controller-options) | [Object] | Image Updater controller configuration options.
 [**Import**](#import-options) | [Object] | Import configuration options.
 [**Ingress**](#ingress-options) | [Object] | Ingress configuration options.
 [**InitialRepositories**](#initial-repositories) | [Empty] | Initial git repositories to configure Argo CD to use upon creation of the cluster.
@@ -491,6 +492,33 @@ metadata:
     example: image
 spec:
   image: argoproj/argocd
+```
+
+## Image Updater Controller Options
+
+The following properties are available for configuring the Image Updater controller component.
+
+Name | Default | Description
+--- | --- | ---
+Enabled | `false` | The toggle that determines whether image updater controller should be started or not.
+Env | [Empty] | Environment to set for the image updater workloads.
+Resources | [Empty] | The container compute resources.
+
+### Image Updater Controller Example
+
+The following example shows all properties set to the default values.
+
+``` yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+spec:
+  imageUpdater:
+    enabled: true
+    env:
+      - name: IMAGE_UPDATER_LOGLEVEL
+        value: trace
 ```
 
 ## Import Options

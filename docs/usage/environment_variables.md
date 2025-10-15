@@ -30,10 +30,11 @@ spec:
 
 The following default value of images could be overridden by setting the environment variables:
 
-| Environment Variable | Default Value |
-| --- | --- |
-| `ARGOCD_IMAGE` | [quay.io/argoproj/argocd](quay.io/argoproj/argocd) |
-| `ARGOCD_DEX_IMAGE` | [ghcr.io/dexidp/dex](ghcr.io/dexidp/dex) |
-| `ARGOCD_REDIS_IMAGE` | redis |
-| `ARGOCD_REDIS_HA_IMAGE` | redis |
-| `ARGOCD_REDIS_HA_PROXY_IMAGE` | haproxy |
+| Environment Variable          | Default Value                                                                          |
+|-------------------------------|----------------------------------------------------------------------------------------|
+| `ARGOCD_IMAGE`                | [quay.io/argoproj/argocd](quay.io/argoproj/argocd)                                     |
+| `ARGOCD_IMAGE_UPDATER_IMAGE`  | [quay.io/argoprojlabs/argocd-image-updater](quay.io/argoprojlabs/argocd-image-updater) |
+| `ARGOCD_DEX_IMAGE`            | [ghcr.io/dexidp/dex](ghcr.io/dexidp/dex)                                               |
+| `ARGOCD_REDIS_IMAGE`          | redis                                                                                  |
+| `ARGOCD_REDIS_HA_IMAGE`       | redis                                                                                  |
+| `ARGOCD_REDIS_HA_PROXY_IMAGE` | haproxy                                                                                |
