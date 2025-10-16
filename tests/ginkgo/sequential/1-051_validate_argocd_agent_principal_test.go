@@ -29,7 +29,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
@@ -160,6 +159,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				"argocd-agent-principal-tls",
 				"argocd-agent-ca",
 				"argocd-agent-resource-proxy-tls",
+				"example-redis-initial-password",
 			}
 
 			serviceNames = []string{argoCDAgentPrincipalName, fmt.Sprintf("%s-agent-principal-metrics", argoCDName), fmt.Sprintf("%s-redis", argoCDName), fmt.Sprintf("%s-repo-server", argoCDName), fmt.Sprintf("%s-server", argoCDName), fmt.Sprintf("%s-agent-principal-resource-proxy", argoCDName), fmt.Sprintf("%s-agent-principal-healthz", argoCDName)}
@@ -309,25 +309,16 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				}
 				Expect(k8sClient.Create(ctx, tlsSecret)).To(Succeed())
 			}
-
-			// Create argocd-redis secret
-			redisSecret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "argocd-redis",
-					Namespace: ns.Name,
-				},
-				Data: map[string][]byte{
-					"auth": []byte(uuid.New().String()),
-				},
-			}
-			Expect(k8sClient.Create(ctx, redisSecret)).To(Succeed())
 		}
 
 		// verifyExpectedResourcesExist will verify that the resources that are created for principal and ArgoCD are created.
 		verifyExpectedResourcesExist := func(ns *corev1.Namespace) {
 
 			By("verifying expected resources exist")
-
+			Eventually(&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: secretNames[4], Namespace: ns.Name,
+				}}, "30s", "2s").Should(k8sFixture.ExistByName())
 			Eventually(serviceAccount).Should(k8sFixture.ExistByName())
 			Eventually(role).Should(k8sFixture.ExistByName())
 			Eventually(roleBinding).Should(k8sFixture.ExistByName())
@@ -537,6 +528,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			By("Create ArgoCD instance")
 
+			argoCD.Spec.ArgoCDAgent.Principal.Server.Image = "quay.io/jparsai/argocd-agent:test"
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 
 			By("Verify expected resources are created for principal pod")
@@ -547,7 +539,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			container := deploymentFixture.GetTemplateSpecContainerByName(argoCDAgentPrincipalName, *principalDeployment)
 			Expect(container).ToNot(BeNil())
-			Expect(container.Image).To(Equal("quay.io/argoprojlabs/argocd-agent:v0.3.2"))
+			Expect(container.Image).To(Equal("quay.io/jparsai/argocd-agent:test"))
 
 			By("Verify environment variables are set correctly")
 
@@ -566,7 +558,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				ac.Spec.ArgoCDAgent.Principal.Server.LogFormat = "json"
 				ac.Spec.ArgoCDAgent.Principal.Server.KeepAliveMinInterval = "60s"
 				ac.Spec.ArgoCDAgent.Principal.Server.EnableWebSocket = ptr.To(true)
-				ac.Spec.ArgoCDAgent.Principal.Server.Image = "quay.io/argoprojlabs/argocd-agent:v0.4.0"
+				ac.Spec.ArgoCDAgent.Principal.Server.Image = "quay.io/jparsai/argocd-agent:test1"
 
 				ac.Spec.ArgoCDAgent.Principal.Namespace.AllowedNamespaces = []string{"agent-managed", "agent-autonomous"}
 				ac.Spec.ArgoCDAgent.Principal.Namespace.EnableNamespaceCreate = ptr.To(true)
@@ -608,7 +600,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					if container == nil {
 						return false
 					}
-					return container.Image == "quay.io/argoprojlabs/argocd-agent:v0.4.0"
+					return container.Image == "quay.io/jparsai/argocd-agent:test1"
 				}, "120s", "5s").Should(BeTrue(), "Principal deployment should have the updated image")
 
 			By("verify that deployment is in Ready state")
