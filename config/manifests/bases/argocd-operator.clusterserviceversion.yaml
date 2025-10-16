@@ -409,6 +409,15 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:ArgoCD
         - urn:alm:descriptor:com.tectonic.ui:text
+      - description: ImagePullPolicy is the image pull policy for all ArgoCD components.
+          Valid values are Always, IfNotPresent, Never. If not specified, defaults
+          to the operator's global setting.
+        displayName: Image Pull Policy
+        path: imagePullPolicy
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:ArgoCD
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:fieldDependency:image:enable
       - description: Name of an ArgoCDExport from which to import data.
         displayName: Name
         path: import.name
@@ -1019,6 +1028,15 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:ArgoCD
         - urn:alm:descriptor:com.tectonic.ui:text
+      - description: ImagePullPolicy is the image pull policy for all ArgoCD components.
+          Valid values are Always, IfNotPresent, Never. If not specified, defaults
+          to the operator's global setting.
+        displayName: Image Pull Policy
+        path: imagePullPolicy
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:ArgoCD
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:fieldDependency:image:enable
       - description: Name of an ArgoCDExport from which to import data.
         displayName: Name
         path: import.name

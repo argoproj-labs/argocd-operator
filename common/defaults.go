@@ -14,6 +14,10 @@
 
 package common
 
+import (
+	corev1 "k8s.io/api/core/v1"
+)
+
 const (
 	// ArgoCDApplicationControllerComponent is the name of the application controller control plane component
 	ArgoCDApplicationControllerComponent = "argocd-application-controller"
@@ -316,4 +320,19 @@ func DefaultNodeSelector() map[string]string {
 	return map[string]string{
 		"kubernetes.io/os": "linux",
 	}
+}
+
+// GetImagePullPolicy returns the image pull policy with proper precedence:
+// 1. Global ArgoCD imagePullPolicy
+// 2. Operator environment variable setting
+// 3. Default value (lowest priority)
+func GetImagePullPolicyOnPrecedence(globalPolicy *corev1.PullPolicy, envValue string) corev1.PullPolicy {
+	if globalPolicy != nil {
+		return *globalPolicy
+	}
+
+	if envValue != "" {
+		return corev1.PullPolicy(envValue)
+	}
+	return corev1.PullPolicy("")
 }

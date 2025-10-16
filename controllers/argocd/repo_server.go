@@ -141,7 +141,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 		Name:            "copyutil",
 		Image:           getArgoContainerImage(cr),
 		Command:         getArgoCmpServerInitCommand(),
-		ImagePullPolicy: corev1.PullAlways,
+		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Resources:       getArgoRepoResources(cr),
 		Env:             proxyEnvVars(),
 		SecurityContext: argoutil.DefaultSecurityContext(),
@@ -213,7 +213,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command:         getArgoRepoCommand(cr, useTLSForRedis),
 		Image:           getRepoServerContainerImage(cr),
-		ImagePullPolicy: corev1.PullAlways,
+		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		LivenessProbe: &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
 				TCPSocket: &corev1.TCPSocketAction{
@@ -387,6 +387,8 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 		explanation := ""
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getRepoServerContainerImage(cr)
+		actualImagePullPolicy := existing.Spec.Template.Spec.Containers[0].ImagePullPolicy
+		desiredImagePullPolicy := argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy)
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
 			if existing.Spec.Template.Labels == nil {
@@ -396,6 +398,14 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 			}
 			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			explanation = "container image"
+			changed = true
+		}
+		if actualImagePullPolicy != desiredImagePullPolicy {
+			existing.Spec.Template.Spec.Containers[0].ImagePullPolicy = desiredImagePullPolicy
+			if changed {
+				explanation += ", "
+			}
+			explanation += "image pull policy"
 			changed = true
 		}
 		updateNodePlacement(existing, deploy, &changed, &explanation)

@@ -1414,6 +1414,15 @@ spec:
               image:
                 description: Image is the ArgoCD container image for all ArgoCD components.
                 type: string
+              imagePullPolicy:
+                description: |-
+                  ImagePullPolicy is the image pull policy for all ArgoCD components.
+                  Valid values are Always, IfNotPresent, Never. If not specified, defaults to the operator's global setting.
+                enum:
+                - Always
+                - IfNotPresent
+                - Never
+                type: string
               import:
                 description: Import is the import/restore options for ArgoCD.
                 properties:
@@ -16052,6 +16061,15 @@ spec:
                 type: string
               image:
                 description: Image is the ArgoCD container image for all ArgoCD components.
+                type: string
+              imagePullPolicy:
+                description: |-
+                  ImagePullPolicy is the image pull policy for all ArgoCD components.
+                  Valid values are Always, IfNotPresent, Never. If not specified, defaults to the operator's global setting.
+                enum:
+                - Always
+                - IfNotPresent
+                - Never
                 type: string
               imageUpdater:
                 description: ImageUpdater defines whether the Argo CD ImageUpdater
