@@ -351,7 +351,6 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 						MountPath: "/tmp",
 					},
 				},
-				ImagePullPolicy: corev1.PullAlways,
 			},
 		},
 		Containers: []corev1.Container{
@@ -467,7 +466,6 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 								MountPath: "/tmp",
 							},
 						},
-						ImagePullPolicy: corev1.PullAlways,
 					},
 				},
 				Containers: []corev1.Container{
@@ -575,7 +573,6 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 								MountPath: "/tmp",
 							},
 						},
-						ImagePullPolicy: corev1.PullAlways,
 					},
 				},
 				Containers: []corev1.Container{
