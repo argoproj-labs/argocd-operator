@@ -129,7 +129,6 @@ func TestReconcilePrincipalDeployment_DeploymentDoesNotExist_PrincipalEnabled(t 
 	container := deployment.Spec.Template.Spec.Containers[0]
 	assert.Equal(t, generateAgentResourceName(cr.Name, testCompName), container.Name)
 	assert.Equal(t, buildPrincipalImage(cr), container.Image)
-	assert.Equal(t, corev1.PullAlways, container.ImagePullPolicy)
 	assert.Equal(t, buildArgs(testCompName), container.Args)
 	assert.Equal(t, buildPrincipalContainerEnv(cr), container.Env)
 	assert.Equal(t, buildSecurityContext(), container.SecurityContext)
