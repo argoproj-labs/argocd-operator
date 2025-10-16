@@ -449,7 +449,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Args:            getArgoRedisArgs(useTLS),
 		Image:           getRedisContainerImage(cr),
-		ImagePullPolicy: corev1.PullAlways,
+		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            "redis",
 		Ports: []corev1.ContainerPort{
 			{
@@ -507,10 +507,20 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 		explanation := ""
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getRedisContainerImage(cr)
+		actualImagePullPolicy := existing.Spec.Template.Spec.Containers[0].ImagePullPolicy
+		desiredImagePullPolicy := argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy)
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
 			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			explanation = "container image"
+			changed = true
+		}
+		if actualImagePullPolicy != desiredImagePullPolicy {
+			existing.Spec.Template.Spec.Containers[0].ImagePullPolicy = desiredImagePullPolicy
+			if changed {
+				explanation += ", "
+			}
+			explanation += "image pull policy"
 			changed = true
 		}
 		updateNodePlacement(existing, deploy, &changed, &explanation)
@@ -645,7 +655,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Image:           getRedisHAProxyContainerImage(cr),
-		ImagePullPolicy: corev1.PullIfNotPresent,
+		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            "haproxy",
 		Env:             redisEnv,
 		LivenessProbe: &corev1.Probe{
@@ -690,7 +700,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 			"sh",
 		},
 		Image:           getRedisHAProxyContainerImage(cr),
-		ImagePullPolicy: corev1.PullIfNotPresent,
+		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            "config-init",
 		Env:             proxyEnvVars(),
 		Resources:       getRedisHAResources(cr),
@@ -799,11 +809,21 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 		explanation := ""
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getRedisHAProxyContainerImage(cr)
+		actualImagePullPolicy := existing.Spec.Template.Spec.Containers[0].ImagePullPolicy
+		desiredImagePullPolicy := argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy)
 
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
 			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			explanation = "container image"
+			changed = true
+		}
+		if actualImagePullPolicy != desiredImagePullPolicy {
+			existing.Spec.Template.Spec.Containers[0].ImagePullPolicy = desiredImagePullPolicy
+			if changed {
+				explanation += ", "
+			}
+			explanation += "image pull policy"
 			changed = true
 		}
 		updateNodePlacement(existing, deploy, &changed, &explanation)
@@ -942,7 +962,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command:         getArgoServerCommand(cr, useTLSForRedis),
 		Image:           getArgoContainerImage(cr),
-		ImagePullPolicy: corev1.PullAlways,
+		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Env:             serverEnv,
 		LivenessProbe: &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
@@ -1120,12 +1140,22 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		}
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getArgoContainerImage(cr)
+		actualImagePullPolicy := existing.Spec.Template.Spec.Containers[0].ImagePullPolicy
+		desiredImagePullPolicy := argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy)
 		changed := false
 		explanation := ""
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
 			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			explanation = "container image"
+			changed = true
+		}
+		if actualImagePullPolicy != desiredImagePullPolicy {
+			existing.Spec.Template.Spec.Containers[0].ImagePullPolicy = desiredImagePullPolicy
+			if changed {
+				explanation += ", "
+			}
+			explanation += "image pull policy"
 			changed = true
 		}
 		updateNodePlacement(existing, deploy, &changed, &explanation)

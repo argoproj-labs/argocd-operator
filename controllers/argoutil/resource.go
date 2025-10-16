@@ -18,6 +18,7 @@ import (
 	"context"
 	"crypto/sha1" // #nosec G505 - SHA1 used for non-cryptographic name hashing only
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 
@@ -259,4 +260,11 @@ func TruncateCRName(crName string) string {
 func GetTruncatedCRName(cr *argoproj.ArgoCD) string {
 	// Always use the deterministic truncate function as source of truth
 	return TruncateCRName(cr.Name)
+}
+
+// getImagePullPolicy returns the image pull policy with proper precedence for ArgoCD components.
+// It considers component-specific policy, global ArgoCD policy, operator environment variable, and default value.
+func GetImagePullPolicy(globalPolicy *corev1.PullPolicy) corev1.PullPolicy {
+	envValue := os.Getenv(common.ArgoCDImagePullPolicyEnvName)
+	return common.GetImagePullPolicyOnPrecedence(globalPolicy, envValue)
 }

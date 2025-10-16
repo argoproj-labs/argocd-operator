@@ -108,7 +108,7 @@ func buildPrincipalSpec(compName, saName string, cr *argoproj.ArgoCD) appsv1.Dep
 				Containers: []corev1.Container{
 					{
 						Image:           buildPrincipalImage(cr),
-						ImagePullPolicy: corev1.PullAlways,
+						ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 						Name:            generateAgentResourceName(cr.Name, compName),
 						Env:             buildPrincipalContainerEnv(cr),
 						Args:            buildArgs(compName),
@@ -261,6 +261,12 @@ func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, dep
 		log.Info("deployment image is being updated")
 		changed = true
 		deployment.Spec.Template.Spec.Containers[0].Image = buildPrincipalImage(cr)
+	}
+
+	if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].ImagePullPolicy, argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy)) {
+		log.Info("deployment image pull policy is being updated")
+		changed = true
+		deployment.Spec.Template.Spec.Containers[0].ImagePullPolicy = argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy)
 	}
 
 	if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Name, generateAgentResourceName(cr.Name, compName)) {
