@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -140,7 +141,7 @@ func TestReconcileArgoCD_reconcileStatusHost(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
-			routeAPIFound = test.testRouteAPIFound
+			argoutil.SetRouteAPIFound(test.testRouteAPIFound)
 
 			a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 				a.Spec.Server.Route.Enabled = test.routeEnabled

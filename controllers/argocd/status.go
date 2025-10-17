@@ -357,7 +357,7 @@ func (r *ReconcileArgoCD) reconcileStatusNotifications(cr *argoproj.ArgoCD, argo
 func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus) error {
 	argocdStatus.Host = ""
 
-	if (cr.Spec.Server.Route.Enabled || cr.Spec.Server.Ingress.Enabled) && IsRouteAPIAvailable() {
+	if (cr.Spec.Server.Route.Enabled || cr.Spec.Server.Ingress.Enabled) && argoutil.IsRouteAPIAvailable() {
 		route := newRouteWithSuffix("server", cr)
 
 		// The Red Hat OpenShift ingress controller implementation is designed to watch ingress objects and create one or more routes

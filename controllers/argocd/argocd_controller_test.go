@@ -25,6 +25,8 @@ import (
 	testclient "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	configv1 "github.com/openshift/api/config/v1"
+	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -48,13 +50,14 @@ var _ reconcile.Reconciler = &ReconcileArgoCD{}
 // We have owner references set on created resources, this triggers automatic
 // deletion of the associated objects.
 func TestReconcileArgoCD_Reconcile_with_deleted(t *testing.T) {
+	argoutil.SetRouteAPIFound(true) // Setup Route API for tests that call full reconciler
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(deletedAt(time.Now()))
 
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -80,6 +83,7 @@ func TestReconcileArgoCD_Reconcile_with_deleted(t *testing.T) {
 
 // TestReconcileArgoCD_DexWorkloads verifies that when dex is enabled, that the appropriate operator resources are created. When dex is disabled, the objects are verified to be removed.
 func TestReconcileArgoCD_DexWorkloads(t *testing.T) {
+	argoutil.SetRouteAPIFound(true) // Setup Route API for tests that call full reconciler
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 
@@ -94,7 +98,7 @@ func TestReconcileArgoCD_DexWorkloads(t *testing.T) {
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -183,13 +187,14 @@ func TestReconcileArgoCD_DexWorkloads(t *testing.T) {
 }
 
 func TestReconcileArgoCD_Reconcile(t *testing.T) {
+	argoutil.SetRouteAPIFound(true) // Setup Route API for tests that call full reconciler
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -215,6 +220,7 @@ func TestReconcileArgoCD_Reconcile(t *testing.T) {
 }
 
 func TestReconcileArgoCD_LabelSelector(t *testing.T) {
+	argoutil.SetRouteAPIFound(true) // Setup Route API for tests that call full reconciler
 	logf.SetLogger(ZapLogger(true))
 	//ctx := context.Background()
 	a := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
@@ -232,7 +238,7 @@ func TestReconcileArgoCD_LabelSelector(t *testing.T) {
 	resObjs := []client.Object{a, b, c}
 	subresObjs := []client.Object{a, b, c}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	rt := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -305,6 +311,7 @@ func TestReconcileArgoCD_LabelSelector(t *testing.T) {
 }
 
 func TestReconcileArgoCD_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *testing.T) {
+	argoutil.SetRouteAPIFound(true) // Setup Route API for tests that call full reconciler
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
@@ -387,6 +394,7 @@ func deletedAt(now time.Time) argoCDOpt {
 }
 
 func TestReconcileArgoCD_CleanUp(t *testing.T) {
+	argoutil.SetRouteAPIFound(true) // Setup Route API for tests that call full reconciler
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(deletedAt(time.Now()), addFinalizer(common.ArgoCDDeletionFinalizer))
 
@@ -467,6 +475,7 @@ func clusterResources(argocd *argoproj.ArgoCD) []client.Object {
 }
 
 func TestReconcileArgoCD_Status_Condition(t *testing.T) {
+	argoutil.SetRouteAPIFound(true) // Setup Route API for tests that call full reconciler
 	logf.SetLogger(ZapLogger(true))
 
 	a := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
@@ -477,7 +486,7 @@ func TestReconcileArgoCD_Status_Condition(t *testing.T) {
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	rt := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 	rt.LabelSelector = "foo=bar"
@@ -522,6 +531,7 @@ func TestReconcileArgoCD_Status_Condition(t *testing.T) {
 }
 
 func TestReconcileArgoCD_Cleanup_RBACs_When_NamespaceManagement_Disabled(t *testing.T) {
+	argoutil.SetRouteAPIFound(true) // Setup Route API for tests that call full reconciler
 	namespace := testNamespace
 	argoCD := makeArgoCD()
 	argoCD.Spec.NamespaceManagement = nil
@@ -540,7 +550,7 @@ func TestReconcileArgoCD_Cleanup_RBACs_When_NamespaceManagement_Disabled(t *test
 	resObjs := []client.Object{argoCD, nsMgmt}
 	subresObjs := []client.Object{argoCD}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 

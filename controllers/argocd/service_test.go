@@ -18,6 +18,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
 func TestEnsureAutoTLSAnnotation(t *testing.T) {
@@ -28,7 +29,7 @@ func TestEnsureAutoTLSAnnotation(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	fakeClient := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	t.Run("Ensure annotation will be set for OpenShift", func(t *testing.T) {
-		routeAPIFound = true
+		argoutil.SetRouteAPIFound(true)
 		svc := newService(a)
 
 		// Annotation is inserted, update is required
@@ -45,7 +46,7 @@ func TestEnsureAutoTLSAnnotation(t *testing.T) {
 		assert.Equal(t, needUpdate, false)
 	})
 	t.Run("Ensure annotation will be unset for OpenShift", func(t *testing.T) {
-		routeAPIFound = true
+		argoutil.SetRouteAPIFound(true)
 		svc := newService(a)
 		svc.Annotations = make(map[string]string)
 		svc.Annotations[common.AnnotationOpenShiftServiceCA] = "some-secret"
@@ -63,7 +64,7 @@ func TestEnsureAutoTLSAnnotation(t *testing.T) {
 		assert.Equal(t, needUpdate, false)
 	})
 	t.Run("Ensure annotation will not be set for non-OpenShift", func(t *testing.T) {
-		routeAPIFound = false
+		argoutil.SetRouteAPIFound(false)
 		svc := newService(a)
 		needUpdate, err := ensureAutoTLSAnnotation(fakeClient, svc, "some-secret", true)
 		assert.Nil(t, err)
@@ -72,7 +73,7 @@ func TestEnsureAutoTLSAnnotation(t *testing.T) {
 		assert.Equal(t, ok, false)
 	})
 	t.Run("Ensure annotation will not be set if the TLS secret is already present", func(t *testing.T) {
-		routeAPIFound = true
+		argoutil.SetRouteAPIFound(true)
 		svc := newService(a)
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{

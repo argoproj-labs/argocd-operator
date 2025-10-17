@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	routev1 "github.com/openshift/api/route/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -85,4 +86,25 @@ func IsAPIRegistered(group string, version string) (bool, error) {
 	}
 	log.Info(fmt.Sprintf("%s/%s API is registered", group, version))
 	return true, nil
+}
+
+var routeAPIFound = false
+
+// IsRouteAPIAvailable returns true if the Route API is present.
+func IsRouteAPIAvailable() bool {
+	return routeAPIFound
+}
+
+// VerifyRouteAPI will verify that the Route API is present.
+func VerifyRouteAPI() error {
+	found, err := VerifyAPI(routev1.GroupName, routev1.GroupVersion.Version)
+	if err != nil {
+		return err
+	}
+	routeAPIFound = found
+	return nil
+}
+
+func SetRouteAPIFound(found bool) {
+	routeAPIFound = found
 }

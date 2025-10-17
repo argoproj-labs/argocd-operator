@@ -31,6 +31,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -74,6 +75,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			principalDeployment  *appsv1.Deployment
 			expectedEnvVariables map[string]string
 			secretNames          []string
+			principalRoute       *routev1.Route
 		)
 
 		BeforeEach(func() {
@@ -168,6 +170,13 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			principalDeployment = &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      argoCDAgentPrincipalName,
+					Namespace: ns.Name,
+				},
+			}
+
+			principalRoute = &routev1.Route{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-agent-principal", argoCDName),
 					Namespace: ns.Name,
 				},
 			}
@@ -343,12 +352,14 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					},
 				}
 				Eventually(service).Should(k8sFixture.ExistByName())
+				Expect(string(service.Spec.Type)).To(Equal("ClusterIP"))
+			}
 
-				if serviceName == argoCDAgentPrincipalName {
-					Expect(string(service.Spec.Type)).To(Equal("LoadBalancer"))
-				} else {
-					Expect(string(service.Spec.Type)).To(Equal("ClusterIP"))
-				}
+			By("verifying Route for principal exists on OpenShift")
+
+			// Check if running on OpenShift and route should exist
+			if fixture.RunningOnOpenShift() {
+				Eventually(principalRoute).Should(k8sFixture.ExistByName())
 			}
 
 			for _, deploymentName := range deploymentNames {
@@ -393,6 +404,11 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					},
 				}
 				Eventually(service).Should(k8sFixture.NotExistByName())
+			}
+
+			// Verify route is deleted on OpenShift
+			if fixture.RunningOnOpenShift() {
+				Eventually(principalRoute).Should(k8sFixture.NotExistByName())
 			}
 		}
 
