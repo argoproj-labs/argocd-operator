@@ -257,7 +257,7 @@ metadata:
     capabilities: Deep Insights
     categories: Integration & Delivery
     certified: "false"
-    createdAt: "2025-10-14T18:26:44Z"
+    createdAt: "2025-10-16T08:06:36Z"
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v1.35.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
@@ -603,6 +603,15 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:ArgoCD
         - urn:alm:descriptor:com.tectonic.ui:text
+      - description: ImagePullPolicy is the image pull policy for all ArgoCD components.
+          Valid values are Always, IfNotPresent, Never. If not specified, defaults
+          to the operator's global setting.
+        displayName: Image Pull Policy
+        path: imagePullPolicy
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:ArgoCD
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:fieldDependency:image:enable
       - description: Name of an ArgoCDExport from which to import data.
         displayName: Name
         path: import.name
@@ -1190,6 +1199,15 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:ArgoCD
         - urn:alm:descriptor:com.tectonic.ui:text
+      - description: ImagePullPolicy is the image pull policy for all ArgoCD components.
+          Valid values are Always, IfNotPresent, Never. If not specified, defaults
+          to the operator's global setting.
+        displayName: Image Pull Policy
+        path: imagePullPolicy
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:ArgoCD
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:fieldDependency:image:enable
       - description: Name of an ArgoCDExport from which to import data.
         displayName: Name
         path: import.name

@@ -242,4 +242,8 @@ const (
 	// ArgoCDImageUpdaterImageEnvName is the environment variable used to get the image
 	// to used for the Image Updater container.
 	ArgoCDImageUpdaterImageEnvName = "ARGOCD_IMAGE_UPDATER_IMAGE"
+
+	// ArgoCDImagePullPolicyEnvName is the environment variable used to get the global image pull policy
+	// for all ArgoCD components managed by the operator.
+	ArgoCDImagePullPolicyEnvName = "IMAGE_PULL_POLICY"
 )
