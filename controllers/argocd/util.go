@@ -41,6 +41,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdagent"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocdagent/agent"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
 	configv1 "github.com/openshift/api/config/v1"
@@ -1811,69 +1812,121 @@ func appendUniqueArgs(cmd []string, extraArgs []string) []string {
 
 // reconcileArgoCDAgent will reconcile all ArgoCD Agent resources.
 func (r *ReconcileArgoCD) reconcileArgoCDAgent(cr *argoproj.ArgoCD) error {
-	compName := "principal"
 	log.Info("reconciling ArgoCD Agent resources")
 
-	log.Info("reconciling ArgoCD Agent service account")
+	principalEnabled := cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Principal != nil && cr.Spec.ArgoCDAgent.Principal.IsEnabled()
+	agentEnabled := cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Agent != nil && cr.Spec.ArgoCDAgent.Agent.IsEnabled()
+
+	if principalEnabled && agentEnabled {
+		return fmt.Errorf("spec.argoCDAgent.principal and spec.argoCDAgent.agent cannot both be enabled")
+	}
+
+	log.Info("reconciling ArgoCD Agent's Principal resources")
+	compName := "principal"
 	var sa *corev1.ServiceAccount
 	var err error
 
+	log.Info("reconciling ArgoCD Agent's Principal service account")
 	if sa, err = argocdagent.ReconcilePrincipalServiceAccount(r.Client, compName, cr, r.Scheme); err != nil {
 		return err
 	}
 
-	log.Info("reconciling ArgoCD Agent role")
+	log.Info("reconciling ArgoCD Agent's Principal role")
 	if _, err := argocdagent.ReconcilePrincipalRole(r.Client, compName, cr, r.Scheme); err != nil {
 		return err
 	}
 
-	log.Info("reconciling ArgoCD Agent cluster role")
+	log.Info("reconciling ArgoCD Agent's Principal cluster role")
 	if _, err := argocdagent.ReconcilePrincipalClusterRoles(r.Client, compName, cr, r.Scheme); err != nil {
 		return err
 	}
 
-	log.Info("reconciling ArgoCD Agent role binding")
+	log.Info("reconciling ArgoCD Agent's Principal role binding")
 	if err := argocdagent.ReconcilePrincipalRoleBinding(r.Client, compName, sa, cr, r.Scheme); err != nil {
 		return err
 	}
 
-	log.Info("reconciling ArgoCD Agent cluster role binding")
+	log.Info("reconciling ArgoCD Agent's Principal cluster role binding")
 	if err := argocdagent.ReconcilePrincipalClusterRoleBinding(r.Client, compName, sa, cr, r.Scheme); err != nil {
 		return err
 	}
 
-	log.Info("reconciling ArgoCD Agent service")
+	log.Info("reconciling ArgoCD Agent's Principal service")
 	if err := argocdagent.ReconcilePrincipalService(r.Client, compName, cr, r.Scheme); err != nil {
 		return err
 	}
 
-	log.Info("reconciling ArgoCD Agent metrics service")
+	log.Info("reconciling ArgoCD Agent's Principal metrics service")
 	if err := argocdagent.ReconcilePrincipalMetricsService(r.Client, compName, cr, r.Scheme); err != nil {
 		return err
 	}
 
-	log.Info("reconciling ArgoCD Agent redis proxy service")
+	log.Info("reconciling ArgoCD Agent's Principal redis proxy service")
 	if err := argocdagent.ReconcilePrincipalRedisProxyService(r.Client, compName, cr, r.Scheme); err != nil {
 		return err
 	}
 
-	log.Info("reconciling ArgoCD Agent resource proxy service")
+	log.Info("reconciling ArgoCD Agent's Principal resource proxy service")
 	if err := argocdagent.ReconcilePrincipalResourceProxyService(r.Client, compName, cr, r.Scheme); err != nil {
 		return err
 	}
 
-	log.Info("reconciling ArgoCD Agent healthz service")
+	log.Info("reconciling ArgoCD Agent's Principal healthz service")
 	if err := argocdagent.ReconcilePrincipalHealthzService(r.Client, compName, cr, r.Scheme); err != nil {
 		return err
 	}
 
-	log.Info("reconciling ArgoCD Agent route")
+	log.Info("reconciling ArgoCD Agent's Principal route")
 	if err := argocdagent.ReconcilePrincipalRoute(r.Client, compName, cr, r.Scheme); err != nil {
 		return err
 	}
 
-	log.Info("reconciling ArgoCD Agent deployment")
+	log.Info("reconciling ArgoCD Agent's Principal deployment")
 	if err := argocdagent.ReconcilePrincipalDeployment(r.Client, compName, sa.Name, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Agent resources")
+	agentCompName := "agent"
+
+	log.Info("reconciling ArgoCD Agent's Agent service account")
+	var agentSa *corev1.ServiceAccount
+	if agentSa, err = agent.ReconcileAgentServiceAccount(r.Client, agentCompName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Agent role")
+	if _, err := agent.ReconcileAgentRole(r.Client, agentCompName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Agent cluster role")
+	if _, err := agent.ReconcileAgentClusterRoles(r.Client, agentCompName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Agent role binding")
+	if err := agent.ReconcileAgentRoleBinding(r.Client, agentCompName, agentSa, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Agent cluster role binding")
+	if err := agent.ReconcileAgentClusterRoleBinding(r.Client, agentCompName, agentSa, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Agent metrics service")
+	if err := agent.ReconcileAgentMetricsService(r.Client, agentCompName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Agent healthz service")
+	if err := agent.ReconcileAgentHealthzService(r.Client, agentCompName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Agent deployment")
+	if err := agent.ReconcileAgentDeployment(r.Client, agentCompName, agentSa.Name, cr, r.Scheme); err != nil {
 		return err
 	}
 

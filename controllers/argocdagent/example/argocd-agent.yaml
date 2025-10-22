@@ -1,0 +1,52 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd-agent
+spec:
+  # Disable the server on the workload cluster
+  server:
+    enabled: false
+
+  # ArgoCD Agent configuration
+  argoCDAgent:
+    agent:
+      # Enable the Agent component
+      enabled: true
+      
+      # Client configuration for the Agent component
+      client:
+        # Address of the principal server to connect to
+        # Update this to point to your principal server
+        principalServerAddress: "argocd-agent-principal.example.com"
+        # Port of the principal server
+        principalServerPort: "443"
+        # Log level for the Agent component
+        logLevel: "info"
+        # Log format (text or json)
+        logFormat: "text"
+        # Container image for the ArgoCD Agent
+        image: "quay.io/argoprojlabs/argocd-agent:v0.3.2"
+        # Operational mode (autonomous or managed)
+        mode: "managed"
+        # Credential method for authentication (mTLS)
+        creds: "mtls:any"
+        # Enable WebSocket for real-time event streaming
+        enableWebSocket: false
+        # Enable compression for gRPC communication
+        enableCompression: false
+        # Keep-alive interval for pings to the principal
+        keepAliveInterval: "30s"
+      
+      # TLS configuration for the agent
+      tls:
+        # Secret containing the agent client TLS certificate
+        secretName: "argocd-agent-client-tls"
+        # Secret containing the root CA certificate
+        rootCASecretName: "argocd-agent-ca"
+        # Skip TLS certificate validation (insecure, for development only)
+        insecure: false
+      
+      # Redis configuration for caching and state management
+      redis:
+        # Redis server address
+        serverAddress: "argocd-redis:6379"
