@@ -113,8 +113,27 @@ argocd-agentctl pki issue agent agent-autonomous --agent-context vcluster-agent-
 
 Now you can connect agents to principal.
 
-While starting up agents you need to provide host names of principal in [agent-params-cm](https://github.com/argoproj-labs/argocd-agent/blob/main/install/kubernetes/agent/agent-params-cm.yaml#L54) ConfigMap to point it to principal server.
+Use the yaml content below to create an Argo CD instance in the workload cluster `argocd` namespace.
 
+```yaml
+kind: ArgoCD
+metadata:
+  name: argocd
+spec:
+  server:
+    enabled: false
+  argoCDAgent:
+    agent:
+      enabled: true
+      client:
+        principalServerAddress: "_REPLACE_ME_"
+        principalServerPort: "443"
+        logLevel: "trace"
+        mode: "managed" # autonomous
+        creds: "mtls:any"
+      tls:
+        insecure: true
+```
 
 ### Step 9: Verification
 
