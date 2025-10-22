@@ -248,7 +248,6 @@ func TestReconcileImageUpdater_CreateDeployments(t *testing.T) {
 		Command:         []string{"/manager"},
 		Args:            []string{"run"},
 		Image:           argoutil.CombineImageTag(DefaultImageUpdaterImage, DefaultImageUpdaterTag),
-		ImagePullPolicy: v1.PullAlways,
 		Name:            common.ArgoCDImageUpdaterControllerComponent,
 		SecurityContext: argoutil.DefaultSecurityContext(),
 		VolumeMounts: []v1.VolumeMount{
