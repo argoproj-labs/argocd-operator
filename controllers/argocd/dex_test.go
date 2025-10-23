@@ -351,6 +351,7 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 						MountPath: "/tmp",
 					},
 				},
+				ImagePullPolicy: corev1.PullIfNotPresent,
 			},
 		},
 		Containers: []corev1.Container{
@@ -385,6 +386,7 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 						ContainerPort: 5558,
 					},
 				},
+				ImagePullPolicy: corev1.PullIfNotPresent,
 				SecurityContext: argoutil.DefaultSecurityContext(),
 				VolumeMounts: []corev1.VolumeMount{
 					{Name: "static-files", MountPath: "/shared"},
@@ -466,6 +468,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 								MountPath: "/tmp",
 							},
 						},
+						ImagePullPolicy: corev1.PullIfNotPresent,
 					},
 				},
 				Containers: []corev1.Container{
@@ -500,6 +503,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 								ContainerPort: 5558,
 							},
 						},
+						ImagePullPolicy: corev1.PullIfNotPresent,
 						SecurityContext: argoutil.DefaultSecurityContext(),
 						VolumeMounts: []corev1.VolumeMount{
 							{Name: "static-files", MountPath: "/shared"},
@@ -573,6 +577,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 								MountPath: "/tmp",
 							},
 						},
+						ImagePullPolicy: corev1.PullIfNotPresent,
 					},
 				},
 				Containers: []corev1.Container{
@@ -620,6 +625,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 								},
 							},
 						},
+						ImagePullPolicy: corev1.PullIfNotPresent,
 						SecurityContext: argoutil.DefaultSecurityContext(),
 						VolumeMounts: []corev1.VolumeMount{
 							{Name: "static-files", MountPath: "/shared"},

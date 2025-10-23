@@ -1253,8 +1253,9 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 	want := corev1.PodSpec{
 		Containers: []corev1.Container{
 			{
-				Name:  "argocd-server",
-				Image: getArgoContainerImage(a),
+				Name:            "argocd-server",
+				Image:           getArgoContainerImage(a),
+				ImagePullPolicy: corev1.PullIfNotPresent,
 				Command: []string{
 					"argocd-server",
 					"--staticassets",
@@ -1753,8 +1754,9 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 	want := corev1.PodSpec{
 		Containers: []corev1.Container{
 			{
-				Name:  "argocd-server",
-				Image: getArgoContainerImage(a),
+				Name:            "argocd-server",
+				Image:           getArgoContainerImage(a),
+				ImagePullPolicy: corev1.PullIfNotPresent,
 				Command: []string{
 					"argocd-server",
 					"--insecure",
@@ -1848,8 +1850,9 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 	want := corev1.PodSpec{
 		Containers: []corev1.Container{
 			{
-				Name:  "argocd-server",
-				Image: getArgoContainerImage(a),
+				Name:            "argocd-server",
+				Image:           getArgoContainerImage(a),
+				ImagePullPolicy: corev1.PullIfNotPresent,
 				Command: []string{
 					"argocd-server",
 					"--insecure",
