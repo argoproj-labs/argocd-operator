@@ -7,7 +7,7 @@ See [upstream documentation](https://argo-cd.readthedocs.io/en/stable/operator-m
 Both init containers and volumes can be added to the repo server using the `ArgoCD` custom resource
 
 ```yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: argocd-sample
