@@ -67,21 +67,6 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 		})
 
 		It("ArgoCD CR ImagePullPolicy Validation", func() {
-
-			By("verifying CR global policy takes highest priority over environment variable")
-			globalPolicy := corev1.PullIfNotPresent
-			envValue := "Always"
-			result := common.GetImagePullPolicyOnPrecedence(&globalPolicy, envValue)
-			Expect(result).To(Equal(corev1.PullIfNotPresent))
-
-			By("verifying environment variable is used when global policy not set")
-			result = common.GetImagePullPolicyOnPrecedence(nil, "Never")
-			Expect(result).To(Equal(corev1.PullNever))
-
-			By("verifying empty value returned when both are not set (default behavior)")
-			result = common.GetImagePullPolicyOnPrecedence(nil, "")
-			Expect(result).To(Equal(corev1.PullPolicy("")))
-
 			By("verifying PullAlways is accepted")
 			policyAlways := corev1.PullAlways
 			argoCD := &argoproj.ArgoCD{
@@ -439,14 +424,6 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			By("waiting for operator pod to restart with updated env var")
 			time.Sleep(30 * time.Second)
 			Eventually(operatorDeployment, "3m", "5s").Should(deploymentFixture.HaveReadyReplicas(1))
-
-			// By("triggering reconciliation by updating first instance (add annotation)")
-			// argocdFixture.Update(argoCD1, func(ac *argoproj.ArgoCD) {
-			// 	if ac.Annotations == nil {
-			// 		ac.Annotations = make(map[string]string)
-			// 	}
-			// 	ac.Annotations["test-trigger"] = "reconcile"
-			// })
 
 			By("verifying first instance eventually uses new env var (IfNotPresent)")
 			Eventually(func() bool {

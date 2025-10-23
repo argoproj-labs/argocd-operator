@@ -262,9 +262,19 @@ func GetTruncatedCRName(cr *argoproj.ArgoCD) string {
 	return TruncateCRName(cr.Name)
 }
 
-// getImagePullPolicy returns the image pull policy with proper precedence for ArgoCD components.
-// It considers component-specific policy, global ArgoCD policy, operator environment variable, and default value.
-func GetImagePullPolicy(globalPolicy *corev1.PullPolicy) corev1.PullPolicy {
-	envValue := os.Getenv(common.ArgoCDImagePullPolicyEnvName)
-	return common.GetImagePullPolicyOnPrecedence(globalPolicy, envValue)
+// GetImagePullPolicy returns the effective image pull policy for Argo CD components.
+// It follows this precedence:
+// 1. Instance specific policy defined in the ArgoCD CR
+// 2. Global policy defined via the IMAGE_PULL_POLICY environment variable
+// 3. Default policy (IfNotPresent)
+func GetImagePullPolicy(policy *corev1.PullPolicy) corev1.PullPolicy {
+	if policy != nil {
+		return *policy
+	}
+
+	if envValue := os.Getenv(common.ArgoCDImagePullPolicyEnvName); envValue != "" {
+		return corev1.PullPolicy(envValue)
+	}
+
+	return corev1.PullPolicy(common.DefaultImagePullPolicy)
 }

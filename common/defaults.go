@@ -14,10 +14,6 @@
 
 package common
 
-import (
-	corev1 "k8s.io/api/core/v1"
-)
-
 const (
 	// ArgoCDApplicationControllerComponent is the name of the application controller control plane component
 	ArgoCDApplicationControllerComponent = "argocd-application-controller"
@@ -296,6 +292,9 @@ vs-ssh.visualstudio.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7Hr1oTWqNqOlzGJOf
 
 	// ArgoCDImageUpdaterControllerComponent is the name of the Image Updater controller control plane component
 	ArgoCDImageUpdaterControllerComponent = "argocd-image-updater-controller"
+
+	// DefaultImagePullPolicy is the default image pull policy to use when not specified.
+	DefaultImagePullPolicy = "IfNotPresent"
 )
 
 // DefaultLabels returns the default set of labels for controllers.
@@ -320,19 +319,4 @@ func DefaultNodeSelector() map[string]string {
 	return map[string]string{
 		"kubernetes.io/os": "linux",
 	}
-}
-
-// GetImagePullPolicy returns the image pull policy with proper precedence:
-// 1. Global ArgoCD imagePullPolicy
-// 2. Operator environment variable setting
-// 3. Default value (lowest priority)
-func GetImagePullPolicyOnPrecedence(globalPolicy *corev1.PullPolicy, envValue string) corev1.PullPolicy {
-	if globalPolicy != nil {
-		return *globalPolicy
-	}
-
-	if envValue != "" {
-		return corev1.PullPolicy(envValue)
-	}
-	return corev1.PullPolicy("")
 }
