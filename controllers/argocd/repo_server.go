@@ -23,12 +23,17 @@ import (
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/api/certificates/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	argocdoperatorv1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -350,13 +355,9 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 	if cr.Spec.Repo.Volumes != nil {
 		repoServerVolumes = append(repoServerVolumes, cr.Spec.Repo.Volumes...)
 	}
+	deploy.Spec.Template.Spec.Volumes = repoServerVolumes
 
-	moreRepoServerVolumes, err := injectCATrustToContainers(cr, deploy)
-	if err != nil {
-		return err
-	}
-
-	deploy.Spec.Template.Spec.Volumes = append(repoServerVolumes, moreRepoServerVolumes...)
+	r.injectCATrustToContainers(cr, deploy)
 
 	if replicas := getArgoCDRepoServerReplicas(cr); replicas != nil {
 		deploy.Spec.Replicas = replicas
@@ -588,20 +589,17 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 //
 // The production container is then mounted with `/etc/ssl/certs/` (`argocd-ca-trust-target`) and
 // `/usr/local/share/ca-certificates/` (`argocd-ca-trust-source`) providing read-only CAs needed.
-func injectCATrustToContainers(cr *argocdoperatorv1beta1.ArgoCD, deploy *appsv1.Deployment) (repoServerVolumes []corev1.Volume, err error) {
+func (r *ReconcileArgoCD) injectCATrustToContainers(cr *argocdoperatorv1beta1.ArgoCD, deploy *appsv1.Deployment) {
 	if cr.Spec.Repo.SystemCATrust == nil {
-		return []corev1.Volume{}, nil
+		return
 	}
 
-	sources, sourceNames, err := caTrustVolumes(cr)
-	if err != nil {
-		return []corev1.Volume{}, err
-	}
+	sources, sourceNames := r.caTrustVolumes(cr)
 
 	volumeSource := "argocd-ca-trust-source"
 	volumeTarget := "argocd-ca-trust-target"
 
-	repoServerVolumes = []corev1.Volume{
+	repoServerVolumes := []corev1.Volume{
 		{
 			Name: volumeSource,
 			VolumeSource: corev1.VolumeSource{
@@ -649,56 +647,53 @@ func injectCATrustToContainers(cr *argocdoperatorv1beta1.ArgoCD, deploy *appsv1.
 		strings.Join(containerNames, ", "),
 	))
 
-	return repoServerVolumes, nil
+	deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, repoServerVolumes...)
 }
 
-func caTrustVolumes(cr *argocdoperatorv1beta1.ArgoCD) ([]corev1.VolumeProjection, []string, error) {
-	checkPath := func(kind string, path string) error {
-		if !strings.HasSuffix(path, ".crt") {
-			return fmt.Errorf("invalid %s cert file name suffix '%s' in %s, must be .crt", kind, path, cr.Name)
+func (r *ReconcileArgoCD) caTrustVolumes(cr *argocdoperatorv1beta1.ArgoCD) (sources []corev1.VolumeProjection, sourceNames []string) {
+	// The projected file needs to have the `.crt` suffix for the update-ca-certificates to work correctly. Add it if not present.
+	ensureValidPath := func(path string) string {
+		if strings.HasSuffix(path, ".crt") {
+			return path
 		}
-		return nil
+		return path + ".crt"
 	}
 
-	var sources []corev1.VolumeProjection
-	var sourceNames []string
-	for _, bundle := range cr.Spec.Repo.SystemCATrust.ClusterTrustBundles {
-		bundle = *bundle.DeepCopy()
-		if err := checkPath("ClusterTrustBundle", bundle.Path); err != nil {
-			return nil, nil, err
-		}
-
-		sources = append(sources, corev1.VolumeProjection{ClusterTrustBundle: &bundle})
-
-		path := "ClusterTrustBundle:" + bundle.Path // Using .Path, because .Name might not be specified
-		if bundle.Optional != nil && *bundle.Optional {
+	trackSource := func(kind string, name string, optional *bool) {
+		path := kind + ":" + name
+		if optional != nil && *optional {
 			path += "(optional)"
 		}
 		sourceNames = append(sourceNames, path)
 	}
+
+	for _, bundle := range cr.Spec.Repo.SystemCATrust.ClusterTrustBundles {
+		bundle = *bundle.DeepCopy()
+		// Using .Path, because .Name might not be specified
+		trackSource("ClusterTrustBundle", bundle.Path, bundle.Optional)
+
+		bundle.Path = ensureValidPath(bundle.Path)
+		sources = append(sources, corev1.VolumeProjection{ClusterTrustBundle: &bundle})
+	}
 	for _, secret := range cr.Spec.Repo.SystemCATrust.Secrets {
 		secret = *secret.DeepCopy()
-		for _, item := range secret.Items {
-			if err := checkPath("Secret", item.Path); err != nil {
-				return nil, nil, err
-			}
-		}
+		trackSource("Secret", secret.Name, secret.Optional)
 
+		for i, item := range secret.Items {
+			secret.Items[i].Path = ensureValidPath(item.Path)
+		}
 		sources = append(sources, corev1.VolumeProjection{Secret: &secret})
-		sourceNames = append(sourceNames, fmt.Sprintf("Secret:%s", secret.Name))
 	}
 	for _, cm := range cr.Spec.Repo.SystemCATrust.ConfigMaps {
 		cm = *cm.DeepCopy()
-		for _, cmi := range cm.Items {
-			if err := checkPath("ConfigMap", cmi.Path); err != nil {
-				return nil, nil, err
-			}
-		}
+		trackSource("ConfigMap", cm.Name, cm.Optional)
 
+		for i, cmi := range cm.Items {
+			cm.Items[i].Path = ensureValidPath(cmi.Path)
+		}
 		sources = append(sources, corev1.VolumeProjection{ConfigMap: &cm})
-		sourceNames = append(sourceNames, fmt.Sprintf("ConfigMap:%s", cm.Name))
 	}
-	return sources, sourceNames, nil
+	return sources, sourceNames
 }
 
 func caTrustInitContainer(cr *argocdoperatorv1beta1.ArgoCD, argoImage string, volumeSource string, volumeTarget string) corev1.Container {
@@ -727,6 +722,10 @@ func caTrustInitContainer(cr *argocdoperatorv1beta1.ArgoCD, argoImage string, vo
 
                 echo "User defined CA files:"
                 ls -l /usr/local/share/ca-certificates/
+
+                # Make sure the file exist even when the update-ca-certificates produces no pem blocks
+                echo "" > /etc/ssl/certs/ca-certificates.crt
+
                 update-ca-certificates --verbose --certsdir "$IMAGE_CERT_PATH"
                 echo "Resulting /etc/ssl/certs/"
                 ls -l /etc/ssl/certs/
@@ -960,4 +959,104 @@ func (r *ReconcileArgoCD) reconcileRepoServerTLSSecret(cr *argocdoperatorv1beta1
 	}
 
 	return nil
+}
+
+// systemCATrustMapper triggers reconciliation of repo-server Deployment if some of the tracked Secrets, ConfigMaps or ClusterTrustBundles have changed
+func (r *ReconcileArgoCD) systemCATrustMapper(ctx context.Context, o client.Object) []reconcile.Request {
+	// Track Argo CDs whose repo-servers need a rollout, and id of the resource that changed
+	rolloutBecause := make(map[*argocdoperatorv1beta1.ArgoCD]string)
+
+	// For cluster-wide resources, it is needed to consult all argos. For cluster-scoped ones, only the argos in the same NS.
+	argoNamespace := client.InNamespace(o.GetNamespace())
+	var argoCDs argocdoperatorv1beta1.ArgoCDList
+	if err := r.List(ctx, &argoCDs, argoNamespace); err != nil {
+		log.Error(err, "unable to list ArgoCD instances")
+		return []reconcile.Request{}
+	}
+
+	for _, argocd := range argoCDs.Items {
+		if argocd.Spec.Repo.SystemCATrust == nil {
+			continue
+		}
+
+		switch obj := o.(type) {
+		case *corev1.Secret:
+			for _, trustSource := range argocd.Spec.Repo.SystemCATrust.Secrets {
+				if trustSource.Name == obj.Name {
+					rolloutBecause[&argocd] = fmt.Sprintf("Secret %s/%s", obj.Namespace, obj.Name)
+					break
+				}
+			}
+		case *corev1.ConfigMap:
+			for _, trustSource := range argocd.Spec.Repo.SystemCATrust.ConfigMaps {
+				if trustSource.Name == obj.Name {
+					rolloutBecause[&argocd] = fmt.Sprintf("ConfigMap %s/%s", obj.Namespace, obj.Name)
+					break
+				}
+			}
+		case *v1beta1.ClusterTrustBundle:
+			for _, trustSource := range argocd.Spec.Repo.SystemCATrust.ClusterTrustBundles {
+				if isRelevantCtb(trustSource, obj) {
+					rolloutBecause[&argocd] = fmt.Sprintf("ClusterTrustBundle %s", obj.Name)
+					break
+				}
+			}
+		default:
+			panic(fmt.Errorf("systemCATrustMapper called for unknown type %t", o))
+		}
+	}
+
+	for argocd, cause := range rolloutBecause {
+		// Instead of triggering rollout, delete the pod to force trust recomputation
+		pods := &corev1.PodList{}
+		err := r.List(context.TODO(), pods,
+			client.InNamespace(argocd.Namespace),
+			client.MatchingLabelsSelector{Selector: labels.SelectorFromSet(map[string]string{
+				"app.kubernetes.io/name": nameWithSuffix("repo-server", argocd),
+			})},
+		)
+		if err != nil {
+			log.Error(err, "unable to list repo-server pods for argocd", "ns", argocd.Namespace, "name", argocd.Name)
+		}
+
+		// In normal circumstances, there would be 1 pod. There can be multiple during ongoing rollout. None if not yet started, or recovering from an error.
+		for _, pod := range pods.Items {
+			log.Info(
+				"restarting repo-server pod after SystemCATrust change in "+cause,
+				"pod", pod.Name, "ns", pod.Namespace, "phase", pod.Status.Phase,
+			)
+			if err := r.Delete(context.TODO(), &pod); err != nil {
+				log.Error(err, "unable to delete repo-server pod 1", "pod", pod.Name, "ns", pod.Namespace, "phase", pod.Status.Phase)
+			}
+		}
+	}
+	// No need to reconcile. The pods have been restarted
+	return []reconcile.Request{}
+}
+
+func isRelevantCtb(proj corev1.ClusterTrustBundleProjection, actual *v1beta1.ClusterTrustBundle) bool {
+	// ClusterTrustBundle uses either .Name or .SignerName plus eventual .LabelSelector to identify the source
+	if proj.Name != nil && *proj.Name == actual.Name {
+		return true
+	}
+
+	if proj.SignerName != nil && *proj.SignerName == actual.Spec.SignerName {
+		// If unset, interpreted as "match nothing".  If set but empty, interpreted as "match everything".
+		if proj.LabelSelector == nil {
+			return false
+		}
+		if len(proj.LabelSelector.MatchLabels)+len(proj.LabelSelector.MatchExpressions) == 0 {
+			return true
+		}
+
+		selector, err := metav1.LabelSelectorAsSelector(proj.LabelSelector)
+		if err != nil {
+			log.Error(err, "Failed evaluating label selector for System CA trust ClusterTrustBundle", "selector", proj.LabelSelector)
+			return false
+		}
+
+		return selector.Matches(labels.Set(actual.Labels))
+	}
+
+	return false
 }

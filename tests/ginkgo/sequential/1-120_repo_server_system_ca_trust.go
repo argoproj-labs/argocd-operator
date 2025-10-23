@@ -23,17 +23,22 @@ import (
 	"encoding/pem"
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
+	"github.com/onsi/gomega/gcustom"
+	matcher "github.com/onsi/gomega/types"
+	"k8s.io/apimachinery/pkg/util/rand"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+
+	configmapFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/configmap"
+	secretFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/secret"
+
+	"k8s.io/utils/ptr"
 
 	appFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/application"
 	osFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/os"
-	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/pod"
-
-	"k8s.io/utils/ptr"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -51,6 +56,9 @@ import (
 )
 
 var (
+	// The differences between the upstream image using Ubuntu, and the downstream one using rhel.
+	image        = "" // argocd-operator default
+	version      = "" // argocd-operator default
 	caBundlePath = "/etc/ssl/certs/ca-certificates.crt"
 
 	trustedHelmAppSource = &appv1alpha1.ApplicationSource{
@@ -69,42 +77,24 @@ var (
 
 	k8sClient client.Client
 	ctx       context.Context
+
+	clusterSupportsClusterTrustBundles bool
 )
 
 var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 	Context("1-120_repo_server_system_ca_trust", func() {
-
 		BeforeEach(func() {
 			fixture.EnsureSequentialCleanSlate()
 
 			k8sClient, _ = fixtureUtils.GetE2ETestKubeClient()
 			ctx = context.Background()
+
+			clusterSupportsClusterTrustBundles = detectClusterTrustBundleSupport(k8sClient, ctx)
 		})
 
-		It("ensures that incorrect file suffix cannot be used for ClusterTrustBundle", func() {
-			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
-			defer cleanupFunc()
-
-			By("creating Argo CD instance with wrong CTB path suffix")
-			argoCD := argoCDSpec(ns, argov1beta1api.ArgoCDRepoSpec{
-				SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
-					ClusterTrustBundles: []corev1.ClusterTrustBundleProjection{
-						{Name: ptr.To("wrong-suffix"), Path: "wrong-suffix.pem"},
-					},
-				},
-			})
-			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
-
-			// The operator log contains the reason why reconciliation failed
-			Eventually(argoCD, "3m", "5s").Should(argocdFixture.HaveCondition(metav1.Condition{
-				Message: "invalid ClusterTrustBundle cert file name suffix 'wrong-suffix.pem' in argocd, must be .crt",
-				Reason:  "ErrorOccurred",
-				Status:  "False",
-				Type:    "Reconciled",
-			}))
-			Consistently(argoCD, "30s", "5s").Should(argocdFixture.HaveRepoStatus("Unknown"))
-			Consistently(argoCD, "30s", "5s").ShouldNot(argocdFixture.BeAvailable())
+		AfterEach(func() {
+			purgeCtbs()
 		})
 
 		It("ensures that missing Secret aborts startup", func() {
@@ -121,13 +111,13 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			})
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 
-			Eventually(argoCD, "3m", "5s").Should(argocdFixture.HaveServerStatus("Running"))
-			Consistently(argoCD, "30s", "5s").Should(argocdFixture.HaveRepoStatus("Pending"))
-			Consistently(argoCD, "30s", "5s").ShouldNot(argocdFixture.BeAvailable())
+			Eventually(argoCD, "1m", "5s").Should(argocdFixture.HaveServerStatus("Running"))
+			Consistently(argoCD, "20s", "5s").Should(argocdFixture.HaveRepoStatus("Pending"))
+			Expect(argoCD).ShouldNot(argocdFixture.BeAvailable())
 		})
 
 		It("ensures that ClusterTrustBundles are trusted in repo-server and plugins", func() {
-			if !clusterSupportsClusterTrustBundles(k8sClient, ctx) {
+			if !clusterSupportsClusterTrustBundles {
 				Skip("Cluster does not support ClusterTrustBundles")
 			}
 
@@ -150,7 +140,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					DropImageCertificates: true, // So we can test against upstream sites that would otherwise be trusted by the image
 					ClusterTrustBundles: []corev1.ClusterTrustBundleProjection{
 						{Name: ptr.To(combinedCtb.Name), Path: "combined.crt"},
-						{Name: ptr.To("no-such-ctb"), Path: "no-such-ctb.crt", Optional: ptr.To(true)},
+						{Name: ptr.To("nah"), Path: "no-such-ctb.crt", Optional: ptr.To(true)},
 					},
 				},
 				// plugin containers/volumes - this is not related to CTBs
@@ -164,10 +154,11 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
-			initContainerLog := getRepoCertGenerationLog(k8sClient, ns)
-			Expect(initContainerLog).Should(ContainSubstring("combined.crt"))
-			Expect(initContainerLog).Should(ContainSubstring("no-such-ctb.crt"))
 			verifyCorrectlyConfiguredTrust(ns)
+			Expect(repoServerSystemCaTrust(ns)).Should(trustCerts(Equal(2), And(
+				ContainSubstring("combined.crt"),
+				ContainSubstring("no-such-ctb.crt"),
+			)))
 		})
 
 		It("ensures that CMs and Secrets are trusted in repo-server and plugins", func() {
@@ -200,7 +191,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 						},
 						Optional: ptr.To(true),
 						Items: []corev1.KeyToPath{
-							{Key: "ca.cm.crt", Path: "ca.cm.crt"},
+							{Key: "ca.cm.crt", Path: "ca.cm.wrong-suffix"},
 						},
 					}},
 				},
@@ -213,9 +204,9 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
-			initContainerLog := getRepoCertGenerationLog(k8sClient, ns)
+			initContainerLog := getRepoCertGenerationLog(findRunningRepoServerPod(k8sClient, ns))
 			Expect(initContainerLog).Should(ContainSubstring("ca.secret.crt"))
-			Expect(initContainerLog).Should(ContainSubstring("ca.cm.crt"))
+			Expect(initContainerLog).Should(ContainSubstring("ca.cm.wrong-suffix.crt"))
 			verifyCorrectlyConfiguredTrust(ns)
 		})
 
@@ -232,7 +223,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
-			Expect(getTrustedCertCount(k8sClient, ns)).Should(Equal(0))
+			Expect(repoServerSystemCaTrust(ns)).Should(trustCerts(Equal(0), Not(BeEmpty())))
 
 			trustedHelmApp := createHelmApp(ns, trustedHelmAppSource)
 			Expect(k8sClient.Create(ctx, trustedHelmApp)).To(Succeed())
@@ -259,22 +250,235 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			})
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
+			Expect(repoServerSystemCaTrust(ns)).Should(trustCerts(BeNumerically(">", 100), Not(BeEmpty())))
+		})
 
-			Expect(getTrustedCertCount(k8sClient, ns)).Should(BeNumerically(">", 100))
+		It("ensures that Secrets and ConfigMaps get reconciled", func() {
+			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
+			defer cleanupFunc()
+
+			By("creating Argo CD instance with empty system trust, but full of anticipation")
+			argoCD := argoCDSpec(ns, argov1beta1api.ArgoCDRepoSpec{
+				SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
+					DropImageCertificates: true, // To make the counting easier
+					Secrets: []corev1.SecretProjection{{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "ca-trust",
+						},
+						Optional: ptr.To(true),
+					}},
+					ConfigMaps: []corev1.ConfigMapProjection{{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "ca-trust",
+						},
+						Optional: ptr.To(true),
+					}},
+				},
+			})
+			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
+			actualTrust := repoServerSystemCaTrust(ns)
+			Expect(actualTrust).Should(trustCerts(Equal(0), Not(BeEmpty())))
+
+			By("creating ConfigMap with 1 cert")
+			cmCert := createCmFromCert(ns, getCACert("github.com"))
+			Expect(k8sClient.Create(ctx, cmCert)).To(Succeed())
+			defer func() { _ = k8sClient.Delete(ctx, cmCert) }()
+			actualTrust = repoServerSystemCaTrust(ns)
+			Eventually(actualTrust, "30s", "5s").Should(trustCerts(Equal(1), Not(BeEmpty())))
+
+			By("creating Secret with 1 cert")
+			secretCert := createSecretFromCert(ns, getCACert("github.io"))
+			Expect(k8sClient.Create(ctx, secretCert)).To(Succeed())
+			defer func() { _ = k8sClient.Delete(ctx, secretCert) }()
+			actualTrust = repoServerSystemCaTrust(ns)
+			Eventually(actualTrust, "30s", "5s").Should(trustCerts(Equal(2), Not(BeEmpty())))
+
+			By("updating ConfigMap to 2 certs")
+			configmapFixture.Update(cmCert, func(configMap *corev1.ConfigMap) {
+				configMap.Data = map[string]string{
+					"a.crt": getCACert("github.com"),
+					"b.crt": getCACert("google.com"),
+				}
+			})
+			actualTrust = repoServerSystemCaTrust(ns)
+			Eventually(actualTrust, "30s", "5s").Should(trustCerts(Equal(3), Not(BeEmpty())))
+
+			By("updating Secret to 0 certs")
+			secretFixture.Update(secretCert, func(secret *corev1.Secret) {
+				// Albeit `.Data` is never written by the test, it is the field that holds the data after the Create/Get roundtrip.
+				// Erase, otherwise reducing the content of `.StringData` does not have the expected effect.
+				secret.Data = map[string][]byte{}
+				secret.StringData = map[string]string{}
+			})
+			actualTrust = repoServerSystemCaTrust(ns)
+			Eventually(actualTrust, "30s", "5s").Should(trustCerts(Equal(2), Not(BeEmpty())))
+
+			By("updating ConfigMap to 1 certs")
+			configmapFixture.Update(cmCert, func(configMap *corev1.ConfigMap) {
+				configMap.Data = map[string]string{
+					"a.crt": getCACert("redhat.com"),
+				}
+			})
+			actualTrust = repoServerSystemCaTrust(ns)
+			Eventually(actualTrust, "30s", "5s").Should(trustCerts(Equal(1), Not(BeEmpty())))
+
+			By("deleting ConfigMap")
+			Expect(k8sClient.Delete(ctx, cmCert)).To(Succeed())
+			actualTrust = repoServerSystemCaTrust(ns)
+			Eventually(actualTrust, "30s", "5s").Should(trustCerts(Equal(0), Not(BeEmpty())))
+		})
+
+		It("ensures that ClusterTrustBundles get reconciled", func() {
+			if !clusterSupportsClusterTrustBundles {
+				Skip("Cluster does not support ClusterTrustBundles")
+			}
+
+			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
+			defer cleanupFunc()
+
+			combinedCtb := createCtbFromCerts(getCACert("github.com"), getCACert("github.io"))
+			_ = k8sClient.Delete(ctx, combinedCtb) // Exists only in case of previous failures, must be deleted before argo starts!
+
+			By("creating Argo CD instance with empty system trust, but full of anticipation")
+			argoCD := argoCDSpec(ns, argov1beta1api.ArgoCDRepoSpec{
+				SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
+					DropImageCertificates: true, // To make the counting easier
+					ClusterTrustBundles: []corev1.ClusterTrustBundleProjection{{
+						Name: ptr.To(combinedCtb.Name), Path: "ctb.crt", Optional: ptr.To(true),
+					}},
+				},
+			})
+			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
+			actualTrust := repoServerSystemCaTrust(ns)
+			Expect(actualTrust).Should(trustCerts(Equal(0), Not(BeEmpty())), actualTrust.diagnose())
+
+			By("creating ClusterTrustBundle with 2 certs")
+			defer func() { _ = k8sClient.Delete(ctx, combinedCtb) }()
+			Expect(k8sClient.Create(ctx, combinedCtb)).To(Succeed())
+			actualTrust = repoServerSystemCaTrust(ns)
+			Eventually(actualTrust, "30s", "5s").Should(trustCerts(Equal(2), Not(BeEmpty())), actualTrust.diagnose())
+
+			By("updating ClusterTrustBundle with 1 cert")
+			ctbUpdate(combinedCtb, func(bundle *certificatesv1alpha1.ClusterTrustBundle) {
+				bundle.Spec = certificatesv1alpha1.ClusterTrustBundleSpec{
+					SignerName:  bundle.Spec.SignerName,
+					TrustBundle: getCACert("github.com"),
+				}
+			})
+			actualTrust = repoServerSystemCaTrust(ns)
+			Eventually(actualTrust, "6m", "15s").Should(trustCerts(Equal(1), Not(BeEmpty())), actualTrust.diagnose())
+
+			By("deleting ClusterTrustBundle")
+			Expect(k8sClient.Delete(ctx, combinedCtb)).To(Succeed())
+			actualTrust = repoServerSystemCaTrust(ns)
+			Eventually(actualTrust, "6m", "15s").Should(trustCerts(Equal(0), Not(BeEmpty())), actualTrust.diagnose())
+			By("done")
+		})
+
+		It("detect only relevant ClusterTrustBundles changes", func() {
+			if !clusterSupportsClusterTrustBundles {
+				Skip("Cluster does not support ClusterTrustBundles")
+			}
+
+			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
+			defer cleanupFunc()
+
+			// Use random label value not to collide with leftover CTBs fom other tests
+			labelVal := rand.String(5)
+			signerName := "acme.com/signer"
+			By("creating Argo CD instance with system trust")
+			argoCD := argoCDSpec(ns, argov1beta1api.ArgoCDRepoSpec{
+				SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
+					DropImageCertificates: true, // To make the counting easier
+					// Test CTB update detection based on CTB binding specified by labels - no real signers involved
+					ClusterTrustBundles: []corev1.ClusterTrustBundleProjection{
+						{
+							SignerName: ptr.To(signerName),
+							LabelSelector: &metav1.LabelSelector{MatchLabels: map[string]string{
+								"test": labelVal,
+							}},
+							Path:     "one.crt",
+							Optional: ptr.To(true),
+						},
+					},
+				},
+			})
+			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
+
+			By("adding ClusterTrustBundle with 1 cert")
+			oneCtb := createCtbFromCerts(getCACert("github.com"))
+			oneCtb.Labels["test"] = labelVal
+			oneCtb.Name = "acme.com:signer:repo-server-system-ca-trust-test-one"
+			oneCtb.Spec.SignerName = signerName
+			Expect(k8sClient.Create(ctx, oneCtb)).To(Succeed())
+			actualTrust := repoServerSystemCaTrust(ns)
+			Eventually(actualTrust, "30s", "5s").Should(trustCerts(Equal(1), Not(BeEmpty())), actualTrust.diagnose())
+
+			By("adding ClusterTrustBundle with other cert")
+			twoCtb := createCtbFromCerts(getCACert("github.io"))
+			twoCtb.Labels["test"] = labelVal
+			twoCtb.Name = "acme.com:signer:repo-server-system-ca-trust-test-two"
+			twoCtb.Spec.SignerName = signerName
+			Expect(k8sClient.Create(ctx, twoCtb)).To(Succeed())
+			actualTrust = repoServerSystemCaTrust(ns)
+			Eventually(actualTrust, "30s", "5s").Should(trustCerts(Equal(2), Not(BeEmpty())), actualTrust.diagnose())
+
+			By("updating Argo CD to read from ClusterTrustBundle that does not exist")
+			argocdFixture.Update(argoCD, func(cd *argov1beta1api.ArgoCD) {
+				cd.Spec.Repo.SystemCATrust.ClusterTrustBundles = []corev1.ClusterTrustBundleProjection{
+					{
+						Name:     ptr.To("no-such-ctb"),
+						Path:     "three.crt",
+						Optional: ptr.To(true),
+					},
+				}
+			})
+			actualTrust = repoServerSystemCaTrust(ns)
+			Consistently(actualTrust, "10s", "5s").Should(trustCerts(Equal(0), Not(BeEmpty())), actualTrust.diagnose())
+			oldPodName := findRunningRepoServerPod(k8sClient, ns).Name
+
+			By("creating unrelated ClusterTrustBundle")
+			fourCtb := createCtbFromCerts(getCACert("google.com"))
+			Expect(k8sClient.Create(ctx, fourCtb)).To(Succeed())
+			actualTrust = repoServerSystemCaTrust(ns)
+			Consistently(actualTrust, "10s", "5s").Should(trustCerts(Equal(0), Not(BeEmpty())), actualTrust.diagnose())
+			newPodName := findRunningRepoServerPod(k8sClient, ns).Name
+			Expect(newPodName).To(Equal(oldPodName), "Pod have restarted for unrelated change")
 		})
 	})
 })
+
+func ctbUpdate(obj *certificatesv1alpha1.ClusterTrustBundle, modify func(*certificatesv1alpha1.ClusterTrustBundle)) {
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		// Retrieve the latest version of the object
+		err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(obj), obj)
+		if err != nil {
+			return err
+		}
+
+		modify(obj)
+
+		// Attempt to update the object
+		return k8sClient.Update(context.Background(), obj)
+	})
+	Expect(err).ToNot(HaveOccurred())
+}
 
 func argoCDSpec(ns *corev1.Namespace, repoSpec argov1beta1api.ArgoCDRepoSpec) *argov1beta1api.ArgoCD {
 	return &argov1beta1api.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: ns.Name},
 		Spec: argov1beta1api.ArgoCDSpec{
-			Repo: repoSpec,
+			Image:   image,
+			Version: version,
+			Repo:    repoSpec,
 		},
 	}
 }
 
-func clusterSupportsClusterTrustBundles(k8sClient client.Client, ctx context.Context) bool {
+func detectClusterTrustBundleSupport(k8sClient client.Client, ctx context.Context) bool {
 	err := k8sClient.List(ctx, &certificatesv1alpha1.ClusterTrustBundleList{})
 	if _, ok := err.(*apiutil.ErrResourceDiscoveryFailed); ok {
 		return false
@@ -421,7 +625,10 @@ func createCtbFromCerts(bundle ...string) *certificatesv1alpha1.ClusterTrustBund
 			APIVersion: "certificates.k8s.io/v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "global-ca-trust-bundle",
+			Name: "repo-server-system-ca-trust",
+			Labels: map[string]string{
+				"argocd-operator-test": "repo_server_system_ca_trust",
+			},
 		},
 		Spec: certificatesv1alpha1.ClusterTrustBundleSpec{
 			TrustBundle: strings.Join(bundle, "\n"),
@@ -475,37 +682,131 @@ func encodeCert(cert *x509.Certificate) string {
 	return writer.String()
 }
 
-func getTrustedCertCount(k8sClient client.Client, ns *corev1.Namespace) int {
-	rsPod := findRepoServerPod(k8sClient, ns)
-	command := []string{
-		"kubectl", "-n", ns.Name, "exec",
-		"-c", "argocd-repo-server", rsPod.Name, "--",
-		// `grep -s` ignores if the file does not exist at all for 0 certs trusted on ubuntu
-		// Favoring `wc -l` over `grep -c`, as that hides exit=2 in case the file is empty
-		"bash", "-c", "grep -s 'BEGIN CERTIFICATE' '" + caBundlePath + "' | wc -l",
-	}
+type podTrust struct {
+	ns        *corev1.Namespace
+	k8sClient client.Client
 
-	out, err := osFixture.ExecCommandWithOutputParam(false, command...)
-	Expect(err).ToNot(HaveOccurred())
-
-	fileCount, err := strconv.Atoi(strings.TrimSpace(out))
-	Expect(err).ToNot(HaveOccurred(), "Command out: '"+out+"'")
-
-	return fileCount
+	count  int
+	log    string
+	events string
 }
 
-func getRepoCertGenerationLog(k8sClient client.Client, ns *corev1.Namespace) string {
-	rsPod := findRepoServerPod(k8sClient, ns)
+func (pt *podTrust) fetch() {
+	pod := findRunningRepoServerPod(pt.k8sClient, pt.ns)
+	pt.count = getTrustedCertCount(pod)
+	pt.log = getRepoCertGenerationLog(pod)
+
+	out, err := osFixture.ExecCommandWithOutputParam(false, "kubectl", "-n", pt.ns.Name, "events")
+	if err != nil {
+		panic(err)
+	}
+	pt.events = out
+}
+
+func (pt *podTrust) diagnose() string {
+	return fmt.Sprintf(
+		"System CA Trust init contianer log:\n%s\nProject events:\n%s\n",
+		pt.log, pt.events,
+	)
+}
+
+func repoServerSystemCaTrust(ns *corev1.Namespace) *podTrust {
+	return &podTrust{ns: ns, k8sClient: k8sClient}
+}
+
+func trustCerts(countMatcher, logMatcher matcher.GomegaMatcher) matcher.GomegaMatcher {
+	// Wrap to capture and attach diagnostics
+	matchCount := gcustom.MakeMatcher(func(pt *podTrust) (bool, error) {
+		// call fetch exactly once before matchCount _and_ matchLog
+		pt.fetch()
+
+		success, err := countMatcher.Match(pt.count)
+		if err != nil {
+			return false, err
+		}
+		if success {
+			return true, nil
+		}
+
+		return false, fmt.Errorf(
+			"%s\n\n--- Diagnostics ---\n%s\n===",
+			countMatcher.FailureMessage(pt.count),
+			pt.diagnose(),
+		)
+	})
+
+	matchLog := WithTransform(func(pt *podTrust) string {
+		return pt.log
+	}, logMatcher)
+
+	return And(matchCount, matchLog)
+}
+
+func getTrustedCertCount(rsPod *corev1.Pod) int {
+	var out string
+	var err error
+	// retry a few times, because pod can be restarting during trust source update, get Terminating between check and use.
+	for i := 0; i < 3; i++ {
+		command := []string{
+			"kubectl", "-n", rsPod.Namespace, "exec",
+			"-c", "argocd-repo-server", rsPod.Name, "--",
+			"cat", caBundlePath,
+		}
+
+		out, err = osFixture.ExecCommandWithOutputParam(false, command...)
+		if err == nil {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	Expect(err).ToNot(HaveOccurred(), out)
+
+	seen := make(map[string]bool)
+	var currentBlock strings.Builder
+	for line := range strings.Lines(out) {
+		switch {
+		case strings.Contains(line, "BEGIN CERTIFICATE"):
+			currentBlock.Reset()
+		case strings.Contains(line, "END CERTIFICATE"):
+			seen[currentBlock.String()] = true
+		default:
+			currentBlock.WriteString(line)
+		}
+	}
+	return len(seen)
+}
+
+func getRepoCertGenerationLog(rsPod *corev1.Pod) string {
 	out, err := osFixture.ExecCommandWithOutputParam(
 		false,
-		"kubectl", "-n", ns.Name, "logs", "-c", "update-ca-certificates", rsPod.Name,
+		"kubectl", "-n", rsPod.Namespace, "logs", "-c", "update-ca-certificates", rsPod.Name,
 	)
 	Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("output: %s", out))
 	return out
 }
 
-func findRepoServerPod(k8sClient client.Client, ns *corev1.Namespace) *corev1.Pod {
-	return pod.GetPodByNameRegexp(k8sClient, regexp.MustCompile(".*-repo-server.*"), client.InNamespace(ns.Name))
+func findRunningRepoServerPod(k8sClient client.Client, ns *corev1.Namespace) *corev1.Pod {
+	nameRegexp := regexp.MustCompile(".*-repo-server.*")
+	var pods []*corev1.Pod
+
+	for j := 0; j < 10; j++ {
+		time.Sleep(2 * time.Second)
+		pods = []*corev1.Pod{}
+		list := &corev1.PodList{}
+		err := k8sClient.List(context.Background(), list, client.InNamespace(ns.Name))
+		Expect(err).ToNot(HaveOccurred())
+
+		for _, pod := range list.Items {
+			if pod.Status.Phase == "Running" && nameRegexp.MatchString(pod.Name) {
+				pods = append(pods, &pod)
+			}
+		}
+		if len(pods) == 1 {
+			return pods[0]
+		}
+	}
+
+	panic(fmt.Sprintf("Failed to find Running repo-server pod. have %+v", pods))
 }
 
 func verifyCorrectlyConfiguredTrust(ns *corev1.Namespace) {
@@ -540,4 +841,12 @@ func verifyCorrectlyConfiguredTrust(ns *corev1.Namespace) {
 
 	Expect(trustedPluginApp).Should(appFixture.HaveNoConditions())
 	Expect(trustedPluginApp).Should(appFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeSynced))
+}
+
+// purgeCtbs deletes all of the cluster-wide resource, that can get leaked on test failure/abort.
+func purgeCtbs() {
+	if clusterSupportsClusterTrustBundles {
+		expr := client.MatchingLabels{"argocd-operator-test": "repo_server_system_ca_trust"}
+		Expect(k8sClient.DeleteAllOf(ctx, &certificatesv1alpha1.ClusterTrustBundle{}, expr)).To(Succeed())
+	}
 }
