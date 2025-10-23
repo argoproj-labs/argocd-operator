@@ -17,10 +17,33 @@ Valid values:
 
 ## Operator Level Configuration
 
+Use this configuration to set a global image pull policy for all Argo CD instances managed by the operator. The value is defined as an environment variable in the operator’s deployment/subscription and applies to all Argo CD instances.
+
 ### Environment Variable
 
-Set the global default imagePullPolicy for all ArgoCD instances managed by the operator. Use Operator's subscription to set the IMAGE_PULL_POLICY environment variable value.
-ref: https://argocd-operator.readthedocs.io/en/latest/usage/basics/#cluster-scoped-instance
+Set the global default imagePullPolicy for all ArgoCD instances managed by the operator:
+
+```bash
+export IMAGE_PULL_POLICY=IfNotPresent
+```
+
+### Subscription Example
+
+```yaml
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: argocd-operator
+spec:
+  config:
+   env: 
+    - name: IMAGE_PULL_POLICY
+      value: "IfNotPresent"
+  channel: alpha
+  name: argocd-operator
+  source: argocd-catalog
+  sourceNamespace: olm
+```
 
 ### Operator Deployment Example
 
@@ -41,6 +64,8 @@ spec:
 ```
 
 ## ArgoCD Instance Level Configuration
+
+This value overrides the operator-level policy and applies only to the specific Argo CD instance defined in the CR.
 
 Set imagePullPolicy for all components in an ArgoCD instance:
 

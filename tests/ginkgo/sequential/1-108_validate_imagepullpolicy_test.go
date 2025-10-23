@@ -91,7 +91,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			argoCD.Spec.ImagePullPolicy = nil
 			Expect(argoCD.Spec.ImagePullPolicy).To(BeNil())
 
-			By("creating namespace-scoped ArgoCD instance with global imagePullPolicy=IfNotPresent")
+			By("creating namespace-scoped ArgoCD instance with instance level imagePullPolicy=IfNotPresent")
 			ns, cleanupFunc = fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 
 			policy := corev1.PullIfNotPresent
@@ -118,7 +118,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			By("waiting for ArgoCD CR to be reconciled and the instance to be ready")
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
-			By("verifying all core deployments respect global imagePullPolicy setting andhave imagePullPolicy=IfNotPresent")
+			By("verifying all core deployments respect instance level imagePullPolicy setting and have imagePullPolicy=IfNotPresent")
 			coreDeployments := []string{"argocd-server", "argocd-repo-server", "argocd-redis"}
 			for _, deploymentName := range coreDeployments {
 				deployment := &appsv1.Deployment{
@@ -191,7 +191,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				return true
 			}, "60s", "2s").Should(BeTrue())
 
-			By("updating global imagePullPolicy to Always and verifying changes propagate")
+			By("updating instance level imagePullPolicy to Always and verifying changes propagate")
 			argocdFixture.Update(argoCD, func(ac *argoproj.ArgoCD) {
 				newPolicy := corev1.PullAlways
 				ac.Spec.ImagePullPolicy = &newPolicy
@@ -228,11 +228,13 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				}
 				return true
 			}, "120s", "2s").Should(BeTrue())
+		})
 
+		It("verifies default imagePullPolicy behaviour", func() {
 			By("creating namespace-scoped ArgoCD instance without imagePullPolicy specified")
 			ns, cleanupFunc = fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 
-			argoCD = &argoproj.ArgoCD{
+			argoCD := &argoproj.ArgoCD{
 				ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: ns.Name},
 				Spec: argoproj.ArgoCDSpec{
 					Server: argoproj.ArgoCDServerSpec{
@@ -248,7 +250,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
 			By("verifying all core deployments use default imagePullPolicy behavior")
-			coreDeployments = []string{"argocd-server", "argocd-repo-server", "argocd-redis"}
+			coreDeployments := []string{"argocd-server", "argocd-repo-server", "argocd-redis"}
 			for _, deploymentName := range coreDeployments {
 				deployment := &appsv1.Deployment{
 					ObjectMeta: metav1.ObjectMeta{Name: deploymentName, Namespace: ns.Name},
@@ -275,8 +277,8 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				}, "60s", "2s").Should(BeTrue(), "Deployment %s should use default imagePullPolicy", deploymentName)
 			}
 
-			By("verifying application-controller statefulset uses default Kubernetes imagePullPolicy")
-			controllerStatefulSet = &appsv1.StatefulSet{
+			By("verifying application-controller statefulset uses default imagePullPolicy")
+			controllerStatefulSet := &appsv1.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{Name: "argocd-application-controller", Namespace: ns.Name},
 			}
 			Eventually(controllerStatefulSet, "2m", "2s").Should(k8sFixture.ExistByName())
