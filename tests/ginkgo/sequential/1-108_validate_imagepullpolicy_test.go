@@ -56,7 +56,9 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 		})
 
 		AfterEach(func() {
-			fixture.OutputDebugOnFail(ns)
+			if ns != nil {
+				fixture.OutputDebugOnFail(ns)
+			}
 
 			if cleanupFunc != nil {
 				cleanupFunc()
@@ -91,12 +93,16 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			argoCD.Spec.ImagePullPolicy = nil
 			Expect(argoCD.Spec.ImagePullPolicy).To(BeNil())
 
+		})
+
+		It("ArgoCD CR Instance level ImagePullPolicy Validation", func() {
+
 			By("creating namespace-scoped ArgoCD instance with instance level imagePullPolicy=IfNotPresent")
 			ns, cleanupFunc = fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 
 			policy := corev1.PullIfNotPresent
 			enabled := true
-			argoCD = &argoproj.ArgoCD{
+			argoCD := &argoproj.ArgoCD{
 				ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: ns.Name},
 				Spec: argoproj.ArgoCDSpec{
 					ImagePullPolicy: &policy,
