@@ -187,9 +187,13 @@ func main() {
 		},
 	}
 
+	if watchedNsCache := getDefaultWatchedNamespacesCacheOptions(); watchedNsCache != nil {
+		options.Cache.DefaultNamespaces = watchedNsCache
+	}
+
 	// Use transformers to strip data from Secrets and ConfigMaps
 	// that are not tracked by the operator to reduce memory usage.
-	if strings.ToLower(os.Getenv("MEMORY_OPTIMIZATION_ENABLED")) != "false" {
+	if strings.ToLower(os.Getenv("DISABLE_MEMORY_OPTIMIZATION")) != "true" {
 		options.Cache = cache.Options{
 			Scheme: scheme,
 			ByObject: map[crclient.Object]cache.ByObject{
@@ -199,28 +203,28 @@ func main() {
 		}
 	}
 
-	if watchedNsCache := getDefaultWatchedNamespacesCacheOptions(); watchedNsCache != nil {
-		options.Cache.DefaultNamespaces = watchedNsCache
-	}
-
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
 
-	liveClient, err := crclient.New(ctrl.GetConfigOrDie(), crclient.Options{Scheme: mgr.GetScheme()})
-	if err != nil {
-		setupLog.Error(err, "unable to create live client")
-		os.Exit(1)
+	var client crclient.Client
+	if strings.ToLower(os.Getenv("DISABLE_MEMORY_OPTIMIZATION")) == "true" {
+		liveClient, err := crclient.New(ctrl.GetConfigOrDie(), crclient.Options{Scheme: mgr.GetScheme()})
+		if err != nil {
+			setupLog.Error(err, "unable to create live client")
+			os.Exit(1)
+		}
+
+		// Wraps the controller runtime's default client to provide:
+		//   1. Fallback to the live client when a Secret/ConfigMap is stripped in the cache.
+		//   2. Automatic labeling of fetched objects, so they are retained in full form
+		//      in subsequent cache updates and avoid repeated live lookups.
+		client = cw.NewClientWrapper(mgr.GetClient(), liveClient)
+	} else {
+		client = mgr.GetClient()
 	}
-
-	// Wraps the controller runtime's default client to provide:
-	//   1. Fallback to the live client when a Secret/ConfigMap is stripped in the cache.
-	//   2. Automatic labeling of fetched objects, so they are retained in full form
-	//      in subsequent cache updates and avoid repeated live lookups.
-	client := cw.NewClientWrapper(mgr.GetClient(), liveClient)
-
 	setupLog.Info("Registering Components.")
 
 	// Setup Scheme for all resources
