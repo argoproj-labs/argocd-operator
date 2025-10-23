@@ -247,7 +247,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			By("waiting for ArgoCD CR to be reconciled and the instance to be ready")
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
-			By("verifying all core deployments use default Kubernetes imagePullPolicy behavior")
+			By("verifying all core deployments use default imagePullPolicy behavior")
 			coreDeployments = []string{"argocd-server", "argocd-repo-server", "argocd-redis"}
 			for _, deploymentName := range coreDeployments {
 				deployment := &appsv1.Deployment{
@@ -261,21 +261,18 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					if len(deployment.Spec.Template.Spec.Containers) == 0 {
 						return false
 					}
-					// Verify that imagePullPolicy is set to default Kubernetes behavior
-					// When not explicitly set by operator, Kubernetes defaults apply:
-					// - Empty string means operator didn't set it, K8s will use defaults
-					// - Or K8s applies Always/IfNotPresent based on image tag
+					// Verify that imagePullPolicy is set to default  value
+					// When not explicitly set by operator, IfNotPresent is the default value:
 					for _, container := range deployment.Spec.Template.Spec.Containers {
 						policy := container.ImagePullPolicy
-						// Default K8s behavior: empty, Always, or IfNotPresent are all valid defaults
-						if policy != corev1.PullAlways && policy != corev1.PullIfNotPresent {
+						if policy != corev1.PullIfNotPresent {
 							GinkgoWriter.Printf("Deployment %s container %s has unexpected ImagePullPolicy %s\n",
 								deploymentName, container.Name, policy)
 							return false
 						}
 					}
 					return true
-				}, "60s", "2s").Should(BeTrue(), "Deployment %s should use default Kubernetes imagePullPolicy", deploymentName)
+				}, "60s", "2s").Should(BeTrue(), "Deployment %s should use default imagePullPolicy", deploymentName)
 			}
 
 			By("verifying application-controller statefulset uses default Kubernetes imagePullPolicy")
@@ -289,7 +286,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				}
 				for _, container := range controllerStatefulSet.Spec.Template.Spec.Containers {
 					policy := container.ImagePullPolicy
-					if policy != corev1.PullAlways && policy != corev1.PullIfNotPresent {
+					if policy != corev1.PullIfNotPresent {
 						GinkgoWriter.Printf("StatefulSet container %s has unexpected ImagePullPolicy %s\n",
 							container.Name, policy)
 						return false
