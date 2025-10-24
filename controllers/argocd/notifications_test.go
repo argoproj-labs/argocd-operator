@@ -173,7 +173,7 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 	want := []v1.Container{{
 		Command:         []string{"argocd-notifications", "--loglevel", "info", "--logformat", "text", "--argocd-repo-server", "argocd-repo-server.argocd.svc.cluster.local:8081"},
 		Image:           argoutil.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion),
-		ImagePullPolicy: v1.PullAlways,
+		ImagePullPolicy: v1.PullIfNotPresent,
 		Name:            "argocd-notifications-controller",
 		SecurityContext: argoutil.DefaultSecurityContext(),
 		VolumeMounts: []v1.VolumeMount{

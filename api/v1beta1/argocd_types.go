@@ -900,6 +900,12 @@ type ArgoCDSpec struct {
 	// ImageUpdater defines whether the Argo CD ImageUpdater controller should be installed.
 	ImageUpdater ArgoCDImageUpdaterSpec `json:"imageUpdater,omitempty"`
 
+	// ImagePullPolicy is the image pull policy for all ArgoCD components.
+	// Valid values are Always, IfNotPresent, Never. If not specified, defaults to the operator's global setting.
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Image Pull Policy",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:ArgoCD","urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:fieldDependency:image:enable"}
+	// +kubebuilder:validation:Enum=Always;IfNotPresent;Never
+	ImagePullPolicy *corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
+
 	// Import is the import/restore options for ArgoCD.
 	Import *ArgoCDImportSpec `json:"import,omitempty"`
 

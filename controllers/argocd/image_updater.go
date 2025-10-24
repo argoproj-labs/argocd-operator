@@ -406,7 +406,7 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterDeployment(cr *argoproj.ArgoCD, s
 		Command:         []string{"/manager"},
 		Args:            []string{"run"},
 		Image:           image,
-		ImagePullPolicy: corev1.PullAlways,
+		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            common.ArgoCDImageUpdaterControllerComponent,
 		Env:             imageUpdaterEnv,
 		Resources:       getImageUpdaterResources(cr),

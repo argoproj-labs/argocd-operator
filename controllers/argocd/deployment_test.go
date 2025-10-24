@@ -1255,7 +1255,7 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 			{
 				Name:            "argocd-server",
 				Image:           getArgoContainerImage(a),
-				ImagePullPolicy: corev1.PullAlways,
+				ImagePullPolicy: corev1.PullIfNotPresent,
 				Command: []string{
 					"argocd-server",
 					"--staticassets",
@@ -1756,7 +1756,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 			{
 				Name:            "argocd-server",
 				Image:           getArgoContainerImage(a),
-				ImagePullPolicy: corev1.PullAlways,
+				ImagePullPolicy: corev1.PullIfNotPresent,
 				Command: []string{
 					"argocd-server",
 					"--insecure",
@@ -1852,7 +1852,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 			{
 				Name:            "argocd-server",
 				Image:           getArgoContainerImage(a),
-				ImagePullPolicy: corev1.PullAlways,
+				ImagePullPolicy: corev1.PullIfNotPresent,
 				Command: []string{
 					"argocd-server",
 					"--insecure",

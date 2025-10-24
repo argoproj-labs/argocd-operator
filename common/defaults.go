@@ -292,6 +292,9 @@ vs-ssh.visualstudio.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7Hr1oTWqNqOlzGJOf
 
 	// ArgoCDImageUpdaterControllerComponent is the name of the Image Updater controller control plane component
 	ArgoCDImageUpdaterControllerComponent = "argocd-image-updater-controller"
+
+	// DefaultImagePullPolicy is the default image pull policy to use when not specified.
+	DefaultImagePullPolicy = "IfNotPresent"
 )
 
 // DefaultLabels returns the default set of labels for controllers.

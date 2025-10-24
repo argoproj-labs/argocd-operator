@@ -295,9 +295,10 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 			"/shared/argocd-dex",
 			"rundex",
 		},
-		Image: getDexContainerImage(cr),
-		Name:  "dex",
-		Env:   dexEnv,
+		Image:           getDexContainerImage(cr),
+		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
+		Name:            "dex",
+		Env:             dexEnv,
 		LivenessProbe: &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
@@ -334,7 +335,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		},
 		Env:             proxyEnvVars(),
 		Image:           getArgoContainerImage(cr),
-		ImagePullPolicy: corev1.PullAlways,
+		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            "copyutil",
 		Resources:       getDexResources(cr),
 		SecurityContext: argoutil.DefaultSecurityContext(),
@@ -361,15 +362,27 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getDexContainerImage(cr)
+		actualImagePullPolicy := existing.Spec.Template.Spec.Containers[0].ImagePullPolicy
+		desiredImagePullPolicy := argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy)
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
 			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			explanation = "container image"
 			changed = true
 		}
+		if actualImagePullPolicy != desiredImagePullPolicy {
+			existing.Spec.Template.Spec.Containers[0].ImagePullPolicy = desiredImagePullPolicy
+			if changed {
+				explanation += ", "
+			}
+			explanation += "image pull policy"
+			changed = true
+		}
 
 		actualImage = existing.Spec.Template.Spec.InitContainers[0].Image
 		desiredImage = getArgoContainerImage(cr)
+		actualInitImagePullPolicy := existing.Spec.Template.Spec.InitContainers[0].ImagePullPolicy
+		desiredInitImagePullPolicy := argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy)
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.InitContainers[0].Image = desiredImage
 			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
@@ -377,6 +390,14 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 				explanation += ", "
 			}
 			explanation += "init container image"
+			changed = true
+		}
+		if actualInitImagePullPolicy != desiredInitImagePullPolicy {
+			existing.Spec.Template.Spec.InitContainers[0].ImagePullPolicy = desiredInitImagePullPolicy
+			if changed {
+				explanation += ", "
+			}
+			explanation += "init container image pull policy"
 			changed = true
 		}
 		updateNodePlacement(existing, deploy, &changed, &explanation)

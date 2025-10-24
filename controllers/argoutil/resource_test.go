@@ -15,9 +15,11 @@
 package argoutil
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func TestTruncateWithHash(t *testing.T) {
@@ -140,6 +142,113 @@ func TestTruncateCRName(t *testing.T) {
 			result := TruncateCRName(tt.input)
 			assert.Equal(t, tt.expected, result)
 			assert.LessOrEqual(t, len(result), GetMaxCRNameLength(), "Result should not exceed maxCRNameLength")
+		})
+	}
+}
+
+func TestGetImagePullPolicy(t *testing.T) {
+	// Save and restore original environment variable
+	originalEnv := os.Getenv("IMAGE_PULL_POLICY")
+	defer func() {
+		if originalEnv != "" {
+			os.Setenv("IMAGE_PULL_POLICY", originalEnv)
+		} else {
+			os.Unsetenv("IMAGE_PULL_POLICY")
+		}
+	}()
+
+	tests := []struct {
+		name               string
+		policy             *corev1.PullPolicy
+		envValue           string
+		setEnv             bool
+		expectedPullPolicy corev1.PullPolicy
+		description        string
+	}{
+		{
+			name:               "instance specific policy - Always",
+			policy:             &[]corev1.PullPolicy{corev1.PullAlways}[0],
+			setEnv:             false,
+			expectedPullPolicy: corev1.PullAlways,
+			description:        "When instance policy is set to Always, it should take precedence",
+		},
+		{
+			name:               "instance specific policy - Never",
+			policy:             &[]corev1.PullPolicy{corev1.PullNever}[0],
+			setEnv:             false,
+			expectedPullPolicy: corev1.PullNever,
+			description:        "When instance policy is set to Never, it should take precedence",
+		},
+		{
+			name:               "instance specific policy - IfNotPresent",
+			policy:             &[]corev1.PullPolicy{corev1.PullIfNotPresent}[0],
+			setEnv:             false,
+			expectedPullPolicy: corev1.PullIfNotPresent,
+			description:        "When instance policy is set to IfNotPresent, it should take precedence",
+		},
+		{
+			name:               "instance policy overrides environment variable",
+			policy:             &[]corev1.PullPolicy{corev1.PullNever}[0],
+			envValue:           "Always",
+			setEnv:             true,
+			expectedPullPolicy: corev1.PullNever,
+			description:        "Instance policy should take precedence over environment variable",
+		},
+		{
+			name:               "environment variable - Always",
+			policy:             nil,
+			envValue:           "Always",
+			setEnv:             true,
+			expectedPullPolicy: corev1.PullAlways,
+			description:        "When instance policy is nil, environment variable should be used",
+		},
+		{
+			name:               "environment variable - Never",
+			policy:             nil,
+			envValue:           "Never",
+			setEnv:             true,
+			expectedPullPolicy: corev1.PullNever,
+			description:        "When instance policy is nil, environment variable should be used",
+		},
+		{
+			name:               "environment variable - IfNotPresent",
+			policy:             nil,
+			envValue:           "IfNotPresent",
+			setEnv:             true,
+			expectedPullPolicy: corev1.PullIfNotPresent,
+			description:        "When instance policy is nil, environment variable should be used",
+		},
+		{
+			name:               "default policy when nothing set",
+			policy:             nil,
+			setEnv:             false,
+			expectedPullPolicy: corev1.PullIfNotPresent,
+			description:        "When neither instance policy nor env var is set, default to IfNotPresent",
+		},
+		{
+			name:               "empty environment variable falls back to default",
+			policy:             nil,
+			envValue:           "",
+			setEnv:             true,
+			expectedPullPolicy: corev1.PullIfNotPresent,
+			description:        "When env var is empty string, should fall back to default",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup environment
+			if tt.setEnv {
+				os.Setenv("IMAGE_PULL_POLICY", tt.envValue)
+			} else {
+				os.Unsetenv("IMAGE_PULL_POLICY")
+			}
+
+			// Execute
+			result := GetImagePullPolicy(tt.policy)
+
+			// Assert
+			assert.Equal(t, tt.expectedPullPolicy, result, tt.description)
 		})
 	}
 }

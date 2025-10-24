@@ -373,7 +373,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, 
 	podSpec.Containers = []corev1.Container{{
 		Command:         getNotificationsCommand(cr),
 		Image:           getArgoContainerImage(cr),
-		ImagePullPolicy: corev1.PullAlways,
+		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            common.ArgoCDNotificationsControllerComponent,
 		Env:             notificationEnv,
 		Resources:       getNotificationsResources(cr),
