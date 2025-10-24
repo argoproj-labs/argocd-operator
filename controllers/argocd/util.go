@@ -17,9 +17,12 @@ package argocd
 import (
 	"bytes"
 	"context"
+	"crypto"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"hash"
 	"os"
 	"reflect"
 	"sort"
@@ -32,6 +35,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/argoproj/argo-cd/v3/util/glob"
+	"github.com/distribution/reference"
 	"github.com/go-logr/logr"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
@@ -197,22 +201,7 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 
 // getArgoContainerImage will return the container image for ArgoCD.
 func getArgoContainerImage(cr *argoproj.ArgoCD) string {
-	defaultTag, defaultImg := false, false
-	img := cr.Spec.Image
-	if img == "" {
-		img = common.ArgoCDDefaultArgoImage
-		defaultImg = true
-	}
-
-	tag := cr.Spec.Version
-	if tag == "" {
-		tag = common.ArgoCDDefaultArgoVersion
-		defaultTag = true
-	}
-	if e := os.Getenv(common.ArgoCDImageEnvName); e != "" && (defaultTag && defaultImg) {
-		return e
-	}
-
+	img, tag := GetImageAndTag(common.ArgoCDImageEnvName, "", "", cr.Spec.Image, cr.Spec.Version)
 	return argoutil.CombineImageTag(img, tag)
 }
 
@@ -230,28 +219,70 @@ func getArgoContainerImage(cr *argoproj.ArgoCD) string {
 // 4. the default is configured in common.ArgoCDDefaultArgoVersion and
 // common.ArgoCDDefaultArgoImage.
 func getRepoServerContainerImage(cr *argoproj.ArgoCD) string {
-	defaultImg, defaultTag := false, false
-	img := cr.Spec.Repo.Image
-	if img == "" {
-		img = cr.Spec.Image
-		if img == "" {
-			img = common.ArgoCDDefaultArgoImage
-			defaultImg = true
+	img, tag := GetImageAndTag(common.ArgoCDImageEnvName, cr.Spec.Repo.Image, cr.Spec.Repo.Version, cr.Spec.Image, cr.Spec.Version)
+	return argoutil.CombineImageTag(img, tag)
+}
+
+// GetImageAndTag determines the image and tag for an ArgoCD component, considering container-level and common-level overrides.
+// Priority order: containerSpec > commonSpec > environment variable > defaults
+// Returns: image, tag
+func GetImageAndTag(envVar, containerSpecImage, containerSpecVersion, commonSpecImage, commonSpecVersion string) (string, string) {
+	// Start with defaults
+	image := common.ArgoCDDefaultArgoImage
+	tag := common.ArgoCDDefaultArgoVersion
+
+	// Check if environment variable is set
+	envVal := os.Getenv(envVar)
+
+	// If no spec values are provided and env var is set, use env var as-is
+	if envVal != "" && containerSpecImage == "" && commonSpecImage == "" &&
+		containerSpecVersion == "" && commonSpecVersion == "" {
+		return envVal, ""
+	}
+
+	// Parse environment variable image if it exists and we need to extract the base image name
+	if envVal != "" {
+		baseImageName, err := extractBaseImageName(envVal)
+		if err != nil {
+			log.Error(err, "Failed to parse environment variable image", "envVal", envVal)
+			return "", ""
+		}
+		if baseImageName != "" {
+			image = baseImageName
 		}
 	}
 
-	tag := cr.Spec.Repo.Version
-	if tag == "" {
-		tag = cr.Spec.Version
-		if tag == "" {
-			tag = common.ArgoCDDefaultArgoVersion
-			defaultTag = true
-		}
+	// Apply spec overrides with container spec taking precedence over common spec
+	image = getPriorityValue(containerSpecImage, commonSpecImage, image)
+	tag = getPriorityValue(containerSpecVersion, commonSpecVersion, tag)
+
+	return image, tag
+}
+
+// extractBaseImageName extracts the base image name from a full image reference (removing tag/digest)
+func extractBaseImageName(imageRef string) (string, error) {
+	// Handle digest format (image@sha256:...)
+	crypto.RegisterHash(crypto.SHA256, func() hash.Hash { return sha256.New() })
+	ref, err := reference.Parse(imageRef)
+	if err != nil {
+		return "", err
 	}
-	if e := os.Getenv(common.ArgoCDImageEnvName); e != "" && (defaultTag && defaultImg) {
-		return e
+	var name string
+	if named, ok := ref.(reference.Named); ok {
+		name = named.Name()
 	}
-	return argoutil.CombineImageTag(img, tag)
+	return name, nil
+}
+
+// getPriorityValue returns the highest priority value from container spec, common spec, or fallback
+func getPriorityValue(containerLevelSpec, commonLevelSpec, fallback string) string {
+	if containerLevelSpec != "" {
+		return containerLevelSpec
+	}
+	if commonLevelSpec != "" {
+		return commonLevelSpec
+	}
+	return fallback
 }
 
 // getArgoRepoResources will return the ResourceRequirements for the Argo CD Repo server container.
