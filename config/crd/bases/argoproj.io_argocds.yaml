@@ -21932,6 +21932,8 @@ spec:
                       type: object
                     type: array
                   systemCATrust:
+                    description: Custom certificates to inject into the repo server
+                      container and its plugins to trust source hosting sites
                     properties:
                       clusterTrustBundles:
                         description: ClusterTrustBundles is a list of projected ClusterTrustBundle
