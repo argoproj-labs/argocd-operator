@@ -573,7 +573,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 // 1. /etc/ssl/certs/ cannot be updated by `update-ca-certificates` without root - desirable in the production container.
 // 2. /etc/ssl/certs/ symlinkes to /usr/local/share/ca-certificates/, so mounting one without the other is futile.
 //
-// All source trust anchors are projected into the `argocd-ca-trust-source` volume that is ultimately mounted in the prod container (addresses #2).
+// All source certs are projected into the `argocd-ca-trust-source` volume that is ultimately mounted in the prod container (addresses #2).
 //
 // To amend content of /etc/ssl/certs/ (ca-trust-target), an init container is used:
 //   - it mounts `argocd-ca-trust-target` over `/etc/ssl/certs/` (addressing #1 by making it writable volume),
@@ -588,22 +588,38 @@ func injectCATrustToContainers(cr *v1beta1.ArgoCD, deploy *v2.Deployment) (repoS
 	}
 
 	// Add a projected volume combining all the trust bundles configured + the init containers to start them
-	sources := make([]v1.VolumeProjection, len(cr.Spec.Repo.SystemCATrust.ClusterTrustBundles))
-	var bundleNames []string
-	for i, bundle := range cr.Spec.Repo.SystemCATrust.ClusterTrustBundles {
+	var sources []v1.VolumeProjection
+	var sourceNames []string
+	for _, bundle := range cr.Spec.Repo.SystemCATrust.ClusterTrustBundles {
 		bundle = *bundle.DeepCopy()
 		if !strings.HasSuffix(bundle.Path, ".crt") {
 			return nil, fmt.Errorf("invalid ClusterTrustBundle path suffix '%s' in %s, must be .crt", bundle.Path, cr.Name)
 		}
 
-		sources[i] = v1.VolumeProjection{
+		sources = append(sources, v1.VolumeProjection{
 			ClusterTrustBundle: &bundle,
-		}
-		path := bundle.Path // Using .Path, because .Name might not be specified
+		})
+		path := "ClusterTrustBundle:" + bundle.Path // Using .Path, because .Name might not be specified
 		if bundle.Optional != nil && *bundle.Optional {
 			path += "(optional)"
 		}
-		bundleNames = append(bundleNames, path)
+		sourceNames = append(sourceNames, path)
+	}
+	for _, secret := range cr.Spec.Repo.SystemCATrust.Secrets {
+		secret = *secret.DeepCopy()
+
+		sources = append(sources, v1.VolumeProjection{
+			Secret: &secret,
+		})
+		sourceNames = append(sourceNames, fmt.Sprintf("Secret:%s", secret.Name))
+	}
+	for _, cm := range cr.Spec.Repo.SystemCATrust.ConfigMaps {
+		cm = *cm.DeepCopy()
+
+		sources = append(sources, v1.VolumeProjection{
+			ConfigMap: &cm,
+		})
+		sourceNames = append(sourceNames, fmt.Sprintf("ConfigMap:%s", cm.Name))
 	}
 
 	volumeSource := "argocd-ca-trust-source"
@@ -628,10 +644,10 @@ func injectCATrustToContainers(cr *v1beta1.ArgoCD, deploy *v2.Deployment) (repoS
 
 	argoImage := getArgoContainerImage(cr)
 
-	// This is where the image keeps its vendored CAs, look elsewhere if DropImageAnchors
+	// This is where the image keeps its vendored CAs, look elsewhere if DropImageCertificates
 	imageCertPath := "/usr/share/ca-certificates"
-	if cr.Spec.Repo.SystemCATrust.DropImageAnchors {
-		imageCertPath = "/SystemCATrust.DropImageAnchors"
+	if cr.Spec.Repo.SystemCATrust.DropImageCertificates {
+		imageCertPath = "/SystemCATrust.DropImageCertificates"
 	}
 	deploy.Spec.Template.Spec.InitContainers = append(deploy.Spec.Template.Spec.InitContainers, v1.Container{
 		Name:            "update-ca-certificates",
@@ -650,7 +666,7 @@ func injectCATrustToContainers(cr *v1beta1.ArgoCD, deploy *v2.Deployment) (repoS
                 set -eEuo pipefail
                 trap 's=$?; echo >&2 "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
 
-                echo "User defined trust anchors:"
+                echo "User defined CA files:"
                 ls -l /usr/local/share/ca-certificates/
                 update-ca-certificates --verbose --certsdir "$IMAGE_CERT_PATH"
                 echo "Resulting /etc/ssl/certs/"
@@ -676,8 +692,9 @@ func injectCATrustToContainers(cr *v1beta1.ArgoCD, deploy *v2.Deployment) (repoS
 					"ALL",
 				},
 			},
-			// ReadOnlyRootFilesystem: boolPtr(true),
-			RunAsNonRoot: boolPtr(true),
+			// Needed by update-ca-certificates for /tmp/
+			ReadOnlyRootFilesystem: boolPtr(false),
+			RunAsNonRoot:           boolPtr(true),
 			SeccompProfile: &v1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
@@ -703,8 +720,8 @@ func injectCATrustToContainers(cr *v1beta1.ArgoCD, deploy *v2.Deployment) (repoS
 	}
 
 	log.Info(fmt.Sprintf(
-		"injecting system CA trust from bundles %s to containers %s",
-		strings.Join(bundleNames, ", "),
+		"injecting system CA trust from %s to containers %s",
+		strings.Join(sourceNames, ", "),
 		strings.Join(containerNames, ", "),
 	))
 

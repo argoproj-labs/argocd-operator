@@ -21934,8 +21934,8 @@ spec:
                   systemCATrust:
                     properties:
                       clusterTrustBundles:
-                        description: ClusterTrustBundles is a list of projected volume
-                          definitions from where to take the trust anchors.
+                        description: ClusterTrustBundles is a list of projected ClusterTrustBundle
+                          volume definitions from where to take the trust certs.
                         items:
                           description: |-
                             ClusterTrustBundleProjection describes how to select a set of
@@ -22019,10 +22019,146 @@ spec:
                           - path
                           type: object
                         type: array
-                      dropImageAnchors:
-                        description: DropImageAnchors will remove all anchors that
-                          are present in the image, leaving only those from ClusterTrustBundles.
+                      configMaps:
+                        description: ConfigMaps is a list of projected ConfigMap volume
+                          definitions from where to take the trust certs.
+                        items:
+                          description: |-
+                            Adapts a ConfigMap into a projected volume.
+
+                            The contents of the target ConfigMap's Data field will be presented in a
+                            projected volume as files using the keys in the Data field as the file names,
+                            unless the items element is populated with specific mappings of keys to paths.
+                            Note that this is identical to a configmap volume source without the default
+                            mode.
+                          properties:
+                            items:
+                              description: |-
+                                items if unspecified, each key-value pair in the Data field of the referenced
+                                ConfigMap will be projected into the volume as a file whose name is the
+                                key and content is the value. If specified, the listed keys will be
+                                projected into the specified paths, and unlisted keys will not be
+                                present. If a key is specified which is not present in the ConfigMap,
+                                the volume setup will error unless it is marked optional. Paths must be
+                                relative and may not contain the '..' path or start with '..'.
+                              items:
+                                description: Maps a string key to a path within a
+                                  volume.
+                                properties:
+                                  key:
+                                    description: key is the key to project.
+                                    type: string
+                                  mode:
+                                    description: |-
+                                      mode is Optional: mode bits used to set permissions on this file.
+                                      Must be an octal value between 0000 and 0777 or a decimal value between 0 and 511.
+                                      YAML accepts both octal and decimal values, JSON requires decimal values for mode bits.
+                                      If not specified, the volume defaultMode will be used.
+                                      This might be in conflict with other options that affect the file
+                                      mode, like fsGroup, and the result can be other mode bits set.
+                                    format: int32
+                                    type: integer
+                                  path:
+                                    description: |-
+                                      path is the relative path of the file to map the key to.
+                                      May not be an absolute path.
+                                      May not contain the path element '..'.
+                                      May not start with the string '..'.
+                                    type: string
+                                required:
+                                - key
+                                - path
+                                type: object
+                              type: array
+                              x-kubernetes-list-type: atomic
+                            name:
+                              default: ""
+                              description: |-
+                                Name of the referent.
+                                This field is effectively required, but due to backwards compatibility is
+                                allowed to be empty. Instances of this type with an empty value here are
+                                almost certainly wrong.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              type: string
+                            optional:
+                              description: optional specify whether the ConfigMap
+                                or its keys must be defined
+                              type: boolean
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        type: array
+                      dropImageCertificates:
+                        description: DropImageCertificates will remove all certs that
+                          are present in the image, leaving only those explicitly
+                          configured here.
                         type: boolean
+                      secrets:
+                        description: Secrets is a list of projected Secret volume
+                          definitions from where to take the trust certs.
+                        items:
+                          description: |-
+                            Adapts a secret into a projected volume.
+
+                            The contents of the target Secret's Data field will be presented in a
+                            projected volume as files using the keys in the Data field as the file names.
+                            Note that this is identical to a secret volume source without the default
+                            mode.
+                          properties:
+                            items:
+                              description: |-
+                                items if unspecified, each key-value pair in the Data field of the referenced
+                                Secret will be projected into the volume as a file whose name is the
+                                key and content is the value. If specified, the listed keys will be
+                                projected into the specified paths, and unlisted keys will not be
+                                present. If a key is specified which is not present in the Secret,
+                                the volume setup will error unless it is marked optional. Paths must be
+                                relative and may not contain the '..' path or start with '..'.
+                              items:
+                                description: Maps a string key to a path within a
+                                  volume.
+                                properties:
+                                  key:
+                                    description: key is the key to project.
+                                    type: string
+                                  mode:
+                                    description: |-
+                                      mode is Optional: mode bits used to set permissions on this file.
+                                      Must be an octal value between 0000 and 0777 or a decimal value between 0 and 511.
+                                      YAML accepts both octal and decimal values, JSON requires decimal values for mode bits.
+                                      If not specified, the volume defaultMode will be used.
+                                      This might be in conflict with other options that affect the file
+                                      mode, like fsGroup, and the result can be other mode bits set.
+                                    format: int32
+                                    type: integer
+                                  path:
+                                    description: |-
+                                      path is the relative path of the file to map the key to.
+                                      May not be an absolute path.
+                                      May not contain the path element '..'.
+                                      May not start with the string '..'.
+                                    type: string
+                                required:
+                                - key
+                                - path
+                                type: object
+                              type: array
+                              x-kubernetes-list-type: atomic
+                            name:
+                              default: ""
+                              description: |-
+                                Name of the referent.
+                                This field is effectively required, but due to backwards compatibility is
+                                allowed to be empty. Instances of this type with an empty value here are
+                                almost certainly wrong.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              type: string
+                            optional:
+                              description: optional field specify whether the Secret
+                                or its key must be defined
+                              type: boolean
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        type: array
                     type: object
                   verifytls:
                     description: VerifyTLS defines whether repo server API should
