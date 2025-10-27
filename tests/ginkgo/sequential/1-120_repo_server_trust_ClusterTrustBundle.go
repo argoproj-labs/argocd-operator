@@ -77,6 +77,40 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			ctx = context.Background()
 		})
 
+		verifyCorrectlyConfiguredTrust := func(ns *corev1.Namespace) {
+			untrustedHelmApp := createHelmApp(ns, untrustedHelmAppSource)
+			Expect(k8sClient.Create(ctx, untrustedHelmApp)).To(Succeed())
+
+			// Using some host not trusted by github's intermediate cert. Gitlab-somewhat surprisingly-is.
+			untrustedPluginApp := createPluginApp(ns, "https://kernel.googlesource.com/pub/scm/docs/man-pages/website.git")
+			Expect(k8sClient.Create(ctx, untrustedPluginApp)).To(Succeed())
+
+			trustedHelmApp := createHelmApp(ns, trustedHelmAppSource)
+			Expect(k8sClient.Create(ctx, trustedHelmApp)).To(Succeed())
+
+			trustedPluginApp := createPluginApp(ns, "https://github.com/argoproj-labs/argocd-operator.git")
+			Expect(k8sClient.Create(ctx, trustedPluginApp)).To(Succeed())
+
+			// Sleep to make sure the apps sync took place - otherwise there might be no conditions _yet_
+			time.Sleep(20 * time.Second)
+
+			Expect(untrustedHelmApp).Should(
+				appFixture.HaveConditionMatching("ComparisonError", ".*failed to fetch chart.*"),
+			)
+			Expect(untrustedHelmApp).Should(appFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeUnknown))
+
+			Expect(untrustedPluginApp).Should(
+				appFixture.HaveConditionMatching("ComparisonError", ".*certificate signed by unknown authority.*"),
+			)
+			Expect(untrustedPluginApp).Should(appFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeUnknown))
+
+			Expect(trustedHelmApp).Should(appFixture.HaveNoConditions())
+			Expect(trustedHelmApp).Should(appFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeSynced))
+
+			Expect(trustedPluginApp).Should(appFixture.HaveNoConditions())
+			Expect(trustedPluginApp).Should(appFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeSynced))
+		}
+
 		It("ensures that incorrect file suffix cannot be used for ClusterTrustBundle", func() {
 			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 			defer cleanupFunc()
@@ -137,7 +171,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			// Create a bundle with 2 CA certs in it. Ubuntu's update-ca-certificates issues a warning, but apparently it works
 			// It is desirable to test with multiple certs in one bundle because OpenShift permits it
-			combinedCtb := createCtbFromHost("github.com", "github.io")
+			combinedCtb := createCtbFromCerts(getCACert("github.com"), getCACert("github.io"))
 			k8sClient.Delete(ctx, combinedCtb)
 			defer k8sClient.Delete(ctx, combinedCtb)
 			Expect(k8sClient.Create(ctx, combinedCtb)).To(Succeed())
@@ -151,7 +185,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				Spec: argov1beta1api.ArgoCDSpec{
 					Repo: argov1beta1api.ArgoCDRepoSpec{
 						SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
-							DropImageAnchors: true, // So we can test against upstream sites that would otherwise be trusted by the image
+							DropImageCertificates: true, // So we can test against upstream sites that would otherwise be trusted by the image
 							ClusterTrustBundles: []corev1.ClusterTrustBundleProjection{
 								{Name: ptr.To(combinedCtb.Name), Path: "combined.crt"},
 								{Name: ptr.To("no-such-ctb"), Path: "no-such-ctb.crt", Optional: ptr.To(true)},
@@ -172,41 +206,64 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Expect(initContainerLog).Should(ContainSubstring("combined.crt"))
 			Expect(initContainerLog).Should(ContainSubstring("no-such-ctb.crt"))
 			Expect(getPodCertFileCount(k8sClient, ns)).Should(Equal(3))
-
-			untrustedHelmApp := createHelmApp(ns, untrustedHelmAppSource)
-			Expect(k8sClient.Create(ctx, untrustedHelmApp)).To(Succeed())
-
-			// Using some host not trusted by github's intermediate cert. Gitlab-somewhat surprisingly-is.
-			untrustedPluginApp := createPluginApp(ns, pluginCm, "https://kernel.googlesource.com/pub/scm/docs/man-pages/website.git")
-			Expect(k8sClient.Create(ctx, untrustedPluginApp)).To(Succeed())
-
-			trustedHelmApp := createHelmApp(ns, trustedHelmAppSource)
-			Expect(k8sClient.Create(ctx, trustedHelmApp)).To(Succeed())
-
-			trustedPluginApp := createPluginApp(ns, pluginCm, "https://github.com/argoproj-labs/argocd-operator.git")
-			Expect(k8sClient.Create(ctx, trustedPluginApp)).To(Succeed())
-
-			// Sleep to make sure the apps sync took place - otherwise there might be no conditions _yet_
-			time.Sleep(20 * time.Second)
-
-			Expect(untrustedHelmApp).Should(
-				appFixture.HaveConditionMatching("ComparisonError", ".*failed to fetch chart.*"),
-			)
-			Expect(untrustedHelmApp).Should(appFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeUnknown))
-
-			Expect(untrustedPluginApp).Should(
-				appFixture.HaveConditionMatching("ComparisonError", ".*certificate signed by unknown authority.*"),
-			)
-			Expect(untrustedPluginApp).Should(appFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeUnknown))
-
-			Expect(trustedHelmApp).Should(appFixture.HaveNoConditions())
-			Expect(trustedHelmApp).Should(appFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeSynced))
-
-			Expect(trustedPluginApp).Should(appFixture.HaveNoConditions())
-			Expect(trustedPluginApp).Should(appFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeSynced))
+			verifyCorrectlyConfiguredTrust(ns)
 		})
 
-		It("ensures that empty ClusterTrustBundles with DropImageAnchors trusts nothing", func() {
+		It("ensures that CMs and Secrets are trusted in repo-server and plugins", func() {
+			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
+			defer cleanupFunc()
+
+			cmCert := createCmFromCert(ns, getCACert("github.com"))
+			Expect(k8sClient.Create(ctx, cmCert)).To(Succeed())
+			defer k8sClient.Delete(ctx, cmCert)
+			secretCert := createSecretFromCert(ns, getCACert("github.io"))
+			Expect(k8sClient.Create(ctx, secretCert)).To(Succeed())
+			defer k8sClient.Delete(ctx, secretCert)
+
+			pluginCm, pluginContainer, pluginVolumes := createGitPullingPlugin(ns)
+			Expect(k8sClient.Create(ctx, pluginCm)).To(Succeed())
+
+			By("creating Argo CD instance trusting CTBs")
+			argoCD := &argov1beta1api.ArgoCD{
+				ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: ns.Name},
+				Spec: argov1beta1api.ArgoCDSpec{
+					Repo: argov1beta1api.ArgoCDRepoSpec{
+						SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
+							DropImageCertificates: true, // So we can test against upstream sites that would otherwise be trusted by the image
+							Secrets: []corev1.SecretProjection{{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: secretCert.Name,
+								},
+								Items: []corev1.KeyToPath{}, // Map all
+							}},
+							ConfigMaps: []corev1.ConfigMapProjection{{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: cmCert.Name,
+								},
+								Optional: ptr.To(true),
+								Items: []corev1.KeyToPath{
+									{Key: "ca.cm.crt", Path: "ca.cm.crt"},
+								},
+							}},
+						},
+						// plugin containers/volumes - this is not related to Secret/CM
+						Volumes: pluginVolumes,
+						SidecarContainers: []corev1.Container{
+							*pluginContainer,
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
+
+			initContainerLog := getRepoCertGenerationLog(k8sClient, ns)
+			Expect(initContainerLog).Should(ContainSubstring("ca.secret.crt"))
+			Expect(initContainerLog).Should(ContainSubstring("ca.cm.crt"))
+			verifyCorrectlyConfiguredTrust(ns)
+		})
+
+		It("ensures that 0 trusted certs with DropImageCertificates trusts nothing", func() {
 			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 			defer cleanupFunc()
 
@@ -216,8 +273,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				Spec: argov1beta1api.ArgoCDSpec{
 					Repo: argov1beta1api.ArgoCDRepoSpec{
 						SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
-							DropImageAnchors:    true,
-							ClusterTrustBundles: []corev1.ClusterTrustBundleProjection{},
+							DropImageCertificates: true,
 						},
 					},
 				},
@@ -240,7 +296,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Expect(trustedHelmApp).Should(appFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeUnknown))
 		})
 
-		It("ensures that empty ClusterTrustBundles with DropImageAnchors trusts nothing", func() {
+		It("ensures that empty trust keeps image certs in place", func() {
 			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 			defer cleanupFunc()
 
@@ -250,8 +306,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				Spec: argov1beta1api.ArgoCDSpec{
 					Repo: argov1beta1api.ArgoCDRepoSpec{
 						SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
-							DropImageAnchors:    false, // Keep the image ones
-							ClusterTrustBundles: []corev1.ClusterTrustBundleProjection{},
+							DropImageCertificates: false, // Keep the image ones
 						},
 					},
 				},
@@ -372,7 +427,7 @@ func createHelmApp(ns *corev1.Namespace, source *appv1alpha1.ApplicationSource) 
 	}
 }
 
-func createPluginApp(ns *corev1.Namespace, plugin *corev1.ConfigMap, url string) *appv1alpha1.Application {
+func createPluginApp(ns *corev1.Namespace, url string) *appv1alpha1.Application {
 	name := regexp.MustCompile("[^a-z]+").ReplaceAllString(url, "-")
 	By("creating plugin Application " + name)
 	return &appv1alpha1.Application{
@@ -404,14 +459,7 @@ func createPluginApp(ns *corev1.Namespace, plugin *corev1.ConfigMap, url string)
 	}
 }
 
-func createCtbFromHost(hosts ...string) *certificatesv1alpha1.ClusterTrustBundle {
-	By("creating ClusterTrustBundle for " + strings.Join(hosts, ", "))
-
-	bundle := []string{}
-	for _, host := range hosts {
-		bundle = append(bundle, getCACert(host))
-	}
-
+func createCtbFromCerts(bundle ...string) *certificatesv1alpha1.ClusterTrustBundle {
 	return &certificatesv1alpha1.ClusterTrustBundle{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ClusterTrustBundle",
@@ -422,6 +470,31 @@ func createCtbFromHost(hosts ...string) *certificatesv1alpha1.ClusterTrustBundle
 		},
 		Spec: certificatesv1alpha1.ClusterTrustBundleSpec{
 			TrustBundle: strings.Join(bundle, "\n"),
+		},
+	}
+}
+
+func createCmFromCert(ns *corev1.Namespace, bundle string) *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "ca-trust",
+			Namespace: ns.Name,
+		},
+		Data: map[string]string{
+			"ca.cm.crt": bundle,
+		},
+	}
+}
+
+func createSecretFromCert(ns *corev1.Namespace, bundle string) *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "ca-trust",
+			Namespace: ns.Name,
+		},
+		Type: "Opaque",
+		StringData: map[string]string{
+			"ca.secret.crt": bundle,
 		},
 	}
 }

@@ -604,10 +604,14 @@ func (a *ArgoCDRepoSpec) IsRemote() bool {
 }
 
 type ArgoCDSystemCATrustSpec struct {
-	// DropImageAnchors will remove all anchors that are present in the image, leaving only those from ClusterTrustBundles.
-	DropImageAnchors bool `json:"dropImageAnchors,omitempty,default=false"`
-	// ClusterTrustBundles is a list of projected volume definitions from where to take the trust anchors.
+	// DropImageCertificates will remove all certs that are present in the image, leaving only those explicitly configured here.
+	DropImageCertificates bool `json:"dropImageCertificates,omitempty,default=false"`
+	// ClusterTrustBundles is a list of projected ClusterTrustBundle volume definitions from where to take the trust certs.
 	ClusterTrustBundles []corev1.ClusterTrustBundleProjection `json:"clusterTrustBundles,omitempty"`
+	// Secrets is a list of projected Secret volume definitions from where to take the trust certs.
+	Secrets []corev1.SecretProjection `json:"secrets,omitempty"`
+	// ConfigMaps is a list of projected ConfigMap volume definitions from where to take the trust certs.
+	ConfigMaps []corev1.ConfigMapProjection `json:"configMaps,omitempty"`
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.
