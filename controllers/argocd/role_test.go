@@ -205,6 +205,10 @@ func TestReconcileArgoCD_reconcileRoleForApplicationSourceNamespaces(t *testing.
 		ApplicationSet: &argoproj.ArgoCDApplicationSet{
 			SourceNamespaces: []string{"tmp"},
 		},
+		Notifications: argoproj.ArgoCDNotifications{
+			Enabled:          true,
+			SourceNamespaces: []string{"tmp"},
+		},
 	}
 
 	resObjs := []client.Object{a}
@@ -237,12 +241,18 @@ func TestReconcileArgoCD_reconcileRoleForApplicationSourceNamespaces(t *testing.
 		ApplicationSet: &argoproj.ArgoCDApplicationSet{
 			SourceNamespaces: []string{"tmp", sourceNamespace},
 		},
+		Notifications: argoproj.ArgoCDNotifications{
+			Enabled:          true,
+			SourceNamespaces: []string{"tmp", sourceNamespace},
+		},
 	}
 	err = r.reconcileRoleForApplicationSourceNamespaces(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
 	reconciledRole = &v1.Role{}
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: sourceNamespace}, reconciledRole))
-	assert.Equal(t, append(expectedRules, policyRuleForServerApplicationSetSourceNamespaces()...), reconciledRole.Rules)
+	expectedRules = append(expectedRules, policyRuleForServerApplicationSetSourceNamespaces()...)
+	expectedRules = append(expectedRules, policyRuleForServerNotificationsSourceNamespaces()...)
+	assert.Equal(t, expectedRules, reconciledRole.Rules)
 
 	// check if appset rules are removed for server-role when appset namespace is removed from the list
 	a.Spec = argoproj.ArgoCDSpec{
@@ -252,7 +262,12 @@ func TestReconcileArgoCD_reconcileRoleForApplicationSourceNamespaces(t *testing.
 		ApplicationSet: &argoproj.ArgoCDApplicationSet{
 			SourceNamespaces: []string{"tmp"},
 		},
+		Notifications: argoproj.ArgoCDNotifications{
+			Enabled:          true,
+			SourceNamespaces: []string{"tmp"},
+		},
 	}
+	expectedRules = policyRuleForServerApplicationSourceNamespaces()
 	err = r.reconcileRoleForApplicationSourceNamespaces(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
 	reconciledRole = &v1.Role{}

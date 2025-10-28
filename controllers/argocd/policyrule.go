@@ -607,6 +607,28 @@ func policyRuleForServerApplicationSetSourceNamespaces() []v1.PolicyRule {
 		},
 	}
 }
+func policyRuleForServerNotificationsSourceNamespaces() []v1.PolicyRule {
+	return []v1.PolicyRule{
+		{
+			APIGroups: []string{
+				"argoproj.io",
+			},
+			Resources: []string{
+				"applications",
+				"appprojects",
+			},
+			Verbs: []string{
+				"create",
+				"get",
+				"list",
+				"patch",
+				"update",
+				"watch",
+				"delete",
+			},
+		},
+	}
+}
 
 func policyRuleForRoleForImageUpdaterController() []v1.PolicyRule {
 	return []v1.PolicyRule{

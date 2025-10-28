@@ -2,17 +2,22 @@ package argocd
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
 	"reflect"
+	"strings"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	amerr "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -65,6 +70,30 @@ func (r *ReconcileArgoCD) reconcileNotificationsController(cr *argoproj.ArgoCD) 
 		return err
 	}
 
+	// create clusterrole & clusterrolebinding if cluster-scoped ArgoCD
+	log.Info("reconciling notifications clusterroles")
+	clusterrole, err := r.reconcileNotificationsClusterRole(cr)
+	if err != nil {
+		return err
+	}
+
+	log.Info("reconciling notifications clusterrolebindings")
+	if err := r.reconcileNotificationsClusterRoleBinding(cr, clusterrole, sa); err != nil {
+		return err
+	}
+
+	// reconcile source namespace roles & rolebindings
+	log.Info("reconciling notifications roles & rolebindings in source namespaces")
+	if err := r.reconcileNotificationsSourceNamespacesResources(cr); err != nil {
+		return err
+	}
+
+	// remove resources for namespaces not part of SourceNamespaces
+	log.Info("performing cleanup for notifications source namespaces")
+	if err := r.removeUnmanagedNotificationsSourceNamespaceResources(cr); err != nil {
+		return err
+	}
+
 	if prometheusAPIFound {
 		log.Info("reconciling notifications metrics service monitor")
 		if err := r.reconcileNotificationsServiceMonitor(cr); err != nil {
@@ -89,7 +118,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsConfigurationCR(cr *argoproj.Arg
 		},
 	}
 
-	if !cr.Spec.Notifications.Enabled {
+	if !isNotificationsEnabled(cr) {
 		argoutil.LogResourceDeletion(log, defaultNotificationsConfigurationCR, "notifications are disabled")
 		return r.Delete(context.TODO(), defaultNotificationsConfigurationCR)
 	}
@@ -97,13 +126,13 @@ func (r *ReconcileArgoCD) reconcileNotificationsConfigurationCR(cr *argoproj.Arg
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, DefaultNotificationsConfigurationInstanceName,
 		defaultNotificationsConfigurationCR); err != nil {
 
-		if !errors.IsNotFound(err) {
+		if !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to get the NotificationsConfiguration associated with %s : %s",
 				cr.Name, err)
 		}
 
 		// NotificationsConfiguration doesn't exist and shouldn't, nothing to do here
-		if !cr.Spec.Notifications.Enabled {
+		if !isNotificationsEnabled(cr) {
 			return nil
 		}
 
@@ -128,12 +157,12 @@ func (r *ReconcileArgoCD) deleteNotificationsResources(cr *argoproj.ArgoCD) erro
 	role := &rbacv1.Role{}
 
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDNotificationsControllerComponent), sa); err != nil {
-		if !errors.IsNotFound(err) {
+		if !apierrors.IsNotFound(err) {
 			return err
 		}
 	}
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDNotificationsControllerComponent), role); err != nil {
-		if !errors.IsNotFound(err) {
+		if !apierrors.IsNotFound(err) {
 			return err
 		}
 	}
@@ -189,12 +218,12 @@ func (r *ReconcileArgoCD) reconcileNotificationsServiceAccount(cr *argoproj.Argo
 	sa := newServiceAccountWithName(common.ArgoCDNotificationsControllerComponent, cr)
 
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
-		if !errors.IsNotFound(err) {
+		if !apierrors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to get the serviceAccount associated with %s : %s", sa.Name, err)
 		}
 
 		// SA doesn't exist and shouldn't, nothing to do here
-		if !cr.Spec.Notifications.Enabled {
+		if !isNotificationsEnabled(cr) {
 			return nil, nil
 		}
 
@@ -211,7 +240,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsServiceAccount(cr *argoproj.Argo
 	}
 
 	// SA exists but shouldn't, so it should be deleted
-	if !cr.Spec.Notifications.Enabled {
+	if !isNotificationsEnabled(cr) {
 		argoutil.LogResourceDeletion(log, sa, "notifications are disabled")
 		return nil, r.Delete(context.TODO(), sa)
 	}
@@ -226,12 +255,12 @@ func (r *ReconcileArgoCD) reconcileNotificationsRole(cr *argoproj.ArgoCD) (*rbac
 
 	existingRole := &rbacv1.Role{}
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, desiredRole.Name, existingRole); err != nil {
-		if !errors.IsNotFound(err) {
+		if !apierrors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to get the role associated with %s : %s", desiredRole.Name, err)
 		}
 
 		// role does not exist and shouldn't, nothing to do here
-		if !cr.Spec.Notifications.Enabled {
+		if !isNotificationsEnabled(cr) {
 			return nil, nil
 		}
 
@@ -249,7 +278,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsRole(cr *argoproj.ArgoCD) (*rbac
 	}
 
 	// role exists but shouldn't, so it should be deleted
-	if !cr.Spec.Notifications.Enabled {
+	if !isNotificationsEnabled(cr) {
 		argoutil.LogResourceDeletion(log, existingRole, "notifications are disabled")
 		return nil, r.Delete(context.TODO(), existingRole)
 	}
@@ -287,12 +316,12 @@ func (r *ReconcileArgoCD) reconcileNotificationsRoleBinding(cr *argoproj.ArgoCD,
 	// fetch existing rolebinding by name
 	existingRoleBinding := &rbacv1.RoleBinding{}
 	if err := r.Get(context.TODO(), types.NamespacedName{Name: desiredRoleBinding.Name, Namespace: cr.Namespace}, existingRoleBinding); err != nil {
-		if !errors.IsNotFound(err) {
+		if !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to get the rolebinding associated with %s : %s", desiredRoleBinding.Name, err)
 		}
 
 		// roleBinding does not exist and shouldn't, nothing to do here
-		if !cr.Spec.Notifications.Enabled {
+		if !isNotificationsEnabled(cr) {
 			return nil
 		}
 
@@ -306,7 +335,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsRoleBinding(cr *argoproj.ArgoCD,
 	}
 
 	// roleBinding exists but shouldn't, so it should be deleted
-	if !cr.Spec.Notifications.Enabled {
+	if !isNotificationsEnabled(cr) {
 		argoutil.LogResourceDeletion(log, existingRoleBinding, "notifications are disabled")
 		return r.Delete(context.TODO(), existingRoleBinding)
 	}
@@ -333,6 +362,19 @@ func (r *ReconcileArgoCD) reconcileNotificationsRoleBinding(cr *argoproj.ArgoCD,
 func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, sa *corev1.ServiceAccount) error {
 
 	desiredDeployment := newDeploymentWithSuffix("notifications-controller", "controller", cr)
+
+	deplExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, desiredDeployment.Name, desiredDeployment)
+	if err != nil {
+		return err
+	}
+
+	if !isNotificationsEnabled(cr) {
+		if deplExists {
+			argoutil.LogResourceDeletion(log, desiredDeployment, "notifications not enabled")
+			return r.Delete(context.TODO(), desiredDeployment)
+		}
+		return nil
+	}
 
 	desiredDeployment.Spec.Strategy = appsv1.DeploymentStrategy{
 		Type: appsv1.RecreateDeploymentStrategyType,
@@ -371,7 +413,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, 
 	}
 
 	podSpec.Containers = []corev1.Container{{
-		Command:         getNotificationsCommand(cr),
+		Command:         r.getNotificationsCommand(cr),
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            common.ArgoCDNotificationsControllerComponent,
@@ -484,7 +526,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsSecret(cr *argoproj.ArgoCD) erro
 	secretExists := true
 	existingSecret := &corev1.Secret{}
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, desiredSecret.Name, existingSecret); err != nil {
-		if !errors.IsNotFound(err) {
+		if !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to get the secret associated with %s : %s", desiredSecret.Name, err)
 		}
 		secretExists = false
@@ -492,7 +534,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsSecret(cr *argoproj.ArgoCD) erro
 
 	if secretExists {
 		// secret exists but shouldn't, so it should be deleted
-		if !cr.Spec.Notifications.Enabled {
+		if !isNotificationsEnabled(cr) {
 			argoutil.LogResourceDeletion(log, existingSecret, "notifications are disabled")
 			return r.Delete(context.TODO(), existingSecret)
 		}
@@ -502,7 +544,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsSecret(cr *argoproj.ArgoCD) erro
 	}
 
 	// secret doesn't exist and shouldn't, nothing to do here
-	if !cr.Spec.Notifications.Enabled {
+	if !isNotificationsEnabled(cr) {
 		return nil
 	}
 
@@ -520,7 +562,249 @@ func (r *ReconcileArgoCD) reconcileNotificationsSecret(cr *argoproj.ArgoCD) erro
 	return nil
 }
 
-func getNotificationsCommand(cr *argoproj.ArgoCD) []string {
+// reconcileNotificationsClusterRoleBinding reconciles required clusterrole for notification controller when ArgoCD is cluster-scoped
+func (r *ReconcileArgoCD) reconcileNotificationsClusterRole(cr *argoproj.ArgoCD) (*rbacv1.ClusterRole, error) {
+
+	allowed := allowedNamespace(cr.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES"))
+
+	// controller disabled, don't create resources
+	if !isNotificationsEnabled(cr) {
+		allowed = false
+	}
+
+	policyRules := policyRuleForNotificationsController()
+	clusterRole := newClusterRole(common.ArgoCDNotificationsControllerComponent, policyRules, cr)
+	if err := applyReconcilerHook(cr, clusterRole, ""); err != nil {
+		return nil, err
+	}
+
+	existingClusterRole := &rbacv1.ClusterRole{}
+	err := r.Get(context.TODO(), types.NamespacedName{Name: clusterRole.Name}, existingClusterRole)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, fmt.Errorf("failed to reconcile the cluster role for the service account associated with %s : %s", clusterRole.Name, err)
+		}
+		if !allowed {
+			// Do Nothing
+			return clusterRole, nil
+		}
+		argoutil.LogResourceCreation(log, clusterRole)
+		return clusterRole, r.Create(context.TODO(), clusterRole)
+	}
+
+	// ArgoCD not cluster scoped, cleanup any existing resource and exit
+	if !allowed {
+		argoutil.LogResourceDeletion(log, existingClusterRole, "argocd not cluster scoped")
+		err := r.Delete(context.TODO(), existingClusterRole)
+		if err != nil {
+			if !apierrors.IsNotFound(err) {
+				return existingClusterRole, err
+			}
+		}
+		return existingClusterRole, nil
+	}
+
+	// if the Rules differ, update the Role
+	if !reflect.DeepEqual(existingClusterRole.Rules, clusterRole.Rules) {
+		existingClusterRole.Rules = clusterRole.Rules
+		argoutil.LogResourceUpdate(log, existingClusterRole, "updating rules")
+		if err := r.Update(context.TODO(), existingClusterRole); err != nil {
+			return nil, err
+		}
+	}
+	return existingClusterRole, nil
+}
+
+// reconcileNotificationsClusterRoleBinding reconciles required clusterrolebinding for notifications controller when ArgoCD is cluster-scoped
+func (r *ReconcileArgoCD) reconcileNotificationsClusterRoleBinding(cr *argoproj.ArgoCD, role *rbacv1.ClusterRole, sa *corev1.ServiceAccount) error {
+
+	allowed := allowedNamespace(cr.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES"))
+
+	// controller disabled, don't create resources
+	if !isNotificationsEnabled(cr) {
+		allowed = false
+	}
+
+	clusterRB := newClusterRoleBindingWithname(common.ArgoCDNotificationsControllerComponent, cr)
+	clusterRB.Subjects = []rbacv1.Subject{
+		{
+			Kind:      rbacv1.ServiceAccountKind,
+			Name:      sa.Name,
+			Namespace: cr.Namespace,
+		},
+	}
+	clusterRB.RoleRef = rbacv1.RoleRef{
+		APIGroup: rbacv1.GroupName,
+		Kind:     "ClusterRole",
+		Name:     role.Name,
+	}
+
+	if err := applyReconcilerHook(cr, clusterRB, ""); err != nil {
+		return err
+	}
+
+	existingClusterRB := &rbacv1.ClusterRoleBinding{}
+	err := r.Get(context.TODO(), types.NamespacedName{Name: clusterRB.Name}, existingClusterRB)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to reconcile the cluster rolebinding for the service account associated with %s : %s", clusterRB.Name, err)
+		}
+		if !allowed {
+			// Do Nothing
+			return nil
+		}
+		argoutil.LogResourceCreation(log, clusterRB)
+		return r.Create(context.TODO(), clusterRB)
+	}
+
+	// ArgoCD not cluster scoped, cleanup any existing resource and exit
+	if !allowed {
+		argoutil.LogResourceDeletion(log, existingClusterRB, "argocd not cluster scoped")
+		err := r.Delete(context.TODO(), existingClusterRB)
+		if err != nil {
+			if !apierrors.IsNotFound(err) {
+				return err
+			}
+		}
+		return nil
+	}
+
+	// if subj differ, update the rolebinding
+	if !reflect.DeepEqual(existingClusterRB.Subjects, clusterRB.Subjects) {
+		existingClusterRB.Subjects = clusterRB.Subjects
+		argoutil.LogResourceUpdate(log, existingClusterRB, "updating subjects")
+		if err := r.Update(context.TODO(), existingClusterRB); err != nil {
+			return err
+		}
+	} else if !reflect.DeepEqual(existingClusterRB.RoleRef, clusterRB.RoleRef) {
+		// RoleRef can't be updated, delete the rolebinding so that it gets recreated
+		argoutil.LogResourceDeletion(log, existingClusterRB, "roleref changed, deleting rolebinding so it gets recreated")
+		_ = r.Delete(context.TODO(), existingClusterRB)
+		return fmt.Errorf("change detected in roleRef for rolebinding %s of Argo CD instance %s in namespace %s", existingClusterRB.Name, cr.Name, existingClusterRB.Namespace)
+	}
+	return nil
+}
+
+// reconcileNotificationsSourceNamespacesResources creates role & rolebinding in target source namespaces for notifications controller
+// Notifications resources are only created if target source ns is subset of apps source namespaces
+func (r *ReconcileArgoCD) reconcileNotificationsSourceNamespacesResources(cr *argoproj.ArgoCD) error {
+
+	var reconciliationErrors []error
+
+	// controller disabled, nothing to do. cleanup handled by removeUnmanagedNotificationsSourceNamespaceResources()
+	if !isNotificationsEnabled(cr) {
+		return nil
+	}
+
+	// create resources for each notifications source namespace
+	for _, sourceNamespace := range cr.Spec.Notifications.SourceNamespaces {
+
+		// source ns should be part of app-in-any-ns
+		appsNamespaces, err := r.getSourceNamespaces(cr)
+		if err != nil {
+			reconciliationErrors = append(reconciliationErrors, err)
+			continue
+		}
+		if !contains(appsNamespaces, sourceNamespace) {
+			log.Error(fmt.Errorf("skipping reconciliation of resources for sourceNamespace %s as Apps in target sourceNamespace is not enabled", sourceNamespace), "Warning")
+			continue
+		}
+
+		// skip source ns if doesn't exist
+		namespace := &corev1.Namespace{}
+		if err := r.Get(context.TODO(), types.NamespacedName{Name: sourceNamespace}, namespace); err != nil {
+			errMsg := fmt.Errorf("failed to retrieve namespace %s", sourceNamespace)
+			reconciliationErrors = append(reconciliationErrors, errors.Join(errMsg, err))
+			continue
+		}
+
+		// No namespace can be managed by multiple argo-cd instances (cluster scoped or namespace scoped)
+		// i.e, only one of either managed-by or notifications-managed-by-cluster-argocd labels can be applied to a given namespace.
+		// prioritize managed-by label in case of a conflict.
+		if value, ok := namespace.Labels[common.ArgoCDManagedByLabel]; ok && value != "" {
+			log.Info(fmt.Sprintf("Skipping reconciling resources for namespace %s as it is already managed-by namespace %s.", namespace.Name, value))
+			// remove any source namespace resources
+			if val, ok1 := namespace.Labels[common.ArgoCDNotificationsManagedByClusterArgoCDLabel]; ok1 && val != cr.Namespace {
+				delete(r.ManagedNotificationsSourceNamespaces, namespace.Name)
+				if err := r.cleanupUnmanagedNotificationsSourceNamespaceResources(cr, namespace.Name); err != nil {
+					log.Error(err, fmt.Sprintf("error cleaning up resources for namespace %s", namespace.Name))
+				}
+			}
+			continue
+		}
+
+		log.Info(fmt.Sprintf("Reconciling notifications resources for %s", namespace.Name))
+		// add notifications-managed-by-cluster-argocd label on namespace
+		if _, ok := namespace.Labels[common.ArgoCDNotificationsManagedByClusterArgoCDLabel]; !ok {
+			// Get the latest value of namespace before updating it
+			if err := r.Get(context.TODO(), types.NamespacedName{Name: namespace.Name}, namespace); err != nil {
+				return err
+			}
+			// Update namespace with notifications-managed-by-cluster-argocd label
+			if namespace.Labels == nil {
+				namespace.Labels = make(map[string]string)
+			}
+			namespace.Labels[common.ArgoCDNotificationsManagedByClusterArgoCDLabel] = cr.Namespace
+			explanation := fmt.Sprintf("adding label '%s=%s'", common.ArgoCDNotificationsManagedByClusterArgoCDLabel, cr.Namespace)
+			argoutil.LogResourceUpdate(log, namespace, explanation)
+			if err := r.Update(context.TODO(), namespace); err != nil {
+				log.Error(err, fmt.Sprintf("failed to add label from namespace [%s]", namespace.Name))
+			}
+		}
+
+		// role & rolebinding for notifications controller in source namespace
+		role := rbacv1.Role{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      getResourceNameForNotificationsSourceNamespaces(cr),
+				Namespace: sourceNamespace,
+				Labels:    argoutil.LabelsForCluster(cr),
+			},
+			Rules: policyRuleForNotificationsController(),
+		}
+		err = r.reconcileSourceNamespaceRole(role, cr)
+		if err != nil {
+			reconciliationErrors = append(reconciliationErrors, err)
+		}
+
+		roleBinding := rbacv1.RoleBinding{
+			ObjectMeta: v1.ObjectMeta{
+				Name:        getResourceNameForNotificationsSourceNamespaces(cr),
+				Labels:      argoutil.LabelsForCluster(cr),
+				Annotations: argoutil.AnnotationsForCluster(cr),
+				Namespace:   sourceNamespace,
+			},
+			RoleRef: rbacv1.RoleRef{
+				APIGroup: v1.GroupName,
+				Kind:     "Role",
+				Name:     getResourceNameForNotificationsSourceNamespaces(cr),
+			},
+			Subjects: []rbacv1.Subject{
+				{
+					Kind:      rbacv1.ServiceAccountKind,
+					Name:      getServiceAccountName(cr.Name, "notifications-controller"),
+					Namespace: cr.Namespace,
+				},
+			},
+		}
+		err = r.reconcileSourceNamespaceRoleBinding(roleBinding, cr)
+		if err != nil {
+			reconciliationErrors = append(reconciliationErrors, err)
+		}
+
+		// notifications permissions for argocd server in source namespaces are handled by apps-in-any-ns code
+
+		if _, ok := r.ManagedNotificationsSourceNamespaces[sourceNamespace]; !ok {
+			if r.ManagedNotificationsSourceNamespaces == nil {
+				r.ManagedNotificationsSourceNamespaces = make(map[string]string)
+			}
+			r.ManagedNotificationsSourceNamespaces[sourceNamespace] = ""
+		}
+	}
+
+	return amerr.NewAggregate(reconciliationErrors)
+}
+
+func (r *ReconcileArgoCD) getNotificationsCommand(cr *argoproj.ArgoCD) []string {
 
 	cmd := make([]string, 0)
 	cmd = append(cmd, "argocd-notifications")
@@ -537,6 +821,23 @@ func getNotificationsCommand(cr *argoproj.ArgoCD) []string {
 		log.Info("Repo Server is disabled. This would affect the functioning of Notification Controller.")
 	}
 
+	// notifications source namespaces should be subset of apps source namespaces
+	notificationsSourceNamespaces := []string{}
+	appsNamespaces, err := r.getSourceNamespaces(cr)
+	if err == nil {
+		for _, ns := range cr.Spec.Notifications.SourceNamespaces {
+			if contains(appsNamespaces, ns) {
+				notificationsSourceNamespaces = append(notificationsSourceNamespaces, ns)
+			} else {
+				log.V(1).Info(fmt.Sprintf("Apps in target sourceNamespace %s is not enabled, thus skipping the namespace in deployment command.", ns))
+			}
+		}
+	}
+
+	if len(notificationsSourceNamespaces) > 0 {
+		cmd = append(cmd, "--application-namespaces", fmt.Sprint(strings.Join(notificationsSourceNamespaces, ",")))
+	}
+
 	return cmd
 }
 
@@ -550,4 +851,128 @@ func getNotificationsResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements 
 	}
 
 	return resources
+}
+
+// Returns the name of the role/rolebinding for the source namespaces for notifications-controller in the format of "argocdName-argocdNamespace-notifications"
+func getResourceNameForNotificationsSourceNamespaces(cr *argoproj.ArgoCD) string {
+	return fmt.Sprintf("%s-%s-notifications", cr.Name, cr.Namespace)
+}
+
+// setManagedNotificationSourceNamespaces populates ManagedNotificationsSourceNamespaces var with namespaces
+// with "argocd.argoproj.io/notifications-managed-by-cluster-argocd" label.
+func (r *ReconcileArgoCD) setManagedNotificationsSourceNamespaces(cr *argoproj.ArgoCD) error {
+	if r.ManagedNotificationsSourceNamespaces == nil {
+		r.ManagedNotificationsSourceNamespaces = make(map[string]string)
+	}
+	namespaces := &corev1.NamespaceList{}
+	listOption := client.MatchingLabels{
+		common.ArgoCDNotificationsManagedByClusterArgoCDLabel: cr.Namespace,
+	}
+
+	// get the list of namespaces managed with "argocd.argoproj.io/notifications-managed-by-cluster-argocd" label
+	if err := r.List(context.TODO(), namespaces, listOption); err != nil {
+		return err
+	}
+
+	for _, namespace := range namespaces.Items {
+		r.ManagedNotificationsSourceNamespaces[namespace.Name] = ""
+	}
+
+	return nil
+}
+
+// removeUnmanagedNotificationsSourceNamespaceResources cleansup resources from NotificationsSourceNamespaces if namespace is not managed by argocd instance.
+// ManagedNotificationsSourceNamespaces var keeps track of namespaces with notifications resources.
+func (r *ReconcileArgoCD) removeUnmanagedNotificationsSourceNamespaceResources(cr *argoproj.ArgoCD) error {
+
+	for ns := range r.ManagedNotificationsSourceNamespaces {
+		managedNamespace := false
+		if isNotificationsEnabled(cr) && cr.GetDeletionTimestamp() == nil {
+			notificationsNamespaces, err := r.getSourceNamespaces(cr)
+			if err != nil {
+				return err
+			}
+			for _, namespace := range cr.Spec.Notifications.SourceNamespaces {
+				// notifications ns should be part of general ns
+				if namespace == ns && contains(notificationsNamespaces, namespace) {
+					managedNamespace = true
+					break
+				}
+			}
+		}
+
+		if !managedNamespace {
+			if err := r.cleanupUnmanagedNotificationsSourceNamespaceResources(cr, ns); err != nil {
+				log.Error(err, fmt.Sprintf("error cleaning up notifications resources for namespace %s", ns))
+				continue
+			}
+			delete(r.ManagedNotificationsSourceNamespaces, ns)
+		}
+	}
+	return nil
+}
+
+// isNotificationsEnabled returns true if notifications are configured and enabled in the ArgoCD CR
+func isNotificationsEnabled(cr *argoproj.ArgoCD) bool {
+	return !reflect.DeepEqual(cr.Spec.Notifications, argoproj.ArgoCDNotifications{}) && cr.Spec.Notifications.Enabled
+}
+
+// cleanupUnmanagedNotificationsSourceNamespaceResources removes the notifications resources from target namespace
+func (r *ReconcileArgoCD) cleanupUnmanagedNotificationsSourceNamespaceResources(cr *argoproj.ArgoCD, ns string) error {
+	namespace := corev1.Namespace{}
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: ns}, &namespace); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+		return nil
+	}
+
+	// Delete notifications role & rolebinding
+	existingRole := rbacv1.Role{}
+	roleName := getResourceNameForNotificationsSourceNamespaces(cr)
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: roleName, Namespace: namespace.Name}, &existingRole); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to fetch the role for the service account associated with %s : %s", common.ArgoCDNotificationsControllerComponent, err)
+		}
+	}
+	if existingRole.Name != "" {
+		argoutil.LogResourceDeletion(log, &existingRole, "cleaning up unmanaged notifications resources")
+		err := r.Delete(context.TODO(), &existingRole)
+		if err != nil {
+			return err
+		}
+	}
+
+	existingRoleBinding := &rbacv1.RoleBinding{}
+	roleBindingName := getResourceNameForNotificationsSourceNamespaces(cr)
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: roleBindingName, Namespace: namespace.Name}, existingRoleBinding); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to get the rolebinding associated with %s : %s", common.ArgoCDNotificationsControllerComponent, err)
+		}
+	}
+	if existingRoleBinding.Name != "" {
+		argoutil.LogResourceDeletion(log, existingRoleBinding, "cleaning up unmanaged notifications resources")
+		if err := r.Delete(context.TODO(), existingRoleBinding); err != nil {
+			return err
+		}
+	}
+
+	// app-in-any-ns code will handle removal of notifications permissions for argocd-server in target namespace
+
+	// Remove notifications-managed-by-cluster-argocd label from the namespace
+	argoutil.LogResourceUpdate(log, &namespace, "removing label", common.ArgoCDNotificationsManagedByClusterArgoCDLabel)
+	delete(namespace.Labels, common.ArgoCDNotificationsManagedByClusterArgoCDLabel)
+	if err := r.Update(context.TODO(), &namespace); err != nil {
+		return fmt.Errorf("failed to remove notifications label from namespace %s : %s", namespace.Name, err)
+	}
+
+	return nil
+}
+
+// getNotificationsSetSourceNamespaces return list of namespaces from .spec.Notifications.SourceNamespaces
+func (r *ReconcileArgoCD) getNotificationsSourceNamespaces(cr *argoproj.ArgoCD) []string {
+	if isNotificationsEnabled(cr) {
+		return cr.Spec.Notifications.SourceNamespaces
+	}
+	return []string(nil)
 }
