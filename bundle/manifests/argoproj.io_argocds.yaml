@@ -1786,6 +1786,13 @@ spec:
                           More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                         type: object
                     type: object
+                  sourceNamespaces:
+                    description: SourceNamespaces is a list of namespaces from which
+                      the notifications controller will watch for ArgoCD Application
+                      resources.
+                    items:
+                      type: string
+                    type: array
                   version:
                     description: Version is the Argo CD Notifications image tag. (optional)
                     type: string
@@ -16665,6 +16672,13 @@ spec:
                           More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                         type: object
                     type: object
+                  sourceNamespaces:
+                    description: SourceNamespaces is a list of namespaces from which
+                      the notifications controller will watch for ArgoCD Notification
+                      resources.
+                    items:
+                      type: string
+                    type: array
                   version:
                     description: Version is the Argo CD Notifications image tag. (optional)
                     type: string

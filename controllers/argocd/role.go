@@ -230,7 +230,7 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 		}
 		// do not reconcile roles for namespaces already containing managed-by label
 		// as it already contains roles with permissions to manipulate application resources
-		// reconciled during reconcilation of ManagedNamespaces
+		// reconciled during reconciliation of ManagedNamespaces
 		if value, ok := namespace.Labels[common.ArgoCDManagedByLabel]; ok && value != "" {
 			log.Info(fmt.Sprintf("Skipping reconciling resources for namespace %s as it is already managed-by namespace %s.", namespace.Name, value))
 			// if managed-by-cluster-argocd label is also present, remove the namespace from the ManagedSourceNamespaces.
@@ -260,7 +260,9 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 		if contains(r.getApplicationSetSourceNamespaces(cr), sourceNamespace) {
 			role.Rules = append(role.Rules, policyRuleForServerApplicationSetSourceNamespaces()...)
 		}
-
+		if contains(r.getNotificationsSourceNamespaces(cr), sourceNamespace) {
+			role.Rules = append(role.Rules, policyRuleForServerNotificationsSourceNamespaces()...)
+		}
 		created := false
 		existingRole := v1.Role{}
 		err := r.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: namespace.Name}, &existingRole)

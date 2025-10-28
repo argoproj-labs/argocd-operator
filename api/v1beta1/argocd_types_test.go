@@ -47,3 +47,14 @@ func Test_ParseResourceTrackingMethod(t *testing.T) {
 		assert.Equal(t, tt.rtm, ParseResourceTrackingMethod(tt.str))
 	}
 }
+
+func Test_ArgoCDNotifications_SourceNamespaces(t *testing.T) {
+	notifications := ArgoCDNotifications{
+		SourceNamespaces: []string{"ns1", "ns2"},
+	}
+	assert.Equal(t, []string{"ns1", "ns2"}, notifications.SourceNamespaces)
+
+	// Test omitempty (zero value)
+	emptyNotifications := ArgoCDNotifications{}
+	assert.Nil(t, emptyNotifications.SourceNamespaces)
+}
