@@ -342,7 +342,7 @@ func newRoleBindingWithNameForApplicationSourceNamespaces(namespace string, cr *
 	roleBinding := newRoleBindingForSupportNamespaces(cr, namespace)
 
 	labels := roleBinding.Labels
-	labels[common.ArgoCDKeyName] = roleBinding.Name
+	labels[common.ArgoCDKeyName] = cr.Name
 	roleBinding.Labels = labels
 
 	return roleBinding
