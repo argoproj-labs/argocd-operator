@@ -272,9 +272,17 @@ func GetImagePullPolicy(policy *corev1.PullPolicy) corev1.PullPolicy {
 		return *policy
 	}
 
-	if envValue := os.Getenv(common.ArgoCDImagePullPolicyEnvName); envValue != "" {
-		return corev1.PullPolicy(envValue)
-	}
+	envValue := os.Getenv(common.ArgoCDImagePullPolicyEnvName)
 
-	return corev1.PullPolicy(common.DefaultImagePullPolicy)
+	switch envValue {
+	case "Always":
+		return corev1.PullAlways
+	case "IfNotPresent":
+		return corev1.PullIfNotPresent
+	case "Never":
+		return corev1.PullNever
+	default:
+		return corev1.PullPolicy("IfNotPresent")
+
+	}
 }
