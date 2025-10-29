@@ -477,3 +477,9 @@ func TestTruncateWithHashUniqueness(t *testing.T) {
 		assert.LessOrEqual(t, len(result), maxLabelLength, "Result should not exceed maxLabelLength")
 	}
 }
+
+func Test_newRoleBindingWithNameForApplicationSourceNamespaces(t *testing.T) {
+	cr := makeTestArgoCD()
+	roleBinding := newRoleBindingWithNameForApplicationSourceNamespaces("test", cr)
+	assert.Equal(t, roleBinding.Labels["app.kubernetes.io/name"], "argocd")
+}
