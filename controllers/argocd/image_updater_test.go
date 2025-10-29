@@ -292,6 +292,18 @@ func TestReconcileImageUpdater_CreateDeployments(t *testing.T) {
 			InitialDelaySeconds: 15,
 			PeriodSeconds:       20,
 		},
+		ReadinessProbe: &v1.Probe{
+			ProbeHandler: v1.ProbeHandler{
+				HTTPGet: &v1.HTTPGetAction{
+					Path: "/readyz",
+					Port: intstr.IntOrString{
+						IntVal: int32(8081),
+					},
+				},
+			},
+			InitialDelaySeconds: 5,
+			PeriodSeconds:       10,
+		},
 	}}
 
 	if diff := cmp.Diff(want, deployment.Spec.Template.Spec.Containers); diff != "" {
