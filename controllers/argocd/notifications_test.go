@@ -161,7 +161,7 @@ func TestReconcileNotifications_Deployments_Command(t *testing.T) {
 				},
 				SourceNamespaces: []string{"foo", "bar"},
 			},
-			expectedCmd: []string{"--application-namespaces", "foo,bar"},
+			expectedCmd: []string{"--application-namespaces", "foo,bar", "--self-service-notification-enabled", "true"},
 		},
 		{
 			name: "Only notifications contained in spec.sourceNamespaces",
@@ -172,7 +172,7 @@ func TestReconcileNotifications_Deployments_Command(t *testing.T) {
 				},
 				SourceNamespaces: []string{"foo", "bar"},
 			},
-			expectedCmd: []string{"--application-namespaces", "foo"},
+			expectedCmd: []string{"--application-namespaces", "foo", "--self-service-notification-enabled", "true"},
 		},
 		{
 			name: "Empty spec.sourceNamespaces, no application namespaces arg",
@@ -184,7 +184,7 @@ func TestReconcileNotifications_Deployments_Command(t *testing.T) {
 				SourceNamespaces: []string{},
 			},
 			expectedCmd:    []string{},
-			notExpectedCmd: []string{"--application-namespaces", "foo"},
+			notExpectedCmd: []string{"--application-namespaces", "foo", "--self-service-notification-enabled", "true"},
 		},
 	}
 
