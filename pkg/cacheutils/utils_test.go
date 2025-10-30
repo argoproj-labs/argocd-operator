@@ -6,6 +6,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/argoproj-labs/argocd-operator/common"
 )
@@ -19,150 +20,150 @@ func TestStripDataFromSecretOrConfigMapTransform(t *testing.T) {
 		expectedError  bool
 		description    string
 	}{
-		// {
-		// 	name: "tracked secret with data should remain unchanged",
-		// 	input: &v1.Secret{
-		// 		ObjectMeta: metav1.ObjectMeta{
-		// 			Name:      "test-secret",
-		// 			Namespace: "test-namespace",
-		// 			Labels: map[string]string{
-		// 				common.ArgoCDTrackedByOperatorLabel: "argocd",
-		// 			},
-		// 		},
-		// 		Data: map[string][]byte{
-		// 			"key1": []byte("value1"),
-		// 			"key2": []byte("value2"),
-		// 		},
-		// 		StringData: map[string]string{
-		// 			"key3": "value3",
-		// 		},
-		// 	},
-		// 	expectedResult: &v1.Secret{
-		// 		ObjectMeta: metav1.ObjectMeta{
-		// 			Name:      "test-secret",
-		// 			Namespace: "test-namespace",
-		// 			Labels: map[string]string{
-		// 				common.ArgoCDTrackedByOperatorLabel: "argocd",
-		// 			},
-		// 		},
-		// 		Data: map[string][]byte{
-		// 			"key1": []byte("value1"),
-		// 			"key2": []byte("value2"),
-		// 		},
-		// 		StringData: map[string]string{
-		// 			"key3": "value3",
-		// 		},
-		// 	},
-		// 	expectedError: false,
-		// 	description:   "Secret with operator tracking label should keep all data",
-		// },
-		// {
-		// 	name: "tracked secret with secret type label should remain unchanged",
-		// 	input: &v1.Secret{
-		// 		ObjectMeta: metav1.ObjectMeta{
-		// 			Name:      "test-secret",
-		// 			Namespace: "test-namespace",
-		// 			Labels: map[string]string{
-		// 				common.ArgoCDSecretTypeLabel: "repository",
-		// 			},
-		// 		},
-		// 		Data: map[string][]byte{
-		// 			"key1": []byte("value1"),
-		// 		},
-		// 	},
-		// 	expectedResult: &v1.Secret{
-		// 		ObjectMeta: metav1.ObjectMeta{
-		// 			Name:      "test-secret",
-		// 			Namespace: "test-namespace",
-		// 			Labels: map[string]string{
-		// 				common.ArgoCDSecretTypeLabel: "repository",
-		// 			},
-		// 		},
-		// 		Data: map[string][]byte{
-		// 			"key1": []byte("value1"),
-		// 		},
-		// 	},
-		// 	expectedError: false,
-		// 	description:   "Secret with secret type label should keep all data",
-		// },
-		// {
-		// 	name: "non-tracked secret should have data stripped",
-		// 	input: &v1.Secret{
-		// 		ObjectMeta: metav1.ObjectMeta{
-		// 			Name:      "test-secret",
-		// 			Namespace: "test-namespace",
-		// 			Labels: map[string]string{
-		// 				"other-label": "value",
-		// 			},
-		// 		},
-		// 		Data: map[string][]byte{
-		// 			"key1": []byte("value1"),
-		// 			"key2": []byte("value2"),
-		// 		},
-		// 		StringData: map[string]string{
-		// 			"key3": "value3",
-		// 		},
-		// 	},
-		// 	expectedResult: &v1.Secret{
-		// 		ObjectMeta: metav1.ObjectMeta{
-		// 			Name:      "test-secret",
-		// 			Namespace: "test-namespace",
-		// 			Labels: map[string]string{
-		// 				"other-label": "value",
-		// 			},
-		// 		},
-		// 		Data:       nil,
-		// 		StringData: nil,
-		// 	},
-		// 	expectedError: false,
-		// 	description:   "Secret without tracking labels should have data stripped",
-		// },
-		// {
-		// 	name: "secret with no labels should have data stripped",
-		// 	input: &v1.Secret{
-		// 		ObjectMeta: metav1.ObjectMeta{
-		// 			Name:      "test-secret",
-		// 			Namespace: "test-namespace",
-		// 		},
-		// 		Data: map[string][]byte{
-		// 			"key1": []byte("value1"),
-		// 		},
-		// 	},
-		// 	expectedResult: &v1.Secret{
-		// 		ObjectMeta: metav1.ObjectMeta{
-		// 			Name:      "test-secret",
-		// 			Namespace: "test-namespace",
-		// 		},
-		// 		Data:       nil,
-		// 		StringData: nil,
-		// 	},
-		// 	expectedError: false,
-		// 	description:   "Secret with no labels should have data stripped",
-		// },
-		// {
-		// 	name: "secret with nil labels should have data stripped",
-		// 	input: &v1.Secret{
-		// 		ObjectMeta: metav1.ObjectMeta{
-		// 			Name:      "test-secret",
-		// 			Namespace: "test-namespace",
-		// 			Labels:    nil,
-		// 		},
-		// 		Data: map[string][]byte{
-		// 			"key1": []byte("value1"),
-		// 		},
-		// 	},
-		// 	expectedResult: &v1.Secret{
-		// 		ObjectMeta: metav1.ObjectMeta{
-		// 			Name:      "test-secret",
-		// 			Namespace: "test-namespace",
-		// 			Labels:    nil,
-		// 		},
-		// 		Data:       nil,
-		// 		StringData: nil,
-		// 	},
-		// 	expectedError: false,
-		// 	description:   "Secret with nil labels should have data stripped",
-		// },
+		{
+			name: "tracked secret with data should remain unchanged",
+			input: &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						common.ArgoCDTrackedByOperatorLabel: "argocd",
+					},
+				},
+				Data: map[string][]byte{
+					"key1": []byte("value1"),
+					"key2": []byte("value2"),
+				},
+				StringData: map[string]string{
+					"key3": "value3",
+				},
+			},
+			expectedResult: &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						common.ArgoCDTrackedByOperatorLabel: "argocd",
+					},
+				},
+				Data: map[string][]byte{
+					"key1": []byte("value1"),
+					"key2": []byte("value2"),
+				},
+				StringData: map[string]string{
+					"key3": "value3",
+				},
+			},
+			expectedError: false,
+			description:   "Secret with operator tracking label should keep all data",
+		},
+		{
+			name: "tracked secret with secret type label should remain unchanged",
+			input: &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						common.ArgoCDSecretTypeLabel: "repository",
+					},
+				},
+				Data: map[string][]byte{
+					"key1": []byte("value1"),
+				},
+			},
+			expectedResult: &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						common.ArgoCDSecretTypeLabel: "repository",
+					},
+				},
+				Data: map[string][]byte{
+					"key1": []byte("value1"),
+				},
+			},
+			expectedError: false,
+			description:   "Secret with secret type label should keep all data",
+		},
+		{
+			name: "non-tracked secret should have data stripped",
+			input: &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						"other-label": "value",
+					},
+				},
+				Data: map[string][]byte{
+					"key1": []byte("value1"),
+					"key2": []byte("value2"),
+				},
+				StringData: map[string]string{
+					"key3": "value3",
+				},
+			},
+			expectedResult: &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						"other-label": "value",
+					},
+				},
+				Data:       nil,
+				StringData: nil,
+			},
+			expectedError: false,
+			description:   "Secret without tracking labels should have data stripped",
+		},
+		{
+			name: "secret with no labels should have data stripped",
+			input: &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "test-namespace",
+				},
+				Data: map[string][]byte{
+					"key1": []byte("value1"),
+				},
+			},
+			expectedResult: &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "test-namespace",
+				},
+				Data:       nil,
+				StringData: nil,
+			},
+			expectedError: false,
+			description:   "Secret with no labels should have data stripped",
+		},
+		{
+			name: "secret with nil labels should have data stripped",
+			input: &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "test-namespace",
+					Labels:    nil,
+				},
+				Data: map[string][]byte{
+					"key1": []byte("value1"),
+				},
+			},
+			expectedResult: &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "test-namespace",
+					Labels:    nil,
+				},
+				Data:       nil,
+				StringData: nil,
+			},
+			expectedError: false,
+			description:   "Secret with nil labels should have data stripped",
+		},
 		{
 			name: "tracked ConfigMap with data should remain unchanged",
 			input: &v1.ConfigMap{
@@ -588,70 +589,112 @@ func TestStripDataFromSecretOrConfigMapTransformEdgeCases(t *testing.T) {
 func TestIsTrackedByOperator(t *testing.T) {
 	tests := []struct {
 		name        string
-		labels      map[string]string
+		obj         interface{}
 		expected    bool
 		description string
 	}{
 		{
-			name:        "nil labels should return false",
-			labels:      nil,
+			name:        "nil object should return false",
+			obj:         nil,
 			expected:    false,
-			description: "Nil labels should not be considered tracked",
+			description: "Nil object should not be considered tracked",
 		},
 		{
-			name:        "empty labels should return false",
-			labels:      map[string]string{},
-			expected:    false,
-			description: "Empty labels should not be considered tracked",
-		},
-		{
-			name: "labels with operator tracking label should return true",
-			labels: map[string]string{
-				common.ArgoCDTrackedByOperatorLabel: "argocd",
-			},
-			expected:    true,
-			description: "Labels with operator tracking label should be considered tracked",
-		},
-		{
-			name: "labels with secret type label should return true",
-			labels: map[string]string{
-				common.ArgoCDSecretTypeLabel: "repository",
-			},
-			expected:    true,
-			description: "Labels with secret type label should be considered tracked",
-		},
-		{
-			name: "labels with both tracking labels should return true",
-			labels: map[string]string{
-				common.ArgoCDTrackedByOperatorLabel: "argocd",
-				common.ArgoCDSecretTypeLabel:        "repository",
-			},
-			expected:    true,
-			description: "Labels with both tracking labels should be considered tracked",
-		},
-		{
-			name: "labels with other labels should return false",
-			labels: map[string]string{
-				"other-label": "value",
-				"app":         "test",
+			name: "object with nil labels should return false",
+			obj: &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "default",
+					Labels:    nil,
+				},
 			},
 			expected:    false,
-			description: "Labels without tracking labels should not be considered tracked",
+			description: "Object with nil labels should not be considered tracked",
 		},
 		{
-			name: "labels with empty tracking label values should return true",
-			labels: map[string]string{
-				common.ArgoCDTrackedByOperatorLabel: "",
-				"other-label":                       "value",
+			name: "object with empty labels should return false",
+			obj: &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "default",
+					Labels:    map[string]string{},
+				},
+			},
+			expected:    false,
+			description: "Object with empty labels should not be considered tracked",
+		},
+		{
+			name: "object with operator tracking label should return true",
+			obj: &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "default",
+					Labels: map[string]string{
+						common.ArgoCDTrackedByOperatorLabel: "argocd",
+					},
+				},
 			},
 			expected:    true,
-			description: "Labels with empty tracking label values should still be considered tracked",
+			description: "Object with operator tracking label should be considered tracked",
+		},
+		{
+			name: "object with secret type label should return true",
+			obj: &v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-configmap",
+					Namespace: "default",
+					Labels: map[string]string{
+						common.ArgoCDSecretTypeLabel: "repository",
+					},
+				},
+			},
+			expected:    true,
+			description: "Object with secret type label should be considered tracked",
+		},
+		{
+			name: "object with both tracking labels should return true",
+			obj: &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret",
+					Namespace: "default",
+					Labels: map[string]string{
+						common.ArgoCDTrackedByOperatorLabel: "argocd",
+						common.ArgoCDSecretTypeLabel:        "repository",
+					},
+				},
+			},
+			expected:    true,
+			description: "Object with both tracking labels should be considered tracked",
+		},
+		{
+			name: "object with other labels should return false",
+			obj: &v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-configmap",
+					Namespace: "default",
+					Labels: map[string]string{
+						"other-label": "value",
+						"app":         "test",
+					},
+				},
+			},
+			expected:    false,
+			description: "Object without tracking labels should not be considered tracked",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := IsTrackedByOperator(tt.labels)
+			var obj runtime.Object
+			if tt.obj != nil {
+				if runtimeObj, ok := tt.obj.(runtime.Object); ok {
+					obj = runtimeObj
+				} else {
+					// For objects that don't implement runtime.Object, pass nil
+					obj = nil
+				}
+			}
+			result := IsTrackedByOperator(obj)
 			if result != tt.expected {
 				t.Errorf("expected %v, got %v. %s", tt.expected, result, tt.description)
 			}
