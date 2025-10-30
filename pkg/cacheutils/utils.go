@@ -2,6 +2,8 @@ package cacheutils
 
 import (
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime"
 	clientgotools "k8s.io/client-go/tools/cache"
 
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -16,7 +18,7 @@ func StripDataFromSecretOrConfigMapTransform() clientgotools.TransformFunc {
 
 		if s, ok := in.(*v1.Secret); ok {
 			// Keep full secret for operator-managed resources
-			if IsTrackedByOperator(s.Labels) {
+			if IsTrackedByOperator(s) {
 				return in, nil
 			}
 
@@ -30,7 +32,7 @@ func StripDataFromSecretOrConfigMapTransform() clientgotools.TransformFunc {
 		}
 		if cm, ok := in.(*v1.ConfigMap); ok {
 			// Keep full configmap for operator-managed resources
-			if IsTrackedByOperator(cm.Labels) {
+			if IsTrackedByOperator(cm) {
 				return in, nil
 			}
 
@@ -50,11 +52,20 @@ func StripDataFromSecretOrConfigMapTransform() clientgotools.TransformFunc {
 // A resource is considered tracked if it has any of the following labels:
 // - ArgoCDTrackedByOperatorLabel: indicates the resource is managed by the operator
 // - ArgoCDSecretTypeLabel: indicates the resource is an ArgoCD-specific secret type
-func IsTrackedByOperator(labels map[string]string) bool {
+func IsTrackedByOperator(obj runtime.Object) bool {
 	// List of labels that indicate operator tracking
 	trackedLabels := []string{
 		common.ArgoCDTrackedByOperatorLabel,
 		common.ArgoCDSecretTypeLabel,
+	}
+
+	// Get labels from the object's metadata
+	var labels map[string]string
+	if obj != nil {
+		// Use meta.Accessor to get object labels (if obj implements metav1.Object)
+		if accessor, err := meta.Accessor(obj); err == nil {
+			labels = accessor.GetLabels()
+		}
 	}
 
 	// Check if any tracking label exists

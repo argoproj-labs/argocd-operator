@@ -71,7 +71,7 @@ func (cw *ClientWrapper) Get(ctx context.Context, key types.NamespacedName, obj 
 // secretNeedsLiveRefresh returns true if the cached secret looks stripped or untracked.
 func secretNeedsLiveRefresh(s *corev1.Secret) bool {
 
-	if !cacheutils.IsTrackedByOperator(s.GetLabels()) {
+	if !cacheutils.IsTrackedByOperator(s) {
 		return true
 	}
 
@@ -86,7 +86,7 @@ func secretNeedsLiveRefresh(s *corev1.Secret) bool {
 
 // configmapNeedsLiveRefresh returns true if the cached cm looks stripped or untracked.
 func configmapNeedsLiveRefresh(cm *corev1.ConfigMap) bool {
-	if !cacheutils.IsTrackedByOperator(cm.GetLabels()) {
+	if !cacheutils.IsTrackedByOperator(cm) {
 		return true
 	}
 
@@ -101,7 +101,7 @@ func configmapNeedsLiveRefresh(cm *corev1.ConfigMap) bool {
 
 // ensureTrackedLabel adds the operator tracking label.
 func (cw *ClientWrapper) ensureTrackedLabel(ctx context.Context, obj ctrlclient.Object) {
-	if cacheutils.IsTrackedByOperator(obj.GetLabels()) {
+	if cacheutils.IsTrackedByOperator(obj) {
 		return
 	}
 	orig := obj.DeepCopyObject().(ctrlclient.Object)
