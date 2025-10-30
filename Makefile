@@ -103,7 +103,7 @@ vet: ## Run go vet against code.
 
 get-image-updater-crd: ## Download Image Updater CRD.
 	@echo "downloading image updater crd"
-	@curl -sSLo config/crd/bases/argocd-image-updater.argoproj.io_imageupdaters.yaml https://raw.githubusercontent.com/argoproj-labs/argocd-image-updater/crd/config/crd/bases/argocd-image-updater.argoproj.io_imageupdaters.yaml
+	@curl -sSLo config/crd/bases/argocd-image-updater.argoproj.io_imageupdaters.yaml https://raw.githubusercontent.com/argoproj-labs/argocd-image-updater/master/config/crd/bases/argocd-image-updater.argoproj.io_imageupdaters.yaml
 
 
 # Exclude E2E tests from the list of unit test packages
