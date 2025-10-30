@@ -9,6 +9,7 @@ import (
 	v1 "k8s.io/api/networking/v1"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
 
 	v1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -529,6 +530,12 @@ func TestAlphaToBetaConversion(t *testing.T) {
 						Enabled: &enabled,
 						Server: &PrincipalServerSpec{
 							Auth: "mtls:CN=([^,]+)",
+							Service: ArgoCDAgentPrincipalServiceSpec{
+								Type: corev1.ServiceTypeClusterIP,
+							},
+							Route: ArgoCDAgentPrincipalRouteSpec{
+								Enabled: ptr.To(true),
+							},
 						},
 					},
 				}
@@ -540,6 +547,12 @@ func TestAlphaToBetaConversion(t *testing.T) {
 						Enabled: &enabled,
 						Server: &v1beta1.PrincipalServerSpec{
 							Auth: "mtls:CN=([^,]+)",
+							Service: v1beta1.ArgoCDAgentPrincipalServiceSpec{
+								Type: corev1.ServiceTypeClusterIP,
+							},
+							Route: v1beta1.ArgoCDAgentPrincipalRouteSpec{
+								Enabled: ptr.To(true),
+							},
 						},
 					},
 				}
@@ -563,6 +576,12 @@ func TestAlphaToBetaConversion(t *testing.T) {
 							LogFormat:            "text",
 							Image:                "quay.io/user/argocd-agent:v1",
 							KeepAliveMinInterval: "30s",
+							Service: ArgoCDAgentPrincipalServiceSpec{
+								Type: corev1.ServiceTypeLoadBalancer,
+							},
+							Route: ArgoCDAgentPrincipalRouteSpec{
+								Enabled: ptr.To(false),
+							},
 						},
 						Redis: &PrincipalRedisSpec{
 							ServerAddress:   "redis:6379",
@@ -606,6 +625,12 @@ func TestAlphaToBetaConversion(t *testing.T) {
 							LogFormat:            "text",
 							KeepAliveMinInterval: "30s",
 							Image:                "quay.io/user/argocd-agent:v1",
+							Service: v1beta1.ArgoCDAgentPrincipalServiceSpec{
+								Type: corev1.ServiceTypeLoadBalancer,
+							},
+							Route: v1beta1.ArgoCDAgentPrincipalRouteSpec{
+								Enabled: ptr.To(false),
+							},
 						},
 						Redis: &v1beta1.PrincipalRedisSpec{
 							ServerAddress:   "redis:6379",
@@ -760,6 +785,12 @@ func TestBetaToAlphaConversion(t *testing.T) {
 						Enabled: &enabled,
 						Server: &v1beta1.PrincipalServerSpec{
 							Auth: "mtls:CN=([^,]+)",
+							Service: v1beta1.ArgoCDAgentPrincipalServiceSpec{
+								Type: corev1.ServiceTypeNodePort,
+							},
+							Route: v1beta1.ArgoCDAgentPrincipalRouteSpec{
+								Enabled: ptr.To(true),
+							},
 						},
 					},
 				}
@@ -771,6 +802,12 @@ func TestBetaToAlphaConversion(t *testing.T) {
 						Enabled: &enabled,
 						Server: &PrincipalServerSpec{
 							Auth: "mtls:CN=([^,]+)",
+							Service: ArgoCDAgentPrincipalServiceSpec{
+								Type: corev1.ServiceTypeNodePort,
+							},
+							Route: ArgoCDAgentPrincipalRouteSpec{
+								Enabled: ptr.To(true),
+							},
 						},
 					},
 				}
@@ -796,6 +833,12 @@ func TestBetaToAlphaConversion(t *testing.T) {
 							Image:                "quay.io/user/argocd-agent:v1",
 							Env: []corev1.EnvVar{
 								{Name: "TEST_ENV", Value: "test-value"},
+							},
+							Service: v1beta1.ArgoCDAgentPrincipalServiceSpec{
+								Type: corev1.ServiceTypeExternalName,
+							},
+							Route: v1beta1.ArgoCDAgentPrincipalRouteSpec{
+								Enabled: ptr.To(false),
 							},
 						},
 						Redis: &v1beta1.PrincipalRedisSpec{
@@ -842,6 +885,12 @@ func TestBetaToAlphaConversion(t *testing.T) {
 							KeepAliveMinInterval: "30s",
 							Env: []corev1.EnvVar{
 								{Name: "TEST_ENV", Value: "test-value"},
+							},
+							Service: ArgoCDAgentPrincipalServiceSpec{
+								Type: corev1.ServiceTypeExternalName,
+							},
+							Route: ArgoCDAgentPrincipalRouteSpec{
+								Enabled: ptr.To(false),
 							},
 						},
 						Redis: &PrincipalRedisSpec{

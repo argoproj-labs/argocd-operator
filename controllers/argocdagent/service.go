@@ -388,7 +388,7 @@ func buildPrincipalServiceSpec(compName string, cr *argoproj.ArgoCD) corev1.Serv
 		Selector: map[string]string{
 			common.ArgoCDKeyName: generateAgentResourceName(cr.Name, compName),
 		},
-		Type: corev1.ServiceTypeClusterIP,
+		Type: getPrincipalServiceType(cr),
 	}
 }
 
@@ -468,4 +468,15 @@ func buildService(name, compName string, cr *argoproj.ArgoCD) *corev1.Service {
 			Labels:    buildLabelsForAgentPrincipal(cr.Name, compName),
 		},
 	}
+}
+
+// getPrincipalServiceType will return the principal service type.
+func getPrincipalServiceType(cr *argoproj.ArgoCD) corev1.ServiceType {
+	if cr.Spec.ArgoCDAgent != nil &&
+		cr.Spec.ArgoCDAgent.Principal != nil &&
+		cr.Spec.ArgoCDAgent.Principal.Server != nil &&
+		len(cr.Spec.ArgoCDAgent.Principal.Server.Service.Type) > 0 {
+		return cr.Spec.ArgoCDAgent.Principal.Server.Service.Type
+	}
+	return corev1.ServiceTypeClusterIP
 }

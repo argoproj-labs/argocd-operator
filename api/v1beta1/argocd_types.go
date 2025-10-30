@@ -1226,6 +1226,14 @@ type PrincipalServerSpec struct {
 
 	// Env lets you specify environment for principal pods
 	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	// Service defines the options for the Service backing the ArgoCD Agent component.
+	// If not set, type ClusterIP will be used by default.
+	Service ArgoCDAgentPrincipalServiceSpec `json:"service,omitempty"`
+
+	// Route defines the options for the Route backing the ArgoCD Agent component.
+	// Route is disabled only when explicitly configured with Enabled: false
+	Route ArgoCDAgentPrincipalRouteSpec `json:"route,omitempty"`
 }
 
 type PrincipalRedisSpec struct {
@@ -1280,6 +1288,20 @@ type PrincipalTLSSpec struct {
 
 	// InsecureGenerate is the flag to allow the principal to generate its own set of TLS cert and key on startup when none are configured
 	InsecureGenerate *bool `json:"insecureGenerate,omitempty"`
+}
+
+// ArgoCDAgentPrincipalServiceSpec defines the options for the Service backing the ArgoCD Agent Principalcomponent.
+type ArgoCDAgentPrincipalServiceSpec struct {
+	// Type is the ServiceType to use for the Service resource.
+	// If not set, type ClusterIP will be used by default.
+	Type corev1.ServiceType `json:"type"`
+}
+
+// ArgoCDAgentPrincipalRouteSpec defines the options for the Route backing the ArgoCD Agent Principal component.
+type ArgoCDAgentPrincipalRouteSpec struct {
+	// Enabled will toggle the creation of the OpenShift Route, ignored in case of non OpenShift cluster.
+	// Route is disabled only when explicitly configured with false
+	Enabled *bool `json:"enabled,omitempty"`
 }
 
 func (a *PrincipalSpec) IsEnabled() bool {

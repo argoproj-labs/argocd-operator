@@ -35,6 +35,16 @@ spec:
             value: "info"
           - name: GODEBUG
             value: "http2debug=2"
+        
+        # Service configuration for the Principal component
+        service:
+          # ServiceType for the Principal service (ClusterIP, NodePort, LoadBalancer)
+          type: ClusterIP
+        
+        # Route configuration for OpenShift Route (optional)
+        route:
+          # Enable OpenShift Route creation
+          enabled: false
       
       # Namespace management configuration
       namespace:

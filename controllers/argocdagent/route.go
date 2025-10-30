@@ -59,10 +59,23 @@ func ReconcilePrincipalRoute(client client.Client, compName string, cr *argoproj
 		exists = false
 	}
 
+	// By default create route if Route API is available
+	// Only disable if explicitly configured with Enabled: false
+	routeDisabled := false
+	if hasPrincipal(cr) &&
+		cr.Spec.ArgoCDAgent.Principal.IsEnabled() &&
+		cr.Spec.ArgoCDAgent.Principal.Server != nil {
+		routeSpec := cr.Spec.ArgoCDAgent.Principal.Server.Route
+		if routeSpec.Enabled != nil && !*routeSpec.Enabled {
+			routeDisabled = true
+		}
+	}
+
 	// If route exists, handle updates or deletion
 	if exists {
-		if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
-			argoutil.LogResourceDeletion(log, route, "principal route is being deleted as principal is disabled")
+		if (cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled()) ||
+			routeDisabled {
+			argoutil.LogResourceDeletion(log, route, "principal route is being deleted as principal or principal route is disabled")
 			if err := client.Delete(context.TODO(), route); err != nil {
 				return fmt.Errorf("failed to delete principal route %s: %v", route.Name, err)
 			}
@@ -85,8 +98,8 @@ func ReconcilePrincipalRoute(client client.Client, compName string, cr *argoproj
 		return nil
 	}
 
-	// If route doesn't exist and principal is disabled, nothing to do
-	if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
+	// If route doesn't exist and principal is disabled or route is disabled, nothing to do
+	if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() || routeDisabled {
 		return nil
 	}
 

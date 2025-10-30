@@ -786,6 +786,8 @@ func ConvertAlphaToBetaPrincipalServer(src *PrincipalServerSpec) *v1beta1.Princi
 			KeepAliveMinInterval: src.KeepAliveMinInterval,
 			Image:                src.Image,
 			Env:                  src.Env,
+			Service:              v1beta1.ArgoCDAgentPrincipalServiceSpec(src.Service),
+			Route:                v1beta1.ArgoCDAgentPrincipalRouteSpec(src.Route),
 		}
 	}
 	return dst
@@ -802,6 +804,8 @@ func ConvertBetaToAlphaPrincipalServer(src *v1beta1.PrincipalServerSpec) *Princi
 			KeepAliveMinInterval: src.KeepAliveMinInterval,
 			Image:                src.Image,
 			Env:                  src.Env,
+			Service:              ArgoCDAgentPrincipalServiceSpec(src.Service),
+			Route:                ArgoCDAgentPrincipalRouteSpec(src.Route),
 		}
 	}
 	return dst
