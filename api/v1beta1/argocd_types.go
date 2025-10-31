@@ -1178,6 +1178,9 @@ type ArgoCDAgentSpec struct {
 
 	// Principal defines configurations for the Principal component of Argo CD Agent.
 	Principal *PrincipalSpec `json:"principal,omitempty"`
+
+	// Agent defines configurations for the Agent component of Argo CD Agent.
+	Agent *AgentSpec `json:"agent,omitempty"`
 }
 
 type PrincipalSpec struct {
@@ -1305,6 +1308,79 @@ type ArgoCDAgentPrincipalRouteSpec struct {
 }
 
 func (a *PrincipalSpec) IsEnabled() bool {
+	return a.Enabled != nil && *a.Enabled
+}
+
+type AgentSpec struct {
+
+	// Enabled is the flag to enable the Agent component during Argo CD installation. (optional, default `false`)
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// Client defines the client options for the Agent component.
+	Client *AgentClientSpec `json:"client,omitempty"`
+
+	// Redis defines the Redis options for the Agent component.
+	Redis *AgentRedisSpec `json:"redis,omitempty"`
+
+	// TLS defines the TLS options for the Agent component.
+	TLS *AgentTLSSpec `json:"tls,omitempty"`
+}
+
+type AgentClientSpec struct {
+
+	// PrincipalServerAddress is the remote address of the principal server to connect to.
+	PrincipalServerAddress string `json:"principalServerAddress,omitempty"`
+
+	// PrincipalServerPort is the remote port of the principal server to connect to.
+	PrincipalServerPort string `json:"principalServerPort,omitempty"`
+
+	// Creds is the credential identifier for the agent authentication
+	Creds string `json:"creds,omitempty"`
+
+	// Mode is the operational mode for the agent (managed or autonomous)
+	Mode string `json:"mode,omitempty"`
+
+	// EnableWebSocket is the flag to enable WebSocket for event streaming
+	EnableWebSocket *bool `json:"enableWebSocket,omitempty"`
+
+	// EnableCompression is the flag to enable compression while sending data between Principal and Agent using gRPC
+	EnableCompression *bool `json:"enableCompression,omitempty"`
+
+	// LogLevel refers to the log level used by the Agent component.
+	LogLevel string `json:"logLevel,omitempty"`
+
+	// LogFormat refers to the log format used by the Agent component.
+	LogFormat string `json:"logFormat,omitempty"`
+
+	// KeepAliveInterval is the interval for keep-alive pings to the principal
+	KeepAliveInterval string `json:"keepAliveInterval,omitempty"`
+
+	// Image is the name of Argo CD Agent image
+	Image string `json:"image,omitempty"`
+
+	// Env lets you specify environment for agent pods
+	Env []corev1.EnvVar `json:"env,omitempty"`
+}
+
+type AgentRedisSpec struct {
+
+	// ServerAddress is the address of the Redis server to be used by the PrincAgentipal component.
+	ServerAddress string `json:"serverAddress,omitempty"`
+}
+
+type AgentTLSSpec struct {
+
+	// SecretName is the name of the secret containing the agent client TLS certificate
+	SecretName string `json:"secretName,omitempty"`
+
+	// RootCASecretName is the name of the secret containing the root CA certificate
+	RootCASecretName string `json:"rootCASecretName,omitempty"`
+
+	// Insecure is the flag to skip TLS certificate validation when connecting to the principal (insecure, for development only)
+	Insecure *bool `json:"insecure,omitempty"`
+}
+
+func (a *AgentSpec) IsEnabled() bool {
 	return a.Enabled != nil && *a.Enabled
 }
 

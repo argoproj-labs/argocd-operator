@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
-  name: argocd
+  name: argocd-principal
 spec:
   # Disable the main controller since we're using the agent
   controller:
