@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
@@ -1422,4 +1423,143 @@ func TestReconcilePrincipalHealthzService_VerifyHealthzServiceSpec(t *testing.T)
 		common.ArgoCDKeyName: generateAgentResourceName(cr.Name, testCompName),
 	}
 	assert.Equal(t, expectedSelector, svc.Spec.Selector)
+}
+
+func withServiceType(serviceType corev1.ServiceType) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		if a.Spec.ArgoCDAgent.Principal.Server == nil {
+			a.Spec.ArgoCDAgent.Principal.Server = &argoproj.PrincipalServerSpec{}
+		}
+		a.Spec.ArgoCDAgent.Principal.Server.Service = argoproj.ArgoCDAgentPrincipalServiceSpec{
+			Type: serviceType,
+		}
+	}
+}
+
+func TestReconcilePrincipalService_ServiceType_ClusterIP(t *testing.T) {
+	// Test case: Service type is explicitly set to ClusterIP
+	// Expected behavior: Should create service with ClusterIP type
+
+	cr := makeTestArgoCD(withPrincipalEnabled(true), withServiceType(corev1.ServiceTypeClusterIP))
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was created with correct type
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName),
+		Namespace: testNamespace,
+	}, svc)
+	assert.NoError(t, err)
+	assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
+}
+
+func TestReconcilePrincipalService_ServiceType_LoadBalancer(t *testing.T) {
+	// Test case: Service type is set to LoadBalancer
+	// Expected behavior: Should create service with LoadBalancer type
+
+	cr := makeTestArgoCD(withPrincipalEnabled(true), withServiceType(corev1.ServiceTypeLoadBalancer))
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was created with correct type
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName),
+		Namespace: testNamespace,
+	}, svc)
+	assert.NoError(t, err)
+	assert.Equal(t, corev1.ServiceTypeLoadBalancer, svc.Spec.Type)
+}
+
+func TestReconcilePrincipalService_ServiceType_Default(t *testing.T) {
+	// Test case: Service type is not specified (empty)
+	// Expected behavior: Should create service with default ClusterIP type
+
+	cr := makeTestArgoCD(withPrincipalEnabled(true))
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was created with default ClusterIP type
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName),
+		Namespace: testNamespace,
+	}, svc)
+	assert.NoError(t, err)
+	assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
+}
+
+func TestReconcilePrincipalService_ServiceType_Update(t *testing.T) {
+	// Test case: Service exists with ClusterIP, then updated to LoadBalancer
+	// Expected behavior: Should update service type
+
+	cr := makeTestArgoCD(withPrincipalEnabled(true), withServiceType(corev1.ServiceTypeClusterIP))
+
+	// Create existing Service with ClusterIP
+	existingService := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      generateAgentResourceName(cr.Name, testCompName),
+			Namespace: testNamespace,
+		},
+		Spec: corev1.ServiceSpec{
+			Type: corev1.ServiceTypeClusterIP,
+			Ports: []corev1.ServicePort{
+				{
+					Name:       PrincipalServicePortName,
+					Port:       PrincipalServiceHTTPSPort,
+					Protocol:   corev1.ProtocolTCP,
+					TargetPort: intstr.FromInt(PrincipalServiceTargetPort),
+				},
+			},
+			Selector: map[string]string{
+				common.ArgoCDKeyName: generateAgentResourceName(cr.Name, testCompName),
+			},
+		},
+	}
+
+	resObjs := []client.Object{cr, existingService}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	// First verify it's ClusterIP
+	err := ReconcilePrincipalService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName),
+		Namespace: testNamespace,
+	}, svc)
+	assert.NoError(t, err)
+	assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
+
+	// Now update CR to use LoadBalancer
+	cr.Spec.ArgoCDAgent.Principal.Server.Service.Type = corev1.ServiceTypeLoadBalancer
+
+	err = ReconcilePrincipalService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was updated to LoadBalancer
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName),
+		Namespace: testNamespace,
+	}, svc)
+	assert.NoError(t, err)
+	assert.Equal(t, corev1.ServiceTypeLoadBalancer, svc.Spec.Type)
 }

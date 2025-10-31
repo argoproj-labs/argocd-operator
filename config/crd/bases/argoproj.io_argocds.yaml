@@ -663,6 +663,30 @@ spec:
                             description: LogLevel refers to the log level used by
                               the Principal component.
                             type: string
+                          route:
+                            description: |-
+                              Route defines the options for the Route backing the ArgoCD Agent component.
+                              Route is disabled only when explicitly configured with Enabled: false
+                            properties:
+                              enabled:
+                                description: |-
+                                  Enabled will toggle the creation of the OpenShift Route, ignored in case of non OpenShift cluster.
+                                  Route is disabled only when explicitly configured with false
+                                type: boolean
+                            type: object
+                          service:
+                            description: |-
+                              Service defines the options for the Service backing the ArgoCD Agent component.
+                              If not set, type ClusterIP will be used by default.
+                            properties:
+                              type:
+                                description: |-
+                                  Type is the ServiceType to use for the Service resource.
+                                  If not set, type ClusterIP will be used by default.
+                                type: string
+                            required:
+                            - type
+                            type: object
                         type: object
                       tls:
                         description: TLS defines the TLS options for the Principal
@@ -10629,6 +10653,30 @@ spec:
                             description: LogLevel refers to the log level used by
                               the Principal component.
                             type: string
+                          route:
+                            description: |-
+                              Route defines the options for the Route backing the ArgoCD Agent component.
+                              Route is disabled only when explicitly configured with Enabled: false
+                            properties:
+                              enabled:
+                                description: |-
+                                  Enabled will toggle the creation of the OpenShift Route, ignored in case of non OpenShift cluster.
+                                  Route is disabled only when explicitly configured with false
+                                type: boolean
+                            type: object
+                          service:
+                            description: |-
+                              Service defines the options for the Service backing the ArgoCD Agent component.
+                              If not set, type ClusterIP will be used by default.
+                            properties:
+                              type:
+                                description: |-
+                                  Type is the ServiceType to use for the Service resource.
+                                  If not set, type ClusterIP will be used by default.
+                                type: string
+                            required:
+                            - type
+                            type: object
                         type: object
                       tls:
                         description: TLS defines the TLS options for the Principal
