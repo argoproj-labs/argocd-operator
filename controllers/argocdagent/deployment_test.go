@@ -395,7 +395,8 @@ func TestReconcilePrincipalDeployment_VerifyDeploymentSpec(t *testing.T) {
 		if env.Name == "REDIS_PASSWORD" {
 			assert.NotNil(t, env.ValueFrom, "REDIS_PASSWORD should reference a secret")
 			assert.NotNil(t, env.ValueFrom.SecretKeyRef, "REDIS_PASSWORD should reference a secret key")
-			assert.Equal(t, PrincipalRedisSecretname, env.ValueFrom.SecretKeyRef.Name)
+
+			assert.Equal(t, "argocd-redis-initial-password", env.ValueFrom.SecretKeyRef.Name)
 			assert.Equal(t, "admin.password", env.ValueFrom.SecretKeyRef.Key)
 		} else {
 			// All other environment variables should have direct values, not references
