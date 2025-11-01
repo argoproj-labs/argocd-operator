@@ -626,6 +626,11 @@ func (in *ArgoCDNotifications) DeepCopyInto(out *ArgoCDNotifications) {
 		*out = new(int32)
 		**out = **in
 	}
+	if in.SourceNamespaces != nil {
+		in, out := &in.SourceNamespaces, &out.SourceNamespaces
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.Env != nil {
 		in, out := &in.Env, &out.Env
 		*out = make([]v1.EnvVar, len(*in))

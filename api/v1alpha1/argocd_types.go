@@ -329,6 +329,9 @@ type ArgoCDNotifications struct {
 	// Enabled defines whether argocd-notifications controller should be deployed or not
 	Enabled bool `json:"enabled"`
 
+	// SourceNamespaces is a list of namespaces from which the notifications controller will watch for ArgoCD Application resources.
+	SourceNamespaces []string `json:"sourceNamespaces,omitempty"`
+
 	// Env let you specify environment variables for Notifications pods
 	Env []corev1.EnvVar `json:"env,omitempty"`
 
