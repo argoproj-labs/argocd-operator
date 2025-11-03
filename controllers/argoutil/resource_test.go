@@ -159,7 +159,7 @@ func TestGetImagePullPolicy(t *testing.T) {
 
 	tests := []struct {
 		name               string
-		policy             *corev1.PullPolicy
+		policy             corev1.PullPolicy
 		envValue           string
 		setEnv             bool
 		expectedPullPolicy corev1.PullPolicy
@@ -167,28 +167,28 @@ func TestGetImagePullPolicy(t *testing.T) {
 	}{
 		{
 			name:               "instance specific policy - Always",
-			policy:             &[]corev1.PullPolicy{corev1.PullAlways}[0],
+			policy:             []corev1.PullPolicy{corev1.PullAlways}[0],
 			setEnv:             false,
 			expectedPullPolicy: corev1.PullAlways,
 			description:        "When instance policy is set to Always, it should take precedence",
 		},
 		{
 			name:               "instance specific policy - Never",
-			policy:             &[]corev1.PullPolicy{corev1.PullNever}[0],
+			policy:             []corev1.PullPolicy{corev1.PullNever}[0],
 			setEnv:             false,
 			expectedPullPolicy: corev1.PullNever,
 			description:        "When instance policy is set to Never, it should take precedence",
 		},
 		{
 			name:               "instance specific policy - IfNotPresent",
-			policy:             &[]corev1.PullPolicy{corev1.PullIfNotPresent}[0],
+			policy:             []corev1.PullPolicy{corev1.PullIfNotPresent}[0],
 			setEnv:             false,
 			expectedPullPolicy: corev1.PullIfNotPresent,
 			description:        "When instance policy is set to IfNotPresent, it should take precedence",
 		},
 		{
 			name:               "instance policy overrides environment variable",
-			policy:             &[]corev1.PullPolicy{corev1.PullNever}[0],
+			policy:             []corev1.PullPolicy{corev1.PullNever}[0],
 			envValue:           "Always",
 			setEnv:             true,
 			expectedPullPolicy: corev1.PullNever,
@@ -196,7 +196,7 @@ func TestGetImagePullPolicy(t *testing.T) {
 		},
 		{
 			name:               "environment variable - Always",
-			policy:             nil,
+			policy:             "",
 			envValue:           "Always",
 			setEnv:             true,
 			expectedPullPolicy: corev1.PullAlways,
@@ -204,7 +204,7 @@ func TestGetImagePullPolicy(t *testing.T) {
 		},
 		{
 			name:               "environment variable - Never",
-			policy:             nil,
+			policy:             "",
 			envValue:           "Never",
 			setEnv:             true,
 			expectedPullPolicy: corev1.PullNever,
@@ -212,7 +212,7 @@ func TestGetImagePullPolicy(t *testing.T) {
 		},
 		{
 			name:               "environment variable - IfNotPresent",
-			policy:             nil,
+			policy:             "",
 			envValue:           "IfNotPresent",
 			setEnv:             true,
 			expectedPullPolicy: corev1.PullIfNotPresent,
@@ -220,14 +220,13 @@ func TestGetImagePullPolicy(t *testing.T) {
 		},
 		{
 			name:               "default policy when nothing set",
-			policy:             nil,
 			setEnv:             false,
 			expectedPullPolicy: corev1.PullIfNotPresent,
 			description:        "When neither instance policy nor env var is set, default to IfNotPresent",
 		},
 		{
 			name:               "empty environment variable falls back to default",
-			policy:             nil,
+			policy:             "",
 			envValue:           "",
 			setEnv:             true,
 			expectedPullPolicy: corev1.PullIfNotPresent,

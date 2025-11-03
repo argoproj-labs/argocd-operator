@@ -958,11 +958,6 @@ func (in *ArgoCDSpec) DeepCopyInto(out *ArgoCDSpec) {
 	}
 	in.Grafana.DeepCopyInto(&out.Grafana)
 	in.HA.DeepCopyInto(&out.HA)
-	if in.ImagePullPolicy != nil {
-		in, out := &in.ImagePullPolicy, &out.ImagePullPolicy
-		*out = new(v1.PullPolicy)
-		**out = **in
-	}
 	if in.Import != nil {
 		in, out := &in.Import, &out.Import
 		*out = new(ArgoCDImportSpec)

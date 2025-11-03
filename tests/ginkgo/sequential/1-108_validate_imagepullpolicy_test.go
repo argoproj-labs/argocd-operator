@@ -73,25 +73,25 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			policyAlways := corev1.PullAlways
 			argoCD := &argoproj.ArgoCD{
 				Spec: argoproj.ArgoCDSpec{
-					ImagePullPolicy: &policyAlways,
+					ImagePullPolicy: policyAlways,
 				},
 			}
 			Expect(argoCD.Spec.ImagePullPolicy).ToNot(BeNil())
-			Expect(*argoCD.Spec.ImagePullPolicy).To(Equal(corev1.PullAlways))
+			Expect(argoCD.Spec.ImagePullPolicy).To(Equal(corev1.PullAlways))
 
 			By("verifying PullIfNotPresent is accepted")
 			policyIfNotPresent := corev1.PullIfNotPresent
-			argoCD.Spec.ImagePullPolicy = &policyIfNotPresent
-			Expect(*argoCD.Spec.ImagePullPolicy).To(Equal(corev1.PullIfNotPresent))
+			argoCD.Spec.ImagePullPolicy = policyIfNotPresent
+			Expect(argoCD.Spec.ImagePullPolicy).To(Equal(corev1.PullIfNotPresent))
 
 			By("verifying PullNever is accepted")
 			policyNever := corev1.PullNever
-			argoCD.Spec.ImagePullPolicy = &policyNever
-			Expect(*argoCD.Spec.ImagePullPolicy).To(Equal(corev1.PullNever))
+			argoCD.Spec.ImagePullPolicy = policyNever
+			Expect(argoCD.Spec.ImagePullPolicy).To(Equal(corev1.PullNever))
 
 			By("verifying nil imagePullPolicy is allowed (uses default)")
-			argoCD.Spec.ImagePullPolicy = nil
-			Expect(argoCD.Spec.ImagePullPolicy).To(BeNil())
+			argoCD.Spec.ImagePullPolicy = ""
+			Expect(argoCD.Spec.ImagePullPolicy).To(BeEmpty())
 
 		})
 
@@ -105,7 +105,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			argoCD := &argoproj.ArgoCD{
 				ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: ns.Name},
 				Spec: argoproj.ArgoCDSpec{
-					ImagePullPolicy: &policy,
+					ImagePullPolicy: policy,
 					ApplicationSet: &argoproj.ArgoCDApplicationSet{
 						Enabled: &enabled,
 					},
@@ -200,7 +200,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			By("updating instance level imagePullPolicy to Always and verifying changes propagate")
 			argocdFixture.Update(argoCD, func(ac *argoproj.ArgoCD) {
 				newPolicy := corev1.PullAlways
-				ac.Spec.ImagePullPolicy = &newPolicy
+				ac.Spec.ImagePullPolicy = newPolicy
 			})
 
 			By("verifying server deployment updated to imagePullPolicy=Always")
@@ -373,7 +373,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			argoCD2 := &argoproj.ArgoCD{
 				ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: ns2.Name},
 				Spec: argoproj.ArgoCDSpec{
-					ImagePullPolicy: &policyNever,
+					ImagePullPolicy: policyNever,
 					Server: argoproj.ArgoCDServerSpec{
 						Route: argoproj.ArgoCDRouteSpec{
 							Enabled: true,
