@@ -376,7 +376,7 @@ func buildPrincipalContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
 				SecretKeyRef: &corev1.SecretKeySelector{
 					Key: PrincipalRedisPasswordKey,
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: PrincipalRedisSecretname,
+						Name: fmt.Sprintf("%s-%s", cr.Name, PrincipalRedisSecretnameSuffix),
 					},
 					Optional: ptr.To(true),
 				},
@@ -418,7 +418,7 @@ const (
 	EnvArgoCDPrincipalImage                     = "ARGOCD_PRINCIPAL_IMAGE"
 	EnvRedisPassword                            = "REDIS_PASSWORD"
 	PrincipalRedisPasswordKey                   = "admin.password"
-	PrincipalRedisSecretname                    = "argocd-redis-initial-password" // #nosec G101
+	PrincipalRedisSecretnameSuffix              = "redis-initial-password" // #nosec G101
 )
 
 // Logging Configuration
