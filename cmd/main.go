@@ -189,7 +189,7 @@ func main() {
 
 	// Use transformers to strip data from Secrets and ConfigMaps
 	// that are not tracked by the operator to reduce memory usage.
-	if strings.ToLower(os.Getenv("DISABLE_MEMORY_OPTIMIZATION")) != "true" {
+	if strings.ToLower(os.Getenv("MEMORY_OPTIMIZATION_ENABLED")) != "false" {
 		setupLog.Info("memory optimization is enabled")
 		options.Cache = cache.Options{
 			Scheme: scheme,
@@ -211,7 +211,7 @@ func main() {
 	}
 
 	var client crclient.Client
-	if strings.ToLower(os.Getenv("DISABLE_MEMORY_OPTIMIZATION")) != "true" {
+	if strings.ToLower(os.Getenv("MEMORY_OPTIMIZATION_ENABLED")) != "false" {
 		liveClient, err := crclient.New(ctrl.GetConfigOrDie(), crclient.Options{Scheme: mgr.GetScheme()})
 		if err != nil {
 			setupLog.Error(err, "unable to create live client")
