@@ -771,10 +771,12 @@ func TestNotifications_removeUnmanagedNotificationsSourceNamespaceResources(t *t
 	subresObjs := []client.Object{a}
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	err := v1alpha1.AddToScheme(sch)
+	assert.NoError(t, err)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	err := createNamespace(r, ns1, "")
+	err = createNamespace(r, ns1, "")
 	assert.NoError(t, err)
 	err = createNamespace(r, ns2, "")
 	assert.NoError(t, err)
@@ -809,6 +811,12 @@ func TestNotifications_removeUnmanagedNotificationsSourceNamespaceResources(t *t
 	assert.Error(t, err)
 	assert.True(t, errors.IsNotFound(err))
 
+	// NotificationsConfiguration CR should be deleted from ns1
+	notifCfg := &v1alpha1.NotificationsConfiguration{}
+	err = r.Get(context.TODO(), client.ObjectKey{Name: DefaultNotificationsConfigurationInstanceName, Namespace: ns1}, notifCfg)
+	assert.Error(t, err)
+	assert.True(t, errors.IsNotFound(err))
+
 	// notifications tracking label should be removed
 	namespace := &v1.Namespace{}
 	err = r.Get(context.TODO(), client.ObjectKey{Name: ns1}, namespace)
@@ -826,10 +834,225 @@ func TestNotifications_removeUnmanagedNotificationsSourceNamespaceResources(t *t
 	err = r.Get(context.TODO(), client.ObjectKey{Name: resName, Namespace: ns2}, roleBinding)
 	assert.NoError(t, err)
 
+	// NotificationsConfiguration CR should still exist in ns2
+	notifCfg = &v1alpha1.NotificationsConfiguration{}
+	err = r.Get(context.TODO(), client.ObjectKey{Name: DefaultNotificationsConfigurationInstanceName, Namespace: ns2}, notifCfg)
+	assert.NoError(t, err)
+
 	namespace = &v1.Namespace{}
 	err = r.Get(context.TODO(), client.ObjectKey{Name: ns2}, namespace)
 	assert.NoError(t, err)
 	val, found := namespace.Labels[common.ArgoCDNotificationsManagedByClusterArgoCDLabel]
 	assert.True(t, found)
 	assert.Equal(t, a.Namespace, val)
+}
+
+func TestReconcileNotifications_CreateNotificationsConfigurationInSourceNamespace_WithDefaults(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	sourceNamespace := "ns1"
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Notifications.Enabled = true
+		a.Spec.Notifications.SourceNamespaces = []string{sourceNamespace}
+		a.Spec.SourceNamespaces = []string{sourceNamespace}
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	err := v1alpha1.AddToScheme(sch)
+	assert.NoError(t, err)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	// Create the source namespace
+	err = createNamespace(r, sourceNamespace, "")
+	assert.NoError(t, err)
+
+	// Reconcile should create NotificationsConfiguration CR in source namespace with defaults
+	// (since no NotificationsConfiguration exists in instance namespace)
+	err = r.reconcileSourceNamespaceNotificationsConfigurationCR(a, sourceNamespace)
+	assert.NoError(t, err)
+
+	// Verify NotificationsConfiguration CR exists in source namespace
+	notifCfg := &v1alpha1.NotificationsConfiguration{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      DefaultNotificationsConfigurationInstanceName,
+		Namespace: sourceNamespace,
+	}, notifCfg)
+	assert.NoError(t, err)
+
+	// Verify it has the expected defaults
+	expectedContext := getDefaultNotificationsContext()
+	expectedTriggers := getDefaultNotificationsTriggers()
+	expectedTemplates := getDefaultNotificationsTemplates()
+
+	// Normalize nil to empty map for comparison (Kubernetes may serialize empty maps as nil)
+	actualContext := notifCfg.Spec.Context
+	if actualContext == nil {
+		actualContext = map[string]string{}
+	}
+
+	assert.Equal(t, expectedContext, actualContext)
+	assert.Equal(t, expectedTriggers, notifCfg.Spec.Triggers)
+	assert.Equal(t, expectedTemplates, notifCfg.Spec.Templates)
+}
+
+func TestReconcileNotifications_PropagateNotificationsConfigurationFromInstanceNamespace(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	sourceNamespace := "ns1"
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Notifications.Enabled = true
+		a.Spec.Notifications.SourceNamespaces = []string{sourceNamespace}
+		a.Spec.SourceNamespaces = []string{sourceNamespace}
+	})
+
+	// Create a custom NotificationsConfiguration in the instance namespace
+	customInstanceCfg := &v1alpha1.NotificationsConfiguration{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      DefaultNotificationsConfigurationInstanceName,
+			Namespace: a.Namespace,
+		},
+		Spec: v1alpha1.NotificationsConfigurationSpec{
+			Context: map[string]string{
+				"customKey": "customValue",
+				"argocdUrl": "https://custom-argocd.example.com",
+			},
+			Triggers: map[string]string{
+				"trigger.custom": "custom trigger definition",
+			},
+			Templates: map[string]string{
+				"template.custom": "custom template definition",
+			},
+			Services: map[string]string{
+				"service.custom": "custom service definition",
+			},
+			Subscriptions: map[string]string{
+				"subscription.custom": "custom subscription definition",
+			},
+		},
+	}
+
+	resObjs := []client.Object{a, customInstanceCfg}
+	subresObjs := []client.Object{a, customInstanceCfg}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	err := v1alpha1.AddToScheme(sch)
+	assert.NoError(t, err)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	// Create the source namespace
+	err = createNamespace(r, sourceNamespace, "")
+	assert.NoError(t, err)
+
+	// Reconcile should propagate the NotificationsConfiguration from instance namespace
+	err = r.reconcileSourceNamespaceNotificationsConfigurationCR(a, sourceNamespace)
+	assert.NoError(t, err)
+
+	// Verify NotificationsConfiguration CR exists in source namespace
+	sourceNotifCfg := &v1alpha1.NotificationsConfiguration{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      DefaultNotificationsConfigurationInstanceName,
+		Namespace: sourceNamespace,
+	}, sourceNotifCfg)
+	assert.NoError(t, err)
+
+	// Verify it matches the instance namespace configuration (propagated)
+	assert.Equal(t, customInstanceCfg.Spec.Context, sourceNotifCfg.Spec.Context)
+	assert.Equal(t, customInstanceCfg.Spec.Triggers, sourceNotifCfg.Spec.Triggers)
+	assert.Equal(t, customInstanceCfg.Spec.Templates, sourceNotifCfg.Spec.Templates)
+	assert.Equal(t, customInstanceCfg.Spec.Services, sourceNotifCfg.Spec.Services)
+	assert.Equal(t, customInstanceCfg.Spec.Subscriptions, sourceNotifCfg.Spec.Subscriptions)
+
+	// Now update the instance namespace configuration and verify it gets propagated
+	customInstanceCfg.Spec.Context["newKey"] = "newValue"
+	err = r.Update(context.TODO(), customInstanceCfg)
+	assert.NoError(t, err)
+
+	// Reconcile again
+	err = r.reconcileSourceNamespaceNotificationsConfigurationCR(a, sourceNamespace)
+	assert.NoError(t, err)
+
+	// Verify the source namespace configuration was updated
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      DefaultNotificationsConfigurationInstanceName,
+		Namespace: sourceNamespace,
+	}, sourceNotifCfg)
+	assert.NoError(t, err)
+	// The source namespace config should reflect the updated instance config different from sourceNotifCfg
+	assert.NotEqual(t, customInstanceCfg.Spec.Context, sourceNotifCfg.Spec.Context)
+}
+
+func TestReconcileNotifications_NotificationsConfigurationInSourceNamespaceWhenDisabled(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	sourceNamespace := "ns1"
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Notifications.Enabled = false
+		a.Spec.Notifications.SourceNamespaces = []string{sourceNamespace}
+		a.Spec.SourceNamespaces = []string{sourceNamespace}
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	err := v1alpha1.AddToScheme(sch)
+	assert.NoError(t, err)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	// Create the source namespace
+	err = createNamespace(r, sourceNamespace, "")
+	assert.NoError(t, err)
+
+	// Reconcile should not create NotificationsConfiguration CR when notifications are disabled
+	err = r.reconcileSourceNamespaceNotificationsConfigurationCR(a, sourceNamespace)
+	assert.NoError(t, err)
+
+	// Verify NotificationsConfiguration CR does not exist
+	notifCfg := &v1alpha1.NotificationsConfiguration{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      DefaultNotificationsConfigurationInstanceName,
+		Namespace: sourceNamespace,
+	}, notifCfg)
+	assert.Error(t, err)
+	assert.True(t, errors.IsNotFound(err))
+}
+
+func TestReconcileNotifications_SourceNamespaceResourcesIncludeNotificationsConfiguration(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	sourceNamespace := "ns1"
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Notifications.Enabled = true
+		a.Spec.Notifications.SourceNamespaces = []string{sourceNamespace}
+		a.Spec.SourceNamespaces = []string{sourceNamespace}
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	err := v1alpha1.AddToScheme(sch)
+	assert.NoError(t, err)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	// Create the source namespace
+	err = createNamespace(r, sourceNamespace, "")
+	assert.NoError(t, err)
+
+	// Reconcile source namespace resources (this should create NotificationsConfiguration CR)
+	err = r.reconcileNotificationsSourceNamespacesResources(a)
+	assert.NoError(t, err)
+
+	// Verify NotificationsConfiguration CR was created in source namespace
+	notifCfg := &v1alpha1.NotificationsConfiguration{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      DefaultNotificationsConfigurationInstanceName,
+		Namespace: sourceNamespace,
+	}, notifCfg)
+	assert.NoError(t, err)
+	assert.Equal(t, DefaultNotificationsConfigurationInstanceName, notifCfg.Name)
+	assert.Equal(t, sourceNamespace, notifCfg.Namespace)
 }
