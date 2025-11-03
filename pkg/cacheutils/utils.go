@@ -12,7 +12,7 @@ import (
 // StripDataFromSecretOrConfigMap returns a TransformFunc that strips data from both
 // Secrets and ConfigMaps that are not tracked by the operator. This unified function
 // handles both resource types in a single transform. This is useful for reducing memory usage
-// when caching Secrets and ConfigMaps that are not managed by the operator.
+// when caching Secrets and ConfigMaps that are not managed/used by the operator.
 func StripDataFromSecretOrConfigMapTransform() clientgotools.TransformFunc {
 	return func(in interface{}) (interface{}, error) {
 
@@ -50,8 +50,8 @@ func StripDataFromSecretOrConfigMapTransform() clientgotools.TransformFunc {
 
 // IsTrackedByOperator checks if the given labels indicate that the resource is tracked by the operator.
 // A resource is considered tracked if it has any of the following labels:
-// - ArgoCDTrackedByOperatorLabel: indicates the resource is managed by the operator
-// - ArgoCDSecretTypeLabel: indicates the resource is an ArgoCD-specific secret type
+// - 'operator.argoproj.io/tracked-by': indicates the resource is managed/used by the operator
+// - 'argocd.argoproj.io/secret-type': indicates the resource is an ArgoCD-specific secret type
 func IsTrackedByOperator(obj runtime.Object) bool {
 	// List of labels that indicate operator tracking
 	trackedLabels := []string{

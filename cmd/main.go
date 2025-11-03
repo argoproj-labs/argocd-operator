@@ -190,6 +190,7 @@ func main() {
 	// Use transformers to strip data from Secrets and ConfigMaps
 	// that are not tracked by the operator to reduce memory usage.
 	if strings.ToLower(os.Getenv("DISABLE_MEMORY_OPTIMIZATION")) != "true" {
+		setupLog.Info("memory optimization is enabled")
 		options.Cache = cache.Options{
 			Scheme: scheme,
 			ByObject: map[crclient.Object]cache.ByObject{
