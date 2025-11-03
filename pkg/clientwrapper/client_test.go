@@ -5,6 +5,7 @@ package clientwrapper
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -33,6 +34,16 @@ func (r *recordingClient) Get(ctx context.Context, key ctrlclient.ObjectKey, obj
 func (r *recordingClient) Patch(ctx context.Context, obj ctrlclient.Object, patch ctrlclient.Patch, opts ...ctrlclient.PatchOption) error {
 	r.patchCalls++
 	return r.Client.Patch(ctx, obj, patch, opts...)
+}
+
+// failingPatchClient overrides Patch() to simulate an error.
+type failingPatchClient struct {
+	*recordingClient
+}
+
+func (f *failingPatchClient) Patch(ctx context.Context, obj ctrlclient.Object, patch ctrlclient.Patch, opts ...ctrlclient.PatchOption) error {
+	f.patchCalls++
+	return fmt.Errorf("simulated patch error")
 }
 
 func testScheme(t *testing.T) *runtime.Scheme {
@@ -328,5 +339,69 @@ func TestClientWrapper_Get_OtherKinds_NoLiveRefresh(t *testing.T) {
 	// And labels should be from cache (none), not live
 	if len(got.GetLabels()) != 0 {
 		t.Fatalf("expected no labels from cached service, got: %v", got.GetLabels())
+	}
+}
+
+func TestClientWrapper_Get_ConfigMap_Stripped_PatchFails_NoError_RepeatsLiveRefresh(t *testing.T) {
+	ctx := context.Background()
+	scheme := testScheme(t)
+
+	// 1) Cached stripped CM
+	cachedCM := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "cm-patch-fails",
+			Namespace: "default",
+		},
+	}
+	cachedClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(cachedCM).
+		Build()
+
+	// 2) Live CM with data
+	liveCM := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "cm-patch-fails",
+			Namespace: "default",
+		},
+		Data: map[string]string{"key": "value"},
+	}
+	liveBase := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(liveCM).
+		Build()
+
+	// 3) Wrap with our failing client
+	liveClient := &failingPatchClient{
+		recordingClient: &recordingClient{Client: liveBase},
+	}
+
+	wrapper := NewClientWrapper(cachedClient, liveClient)
+
+	// First Get — should fall back to live, patch fails silently
+	var got corev1.ConfigMap
+	err := wrapper.Get(ctx, types.NamespacedName{Name: "cm-patch-fails", Namespace: "default"}, &got)
+	if err != nil {
+		t.Fatalf("wrapper.Get failed (should not fail on patch error): %v", err)
+	}
+	if liveClient.getCalls == 0 {
+		t.Fatalf("expected live client Get to be called")
+	}
+	if liveClient.patchCalls == 0 {
+		t.Fatalf("expected live client Patch to be attempted")
+	}
+	// Data should come from live even though Patch failed
+	if got.Data["key"] != "value" {
+		t.Fatalf("expected data from live client, got: %v", got.Data)
+	}
+
+	// Second Get — should again fall back to live (label never persisted)
+	var got2 corev1.ConfigMap
+	err = wrapper.Get(ctx, types.NamespacedName{Name: "cm-patch-fails", Namespace: "default"}, &got2)
+	if err != nil {
+		t.Fatalf("wrapper.Get second call failed: %v", err)
+	}
+	if liveClient.getCalls < 2 {
+		t.Fatalf("expected live client Get to be called again; got %d", liveClient.getCalls)
 	}
 }
