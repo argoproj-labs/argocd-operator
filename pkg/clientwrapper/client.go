@@ -35,7 +35,6 @@ func NewClientWrapper(cached, live ctrlclient.Client) *ClientWrapper {
 // if the cached object appears stripped or is missing required labels.
 // After a live GET, it also ensures the object has the tracking label (best-effort).
 func (cw *ClientWrapper) Get(ctx context.Context, key types.NamespacedName, obj ctrlclient.Object, opts ...ctrlclient.GetOption) error {
-
 	if err := cw.Client.Get(ctx, key, obj, opts...); err != nil {
 		return err
 	}
@@ -43,26 +42,29 @@ func (cw *ClientWrapper) Get(ctx context.Context, key types.NamespacedName, obj 
 	switch o := obj.(type) {
 	case *corev1.Secret:
 		if secretNeedsLiveRefresh(o) {
-
 			if err := cw.liveClient.Get(ctx, key, obj, opts...); err != nil {
 				return err
 			}
 
-			cw.ensureTrackedLabel(ctx, obj)
+			err := cw.ensureTrackedLabel(ctx, obj)
+			if err != nil {
+				// non-fatal: a later reconcile will reattempt if this fails
+				log.Error(err, "failed to add operator tracking label to object", "name", obj.GetName(), "namespace", obj.GetNamespace())
+			}
 		}
-
 	case *corev1.ConfigMap:
 		if configmapNeedsLiveRefresh(o) {
-
 			if err := cw.liveClient.Get(ctx, key, obj, opts...); err != nil {
 				return err
 			}
 
-			cw.ensureTrackedLabel(ctx, obj)
+			err := cw.ensureTrackedLabel(ctx, obj)
+			if err != nil {
+				// non-fatal: a later reconcile will reattempt if this fails
+				log.Error(err, "failed to add operator tracking label to object", "name", obj.GetName(), "namespace", obj.GetNamespace())
+			}
 		}
-
 		// add more kinds here (e.g., *corev1.Deployment) if applying similar striping
-
 	}
 
 	return nil
@@ -70,7 +72,6 @@ func (cw *ClientWrapper) Get(ctx context.Context, key types.NamespacedName, obj 
 
 // secretNeedsLiveRefresh returns true if the cached secret looks stripped or untracked.
 func secretNeedsLiveRefresh(s *corev1.Secret) bool {
-
 	if !cacheutils.IsTrackedByOperator(s) {
 		return true
 	}
@@ -100,9 +101,9 @@ func configmapNeedsLiveRefresh(cm *corev1.ConfigMap) bool {
 }
 
 // ensureTrackedLabel adds the operator tracking label.
-func (cw *ClientWrapper) ensureTrackedLabel(ctx context.Context, obj ctrlclient.Object) {
+func (cw *ClientWrapper) ensureTrackedLabel(ctx context.Context, obj ctrlclient.Object) error {
 	if cacheutils.IsTrackedByOperator(obj) {
-		return
+		return nil
 	}
 	orig := obj.DeepCopyObject().(ctrlclient.Object)
 
@@ -115,8 +116,5 @@ func (cw *ClientWrapper) ensureTrackedLabel(ctx context.Context, obj ctrlclient.
 
 	// Best-effort patch to add the operator tracking label.
 	// Non-fatal: a later reconcile will reattempt if this fails.
-	err := cw.liveClient.Patch(ctx, obj, ctrlclient.MergeFrom(orig))
-	if err != nil {
-		log.Error(err, "failed to add operator tracking label to object", "name", obj.GetName(), "namespace", obj.GetNamespace())
-	}
+	return cw.liveClient.Patch(ctx, obj, ctrlclient.MergeFrom(orig))
 }

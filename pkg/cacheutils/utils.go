@@ -15,35 +15,32 @@ import (
 // when caching Secrets and ConfigMaps that are not managed/used by the operator.
 func StripDataFromSecretOrConfigMapTransform() clientgotools.TransformFunc {
 	return func(in interface{}) (interface{}, error) {
-
 		if s, ok := in.(*v1.Secret); ok {
 			// Keep full secret for operator-managed resources
 			if IsTrackedByOperator(s) {
 				return in, nil
 			}
-
 			if s.Data != nil || s.StringData != nil {
 				// Strip data fields from non-operator secrets to reduce memory usage
 				s.Data = nil
 				s.StringData = nil
 			}
-
 			return s, nil
 		}
+
 		if cm, ok := in.(*v1.ConfigMap); ok {
 			// Keep full configmap for operator-managed resources
 			if IsTrackedByOperator(cm) {
 				return in, nil
 			}
-
 			if cm.Data != nil || cm.BinaryData != nil {
 				// Strip data fields from non-operator configmaps to reduce memory usage
 				cm.Data = nil
 				cm.BinaryData = nil
 			}
-
 			return cm, nil
 		}
+
 		return in, nil
 	}
 }
