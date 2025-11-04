@@ -50,7 +50,7 @@ func ReconcileAgentRoleBinding(client client.Client, compName string, sa *corev1
 
 	// If RoleBinding exists, handle updates or deletion
 	if exists {
-		if !has(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
+		if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
 			argoutil.LogResourceDeletion(log, roleBinding, "agent rolebinding is being deleted as agent is disabled")
 			if err := client.Delete(context.TODO(), roleBinding); err != nil {
 				return fmt.Errorf("failed to delete agent rolebinding %s: %v", roleBinding.Name, err)
@@ -74,7 +74,7 @@ func ReconcileAgentRoleBinding(client client.Client, compName string, sa *corev1
 	}
 
 	// If RoleBinding doesn't exist and agent is disabled, nothing to do
-	if !has(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
+	if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
 		return nil
 	}
 
@@ -116,7 +116,7 @@ func ReconcileAgentClusterRoleBinding(client client.Client, compName string, sa 
 
 	// If ClusterRoleBinding exists, handle updates or deletion
 	if exists {
-		if !has(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
+		if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
 			argoutil.LogResourceDeletion(log, clusterRoleBinding, "agent clusterrolebinding is being deleted as agent is disabled")
 			if err := client.Delete(context.TODO(), clusterRoleBinding); err != nil {
 				return fmt.Errorf("failed to delete agent clusterrolebinding %s: %v", clusterRoleBinding.Name, err)
@@ -140,7 +140,7 @@ func ReconcileAgentClusterRoleBinding(client client.Client, compName string, sa 
 	}
 
 	// If ClusterRoleBinding doesn't exist and agent is disabled, nothing to do
-	if !has(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
+	if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
 		return nil
 	}
 

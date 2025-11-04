@@ -678,6 +678,121 @@ func TestAlphaToBetaConversion(t *testing.T) {
 				}
 			}),
 		},
+		{
+			name: "ArgoCD Example - Agent Agent Basic",
+			input: makeTestArgoCDAlpha(func(cr *ArgoCD) {
+				enabled := true
+				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
+					Agent: &AgentSpec{
+						Enabled: &enabled,
+						Creds:   "mtls:any",
+						Client: &AgentClientSpec{
+							PrincipalServerAddress: "argocd-agent-principal.example.com",
+							PrincipalServerPort:    "443",
+							Mode:                   "managed",
+						},
+					},
+				}
+			}),
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				enabled := true
+				cr.Spec.ArgoCDAgent = &v1beta1.ArgoCDAgentSpec{
+					Agent: &v1beta1.AgentSpec{
+						Enabled: &enabled,
+						Creds:   "mtls:any",
+						Client: &v1beta1.AgentClientSpec{
+							PrincipalServerAddress: "argocd-agent-principal.example.com",
+							PrincipalServerPort:    "443",
+							Mode:                   "managed",
+						},
+					},
+				}
+			}),
+		},
+		{
+			name: "ArgoCD Example - Agent Agent Full Configuration",
+			input: makeTestArgoCDAlpha(func(cr *ArgoCD) {
+				enabled := true
+				enableWebSocket := true
+				enableCompression := true
+				insecure := true
+				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
+					Agent: &AgentSpec{
+						Enabled:   &enabled,
+						Creds:     "mtls:any",
+						LogLevel:  "info",
+						LogFormat: "text",
+						Image:     "quay.io/user/argocd-agent:v1",
+						Client: &AgentClientSpec{
+							PrincipalServerAddress: "argocd-agent-principal.example.com",
+							PrincipalServerPort:    "443",
+							Mode:                   "managed",
+							EnableWebSocket:        &enableWebSocket,
+							EnableCompression:      &enableCompression,
+							KeepAliveInterval:      "30s",
+						},
+						Redis: &AgentRedisSpec{
+							ServerAddress: "redis:6379",
+						},
+						TLS: &AgentTLSSpec{
+							SecretName:       "agent-tls-secret",
+							RootCASecretName: "agent-ca-secret",
+							Insecure:         &insecure,
+						},
+					},
+				}
+			}),
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				enabled := true
+				enableWebSocket := true
+				enableCompression := true
+				insecure := true
+				cr.Spec.ArgoCDAgent = &v1beta1.ArgoCDAgentSpec{
+					Agent: &v1beta1.AgentSpec{
+						Enabled:   &enabled,
+						Creds:     "mtls:any",
+						LogLevel:  "info",
+						LogFormat: "text",
+						Image:     "quay.io/user/argocd-agent:v1",
+						Client: &v1beta1.AgentClientSpec{
+							PrincipalServerAddress: "argocd-agent-principal.example.com",
+							PrincipalServerPort:    "443",
+							Mode:                   "managed",
+							EnableWebSocket:        &enableWebSocket,
+							EnableCompression:      &enableCompression,
+							KeepAliveInterval:      "30s",
+						},
+						Redis: &v1beta1.AgentRedisSpec{
+							ServerAddress: "redis:6379",
+						},
+						TLS: &v1beta1.AgentTLSSpec{
+							SecretName:       "agent-tls-secret",
+							RootCASecretName: "agent-ca-secret",
+							Insecure:         &insecure,
+						},
+					},
+				}
+			}),
+		},
+		{
+			name: "ArgoCD Example - Agent Agent Disabled",
+			input: makeTestArgoCDAlpha(func(cr *ArgoCD) {
+				enabled := false
+				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
+					Agent: &AgentSpec{
+						Enabled: &enabled,
+					},
+				}
+			}),
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				enabled := false
+				cr.Spec.ArgoCDAgent = &v1beta1.ArgoCDAgentSpec{
+					Agent: &v1beta1.AgentSpec{
+						Enabled: &enabled,
+					},
+				}
+			}),
+		},
 	}
 
 	for _, test := range tests {
@@ -934,6 +1049,127 @@ func TestBetaToAlphaConversion(t *testing.T) {
 				enabled := false
 				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
 					Principal: &PrincipalSpec{
+						Enabled: &enabled,
+					},
+				}
+			}),
+		},
+		{
+			name: "ArgoCD Example - Agent Agent Basic",
+			input: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				enabled := true
+				cr.Spec.ArgoCDAgent = &v1beta1.ArgoCDAgentSpec{
+					Agent: &v1beta1.AgentSpec{
+						Enabled: &enabled,
+						Creds:   "mtls:any",
+						Client: &v1beta1.AgentClientSpec{
+							PrincipalServerAddress: "argocd-agent-principal.example.com",
+							PrincipalServerPort:    "443",
+							Mode:                   "managed",
+						},
+					},
+				}
+			}),
+			expectedOutput: makeTestArgoCDAlpha(func(cr *ArgoCD) {
+				enabled := true
+				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
+					Agent: &AgentSpec{
+						Enabled: &enabled,
+						Creds:   "mtls:any",
+						Client: &AgentClientSpec{
+							PrincipalServerAddress: "argocd-agent-principal.example.com",
+							PrincipalServerPort:    "443",
+							Mode:                   "managed",
+						},
+					},
+				}
+			}),
+		},
+		{
+			name: "ArgoCD Example - Agent Agent Full Configuration",
+			input: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				enabled := true
+				enableWebSocket := true
+				enableCompression := true
+				insecure := true
+				cr.Spec.ArgoCDAgent = &v1beta1.ArgoCDAgentSpec{
+					Agent: &v1beta1.AgentSpec{
+						Enabled:   &enabled,
+						Creds:     "mtls:any",
+						LogLevel:  "info",
+						LogFormat: "text",
+						Image:     "quay.io/user/argocd-agent:v1",
+						Env: []corev1.EnvVar{
+							{Name: "TEST_ENV", Value: "test-value"},
+						},
+						Client: &v1beta1.AgentClientSpec{
+							PrincipalServerAddress: "argocd-agent-principal.example.com",
+							PrincipalServerPort:    "443",
+							Mode:                   "managed",
+							EnableWebSocket:        &enableWebSocket,
+							EnableCompression:      &enableCompression,
+							KeepAliveInterval:      "30s",
+						},
+						Redis: &v1beta1.AgentRedisSpec{
+							ServerAddress: "redis:6379",
+						},
+						TLS: &v1beta1.AgentTLSSpec{
+							SecretName:       "agent-tls-secret",
+							RootCASecretName: "agent-ca-secret",
+							Insecure:         &insecure,
+						},
+					},
+				}
+			}),
+			expectedOutput: makeTestArgoCDAlpha(func(cr *ArgoCD) {
+				enabled := true
+				enableWebSocket := true
+				enableCompression := true
+				insecure := true
+				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
+					Agent: &AgentSpec{
+						Enabled:   &enabled,
+						Creds:     "mtls:any",
+						LogLevel:  "info",
+						LogFormat: "text",
+						Image:     "quay.io/user/argocd-agent:v1",
+						Env: []corev1.EnvVar{
+							{Name: "TEST_ENV", Value: "test-value"},
+						},
+						Client: &AgentClientSpec{
+							PrincipalServerAddress: "argocd-agent-principal.example.com",
+							PrincipalServerPort:    "443",
+							Mode:                   "managed",
+							EnableWebSocket:        &enableWebSocket,
+							EnableCompression:      &enableCompression,
+							KeepAliveInterval:      "30s",
+						},
+						Redis: &AgentRedisSpec{
+							ServerAddress: "redis:6379",
+						},
+						TLS: &AgentTLSSpec{
+							SecretName:       "agent-tls-secret",
+							RootCASecretName: "agent-ca-secret",
+							Insecure:         &insecure,
+						},
+					},
+				}
+			}),
+		},
+		{
+			name: "ArgoCD Example - Agent Agent Disabled",
+			input: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				enabled := false
+				cr.Spec.ArgoCDAgent = &v1beta1.ArgoCDAgentSpec{
+					Agent: &v1beta1.AgentSpec{
+						Enabled: &enabled,
+					},
+				}
+			}),
+			expectedOutput: makeTestArgoCDAlpha(func(cr *ArgoCD) {
+				enabled := false
+				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
+					Agent: &AgentSpec{
 						Enabled: &enabled,
 					},
 				}

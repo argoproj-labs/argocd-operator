@@ -50,7 +50,7 @@ func ReconcileAgentServiceAccount(client client.Client, compName string, cr *arg
 
 	if exists {
 		// If service account exists but agent is disabled, delete it
-		if !has(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
+		if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
 			argoutil.LogResourceDeletion(log, sa, "agent service account is being deleted as agent is disabled")
 			if err := client.Delete(context.TODO(), sa); err != nil {
 				return nil, fmt.Errorf("failed to delete agent service account %s: %v", sa.Name, err)
@@ -62,7 +62,7 @@ func ReconcileAgentServiceAccount(client client.Client, compName string, cr *arg
 	}
 
 	// If service account doesn't exist and agent is disabled, nothing to do
-	if !has(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
+	if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
 		return sa, nil
 	}
 

@@ -12,6 +12,23 @@ spec:
     agent:
       # Enable the Agent component
       enabled: true
+
+      # Credential method for authentication (mTLS)
+      creds: "mtls:any"
+      # Log level for the Agent component
+      logLevel: "info"
+      # Log format (text or json)
+      logFormat: "text"
+      # Container image for the ArgoCD Agent
+      image: "quay.io/argoprojlabs/argocd-agent:v0.3.2"
+      # Environment variables for the Agent component
+      env:
+        - name: GRPC_GO_LOG_VERBOSITY_LEVEL
+          value: "99"
+        - name: GRPC_GO_LOG_SEVERITY_LEVEL
+          value: "info"
+        - name: GODEBUG
+          value: "http2debug=2"
       
       # Client configuration for the Agent component
       client:
@@ -20,16 +37,8 @@ spec:
         principalServerAddress: "argocd-agent-principal.example.com"
         # Port of the principal server
         principalServerPort: "443"
-        # Log level for the Agent component
-        logLevel: "info"
-        # Log format (text or json)
-        logFormat: "text"
-        # Container image for the ArgoCD Agent
-        image: "quay.io/argoprojlabs/argocd-agent:v0.3.2"
         # Operational mode (autonomous or managed)
         mode: "managed"
-        # Credential method for authentication (mTLS)
-        creds: "mtls:any"
         # Enable WebSocket for real-time event streaming
         enableWebSocket: false
         # Enable compression for gRPC communication

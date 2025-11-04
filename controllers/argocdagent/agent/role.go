@@ -48,7 +48,7 @@ func ReconcileAgentRole(client client.Client, compName string, cr *argoproj.Argo
 
 	// If Role exists, handle updates or deletion
 	if exists {
-		if !has(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
+		if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
 			argoutil.LogResourceDeletion(log, role, "agent role is being deleted as agent is disabled")
 			if err := client.Delete(context.TODO(), role); err != nil {
 				return role, fmt.Errorf("failed to delete agent role %s: %w", role.Name, err)
@@ -67,7 +67,7 @@ func ReconcileAgentRole(client client.Client, compName string, cr *argoproj.Argo
 	}
 
 	// If Role doesn't exist and agent is disabled, nothing to do
-	if !has(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
+	if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
 		return role, nil
 	}
 
@@ -101,7 +101,7 @@ func ReconcileAgentClusterRoles(client client.Client, compName string, cr *argop
 
 	// If ClusterRole exists, handle updates or deletion
 	if exists {
-		if !has(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
+		if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
 			argoutil.LogResourceDeletion(log, clusterRole, "agent clusterRole is being deleted as agent is disabled")
 			if err := client.Delete(context.TODO(), clusterRole); err != nil {
 				return clusterRole, fmt.Errorf("failed to delete agent clusterRole %s: %v", clusterRole.Name, err)
@@ -120,7 +120,7 @@ func ReconcileAgentClusterRoles(client client.Client, compName string, cr *argop
 	}
 
 	// If ClusterRole doesn't exist and agent is disabled, nothing to do
-	if !has(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
+	if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
 		return clusterRole, nil
 	}
 

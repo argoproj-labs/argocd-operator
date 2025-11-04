@@ -1157,6 +1157,21 @@ type AgentSpec struct {
 	// Enabled is the flag to enable the Agent component during Argo CD installation. (optional, default `false`)
 	Enabled *bool `json:"enabled,omitempty"`
 
+	// Creds is the credential identifier for the agent authentication
+	Creds string `json:"creds,omitempty"`
+
+	// LogLevel refers to the log level used by the Agent component.
+	LogLevel string `json:"logLevel,omitempty"`
+
+	// LogFormat refers to the log format used by the Agent component.
+	LogFormat string `json:"logFormat,omitempty"`
+
+	// Image is the name of Argo CD Agent image
+	Image string `json:"image,omitempty"`
+
+	// Env lets you specify environment for agent pods
+	Env []corev1.EnvVar `json:"env,omitempty"`
+
 	// Client defines the client options for the Agent component.
 	Client *AgentClientSpec `json:"client,omitempty"`
 
@@ -1175,9 +1190,6 @@ type AgentClientSpec struct {
 	// PrincipalServerPort is the remote port of the principal server to connect to.
 	PrincipalServerPort string `json:"principalServerPort,omitempty"`
 
-	// Creds is the credential identifier for the agent authentication
-	Creds string `json:"creds,omitempty"`
-
 	// Mode is the operational mode for the agent (managed or autonomous)
 	Mode string `json:"mode,omitempty"`
 
@@ -1187,20 +1199,8 @@ type AgentClientSpec struct {
 	// EnableCompression is the flag to enable compression while sending data between Principal and Agent using gRPC
 	EnableCompression *bool `json:"enableCompression,omitempty"`
 
-	// LogLevel refers to the log level used by the Agent component.
-	LogLevel string `json:"logLevel,omitempty"`
-
-	// LogFormat refers to the log format used by the Agent component.
-	LogFormat string `json:"logFormat,omitempty"`
-
 	// KeepAliveInterval is the interval for keep-alive pings to the principal
 	KeepAliveInterval string `json:"keepAliveInterval,omitempty"`
-
-	// Image is the name of Argo CD Agent image
-	Image string `json:"image,omitempty"`
-
-	// Env lets you specify environment for agent pods
-	Env []corev1.EnvVar `json:"env,omitempty"`
 }
 
 type AgentTLSSpec struct {

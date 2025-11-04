@@ -59,10 +59,7 @@ func withAgentImage(image string) argoCDOpt {
 		if a.Spec.ArgoCDAgent.Agent == nil {
 			a.Spec.ArgoCDAgent.Agent = &argoproj.AgentSpec{}
 		}
-		if a.Spec.ArgoCDAgent.Agent.Client == nil {
-			a.Spec.ArgoCDAgent.Agent.Client = &argoproj.AgentClientSpec{}
-		}
-		a.Spec.ArgoCDAgent.Agent.Client.Image = image
+		a.Spec.ArgoCDAgent.Agent.Image = image
 	}
 }
 
