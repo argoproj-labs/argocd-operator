@@ -267,9 +267,9 @@ func GetTruncatedCRName(cr *argoproj.ArgoCD) string {
 // 1. Instance specific policy defined in the ArgoCD CR
 // 2. Global policy defined via the IMAGE_PULL_POLICY environment variable
 // 3. Default policy (IfNotPresent)
-func GetImagePullPolicy(policy *corev1.PullPolicy) corev1.PullPolicy {
-	if policy != nil {
-		return *policy
+func GetImagePullPolicy(policy corev1.PullPolicy) corev1.PullPolicy {
+	if policy != "" {
+		return policy
 	}
 
 	envValue := os.Getenv(common.ArgoCDImagePullPolicyEnvName)
