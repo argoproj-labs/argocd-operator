@@ -570,7 +570,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsSourceNamespacesResources(cr *ar
 			continue
 		}
 		if !contains(appsNamespaces, sourceNamespace) {
-			log.Error(fmt.Errorf("skipping reconciliation of Notification resources for sourceNamespace %s as Apps in target sourceNamespace is not enabled", sourceNamespace), "Warning")
+			log.Info(fmt.Sprintf("skipping reconciliation of Notification resources for sourceNamespace %s as Apps in target sourceNamespace is not enabled", sourceNamespace), "Warning")
 			continue
 		}
 
@@ -674,46 +674,14 @@ func (r *ReconcileArgoCD) reconcileNotificationsSourceNamespacesResources(cr *ar
 }
 
 // reconcileSourceNamespaceNotificationsConfigurationCR ensures a NotificationsConfiguration CR exists in the given source namespace.
-// It propagates the NotificationsConfiguration from the Argo CD instance namespace if it exists, otherwise uses defaults.
 func (r *ReconcileArgoCD) reconcileSourceNamespaceNotificationsConfigurationCR(cr *argoproj.ArgoCD, sourceNamespace string) error {
 	if !isNotificationsEnabled(cr) {
 		return nil
 	}
 
-	// Helper function to copy a map
-	copyMapForNotificationSpec := func(src map[string]string) map[string]string {
-		if src == nil {
-			return map[string]string{}
-		}
-		dst := make(map[string]string, len(src))
-		for k, v := range src {
-			dst[k] = v
-		}
-		return dst
-	}
-
-	// Try to fetch the NotificationsConfiguration from the Argo CD instance namespace
-	instanceNotifCfg := &v1alpha1.NotificationsConfiguration{}
-	var instanceSpec *v1alpha1.NotificationsConfigurationSpec
-	err := argoutil.FetchObject(r.Client, cr.Namespace, DefaultNotificationsConfigurationInstanceName, instanceNotifCfg)
-	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			return fmt.Errorf("failed to get the NotificationsConfiguration from instance namespace %s : %s", cr.Namespace, err)
-		}
-		// Not found in instance namespace, use defaults
-		instanceSpec = &v1alpha1.NotificationsConfigurationSpec{
-			Context:   getDefaultNotificationsContext(),
-			Triggers:  getDefaultNotificationsTriggers(),
-			Templates: getDefaultNotificationsTemplates(),
-		}
-	} else {
-		// Found in instance namespace, use its spec
-		instanceSpec = &instanceNotifCfg.Spec
-	}
-
 	// Check if NotificationsConfiguration exists in source namespace
 	sourceNotifCfg := &v1alpha1.NotificationsConfiguration{}
-	err = argoutil.FetchObject(r.Client, sourceNamespace, DefaultNotificationsConfigurationInstanceName, sourceNotifCfg)
+	err := argoutil.FetchObject(r.Client, sourceNamespace, DefaultNotificationsConfigurationInstanceName, sourceNotifCfg)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to get the NotificationsConfiguration from source namespace %s : %s", sourceNamespace, err)
@@ -725,35 +693,15 @@ func (r *ReconcileArgoCD) reconcileSourceNamespaceNotificationsConfigurationCR(c
 				Namespace: sourceNamespace,
 			},
 			Spec: v1alpha1.NotificationsConfigurationSpec{
-				Context:       copyMapForNotificationSpec(instanceSpec.Context),
-				Triggers:      copyMapForNotificationSpec(instanceSpec.Triggers),
-				Templates:     copyMapForNotificationSpec(instanceSpec.Templates),
-				Services:      copyMapForNotificationSpec(instanceSpec.Services),
-				Subscriptions: copyMapForNotificationSpec(instanceSpec.Subscriptions),
+				Context:   getDefaultNotificationsContext(),
+				Triggers:  getDefaultNotificationsTriggers(),
+				Templates: getDefaultNotificationsTemplates(),
 			},
 		}
-		argoutil.LogResourceCreation(log, sourceNotifCfg, "propagating NotificationsConfiguration from instance namespace")
+		argoutil.LogResourceCreation(log, sourceNotifCfg, "creating NotificationsConfiguration for namespace")
 		return r.Create(context.TODO(), newCfg)
 	}
 
-	// Already exists in source namespace, update it at leaset to match defaults
-	updated := false
-	if sourceNotifCfg.Spec.Context == nil {
-		sourceNotifCfg.Spec.Context = getDefaultNotificationsContext()
-		updated = true
-	}
-	if sourceNotifCfg.Spec.Triggers == nil {
-		sourceNotifCfg.Spec.Triggers = getDefaultNotificationsTriggers()
-		updated = true
-	}
-	if sourceNotifCfg.Spec.Templates == nil {
-		sourceNotifCfg.Spec.Templates = getDefaultNotificationsTemplates()
-		updated = true
-	}
-	if updated {
-		argoutil.LogResourceUpdate(log, sourceNotifCfg)
-		return r.Update(context.TODO(), sourceNotifCfg)
-	}
 	return nil
 }
 
@@ -923,8 +871,6 @@ func (r *ReconcileArgoCD) cleanupUnmanagedNotificationsSourceNamespaceResources(
 			return fmt.Errorf("failed to delete the NotificationsConfiguration in namespace %s : %s", namespace.Name, err)
 		}
 	}
-
-	// app-in-any-ns code will handle removal of notifications permissions for argocd-server in target namespace
 
 	// Remove notifications-managed-by-cluster-argocd label from the namespace
 	argoutil.LogResourceUpdate(log, &namespace, "removing label", common.ArgoCDNotificationsManagedByClusterArgoCDLabel)

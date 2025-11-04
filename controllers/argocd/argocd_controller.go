@@ -79,7 +79,7 @@ type ReconcileArgoCD struct {
 	// Stores a list of ApplicationSetSourceNamespaces as keys
 	ManagedApplicationSetSourceNamespaces map[string]string
 
-	// Stores a list of ApplicationSetSourceNamespaces as keys
+	// Stores a list of NotificationsSourceNamespaces as keys
 	ManagedNotificationsSourceNamespaces map[string]string
 
 	// Stores label selector used to reconcile a subset of ArgoCD
