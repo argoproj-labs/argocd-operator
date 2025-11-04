@@ -30,6 +30,7 @@ import (
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -57,8 +58,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	corev1 "k8s.io/api/core/v1"
+
 	v1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	v1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/pkg/cacheutils"
+	cw "github.com/argoproj-labs/argocd-operator/pkg/clientwrapper"
 	"github.com/argoproj-labs/argocd-operator/version"
 	//+kubebuilder:scaffold:imports
 )
@@ -182,10 +187,21 @@ func main() {
 		},
 	}
 
-	if watchedNsCache := getDefaultWatchedNamespacesCacheOptions(); watchedNsCache != nil {
+	// Use transformers to strip data from Secrets and ConfigMaps
+	// that are not tracked by the operator to reduce memory usage.
+	if strings.ToLower(os.Getenv("MEMORY_OPTIMIZATION_ENABLED")) != "false" {
+		setupLog.Info("memory optimization is enabled")
 		options.Cache = cache.Options{
-			DefaultNamespaces: watchedNsCache,
+			Scheme: scheme,
+			ByObject: map[crclient.Object]cache.ByObject{
+				&corev1.Secret{}:    {Transform: cacheutils.StripDataFromSecretOrConfigMapTransform()},
+				&corev1.ConfigMap{}: {Transform: cacheutils.StripDataFromSecretOrConfigMapTransform()},
+			},
 		}
+	}
+
+	if watchedNsCache := getDefaultWatchedNamespacesCacheOptions(); watchedNsCache != nil {
+		options.Cache.DefaultNamespaces = watchedNsCache
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
@@ -194,6 +210,22 @@ func main() {
 		os.Exit(1)
 	}
 
+	var client crclient.Client
+	if strings.ToLower(os.Getenv("MEMORY_OPTIMIZATION_ENABLED")) != "false" {
+		liveClient, err := crclient.New(ctrl.GetConfigOrDie(), crclient.Options{Scheme: mgr.GetScheme()})
+		if err != nil {
+			setupLog.Error(err, "unable to create live client")
+			os.Exit(1)
+		}
+
+		// Wraps the controller runtime's default client to provide:
+		//   1. Fallback to the live client when a Secret/ConfigMap is stripped in the cache.
+		//   2. Automatic labeling of fetched objects, so they are retained in full form
+		//      in subsequent cache updates and avoid repeated live lookups.
+		client = cw.NewClientWrapper(mgr.GetClient(), liveClient)
+	} else {
+		client = mgr.GetClient()
+	}
 	setupLog.Info("Registering Components.")
 
 	// Setup Scheme for all resources
@@ -237,7 +269,7 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&argocd.ReconcileArgoCD{
-		Client:        mgr.GetClient(),
+		Client:        client,
 		Scheme:        mgr.GetScheme(),
 		LabelSelector: labelSelectorFlag,
 		K8sClient:     k8sClient,
@@ -250,14 +282,14 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&argocdexport.ReconcileArgoCDExport{
-		Client: mgr.GetClient(),
+		Client: client,
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ArgoCDExport")
 		os.Exit(1)
 	}
 	if err = (&notificationsConfig.NotificationsConfigurationReconciler{
-		Client: mgr.GetClient(),
+		Client: client,
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NotificationsConfiguration")
