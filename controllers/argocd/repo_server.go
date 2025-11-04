@@ -706,17 +706,13 @@ func caTrustInitContainer(cr *argocdoperatorv1beta1.ArgoCD, argoImage string, vo
 	return corev1.Container{
 		Name:            "update-ca-certificates",
 		Image:           argoImage,
-		ImagePullPolicy: corev1.PullAlways,
-		Env: []corev1.EnvVar{
-			{
-				Name:  "IMAGE_CERT_PATH",
-				Value: imageCertPath,
-			},
-		},
+		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
+		Env: proxyEnvVars(corev1.EnvVar{
+			Name:  "IMAGE_CERT_PATH",
+			Value: imageCertPath,
+		}),
 		Command: []string{"/bin/bash", "-c"},
 		Args: []string{`
-                #!/usr/bin/env bash
-                # https://github.com/olivergondza/bash-strict-mode
                 set -eEuo pipefail
                 trap 's=$?; echo >&2 "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
 
@@ -740,23 +736,13 @@ func caTrustInitContainer(cr *argocdoperatorv1beta1.ArgoCD, argoImage string, vo
 			}, {
 				Name:      volumeTarget,
 				MountPath: "/etc/ssl/certs/",
+			}, {
+				Name:      "tmp",
+				MountPath: "/tmp",
 			},
 		},
-		Resources: getArgoRepoResources(cr),
-		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{
-					"ALL",
-				},
-			},
-			// Needed by update-ca-certificates for /tmp/
-			ReadOnlyRootFilesystem: boolPtr(false),
-			RunAsNonRoot:           boolPtr(true),
-			SeccompProfile: &corev1.SeccompProfile{
-				Type: "RuntimeDefault",
-			},
-		},
+		Resources:       getArgoRepoResources(cr),
+		SecurityContext: argoutil.DefaultSecurityContext(),
 	}
 }
 
