@@ -528,8 +528,8 @@ func TestAlphaToBetaConversion(t *testing.T) {
 				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
 					Principal: &PrincipalSpec{
 						Enabled: &enabled,
+						Auth:    "mtls:CN=([^,]+)",
 						Server: &PrincipalServerSpec{
-							Auth: "mtls:CN=([^,]+)",
 							Service: ArgoCDAgentPrincipalServiceSpec{
 								Type: corev1.ServiceTypeClusterIP,
 							},
@@ -545,8 +545,8 @@ func TestAlphaToBetaConversion(t *testing.T) {
 				cr.Spec.ArgoCDAgent = &v1beta1.ArgoCDAgentSpec{
 					Principal: &v1beta1.PrincipalSpec{
 						Enabled: &enabled,
+						Auth:    "mtls:CN=([^,]+)",
 						Server: &v1beta1.PrincipalServerSpec{
-							Auth: "mtls:CN=([^,]+)",
 							Service: v1beta1.ArgoCDAgentPrincipalServiceSpec{
 								Type: corev1.ServiceTypeClusterIP,
 							},
@@ -568,13 +568,13 @@ func TestAlphaToBetaConversion(t *testing.T) {
 				allowGenerate := true
 				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
 					Principal: &PrincipalSpec{
-						Enabled: &enabled,
+						Enabled:   &enabled,
+						Auth:      "mtls:CN=([^,]+)",
+						LogLevel:  "info",
+						LogFormat: "text",
+						Image:     "quay.io/user/argocd-agent:v1",
 						Server: &PrincipalServerSpec{
-							Auth:                 "mtls:CN=([^,]+)",
 							EnableWebSocket:      &enableWebSocket,
-							LogLevel:             "info",
-							LogFormat:            "text",
-							Image:                "quay.io/user/argocd-agent:v1",
 							KeepAliveMinInterval: "30s",
 							Service: ArgoCDAgentPrincipalServiceSpec{
 								Type: corev1.ServiceTypeLoadBalancer,
@@ -617,14 +617,14 @@ func TestAlphaToBetaConversion(t *testing.T) {
 				insecureGenerate := true
 				cr.Spec.ArgoCDAgent = &v1beta1.ArgoCDAgentSpec{
 					Principal: &v1beta1.PrincipalSpec{
-						Enabled: &enabled,
+						Enabled:   &enabled,
+						Auth:      "mtls:CN=([^,]+)",
+						LogLevel:  "info",
+						LogFormat: "text",
+						Image:     "quay.io/user/argocd-agent:v1",
 						Server: &v1beta1.PrincipalServerSpec{
-							Auth:                 "mtls:CN=([^,]+)",
 							EnableWebSocket:      &enableWebSocket,
-							LogLevel:             "info",
-							LogFormat:            "text",
 							KeepAliveMinInterval: "30s",
-							Image:                "quay.io/user/argocd-agent:v1",
 							Service: v1beta1.ArgoCDAgentPrincipalServiceSpec{
 								Type: corev1.ServiceTypeLoadBalancer,
 							},
@@ -783,8 +783,8 @@ func TestBetaToAlphaConversion(t *testing.T) {
 				cr.Spec.ArgoCDAgent = &v1beta1.ArgoCDAgentSpec{
 					Principal: &v1beta1.PrincipalSpec{
 						Enabled: &enabled,
+						Auth:    "mtls:CN=([^,]+)",
 						Server: &v1beta1.PrincipalServerSpec{
-							Auth: "mtls:CN=([^,]+)",
 							Service: v1beta1.ArgoCDAgentPrincipalServiceSpec{
 								Type: corev1.ServiceTypeNodePort,
 							},
@@ -800,8 +800,8 @@ func TestBetaToAlphaConversion(t *testing.T) {
 				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
 					Principal: &PrincipalSpec{
 						Enabled: &enabled,
+						Auth:    "mtls:CN=([^,]+)",
 						Server: &PrincipalServerSpec{
-							Auth: "mtls:CN=([^,]+)",
 							Service: ArgoCDAgentPrincipalServiceSpec{
 								Type: corev1.ServiceTypeNodePort,
 							},
@@ -823,17 +823,17 @@ func TestBetaToAlphaConversion(t *testing.T) {
 				insecureGenerate := true
 				cr.Spec.ArgoCDAgent = &v1beta1.ArgoCDAgentSpec{
 					Principal: &v1beta1.PrincipalSpec{
-						Enabled: &enabled,
+						Enabled:   &enabled,
+						Auth:      "mtls:CN=([^,]+)",
+						LogLevel:  "info",
+						LogFormat: "text",
+						Image:     "quay.io/user/argocd-agent:v1",
+						Env: []corev1.EnvVar{
+							{Name: "TEST_ENV", Value: "test-value"},
+						},
 						Server: &v1beta1.PrincipalServerSpec{
-							Auth:                 "mtls:CN=([^,]+)",
 							EnableWebSocket:      &enableWebSocket,
-							LogLevel:             "info",
-							LogFormat:            "text",
 							KeepAliveMinInterval: "30s",
-							Image:                "quay.io/user/argocd-agent:v1",
-							Env: []corev1.EnvVar{
-								{Name: "TEST_ENV", Value: "test-value"},
-							},
 							Service: v1beta1.ArgoCDAgentPrincipalServiceSpec{
 								Type: corev1.ServiceTypeExternalName,
 							},
@@ -875,17 +875,17 @@ func TestBetaToAlphaConversion(t *testing.T) {
 				insecureGenerate := true
 				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
 					Principal: &PrincipalSpec{
-						Enabled: &enabled,
+						Enabled:   &enabled,
+						Auth:      "mtls:CN=([^,]+)",
+						LogLevel:  "info",
+						LogFormat: "text",
+						Image:     "quay.io/user/argocd-agent:v1",
+						Env: []corev1.EnvVar{
+							{Name: "TEST_ENV", Value: "test-value"},
+						},
 						Server: &PrincipalServerSpec{
-							Auth:                 "mtls:CN=([^,]+)",
 							EnableWebSocket:      &enableWebSocket,
-							LogLevel:             "info",
-							LogFormat:            "text",
-							Image:                "quay.io/user/argocd-agent:v1",
 							KeepAliveMinInterval: "30s",
-							Env: []corev1.EnvVar{
-								{Name: "TEST_ENV", Value: "test-value"},
-							},
 							Service: ArgoCDAgentPrincipalServiceSpec{
 								Type: corev1.ServiceTypeExternalName,
 							},

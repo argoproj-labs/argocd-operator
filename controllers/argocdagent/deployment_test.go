@@ -59,10 +59,7 @@ func withPrincipalImage(image string) argoCDOpt {
 		if a.Spec.ArgoCDAgent.Principal == nil {
 			a.Spec.ArgoCDAgent.Principal = &argoproj.PrincipalSpec{}
 		}
-		if a.Spec.ArgoCDAgent.Principal.Server == nil {
-			a.Spec.ArgoCDAgent.Principal.Server = &argoproj.PrincipalServerSpec{}
-		}
-		a.Spec.ArgoCDAgent.Principal.Server.Image = image
+		a.Spec.ArgoCDAgent.Principal.Image = image
 	}
 }
 

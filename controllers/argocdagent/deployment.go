@@ -184,8 +184,8 @@ func buildArgs(compName string) []string {
 
 func buildPrincipalImage(cr *argoproj.ArgoCD) string {
 	// Check CR specification first
-	if hasServer(cr) && cr.Spec.ArgoCDAgent.Principal.Server.Image != "" {
-		return cr.Spec.ArgoCDAgent.Principal.Server.Image
+	if hasPrincipal(cr) && cr.Spec.ArgoCDAgent.Principal.Image != "" {
+		return cr.Spec.ArgoCDAgent.Principal.Image
 	}
 
 	// Value specified in the environment take precedence over the default
@@ -385,8 +385,8 @@ func buildPrincipalContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
 	}
 
 	// Add custom environment variables if specified in the CR
-	if hasServer(cr) && cr.Spec.ArgoCDAgent.Principal.Server.Env != nil {
-		env = append(env, cr.Spec.ArgoCDAgent.Principal.Server.Env...)
+	if hasPrincipal(cr) && cr.Spec.ArgoCDAgent.Principal.Env != nil {
+		env = append(env, cr.Spec.ArgoCDAgent.Principal.Env...)
 	}
 
 	return env
@@ -423,15 +423,15 @@ const (
 
 // Logging Configuration
 func getPrincipalLogLevel(cr *argoproj.ArgoCD) string {
-	if hasServer(cr) && cr.Spec.ArgoCDAgent.Principal.Server.LogLevel != "" {
-		return cr.Spec.ArgoCDAgent.Principal.Server.LogLevel
+	if hasPrincipal(cr) && cr.Spec.ArgoCDAgent.Principal.LogLevel != "" {
+		return cr.Spec.ArgoCDAgent.Principal.LogLevel
 	}
 	return "info"
 }
 
 func getPrincipalLogFormat(cr *argoproj.ArgoCD) string {
-	if hasServer(cr) && cr.Spec.ArgoCDAgent.Principal.Server.LogFormat != "" {
-		return cr.Spec.ArgoCDAgent.Principal.Server.LogFormat
+	if hasPrincipal(cr) && cr.Spec.ArgoCDAgent.Principal.LogFormat != "" {
+		return cr.Spec.ArgoCDAgent.Principal.LogFormat
 	}
 	return "text"
 }
@@ -483,8 +483,8 @@ func getPrincipalJWTAllowGenerate(cr *argoproj.ArgoCD) string {
 
 // Authentication Configuration
 func getPrincipalAuth(cr *argoproj.ArgoCD) string {
-	if hasServer(cr) && cr.Spec.ArgoCDAgent.Principal.Server.Auth != "" {
-		return cr.Spec.ArgoCDAgent.Principal.Server.Auth
+	if hasPrincipal(cr) && cr.Spec.ArgoCDAgent.Principal.Auth != "" {
+		return cr.Spec.ArgoCDAgent.Principal.Auth
 	}
 	return "mtls:CN=([^,]+)"
 }

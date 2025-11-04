@@ -9,12 +9,11 @@ spec:
   argoCDAgent:
     principal:
       enabled: true
-      server:
-        auth: "mtls:CN=([^,]+)"
-        logLevel: "info"
-        env:
-          - name: TEST_ENV
-            value: test_value
+      auth: "mtls:CN=([^,]+)"
+      logLevel: "info"
+      env:
+        - name: TEST_ENV
+          value: test_value
       namespace:
         allowedNamespaces:
           - "*"

@@ -1030,6 +1030,21 @@ type PrincipalSpec struct {
 	// Enabled is the flag to enable the Principal component during Argo CD installation. (optional, default `false`)
 	Enabled *bool `json:"enabled,omitempty"`
 
+	// Auth is the authentication method for the Principal component.
+	Auth string `json:"auth,omitempty"`
+
+	// LogLevel refers to the log level used by the Principal component.
+	LogLevel string `json:"logLevel,omitempty"`
+
+	// LogFormat refers to the log format used by the Principal component.
+	LogFormat string `json:"logFormat,omitempty"`
+
+	// Image is the name of Argo CD Agent image
+	Image string `json:"image,omitempty"`
+
+	// Env lets you specify environment for principal pods
+	Env []corev1.EnvVar `json:"env,omitempty"`
+
 	// Server defines the server options for the Principal component.
 	Server *PrincipalServerSpec `json:"server,omitempty"`
 
@@ -1050,26 +1065,11 @@ type PrincipalSpec struct {
 }
 
 type PrincipalServerSpec struct {
-	// Auth is the authentication method for the Principal component.
-	Auth string `json:"auth,omitempty"`
-
 	// EnableWebSocket is the flag to enable the WebSocket on gRPC to stream events to the Agent.
 	EnableWebSocket *bool `json:"enableWebSocket,omitempty"`
 
-	// LogLevel refers to the log level used by the Principal component.
-	LogLevel string `json:"logLevel,omitempty"`
-
-	// LogFormat refers to the log format used by the Principal component.
-	LogFormat string `json:"logFormat,omitempty"`
-
 	// KeepAliveMinInterval is the minimum interval between keep-alive messages sent by the Agent to the Principal.
 	KeepAliveMinInterval string `json:"keepAliveMinInterval,omitempty"`
-
-	// Image is the name of Argo CD Agent image
-	Image string `json:"image,omitempty"`
-
-	// Env lets you specify environment for principal pods
-	Env []corev1.EnvVar `json:"env,omitempty"`
 
 	// Service defines the options for the Service backing the ArgoCD Agent component.
 	// If not set, type ClusterIP will be used by default.

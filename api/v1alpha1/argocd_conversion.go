@@ -738,6 +738,11 @@ func ConvertAlphaToBetaPrincipal(src *PrincipalSpec) *v1beta1.PrincipalSpec {
 	if src != nil {
 		dst = &v1beta1.PrincipalSpec{
 			Enabled:       src.Enabled,
+			Auth:          src.Auth,
+			LogLevel:      src.LogLevel,
+			LogFormat:     src.LogFormat,
+			Image:         src.Image,
+			Env:           src.Env,
 			Server:        ConvertAlphaToBetaPrincipalServer(src.Server),
 			Redis:         ConvertAlphaToBetaPrincipalRedis(src.Redis),
 			Namespace:     ConvertAlphaToBetaPrincipalNamespace(src.Namespace),
@@ -764,6 +769,11 @@ func ConvertBetaToAlphaPrincipal(src *v1beta1.PrincipalSpec) *PrincipalSpec {
 	if src != nil {
 		dst = &PrincipalSpec{
 			Enabled:       src.Enabled,
+			Auth:          src.Auth,
+			LogLevel:      src.LogLevel,
+			LogFormat:     src.LogFormat,
+			Image:         src.Image,
+			Env:           src.Env,
 			Server:        ConvertBetaToAlphaPrincipalServer(src.Server),
 			Redis:         ConvertBetaToAlphaPrincipalRedis(src.Redis),
 			Namespace:     ConvertBetaToAlphaPrincipalNamespace(src.Namespace),
@@ -779,13 +789,8 @@ func ConvertAlphaToBetaPrincipalServer(src *PrincipalServerSpec) *v1beta1.Princi
 	var dst *v1beta1.PrincipalServerSpec
 	if src != nil {
 		dst = &v1beta1.PrincipalServerSpec{
-			Auth:                 src.Auth,
 			EnableWebSocket:      src.EnableWebSocket,
-			LogLevel:             src.LogLevel,
-			LogFormat:            src.LogFormat,
 			KeepAliveMinInterval: src.KeepAliveMinInterval,
-			Image:                src.Image,
-			Env:                  src.Env,
 			Service:              v1beta1.ArgoCDAgentPrincipalServiceSpec(src.Service),
 			Route:                v1beta1.ArgoCDAgentPrincipalRouteSpec(src.Route),
 		}
@@ -797,13 +802,8 @@ func ConvertBetaToAlphaPrincipalServer(src *v1beta1.PrincipalServerSpec) *Princi
 	var dst *PrincipalServerSpec
 	if src != nil {
 		dst = &PrincipalServerSpec{
-			Auth:                 src.Auth,
 			EnableWebSocket:      src.EnableWebSocket,
-			LogLevel:             src.LogLevel,
-			LogFormat:            src.LogFormat,
 			KeepAliveMinInterval: src.KeepAliveMinInterval,
-			Image:                src.Image,
-			Env:                  src.Env,
 			Service:              ArgoCDAgentPrincipalServiceSpec(src.Service),
 			Route:                ArgoCDAgentPrincipalRouteSpec(src.Route),
 		}

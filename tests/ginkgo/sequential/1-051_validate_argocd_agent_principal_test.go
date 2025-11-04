@@ -96,11 +96,9 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					},
 					ArgoCDAgent: &argov1beta1api.ArgoCDAgentSpec{
 						Principal: &argov1beta1api.PrincipalSpec{
-							Enabled: ptr.To(true),
-							Server: &argov1beta1api.PrincipalServerSpec{
-								Auth:     "mtls:CN=([^,]+)",
-								LogLevel: "info",
-							},
+							Enabled:  ptr.To(true),
+							Auth:     "mtls:CN=([^,]+)",
+							LogLevel: "info",
 							Namespace: &argov1beta1api.PrincipalNamespaceSpec{
 								AllowedNamespaces: []string{
 									"*",
@@ -111,6 +109,9 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 							},
 							JWT: &argov1beta1api.PrincipalJWTSpec{
 								InsecureGenerate: ptr.To(true),
+							},
+							Server: &argov1beta1api.PrincipalServerSpec{
+								KeepAliveMinInterval: "30s",
 							},
 						},
 					},
@@ -421,8 +422,8 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 		It("should create argocd agent principal resources, but pod should fail to start as image does not exist", func() {
 			// Change log level to trace and custom image name
-			argoCD.Spec.ArgoCDAgent.Principal.Server.LogLevel = "trace"
-			argoCD.Spec.ArgoCDAgent.Principal.Server.Image = "quay.io/user/argocd-agent:v1"
+			argoCD.Spec.ArgoCDAgent.Principal.LogLevel = "trace"
+			argoCD.Spec.ArgoCDAgent.Principal.Image = "quay.io/user/argocd-agent:v1"
 
 			By("Create ArgoCD instance")
 
@@ -463,7 +464,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 		It("should create argocd agent principal resources, and pod should start successfully with default image", func() {
 
 			// Add a custom environment variable to the principal server
-			argoCD.Spec.ArgoCDAgent.Principal.Server.Env = []corev1.EnvVar{{Name: "TEST_ENV", Value: "test_value"}}
+			argoCD.Spec.ArgoCDAgent.Principal.Env = []corev1.EnvVar{{Name: "TEST_ENV", Value: "test_value"}}
 
 			By("Create ArgoCD instance")
 
@@ -551,7 +552,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			By("Create ArgoCD instance")
 
-			argoCD.Spec.ArgoCDAgent.Principal.Server.Image = "quay.io/jparsai/argocd-agent:test"
+			argoCD.Spec.ArgoCDAgent.Principal.Image = "quay.io/jparsai/argocd-agent:test"
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 
 			By("Verify expected resources are created for principal pod")
@@ -577,11 +578,11 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
 
-				ac.Spec.ArgoCDAgent.Principal.Server.LogLevel = "trace"
-				ac.Spec.ArgoCDAgent.Principal.Server.LogFormat = "json"
+				ac.Spec.ArgoCDAgent.Principal.LogLevel = "trace"
+				ac.Spec.ArgoCDAgent.Principal.LogFormat = "json"
 				ac.Spec.ArgoCDAgent.Principal.Server.KeepAliveMinInterval = "60s"
 				ac.Spec.ArgoCDAgent.Principal.Server.EnableWebSocket = ptr.To(true)
-				ac.Spec.ArgoCDAgent.Principal.Server.Image = "quay.io/jparsai/argocd-agent:test1"
+				ac.Spec.ArgoCDAgent.Principal.Image = "quay.io/jparsai/argocd-agent:test1"
 
 				ac.Spec.ArgoCDAgent.Principal.Namespace.AllowedNamespaces = []string{"agent-managed", "agent-autonomous"}
 				ac.Spec.ArgoCDAgent.Principal.Namespace.EnableNamespaceCreate = ptr.To(true)
