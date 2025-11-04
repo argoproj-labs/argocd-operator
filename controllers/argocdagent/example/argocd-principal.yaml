@@ -13,28 +13,29 @@ spec:
       # Enable the Principal component
       enabled: true
       
+      # Authentication method - mTLS with certificate common name extraction
+      auth: "mtls:CN=([^,]+)"
+      # Log level for the Principal component
+      logLevel: "info"
+      # Log format (text or json)
+      logFormat: "text"
+      # Container image for the ArgoCD Agent
+      image: "quay.io/argoprojlabs/argocd-agent:v0.3.2"
+      # Environment variables for the Principal component
+      env:
+        - name: GRPC_GO_LOG_VERBOSITY_LEVEL
+          value: "99"
+        - name: GRPC_GO_LOG_SEVERITY_LEVEL
+          value: "info"
+        - name: GODEBUG
+          value: "http2debug=2"
+      
       # Server configuration for the Principal component
       server:
-        # Authentication method - mTLS with certificate common name extraction
-        auth: "mtls:CN=([^,]+)"
         # Enable WebSocket for real-time event streaming
         enableWebSocket: true
-        # Log level for the Principal component
-        logLevel: "info"
-        # Log format (text or json)
-        logFormat: "text"
-        # Container image for the ArgoCD Agent
-        image: "quay.io/argoprojlabs/argocd-agent:v0.3.2" 
         # Minimum interval between keep-alive messages
         keepAliveMinInterval: "30s"
-        # Environment variables for the Principal component
-        env:
-          - name: GRPC_GO_LOG_VERBOSITY_LEVEL
-            value: "99"
-          - name: GRPC_GO_LOG_SEVERITY_LEVEL
-            value: "info"
-          - name: GODEBUG
-            value: "http2debug=2"
         
         # Service configuration for the Principal component
         service:

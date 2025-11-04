@@ -1462,13 +1462,6 @@ func (in *PrincipalServerSpec) DeepCopyInto(out *PrincipalServerSpec) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.Env != nil {
-		in, out := &in.Env, &out.Env
-		*out = make([]v1.EnvVar, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
-		}
-	}
 	out.Service = in.Service
 	in.Route.DeepCopyInto(&out.Route)
 }
@@ -1490,6 +1483,13 @@ func (in *PrincipalSpec) DeepCopyInto(out *PrincipalSpec) {
 		in, out := &in.Enabled, &out.Enabled
 		*out = new(bool)
 		**out = **in
+	}
+	if in.Env != nil {
+		in, out := &in.Env, &out.Env
+		*out = make([]v1.EnvVar, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 	if in.Server != nil {
 		in, out := &in.Server, &out.Server
