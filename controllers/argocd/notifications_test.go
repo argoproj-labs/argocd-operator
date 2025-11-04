@@ -847,57 +847,6 @@ func TestNotifications_removeUnmanagedNotificationsSourceNamespaceResources(t *t
 	assert.Equal(t, a.Namespace, val)
 }
 
-func TestReconcileNotifications_CreateNotificationsConfigurationInSourceNamespace_WithDefaults(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	sourceNamespace := "ns1"
-	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
-		a.Spec.Notifications.Enabled = true
-		a.Spec.Notifications.SourceNamespaces = []string{sourceNamespace}
-		a.Spec.SourceNamespaces = []string{sourceNamespace}
-	})
-
-	resObjs := []client.Object{a}
-	subresObjs := []client.Object{a}
-	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	err := v1alpha1.AddToScheme(sch)
-	assert.NoError(t, err)
-	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
-
-	// Create the source namespace
-	err = createNamespace(r, sourceNamespace, "")
-	assert.NoError(t, err)
-
-	// Reconcile should create NotificationsConfiguration CR in source namespace with defaults
-	// (since no NotificationsConfiguration exists in instance namespace)
-	err = r.reconcileSourceNamespaceNotificationsConfigurationCR(a, sourceNamespace)
-	assert.NoError(t, err)
-
-	// Verify NotificationsConfiguration CR exists in source namespace
-	notifCfg := &v1alpha1.NotificationsConfiguration{}
-	err = r.Get(context.TODO(), types.NamespacedName{
-		Name:      DefaultNotificationsConfigurationInstanceName,
-		Namespace: sourceNamespace,
-	}, notifCfg)
-	assert.NoError(t, err)
-
-	// Verify it has the expected defaults
-	expectedContext := getDefaultNotificationsContext()
-	expectedTriggers := getDefaultNotificationsTriggers()
-	expectedTemplates := getDefaultNotificationsTemplates()
-
-	// Normalize nil to empty map for comparison (Kubernetes may serialize empty maps as nil)
-	actualContext := notifCfg.Spec.Context
-	if actualContext == nil {
-		actualContext = map[string]string{}
-	}
-
-	assert.Equal(t, expectedContext, actualContext)
-	assert.Equal(t, expectedTriggers, notifCfg.Spec.Triggers)
-	assert.Equal(t, expectedTemplates, notifCfg.Spec.Templates)
-}
-
 func TestReconcileNotifications_NotificationsConfigurationInSourceNamespaceWhenDisabled(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	sourceNamespace := "ns1"

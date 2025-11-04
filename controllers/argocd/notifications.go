@@ -692,11 +692,6 @@ func (r *ReconcileArgoCD) reconcileSourceNamespaceNotificationsConfigurationCR(c
 				Name:      DefaultNotificationsConfigurationInstanceName,
 				Namespace: sourceNamespace,
 			},
-			Spec: v1alpha1.NotificationsConfigurationSpec{
-				Context:   getDefaultNotificationsContext(),
-				Triggers:  getDefaultNotificationsTriggers(),
-				Templates: getDefaultNotificationsTemplates(),
-			},
 		}
 		argoutil.LogResourceCreation(log, sourceNotifCfg, "creating NotificationsConfiguration for namespace")
 		return r.Create(context.TODO(), newCfg)
