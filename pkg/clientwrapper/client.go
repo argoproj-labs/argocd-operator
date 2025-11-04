@@ -41,7 +41,7 @@ func (cw *ClientWrapper) Get(ctx context.Context, key types.NamespacedName, obj 
 
 	switch o := obj.(type) {
 	case *corev1.Secret:
-		if secretNeedsLiveRefresh(o) {
+		if !cacheutils.IsTrackedByOperator(o) && secretNeedsLiveRefresh(o) {
 			if err := cw.liveClient.Get(ctx, key, obj, opts...); err != nil {
 				return err
 			}
@@ -53,7 +53,7 @@ func (cw *ClientWrapper) Get(ctx context.Context, key types.NamespacedName, obj 
 			}
 		}
 	case *corev1.ConfigMap:
-		if configmapNeedsLiveRefresh(o) {
+		if !cacheutils.IsTrackedByOperator(o) && configmapNeedsLiveRefresh(o) {
 			if err := cw.liveClient.Get(ctx, key, obj, opts...); err != nil {
 				return err
 			}
@@ -72,10 +72,6 @@ func (cw *ClientWrapper) Get(ctx context.Context, key types.NamespacedName, obj 
 
 // secretNeedsLiveRefresh returns true if the cached secret looks stripped or untracked.
 func secretNeedsLiveRefresh(s *corev1.Secret) bool {
-	if !cacheutils.IsTrackedByOperator(s) {
-		return true
-	}
-
 	// Heuristic: a "stripped" Secret from our transform has nil Data/StringData.
 	// A truly empty Secret may also match, but that only triggers an extra live GET,
 	// which is rare and acceptable.
@@ -87,10 +83,6 @@ func secretNeedsLiveRefresh(s *corev1.Secret) bool {
 
 // configmapNeedsLiveRefresh returns true if the cached cm looks stripped or untracked.
 func configmapNeedsLiveRefresh(cm *corev1.ConfigMap) bool {
-	if !cacheutils.IsTrackedByOperator(cm) {
-		return true
-	}
-
 	// Heuristic: a "stripped" ConfigMap from our transform has nil Data/BinaryData.
 	// A truly empty ConfigMap may also match, but that only triggers an extra live GET,
 	// which is rare and acceptable.
