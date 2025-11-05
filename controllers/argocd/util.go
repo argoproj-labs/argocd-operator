@@ -867,7 +867,7 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *
 		}
 	}
 
-	if cr.Spec.Notifications.Enabled {
+	if !reflect.DeepEqual(cr.Spec.Notifications, argoproj.ArgoCDNotifications{}) || len(r.ManagedNotificationsSourceNamespaces) > 0 {
 		log.Info("reconciling Notifications controller")
 		if err := r.reconcileNotificationsController(cr); err != nil {
 			return err
