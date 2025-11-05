@@ -51,7 +51,7 @@ func ReconcileAgentDeployment(client client.Client, compName, saName string, cr 
 
 	// If deployment exists, handle updates or deletion
 	if exists {
-		if !has(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
+		if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
 			argoutil.LogResourceDeletion(log, deployment, "agent deployment is being deleted as agent is disabled")
 			if err := client.Delete(context.TODO(), deployment); err != nil {
 				return fmt.Errorf("failed to delete agent deployment %s in namespace %s: %v", deployment.Name, cr.Namespace, err)
@@ -70,7 +70,7 @@ func ReconcileAgentDeployment(client client.Client, compName, saName string, cr 
 	}
 
 	// If deployment doesn't exist and agent is disabled, nothing to do
-	if !has(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
+	if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
 		return nil
 	}
 
@@ -168,8 +168,8 @@ func buildArgs(compName string) []string {
 
 func buildAgentImage(cr *argoproj.ArgoCD) string {
 	// Check CR specification first
-	if hasClient(cr) && cr.Spec.ArgoCDAgent.Agent.Client.Image != "" {
-		return cr.Spec.ArgoCDAgent.Agent.Client.Image
+	if hasAgent(cr) && cr.Spec.ArgoCDAgent.Agent.Image != "" {
+		return cr.Spec.ArgoCDAgent.Agent.Image
 	}
 
 	// Value specified in the environment take precedence over the default
@@ -344,8 +344,8 @@ func buildAgentContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
 	}
 
 	// Add custom environment variables if specified in the CR
-	if hasClient(cr) && cr.Spec.ArgoCDAgent.Agent.Client.Env != nil {
-		env = append(env, cr.Spec.ArgoCDAgent.Agent.Client.Env...)
+	if hasAgent(cr) && cr.Spec.ArgoCDAgent.Agent.Env != nil {
+		env = append(env, cr.Spec.ArgoCDAgent.Agent.Env...)
 	}
 
 	return env
@@ -377,15 +377,15 @@ const (
 
 // Logging Configuration
 func getAgentLogLevel(cr *argoproj.ArgoCD) string {
-	if hasClient(cr) && cr.Spec.ArgoCDAgent.Agent.Client.LogLevel != "" {
-		return cr.Spec.ArgoCDAgent.Agent.Client.LogLevel
+	if hasAgent(cr) && cr.Spec.ArgoCDAgent.Agent.LogLevel != "" {
+		return cr.Spec.ArgoCDAgent.Agent.LogLevel
 	}
 	return "info"
 }
 
 func getAgentLogFormat(cr *argoproj.ArgoCD) string {
-	if hasClient(cr) && cr.Spec.ArgoCDAgent.Agent.Client.LogFormat != "" {
-		return cr.Spec.ArgoCDAgent.Agent.Client.LogFormat
+	if hasAgent(cr) && cr.Spec.ArgoCDAgent.Agent.LogFormat != "" {
+		return cr.Spec.ArgoCDAgent.Agent.LogFormat
 	}
 	return "text"
 }
@@ -433,8 +433,8 @@ func getAgentMode(cr *argoproj.ArgoCD) string {
 }
 
 func getAgentCreds(cr *argoproj.ArgoCD) string {
-	if hasClient(cr) && cr.Spec.ArgoCDAgent.Agent.Client.Creds != "" {
-		return cr.Spec.ArgoCDAgent.Agent.Client.Creds
+	if hasAgent(cr) && cr.Spec.ArgoCDAgent.Agent.Creds != "" {
+		return cr.Spec.ArgoCDAgent.Agent.Creds
 	}
 	return "mtls:any"
 }
@@ -470,7 +470,7 @@ func getAgentRedisAddress(cr *argoproj.ArgoCD) string {
 	return fmt.Sprintf("%s-%s:%d", cr.Name, "redis", common.ArgoCDDefaultRedisPort)
 }
 
-func has(cr *argoproj.ArgoCD) bool {
+func hasAgent(cr *argoproj.ArgoCD) bool {
 	return cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Agent != nil
 }
 

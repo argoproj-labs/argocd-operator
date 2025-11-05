@@ -64,7 +64,7 @@ func ReconcileAgentMetricsService(client client.Client, compName string, cr *arg
 
 	// If metrics service exists, handle updates or deletion
 	if exists {
-		if !has(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
+		if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
 			argoutil.LogResourceDeletion(log, service, "agent metrics service is being deleted as agent is disabled")
 			if err := client.Delete(context.TODO(), service); err != nil {
 				return fmt.Errorf("failed to delete agent metrics service %s: %v", service.Name, err)
@@ -89,7 +89,7 @@ func ReconcileAgentMetricsService(client client.Client, compName string, cr *arg
 	}
 
 	// If metrics service doesn't exist and agent is disabled, nothing to do
-	if !has(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
+	if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
 		return nil
 	}
 
@@ -126,7 +126,7 @@ func ReconcileAgentHealthzService(client client.Client, compName string, cr *arg
 
 	// If healthz service exists, handle updates or deletion
 	if exists {
-		if !has(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
+		if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
 			argoutil.LogResourceDeletion(log, service, "agent healthz service is being deleted as agent is disabled")
 			if err := client.Delete(context.TODO(), service); err != nil {
 				return fmt.Errorf("failed to delete agent healthz service %s: %v", service.Name, err)
@@ -151,7 +151,7 @@ func ReconcileAgentHealthzService(client client.Client, compName string, cr *arg
 	}
 
 	// If healthz service doesn't exist and agent is disabled, nothing to do
-	if !has(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
+	if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
 		return nil
 	}
 
