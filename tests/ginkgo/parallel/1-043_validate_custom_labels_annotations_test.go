@@ -209,12 +209,15 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 					return false
 				}
 
-				controllerLabels := appsetDepl.Spec.Template.Labels
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(controllerSS), controllerSS); err != nil {
+					return false
+				}
+				controllerLabels := controllerSS.Spec.Template.Labels
 				_, hasCustom = controllerLabels["custom"]
 				_, hasCustom2 = controllerLabels["custom2"]
 
 				if !hasCustom || !hasCustom2 {
-					GinkgoWriter.Printf("Label 'custom' or 'custom2' missing from repo deployment, current labels: %v\n", controllerLabels)
+					GinkgoWriter.Printf("Label 'custom' or 'custom2' missing from controller deployment, current labels: %v\n", controllerLabels)
 					return false
 				}
 				return true
@@ -270,7 +273,10 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("verifying that the labels of server and repo deployments are not affected")
 			Eventually(func() bool {
-				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(appsetDepl), appsetDepl); err != nil {
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(serverDepl), serverDepl); err != nil {
+					return false
+				}
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(repoDepl), repoDepl); err != nil {
 					return false
 				}
 				_, hasCustom := serverDepl.Spec.Template.Labels["custom2"]
@@ -382,7 +388,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				return true
 			}, "2m", "5s").Should(BeTrue())
 
-			By("completelyremoving all custom labels and annotations from ArgoCD CR")
+			By("completely removing all custom labels and annotations from ArgoCD CR")
 
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
 				ac.Spec.Server.Labels = map[string]string{}
