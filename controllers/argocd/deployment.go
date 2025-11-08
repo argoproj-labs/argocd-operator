@@ -1250,11 +1250,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		}
 
 		//Check if labels/annotations have changed
-		UpdateMapValues(&existing.Spec.Template.Labels, deploy.Spec.Template.Labels)
-		UpdateMapValues(&existing.Spec.Template.Annotations, deploy.Spec.Template.Annotations)
-
-		if !reflect.DeepEqual(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
-			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
+		if UpdateMapValues(&existing.Spec.Template.Annotations, deploy.Spec.Template.Annotations) {
 			if changed {
 				explanation += ", "
 			}

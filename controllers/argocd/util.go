@@ -1030,7 +1030,7 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 	}
 
 	// Watch for changes to primary resource ArgoCD
-	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(deleteNotificationsPred, r.argoCDNamespaceManagementFilterPredicate(), r.argoCDSpecLabelCleanupPredicate()))
+	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(deleteNotificationsPred, r.argoCDNamespaceManagementFilterPredicate(), r.argoCDSpecLabelAndAnnotationCleanupPredicate()))
 
 	// Watch for changes to ConfigMap sub-resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.ConfigMap{})
@@ -1247,8 +1247,9 @@ func (r *ReconcileArgoCD) namespaceFilterPredicate() predicate.Predicate {
 
 // DropMetadata stores metadata about removed labels for a specific resource type
 type DropMetadata struct {
-	Resource string   `json:"resource"`
-	Keys     []string `json:"keys"`
+	Resource       string   `json:"resource"`
+	LabelKeys      []string `json:"labelKeys"`
+	AnnotationKeys []string `json:"annotationKeys"`
 }
 
 // Global map to store removed labels per namespace
@@ -1256,14 +1257,15 @@ type DropMetadata struct {
 var DropMetadataStore = make(map[string][]DropMetadata)
 
 // addDropMetadata adds removed label information to the DropMetadataStore for a specific namespace
-func addDropMetadata(namespace, resource string, keys []string) {
-	if len(keys) == 0 {
+func addDropMetadata(namespace, resource string, labelKeys, annotationKeys []string) {
+	if len(labelKeys) == 0 && len(annotationKeys) == 0 {
 		return
 	}
 
 	dropMeta := DropMetadata{
-		Resource: resource,
-		Keys:     keys,
+		Resource:       resource,
+		LabelKeys:      labelKeys,
+		AnnotationKeys: annotationKeys,
 	}
 
 	if DropMetadataStore[namespace] == nil {
@@ -1275,20 +1277,12 @@ func addDropMetadata(namespace, resource string, keys []string) {
 	for i, existing := range DropMetadataStore[namespace] {
 		if existing.Resource == resource {
 			// Merge keys if resource already exists
-			keySet := make(map[string]bool)
-			for _, key := range existing.Keys {
-				keySet[key] = true
-			}
-			for _, key := range keys {
-				keySet[key] = true
-			}
+			mergedLabelKeys := mergeKeys(existing.LabelKeys, dropMeta.LabelKeys)
+			DropMetadataStore[namespace][i].LabelKeys = mergedLabelKeys
 
-			var mergedKeys []string
-			for key := range keySet {
-				mergedKeys = append(mergedKeys, key)
-			}
+			mergedAnnotationKeys := mergeKeys(existing.AnnotationKeys, dropMeta.AnnotationKeys)
+			DropMetadataStore[namespace][i].AnnotationKeys = mergedAnnotationKeys
 
-			DropMetadataStore[namespace][i].Keys = mergedKeys
 			found = true
 			break
 		}
@@ -1297,6 +1291,32 @@ func addDropMetadata(namespace, resource string, keys []string) {
 	if !found {
 		DropMetadataStore[namespace] = append(DropMetadataStore[namespace], dropMeta)
 	}
+}
+
+// mergeKeys is a helper function thatefficiently merges two string slices, ensuring unique keys in the result.
+func mergeKeys(existingKeys, newKeys []string) []string {
+	if len(newKeys) == 0 {
+		return existingKeys // No new keys to merge, return existing keys
+	}
+
+	keySet := make(map[string]bool, len(existingKeys)+len(newKeys))
+
+	// Add existing keys to the set
+	for _, key := range existingKeys {
+		keySet[key] = true
+	}
+
+	// Add new keys to the set
+	for _, key := range newKeys {
+		keySet[key] = true
+	}
+
+	// Convert set back to slice
+	var mergedKeys []string
+	for key := range keySet {
+		mergedKeys = append(mergedKeys, key)
+	}
+	return mergedKeys
 }
 
 // getDropMetadataForNamespace retrieves all DropMetadata for a specific namespace
@@ -1309,21 +1329,15 @@ func removeDropMetadataForNamespace(namespace string) {
 	delete(DropMetadataStore, namespace)
 }
 
-// processDropMetadataForCleanup processes the DropMetadata store and cleans up removed labels from resources
+// processDropMetadataForCleanup processes the DropMetadata store and cleans up removed labels and annotations from resources
 func (r *ReconcileArgoCD) processDropMetadataForCleanup(argocd *argoproj.ArgoCD) {
 	namespace := argocd.GetNamespace()
 	dropMetadataList := getDropMetadataForNamespace(namespace)
 
-	log.Info("Processing DropMetadata for cleanup",
-		"argocd", fmt.Sprintf("%s/%s", argocd.Namespace, argocd.Name),
-		"namespace", namespace,
-		"dropMetadataEntries", len(dropMetadataList))
-
 	for _, dropMeta := range dropMetadataList {
-		if err := r.cleanupLabelsFromResourceType(argocd, dropMeta); err != nil {
-			log.Error(err, "failed to cleanup labels from resource type",
-				"resource", dropMeta.Resource,
-				"keys", dropMeta.Keys)
+		if err := r.cleanupLabelsAndAnnotationsFromResourceType(argocd, dropMeta); err != nil {
+			log.Error(err, "failed to cleanup labels and annotations from resource type",
+				"resource", dropMeta.Resource)
 			continue
 		}
 	}
@@ -1332,28 +1346,28 @@ func (r *ReconcileArgoCD) processDropMetadataForCleanup(argocd *argoproj.ArgoCD)
 	removeDropMetadataForNamespace(namespace)
 }
 
-// cleanupLabelsFromResourceType removes labels from specific resource types
-func (r *ReconcileArgoCD) cleanupLabelsFromResourceType(argocd *argoproj.ArgoCD, dropMeta DropMetadata) error {
+// cleanupLabelsAndAnnotationsFromResourceType removes labels and annotations from specific resource types
+func (r *ReconcileArgoCD) cleanupLabelsAndAnnotationsFromResourceType(argocd *argoproj.ArgoCD, dropMeta DropMetadata) error {
 
 	switch dropMeta.Resource {
 	case "server-deployment":
 		// Clean up from ArgoCD server deployment only
 		deploymentName := fmt.Sprintf("%s-server", argocd.Name)
-		if err := r.cleanupLabelsFromDeployment(argocd, deploymentName, dropMeta.Keys); err != nil {
+		if err := r.cleanupLabelsAndAnnotationsFromDeployment(argocd, deploymentName, dropMeta.LabelKeys, dropMeta.AnnotationKeys); err != nil {
 			return fmt.Errorf("failed to cleanup labels from server deployment: %w", err)
 		}
 
 	case "repo-deployment":
 		// Clean up from ArgoCD repo server deployment only
 		deploymentName := fmt.Sprintf("%s-repo-server", argocd.Name)
-		if err := r.cleanupLabelsFromDeployment(argocd, deploymentName, dropMeta.Keys); err != nil {
+		if err := r.cleanupLabelsAndAnnotationsFromDeployment(argocd, deploymentName, dropMeta.LabelKeys, dropMeta.AnnotationKeys); err != nil {
 			return fmt.Errorf("failed to cleanup labels from repo deployment: %w", err)
 		}
 
 	case "applicationset-deployment":
 		// Clean up from ArgoCD applicationset controller deployment only
 		deploymentName := fmt.Sprintf("%s-applicationset-controller", argocd.Name)
-		if err := r.cleanupLabelsFromDeployment(argocd, deploymentName, dropMeta.Keys); err != nil {
+		if err := r.cleanupLabelsAndAnnotationsFromDeployment(argocd, deploymentName, dropMeta.LabelKeys, dropMeta.AnnotationKeys); err != nil {
 			return fmt.Errorf("failed to cleanup labels from applicationset deployment: %w", err)
 		}
 
@@ -1361,7 +1375,7 @@ func (r *ReconcileArgoCD) cleanupLabelsFromResourceType(argocd *argoproj.ArgoCD,
 		// Clean up from ArgoCD notifications controller deployment only
 		if argocd.Spec.Notifications.Enabled {
 			deploymentName := fmt.Sprintf("%s-notifications-controller", argocd.Name)
-			if err := r.cleanupLabelsFromDeployment(argocd, deploymentName, dropMeta.Keys); err != nil {
+			if err := r.cleanupLabelsAndAnnotationsFromDeployment(argocd, deploymentName, dropMeta.LabelKeys, dropMeta.AnnotationKeys); err != nil {
 				return fmt.Errorf("failed to cleanup labels from notifications deployment: %w", err)
 			}
 		}
@@ -1369,7 +1383,7 @@ func (r *ReconcileArgoCD) cleanupLabelsFromResourceType(argocd *argoproj.ArgoCD,
 	case "controller-statefulset":
 		// Clean up from ArgoCD application controller StatefulSet
 		statefulSetName := fmt.Sprintf("%s-application-controller", argocd.Name)
-		if err := r.cleanupLabelsFromStatefulSet(argocd, statefulSetName, dropMeta.Keys); err != nil {
+		if err := r.cleanupLabelsAndAnnotationsFromStatefulSet(argocd, statefulSetName, dropMeta.LabelKeys, dropMeta.AnnotationKeys); err != nil {
 			return fmt.Errorf("failed to cleanup labels from controller statefulset: %w", err)
 		}
 
@@ -1381,7 +1395,7 @@ func (r *ReconcileArgoCD) cleanupLabelsFromResourceType(argocd *argoproj.ArgoCD,
 }
 
 // cleanupLabelsFromDeployment removes labels from a specific deployment
-func (r *ReconcileArgoCD) cleanupLabelsFromDeployment(argocd *argoproj.ArgoCD, deploymentName string, labelsToRemove []string) error {
+func (r *ReconcileArgoCD) cleanupLabelsAndAnnotationsFromDeployment(argocd *argoproj.ArgoCD, deploymentName string, labelsToRemove, annotationsToRemove []string) error {
 	namespace := argocd.GetNamespace()
 	deployment := &appsv1.Deployment{}
 	key := types.NamespacedName{Namespace: namespace, Name: deploymentName}
@@ -1394,24 +1408,39 @@ func (r *ReconcileArgoCD) cleanupLabelsFromDeployment(argocd *argoproj.ArgoCD, d
 		return fmt.Errorf("failed to get deployment %s: %w", deploymentName, err)
 	}
 
-	// Work on pod template labels directly, not deployment metadata labels
+	// Work on pod template labels and annotations directly, not deployment metadata labels
 	currentLabels := deployment.Spec.Template.Labels
-	if currentLabels == nil {
-		return nil // No labels to remove
+	currentAnnotations := deployment.Spec.Template.Annotations
+	if currentLabels == nil && currentAnnotations == nil {
+		return nil // No labels or annotations to remove
 	}
 
-	modified := false
+	modifiedLabels := false
+	modifiedAnnotations := false
 	for _, labelKey := range labelsToRemove {
 		if _, exists := currentLabels[labelKey]; exists {
 			delete(currentLabels, labelKey)
-			modified = true
+			modifiedLabels = true
 		}
 	}
 
-	if modified {
+	for _, annotationKey := range annotationsToRemove {
+		if _, exists := currentAnnotations[annotationKey]; exists {
+			delete(currentAnnotations, annotationKey)
+			modifiedAnnotations = true
+		}
+	}
+
+	if modifiedLabels {
 		deployment.Spec.Template.Labels = currentLabels
+	}
+	if modifiedAnnotations {
+		deployment.Spec.Template.Annotations = currentAnnotations
+	}
+
+	if modifiedLabels || modifiedAnnotations {
 		if err := r.Update(context.TODO(), deployment); err != nil {
-			log.Error(err, "failed to update deployment after removing labels", "name", deploymentName)
+			log.Error(err, "failed to update deployment after removing labels and annotations", "name", deploymentName)
 			return err
 		}
 	}
@@ -1419,14 +1448,14 @@ func (r *ReconcileArgoCD) cleanupLabelsFromDeployment(argocd *argoproj.ArgoCD, d
 }
 
 // cleanupLabelsFromStatefulSet removes labels from a specific statefulset
-func (r *ReconcileArgoCD) cleanupLabelsFromStatefulSet(argocd *argoproj.ArgoCD, statefulSetName string, labelsToRemove []string) error {
+func (r *ReconcileArgoCD) cleanupLabelsAndAnnotationsFromStatefulSet(argocd *argoproj.ArgoCD, statefulSetName string, labelsToRemove, annotationsToRemove []string) error {
 	namespace := argocd.GetNamespace()
 	statefulSet := &appsv1.StatefulSet{}
 	key := types.NamespacedName{Namespace: namespace, Name: statefulSetName}
 
 	if err := r.Get(context.TODO(), key, statefulSet); err != nil {
 		if apierrors.IsNotFound(err) {
-			log.Info("StatefulSet not found, skipping label cleanup", "name", statefulSetName)
+			log.Info("StatefulSet not found, skipping label and annotation cleanup", "name", statefulSetName)
 			return nil // StatefulSet doesn't exist, nothing to clean
 		}
 		return fmt.Errorf("failed to get statefulset %s: %w", statefulSetName, err)
@@ -1434,22 +1463,36 @@ func (r *ReconcileArgoCD) cleanupLabelsFromStatefulSet(argocd *argoproj.ArgoCD, 
 
 	// Work on pod template labels directly, not StatefulSet metadata labels
 	currentLabels := statefulSet.Spec.Template.Labels
-	if currentLabels == nil {
-		return nil // No labels to remove
+	currentAnnotations := statefulSet.Spec.Template.Annotations
+	if currentLabels == nil && currentAnnotations == nil {
+		return nil // No labels or annotations to remove
 	}
 
-	modified := false
+	modifiedLabels := false
+	modifiedAnnotations := false
 	for _, labelKey := range labelsToRemove {
 		if _, exists := currentLabels[labelKey]; exists {
 			delete(currentLabels, labelKey)
-			modified = true
+			modifiedLabels = true
+		}
+	}
+	for _, annotationKey := range annotationsToRemove {
+		if _, exists := currentAnnotations[annotationKey]; exists {
+			delete(currentAnnotations, annotationKey)
+			modifiedAnnotations = true
 		}
 	}
 
-	if modified {
+	if modifiedLabels {
 		statefulSet.Spec.Template.Labels = currentLabels
+	}
+	if modifiedAnnotations {
+		statefulSet.Spec.Template.Annotations = currentAnnotations
+	}
+
+	if modifiedLabels || modifiedAnnotations {
 		if err := r.Update(context.TODO(), statefulSet); err != nil {
-			log.Error(err, "failed to update statefulset after removing labels", "name", statefulSetName)
+			log.Error(err, "failed to update statefulset after removing labels and annotations", "name", statefulSetName)
 			return err
 		}
 	}
@@ -1458,7 +1501,7 @@ func (r *ReconcileArgoCD) cleanupLabelsFromStatefulSet(argocd *argoproj.ArgoCD, 
 }
 
 // argoCDSpecLabelCleanupPredicate tracks label changes in ArgoCD CR specs and cleans up removed labels from managed resources
-func (r *ReconcileArgoCD) argoCDSpecLabelCleanupPredicate() predicate.Predicate {
+func (r *ReconcileArgoCD) argoCDSpecLabelAndAnnotationCleanupPredicate() predicate.Predicate {
 	return predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			newCR, ok := e.ObjectNew.(*argoproj.ArgoCD)
@@ -1471,7 +1514,7 @@ func (r *ReconcileArgoCD) argoCDSpecLabelCleanupPredicate() predicate.Predicate 
 			}
 
 			// Track removed labels from each component spec
-			r.calculateRemovedSpecLabels(oldCR, newCR)
+			r.calculateRemovedSpecLabelsAndAnnotations(oldCR, newCR)
 
 			return true // Trigger reconciliation for ArgoCD updates
 		},
@@ -1479,7 +1522,7 @@ func (r *ReconcileArgoCD) argoCDSpecLabelCleanupPredicate() predicate.Predicate 
 }
 
 // calculateRemovedSpecLabels compares old and new ArgoCD specs and tracks removed labels by resource type
-func (r *ReconcileArgoCD) calculateRemovedSpecLabels(oldCR, newCR *argoproj.ArgoCD) {
+func (r *ReconcileArgoCD) calculateRemovedSpecLabelsAndAnnotations(oldCR, newCR *argoproj.ArgoCD) {
 	// Add nil checks to prevent panic
 	if r == nil || oldCR == nil || newCR == nil {
 		return
@@ -1488,31 +1531,37 @@ func (r *ReconcileArgoCD) calculateRemovedSpecLabels(oldCR, newCR *argoproj.Argo
 	namespace := newCR.GetNamespace()
 
 	// Helper function to check and store removed labels for a specific resource
-	checkAndStoreRemovedLabels := func(oldLabels, newLabels map[string]string, resourceType string) {
-		var removedKeys []string
+	checkAndStoreRemovedLabels := func(oldLabels, oldAnnotations, newLabels, newAnnotations map[string]string, resourceType string) {
+		var removedLabelKeys []string
+		var removedAnnotationKeys []string
 		for key := range oldLabels {
 			if newLabels == nil || newLabels[key] == "" {
-				removedKeys = append(removedKeys, key)
+				removedLabelKeys = append(removedLabelKeys, key)
+			}
+		}
+		for key := range oldAnnotations {
+			if newAnnotations == nil || newAnnotations[key] == "" {
+				removedAnnotationKeys = append(removedAnnotationKeys, key)
 			}
 		}
 		// Store removed keys for this resource type in the namespace
-		if len(removedKeys) > 0 {
-			addDropMetadata(namespace, resourceType, removedKeys)
+		if len(removedLabelKeys) > 0 || len(removedAnnotationKeys) > 0 {
+			addDropMetadata(namespace, resourceType, removedLabelKeys, removedAnnotationKeys)
 		}
 	}
 
 	// Check Server labels
-	checkAndStoreRemovedLabels(oldCR.Spec.Server.Labels, newCR.Spec.Server.Labels, "server-deployment")
+	checkAndStoreRemovedLabels(oldCR.Spec.Server.Labels, oldCR.Spec.Server.Annotations, newCR.Spec.Server.Labels, newCR.Spec.Server.Annotations, "server-deployment")
 
 	// Check Repo Server labels
-	checkAndStoreRemovedLabels(oldCR.Spec.Repo.Labels, newCR.Spec.Repo.Labels, "repo-deployment")
+	checkAndStoreRemovedLabels(oldCR.Spec.Repo.Labels, oldCR.Spec.Repo.Annotations, newCR.Spec.Repo.Labels, newCR.Spec.Repo.Annotations, "repo-deployment")
 
 	// Check Controller labels (StatefulSet)
-	checkAndStoreRemovedLabels(oldCR.Spec.Controller.Labels, newCR.Spec.Controller.Labels, "controller-statefulset")
+	checkAndStoreRemovedLabels(oldCR.Spec.Controller.Labels, oldCR.Spec.Controller.Annotations, newCR.Spec.Controller.Labels, newCR.Spec.Controller.Annotations, "controller-statefulset")
 
 	// Check ApplicationSet labels
 	if oldCR.Spec.ApplicationSet != nil && newCR.Spec.ApplicationSet != nil {
-		checkAndStoreRemovedLabels(oldCR.Spec.ApplicationSet.Labels, newCR.Spec.ApplicationSet.Labels, "applicationset-deployment")
+		checkAndStoreRemovedLabels(oldCR.Spec.ApplicationSet.Labels, oldCR.Spec.ApplicationSet.Annotations, newCR.Spec.ApplicationSet.Labels, newCR.Spec.ApplicationSet.Annotations, "applicationset-deployment")
 	}
 
 	// Check Notifications labels (if we add support for notifications labels in the future)

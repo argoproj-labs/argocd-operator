@@ -985,11 +985,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		}
 
 		//Check if labels/annotations have changed
-		UpdateMapValues(&existing.Spec.Template.Labels, ss.Spec.Template.Labels)
-		UpdateMapValues(&existing.Spec.Template.Annotations, ss.Spec.Template.Annotations)
-
-		if !reflect.DeepEqual(ss.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
-			existing.Spec.Template.Annotations = ss.Spec.Template.Annotations
+		if UpdateMapValues(&existing.Spec.Template.Annotations, ss.Spec.Template.Annotations) {
 			if changed {
 				explanation += ", "
 			}
@@ -997,8 +993,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			changed = true
 		}
 
-		if !reflect.DeepEqual(ss.Spec.Template.Labels, existing.Spec.Template.Labels) {
-			existing.Spec.Template.Labels = ss.Spec.Template.Labels
+		if UpdateMapValues(&existing.Spec.Template.Labels, ss.Spec.Template.Labels) {
 			if changed {
 				explanation += ", "
 			}

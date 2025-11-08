@@ -292,7 +292,6 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 			existing.Spec.Template.Spec.NodeSelector = deploy.Spec.Template.Spec.NodeSelector
 			existing.Spec.Template.Spec.Tolerations = deploy.Spec.Template.Spec.Tolerations
 			existing.Spec.Template.Spec.Containers[0].SecurityContext = deploy.Spec.Template.Spec.Containers[0].SecurityContext
-			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
 
 			argoutil.LogResourceUpdate(log, existing, "due to difference in", deploymentsDifferent)
 			return r.Update(context.TODO(), existing)
