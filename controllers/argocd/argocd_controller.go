@@ -348,9 +348,6 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 		}
 	}
 
-	// Process DropMetadata for namespace-based label cleanup
-	r.processDropMetadataForCleanup(argocd)
-
 	if err := r.reconcileResources(argocd, argoCDStatus); err != nil {
 		// Error reconciling ArgoCD sub-resources - requeue the request.
 		return reconcile.Result{}, argocd, argoCDStatus, err
