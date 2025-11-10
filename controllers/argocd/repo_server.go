@@ -616,11 +616,19 @@ func (r *ReconcileArgoCD) injectCATrustToContainers(cr *argocdoperatorv1beta1.Ar
 		},
 	}
 
-	argoImage := getArgoContainerImage(cr)
+	// The `/tmp` volume can be user-provided, so the actual mount name must be looked up
+	volumeTmp := ""
+	for _, vm := range deploy.Spec.Template.Spec.Containers[0].VolumeMounts {
+		if vm.MountPath == "/tmp" {
+			volumeTmp = vm.Name
+			break
+		}
+	}
 
+	argoImage := getArgoContainerImage(cr)
 	deploy.Spec.Template.Spec.InitContainers = append(
 		deploy.Spec.Template.Spec.InitContainers,
-		caTrustInitContainer(cr, argoImage, volumeSource, volumeTarget),
+		caTrustInitContainer(cr, argoImage, volumeSource, volumeTarget, volumeTmp),
 	)
 
 	prodVolumeMounts := func() []corev1.VolumeMount {
@@ -696,7 +704,7 @@ func (r *ReconcileArgoCD) caTrustVolumes(cr *argocdoperatorv1beta1.ArgoCD) (sour
 	return sources, sourceNames
 }
 
-func caTrustInitContainer(cr *argocdoperatorv1beta1.ArgoCD, argoImage string, volumeSource string, volumeTarget string) corev1.Container {
+func caTrustInitContainer(cr *argocdoperatorv1beta1.ArgoCD, argoImage string, volumeSource string, volumeTarget string, tmpVolume string) corev1.Container {
 	// This is where the image keeps its vendored CAs, look elsewhere if DropImageCertificates
 	imageCertPath := "/usr/share/ca-certificates"
 	if cr.Spec.Repo.SystemCATrust.DropImageCertificates {
@@ -737,7 +745,7 @@ func caTrustInitContainer(cr *argocdoperatorv1beta1.ArgoCD, argoImage string, vo
 				Name:      volumeTarget,
 				MountPath: "/etc/ssl/certs/",
 			}, {
-				Name:      "tmp",
+				Name:      tmpVolume,
 				MountPath: "/tmp",
 			},
 		},
