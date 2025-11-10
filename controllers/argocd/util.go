@@ -28,6 +28,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -1252,6 +1253,8 @@ type DropMetadata struct {
 	AnnotationKeys []string `json:"annotationKeys"`
 }
 
+var DropMetadataStoreMutex sync.RWMutex
+
 // Global map to store removed labels per namespace
 // Key: namespace, Value: slice of DropMetadata for different resources
 var DropMetadataStore = make(map[string][]DropMetadata)
@@ -1267,6 +1270,9 @@ func addDropMetadata(namespace, resource string, labelKeys, annotationKeys []str
 		LabelKeys:      labelKeys,
 		AnnotationKeys: annotationKeys,
 	}
+
+	DropMetadataStoreMutex.Lock()
+	defer DropMetadataStoreMutex.Unlock()
 
 	if DropMetadataStore[namespace] == nil {
 		DropMetadataStore[namespace] = []DropMetadata{}
@@ -1321,11 +1327,15 @@ func mergeKeys(existingKeys, newKeys []string) []string {
 
 // getDropMetadataForNamespace retrieves all DropMetadata for a specific namespace
 func getDropMetadataForNamespace(namespace string) []DropMetadata {
+	DropMetadataStoreMutex.RLock()
+	defer DropMetadataStoreMutex.RUnlock()
 	return DropMetadataStore[namespace]
 }
 
 // removeDropMetadataForNamespace removes all DropMetadata for a specific namespace
 func removeDropMetadataForNamespace(namespace string) {
+	DropMetadataStoreMutex.Lock()
+	defer DropMetadataStoreMutex.Unlock()
 	delete(DropMetadataStore, namespace)
 }
 

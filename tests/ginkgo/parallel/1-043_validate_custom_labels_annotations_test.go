@@ -477,5 +477,271 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			}, "2m", "5s").Should(BeTrue())
 		})
 
+		It("ensures thread-safe concurrent label and annotation removal across multiple ArgoCD instances", func() {
+
+			By("creating multiple namespace-scoped Argo CD instances concurrently with labels and annotations")
+
+			numInstances := 3
+			namespaces := make([]string, numInstances)
+			cleanupFuncs := make([]func(), numInstances)
+			argoCDs := make([]*argov1beta1api.ArgoCD, numInstances)
+
+			// Create multiple ArgoCD instances in parallel
+			for i := 0; i < numInstances; i++ {
+				ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
+				namespaces[i] = ns.Name
+				cleanupFuncs[i] = cleanupFunc
+
+				argoCD := &argov1beta1api.ArgoCD{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "argocd-concurrent",
+						Namespace: ns.Name,
+					},
+					Spec: argov1beta1api.ArgoCDSpec{
+						Server: argov1beta1api.ArgoCDServerSpec{
+							Labels: map[string]string{
+								"concurrent-test": "label-value",
+								"instance-id":     strings.ReplaceAll(ns.Name, "-", "_"),
+							},
+							Annotations: map[string]string{
+								"concurrent-test": "annotation-value",
+								"instance-id":     strings.ReplaceAll(ns.Name, "-", "_"),
+							},
+						},
+						Repo: argov1beta1api.ArgoCDRepoSpec{
+							Labels: map[string]string{
+								"concurrent-test": "label-value",
+								"instance-id":     strings.ReplaceAll(ns.Name, "-", "_"),
+							},
+							Annotations: map[string]string{
+								"concurrent-test": "annotation-value",
+								"instance-id":     strings.ReplaceAll(ns.Name, "-", "_"),
+							},
+						},
+						Controller: argov1beta1api.ArgoCDApplicationControllerSpec{
+							Labels: map[string]string{
+								"concurrent-test": "label-value",
+								"instance-id":     strings.ReplaceAll(ns.Name, "-", "_"),
+							},
+							Annotations: map[string]string{
+								"concurrent-test": "annotation-value",
+								"instance-id":     strings.ReplaceAll(ns.Name, "-", "_"),
+							},
+						},
+					},
+				}
+				Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+				argoCDs[i] = argoCD
+			}
+
+			// Cleanup all namespaces at the end
+			defer func() {
+				for _, cleanup := range cleanupFuncs {
+					cleanup()
+				}
+			}()
+
+			By("waiting for all Argo CD instances to become available")
+			for _, argoCD := range argoCDs {
+				Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
+			}
+
+			By("verifying all instances have their labels and annotations")
+			for i := range argoCDs {
+				serverDepl := &appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "argocd-concurrent-server",
+						Namespace: namespaces[i],
+					},
+				}
+				Eventually(serverDepl).Should(k8sFixture.ExistByName())
+				Expect(serverDepl).Should(deploymentFixture.HaveTemplateLabelWithValue("concurrent-test", "label-value"))
+				Expect(serverDepl).Should(deploymentFixture.HaveTemplateAnnotationWithValue("concurrent-test", "annotation-value"))
+
+				repoDepl := &appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "argocd-concurrent-repo-server",
+						Namespace: namespaces[i],
+					},
+				}
+				Eventually(repoDepl).Should(k8sFixture.ExistByName())
+				Expect(repoDepl).Should(deploymentFixture.HaveTemplateLabelWithValue("concurrent-test", "label-value"))
+				Expect(repoDepl).Should(deploymentFixture.HaveTemplateAnnotationWithValue("concurrent-test", "annotation-value"))
+
+				controllerSS := &appsv1.StatefulSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "argocd-concurrent-application-controller",
+						Namespace: namespaces[i],
+					},
+				}
+				Eventually(controllerSS).Should(k8sFixture.ExistByName())
+				Expect(controllerSS).Should(statefulsetFixture.HaveTemplateLabelWithValue("concurrent-test", "label-value"))
+				Expect(controllerSS).Should(statefulsetFixture.HaveTemplateAnnotationWithValue("concurrent-test", "annotation-value"))
+			}
+
+			By("concurrently removing labels and annotations from all instances")
+			// Update all ArgoCD instances concurrently to trigger concurrent DropMetadataStore access
+			for i, argoCD := range argoCDs {
+				go func(idx int, ac *argov1beta1api.ArgoCD) {
+					defer GinkgoRecover()
+					argocdFixture.Update(ac, func(a *argov1beta1api.ArgoCD) {
+						// Remove different labels for each instance to test isolation
+						if idx%2 == 0 {
+							// Even instances: remove concurrent-test label
+							value := map[string]string{
+								"instance-id": strings.ReplaceAll(namespaces[idx], "-", "_"),
+							}
+							a.Spec.Server.Labels = value
+							a.Spec.Repo.Labels = value
+							a.Spec.Controller.Labels = value
+							// Even instances: remove concurrent-test annotation
+							a.Spec.Server.Annotations = value
+							a.Spec.Repo.Annotations = value
+							a.Spec.Controller.Annotations = value
+						} else {
+							// Odd instances: remove instance-id label
+							value := map[string]string{
+								"concurrent-test": "label-value",
+							}
+							a.Spec.Server.Labels = value
+							a.Spec.Repo.Labels = value
+							a.Spec.Controller.Labels = value
+							// Odd instances: remove instance-id annotation
+							value["concurrent-test"] = "annotation-value"
+							a.Spec.Server.Annotations = value
+							a.Spec.Repo.Annotations = value
+							a.Spec.Controller.Annotations = value
+						}
+					})
+				}(i, argoCD)
+			}
+
+			By("verifying labels and annotations were correctly removed from each instance independently")
+			for i := range argoCDs {
+				serverDepl := &appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "argocd-concurrent-server",
+						Namespace: namespaces[i],
+					},
+				}
+				repoDepl := &appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "argocd-concurrent-repo-server",
+						Namespace: namespaces[i],
+					},
+				}
+				controllerSS := &appsv1.StatefulSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "argocd-concurrent-application-controller",
+						Namespace: namespaces[i],
+					},
+				}
+
+				// Verify annotations and labels are selectively removed based on instance index
+				var labelOrAnnotationShouldExist string
+				var labelOrAnnotationShouldNotExist string
+				if i%2 == 0 {
+					labelOrAnnotationShouldExist = "instance-id"
+					labelOrAnnotationShouldNotExist = "concurrent-test"
+				} else {
+					labelOrAnnotationShouldExist = "concurrent-test"
+					labelOrAnnotationShouldNotExist = "instance-id"
+				}
+
+				// Even instances should have 'instance-id' annotation but not 'concurrent-test'
+				Eventually(func() bool {
+					if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(serverDepl), serverDepl); err != nil {
+						return false
+					}
+					labels := serverDepl.Spec.Template.Labels
+					if _, exists := labels[labelOrAnnotationShouldNotExist]; exists {
+						GinkgoWriter.Printf("Label %s should be removed from instance %d server, labels: %v\n", labelOrAnnotationShouldNotExist, i, labels)
+						return false
+					}
+					if _, exists := labels[labelOrAnnotationShouldExist]; !exists {
+						GinkgoWriter.Printf("Label %s should exist in instance %d server, labels: %v\n", labelOrAnnotationShouldExist, i, labels)
+						return false
+					}
+					annotations := serverDepl.Spec.Template.Annotations
+					if _, exists := annotations[labelOrAnnotationShouldNotExist]; exists {
+						GinkgoWriter.Printf("Annotation %s should be removed from instance %d server, annotations: %v\n", labelOrAnnotationShouldNotExist, i, annotations)
+						return false
+					}
+					if _, exists := annotations[labelOrAnnotationShouldExist]; !exists {
+						GinkgoWriter.Printf("Annotation %s should exist in instance %d server, annotations: %v\n", labelOrAnnotationShouldExist, i, annotations)
+						return false
+					}
+					return true
+				}, "3m", "5s").Should(BeTrue())
+
+				Eventually(func() bool {
+					if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(repoDepl), repoDepl); err != nil {
+						return false
+					}
+					labels := repoDepl.Spec.Template.Labels
+					if _, exists := labels[labelOrAnnotationShouldNotExist]; exists {
+						GinkgoWriter.Printf("Label %s should be removed from instance %d repo, labels: %v\n", labelOrAnnotationShouldNotExist, i, labels)
+						return false
+					}
+					if _, exists := labels[labelOrAnnotationShouldExist]; !exists {
+						GinkgoWriter.Printf("Label %s should exist in instance %d repo, labels: %v\n", labelOrAnnotationShouldExist, i, labels)
+						return false
+					}
+					annotations := repoDepl.Spec.Template.Annotations
+					if _, exists := annotations[labelOrAnnotationShouldNotExist]; exists {
+						GinkgoWriter.Printf("Annotation %s should be removed from instance %d repo, annotations: %v\n", labelOrAnnotationShouldNotExist, i, annotations)
+						return false
+					}
+					if _, exists := annotations[labelOrAnnotationShouldExist]; !exists {
+						GinkgoWriter.Printf("Annotation %s should exist in instance %d repo, annotations: %v\n", labelOrAnnotationShouldExist, i, annotations)
+						return false
+					}
+					return true
+				}, "3m", "5s").Should(BeTrue())
+
+				Eventually(func() bool {
+					if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(controllerSS), controllerSS); err != nil {
+						return false
+					}
+					labels := controllerSS.Spec.Template.Labels
+					if _, exists := labels[labelOrAnnotationShouldNotExist]; exists {
+						GinkgoWriter.Printf("Label %s should be removed from instance %d controller, labels: %v\n", labelOrAnnotationShouldNotExist, i, labels)
+						return false
+					}
+					if _, exists := labels[labelOrAnnotationShouldExist]; !exists {
+						GinkgoWriter.Printf("Label %s should exist in instance %d controller, labels: %v\n", labelOrAnnotationShouldExist, i, labels)
+						return false
+					}
+					annotations := controllerSS.Spec.Template.Annotations
+					if _, exists := annotations[labelOrAnnotationShouldNotExist]; exists {
+						GinkgoWriter.Printf("Annotation %s should be removed from instance %d controller, annotations: %v\n", labelOrAnnotationShouldNotExist, i, annotations)
+						return false
+					}
+					if _, exists := annotations[labelOrAnnotationShouldExist]; !exists {
+						GinkgoWriter.Printf("Annotation %s should exist in instance %d controller, annotations: %v\n", labelOrAnnotationShouldExist, i, annotations)
+						return false
+					}
+					return true
+				}, "3m", "5s").Should(BeTrue())
+			}
+
+			By("verifying no data corruption or cross-instance interference occurred")
+			// This verifies that the thread-safe DropMetadataStore correctly isolated
+			// the label/annotation removal tracking for each namespace
+			for i := range argoCDs {
+				serverDepl := &appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "argocd-concurrent-server",
+						Namespace: namespaces[i],
+					},
+				}
+
+				Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(serverDepl), serverDepl)).To(Succeed())
+
+				// Verify operator-managed labels are still present (not corrupted)
+				Expect(serverDepl.Spec.Template.Labels).To(HaveKey("app.kubernetes.io/name"))
+			}
+		})
+
 	})
 })
