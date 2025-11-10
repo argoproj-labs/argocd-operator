@@ -600,7 +600,11 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 // reconcileRedisHAProxyDeployment will ensure the Deployment resource is present for the Redis HA Proxy component.
 func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("redis-ha-haproxy", "redis", cr)
-
+	deploy.Spec.Strategy = appsv1.DeploymentStrategy{
+		RollingUpdate: &appsv1.RollingUpdateDeployment{
+			MaxSurge: &intstr.IntOrString{IntVal: 0},
+		},
+	}
 	var redisEnv = append(proxyEnvVars(), corev1.EnvVar{
 		Name: "AUTH",
 		ValueFrom: &corev1.EnvVarSource{
@@ -863,6 +867,14 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 				explanation += ", "
 			}
 			explanation += "pod security context"
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Strategy, existing.Spec.Strategy) {
+			existing.Spec.Strategy = deploy.Spec.Strategy
+			if changed {
+				explanation += ", "
+			}
+			explanation += "deployment strategy"
 			changed = true
 		}
 		if changed {
