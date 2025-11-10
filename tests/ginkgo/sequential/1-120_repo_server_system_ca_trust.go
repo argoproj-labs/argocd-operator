@@ -216,6 +216,14 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			By("creating Argo CD instance with empty system trust")
 			argoCD := argoCDSpec(ns, argov1beta1api.ArgoCDRepoSpec{
+				// Remount /tmp to make sure the init container can handle that
+				Volumes: []corev1.Volume{{
+					Name:         "user-provided-tmp",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+				}},
+				VolumeMounts: []corev1.VolumeMount{
+					{Name: "user-provided-tmp", ReadOnly: false, MountPath: "/tmp"},
+				},
 				SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
 					DropImageCertificates: true,
 				},
