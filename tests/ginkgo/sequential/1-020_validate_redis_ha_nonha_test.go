@@ -36,6 +36,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
@@ -158,6 +159,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			depl = &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: argoCDInstance.Name + "-redis-ha-haproxy", Namespace: ns.Name}}
 			Eventually(depl, "2m", "5s").Should(deploymentFixture.HaveReadyReplicas(3))
+			Expect(depl.Spec.Strategy.RollingUpdate.MaxSurge).To(Equal(&intstr.IntOrString{IntVal: 0}))
 
 			haProxyContainer := deploymentFixture.GetTemplateSpecContainerByName("haproxy", *depl)
 
