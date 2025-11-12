@@ -874,7 +874,7 @@ func TestReconcileArgoCD_reconcileDeployments_HA_proxy_with_resources(t *testing
 	}
 	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Resources, testResources)
 	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].Resources, testResources)
-
+	assert.Equal(t, deployment.Spec.Strategy.RollingUpdate.MaxSurge, &intstr.IntOrString{IntVal: 0})
 	// test resource is Updated on reconciliation
 	newResources := corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
@@ -899,6 +899,7 @@ func TestReconcileArgoCD_reconcileDeployments_HA_proxy_with_resources(t *testing
 
 	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Resources, newResources)
 	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].Resources, newResources)
+	assert.Equal(t, deployment.Spec.Strategy.RollingUpdate.MaxSurge, &intstr.IntOrString{IntVal: 0})
 }
 func TestReconcileArgoCD_reconcileRedisHAProxyDeployment_ModifyContainerSpec(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
