@@ -67,7 +67,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			}
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 
-			By("verifying the Argo CD becomes available")
+			By("verifying the Argo CD instance becomes available")
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
 			By("verifying Secret is created for local user")
