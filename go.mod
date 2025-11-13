@@ -4,7 +4,7 @@ go 1.24.6
 
 require (
 	github.com/argoproj/argo-cd/v3 v3.1.9
-	github.com/argoproj/gitops-engine v0.7.1-0.20250905160054-e48120133eec
+	github.com/argoproj/gitops-engine v0.7.3
 	github.com/cert-manager/cert-manager v1.15.4
 	github.com/go-logr/logr v1.4.3
 	github.com/google/go-cmp v0.7.0
@@ -29,6 +29,8 @@ require (
 	sigs.k8s.io/controller-runtime v0.21.0
 	sigs.k8s.io/yaml v1.6.0
 )
+
+require github.com/evanphx/json-patch v5.9.11+incompatible // indirect
 
 require (
 	github.com/argoproj-labs/argocd-image-updater v1.0.0
