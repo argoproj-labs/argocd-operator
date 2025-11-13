@@ -754,6 +754,7 @@ func policyRuleForClusterRoleForImageUpdaterController() []v1.PolicyRule {
 				"list",
 				"patch",
 				"update",
+				"watch",
 			},
 		},
 	}
