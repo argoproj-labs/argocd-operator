@@ -31,7 +31,7 @@ spec:
 As of now, wildcards are not supported in `.spec.notifications.sourceNamespaces`.
 
 !!! important
-Ensure that [Apps in Any Namespace](./apps-in-any-namespace.md) is enabled on target namespace i.e the target namespace name is part of `.spec.sourceNamespaces` field in ArgoCD CR.
+Ensure that [Apps in Any Namespace](./apps-in-any-namespace.md) is enabled on target namespace i.e., the target namespace name is part of `.spec.sourceNamespaces` field in ArgoCD CR.
 
 For notifications to work correctly in a specific namespace, you **must** add that namespace to **both**:
     
