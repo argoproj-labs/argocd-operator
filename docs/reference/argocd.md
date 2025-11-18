@@ -530,7 +530,7 @@ The following properties are available for configuring the import process.
 Name | Default | Description
 --- | --- | ---
 Name | [Empty] | The name of an ArgoCDExport from which to import data.
-Namespace | [ArgoCD Namepspace] |  The Namespace for the ArgoCDExport, defaults to the same namespace as the ArgoCD.
+Namespace | [ArgoCD Namespace] |  The Namespace for the ArgoCDExport, defaults to the same namespace as the ArgoCD.
 
 ### Import Example
 
@@ -588,6 +588,7 @@ Image | `argoproj/argocd` | The container image for all Argo CD components. This
 Version | *(recent Argo CD version)* | The tag to use with the Notifications container image.
 Resources | [Empty] | The container compute resources.
 LogLevel | info | The log level to be used by the ArgoCD Application Controller component. Valid options are debug, info, error, and warn.
+sourceNamespaces | [Empty] | List of namespaces allowed to manage their own notification configuration (ConfigMap and Secret).
 
 ### Notifications Controller Example
 

@@ -53,6 +53,7 @@ nav:
   - Insights: usage/insights.md
   - Dex: usage/dex.md
   - Notifications: usage/notifications.md
+  - Notifications in Any Namespace: usage/notifications-in-any-namespace.md
   - Resource Management: usage/resource_management.md
   - Routes: usage/routes.md
   - Respect RBAC: usage/respect_rbac.md
