@@ -105,11 +105,6 @@ func (r *ReconcileArgoCD) reconcileNotificationsConfigurationCR(cr *argoproj.Arg
 		},
 	}
 
-	if !isNotificationsEnabled(cr) {
-		argoutil.LogResourceDeletion(log, defaultNotificationsConfigurationCR, "notifications are disabled")
-		return r.Delete(context.TODO(), defaultNotificationsConfigurationCR)
-	}
-
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, DefaultNotificationsConfigurationInstanceName,
 		defaultNotificationsConfigurationCR); err != nil {
 
@@ -130,6 +125,10 @@ func (r *ReconcileArgoCD) reconcileNotificationsConfigurationCR(cr *argoproj.Arg
 		}
 	}
 
+	if !isNotificationsEnabled(cr) {
+		argoutil.LogResourceDeletion(log, defaultNotificationsConfigurationCR, "notifications are disabled")
+		return r.Delete(context.TODO(), defaultNotificationsConfigurationCR)
+	}
 	return nil
 }
 
@@ -286,18 +285,21 @@ func (r *ReconcileArgoCD) reconcileNotificationsRole(cr *argoproj.ArgoCD) (*rbac
 func (r *ReconcileArgoCD) reconcileNotificationsRoleBinding(cr *argoproj.ArgoCD, role *rbacv1.Role, sa *corev1.ServiceAccount) error {
 
 	desiredRoleBinding := newRoleBindingWithname(common.ArgoCDNotificationsControllerComponent, cr)
-	desiredRoleBinding.RoleRef = rbacv1.RoleRef{
-		APIGroup: rbacv1.GroupName,
-		Kind:     "Role",
-		Name:     role.Name,
+	if role != nil && role.Name != "" {
+		desiredRoleBinding.RoleRef = rbacv1.RoleRef{
+			APIGroup: rbacv1.GroupName,
+			Kind:     "Role",
+			Name:     role.Name,
+		}
 	}
-
-	desiredRoleBinding.Subjects = []rbacv1.Subject{
-		{
-			Kind:      rbacv1.ServiceAccountKind,
-			Name:      sa.Name,
-			Namespace: sa.Namespace,
-		},
+	if sa != nil && sa.Name != "" {
+		desiredRoleBinding.Subjects = []rbacv1.Subject{
+			{
+				Kind:      rbacv1.ServiceAccountKind,
+				Name:      sa.Name,
+				Namespace: sa.Namespace,
+			},
+		}
 	}
 
 	// fetch existing rolebinding by name
@@ -570,7 +572,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsSourceNamespacesResources(cr *ar
 			continue
 		}
 		if !contains(appsNamespaces, sourceNamespace) {
-			log.Info(fmt.Sprintf("skipping reconciliation of Notification resources for sourceNamespace %s as Apps in target sourceNamespace is not enabled", sourceNamespace), "Warning")
+			log.Info(fmt.Sprintf("skipping reconciliation of Notification resources for sourceNamespace %s as Apps in target sourceNamespace is not enabled", sourceNamespace))
 			continue
 		}
 
