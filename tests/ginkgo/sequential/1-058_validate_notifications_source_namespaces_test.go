@@ -158,6 +158,43 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				return hasAppNamespaces && hasSelfService && hasBothNamespaces
 			}, "2m", "5s").Should(BeTrue())
 
+			By("verifying ClusterRole is created for notifications controller")
+			notifClusterRole := &rbacv1.ClusterRole{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "example-argocd-" + argocdNS.Name + "-argocd-notifications-controller",
+				},
+			}
+			Eventually(notifClusterRole).Should(k8sFixture.ExistByName())
+
+			By("verifying ClusterRoleBinding is created for notifications controller")
+			notifClusterRoleBinding := &rbacv1.ClusterRoleBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "example-argocd-" + argocdNS.Name + "-argocd-notifications-controller",
+				},
+			}
+			Eventually(notifClusterRoleBinding).Should(k8sFixture.ExistByName())
+
+			By("verifying ClusterRoleBinding references the correct ClusterRole and ServiceAccount")
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, client.ObjectKeyFromObject(notifClusterRoleBinding), notifClusterRoleBinding)
+				if err != nil {
+					return false
+				}
+				expectedRoleRef := rbacv1.RoleRef{
+					APIGroup: "rbac.authorization.k8s.io",
+					Kind:     "ClusterRole",
+					Name:     notifClusterRole.Name,
+				}
+				expectedSubject := rbacv1.Subject{
+					Kind:      "ServiceAccount",
+					Name:      "example-argocd-argocd-notifications-controller",
+					Namespace: argocdNS.Name,
+				}
+				return notifClusterRoleBinding.RoleRef == expectedRoleRef &&
+					len(notifClusterRoleBinding.Subjects) == 1 &&
+					notifClusterRoleBinding.Subjects[0] == expectedSubject
+			}, "2m", "5s").Should(BeTrue())
+
 		})
 
 		It("ensures that resources are not created when namespace is not in SourceNamespaces", func() {
@@ -403,6 +440,22 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			}
 			Consistently(role).Should(k8sFixture.NotExistByName())
 
+			By("verifying ClusterRole is NOT created for notifications controller")
+			notifClusterRole := &rbacv1.ClusterRole{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "example-argocd-" + argocdNS.Name + "-argocd-notifications-controller",
+				},
+			}
+			Consistently(notifClusterRole).Should(k8sFixture.NotExistByName())
+
+			By("verifying ClusterRoleBinding is NOT created for notifications controller")
+			notifClusterRoleBinding := &rbacv1.ClusterRoleBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "example-argocd-" + argocdNS.Name + "-argocd-notifications-controller",
+				},
+			}
+			Consistently(notifClusterRoleBinding).Should(k8sFixture.NotExistByName())
+
 			By("verifying source namespace does not have the notifications-managed-by-cluster-argocd label")
 			Consistently(sourceNS1).ShouldNot(namespaceFixture.HaveLabel(common.ArgoCDNotificationsManagedByClusterArgoCDLabel, argocdNS.Name))
 
@@ -558,6 +611,22 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			By("verifying source namespace has the notifications-managed-by-cluster-argocd label")
 			Eventually(sourceNS1, "2m", "5s").Should(namespaceFixture.HaveLabel(common.ArgoCDNotificationsManagedByClusterArgoCDLabel, argocdNS.Name))
+
+			By("verifying ClusterRole is created for notifications controller")
+			notifClusterRole := &rbacv1.ClusterRole{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "example-argocd-" + argocdNS.Name + "-argocd-notifications-controller",
+				},
+			}
+			Eventually(notifClusterRole, "3m", "5s").Should(k8sFixture.ExistByName())
+
+			By("verifying ClusterRoleBinding is created for notifications controller")
+			notifClusterRoleBinding := &rbacv1.ClusterRoleBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "example-argocd-" + argocdNS.Name + "-argocd-notifications-controller",
+				},
+			}
+			Eventually(notifClusterRoleBinding, "3m", "5s").Should(k8sFixture.ExistByName())
 
 		})
 
