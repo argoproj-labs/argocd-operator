@@ -591,6 +591,8 @@ type ArgoCDRepoSpec struct {
 
 	// Custom labels to pods deployed by the operator
 	Labels map[string]string `json:"labels,omitempty"`
+
+	SystemCATrust *ArgoCDSystemCATrustSpec `json:"systemCATrust,omitempty"`
 }
 
 func (a *ArgoCDRepoSpec) IsEnabled() bool {
@@ -599,6 +601,13 @@ func (a *ArgoCDRepoSpec) IsEnabled() bool {
 
 func (a *ArgoCDRepoSpec) IsRemote() bool {
 	return a.Remote != nil && *a.Remote != ""
+}
+
+type ArgoCDSystemCATrustSpec struct {
+	// DropImageAnchors will remove all anchors that are present in the image, leaving only those from ClusterTrustBundles.
+	DropImageAnchors bool `json:"dropImageAnchors,omitempty,default=false"`
+	// ClusterTrustBundles is a list of projected volume definitions from where to take the trust anchors.
+	ClusterTrustBundles []corev1.ClusterTrustBundleProjection `json:"clusterTrustBundles,omitempty"`
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.

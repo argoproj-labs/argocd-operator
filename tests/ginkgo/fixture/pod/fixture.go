@@ -2,6 +2,7 @@ package pod
 
 import (
 	"context"
+	"regexp"
 
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 	//lint:ignore ST1001 "This is a common practice in Gomega tests for readability."
@@ -12,6 +13,22 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+func GetPodByNameRegexp(k8sClient client.Client, nameRegexp *regexp.Regexp, options ...client.ListOption) *corev1.Pod {
+	var pods []corev1.Pod
+	list := &corev1.PodList{}
+	err := k8sClient.List(context.Background(), list, options...)
+	Expect(err).To(BeNil())
+	for _, pod := range list.Items {
+		if nameRegexp.MatchString(pod.Name) {
+			pods = append(pods, pod)
+		}
+	}
+
+	Expect(pods).Should(HaveLen(1), "expected a single pod matching "+nameRegexp.String())
+
+	return &pods[0]
+}
 
 func GetSpecInitContainerByName(name string, pod corev1.Pod) *corev1.Container {
 

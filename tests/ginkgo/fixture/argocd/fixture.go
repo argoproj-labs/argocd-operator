@@ -141,32 +141,33 @@ func HaveApplicationControllerOperationProcessors(operationProcessors int) match
 func HaveCondition(condition metav1.Condition) matcher.GomegaMatcher {
 	return fetchArgoCD(func(argocd *argov1beta1api.ArgoCD) bool {
 
-		if len(argocd.Status.Conditions) != 1 {
-			GinkgoWriter.Println("HaveCondition: length is zero")
+		length := len(argocd.Status.Conditions)
+		if length != 1 {
+			GinkgoWriter.Printf("HaveCondition: length is %d\n", length)
 			return false
 		}
 
 		instanceCondition := argocd.Status.Conditions[0]
 
-		GinkgoWriter.Println("HaveCondition - Message:", instanceCondition.Message, condition.Message)
+		GinkgoWriter.Printf("HaveCondition - Message: '%s' / actual: '%s'\n", condition.Message, instanceCondition.Message)
 		if instanceCondition.Message != condition.Message {
 			GinkgoWriter.Println("HaveCondition: message does not match")
 			return false
 		}
 
-		GinkgoWriter.Println("HaveCondition - Reason:", instanceCondition.Reason, condition.Reason)
+		GinkgoWriter.Printf("HaveCondition - Reason: '%s' / actual: '%s'\n", condition.Reason, instanceCondition.Reason)
 		if instanceCondition.Reason != condition.Reason {
 			GinkgoWriter.Println("HaveCondition: reason does not match")
 			return false
 		}
 
-		GinkgoWriter.Println("HaveCondition - Status:", instanceCondition.Status, condition.Status)
+		GinkgoWriter.Printf("HaveCondition - Status: '%s' / actual: '%s'\n", condition.Status, instanceCondition.Status)
 		if instanceCondition.Status != condition.Status {
 			GinkgoWriter.Println("HaveCondition: status does not match")
 			return false
 		}
 
-		GinkgoWriter.Println("HaveCondition - Type:", instanceCondition.Type, condition.Type)
+		GinkgoWriter.Printf("HaveCondition - Type: '%s' / actual: '%s'\n", condition.Type, instanceCondition.Type)
 		if instanceCondition.Type != condition.Type {
 			GinkgoWriter.Println("HaveCondition: type does not match")
 			return false
