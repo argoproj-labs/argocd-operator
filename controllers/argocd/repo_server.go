@@ -19,14 +19,21 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/api/certificates/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	argocdoperatorv1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -348,8 +355,9 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 	if cr.Spec.Repo.Volumes != nil {
 		repoServerVolumes = append(repoServerVolumes, cr.Spec.Repo.Volumes...)
 	}
-
 	deploy.Spec.Template.Spec.Volumes = repoServerVolumes
+
+	r.injectCATrustToContainers(cr, deploy)
 
 	if replicas := getArgoCDRepoServerReplicas(cr); replicas != nil {
 		deploy.Spec.Replicas = replicas
@@ -365,6 +373,12 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 		for key, value := range cr.Spec.Repo.Labels {
 			deploy.Spec.Template.Labels[key] = value
 		}
+	}
+
+	log.Info("Applying ArgoCD Repo Server reconciler hook")
+	if err := applyReconcilerHook(cr, deploy, ""); err != nil {
+		log.Error(err, "ArgoCD Repo Server reconciler hook failed")
+		return err
 	}
 
 	existing := newDeploymentWithSuffix("repo-server", "repo-server", cr)
@@ -557,6 +571,187 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 	}
 	argoutil.LogResourceCreation(log, deploy)
 	return r.Create(context.TODO(), deploy)
+}
+
+// injectCATrustToContainers Creates the init container and volumes to trust CAs specified by `spec.repo.systemCATrust`.
+//
+// Take CAs from the `argocd-ca-trust-source` volume and mix it with the distro CAs into `argocd-ca-trust-target` volumes.
+// Several ubuntu-specific problems exist:
+// 1. /etc/ssl/certs/ cannot be updated by `update-ca-certificates` without root - desirable in the production container.
+// 2. /etc/ssl/certs/ symlinkes to /usr/local/share/ca-certificates/, so mounting one without the other is futile.
+//
+// All source certs are projected into the `argocd-ca-trust-source` volume that is ultimately mounted in the prod container (addresses #2).
+//
+// To amend content of /etc/ssl/certs/ (ca-trust-target), an init container is used:
+//   - it mounts `argocd-ca-trust-target` over `/etc/ssl/certs/` (addressing #1 by making it writable volume),
+//     and `ca-trust-source` over `/usr/local/share/ca-certificates/`,
+//     and amends it with user-added certs using `update-ca-certificates`.
+//
+// The production container is then mounted with `/etc/ssl/certs/` (`argocd-ca-trust-target`) and
+// `/usr/local/share/ca-certificates/` (`argocd-ca-trust-source`) providing read-only CAs needed.
+func (r *ReconcileArgoCD) injectCATrustToContainers(cr *argocdoperatorv1beta1.ArgoCD, deploy *appsv1.Deployment) {
+	if cr.Spec.Repo.SystemCATrust == nil {
+		return
+	}
+
+	sources, sourceNames := r.caTrustVolumes(cr)
+
+	volumeSource := "argocd-ca-trust-source"
+	volumeTarget := "argocd-ca-trust-target"
+
+	repoServerVolumes := []corev1.Volume{
+		{
+			Name: volumeSource,
+			VolumeSource: corev1.VolumeSource{
+				Projected: &corev1.ProjectedVolumeSource{
+					Sources:     sources,
+					DefaultMode: ptr.To(int32(0o444)),
+				},
+			},
+		}, {
+			Name: volumeTarget,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+	}
+
+	// The `/tmp` volume can be user-provided, so the actual mount name must be looked up
+	volumeTmp := ""
+	for _, vm := range deploy.Spec.Template.Spec.Containers[0].VolumeMounts {
+		if vm.MountPath == "/tmp" {
+			volumeTmp = vm.Name
+			break
+		}
+	}
+
+	argoImage := getArgoContainerImage(cr)
+	deploy.Spec.Template.Spec.InitContainers = append(
+		deploy.Spec.Template.Spec.InitContainers,
+		caTrustInitContainer(cr, argoImage, volumeSource, volumeTarget, volumeTmp),
+	)
+
+	prodVolumeMounts := func() []corev1.VolumeMount {
+		return []corev1.VolumeMount{
+			{Name: volumeSource, ReadOnly: true, MountPath: "/usr/local/share/ca-certificates/"},
+			{Name: volumeTarget, ReadOnly: true, MountPath: "/etc/ssl/certs/"},
+		}
+	}
+
+	// Inject to prod container and sidecars (plugins)
+	var containerNames []string
+	for i, container := range deploy.Spec.Template.Spec.Containers {
+		// This can only work with ubuntu or compatible, so do not inject to potentially incompatible containers
+		if container.Image == argoImage {
+			// Accessing by index because the container is a copy of the original struct
+			deploy.Spec.Template.Spec.Containers[i].VolumeMounts = append(deploy.Spec.Template.Spec.Containers[i].VolumeMounts, prodVolumeMounts()...)
+			containerNames = append(containerNames, container.Name)
+		}
+	}
+
+	log.Info(fmt.Sprintf(
+		"injecting system CA trust from %s to containers %s",
+		strings.Join(sourceNames, ", "),
+		strings.Join(containerNames, ", "),
+	))
+
+	deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, repoServerVolumes...)
+}
+
+func (r *ReconcileArgoCD) caTrustVolumes(cr *argocdoperatorv1beta1.ArgoCD) (sources []corev1.VolumeProjection, sourceNames []string) {
+	// The projected file needs to have the `.crt` suffix for the update-ca-certificates to work correctly. Add it if not present.
+	ensureValidPath := func(path string) string {
+		if strings.HasSuffix(path, ".crt") {
+			return path
+		}
+		return path + ".crt"
+	}
+
+	trackSource := func(kind string, name string, optional *bool) {
+		path := kind + ":" + name
+		if optional != nil && *optional {
+			path += "(optional)"
+		}
+		sourceNames = append(sourceNames, path)
+	}
+
+	for _, bundle := range cr.Spec.Repo.SystemCATrust.ClusterTrustBundles {
+		bundle = *bundle.DeepCopy()
+		// Using .Path, because .Name might not be specified
+		trackSource("ClusterTrustBundle", bundle.Path, bundle.Optional)
+
+		bundle.Path = ensureValidPath(bundle.Path)
+		sources = append(sources, corev1.VolumeProjection{ClusterTrustBundle: &bundle})
+	}
+	for _, secret := range cr.Spec.Repo.SystemCATrust.Secrets {
+		secret = *secret.DeepCopy()
+		trackSource("Secret", secret.Name, secret.Optional)
+
+		for i, item := range secret.Items {
+			secret.Items[i].Path = ensureValidPath(item.Path)
+		}
+		sources = append(sources, corev1.VolumeProjection{Secret: &secret})
+	}
+	for _, cm := range cr.Spec.Repo.SystemCATrust.ConfigMaps {
+		cm = *cm.DeepCopy()
+		trackSource("ConfigMap", cm.Name, cm.Optional)
+
+		for i, cmi := range cm.Items {
+			cm.Items[i].Path = ensureValidPath(cmi.Path)
+		}
+		sources = append(sources, corev1.VolumeProjection{ConfigMap: &cm})
+	}
+	return sources, sourceNames
+}
+
+func caTrustInitContainer(cr *argocdoperatorv1beta1.ArgoCD, argoImage string, volumeSource string, volumeTarget string, tmpVolume string) corev1.Container {
+	// This is where the image keeps its vendored CAs, look elsewhere if DropImageCertificates
+	imageCertPath := "/usr/share/ca-certificates"
+	if cr.Spec.Repo.SystemCATrust.DropImageCertificates {
+		imageCertPath = "/systemCATrust.dropImageCertificates"
+	}
+
+	return corev1.Container{
+		Name:            "update-ca-certificates",
+		Image:           argoImage,
+		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
+		Env: proxyEnvVars(corev1.EnvVar{
+			Name:  "IMAGE_CERT_PATH",
+			Value: imageCertPath,
+		}),
+		Command: []string{"/bin/bash", "-c"},
+		Args: []string{`
+                set -eEuo pipefail
+                trap 's=$?; echo >&2 "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
+
+                echo "User defined CA files:"
+                ls -l /usr/local/share/ca-certificates/
+
+                # Make sure the file exist even when the update-ca-certificates produces no pem blocks
+                echo "" > /etc/ssl/certs/ca-certificates.crt
+
+                update-ca-certificates --verbose --certsdir "$IMAGE_CERT_PATH"
+                echo "Resulting /etc/ssl/certs/"
+                ls -l /etc/ssl/certs/
+                echo "Done!"
+        `},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name: volumeSource,
+				// Source path for user additional certificates - empty in the image, so not shadowing anything.
+				MountPath: "/usr/local/share/ca-certificates/",
+				ReadOnly:  true,
+			}, {
+				Name:      volumeTarget,
+				MountPath: "/etc/ssl/certs/",
+			}, {
+				Name:      tmpVolume,
+				MountPath: "/tmp",
+			},
+		},
+		Resources:       getArgoRepoResources(cr),
+		SecurityContext: argoutil.DefaultSecurityContext(),
+	}
 }
 
 // getArgoRepoResources will return the ResourceRequirements for the Argo CD Repo server container.
@@ -758,4 +953,104 @@ func (r *ReconcileArgoCD) reconcileRepoServerTLSSecret(cr *argocdoperatorv1beta1
 	}
 
 	return nil
+}
+
+// systemCATrustMapper triggers reconciliation of repo-server Deployment if some of the tracked Secrets, ConfigMaps or ClusterTrustBundles have changed
+func (r *ReconcileArgoCD) systemCATrustMapper(ctx context.Context, o client.Object) []reconcile.Request {
+	// Track Argo CDs whose repo-servers need a rollout, and id of the resource that changed
+	rolloutBecause := make(map[*argocdoperatorv1beta1.ArgoCD]string)
+
+	// For cluster-wide resources, it is needed to consult all argos. For cluster-scoped ones, only the argos in the same NS.
+	argoNamespace := client.InNamespace(o.GetNamespace())
+	var argoCDs argocdoperatorv1beta1.ArgoCDList
+	if err := r.List(ctx, &argoCDs, argoNamespace); err != nil {
+		log.Error(err, "unable to list ArgoCD instances")
+		return []reconcile.Request{}
+	}
+
+	for _, argocd := range argoCDs.Items {
+		if argocd.Spec.Repo.SystemCATrust == nil {
+			continue
+		}
+
+		switch obj := o.(type) {
+		case *corev1.Secret:
+			for _, trustSource := range argocd.Spec.Repo.SystemCATrust.Secrets {
+				if trustSource.Name == obj.Name {
+					rolloutBecause[&argocd] = fmt.Sprintf("Secret %s/%s", obj.Namespace, obj.Name)
+					break
+				}
+			}
+		case *corev1.ConfigMap:
+			for _, trustSource := range argocd.Spec.Repo.SystemCATrust.ConfigMaps {
+				if trustSource.Name == obj.Name {
+					rolloutBecause[&argocd] = fmt.Sprintf("ConfigMap %s/%s", obj.Namespace, obj.Name)
+					break
+				}
+			}
+		case *v1beta1.ClusterTrustBundle:
+			for _, trustSource := range argocd.Spec.Repo.SystemCATrust.ClusterTrustBundles {
+				if isRelevantCtb(trustSource, obj) {
+					rolloutBecause[&argocd] = fmt.Sprintf("ClusterTrustBundle %s", obj.Name)
+					break
+				}
+			}
+		default:
+			panic(fmt.Errorf("systemCATrustMapper called for unknown type %T", o))
+		}
+	}
+
+	for argocd, cause := range rolloutBecause {
+		// Instead of triggering rollout, delete the pod to force trust recomputation
+		pods := &corev1.PodList{}
+		err := r.List(context.TODO(), pods,
+			client.InNamespace(argocd.Namespace),
+			client.MatchingLabelsSelector{Selector: labels.SelectorFromSet(map[string]string{
+				"app.kubernetes.io/name": nameWithSuffix("repo-server", argocd),
+			})},
+		)
+		if err != nil {
+			log.Error(err, "unable to list repo-server pods for argocd", "ns", argocd.Namespace, "name", argocd.Name)
+		}
+
+		// In normal circumstances, there would be 1 pod. There can be multiple during ongoing rollout. None if not yet started, or recovering from an error.
+		for _, pod := range pods.Items {
+			log.Info(
+				"restarting repo-server pod after SystemCATrust change in "+cause,
+				"pod", pod.Name, "ns", pod.Namespace, "phase", pod.Status.Phase,
+			)
+			if err := r.Delete(context.TODO(), &pod); err != nil {
+				log.Error(err, "unable to delete repo-server pod 1", "pod", pod.Name, "ns", pod.Namespace, "phase", pod.Status.Phase)
+			}
+		}
+	}
+	// No need to reconcile. The pods have been restarted
+	return []reconcile.Request{}
+}
+
+func isRelevantCtb(proj corev1.ClusterTrustBundleProjection, actual *v1beta1.ClusterTrustBundle) bool {
+	// ClusterTrustBundle uses either .Name or .SignerName plus eventual .LabelSelector to identify the source
+	if proj.Name != nil && *proj.Name == actual.Name {
+		return true
+	}
+
+	if proj.SignerName != nil && *proj.SignerName == actual.Spec.SignerName {
+		// If unset, interpreted as "match nothing".  If set but empty, interpreted as "match everything".
+		if proj.LabelSelector == nil {
+			return false
+		}
+		if len(proj.LabelSelector.MatchLabels)+len(proj.LabelSelector.MatchExpressions) == 0 {
+			return true
+		}
+
+		selector, err := metav1.LabelSelectorAsSelector(proj.LabelSelector)
+		if err != nil {
+			log.Error(err, "Failed evaluating label selector for System CA trust ClusterTrustBundle", "selector", proj.LabelSelector)
+			return false
+		}
+
+		return selector.Matches(labels.Set(actual.Labels))
+	}
+
+	return false
 }
