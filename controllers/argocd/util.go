@@ -116,7 +116,7 @@ func verifyImageUpdaterAPI() error {
 	return nil
 }
 
-// verifyClusterTrustBundleAPI will verify that the template API is present.
+// verifyClusterTrustBundleAPI will verify that the ClusterTrustBundle API is present.
 func verifyClusterTrustBundleAPI() error {
 	found, err := argoutil.VerifyAPI(certificates.GroupName, certificates.SchemeGroupVersion.Version)
 	if err != nil {

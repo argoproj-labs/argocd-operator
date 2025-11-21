@@ -107,14 +107,14 @@ func HaveConditionMatching(conditionType appv1alpha1.ApplicationConditionType, m
 		conditions := app.Status.Conditions
 		var found []string
 		for _, condition := range conditions {
-			found = append(found, fmt.Sprintf("  -  `%s/%s", condition.Type, condition.Message))
+			found = append(found, fmt.Sprintf("  -  %s/%s", condition.Type, condition.Message))
 
 			if condition.Type == conditionType && pattern.MatchString(condition.Message) {
 				return true
 			}
 		}
 
-		GinkgoWriter.Printf("HaveConditionMatching - expected: `%s/%s; current(%d):\n", conditionType, messagePattern, len(conditions))
+		GinkgoWriter.Printf("HaveConditionMatching - expected: %s/%s; current(%d):\n", conditionType, messagePattern, len(conditions))
 		for _, f := range found {
 			GinkgoWriter.Println(f)
 		}
