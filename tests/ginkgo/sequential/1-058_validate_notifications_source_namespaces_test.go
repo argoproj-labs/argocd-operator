@@ -57,7 +57,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			fixture.OutputDebugOnFail("not-argocd-ns")
 		})
 
-		It("ensures that NotificationsConfiguration, Role, and RoleBinding are created in source namespaces when notifications.sourceNamespaces is configured", func() {
+		It("ensures that NotificationsConfiguration, Role, and RoleBinding are created in source namespaces when  notifications.sourceNamespaces is configured", func() {
 
 			By("creating Argo CD instance namespace")
 			argocdNS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("argocd-e2e-cluster-config")
