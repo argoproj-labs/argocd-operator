@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 
@@ -360,6 +361,13 @@ func (r *ReconcileArgoCD) reconcileNotificationsRoleBinding(cr *argoproj.ArgoCD,
 }
 
 func (r *ReconcileArgoCD) reconcileNotificationsClusterRole(cr *argoproj.ArgoCD) (*rbacv1.ClusterRole, error) {
+
+	allowed := allowedNamespace(cr.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES"))
+	// controller disabled, don't create resources
+	if !isNotificationsEnabled(cr) {
+		allowed = false
+	}
+
 	policyRules := policyRuleForNotificationsControllerClusterRole()
 	desiredClusterRole := newClusterRole(common.ArgoCDNotificationsControllerComponent, policyRules, cr)
 
@@ -370,7 +378,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsClusterRole(cr *argoproj.ArgoCD)
 		}
 
 		// cluster role does not exist and shouldn't, nothing to do here
-		if !isNotificationsEnabled(cr) {
+		if !allowed {
 			return nil, nil
 		}
 
@@ -384,7 +392,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsClusterRole(cr *argoproj.ArgoCD)
 	}
 
 	// cluster role exists but shouldn't, so it should be deleted
-	if !isNotificationsEnabled(cr) {
+	if !allowed {
 		argoutil.LogResourceDeletion(log, existingClusterRole, "notifications are disabled")
 		return nil, r.Delete(context.TODO(), existingClusterRole)
 	}
@@ -400,6 +408,13 @@ func (r *ReconcileArgoCD) reconcileNotificationsClusterRole(cr *argoproj.ArgoCD)
 }
 
 func (r *ReconcileArgoCD) reconcileNotificationsClusterRoleBinding(cr *argoproj.ArgoCD, clusterRole *rbacv1.ClusterRole, sa *corev1.ServiceAccount) error {
+
+	allowed := allowedNamespace(cr.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES"))
+	// controller disabled, don't create resources
+	if !isNotificationsEnabled(cr) {
+		allowed = false
+	}
+
 	desiredClusterRoleBinding := newClusterRoleBindingWithname(common.ArgoCDNotificationsControllerComponent, cr)
 	if clusterRole != nil && clusterRole.Name != "" {
 		desiredClusterRoleBinding.RoleRef = rbacv1.RoleRef{
@@ -426,11 +441,11 @@ func (r *ReconcileArgoCD) reconcileNotificationsClusterRoleBinding(cr *argoproj.
 		}
 
 		// cluster roleBinding does not exist and shouldn't, nothing to do here
-		if !isNotificationsEnabled(cr) {
+		if !allowed {
 			return nil
 		}
 
-		// cluster roleBinding does not exist but should, so it should be created
+		// clusterrole does not exist but should, so it should be created first
 		// Only create if clusterRole exists
 		if clusterRole == nil || clusterRole.Name == "" {
 			return nil
@@ -440,7 +455,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsClusterRoleBinding(cr *argoproj.
 	}
 
 	// cluster roleBinding exists but shouldn't, so it should be deleted
-	if !isNotificationsEnabled(cr) {
+	if !allowed {
 		argoutil.LogResourceDeletion(log, existingClusterRoleBinding, "notifications are disabled")
 		return r.Delete(context.TODO(), existingClusterRoleBinding)
 	}

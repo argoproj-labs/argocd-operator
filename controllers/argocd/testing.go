@@ -102,6 +102,19 @@ func makeTestArgoCD(opts ...argoCDOpt) *argoproj.ArgoCD {
 	return a
 }
 
+func makeTestArgoCDInNamespace(ns string, opts ...argoCDOpt) *argoproj.ArgoCD {
+	a := &argoproj.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testArgoCDName,
+			Namespace: ns,
+		},
+	}
+	for _, o := range opts {
+		o(a)
+	}
+	return a
+}
+
 func makeTestArgoCDWithResources(opts ...argoCDOpt) *argoproj.ArgoCD {
 	a := &argoproj.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{

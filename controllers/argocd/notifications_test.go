@@ -3,6 +3,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -144,10 +145,10 @@ func TestReconcileNotifications_CreateRoleBinding(t *testing.T) {
 
 func TestReconcileNotifications_CreateClusterRole(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+	a := makeTestArgoCDInNamespace("noti-test", func(a *argoproj.ArgoCD) {
 		a.Spec.Notifications.Enabled = true
 	})
-
+	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
 	runtimeObjs := []runtime.Object{}
@@ -179,10 +180,10 @@ func TestReconcileNotifications_CreateClusterRole(t *testing.T) {
 
 func TestReconcileNotifications_CreateClusterRoleBinding(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+	a := makeTestArgoCDInNamespace("noti-test", func(a *argoproj.ArgoCD) {
 		a.Spec.Notifications.Enabled = true
 	})
-
+	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
 	runtimeObjs := []runtime.Object{}
