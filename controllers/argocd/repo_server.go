@@ -996,7 +996,7 @@ func (r *ReconcileArgoCD) systemCATrustMapper(ctx context.Context, o client.Obje
 				}
 			}
 		default:
-			panic(fmt.Errorf("systemCATrustMapper called for unknown type %t", o))
+			panic(fmt.Errorf("systemCATrustMapper called for unknown type %T", o))
 		}
 	}
 
