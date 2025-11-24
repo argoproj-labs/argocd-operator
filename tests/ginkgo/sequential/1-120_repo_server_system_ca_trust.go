@@ -42,7 +42,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	certificatesv1alpha1 "k8s.io/api/certificates/v1beta1"
+	certificatesv1beta1 "k8s.io/api/certificates/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -369,8 +369,8 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Eventually(actualTrust, "30s", "5s").Should(trustCerts(Equal(2), Not(BeEmpty())), actualTrust.diagnose())
 
 			By("updating ClusterTrustBundle with 1 cert")
-			ctbUpdate(combinedCtb, func(bundle *certificatesv1alpha1.ClusterTrustBundle) {
-				bundle.Spec = certificatesv1alpha1.ClusterTrustBundleSpec{
+			ctbUpdate(combinedCtb, func(bundle *certificatesv1beta1.ClusterTrustBundle) {
+				bundle.Spec = certificatesv1beta1.ClusterTrustBundleSpec{
 					SignerName:  bundle.Spec.SignerName,
 					TrustBundle: getCACert("github.com"),
 				}
@@ -459,7 +459,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 	})
 })
 
-func ctbUpdate(obj *certificatesv1alpha1.ClusterTrustBundle, modify func(*certificatesv1alpha1.ClusterTrustBundle)) {
+func ctbUpdate(obj *certificatesv1beta1.ClusterTrustBundle, modify func(*certificatesv1beta1.ClusterTrustBundle)) {
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		// Retrieve the latest version of the object
 		err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(obj), obj)
@@ -487,7 +487,7 @@ func argoCDSpec(ns *corev1.Namespace, repoSpec argov1beta1api.ArgoCDRepoSpec) *a
 }
 
 func detectClusterTrustBundleSupport(k8sClient client.Client, ctx context.Context) bool {
-	err := k8sClient.List(ctx, &certificatesv1alpha1.ClusterTrustBundleList{})
+	err := k8sClient.List(ctx, &certificatesv1beta1.ClusterTrustBundleList{})
 	if _, ok := err.(*apiutil.ErrResourceDiscoveryFailed); ok {
 		return false
 	}
@@ -626,11 +626,11 @@ func createPluginApp(ns *corev1.Namespace, url string) *appv1alpha1.Application 
 	}
 }
 
-func createCtbFromCerts(bundle ...string) *certificatesv1alpha1.ClusterTrustBundle {
-	return &certificatesv1alpha1.ClusterTrustBundle{
+func createCtbFromCerts(bundle ...string) *certificatesv1beta1.ClusterTrustBundle {
+	return &certificatesv1beta1.ClusterTrustBundle{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ClusterTrustBundle",
-			APIVersion: "certificates.k8s.io/v1alpha1",
+			APIVersion: "certificates.k8s.io/v1beta1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "repo-server-system-ca-trust",
@@ -638,7 +638,7 @@ func createCtbFromCerts(bundle ...string) *certificatesv1alpha1.ClusterTrustBund
 				"argocd-operator-test": "repo_server_system_ca_trust",
 			},
 		},
-		Spec: certificatesv1alpha1.ClusterTrustBundleSpec{
+		Spec: certificatesv1beta1.ClusterTrustBundleSpec{
 			TrustBundle: strings.Join(bundle, "\n"),
 		},
 	}
@@ -855,6 +855,6 @@ func verifyCorrectlyConfiguredTrust(ns *corev1.Namespace) {
 func purgeCtbs() {
 	if clusterSupportsClusterTrustBundles {
 		expr := client.MatchingLabels{"argocd-operator-test": "repo_server_system_ca_trust"}
-		Expect(k8sClient.DeleteAllOf(ctx, &certificatesv1alpha1.ClusterTrustBundle{}, expr)).To(Succeed())
+		Expect(k8sClient.DeleteAllOf(ctx, &certificatesv1beta1.ClusterTrustBundle{}, expr)).To(Succeed())
 	}
 }
