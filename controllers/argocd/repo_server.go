@@ -23,7 +23,7 @@ import (
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/api/certificates/v1beta1"
+	certificatesv1beta1 "k8s.io/api/certificates/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -988,7 +988,7 @@ func (r *ReconcileArgoCD) systemCATrustMapper(ctx context.Context, o client.Obje
 					break
 				}
 			}
-		case *v1beta1.ClusterTrustBundle:
+		case *certificatesv1beta1.ClusterTrustBundle:
 			for _, trustSource := range argocd.Spec.Repo.SystemCATrust.ClusterTrustBundles {
 				if isRelevantCtb(trustSource, obj) {
 					rolloutBecause[&argocd] = fmt.Sprintf("ClusterTrustBundle %s", obj.Name)
@@ -1028,7 +1028,7 @@ func (r *ReconcileArgoCD) systemCATrustMapper(ctx context.Context, o client.Obje
 	return []reconcile.Request{}
 }
 
-func isRelevantCtb(proj corev1.ClusterTrustBundleProjection, actual *v1beta1.ClusterTrustBundle) bool {
+func isRelevantCtb(proj corev1.ClusterTrustBundleProjection, actual *certificatesv1beta1.ClusterTrustBundle) bool {
 	// ClusterTrustBundle uses either .Name or .SignerName plus eventual .LabelSelector to identify the source
 	if proj.Name != nil && *proj.Name == actual.Name {
 		return true
