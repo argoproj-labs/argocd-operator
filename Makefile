@@ -5,7 +5,7 @@
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= 0.17.0
 
-# ARGO_CD_TARGET_VERSION is the target version that argocd-operator will install. 
+# ARGO_CD_TARGET_VERSION is the target version that argocd-operator will install.
 # Update this when you upgrade the Argo CD dependencies of the project.
 # After updating, call 'make update-dependencies'.
 # Notes:
@@ -200,7 +200,7 @@ ENVTEST = $(shell pwd)/bin/setup-envtest
 envtest: ## Download envtest-setup locally if necessary.
 	## Use release-0.22 as the last version that supports Go 1.24 - https://github.com/kubernetes-sigs/controller-runtime/issues/3358
 	## Feel free to update this when we move to Go 1.25+
-	$(call go-install-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@release-0.22) 
+	$(call go-install-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@release-0.22)
 	$(ENVTEST) use 1.26
 
 
@@ -346,7 +346,7 @@ e2e-tests-sequential-ginkgo: ginkgo
 .PHONY: e2e-tests-parallel-ginkgo
 e2e-tests-parallel-ginkgo: ginkgo
 	@echo "Running operator parallel Ginkgo E2E tests..."
-	$(GINKGO_CLI) -p -v -procs=4 --trace --timeout 90m -r ./tests/ginkgo/parallel
+	$(GINKGO_CLI) -p -v -procs=3 --trace --timeout 90m -r ./tests/ginkgo/parallel
 
 
 GINKGO_CLI = $(shell pwd)/bin/ginkgo
