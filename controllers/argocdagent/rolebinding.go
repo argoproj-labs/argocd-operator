@@ -100,6 +100,8 @@ func ReconcilePrincipalClusterRoleBinding(client client.Client, compName string,
 	expectedSubjects := buildSubjects(sa, cr)
 	expectedRoleRef := buildRoleRef(generateAgentResourceName(cr.Name+"-"+cr.Namespace, compName), "ClusterRole")
 
+	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
+
 	// Check if the ClusterRoleBinding already exists
 	exists := true
 	if err := client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleBinding.Name}, clusterRoleBinding); err != nil {
@@ -111,7 +113,7 @@ func ReconcilePrincipalClusterRoleBinding(client client.Client, compName string,
 
 	// If ClusterRoleBinding exists, handle updates or deletion
 	if exists {
-		if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
+		if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() || !allowed {
 			argoutil.LogResourceDeletion(log, clusterRoleBinding, "principal clusterRoleBinding is being deleted as principal is disabled")
 			if err := client.Delete(context.TODO(), clusterRoleBinding); err != nil {
 				return fmt.Errorf("failed to delete principal clusterRoleBinding %s: %v", clusterRoleBinding.Name, err)
@@ -134,7 +136,7 @@ func ReconcilePrincipalClusterRoleBinding(client client.Client, compName string,
 	}
 
 	// If ClusterRoleBinding doesn't exist and principal is disabled, nothing to do
-	if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
+	if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() || !allowed {
 		return nil
 	}
 
