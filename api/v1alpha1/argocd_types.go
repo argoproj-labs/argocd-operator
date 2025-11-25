@@ -1019,6 +1019,28 @@ type WebhookServerSpec struct {
 	Route ArgoCDRouteSpec `json:"route,omitempty"`
 }
 
+// AgentMode is a type which represents possible agent modes
+type AgentMode string
+
+// Possible agent modes
+const (
+	// AgentModeManaged indicates that the agent is in managed mode
+	AgentModeManaged AgentMode = "managed"
+	// AgentModeAutonomous indicates that the agent is in autonomous mode
+	AgentModeAutonomous AgentMode = "autonomous"
+)
+
+// AgentComponentType is a type which represents possible agent component types
+type AgentComponentType string
+
+// Possible agent component types
+const (
+	// AgentComponentTypePrincipal indicates the component type is principal
+	AgentComponentTypePrincipal AgentComponentType = "principal"
+	// AgentComponentTypeAgent indicates the component type is agent
+	AgentComponentTypeAgent AgentComponentType = "agent"
+)
+
 type ArgoCDAgentSpec struct {
 
 	// Principal defines configurations for the Principal component of Argo CD Agent.

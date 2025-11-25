@@ -94,14 +94,14 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 							Client: &argov1beta1api.AgentClientSpec{
 								PrincipalServerAddress: "argocd-agent-principal.example.com",
 								PrincipalServerPort:    "443",
-								Mode:                   "managed",
+								Mode:                   string(argov1beta1api.AgentModeManaged),
 								EnableWebSocket:        ptr.To(false),
 								EnableCompression:      ptr.To(false),
 								KeepAliveInterval:      "30s",
 							},
 							TLS: &argov1beta1api.AgentTLSSpec{
-								SecretName:       "argocd-agent-client-tls",
-								RootCASecretName: "argocd-agent-ca",
+								SecretName:       agentClientTLSSecretName,
+								RootCASecretName: agentRootCASecretName,
 								Insecure:         ptr.To(false),
 							},
 							Redis: &argov1beta1api.AgentRedisSpec{
@@ -148,8 +148,8 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			// List required secrets for agent pod
 			secretNames = []string{
-				"argocd-agent-client-tls",
-				"argocd-agent-ca",
+				agentClientTLSSecretName,
+				agentRootCASecretName,
 				"example-redis-initial-password",
 			}
 
@@ -174,10 +174,10 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				agent.EnvArgoCDAgentServerAddress:       "argocd-agent-principal.example.com",
 				agent.EnvArgoCDAgentServerPort:          "443",
 				agent.EnvArgoCDAgentLogFormat:           "text",
-				agent.EnvArgoCDAgentTLSSecretName:       "argocd-agent-client-tls",
+				agent.EnvArgoCDAgentTLSSecretName:       agentClientTLSSecretName,
 				agent.EnvArgoCDAgentTLSInsecure:         "false",
-				agent.EnvArgoCDAgentTLSRootCASecretName: "argocd-agent-ca",
-				agent.EnvArgoCDAgentMode:                "managed",
+				agent.EnvArgoCDAgentTLSRootCASecretName: agentRootCASecretName,
+				agent.EnvArgoCDAgentMode:                string(argov1beta1api.AgentModeManaged),
 				agent.EnvArgoCDAgentCreds:               "mtls:any",
 				agent.EnvArgoCDAgentEnableWebSocket:     "false",
 				agent.EnvArgoCDAgentEnableCompression:   "false",
@@ -188,6 +188,10 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 		})
 
 		AfterEach(func() {
+			By("Cleanup cluster-scoped resources")
+			_ = k8sClient.Delete(ctx, clusterRole)
+			_ = k8sClient.Delete(ctx, clusterRoleBinding)
+
 			By("Cleanup namespace")
 			if cleanupFunc != nil {
 				cleanupFunc()
@@ -245,7 +249,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			By("verifying primary agent Deployment has expected values")
 
 			Eventually(agentDeployment).Should(k8sFixture.ExistByName())
-			Eventually(agentDeployment).Should(k8sFixture.HaveLabelWithValue("app.kubernetes.io/component", "agent"))
+			Eventually(agentDeployment).Should(k8sFixture.HaveLabelWithValue("app.kubernetes.io/component", string(argov1beta1api.AgentComponentTypeAgent)))
 			Eventually(agentDeployment).Should(k8sFixture.HaveLabelWithValue("app.kubernetes.io/managed-by", argoCDName))
 			Eventually(agentDeployment).Should(k8sFixture.HaveLabelWithValue("app.kubernetes.io/name", argoCDAgentAgentName))
 			Eventually(agentDeployment).Should(k8sFixture.HaveLabelWithValue("app.kubernetes.io/part-of", "argocd-agent"))
@@ -332,7 +336,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			container := deploymentFixture.GetTemplateSpecContainerByName(argoCDAgentAgentName, *agentDeployment)
 			Expect(container).ToNot(BeNil())
-			Expect(container.Image).To(Equal("quay.io/argoprojlabs/argocd-agent:v0.3.2"))
+			Expect(container.Image).To(Equal(common.ArgoCDAgentAgentDefaultImageName))
 
 			By("Verify environment variables are set correctly")
 
@@ -366,7 +370,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			By("Create ArgoCD instance")
 
-			argoCD.Spec.ArgoCDAgent.Agent.Image = "quay.io/jparsai/argocd-agent:test"
+			argoCD.Spec.ArgoCDAgent.Agent.Image = "quay.io/argoprojlabs/argocd-agent:v0.5.0"
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 
 			By("Verify expected resources are created for agent pod")
@@ -377,7 +381,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			container := deploymentFixture.GetTemplateSpecContainerByName(argoCDAgentAgentName, *agentDeployment)
 			Expect(container).ToNot(BeNil())
-			Expect(container.Image).To(Equal("quay.io/jparsai/argocd-agent:test"))
+			Expect(container.Image).To(Equal("quay.io/argoprojlabs/argocd-agent:v0.5.0"))
 
 			By("Verify environment variables are set correctly")
 
@@ -394,12 +398,12 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 				ac.Spec.ArgoCDAgent.Agent.LogLevel = "trace"
 				ac.Spec.ArgoCDAgent.Agent.LogFormat = "json"
-				ac.Spec.ArgoCDAgent.Agent.Image = "quay.io/jparsai/argocd-agent:test1"
+				ac.Spec.ArgoCDAgent.Agent.Image = "quay.io/argoprojlabs/argocd-agent:v0.5.1"
 
 				ac.Spec.ArgoCDAgent.Agent.Client.KeepAliveInterval = "60s"
 				ac.Spec.ArgoCDAgent.Agent.Client.EnableWebSocket = ptr.To(true)
 				ac.Spec.ArgoCDAgent.Agent.Client.EnableCompression = ptr.To(true)
-				ac.Spec.ArgoCDAgent.Agent.Client.Mode = "autonomous"
+				ac.Spec.ArgoCDAgent.Agent.Client.Mode = string(argov1beta1api.AgentModeAutonomous)
 				ac.Spec.ArgoCDAgent.Agent.Client.PrincipalServerAddress = "argocd-agent-principal-updated.example.com"
 				ac.Spec.ArgoCDAgent.Agent.Client.PrincipalServerPort = "8443"
 
@@ -424,7 +428,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					if container == nil {
 						return false
 					}
-					return container.Image == "quay.io/jparsai/argocd-agent:test1"
+					return container.Image == "quay.io/argoprojlabs/argocd-agent:v0.5.1"
 				}, "120s", "5s").Should(BeTrue(), "Agent deployment should have the updated image")
 
 			By("Verify environment variables are updated correctly")
@@ -434,7 +438,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			expectedEnvVariables[agent.EnvArgoCDAgentKeepAliveInterval] = "60s"
 			expectedEnvVariables[agent.EnvArgoCDAgentEnableWebSocket] = "true"
 			expectedEnvVariables[agent.EnvArgoCDAgentEnableCompression] = "true"
-			expectedEnvVariables[agent.EnvArgoCDAgentMode] = "autonomous"
+			expectedEnvVariables[agent.EnvArgoCDAgentMode] = string(argov1beta1api.AgentModeAutonomous)
 			expectedEnvVariables[agent.EnvArgoCDAgentServerAddress] = "argocd-agent-principal-updated.example.com"
 			expectedEnvVariables[agent.EnvArgoCDAgentServerPort] = "8443"
 			expectedEnvVariables[agent.EnvArgoCDAgentTLSInsecure] = "true"
