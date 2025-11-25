@@ -3,7 +3,6 @@ package argocd
 import (
 	"context"
 	"fmt"
-	"os"
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
@@ -311,7 +310,7 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 
 func (r *ReconcileArgoCD) reconcileClusterRole(componentName string, policyRules []v1.PolicyRule, cr *argoproj.ArgoCD) (*v1.ClusterRole, error) {
 
-	allowed := allowedNamespace(cr.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES"))
+	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
 
 	if err := verifyInstallationMode(cr, allowed); err != nil {
 		log.Error(err, "error occurred in reconcileClusterRole")

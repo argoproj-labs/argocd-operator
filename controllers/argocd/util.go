@@ -1177,31 +1177,6 @@ func (r *ReconcileArgoCD) triggerRollout(obj interface{}, key string) error {
 	}
 }
 
-func allowedNamespace(current string, namespaces string) bool {
-
-	clusterConfigNamespaces := splitList(namespaces)
-	if len(clusterConfigNamespaces) > 0 {
-		if clusterConfigNamespaces[0] == "*" {
-			return true
-		}
-
-		for _, n := range clusterConfigNamespaces {
-			if n == current {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func splitList(s string) []string {
-	elems := strings.Split(s, ",")
-	for i := range elems {
-		elems[i] = strings.TrimSpace(elems[i])
-	}
-	return elems
-}
-
 // DeprecationEventEmissionStatus is meant to track which deprecation events have been emitted already. This is temporary and can be removed in v0.0.6 once we have provided enough
 // deprecation notice
 type DeprecationEventEmissionStatus struct {
