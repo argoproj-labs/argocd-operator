@@ -2,24 +2,22 @@ name: Build and test the operator
 on:
   push:
     branches:
-      - 'master'
-      - 'release-*'
-      - 'rhos-*'
+      - "master"
+      - "release-*"
+      - "rhos-*"
   pull_request:
     paths-ignore:
       - "docs/**"
     branches:
-      - 'master'
-      - 'release-*'
-      - 'rhos-*'
+      - "master"
+      - "release-*"
+      - "rhos-*"
 
 jobs:
-
   build-operator:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Create checkout directory
         run: mkdir -p ~/go/src/github.com/argoproj-labs
 
@@ -32,7 +30,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version-file: 'go.mod'
+          go-version-file: "go.mod"
 
       - name: Restore go build cache
         uses: actions/cache@v4
@@ -48,14 +46,14 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        k3s-version: [ v1.27.1 ]
+        k3s-version: [v1.27.1]
         # k3s-version: [v1.20.2, v1.19.2, v1.18.9, v1.17.11, v1.16.15]
     steps:
       - name: Download kuttl plugin
         env:
-          KUTTL_VERSION: '0.10.0'
-          KUTTL_PLUGIN_SUM: 'ad21c0d2be495a8f6cfc0821e592ae61afd191ebd453156d9b204e2524fceaf2'
-          KUTTL_PLUGIN_FILENAME: 'kubectl-kuttl_0.10.0_linux_x86_64'
+          KUTTL_VERSION: "0.10.0"
+          KUTTL_PLUGIN_SUM: "ad21c0d2be495a8f6cfc0821e592ae61afd191ebd453156d9b204e2524fceaf2"
+          KUTTL_PLUGIN_FILENAME: "kubectl-kuttl_0.10.0_linux_x86_64"
         run: |
           set -x
           echo ${KUTTL_PLUGIN_FILENAME}
@@ -77,7 +75,7 @@ jobs:
       - name: Setup Golang
         uses: actions/setup-go@v6
         with:
-          go-version-file: 'go.mod'
+          go-version-file: "go.mod"
       - name: GH actions workaround - Kill XSP4 process
         run: |
           sudo pkill mono || true
@@ -104,6 +102,7 @@ jobs:
       - name: Run ginkgo tests
         run: |
           set -o pipefail
+          hack/df-loop.sh &
           LOCAL_RUN=true make e2e-tests-sequential-ginkgo  e2e-tests-parallel-ginkgo 2>&1 | tee /tmp/e2e-test-ginkgo.log
 
       - name: Upload operator logs
