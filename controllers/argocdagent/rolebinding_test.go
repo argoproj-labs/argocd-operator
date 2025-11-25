@@ -333,6 +333,7 @@ func TestReconcilePrincipalClusterRoleBinding_ClusterRoleBindingDoesNotExist_Pri
 	// Expected behavior: Should create the ClusterRoleBinding with expected subjects and roleRef
 
 	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", cr.Namespace)
 	sa := makeTestServiceAccount()
 
 	resObjs := []client.Object{cr, sa}
@@ -402,6 +403,7 @@ func TestReconcilePrincipalClusterRoleBinding_ClusterRoleBindingExists_Principal
 	// Expected behavior: Should do nothing (no update)
 
 	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", cr.Namespace)
 	sa := makeTestServiceAccount()
 
 	expectedSubjects := buildSubjects(sa, cr)
@@ -439,6 +441,7 @@ func TestReconcilePrincipalClusterRoleBinding_ClusterRoleBindingExists_Principal
 	// Expected behavior: Should update the ClusterRoleBinding with new subjects
 
 	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", cr.Namespace)
 	sa := makeTestServiceAccount()
 
 	// Create existing ClusterRoleBinding with different subjects
@@ -484,6 +487,7 @@ func TestReconcilePrincipalClusterRoleBinding_ClusterRoleBindingExists_Principal
 	// Expected behavior: Should update the ClusterRoleBinding with new roleRef
 
 	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", cr.Namespace)
 	sa := makeTestServiceAccount()
 
 	expectedSubjects := buildSubjects(sa, cr)
