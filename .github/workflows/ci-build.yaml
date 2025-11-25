@@ -69,8 +69,7 @@ jobs:
           sudo mkdir -p $HOME/.kube && sudo chown -R runner $HOME/.kube
           # create k3d cluster
           # - limit logs to 4Mi, to avoid overwhelming GitHub's small runner storage (14Gi)
-          k3d cluster create --servers 3 --image rancher/k3s:${{ matrix.k3s-version }}-k3s1 --k3s-arg '--kubelet-arg=container-log-max-files=2'
-          --k3s-arg '--kubelet-arg container-log-max-size=2Mi'
+          k3d cluster create --servers 3 --image rancher/k3s:${{ matrix.k3s-version }}-k3s1 --k3s-arg '--kubelet-arg=container-log-max-files=2' --k3s-arg '--kubelet-arg container-log-max-size=2Mi'
           kubectl version
           k3d version
       - name: Checkout code
