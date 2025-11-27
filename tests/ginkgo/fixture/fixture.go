@@ -78,10 +78,14 @@ func WaitForRootPartitionToHaveMinimumDiskSpace() {
 		fields := strings.Fields(rootEntry)
 		Expect(len(fields)).To(BeNumerically(">=", 4), "df output should have at least 4 fields")
 
+		fmt.Println("fields:", fields)
+		fmt.Println("fields3:'" + fields[3] + "'")
+
 		// Parse fields[3] which is the available space in bytes
 		availableBytes, err := strconv.ParseInt(fields[3], 10, 64)
 		Expect(err).ToNot(HaveOccurred(), "failed to parse available bytes from df output")
 
+		fmt.Println("availableBytes:", availableBytes)
 		// Convert bytes to gigabytes (1 GB = 1024^3 bytes)
 		availableGB := availableBytes / (1024 * 1024 * 1024)
 
