@@ -50,15 +50,17 @@ var NamespaceLabels = map[string]string{E2ETestLabelsKey: E2ETestLabelsValue}
 // - When the availabel disk space drops to 4GiB, the K8s instance will start to arbitrarily evict pods, which causes tests to intermittently fail.
 // - As a workaround (since we can't increase the GH action env), each parallel test will wait for a minimum of disk space before starting.
 // - Before each parallel test, we thus run `df` command and wait for it to tell use that >= 5GB of disk space is available.
-func waitForRootPartitionToHaveMinimumDiskSpace() {
+func WaitForRootPartitionToHaveMinimumDiskSpace() {
 
-	GinkgoWriter.Println("waitForRootPartitionToHaveMinimumDiskSpace")
+	By("WTF")
+
+	fmt.Println("waitForRootPartitionToHaveMinimumDiskSpace")
 
 	for {
 
 		output, err := osFixture.ExecCommandWithOutputParam(true, "df")
 		Expect(err).ToNot(HaveOccurred())
-		GinkgoWriter.Println("JGW------------------")
+		fmt.Println("JGW------------------")
 		var rootEntry string
 		for line := range strings.SplitSeq(output, "\n") {
 			GinkgoWriter.Println("-", line)
@@ -68,7 +70,7 @@ func waitForRootPartitionToHaveMinimumDiskSpace() {
 			}
 		}
 		if rootEntry == "" {
-			GinkgoWriter.Println("No /dev/root volume to manage")
+			fmt.Println("No /dev/root volume to manage")
 			return
 		}
 
@@ -85,7 +87,7 @@ func waitForRootPartitionToHaveMinimumDiskSpace() {
 
 		// If less than 6 GB available, sleep and continue the loop
 		if availableGB < 6 {
-			GinkgoWriter.Println("Waiting for /dev/root volume to have minimum size, current size:", availableGB, "GB")
+			fmt.Println("Waiting for /dev/root volume to have minimum size, current size:", availableGB, "GB")
 			time.Sleep(time.Second * 10)
 		} else {
 			return
@@ -102,7 +104,7 @@ func EnsureParallelCleanSlate() {
 	SetDefaultConsistentlyDuration(time.Second * 10)
 	SetDefaultConsistentlyPollingInterval(time.Second * 1)
 
-	waitForRootPartitionToHaveMinimumDiskSpace()
+	// waitForRootPartitionToHaveMinimumDiskSpace()
 
 	// Unlike sequential clean slate, parallel clean slate cannot assume that there are no other tests running. This limits our ability to clean up old test artifacts.
 }
@@ -117,6 +119,8 @@ func EnsureSequentialCleanSlate() {
 }
 
 func EnsureSequentialCleanSlateWithError() error {
+
+	WaitForRootPartitionToHaveMinimumDiskSpace()
 
 	// With sequential tests, we are always safe to assume that there is no other test running. That allows us to clean up old test artifacts before new test starts.
 
