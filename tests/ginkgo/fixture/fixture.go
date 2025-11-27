@@ -52,8 +52,6 @@ var NamespaceLabels = map[string]string{E2ETestLabelsKey: E2ETestLabelsValue}
 // - Before each parallel test, we thus run `df` command and wait for it to tell use that >= 5GB of disk space is available.
 func WaitForRootPartitionToHaveMinimumDiskSpace() {
 
-	By("WTF")
-
 	fmt.Println("waitForRootPartitionToHaveMinimumDiskSpace")
 
 	for {
@@ -78,14 +76,14 @@ func WaitForRootPartitionToHaveMinimumDiskSpace() {
 		fields := strings.Fields(rootEntry)
 		Expect(len(fields)).To(BeNumerically(">=", 4), "df output should have at least 4 fields")
 
-		fmt.Println("fields:", fields)
-		fmt.Println("fields3:'" + fields[3] + "'")
+		// fmt.Println("fields:", fields)
+		// fmt.Println("fields3:'" + fields[3] + "'")
 
 		// Parse fields[3] which is the available space in 1KB blocks (df outputs sizes in 1KB blocks, not bytes)
 		availableKBBlocks, err := strconv.ParseInt(fields[3], 10, 64)
 		Expect(err).ToNot(HaveOccurred(), "failed to parse available 1KB blocks from df output")
 
-		fmt.Println("availableKBBlocks:", availableKBBlocks)
+		// fmt.Println("availableKBBlocks:", availableKBBlocks)
 		// Convert 1KB blocks to gigabytes (1 GB = 1024^2 1KB blocks)
 		availableGB := availableKBBlocks / (1024 * 1024)
 
@@ -108,7 +106,7 @@ func EnsureParallelCleanSlate() {
 	SetDefaultConsistentlyDuration(time.Second * 10)
 	SetDefaultConsistentlyPollingInterval(time.Second * 1)
 
-	// waitForRootPartitionToHaveMinimumDiskSpace()
+	WaitForRootPartitionToHaveMinimumDiskSpace()
 
 	// Unlike sequential clean slate, parallel clean slate cannot assume that there are no other tests running. This limits our ability to clean up old test artifacts.
 }
