@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -42,6 +43,67 @@ const (
 
 var NamespaceLabels = map[string]string{E2ETestLabelsKey: E2ETestLabelsValue}
 
+// waitForRootPartitionToHaveMinimumDiskSpace:
+// - When running via GitHub (GH) action, the E2E test environment has only ~14GiB of disk space available.
+// - As the E2E tests run, and as the K8s cluster persists data, that available storage drops over time.
+// - This drop is especially significant during parallel test execution, as multiple Argo CD instances are running/logging at the same time.
+// - When the available disk space drops to 4GiB, the K8s instance will start to arbitrarily evict pods, which causes tests to intermittently fail.
+// - As a workaround (since we can't increase the GH action env), each parallel test will wait for a minimum of disk space before starting.
+// - Before each parallel test, we thus run `df` command and wait for it to tell use that >= 7 GiB of disk space is available.
+func WaitForRootPartitionToHaveMinimumDiskSpace() {
+
+	startTime := time.Now()
+
+	for {
+
+		output, err := osFixture.ExecCommandWithOutputParam(true, "df", "-k")
+		Expect(err).ToNot(HaveOccurred())
+
+		// Output from 'df' looks like this:
+		// Filesystem     1K-blocks     Used Available Use% Mounted on
+		// /dev/root       75085112 68827120   6241608  92% /
+		// (...)
+
+		// Extract only '/dev/root' line
+		var rootEntry string
+		for line := range strings.SplitSeq(output, "\n") {
+			if strings.Contains(line, "/dev/root") {
+				rootEntry = line
+				break
+			}
+		}
+		if rootEntry == "" {
+			// No '/dev/root' volume to manage, so no work to do.
+			return
+		}
+
+		// Split output by whitespace to parse df fields
+		fields := strings.Fields(rootEntry)
+		Expect(len(fields)).To(BeNumerically(">=", 4), "df output should have at least 4 fields")
+
+		// Parse fields[3] which is the available space in 1KB blocks (df outputs sizes in 1KB blocks, not bytes)
+		availableKiB, err := strconv.ParseInt(fields[3], 10, 64)
+		Expect(err).ToNot(HaveOccurred(), "failed to parse available 1KiB blocks from df output")
+
+		// Convert 1KiB blocks to GiB (1 GiB = 1024^2 1KiB blocks)
+		availableGB := (float64)(availableKiB) / (1024 * 1024)
+
+		// If less than 7 GiB available, sleep and continue the loop
+		if availableGB < 7 {
+			// Check if we've exceeded the 10 minute timeout
+			if time.Since(startTime) > 10*time.Minute {
+				Fail(fmt.Sprintf("Timeout waiting for /dev/root volume to have minimum disk space. Waited for %v, current available space: %.2f GiB", time.Since(startTime), availableGB))
+			}
+
+			GinkgoWriter.Println("Waiting for /dev/root volume to have minimum size, current size:", availableGB, "GiB")
+			time.Sleep(time.Second * 10)
+		} else {
+			// >= 7GiB, so we're good to run the test.
+			return
+		}
+	}
+}
+
 func EnsureParallelCleanSlate() {
 
 	// Increase the maximum length of debug output, for when tests fail
@@ -50,6 +112,8 @@ func EnsureParallelCleanSlate() {
 	SetDefaultEventuallyPollingInterval(time.Second * 3)
 	SetDefaultConsistentlyDuration(time.Second * 10)
 	SetDefaultConsistentlyPollingInterval(time.Second * 1)
+
+	WaitForRootPartitionToHaveMinimumDiskSpace()
 
 	// Unlike sequential clean slate, parallel clean slate cannot assume that there are no other tests running. This limits our ability to clean up old test artifacts.
 }
@@ -64,6 +128,8 @@ func EnsureSequentialCleanSlate() {
 }
 
 func EnsureSequentialCleanSlateWithError() error {
+
+	WaitForRootPartitionToHaveMinimumDiskSpace()
 
 	// With sequential tests, we are always safe to assume that there is no other test running. That allows us to clean up old test artifacts before new test starts.
 
