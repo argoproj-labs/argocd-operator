@@ -22,7 +22,7 @@ jobs:
         run: mkdir -p ~/go/src/github.com/argoproj-labs
 
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Create symlink in GOPATH
         run: ln -s $(pwd) ~/go/src/github.com/argoproj-labs
@@ -78,7 +78,7 @@ jobs:
           kubectl version
           k3d version
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Setup Golang
         uses: actions/setup-go@v6
         with:
