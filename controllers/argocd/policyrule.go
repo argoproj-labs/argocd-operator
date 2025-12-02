@@ -714,6 +714,16 @@ func policyRuleForRoleForImageUpdaterController() []v1.PolicyRule {
 				"watch",
 			},
 		},
+		{
+			APIGroups: []string{""},
+			Resources: []string{
+				"events",
+			},
+			Verbs: []string{
+				"create",
+				"patch",
+			},
+		},
 	}
 }
 
