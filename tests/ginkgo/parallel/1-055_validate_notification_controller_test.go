@@ -173,5 +173,77 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 		})
 
+		It("ensure that sourceNamespace resources are not created for namespace-scoped instance", func() {
+
+			By("creating test namespaces")
+			fooNs, fooNsCleanupFunc := fixture.CreateNamespaceWithCleanupFunc("foo-src-ns")
+			defer fooNsCleanupFunc()
+
+			By("creating namespace-scoped Argo CD instance with sourceNamespaces")
+			ns, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("1-055-src-ns-test")
+			defer cleanupFunc()
+
+			argocd := &argov1beta1api.ArgoCD{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "example-argocd",
+					Namespace: ns.Name,
+				},
+				Spec: argov1beta1api.ArgoCDSpec{
+					Notifications: argov1beta1api.ArgoCDNotifications{
+						Enabled:          true,
+						SourceNamespaces: []string{fooNs.Name},
+					},
+					SourceNamespaces: []string{fooNs.Name},
+				},
+			}
+			Expect(k8sClient.Create(ctx, argocd)).To(Succeed())
+
+			By("verifying Argo CD and notification controller start as expected")
+			Eventually(argocd, "4m", "5s").Should(argocdFixture.HaveNotificationControllerStatus("Running"))
+			Eventually(argocd, "5m", "5s").Should(argocdFixture.BeAvailable())
+
+			By("verifying that sourceNamespace cmd args don't exist")
+			depl := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "example-argocd-notifications-controller",
+					Namespace: ns.Name,
+				},
+			}
+			Eventually(depl).Should(k8sFixture.ExistByName())
+			// TODO: add check to test "--application-namespaces" cmd arg is not present in the notification deployment container args
+
+			By("verifying sourceNamespace rbac resources are not created")
+			clusterRole := &rbacv1.ClusterRole{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "example-argocd-1-055-src-ns-test-argocd-notifications-controller",
+					Namespace: ns.Name,
+				},
+			}
+			clusterRoleBinding := &rbacv1.ClusterRoleBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "example-argocd-1-055-src-ns-test-argocd-notifications-controller",
+					Namespace: ns.Name,
+				},
+			}
+			role := &rbacv1.Role{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "example-argocd-1-055-src-ns-test-notifications",
+					Namespace: fooNs.Name,
+				},
+			}
+			roleBinding := &rbacv1.RoleBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "example-argocd-1-055-src-ns-test-notifications",
+					Namespace: fooNs.Name,
+				},
+			}
+
+			Eventually(role).Should(k8sFixture.NotExistByName())
+			Eventually(roleBinding).Should(k8sFixture.NotExistByName())
+			Eventually(clusterRole).Should(k8sFixture.NotExistByName())
+			Eventually(clusterRoleBinding).Should(k8sFixture.NotExistByName())
+
+		})
+
 	})
 })
