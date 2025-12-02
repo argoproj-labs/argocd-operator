@@ -855,7 +855,7 @@ func TestNotifications_removeUnmanagedNotificationsSourceNamespaceResources(t *t
 	ns1 := "foo"
 	ns2 := "bar"
 	a := makeTestArgoCD()
-	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
+	allowClusterConfigNamespaces(t, a.Namespace)
 
 	a.Spec = argoproj.ArgoCDSpec{
 		SourceNamespaces: []string{ns1, ns2},
@@ -990,7 +990,7 @@ func TestReconcileNotifications_SourceNamespaceResourcesIncludeNotificationsConf
 		a.Spec.Notifications.SourceNamespaces = []string{sourceNamespace}
 		a.Spec.SourceNamespaces = []string{sourceNamespace}
 	})
-	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
+	allowClusterConfigNamespaces(t, a.Namespace)
 
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
