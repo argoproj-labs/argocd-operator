@@ -487,7 +487,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			By("Verify principal pod starts successfully by checking logs")
 
 			Eventually(func() bool {
-				logOutput, err := osFixture.ExecCommandWithOutputParam(false, "kubectl", "logs",
+				logOutput, err := osFixture.ExecCommandWithOutputParam(false, true, "kubectl", "logs",
 					"deployment/"+argoCDAgentPrincipalName, "-n", ns.Name, "--tail=200")
 				if err != nil {
 					GinkgoWriter.Println("Error getting logs: ", err)
