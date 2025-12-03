@@ -59,7 +59,5 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.annotations['olm.targetNamespaces']
-        - name: ARGOCD_CLUSTER_CONFIG_NAMESPACES
-          value: "argocd-e2e-cluster-config,central-argocd,default-thirtysix,appset-argocd"
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
