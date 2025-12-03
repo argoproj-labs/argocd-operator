@@ -173,6 +173,7 @@ func (r *ReconcileArgoCD) namespaceResourceMapper(ctx context.Context, o client.
 	argocds := &argoproj.ArgoCDList{}
 	labels := o.GetLabels()
 	namespaceName := o.GetName()
+	// If the namespace is managed by an Argo CD instance in another namespace, then reconcile that instance
 	if v, ok := labels[common.ArgoCDManagedByLabel]; ok {
 		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: v}); err != nil {
 			return result
@@ -188,6 +189,19 @@ func (r *ReconcileArgoCD) namespaceResourceMapper(ctx context.Context, o client.
 		result = []reconcile.Request{
 			{NamespacedName: namespacedName},
 		}
+
+	} else if v, ok := labels[common.ArgoCDApplicationSetManagedByClusterArgoCDLabel]; ok {
+		// If the namespace is managed by applicationsets in any namespace, by Argo CD in another namespace, then reconcile that namespace's instance
+
+		namespaceContainingArgoCD := v
+		if err := r.List(ctx, argocds, client.InNamespace(namespaceContainingArgoCD)); err != nil {
+			return result
+		}
+		for idx := range argocds.Items {
+			argocd := argocds.Items[idx]
+			result = append(result, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(&argocd)})
+		}
+
 	} else {
 		// If the namespace does not have the expected managed-by label,
 		// iterate through each ArgoCD instance to identify if the observed namespace
