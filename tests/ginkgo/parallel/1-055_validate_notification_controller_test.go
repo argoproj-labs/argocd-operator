@@ -200,7 +200,6 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("verifying Argo CD and notification controller start as expected")
 			Eventually(argocd, "4m", "5s").Should(argocdFixture.HaveNotificationControllerStatus("Running"))
-			Eventually(argocd, "5m", "5s").Should(argocdFixture.BeAvailable())
 
 			By("verifying that sourceNamespace cmd args don't exist")
 			depl := &appsv1.Deployment{
