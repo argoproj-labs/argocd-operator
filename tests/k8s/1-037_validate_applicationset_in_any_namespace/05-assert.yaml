@@ -17,15 +17,6 @@ rules:
   - watch
   - delete
 - apiGroups:
-  - batch
-  resources:
-  - jobs
-  - cronjobs
-  - cronjobs/finalizers
-  verbs:
-  - create
-  - update
-- apiGroups:
   - argoproj.io
   resources:
   - applicationsets
@@ -93,15 +84,6 @@ rules:
   - update
   - watch
   - delete
-- apiGroups:
-  - batch
-  resources:
-  - jobs
-  - cronjobs
-  - cronjobs/finalizers
-  verbs:
-  - create
-  - update
 - apiGroups:
   - argoproj.io
   resources:
