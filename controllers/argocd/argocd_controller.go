@@ -76,7 +76,11 @@ type ReconcileArgoCD struct {
 	ManagedNamespaces *corev1.NamespaceList
 	// Stores a list of ApplicationSourceNamespaces as keys
 	ManagedSourceNamespaces map[string]string
-	// Stores a list of ApplicationSetSourceNamespaces as keys
+
+	// Stores a list of ApplicationSetSourceNamespaces as keys (value is not used)
+	// - list of namespaces that currently have the 'common.ArgoCDApplicationSetManagedByClusterArgoCDLabel' label
+	// - items in the list that are NOT mentioned in .spec.applicationset.sourceNamespaces will be cleaned up
+	// - (or if ALL resources in the list will be cleaned up if ArgoCD instance in namespace-scoped)
 	ManagedApplicationSetSourceNamespaces map[string]string
 	// Stores label selector used to reconcile a subset of ArgoCD
 	LabelSelector string
