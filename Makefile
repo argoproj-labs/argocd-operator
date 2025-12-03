@@ -177,7 +177,7 @@ e2e: ## Run operator e2e tests
 
 
 start-e2e:
-	ARGOCD_CLUSTER_CONFIG_NAMESPACES="argocd-e2e-cluster-config, argocd-test-impersonation-1-046, argocd-agent-principal-1-051, argocd-agent-agent-1-052" make run
+	ARGOCD_CLUSTER_CONFIG_NAMESPACES="argocd-e2e-cluster-config, argocd-test-impersonation-1-046, argocd-agent-principal-1-051, argocd-agent-agent-1-052, appset-argocd, appset-old-ns, appset-new-ns" make run
 
 all: test install run e2e ## UnitTest, Run the operator locally and execute e2e tests.
 
