@@ -94,7 +94,7 @@ jobs:
           go mod download
       - name: Run the operator locally
         env:
-          ARGOCD_CLUSTER_CONFIG_NAMESPACES: argocd-e2e-cluster-config, argocd-test-impersonation
+          ARGOCD_CLUSTER_CONFIG_NAMESPACES: argocd-e2e-cluster-config,central-argocd,default-thirtysix,appset-argocd,argocd-test-impersonation
         run: |
           set -o pipefail
           make install generate fmt vet

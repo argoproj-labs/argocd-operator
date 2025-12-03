@@ -1,0 +1,16 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: sleep 30
+- script: |
+    set -e
+    # Verify argocd-server command
+    serverCommand=$(kubectl get -n test-054-namespace-scoped deployment/example-argocd-server -o jsonpath='{.spec.template.spec.containers[0].command}' | jq -r '.[]' || echo "")
+    if echo "$serverCommand" | grep -q "application-namespaces"; then
+      echo "ERROR: argocd-server command"
+      echo "Command: $serverCommand"
+      exit 1
+    fi
+    echo "SUCCESS: argocd-server command"
+
