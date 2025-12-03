@@ -91,6 +91,8 @@ func NotHaveLabelWithValue(key string, value string) matcher.GomegaMatcher {
 			return true
 		}
 
+		GinkgoWriter.Println("NotHaveLabelWithValue: not expected: ", key, "/", value, ". actual:", labels[key])
+
 		return labels[key] != value
 
 	}, BeTrue())
