@@ -1,0 +1,20 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-054-namespace-scoped
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-054-source-namespace
+---
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  namespace: test-054-namespace-scoped
+spec:
+  sourceNamespaces:
+  - test-054-source-namespace
+

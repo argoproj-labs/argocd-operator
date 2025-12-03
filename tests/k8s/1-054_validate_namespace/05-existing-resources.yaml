@@ -1,0 +1,53 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-054-existing-ns
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-054-existing-source
+---
+# Create Role and RoleBinding before ArgoCD is created
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: example-argocd-existing_test-054-existing-source
+  namespace: test-054-existing-source
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: example-argocd-existing_test-054-existing-source
+  namespace: test-054-existing-source
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: example-argocd-existing_test-054-existing-source
+subjects:
+- kind: ServiceAccount
+  name: example-argocd-argocd-application-controller
+  namespace: test-054-existing-ns
+---
+# Add label
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-054-existing-source
+  labels:
+    argocd.argoproj.io/managed-by-cluster-argocd: test-054-existing-ns
+---
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd-existing
+  namespace: test-054-existing-ns
+spec:
+  sourceNamespaces:
+  - test-054-existing-source
+
