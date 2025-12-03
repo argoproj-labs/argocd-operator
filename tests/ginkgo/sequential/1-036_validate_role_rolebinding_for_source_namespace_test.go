@@ -256,13 +256,13 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			devns1Role := &rbacv1.Role{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      " example-argocd_dev-ns-1",
+					Name:      "example-argocd_dev-ns-1",
 					Namespace: dev_ns_1NS.Name,
 				},
 			}
 			devns1RoleBinding := &rbacv1.RoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      " example-argocd_dev-ns-1",
+					Name:      "example-argocd_dev-ns-1",
 					Namespace: dev_ns_1NS.Name,
 				},
 			}

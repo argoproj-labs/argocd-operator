@@ -340,20 +340,6 @@ func policyRuleForServerApplicationSourceNamespaces() []v1.PolicyRule {
 				"delete",
 			},
 		},
-		{
-			APIGroups: []string{
-				"batch",
-			},
-			Resources: []string{
-				"jobs",
-				"cronjobs",
-				"cronjobs/finalizers",
-			},
-			Verbs: []string{
-				"create",
-				"update",
-			},
-		},
 	}
 }
 

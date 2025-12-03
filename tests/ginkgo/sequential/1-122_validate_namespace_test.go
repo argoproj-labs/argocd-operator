@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package parallel
+package sequential
 
 import (
 	"context"
@@ -36,10 +36,11 @@ import (
 	deploymentFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/deployment"
 	k8sFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/k8s"
 	namespaceFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/namespace"
+	statefulsetFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/statefulset"
 	fixtureUtils "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 )
 
-var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
+var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 	Context("1-122_validate_namespace", func() {
 
@@ -49,16 +50,20 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			cleanupArgoNamespace   func()
 			cleanupSourceNamespace func()
+			argoNamespace          *corev1.Namespace
+			sourceNamespace        *corev1.Namespace
 		)
 
 		BeforeEach(func() {
-			fixture.EnsureParallelCleanSlate()
+			fixture.EnsureSequentialCleanSlate()
 
 			k8sClient, _ = fixtureUtils.GetE2ETestKubeClient()
 			ctx = context.Background()
 		})
 
 		AfterEach(func() {
+			fixture.OutputDebugOnFail(argoNamespace, sourceNamespace)
+
 			if cleanupArgoNamespace != nil {
 				cleanupArgoNamespace()
 			}
@@ -68,14 +73,11 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 		})
 
 		It("Should validate namespace for new resources", func() {
-			var argoNamespace *corev1.Namespace
-			var sourceNamespace *corev1.Namespace
 
 			argoNamespace, cleanupArgoNamespace = fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 			sourceNamespace, cleanupSourceNamespace = fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 
-			fixture.OutputDebugOnFail(argoNamespace, sourceNamespace)
-
+			By("creating ArgoCD CR with a single source namespace specified")
 			argoCD := &argov1beta1api.ArgoCD{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "argocd",
@@ -85,30 +87,63 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 					SourceNamespaces: []string{sourceNamespace.Name},
 				},
 			}
-
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
-			Eventually(argoCD, "240s", "5s").Should(argocdFixture.BeAvailable())
+			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
+			By("verifying that there exist no clusterrolebindings that point to this namespace-scoped namespace")
+			Consistently(func() bool {
+				var clusterRoleBindings rbacv1.ClusterRoleBindingList
+				if err := k8sClient.List(ctx, &clusterRoleBindings); err != nil {
+					GinkgoWriter.Println(err)
+					return false
+				}
+				for _, crb := range clusterRoleBindings.Items {
+					for _, subject := range crb.Subjects {
+						if subject.Namespace == argoCD.Namespace {
+							GinkgoWriter.Println("detected a CRB that pointed to namespace scoped ArgoCD instance. This shouldn't happen:", crb.Name)
+							return false
+						}
+					}
+				}
+				return true
+
+			}).Should(BeTrue())
+
+			By("verifying Role is not created in sourceNamespace, since the namespace is not cluster-scoped")
 			Consistently(&rbacv1.Role{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      fmt.Sprintf("%s_%s", "argocd", sourceNamespace.Name),
 					Namespace: sourceNamespace.Name,
 				},
-			}, "30s", "3s").Should(k8sFixture.NotExistByName())
+			}, "30s", "5s").Should(k8sFixture.NotExistByName())
 
+			By("verifying RoleBinding is not created")
 			Consistently(&rbacv1.RoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      argoutil.TruncateWithHash(fmt.Sprintf("%s_%s", "argocd", sourceNamespace.Name), argoutil.GetMaxLabelLength()),
 					Namespace: sourceNamespace.Name,
 				},
-			}, "30s", "3s").Should(k8sFixture.NotExistByName())
+			}, "30s", "5s").Should(k8sFixture.NotExistByName())
 
+			By("verifying there exist no rolebindings in source namespace that point to argocd namespace")
+			var roleBindingList rbacv1.RoleBindingList
+			Expect(k8sClient.List(ctx, &roleBindingList, client.InNamespace(sourceNamespace.Name))).To(Succeed())
+			for _, rb := range roleBindingList.Items {
+				for _, subject := range rb.Subjects {
+					if subject.Namespace == argoCD.Namespace {
+						Fail("There should exist no rolebindings that point to our argocd namespace: " + rb.Name)
+					}
+				}
+			}
+
+			By("verifying namespace does not have label")
 			Consistently(&corev1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: sourceNamespace.Name,
 				},
 			}, "30s", "3s").Should(k8sFixture.NotHaveLabelWithValue(common.ArgoCDManagedByClusterArgoCDLabel, argoNamespace.Name))
 
+			By("verifying application namespaces is not set on server")
 			serverDeployment := &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "argocd-server",
@@ -117,24 +152,24 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			}
 			Eventually(serverDeployment, "30s", "3s").Should(k8sFixture.ExistByName())
 			Consistently(serverDeployment, "30s", "3s").ShouldNot(deploymentFixture.HaveContainerCommandSubstring("--application-namespaces", 0))
+
+			appControllerStatefulSet := &appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "argocd-application-controller",
+					Namespace: argoNamespace.Name,
+				},
+			}
+			Eventually(appControllerStatefulSet).Should(k8sFixture.ExistByName())
+			Consistently(appControllerStatefulSet, "30s", "3s").ShouldNot(statefulsetFixture.HaveContainerCommandSubstring("--application-namespaces", 0))
+
 		})
 
 		It("Should validate namespace for existing resources", func() {
-			var argoNamespace *corev1.Namespace
-			var sourceNamespace *corev1.Namespace
 
 			argoNamespace, cleanupArgoNamespace = fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 			sourceNamespace, cleanupSourceNamespace = fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 
-			fixture.OutputDebugOnFail(argoNamespace, sourceNamespace)
-
-			namespaceFixture.Update(sourceNamespace, func(ns *corev1.Namespace) {
-				if ns.Labels == nil {
-					ns.Labels = map[string]string{}
-				}
-				ns.Labels[common.ArgoCDManagedByClusterArgoCDLabel] = argoNamespace.Name
-			})
-
+			By("creating role/rolebinding in source namespace")
 			roleName := fmt.Sprintf("%s_%s", "argocd", sourceNamespace.Name)
 			Expect(k8sClient.Create(ctx, &rbacv1.Role{
 				ObjectMeta: metav1.ObjectMeta{
@@ -182,7 +217,15 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			}
 
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
-			Eventually(argoCD, "240s", "5s").Should(argocdFixture.BeAvailable())
+			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
+
+			By("adding label to source namespace")
+			namespaceFixture.Update(sourceNamespace, func(ns *corev1.Namespace) {
+				if ns.Labels == nil {
+					ns.Labels = map[string]string{}
+				}
+				ns.Labels[common.ArgoCDManagedByClusterArgoCDLabel] = argoNamespace.Name
+			})
 
 			Eventually(&rbacv1.Role{
 				ObjectMeta: metav1.ObjectMeta{
@@ -212,6 +255,16 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			}
 			Eventually(serverDeployment, "30s", "3s").Should(k8sFixture.ExistByName())
 			Consistently(serverDeployment, "30s", "3s").ShouldNot(deploymentFixture.HaveContainerCommandSubstring("--application-namespaces", 0))
+
+			appControllerStatefulSet := &appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "argocd-application-controller",
+					Namespace: argoNamespace.Name,
+				},
+			}
+			Eventually(appControllerStatefulSet).Should(k8sFixture.ExistByName())
+			Consistently(appControllerStatefulSet, "30s", "3s").ShouldNot(statefulsetFixture.HaveContainerCommandSubstring("--application-namespaces", 0))
+
 		})
 	})
 })

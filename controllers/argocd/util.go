@@ -1205,7 +1205,7 @@ func (r *ReconcileArgoCD) namespaceFilterPredicate() predicate.Predicate {
 				}
 
 			}
-			return false
+			return true
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			if ns, ok := e.Object.GetLabels()[common.ArgoCDManagedByLabel]; ok && ns != "" {
@@ -1222,7 +1222,7 @@ func (r *ReconcileArgoCD) namespaceFilterPredicate() predicate.Predicate {
 			// if a namespace is deleted, remove it from deprecationEventEmissionTracker (if exists) so that if a namespace with the same name
 			// is created in the future and contains an Argo CD instance, it will be tracked appropriately
 			delete(DeprecationEventEmissionTracker, e.Object.GetName())
-			return false
+			return true
 		},
 	}
 }
