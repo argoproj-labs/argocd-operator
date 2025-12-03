@@ -55,7 +55,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			By("Creating namespaces")
 
-			centralArgoCDNS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("central-argocd")
+			centralArgoCDNS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("argocd-e2e-cluster-config")
 			defer cleanupFunc()
 
 			test_1_24_customNS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("test-1-24-custom")
@@ -82,7 +82,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Expect(k8sClient.Create(ctx, centralArgoCD)).To(Succeed())
 
 			By("verifying other namespaces have managed-by-cluster-argocd role, and expected role/rolebindings")
-			Eventually(test_1_24_customNS).Should(namespaceFixture.HaveLabel("argocd.argoproj.io/managed-by-cluster-argocd", "central-argocd"))
+			Eventually(test_1_24_customNS).Should(namespaceFixture.HaveLabel("argocd.argoproj.io/managed-by-cluster-argocd", centralArgoCDNS.Name))
 
 			example_argocd_test_1_24_custom_Role := &rbacv1.Role{
 				ObjectMeta: metav1.ObjectMeta{
@@ -115,7 +115,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				Namespace: centralArgoCDNS.Name,
 			}))
 
-			Eventually(test_2_24_customNS).Should(namespaceFixture.HaveLabel("argocd.argoproj.io/managed-by-cluster-argocd", "central-argocd"))
+			Eventually(test_2_24_customNS).Should(namespaceFixture.HaveLabel("argocd.argoproj.io/managed-by-cluster-argocd", centralArgoCDNS.Name))
 
 			example_argocd_test_2_24_custom_Role := &rbacv1.Role{
 				ObjectMeta: metav1.ObjectMeta{
@@ -172,7 +172,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			})
 
 			By("verifying 1-24-custom no longer has managed-by-cluster namespace, so it is no longer a source namespace")
-			Eventually(test_1_24_customNS).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/managed-by-cluster-argocd", "central-argocd"))
+			Eventually(test_1_24_customNS).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/managed-by-cluster-argocd", centralArgoCDNS.Name))
 			Eventually(example_argocd_test_1_24_custom_Role).ShouldNot(k8sFixture.ExistByName())
 			Eventually(example_argocd_test_1_24_custom_RoleBinding).ShouldNot(k8sFixture.ExistByName())
 
@@ -180,7 +180,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			Expect(k8sClient.Delete(ctx, centralArgoCD)).To(Succeed())
 
-			Eventually(test_2_24_customNS).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/managed-by-cluster-argocd", "central-argocd"))
+			Eventually(test_2_24_customNS).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/managed-by-cluster-argocd", centralArgoCDNS.Name))
 
 			Eventually(example_argocd_test_2_24_custom_Role).Should(k8sFixture.NotExistByName())
 			Eventually(example_argocd_test_2_24_custom_RoleBinding).Should(k8sFixture.NotExistByName())
