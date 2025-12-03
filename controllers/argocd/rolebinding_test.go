@@ -295,6 +295,7 @@ func TestReconcileArgoCD_reconcileRoleBinding_forSourceNamespaces(t *testing.T) 
 	logf.SetLogger(ZapLogger(true))
 	sourceNamespace := "newNamespaceTest"
 	a := makeTestArgoCD()
+	allowClusterConfigNamespaces(t, a.Namespace)
 	a.Spec = argoproj.ArgoCDSpec{
 		SourceNamespaces: []string{
 			sourceNamespace,

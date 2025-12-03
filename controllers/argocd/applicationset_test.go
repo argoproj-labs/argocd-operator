@@ -814,6 +814,7 @@ func TestReconcileApplicationSet_SourceNamespacesRBACCreation(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 
 			a := makeTestArgoCD()
+			allowClusterConfigNamespaces(t, a.Namespace)
 			resObjs := []client.Object{a}
 			subresObjs := []client.Object{a}
 			runtimeObjs := []runtime.Object{}
@@ -1283,6 +1284,7 @@ func TestArgoCDApplicationSet_removeUnmanagedApplicationSetSourceNamespaceResour
 	ns1 := "foo"
 	ns2 := "bar"
 	a := makeTestArgoCD()
+	allowClusterConfigNamespaces(t, a.Namespace)
 	a.Spec = argoproj.ArgoCDSpec{
 		SourceNamespaces: []string{ns1, ns2},
 		ApplicationSet: &argoproj.ArgoCDApplicationSet{

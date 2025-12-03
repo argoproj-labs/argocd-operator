@@ -136,6 +136,9 @@ func getArgoApplicationControllerResources(cr *argoproj.ArgoCD) corev1.ResourceR
 
 // getArgoApplicationControllerCommand will return the command for the ArgoCD Application Controller component.
 func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
+
+	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
+
 	cmd := []string{
 		"argocd-application-controller",
 		"--operation-processors", fmt.Sprint(getArgoServerOperationProcessors(cr)),
@@ -165,7 +168,7 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 	cmd = append(cmd, "--status-processors", fmt.Sprint(getArgoServerStatusProcessors(cr)))
 	cmd = append(cmd, "--kubectl-parallelism-limit", fmt.Sprint(getArgoControllerParellismLimit(cr)))
 
-	if len(cr.Spec.SourceNamespaces) > 0 {
+	if len(cr.Spec.SourceNamespaces) > 0 && allowed {
 		cmd = append(cmd, "--application-namespaces", fmt.Sprint(strings.Join(cr.Spec.SourceNamespaces, ",")))
 	}
 
@@ -733,6 +736,10 @@ func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoproj.ArgoCD) bool {
 // reconcileResources will reconcile common ArgoCD resources.
 func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD) error {
 
+	if err := r.ensureSourceNamespacesAllowed(cr); err != nil {
+		return err
+	}
+
 	// we reconcile SSO first so that we can catch and throw errors for any illegal SSO configurations right away, and return control from here
 	// preventing dex resources from getting created anyway through the other function calls, effectively bypassing the SSO checks
 	log.Info("reconciling SSO")
@@ -1262,7 +1269,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 				}
 
 			}
-			return false
+			return true
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			if ns, ok := e.Object.GetLabels()[common.ArgoCDManagedByLabel]; ok && ns != "" {
@@ -1283,7 +1290,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 			// if a namespace is deleted, remove it from deprecationEventEmissionTracker (if exists) so that if a namespace with the same name
 			// is created in the future and contains an Argo CD instance, it will be tracked appropriately
 			delete(DeprecationEventEmissionTracker, e.Object.GetName())
-			return false
+			return true
 		},
 	}
 }
@@ -1450,6 +1457,11 @@ func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
 // getSourceNamespaces retrieves a list of namespaces that match the sourceNamespaces
 // pattern specified in the given ArgoCD
 func (r *ReconcileArgoCD) getSourceNamespaces(cr *argoproj.ArgoCD) ([]string, error) {
+
+	if err := r.ensureSourceNamespacesAllowed(cr); err != nil {
+		return nil, err
+	}
+
 	sourceNamespaces := []string{}
 	namespaces := &corev1.NamespaceList{}
 
@@ -1558,6 +1570,43 @@ func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.
 			return err
 		}
 	}
+	return nil
+}
+
+func (r *ReconcileArgoCD) cleanupAllSourceNamespaces(cr *argoproj.ArgoCD) {
+	if len(r.ManagedSourceNamespaces) == 0 {
+		return
+	}
+
+	for ns := range r.ManagedSourceNamespaces {
+		if err := r.cleanupUnmanagedSourceNamespaceResources(cr, ns); err != nil {
+			log.Error(err, fmt.Sprintf("error cleaning up resources for namespace %s", ns))
+			continue
+		}
+		delete(r.ManagedSourceNamespaces, ns)
+	}
+}
+
+func (r *ReconcileArgoCD) ensureSourceNamespacesAllowed(cr *argoproj.ArgoCD) error {
+	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
+
+	// if sourceNamespaces is empty, cleanup all existing source namespaces
+	if len(cr.Spec.SourceNamespaces) == 0 {
+		if !allowed {
+			r.cleanupAllSourceNamespaces(cr)
+		}
+		return nil
+	}
+
+	// if sourceNamespaces is not empty, and the namespace is allowed, return nil
+	if allowed {
+		return nil
+	}
+
+	// if sourceNamespaces is not empty, and the namespace is not allowed, skip the reconciliation
+	log.Info(fmt.Sprintf("Skipping sourceNamespaces reconciliation for namespace %s", cr.Namespace))
+	r.cleanupAllSourceNamespaces(cr)
+
 	return nil
 }
 

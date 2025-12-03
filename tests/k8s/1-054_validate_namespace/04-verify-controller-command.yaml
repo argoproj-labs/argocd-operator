@@ -1,0 +1,16 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: sleep 30
+- script: |
+    set -e
+    # Verify argocd-application-controller command
+    controllerCommand=$(kubectl get -n test-054-namespace-scoped statefulset/example-argocd-application-controller -o jsonpath='{.spec.template.spec.containers[0].command}' | jq -r '.[]' || echo "")
+    if echo "$controllerCommand" | grep -q "application-namespaces"; then
+      echo "ERROR: argocd-application-controller command"
+      echo "Command: $controllerCommand"
+      exit 1
+    fi
+    echo "SUCCESS: argocd-application-controller command"
+
