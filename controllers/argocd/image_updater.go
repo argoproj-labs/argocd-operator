@@ -251,9 +251,8 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterRoleBinding(cr *argoproj.ArgoCD, 
 
 	desiredRoleBinding.Subjects = []rbacv1.Subject{
 		{
-			Kind:      rbacv1.ServiceAccountKind,
-			Name:      sa.Name,
-			Namespace: sa.Namespace,
+			Kind: rbacv1.ServiceAccountKind,
+			Name: sa.Name,
 		},
 	}
 
