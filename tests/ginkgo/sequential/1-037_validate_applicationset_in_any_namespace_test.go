@@ -237,15 +237,6 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					},
 				},
 				{
-					APIGroups: []string{"batch"},
-					Resources: []string{
-						"jobs",
-						"cronjobs",
-						"cronjobs/finalizers",
-					},
-					Verbs: []string{"create", "update"},
-				},
-				{
 					APIGroups: []string{"argoproj.io"},
 					Resources: []string{"applicationsets"},
 					Verbs: []string{
@@ -356,15 +347,6 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					},
 				},
 				{
-					APIGroups: []string{"batch"},
-					Resources: []string{
-						"jobs",
-						"cronjobs",
-						"cronjobs/finalizers",
-					},
-					Verbs: []string{"create", "update"},
-				},
-				{
 					APIGroups: []string{"argoproj.io"},
 					Resources: []string{
 						"applicationsets",
@@ -442,15 +424,6 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 						"watch",
 						"delete",
 					},
-				},
-				{
-					APIGroups: []string{"batch"},
-					Resources: []string{
-						"jobs",
-						"cronjobs",
-						"cronjobs/finalizers",
-					},
-					Verbs: []string{"create", "update"},
 				},
 				{
 					APIGroups: []string{"argoproj.io"},
@@ -532,15 +505,6 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 						"watch",
 						"delete",
 					},
-				},
-				{
-					APIGroups: []string{"batch"},
-					Resources: []string{
-						"jobs",
-						"cronjobs",
-						"cronjobs/finalizers",
-					},
-					Verbs: []string{"create", "update"},
 				},
 			}))
 
