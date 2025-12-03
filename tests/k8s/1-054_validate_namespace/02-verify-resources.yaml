@@ -1,0 +1,42 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: |
+    set -e
+    # Verify ClusterRoleBindings
+    crbs=$(kubectl get clusterrolebindings -o json | jq -r '.items[] | select(.subjects[]?.namespace == "test-054-namespace-scoped") | .metadata.name' || echo "")
+    if [ -n "$crbs" ]; then
+      echo "ERROR: Found ClusterRoleBindings"
+      echo "$crbs"
+      exit 1
+    fi
+    echo "SUCCESS: No ClusterRoleBindings"
+- script: |
+    set -e
+    # Verify  managed-by label
+    label=$(kubectl get namespace test-054-source-namespace -o jsonpath='{.metadata.labels.argocd\.argoproj\.io/managed-by-cluster-argocd}' || echo "")
+    if [ -n "$label" ]; then
+      echo "ERROR: Source namespace has managed-by-cluster-argocd label: $label"
+      exit 1
+    fi
+    echo "SUCCESS: Source namespace does not have managed-by-cluster-argocd label"
+- script: |
+    set -e
+    # Verify Role
+    role=$(kubectl get role -n test-054-source-namespace -l app.kubernetes.io/managed-by=example-argocd -o jsonpath='{.items[0].metadata.name}' || echo "")
+    if [ -n "$role" ]; then
+      echo "ERROR: Found Role"
+      exit 1
+    fi
+    echo "SUCCESS: No Role found"
+- script: |
+    set -e
+    # Verify RoleBinding
+    rb=$(kubectl get rolebinding -n test-054-source-namespace -o jsonpath='{.items[?(@.metadata.name=="example-argocd_test-054-source-namespace")].metadata.name}' || echo "")
+    if [ -n "$rb" ]; then
+      echo "ERROR: Found RoleBinding"
+      exit 1
+    fi
+    echo "SUCCESS: No RoleBinding found"
+

@@ -215,6 +215,10 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 
 func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name string, policyRules []v1.PolicyRule, cr *argoproj.ArgoCD) error {
 
+	if !argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace) {
+		return nil
+	}
+
 	// create policy rules for each source namespace for ArgoCD Server
 	sourceNamespaces, err := r.getSourceNamespaces(cr)
 	if err != nil {
