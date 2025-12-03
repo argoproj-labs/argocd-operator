@@ -686,6 +686,11 @@ func (r *ReconcileArgoCD) reconcileNotificationsSourceNamespacesResources(cr *ar
 
 	var reconciliationErrors []error
 
+	// only cluster scoped argocd manages notifications source namespaces
+	if !argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace) {
+		return nil
+	}
+
 	// controller disabled, nothing to do. cleanup handled by removeUnmanagedNotificationsSourceNamespaceResources()
 	if !isNotificationsEnabled(cr) {
 		return nil
@@ -861,7 +866,7 @@ func (r *ReconcileArgoCD) getNotificationsCommand(cr *argoproj.ArgoCD) []string 
 		}
 	}
 
-	if len(notificationsSourceNamespaces) > 0 {
+	if len(notificationsSourceNamespaces) > 0 && argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace) {
 		cmd = append(cmd, "--application-namespaces", strings.Join(notificationsSourceNamespaces, ","))
 		cmd = append(cmd, "--self-service-notification-enabled", "true")
 	}
@@ -927,6 +932,10 @@ func (r *ReconcileArgoCD) removeUnmanagedNotificationsSourceNamespaceResources(c
 					break
 				}
 			}
+		}
+
+		if !argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace) {
+			managedNamespace = false
 		}
 
 		if !managedNamespace {
