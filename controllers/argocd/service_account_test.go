@@ -81,7 +81,7 @@ func TestReconcileArgoCD_reconcileServiceAccountPermissions(t *testing.T) {
 
 func TestReconcileArgoCD_reconcileServiceAccountClusterPermissions(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
+	a := makeTestArgoCDInNamespace("argocd-sa-cluster-permissions-test")
 
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
