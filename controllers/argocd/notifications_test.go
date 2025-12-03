@@ -224,10 +224,11 @@ func TestReconcileNotifications_Deployments_Command(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
-		name           string
-		argocdSpec     argoproj.ArgoCDSpec
-		expectedCmd    []string
-		notExpectedCmd []string
+		name                  string
+		argocdSpec            argoproj.ArgoCDSpec
+		expectedCmd           []string
+		notExpectedCmd        []string
+		namespaceScopedArgoCD bool
 	}{
 		{
 			name: "Notifications contained in spec.sourceNamespaces",
@@ -264,12 +265,29 @@ func TestReconcileNotifications_Deployments_Command(t *testing.T) {
 			expectedCmd:    []string{},
 			notExpectedCmd: []string{"--application-namespaces", "foo", "--self-service-notification-enabled", "true"},
 		},
+		{
+			name:                  "Namespace scoped Argo CD, no application namespaces arg",
+			namespaceScopedArgoCD: true,
+			argocdSpec: argoproj.ArgoCDSpec{
+				Notifications: argoproj.ArgoCDNotifications{
+					Enabled:          true,
+					SourceNamespaces: []string{"foo"},
+				},
+				SourceNamespaces: []string{"foo"},
+			},
+			expectedCmd:    []string{},
+			notExpectedCmd: []string{"--application-namespaces", "foo", "--self-service-notification-enabled", "true"},
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
 			a := makeTestArgoCD()
+			os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
+			if test.namespaceScopedArgoCD {
+				os.Unsetenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")
+			}
 			ns1 := v1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "foo",
@@ -837,6 +855,8 @@ func TestNotifications_removeUnmanagedNotificationsSourceNamespaceResources(t *t
 	ns1 := "foo"
 	ns2 := "bar"
 	a := makeTestArgoCD()
+	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
+
 	a.Spec = argoproj.ArgoCDSpec{
 		SourceNamespaces: []string{ns1, ns2},
 		Notifications: argoproj.ArgoCDNotifications{
@@ -933,6 +953,7 @@ func TestReconcileNotifications_NotificationsConfigurationInSourceNamespaceWhenD
 		a.Spec.Notifications.SourceNamespaces = []string{sourceNamespace}
 		a.Spec.SourceNamespaces = []string{sourceNamespace}
 	})
+	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
 
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
@@ -969,6 +990,7 @@ func TestReconcileNotifications_SourceNamespaceResourcesIncludeNotificationsConf
 		a.Spec.Notifications.SourceNamespaces = []string{sourceNamespace}
 		a.Spec.SourceNamespaces = []string{sourceNamespace}
 	})
+	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
 
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
