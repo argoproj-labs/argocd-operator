@@ -251,6 +251,9 @@ func getArgoCmpServerInitCommand() []string {
 
 // getArgoServerCommand will return the command for the ArgoCD server component.
 func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
+
+	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
+
 	cmd := make([]string, 0)
 	cmd = append(cmd, "argocd-server")
 
@@ -294,7 +297,7 @@ func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 	extraArgs := cr.Spec.Server.ExtraCommandArgs
 	cmd = appendUniqueArgs(cmd, extraArgs)
 
-	if len(cr.Spec.SourceNamespaces) > 0 {
+	if len(cr.Spec.SourceNamespaces) > 0 && allowed {
 		cmd = append(cmd, "--application-namespaces", fmt.Sprint(strings.Join(cr.Spec.SourceNamespaces, ",")))
 	}
 
