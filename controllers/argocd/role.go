@@ -53,6 +53,7 @@ func GenerateUniqueResourceName(argoComponentName string, cr *argoproj.ArgoCD) s
 }
 
 func newClusterRole(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) *v1.ClusterRole {
+
 	return &v1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        GenerateUniqueResourceName(name, cr),
