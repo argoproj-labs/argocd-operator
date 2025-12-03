@@ -429,7 +429,7 @@ func getAgentMode(cr *argoproj.ArgoCD) string {
 	if hasClient(cr) && cr.Spec.ArgoCDAgent.Agent.Client.Mode != "" {
 		return cr.Spec.ArgoCDAgent.Agent.Client.Mode
 	}
-	return "managed"
+	return string(argoproj.AgentModeManaged)
 }
 
 func getAgentCreds(cr *argoproj.ArgoCD) string {

@@ -10,7 +10,7 @@ spec:
       enabled: true
       auth: "mtls:CN=([^,]+)"
       logLevel: "info"
-      image: "quay.io/jparsai/argocd-agent:test"  # specify a custom image
+      image: "quay.io/argoprojlabs/argocd-agent:v0.5.0"  # specify a custom image
       server:
         keepAliveMinInterval: 30s
       namespace:

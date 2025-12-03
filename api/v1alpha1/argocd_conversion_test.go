@@ -689,7 +689,7 @@ func TestAlphaToBetaConversion(t *testing.T) {
 						Client: &AgentClientSpec{
 							PrincipalServerAddress: "argocd-agent-principal.example.com",
 							PrincipalServerPort:    "443",
-							Mode:                   "managed",
+							Mode:                   string(v1beta1.AgentModeManaged),
 						},
 					},
 				}
@@ -703,7 +703,7 @@ func TestAlphaToBetaConversion(t *testing.T) {
 						Client: &v1beta1.AgentClientSpec{
 							PrincipalServerAddress: "argocd-agent-principal.example.com",
 							PrincipalServerPort:    "443",
-							Mode:                   "managed",
+							Mode:                   string(v1beta1.AgentModeManaged),
 						},
 					},
 				}
@@ -726,7 +726,7 @@ func TestAlphaToBetaConversion(t *testing.T) {
 						Client: &AgentClientSpec{
 							PrincipalServerAddress: "argocd-agent-principal.example.com",
 							PrincipalServerPort:    "443",
-							Mode:                   "managed",
+							Mode:                   string(v1beta1.AgentModeManaged),
 							EnableWebSocket:        &enableWebSocket,
 							EnableCompression:      &enableCompression,
 							KeepAliveInterval:      "30s",
@@ -757,7 +757,7 @@ func TestAlphaToBetaConversion(t *testing.T) {
 						Client: &v1beta1.AgentClientSpec{
 							PrincipalServerAddress: "argocd-agent-principal.example.com",
 							PrincipalServerPort:    "443",
-							Mode:                   "managed",
+							Mode:                   string(v1beta1.AgentModeManaged),
 							EnableWebSocket:        &enableWebSocket,
 							EnableCompression:      &enableCompression,
 							KeepAliveInterval:      "30s",
@@ -1065,7 +1065,7 @@ func TestBetaToAlphaConversion(t *testing.T) {
 						Client: &v1beta1.AgentClientSpec{
 							PrincipalServerAddress: "argocd-agent-principal.example.com",
 							PrincipalServerPort:    "443",
-							Mode:                   "managed",
+							Mode:                   string(v1beta1.AgentModeManaged),
 						},
 					},
 				}
@@ -1079,7 +1079,7 @@ func TestBetaToAlphaConversion(t *testing.T) {
 						Client: &AgentClientSpec{
 							PrincipalServerAddress: "argocd-agent-principal.example.com",
 							PrincipalServerPort:    "443",
-							Mode:                   "managed",
+							Mode:                   string(v1beta1.AgentModeManaged),
 						},
 					},
 				}
@@ -1105,7 +1105,7 @@ func TestBetaToAlphaConversion(t *testing.T) {
 						Client: &v1beta1.AgentClientSpec{
 							PrincipalServerAddress: "argocd-agent-principal.example.com",
 							PrincipalServerPort:    "443",
-							Mode:                   "managed",
+							Mode:                   string(v1beta1.AgentModeManaged),
 							EnableWebSocket:        &enableWebSocket,
 							EnableCompression:      &enableCompression,
 							KeepAliveInterval:      "30s",
@@ -1139,7 +1139,7 @@ func TestBetaToAlphaConversion(t *testing.T) {
 						Client: &AgentClientSpec{
 							PrincipalServerAddress: "argocd-agent-principal.example.com",
 							PrincipalServerPort:    "443",
-							Mode:                   "managed",
+							Mode:                   string(v1beta1.AgentModeManaged),
 							EnableWebSocket:        &enableWebSocket,
 							EnableCompression:      &enableCompression,
 							KeepAliveInterval:      "30s",
