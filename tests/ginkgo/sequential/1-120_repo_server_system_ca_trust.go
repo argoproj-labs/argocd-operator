@@ -713,7 +713,7 @@ func (pt *podTrust) fetch() {
 
 func (pt *podTrust) diagnose() string {
 	return fmt.Sprintf(
-		"System CA Trust init contianer log:\n%s\nProject events:\n%s\n",
+		"System CA Trust init container log:\n%s\nProject events:\n%s\n",
 		pt.log, pt.events,
 	)
 }
