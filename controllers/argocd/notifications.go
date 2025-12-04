@@ -914,7 +914,7 @@ func (r *ReconcileArgoCD) setManagedNotificationsSourceNamespaces(cr *argoproj.A
 	return nil
 }
 
-// removeUnmanagedNotificationsSourceNamespaceResources cleansup resources from NotificationsSourceNamespaces if namespace is not managed by argocd instance.
+// removeUnmanagedNotificationsSourceNamespaceResources cleanup resources from NotificationsSourceNamespaces if namespace is not managed by argocd instance.
 // ManagedNotificationsSourceNamespaces var keeps track of namespaces with notifications resources.
 func (r *ReconcileArgoCD) removeUnmanagedNotificationsSourceNamespaceResources(cr *argoproj.ArgoCD) error {
 
