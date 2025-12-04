@@ -1144,7 +1144,7 @@ This is orthogonal to declaring per-host TLS certificate in `argocd-tls-certs-cm
 The certificates from Secrets or ConfigMaps must exist in the same namespace as the ArgoCD instance.
 Also, they can selectively pick individual keys, or map all their declared keys by omitting the `items` field.
 
-Each type of the trust source can be declared as optional---the absense of non-optional source will cause deployment failure.
+Each type of the trust source can be declared as optional---the absence of a non-optional source will cause deployment failure.
 
 Unless the `.repo.systemCATrust.dropImageCertificates` is set to true, the user-declared certificates are merged with those from the image.
 
