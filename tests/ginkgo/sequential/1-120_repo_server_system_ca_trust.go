@@ -26,6 +26,8 @@ import (
 	"strings"
 	"time"
 
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+
 	appFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/application"
 	osFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/os"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/pod"
@@ -142,6 +144,10 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 		})
 
 		It("ensures that missing ClusterTrustBundle aborts startup", func() {
+			if !clusterSupportsClusterTrustBundles(k8sClient, ctx) {
+				Skip("Cluster does not support ClusterTrustBundles")
+			}
+
 			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 			defer cleanupFunc()
 
@@ -166,6 +172,10 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 		})
 
 		It("ensures that ClusterTrustBundles are trusted in repo-server and plugins", func() {
+			if !clusterSupportsClusterTrustBundles(k8sClient, ctx) {
+				Skip("Cluster does not support ClusterTrustBundles")
+			}
+
 			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 			defer cleanupFunc()
 
@@ -318,6 +328,16 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 		})
 	})
 })
+
+func clusterSupportsClusterTrustBundles(k8sClient client.Client, ctx context.Context) bool {
+	ctbl := &certificatesv1alpha1.ClusterTrustBundleList{}
+	err := k8sClient.List(ctx, ctbl)
+	if _, ok := err.(*apiutil.ErrResourceDiscoveryFailed); ok {
+		return false
+	}
+	Expect(err).ToNot(HaveOccurred()) // Every other error is an error
+	return true
+}
 
 func createGitPullingPlugin(ns *corev1.Namespace) (*corev1.ConfigMap, *corev1.Container, []corev1.Volume) {
 	By("Creating ConfigManagementPlugin resources for git clone")
