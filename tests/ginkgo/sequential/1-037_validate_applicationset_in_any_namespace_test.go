@@ -5,9 +5,11 @@ import (
 	"fmt"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
 
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
 	argocdFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/argocd"
+	deploymentFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/deployment"
 	k8sFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/k8s"
 	namespaceFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/namespace"
 	roleFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/role"
@@ -16,9 +18,9 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -28,12 +30,10 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 	Context("1-037_validate_applicationset_in_any_namespace", func() {
 
 		var (
-			ctx                   context.Context
-			k8sClient             client.Client
-			argoNamespace         *corev1.Namespace
-			argoCD                *v1beta1.ArgoCD
-			cleanupArgoNamespace  func()
-			cleanupManagedNSFuncs []func() // cleanups for managed namespaces created in the test
+			ctx              context.Context
+			k8sClient        client.Client
+			cleanupFunctions = []func(){} // we create various namespaces in this test, these functions will clean them up when the test is done
+
 		)
 
 		BeforeEach(func() {
@@ -45,56 +45,36 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 		AfterEach(func() {
 
-			if argoNamespace != nil {
-				fixture.OutputDebugOnFail(argoNamespace, "appset-old-ns", "appset-new-ns")
-			} else {
-				fixture.OutputDebugOnFail("appset-old-ns", "appset-new-ns")
-			}
-
-			if argoCD != nil {
-				err := k8sClient.Delete(ctx, argoCD)
-				if err != nil && !apierrors.IsNotFound(err) {
-					Expect(err).ToNot(HaveOccurred())
-				}
-			}
+			fixture.OutputDebugOnFail("appset-argocd", "appset-old-ns", "appset-new-ns", "appset-namespace-scoped", "target-ns-1-037")
 
 			// Clean up namespaces created
-			for _, namespaceCleanupFunction := range cleanupManagedNSFuncs {
+			for _, namespaceCleanupFunction := range cleanupFunctions {
 				namespaceCleanupFunction()
 			}
-			cleanupManagedNSFuncs = nil
-
-			if cleanupArgoNamespace != nil {
-				cleanupArgoNamespace()
-				cleanupArgoNamespace = nil
-			}
-			argoNamespace = nil
-			argoCD = nil
 
 		})
 
 		It("verifying that ArgoCD CR '.spec.applicationset.sourcenamespaces' and '.spec.sourcenamespaces' correctly control role/rolebindings within the managed namespaces", func() {
 
-			By("0) create namespaces: argocd-e2e-cluster-config, appset-old-ns, appset-new-ns")
+			By("0) create namespaces: appset-argocd, appset-old-ns, appset-new-ns")
 
-			var cleanupFunc func()
-			argoNamespace, cleanupFunc = fixture.CreateNamespaceWithCleanupFunc("argocd-e2e-cluster-config")
-			cleanupArgoNamespace = cleanupFunc
+			appset_argocdNS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("appset-argocd")
+			cleanupFunctions = append(cleanupFunctions, cleanupFunc)
 
 			appset_old_nsNS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("appset-old-ns")
-			cleanupManagedNSFuncs = append(cleanupManagedNSFuncs, cleanupFunc)
+			cleanupFunctions = append(cleanupFunctions, cleanupFunc)
 
 			appset_new_nsNS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("appset-new-ns")
-			cleanupManagedNSFuncs = append(cleanupManagedNSFuncs, cleanupFunc)
+			cleanupFunctions = append(cleanupFunctions, cleanupFunc)
 
 			// -----
 
 			By("1) create Argo CD instance with no source namespaces")
 
-			argoCD = &v1beta1.ArgoCD{
+			argoCD := &v1beta1.ArgoCD{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "example",
-					Namespace: argoNamespace.Name,
+					Namespace: appset_argocdNS.Name,
 				},
 				Spec: v1beta1.ArgoCDSpec{
 					ApplicationSet: &v1beta1.ArgoCDApplicationSet{
@@ -105,6 +85,16 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				},
 			}
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+
+			By("verifying that the appset deployment does not contains 'applications in any namespace' parameter, since no source namespaces are specified")
+			appsetDeployment := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "example-applicationset-controller",
+					Namespace: argoCD.Namespace,
+				},
+			}
+			Eventually(appsetDeployment).Should(k8sFixture.ExistByName())
+			Expect(appsetDeployment).ShouldNot(deploymentFixture.HaveContainerCommandSubstring("--applicationset-namespaces", 0))
 
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 			Eventually(argoCD).Should(argocdFixture.HaveApplicationSetControllerStatus("Running"))
@@ -143,16 +133,13 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					},
 				}
 
-				labelValue := argoNamespace.Name
-				By("verifying that namespace " + namespaceName + " does not have label 'argocd.argoproj.io/applicationset-managed-by-cluster-argocd': '" + labelValue + "'")
-				Eventually(nsToCheck).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", labelValue))
-				Consistently(nsToCheck).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", labelValue))
+				By("verifying that namespace" + namespaceName + " does not have label 'argocd.argoproj.io/applicationset-managed-by-cluster-argocd': 'appset-argocd'")
+				Eventually(nsToCheck).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", "appset-argocd"))
+				Consistently(nsToCheck).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", "appset-argocd"))
 
 			}
 
-			appSetApplicationsetRoleName := fmt.Sprintf("%s-%s-applicationset", argoCD.Name, argoNamespace.Name)
-
-			expectRoleAndRoleBindingAndNamespaceToNotBeManaged([]string{"example_appset-old-ns", appSetApplicationsetRoleName}, appset_old_nsNS.Name)
+			expectRoleAndRoleBindingAndNamespaceToNotBeManaged([]string{"example_appset-old-ns", "example-appset-argocd-applicationset"}, appset_old_nsNS.Name)
 
 			// ----
 
@@ -172,7 +159,17 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
-			expectRoleAndRoleBindingAndNamespaceToNotBeManaged([]string{"example_appset-old-ns", appSetApplicationsetRoleName}, appset_old_nsNS.Name)
+			By("verifying that the appset deployment does not contain 'applications in any namespace' parameter, because .spec.sourceNamespaces is not specified")
+			appsetDeployment = &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "example-applicationset-controller",
+					Namespace: argoCD.Namespace,
+				},
+			}
+			Eventually(appsetDeployment).Should(k8sFixture.ExistByName())
+			Eventually(appsetDeployment).ShouldNot(deploymentFixture.HaveContainerCommandSubstring("--applicationset-namespaces", 0))
+
+			expectRoleAndRoleBindingAndNamespaceToNotBeManaged([]string{"example_appset-old-ns", "example-appset-argocd-applicationset"}, appset_old_nsNS.Name)
 
 			// ----
 
@@ -193,8 +190,8 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
-			expectRoleAndRoleBindingAndNamespaceToNotBeManaged([]string{"example_appset-new-ns", appSetApplicationsetRoleName}, appset_new_nsNS.Name)
-			expectRoleAndRoleBindingAndNamespaceToNotBeManaged([]string{"example_appset-old-ns", appSetApplicationsetRoleName}, appset_old_nsNS.Name)
+			expectRoleAndRoleBindingAndNamespaceToNotBeManaged([]string{"example_appset-new-ns", "example-appset-argocd-applicationset"}, appset_new_nsNS.Name)
+			expectRoleAndRoleBindingAndNamespaceToNotBeManaged([]string{"example_appset-old-ns", "example-appset-argocd-applicationset"}, appset_old_nsNS.Name)
 
 			// ----
 
@@ -215,6 +212,10 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					"github.com",
 				}
 			})
+
+			By("verifying appset namespaces parameter exists, and it points to only the namespace specified in .spec.sourceNamespaces")
+			Eventually(appsetDeployment).Should(k8sFixture.ExistByName())
+			Eventually(appsetDeployment).Should(deploymentFixture.HaveContainerCommandSubstring("--applicationset-namespaces appset-new-ns", 0))
 
 			By("verifying that Role in appset-new-ns has expected RBAC permissions: ability to modify applications, batch, and applicationsets")
 			example_appset_new_nsRole := &rbacv1.Role{
@@ -269,38 +270,38 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				{
 					Kind:      "ServiceAccount",
 					Name:      "example-argocd-server",
-					Namespace: argoNamespace.Name,
+					Namespace: "appset-argocd",
 				},
 				{
 					Kind:      "ServiceAccount",
 					Name:      "example-argocd-application-controller",
-					Namespace: argoNamespace.Name,
+					Namespace: "appset-argocd",
 				},
 			}))
 
 			example_appset_argocd_applicationsetRole := &rbacv1.Role{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      appSetApplicationsetRoleName,
-					Namespace: appset_new_nsNS.Name,
+					Name:      "example-appset-argocd-applicationset",
+					Namespace: "appset-new-ns",
 				},
 			}
 			Eventually(example_appset_argocd_applicationsetRole).Should(k8sFixture.ExistByName())
 
 			example_appset_argocd_applicationsetRoleBinding := &rbacv1.RoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      appSetApplicationsetRoleName,
-					Namespace: appset_new_nsNS.Name,
+					Name:      "example-appset-argocd-applicationset",
+					Namespace: "appset-new-ns",
 				},
 			}
 			Eventually(example_appset_argocd_applicationsetRoleBinding).Should(k8sFixture.ExistByName())
 
 			By("verifying appset-new-ns namespace is managed as both a source namespace and an application set source namespace")
 
-			Eventually(appset_new_nsNS).Should(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", argoNamespace.Name))
+			Eventually(appset_new_nsNS).Should(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", "appset-argocd"))
 
-			Eventually(appset_new_nsNS).Should(namespaceFixture.HaveLabel("argocd.argoproj.io/managed-by-cluster-argocd", argoNamespace.Name))
+			Eventually(appset_new_nsNS).Should(namespaceFixture.HaveLabel("argocd.argoproj.io/managed-by-cluster-argocd", "appset-argocd"))
 
-			expectRoleAndRoleBindingAndNamespaceToNotBeManaged([]string{"example_appset-old-ns", appSetApplicationsetRoleName}, appset_old_nsNS.Name)
+			expectRoleAndRoleBindingAndNamespaceToNotBeManaged([]string{"example_appset-old-ns", "example-appset-argocd-applicationset"}, appset_old_nsNS.Name)
 
 			// ----
 
@@ -323,6 +324,9 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					"github.com",
 				}
 			})
+
+			Eventually(appsetDeployment).Should(k8sFixture.ExistByName())
+			Eventually(appsetDeployment).Should(deploymentFixture.HaveContainerCommandSubstring("--applicationset-namespaces appset-old-ns,appset-new-ns", 0))
 
 			By("verifying that appset-old-ns gains Role/RoleBindings similar to appset-new-ns")
 			example_appset_old_nsRole := &rbacv1.Role{
@@ -381,33 +385,33 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				{
 					Kind:      "ServiceAccount",
 					Name:      "example-argocd-server",
-					Namespace: argoNamespace.Name,
+					Namespace: "appset-argocd",
 				},
 				{
 					Kind:      "ServiceAccount",
 					Name:      "example-argocd-application-controller",
-					Namespace: argoNamespace.Name,
+					Namespace: "appset-argocd",
 				},
 			}))
 
 			oldExample_appset_argocd_applicationsetRole := &rbacv1.Role{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      appSetApplicationsetRoleName,
-					Namespace: appset_old_nsNS.Name,
+					Name:      "example-appset-argocd-applicationset",
+					Namespace: "appset-old-ns",
 				},
 			}
 			Eventually(oldExample_appset_argocd_applicationsetRole).Should(k8sFixture.ExistByName())
 
 			oldExample_appset_argocd_applicationsetRoleBinding := &rbacv1.RoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      appSetApplicationsetRoleName,
-					Namespace: appset_old_nsNS.Name,
+					Name:      "example-appset-argocd-applicationset",
+					Namespace: "appset-old-ns",
 				},
 			}
 			Eventually(oldExample_appset_argocd_applicationsetRoleBinding).Should(k8sFixture.ExistByName())
 
-			Eventually(appset_old_nsNS).Should(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", argoNamespace.Name))
-			Consistently(appset_old_nsNS).Should(namespaceFixture.HaveLabel("argocd.argoproj.io/managed-by-cluster-argocd", argoNamespace.Name))
+			Eventually(appset_old_nsNS).Should(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", "appset-argocd"))
+			Consistently(appset_old_nsNS).Should(namespaceFixture.HaveLabel("argocd.argoproj.io/managed-by-cluster-argocd", "appset-argocd"))
 
 			Eventually(example_appset_new_nsRole).Should(k8sFixture.ExistByName())
 
@@ -452,21 +456,21 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				{
 					Kind:      "ServiceAccount",
 					Name:      "example-argocd-server",
-					Namespace: argoNamespace.Name,
+					Namespace: "appset-argocd",
 				},
 				{
 					Kind:      "ServiceAccount",
 					Name:      "example-argocd-application-controller",
-					Namespace: argoNamespace.Name,
+					Namespace: "appset-argocd",
 				},
 			}))
 
 			Eventually(example_appset_argocd_applicationsetRole).Should(k8sFixture.ExistByName())
 			Consistently(example_appset_argocd_applicationsetRole).Should(k8sFixture.ExistByName())
 
-			Eventually(appset_new_nsNS).Should(namespaceFixture.HaveLabel("argocd.argoproj.io/managed-by-cluster-argocd", argoNamespace.Name))
+			Eventually(appset_new_nsNS).Should(namespaceFixture.HaveLabel("argocd.argoproj.io/managed-by-cluster-argocd", "appset-argocd"))
 
-			Eventually(appset_new_nsNS).Should(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", argoNamespace.Name))
+			Eventually(appset_new_nsNS).Should(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", "appset-argocd"))
 
 			/// -------------
 
@@ -519,17 +523,17 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				{
 					Kind:      "ServiceAccount",
 					Name:      "example-argocd-server",
-					Namespace: argoNamespace.Name,
+					Namespace: "appset-argocd",
 				},
 				{
 					Kind:      "ServiceAccount",
 					Name:      "example-argocd-application-controller",
-					Namespace: argoNamespace.Name,
+					Namespace: "appset-argocd",
 				},
 			}))
 
 			By("verifying appset-new-ns namespace should still be managed-by-cluster-argocd")
-			Eventually(appset_new_nsNS).Should(namespaceFixture.HaveLabel("argocd.argoproj.io/managed-by-cluster-argocd", argoNamespace.Name))
+			Eventually(appset_new_nsNS).Should(namespaceFixture.HaveLabel("argocd.argoproj.io/managed-by-cluster-argocd", "appset-argocd"))
 
 			By("verifying appset-new-ns applicationset role/binding no longer exists in the namespace")
 			Eventually(example_appset_argocd_applicationsetRole).Should(k8sFixture.NotExistByName())
@@ -539,8 +543,8 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Consistently(example_appset_argocd_applicationsetRoleBinding).Should(k8sFixture.NotExistByName())
 
 			By("verifying appset-new-ns applicationset is not applicationset-managed-by Argo CD instance")
-			Eventually(appset_new_nsNS).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", argoNamespace.Name))
-			Consistently(appset_new_nsNS).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", argoNamespace.Name))
+			Eventually(appset_new_nsNS).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", "appset-argocd"))
+			Consistently(appset_new_nsNS).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", "appset-argocd"))
 
 			// ---
 
@@ -576,15 +580,158 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Consistently(oldExample_appset_argocd_applicationsetRoleBinding).Should(k8sFixture.NotExistByName())
 
 			By("verifying applicationset-managed-by and managed-by are not set on any namespace")
-			Eventually(appset_old_nsNS).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", argoNamespace.Name))
-			Consistently(appset_old_nsNS).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", argoNamespace.Name))
+			Eventually(appset_old_nsNS).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", "appset-argocd"))
+			Consistently(appset_old_nsNS).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", "appset-argocd"))
 
-			Eventually(appset_old_nsNS).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/managed-by-cluster-argocd", argoNamespace.Name))
-			Consistently(appset_old_nsNS).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/managed-by-cluster-argocd", argoNamespace.Name))
+			Eventually(appset_old_nsNS).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/managed-by-cluster-argocd", "appset-argocd"))
+			Consistently(appset_old_nsNS).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/managed-by-cluster-argocd", "appset-argocd"))
 
-			Eventually(appset_new_nsNS).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/managed-by-cluster-argocd", argoNamespace.Name))
-			Consistently(appset_new_nsNS).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/managed-by-cluster-argocd", argoNamespace.Name))
+			Eventually(appset_new_nsNS).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/managed-by-cluster-argocd", "appset-argocd"))
+			Consistently(appset_new_nsNS).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/managed-by-cluster-argocd", "appset-argocd"))
 
+		})
+
+		It("verifies that ArgoCD sourcenamespaces resources are cleaned up automatically", func() {
+
+			By("creating Argo CD namespace and appset source namespace")
+			targetNS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("target-ns-1-037")
+			cleanupFunctions = append(cleanupFunctions, cleanupFunc)
+
+			appset_argocdNS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("appset-namespace-scoped")
+			cleanupFunctions = append(cleanupFunctions, cleanupFunc)
+
+			By("creating ArgoCD instance with target ns as a source NS, BUT note the ArgoCD instance is namespace-scoped")
+			argoCD := &v1beta1.ArgoCD{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "example",
+					Namespace: appset_argocdNS.Name,
+				},
+				Spec: v1beta1.ArgoCDSpec{
+					ApplicationSet: &v1beta1.ArgoCDApplicationSet{
+						SourceNamespaces: []string{targetNS.Name},
+					},
+					SourceNamespaces: []string{targetNS.Name},
+				},
+			}
+			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+			Eventually(argoCD).Should(argocdFixture.HaveApplicationSetControllerStatus("Running"))
+
+			By("verifying that the appset deplomyent does not contain 'applications in any namespace' parameter")
+			appsetDeployment := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "example-applicationset-controller",
+					Namespace: argoCD.Namespace,
+				},
+			}
+			Eventually(appsetDeployment).Should(k8sFixture.ExistByName())
+			Expect(appsetDeployment).ShouldNot(deploymentFixture.HaveContainerCommandSubstring("--applicationset-namespaces", 0))
+
+			By("first verify that the ClusterRole was not automatically created for the Argo CD instance")
+			clusterRole := &rbacv1.ClusterRole{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        argoCD.Name + "-" + argoCD.Namespace + "-" + common.ArgoCDApplicationSetControllerComponent,
+					Annotations: common.DefaultAnnotations(argoCD.Name, argoCD.Namespace),
+				},
+			}
+			Consistently(clusterRole).Should(k8sFixture.NotExistByName())
+
+			By("creating ClusterRole and then ensuring it is automatically cleaned up")
+			Expect(k8sClient.Create(ctx, clusterRole)).To(Succeed())
+			Eventually(clusterRole).ShouldNot(k8sFixture.ExistByName())
+
+			By("first verify that ClusterRoleBinding was not automatically created for the Argo CD instance")
+			clusterRoleBinding := &rbacv1.ClusterRoleBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        argoCD.Name + "-" + argoCD.Namespace + "-" + common.ArgoCDApplicationSetControllerComponent,
+					Annotations: common.DefaultAnnotations(argoCD.Name, argoCD.Namespace),
+				},
+				Subjects: []rbacv1.Subject{
+					{
+						Kind:      "ServiceAccount",
+						Name:      "sa",
+						Namespace: argoCD.Namespace,
+					},
+				},
+				RoleRef: rbacv1.RoleRef{
+					APIGroup: "rbac.authorization.k8s.io",
+					Kind:     "ClusterRole",
+					Name:     clusterRole.Name,
+				},
+			}
+			Consistently(clusterRoleBinding).Should(k8sFixture.NotExistByName())
+			By("creating ClusterRoleBinding and then ensuring it is automatically cleaned up")
+			Expect(k8sClient.Create(ctx, clusterRoleBinding)).To(Succeed())
+			Eventually(clusterRoleBinding).ShouldNot(k8sFixture.ExistByName())
+
+			By("first verifying that Role does not exist in namespace specified in appset sourceNamespaces field")
+			roleInTargetNS := &rbacv1.Role{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-%s-applicationset", argoCD.Name, argoCD.Namespace),
+					Namespace: targetNS.Name,
+				},
+			}
+			Consistently(roleInTargetNS).Should(k8sFixture.NotExistByName())
+			By("creating Role in source NS and verifying it is not cleaned up (yet)")
+			Expect(k8sClient.Create(ctx, roleInTargetNS)).To(Succeed())
+			Consistently(roleInTargetNS).Should(k8sFixture.ExistByName())
+
+			By("verifying that there exist no rolebindings that point to the namespace-scoped argocd instance namespace")
+			Consistently(func() bool {
+				var roleBindings rbacv1.RoleBindingList
+				if err := k8sClient.List(ctx, &roleBindings, client.InNamespace(targetNS.Name)); err != nil {
+					GinkgoWriter.Println(err)
+					return false
+				}
+				for _, crb := range roleBindings.Items {
+					for _, subject := range crb.Subjects {
+						if subject.Namespace == argoCD.Namespace {
+							GinkgoWriter.Println("detected an RB that pointed to namespace scoped ArgoCD instance. This shouldn't happen:", crb.Name)
+							return false
+						}
+					}
+				}
+				return true
+
+			}).Should(BeTrue())
+
+			By("first verifying that RoleBinding does not exist in source namespace")
+			roleBindingInTargetNS := &rbacv1.RoleBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-%s-applicationset", argoCD.Name, argoCD.Namespace),
+					Namespace: targetNS.Name,
+				},
+				Subjects: []rbacv1.Subject{
+					{
+						Kind:      "ServiceAccount",
+						Name:      "sa",
+						Namespace: argoCD.Namespace,
+					},
+				},
+				RoleRef: rbacv1.RoleRef{
+					APIGroup: "rbac.authorization.k8s.io",
+					Kind:     "Role",
+					Name:     roleInTargetNS.Name,
+				},
+			}
+			Consistently(roleBindingInTargetNS).Should(k8sFixture.NotExistByName())
+			By("creating RoleBinding in source NS and verifying it is not cleaned up (yet)")
+			Expect(k8sClient.Create(ctx, roleBindingInTargetNS)).To(Succeed())
+			Consistently(roleBindingInTargetNS).Should(k8sFixture.ExistByName())
+
+			By("adding ArgoCDApplicationSetManagedByClusterArgoCDLabel label to target NS")
+			namespaceFixture.Update(targetNS, func(n *corev1.Namespace) {
+				if n.Labels == nil {
+					n.Labels = map[string]string{}
+				}
+				n.Labels[common.ArgoCDApplicationSetManagedByClusterArgoCDLabel] = argoCD.Namespace
+			})
+
+			By("verifying the label is automatically removed")
+			Eventually(targetNS).Should(k8sFixture.NotHaveLabelWithValue(common.ArgoCDApplicationSetManagedByClusterArgoCDLabel, argoCD.Namespace))
+
+			By("verifying that the roles/rolebindings we created in the previous steps are now automatically cleaned up, because the namespace had the ArgoCDApplicationSetManagedByClusterArgoCDLabel")
+			Eventually(roleBindingInTargetNS).Should(k8sFixture.NotExistByName())
+			Eventually(roleInTargetNS).Should(k8sFixture.NotExistByName())
 		})
 
 	})

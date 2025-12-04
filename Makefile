@@ -177,7 +177,7 @@ e2e: ## Run operator e2e tests
 
 
 start-e2e:
-	ARGOCD_CLUSTER_CONFIG_NAMESPACES="argocd-e2e-cluster-config, argocd-test-impersonation-1-046, argocd-agent-principal-1-051, argocd-agent-agent-1-052" make run
+	ARGOCD_CLUSTER_CONFIG_NAMESPACES="argocd-e2e-cluster-config, argocd-test-impersonation-1-046, argocd-agent-principal-1-051, argocd-agent-agent-1-052, appset-argocd, appset-old-ns, appset-new-ns" make run
 
 all: test install run e2e ## UnitTest, Run the operator locally and execute e2e tests.
 
@@ -193,7 +193,7 @@ ENVTEST = $(shell pwd)/bin/setup-envtest
 envtest: ## Download envtest-setup locally if necessary.
 	## Use release-0.22 as the last version that supports Go 1.24 - https://github.com/kubernetes-sigs/controller-runtime/issues/3358
 	## Feel free to update this when we move to Go 1.25+
-	$(call go-install-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@release-0.22) 
+	$(call go-install-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@release-0.22)
 	$(ENVTEST) use 1.26
 
 
@@ -339,7 +339,7 @@ e2e-tests-sequential-ginkgo: ginkgo
 .PHONY: e2e-tests-parallel-ginkgo
 e2e-tests-parallel-ginkgo: ginkgo
 	@echo "Running operator parallel Ginkgo E2E tests..."
-	$(GINKGO_CLI) -p -v -procs=5 --trace --timeout 90m -r ./tests/ginkgo/parallel
+	$(GINKGO_CLI) -p -v -procs=3 --trace --timeout 90m -r ./tests/ginkgo/parallel
 
 
 GINKGO_CLI = $(shell pwd)/bin/ginkgo
