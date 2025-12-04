@@ -599,6 +599,10 @@ func TestReconcileApplicationSet_Deployments_Command(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 
 			a := makeTestArgoCD()
+
+			os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
+			defer os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", "")
+
 			ns1 := v1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "foo",
@@ -815,6 +819,8 @@ func TestReconcileApplicationSet_SourceNamespacesRBACCreation(t *testing.T) {
 
 			a := makeTestArgoCD()
 			allowClusterConfigNamespaces(t, a.Namespace)
+			defer os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", "")
+
 			resObjs := []client.Object{a}
 			subresObjs := []client.Object{a}
 			runtimeObjs := []runtime.Object{}
@@ -1284,7 +1290,10 @@ func TestArgoCDApplicationSet_removeUnmanagedApplicationSetSourceNamespaceResour
 	ns1 := "foo"
 	ns2 := "bar"
 	a := makeTestArgoCD()
+
 	allowClusterConfigNamespaces(t, a.Namespace)
+	defer os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", "")
+
 	a.Spec = argoproj.ArgoCDSpec{
 		SourceNamespaces: []string{ns1, ns2},
 		ApplicationSet: &argoproj.ArgoCDApplicationSet{
@@ -1354,4 +1363,84 @@ func TestArgoCDApplicationSet_removeUnmanagedApplicationSetSourceNamespaceResour
 	val, found := namespace.Labels[common.ArgoCDApplicationSetManagedByClusterArgoCDLabel]
 	assert.True(t, found)
 	assert.Equal(t, a.Namespace, val)
+}
+
+func TestReconcileApplicationSetSourceNamespacesResources_NonClusterConfigNamespace(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		name                      string
+		clusterConfigNamespaces   string
+		expectInManagedNamespaces bool
+		expectedManagedNamespaces []string
+	}{
+		{
+			name:                      "ARGOCD_CLUSTER_CONFIG_NAMESPACES contains namespace",
+			clusterConfigNamespaces:   "argocd",
+			expectInManagedNamespaces: true,
+			expectedManagedNamespaces: []string{"foo", "bar"},
+		},
+		{
+			name:                      "ARGOCD_CLUSTER_CONFIG_NAMESPACES does not contain namespace",
+			clusterConfigNamespaces:   "",
+			expectInManagedNamespaces: false,
+			expectedManagedNamespaces: []string{},
+		},
+		{
+			name:                      "ARGOCD_CLUSTER_CONFIG_NAMESPACES contains different namespace",
+			clusterConfigNamespaces:   "different-namespace",
+			expectInManagedNamespaces: false,
+			expectedManagedNamespaces: []string{},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			a := makeTestArgoCD()
+			a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
+				SourceNamespaces: []string{"foo", "bar"},
+			}
+			a.Spec.SourceNamespaces = []string{"foo", "bar"}
+
+			// Set ARGOCD_CLUSTER_CONFIG_NAMESPACES based on test case
+			os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", test.clusterConfigNamespaces)
+			defer os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", "")
+
+			resObjs := []client.Object{a}
+			subresObjs := []client.Object{a}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
+
+			// Initialize ManagedApplicationSetSourceNamespaces as empty map
+			r.ManagedApplicationSetSourceNamespaces = make(map[string]string)
+
+			// Create source namespaces so the function can process them
+			for _, ns := range []string{"foo", "bar"} {
+				err := createNamespace(r, ns, "")
+				assert.NoError(t, err)
+			}
+
+			// Verify IsNamespaceClusterConfigNamespace returns expected value
+			if test.expectInManagedNamespaces {
+				assert.True(t, argoutil.IsNamespaceClusterConfigNamespace(a.Namespace))
+			} else {
+				assert.False(t, argoutil.IsNamespaceClusterConfigNamespace(a.Namespace))
+			}
+
+			err := r.reconcileApplicationSetSourceNamespacesResources(a)
+			assert.NoError(t, err)
+
+			// Verify ManagedApplicationSetSourceNamespaces contains expected namespaces
+			if test.expectInManagedNamespaces {
+				assert.Equal(t, len(test.expectedManagedNamespaces), len(r.ManagedApplicationSetSourceNamespaces))
+				for _, ns := range test.expectedManagedNamespaces {
+					assert.Contains(t, r.ManagedApplicationSetSourceNamespaces, ns)
+				}
+			} else {
+				assert.Empty(t, r.ManagedApplicationSetSourceNamespaces)
+			}
+		})
+	}
 }
