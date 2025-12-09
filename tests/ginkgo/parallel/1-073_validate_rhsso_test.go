@@ -235,7 +235,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			GinkgoWriter.Println("ssoUsername has length", len(ssoUsername), "ssoPass has length", len(ssoPassword), "keycloakRouteHost:", keycloakRouteHost)
 
-			output, err := osFixture.ExecCommandWithOutputParam(false, "curl", "-d", "client_id=admin-cli", "-d", "username="+string(ssoUsername), "-d", "password="+string(ssoPassword), "-d", "grant_type=password", "https://"+keycloakRouteHost+"/auth/realms/master/protocol/openid-connect/token", "-k")
+			output, err := osFixture.ExecCommandWithOutputParam(false, false, "curl", "-d", "client_id=admin-cli", "-d", "username="+string(ssoUsername), "-d", "password="+string(ssoPassword), "-d", "grant_type=password", "https://"+keycloakRouteHost+"/auth/realms/master/protocol/openid-connect/token", "-k")
 			Expect(err).ToNot(HaveOccurred())
 
 			// Extract the JSON part of the output
@@ -251,13 +251,13 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("executing the CURL command to verify the realm and client creation")
 
-			output, err = osFixture.ExecCommandWithOutputParam(false, "curl", "-H", "Content-Type: application/json", "-H", "Authorization: bearer "+accessToken, "https://"+keycloakRouteHost+"/auth/admin/realms/argocd/clients", "-k")
+			output, err = osFixture.ExecCommandWithOutputParam(false, false, "curl", "-H", "Content-Type: application/json", "-H", "Authorization: bearer "+accessToken, "https://"+keycloakRouteHost+"/auth/admin/realms/argocd/clients", "-k")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(output).To(ContainSubstring("\"clientId\":\"argocd\""))
 
 			By("executing the CURL command to verify OpenShift-v4 IdP creation")
 
-			output, err = osFixture.ExecCommandWithOutputParam(false, "curl", "-H", "Content-Type: application/json", "-H", "Authorization: bearer "+accessToken, "https://"+keycloakRouteHost+"/auth/admin/realms/argocd/identity-provider/instances", "-k")
+			output, err = osFixture.ExecCommandWithOutputParam(false, false, "curl", "-H", "Content-Type: application/json", "-H", "Authorization: bearer "+accessToken, "https://"+keycloakRouteHost+"/auth/admin/realms/argocd/identity-provider/instances", "-k")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(output).To(ContainSubstring("openshift-v4"))
 			Expect(output).To(ContainSubstring("\"syncMode\":\"FORCE\""))

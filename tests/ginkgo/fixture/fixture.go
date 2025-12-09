@@ -56,7 +56,7 @@ func WaitForRootPartitionToHaveMinimumDiskSpace() {
 
 	for {
 
-		output, err := osFixture.ExecCommandWithOutputParam(true, "df", "-k")
+		output, err := osFixture.ExecCommandWithOutputParam(false, false, "df", "-k")
 		Expect(err).ToNot(HaveOccurred())
 
 		// Output from 'df' looks like this:
@@ -535,7 +535,7 @@ func OutputDebugOnFail(namespaceParams ...any) {
 
 	for _, namespace := range namespaces {
 
-		kubectlOutput, err := osFixture.ExecCommandWithOutputParam(false, "kubectl", "get", "all", "-n", namespace)
+		kubectlOutput, err := osFixture.ExecCommandWithOutputParam(false, true, "kubectl", "get", "all", "-n", namespace)
 		if err != nil {
 			GinkgoWriter.Println("unable to list", namespace, err, kubectlOutput)
 			continue
@@ -547,7 +547,7 @@ func OutputDebugOnFail(namespaceParams ...any) {
 		GinkgoWriter.Println(kubectlOutput)
 		GinkgoWriter.Println("----------------------------------------------------------------")
 
-		kubectlOutput, err = osFixture.ExecCommandWithOutputParam(false, "kubectl", "get", "deployments", "-n", namespace, "-o", "yaml")
+		kubectlOutput, err = osFixture.ExecCommandWithOutputParam(false, true, "kubectl", "get", "deployments", "-n", namespace, "-o", "yaml")
 		if err != nil {
 			GinkgoWriter.Println("unable to list", namespace, err, kubectlOutput)
 			continue
@@ -559,7 +559,7 @@ func OutputDebugOnFail(namespaceParams ...any) {
 		GinkgoWriter.Println(kubectlOutput)
 		GinkgoWriter.Println("----------------------------------------------------------------")
 
-		kubectlOutput, err = osFixture.ExecCommandWithOutputParam(false, "kubectl", "get", "events", "-n", namespace)
+		kubectlOutput, err = osFixture.ExecCommandWithOutputParam(false, true, "kubectl", "get", "events", "-n", namespace)
 		if err != nil {
 			GinkgoWriter.Println("unable to get events for namespace", err, kubectlOutput)
 		} else {
@@ -572,7 +572,7 @@ func OutputDebugOnFail(namespaceParams ...any) {
 
 	}
 
-	kubectlOutput, err := osFixture.ExecCommandWithOutputParam(false, "kubectl", "get", "argocds", "-A", "-o", "yaml")
+	kubectlOutput, err := osFixture.ExecCommandWithOutputParam(false, true, "kubectl", "get", "argocds", "-A", "-o", "yaml")
 	if err != nil {
 		GinkgoWriter.Println("unable to output all argo cd statuses", err, kubectlOutput)
 	} else {
@@ -653,7 +653,7 @@ func outputPodLog(podSubstring string) {
 	}
 
 	// Extract operator logs
-	kubectlLogOutput, err := osFixture.ExecCommandWithOutputParam(false, "kubectl", "logs", "pod/"+matchingPods[0].Name, "manager", "-n", matchingPods[0].Namespace)
+	kubectlLogOutput, err := osFixture.ExecCommandWithOutputParam(false, true, "kubectl", "logs", "pod/"+matchingPods[0].Name, "manager", "-n", matchingPods[0].Namespace)
 	if err != nil {
 		GinkgoWriter.Println("unable to extract operator logs", err)
 		return

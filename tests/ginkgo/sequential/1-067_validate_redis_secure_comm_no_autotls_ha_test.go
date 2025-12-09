@@ -135,7 +135,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			err = os.WriteFile(openssl_test_File.Name(), ([]byte)(opensslTestCNFContents), 0666)
 			Expect(err).ToNot(HaveOccurred())
 
-			_, err = osFixture.ExecCommandWithOutputParam(false, "openssl", "req", "-new", "-x509", "-sha256",
+			_, err = osFixture.ExecCommandWithOutputParam(false, true, "openssl", "req", "-new", "-x509", "-sha256",
 				"-subj", "/C=XX/ST=XX/O=Testing/CN=redis",
 				"-reqexts", "SAN",
 				"-extensions", "SAN",
@@ -162,7 +162,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			expectComponentsAreRunning()
 
 			By("extracting the contents of /data/conf/redis.conf and checking it contains expected values")
-			redisConf, err := osFixture.ExecCommandWithOutputParam(false, "kubectl", "exec", "-i", "pod/argocd-redis-ha-server-0", "-n", ns.Name, "-c", "redis", "--", "cat", "/data/conf/redis.conf")
+			redisConf, err := osFixture.ExecCommandWithOutputParam(false, true, "kubectl", "exec", "-i", "pod/argocd-redis-ha-server-0", "-n", ns.Name, "-c", "redis", "--", "cat", "/data/conf/redis.conf")
 			Expect(err).ToNot(HaveOccurred())
 			expectedRedisConfig := []string{
 				"port 0",
@@ -178,7 +178,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			}
 
 			By("extracting the contents of /data/conf/sentinel.conf and checking it contains expected values")
-			sentinelConf, err := osFixture.ExecCommandWithOutputParam(false, "kubectl", "exec", "-i", "pod/argocd-redis-ha-server-0", "-n", ns.Name, "-c", "redis", "--", "cat", "/data/conf/sentinel.conf")
+			sentinelConf, err := osFixture.ExecCommandWithOutputParam(false, true, "kubectl", "exec", "-i", "pod/argocd-redis-ha-server-0", "-n", ns.Name, "-c", "redis", "--", "cat", "/data/conf/sentinel.conf")
 			Expect(err).ToNot(HaveOccurred())
 			expectedSentinelConfig := []string{
 				"port 0",
