@@ -970,6 +970,39 @@ func (r *ReconcileArgoCD) removeUnmanagedApplicationSetSourceNamespaceResources(
 	// For each namespace the ArgoCDApplicationSetManagedByClusterArgoCDLabel label.
 	for appsetsInAnyNamespaceLabelledNS := range r.ManagedApplicationSetSourceNamespaces {
 
+		// Retrieve the namespace object in the 'managed application source namespaces' list
+		ns := &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{Name: appsetsInAnyNamespaceLabelledNS},
+		}
+		if err := r.Get(context.Background(), client.ObjectKeyFromObject(ns), ns); err != nil {
+			if apierrors.IsNotFound(err) {
+				continue // skip if not found
+			} else {
+				return fmt.Errorf("unable to get ns: %v", err)
+			}
+		}
+
+		// We want to determine the Argo CD namespace that manages ns. We use labels to determine that.
+		var argocdNamespaceThatManagesNamespace string
+
+		// First try to label applicationset managed by label value
+		if val, ok := ns.Labels[common.ArgoCDApplicationSetManagedByClusterArgoCDLabel]; ok {
+			argocdNamespaceThatManagesNamespace = val
+
+		} else if val, ok := ns.Labels[common.ArgoCDManagedByLabel]; ok {
+			// Next try to generic managed by label
+			argocdNamespaceThatManagesNamespace = val
+		} else {
+			// Give up and continue
+			log.Info("could not locate owner for " + appsetsInAnyNamespaceLabelledNS)
+			continue
+		}
+
+		// For the following logic, the CR must be the one that owns the namespace
+		if argocdNamespaceThatManagesNamespace != cr.Namespace || argocdNamespaceThatManagesNamespace == "" {
+			continue
+		}
+
 		managedNamespace := false
 
 		// Ensure the feature is enabled only for cluster-scoped ArgoCD instances:
