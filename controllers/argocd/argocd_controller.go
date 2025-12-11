@@ -232,6 +232,10 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 		return reconcile.Result{}, argocd, err
 	}
 
+	if err = r.restoreTrackingLabelOnNamespacesWithResources(argocd); err != nil {
+		return reconcile.Result{}, argocd, err
+	}
+
 	if err = r.setManagedNamespaces(argocd); err != nil {
 		return reconcile.Result{}, argocd, err
 	}
