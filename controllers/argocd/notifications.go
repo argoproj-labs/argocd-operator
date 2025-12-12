@@ -914,11 +914,48 @@ func (r *ReconcileArgoCD) setManagedNotificationsSourceNamespaces(cr *argoproj.A
 	return nil
 }
 
-// removeUnmanagedNotificationsSourceNamespaceResources cleansup resources from NotificationsSourceNamespaces if namespace is not managed by argocd instance.
+// removeUnmanagedNotificationsSourceNamespaceResources cleans up resources from NotificationsSourceNamespaces if namespace is not managed by argocd instance.
 // ManagedNotificationsSourceNamespaces var keeps track of namespaces with notifications resources.
 func (r *ReconcileArgoCD) removeUnmanagedNotificationsSourceNamespaceResources(cr *argoproj.ArgoCD) error {
 
 	for ns := range r.ManagedNotificationsSourceNamespaces {
+
+		// Retrieve the namespace object in the 'managed application source namespaces' list
+		ns_namespace := &corev1.Namespace{
+			ObjectMeta: v1.ObjectMeta{Name: ns},
+		}
+		if err := r.Get(context.Background(), client.ObjectKeyFromObject(ns_namespace), ns_namespace); err != nil {
+			if apierrors.IsNotFound(err) {
+				continue // skip if not found
+			} else {
+				return fmt.Errorf("unable to get ns: %v", err)
+			}
+		}
+		// We want to determine the Argo CD namespace that manages ns. We use labels to determine that.
+		var argocdNamespaceThatManagesNamespace string
+
+		// First try to notifications managed by label value
+		if val, ok := ns_namespace.Labels[common.ArgoCDNotificationsManagedByClusterArgoCDLabel]; ok {
+			argocdNamespaceThatManagesNamespace = val
+
+		} else if val, ok := ns_namespace.Labels[common.ArgoCDApplicationSetManagedByClusterArgoCDLabel]; ok {
+			// Next try to label applicationset managed by label value
+			argocdNamespaceThatManagesNamespace = val
+
+		} else if val, ok := ns_namespace.Labels[common.ArgoCDManagedByLabel]; ok {
+			// Next try to generic managed by label
+			argocdNamespaceThatManagesNamespace = val
+		} else {
+			// Give up and continue
+			log.Info("could not locate owner for " + ns)
+			continue
+		}
+
+		// For the following logic, the CR must be the one that owns the namespace
+		if argocdNamespaceThatManagesNamespace != cr.Namespace || argocdNamespaceThatManagesNamespace == "" {
+			continue
+		}
+
 		managedNamespace := false
 		if isNotificationsEnabled(cr) && cr.GetDeletionTimestamp() == nil {
 			notificationsNamespaces, err := r.getSourceNamespaces(cr)

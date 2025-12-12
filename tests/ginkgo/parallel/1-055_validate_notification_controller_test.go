@@ -18,6 +18,7 @@ package parallel
 
 import (
 	"context"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -209,7 +210,18 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				},
 			}
 			Eventually(depl).Should(k8sFixture.ExistByName())
-			// TODO: add check to test "--application-namespaces" cmd arg is not present in the notification deployment container args
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, client.ObjectKeyFromObject(depl), depl)
+				if err != nil {
+					return false
+				}
+				if len(depl.Spec.Template.Spec.Containers) == 0 {
+					return false
+				}
+				cmd := depl.Spec.Template.Spec.Containers[0].Command
+				cmdStr := strings.Join(cmd, " ")
+				return !strings.Contains(cmdStr, "--application-namespaces")
+			}, "2m", "5s").Should(BeTrue())
 
 			By("verifying sourceNamespace rbac resources are not created")
 			clusterRole := &rbacv1.ClusterRole{
