@@ -883,6 +883,10 @@ func TestNotifications_removeUnmanagedNotificationsSourceNamespaceResources(t *t
 	err = r.reconcileNotificationsSourceNamespacesResources(a)
 	assert.NoError(t, err)
 
+	// populate ManagedNotificationsSourceNamespaces to track managed namespaces
+	err = r.setManagedNotificationsSourceNamespaces(a)
+	assert.NoError(t, err)
+
 	// remove notifications ns
 	a.Spec = argoproj.ArgoCDSpec{
 		SourceNamespaces: []string{ns2},
