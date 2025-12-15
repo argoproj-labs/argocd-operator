@@ -4,7 +4,7 @@ E2E tests are written using [KUTTL](https://kuttl.dev/docs/#install-kuttl-cli).
 
 ## Requirements
 
-This test suite assumes that an Argo CD Operator is installed on the cluster or running locally using `ARGOCD_CLUSTER_CONFIG_NAMESPACES=argocd-e2e-cluster-config make install run`.
+This test suite assumes that an Argo CD Operator is installed on the cluster or running locally using `make install run`.
 
 The system executing the tests must have following tools installed:
 

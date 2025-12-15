@@ -32,7 +32,7 @@ func TestReconcileAgentRole_RoleDoesNotExist_AgentDisabled(t *testing.T) {
 	// Test case: Role doesn't exist and agent is disabled
 	// Expected behavior: Should do nothing (no creation, no error)
 
-	cr := makeTestArgoCD(withAgentEnabled(false))
+	cr := makeTestClusterArgoCD(withAgentEnabled(false))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -55,7 +55,7 @@ func TestReconcileAgentRole_RoleDoesNotExist_AgentEnabled(t *testing.T) {
 	// Test case: Role doesn't exist and agent is enabled
 	// Expected behavior: Should create the Role with expected rules
 
-	cr := makeTestArgoCD(withAgentEnabled(true))
+	cr := makeTestClusterArgoCD(withAgentEnabled(true))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -92,7 +92,7 @@ func TestReconcileAgentRole_RoleExists_AgentDisabled(t *testing.T) {
 	// Test case: Role exists and agent is disabled
 	// Expected behavior: Should delete the Role
 
-	cr := makeTestArgoCD(withAgentEnabled(false))
+	cr := makeTestClusterArgoCD(withAgentEnabled(false))
 
 	// Create existing Role
 	existingRole := &v1.Role{
@@ -125,7 +125,7 @@ func TestReconcileAgentRole_RoleExists_AgentEnabled_SameRules(t *testing.T) {
 	// Test case: Role exists, agent is enabled, and rules are the same
 	// Expected behavior: Should do nothing (no update)
 
-	cr := makeTestArgoCD(withAgentEnabled(true))
+	cr := makeTestClusterArgoCD(withAgentEnabled(true))
 
 	expectedRules := buildPolicyRuleForRole()
 	existingRole := &v1.Role{
@@ -159,7 +159,7 @@ func TestReconcileAgentRole_RoleExists_AgentEnabled_DifferentRules(t *testing.T)
 	// Test case: Role exists, agent is enabled, but rules are different
 	// Expected behavior: Should update the Role with new rules
 
-	cr := makeTestArgoCD(withAgentEnabled(true))
+	cr := makeTestClusterArgoCD(withAgentEnabled(true))
 
 	// Create existing Role with different rules
 	existingRole := &v1.Role{
@@ -201,7 +201,7 @@ func TestReconcileAgentRole_RoleExists_AgentNotSet(t *testing.T) {
 	// Test case: Role exists but agent is not set (nil)
 	// Expected behavior: Should delete the Role
 
-	cr := makeTestArgoCD() // No agent configuration
+	cr := makeTestClusterArgoCD() // No agent configuration
 
 	// Create existing Role
 	existingRole := &v1.Role{
@@ -236,7 +236,7 @@ func TestReconcileAgentClusterRoles_ClusterRoleDoesNotExist_AgentDisabled(t *tes
 	// Test case: ClusterRole doesn't exist and agent is disabled
 	// Expected behavior: Should do nothing (no creation, no error)
 
-	cr := makeTestArgoCD(withAgentEnabled(false))
+	cr := makeTestClusterArgoCD(withAgentEnabled(false))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -258,8 +258,7 @@ func TestReconcileAgentClusterRoles_ClusterRoleDoesNotExist_AgentEnabled(t *test
 	// Test case: ClusterRole doesn't exist and agent is enabled
 	// Expected behavior: Should create the ClusterRole with expected rules
 
-	cr := makeTestArgoCD(withAgentEnabled(true))
-	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", cr.Namespace)
+	cr := makeTestClusterArgoCD(withAgentEnabled(true))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -292,7 +291,7 @@ func TestReconcileAgentClusterRoles_ClusterRoleExists_AgentDisabled(t *testing.T
 	// Test case: ClusterRole exists and agent is disabled
 	// Expected behavior: Should delete the ClusterRole
 
-	cr := makeTestArgoCD(withAgentEnabled(false))
+	cr := makeTestClusterArgoCD(withAgentEnabled(false))
 
 	// Create existing ClusterRole
 	existingClusterRole := &v1.ClusterRole{
@@ -323,8 +322,7 @@ func TestReconcileAgentClusterRoles_ClusterRoleExists_AgentEnabled_SameRules(t *
 	// Test case: ClusterRole exists, agent is enabled, and rules are the same
 	// Expected behavior: Should do nothing (no update)
 
-	cr := makeTestArgoCD(withAgentEnabled(true))
-	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", cr.Namespace)
+	cr := makeTestClusterArgoCD(withAgentEnabled(true))
 
 	expectedRules := buildPolicyRuleForClusterRole()
 	existingClusterRole := &v1.ClusterRole{
@@ -356,8 +354,7 @@ func TestReconcileAgentClusterRoles_ClusterRoleExists_AgentEnabled_DifferentRule
 	// Test case: ClusterRole exists, agent is enabled, but rules are different
 	// Expected behavior: Should update the ClusterRole with new rules
 
-	cr := makeTestArgoCD(withAgentEnabled(true))
-	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", cr.Namespace)
+	cr := makeTestClusterArgoCD(withAgentEnabled(true))
 
 	// Create existing ClusterRole with different rules
 	existingClusterRole := &v1.ClusterRole{
@@ -397,7 +394,7 @@ func TestReconcileAgentClusterRoles_ClusterRoleExists_AgentNotSet(t *testing.T) 
 	// Test case: ClusterRole exists but agent is not set (nil)
 	// Expected behavior: Should delete the ClusterRole
 
-	cr := makeTestArgoCD() // No agent configuration
+	cr := makeTestClusterArgoCD() // No agent configuration
 
 	// Create existing ClusterRole
 	existingClusterRole := &v1.ClusterRole{

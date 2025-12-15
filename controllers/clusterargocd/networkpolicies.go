@@ -1,0 +1,312 @@
+package clusterargocd
+
+import (
+	"context"
+	"fmt"
+	"reflect"
+
+	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+)
+
+var (
+	TCPProtocol = func() *corev1.Protocol {
+		tcpProtocol := corev1.ProtocolTCP
+		return &tcpProtocol
+	}()
+)
+
+const (
+	// RedisIngressNetworkPolicy is the name of the network policy which controls Redis Ingress traffic
+	RedisNetworkPolicy = "redis-network-policy"
+	// RedisHAIngressNetworkPolicy is the name of the network policy which controls Redis HA Ingress traffic
+	RedisHANetworkPolicy = "redis-ha-network-policy"
+)
+
+func (r *ReconcileClusterArgoCD) ReconcileNetworkPolicies(cr *argoproj.ClusterArgoCD) error {
+
+	// Reconcile Redis network policy
+	if err := r.ReconcileRedisNetworkPolicy(cr); err != nil {
+		return err
+	}
+
+	// Reconcile Redis HA network policy
+	if err := r.ReconcileRedisHANetworkPolicy(cr); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ReconcileRedisNetworkPolicy creates and reconciles network policy for Redis
+func (r *ReconcileClusterArgoCD) ReconcileRedisNetworkPolicy(cr *argoproj.ClusterArgoCD) error {
+
+	networkPolicy := &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", cr.Name, RedisNetworkPolicy),
+			Namespace: cr.Spec.ControlPlaneNamespace,
+		},
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app.kubernetes.io/name": nameWithSuffix("redis", cr),
+				},
+			},
+			PolicyTypes: []networkingv1.PolicyType{
+				networkingv1.PolicyTypeIngress,
+			},
+			Ingress: []networkingv1.NetworkPolicyIngressRule{
+				{
+					From: []networkingv1.NetworkPolicyPeer{
+						{
+							PodSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"app.kubernetes.io/name": nameWithSuffix("application-controller", cr),
+								},
+							},
+						},
+						{
+							PodSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"app.kubernetes.io/name": nameWithSuffix("repo-server", cr),
+								},
+							},
+						},
+						{
+							PodSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"app.kubernetes.io/name": nameWithSuffix("server", cr),
+								},
+							},
+						},
+					},
+					Ports: []networkingv1.NetworkPolicyPort{
+						{
+							Protocol: TCPProtocol,
+							Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 6379},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	if cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Principal != nil && cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
+		networkPolicy.Spec.Ingress[0].From = append(networkPolicy.Spec.Ingress[0].From, networkingv1.NetworkPolicyPeer{
+			PodSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app.kubernetes.io/name": nameWithSuffix("agent-principal", cr),
+				},
+			},
+		})
+	}
+
+	if cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Agent != nil && cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
+		networkPolicy.Spec.Ingress[0].From = append(networkPolicy.Spec.Ingress[0].From, networkingv1.NetworkPolicyPeer{
+			PodSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app.kubernetes.io/name": nameWithSuffix("agent-agent", cr),
+				},
+			},
+		})
+	}
+
+	// Check if the network policy already exists
+	existing := &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", cr.Name, RedisNetworkPolicy),
+			Namespace: cr.Spec.ControlPlaneNamespace,
+		},
+	}
+
+	npExists, err := argoutil.IsObjectFound(r.Client, cr.Spec.ControlPlaneNamespace, existing.Name, existing)
+	if err != nil {
+		return err
+	}
+	if npExists {
+
+		modified := false
+		explanation := ""
+		if !reflect.DeepEqual(existing.Spec.PodSelector, networkPolicy.Spec.PodSelector) {
+			existing.Spec.PodSelector = networkPolicy.Spec.PodSelector
+			explanation = "pod selector"
+			modified = true
+		}
+		if !reflect.DeepEqual(existing.Spec.PolicyTypes, networkPolicy.Spec.PolicyTypes) {
+			existing.Spec.PolicyTypes = networkPolicy.Spec.PolicyTypes
+			if modified {
+				explanation += ", "
+			}
+			explanation += "policy types"
+			modified = true
+		}
+		if !reflect.DeepEqual(existing.Spec.Ingress, networkPolicy.Spec.Ingress) {
+			existing.Spec.Ingress = networkPolicy.Spec.Ingress
+			if modified {
+				explanation += ", "
+			}
+			explanation += "ingress rules"
+			modified = true
+		}
+
+		if modified {
+			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
+			err := r.Update(context.TODO(), existing)
+			if err != nil {
+				log.Error(err, "Failed to update redis network policy")
+				return fmt.Errorf("failed to update redis network policy. error: %w", err)
+			}
+		}
+
+		// Nothing to do, NetworkPolicy already exists and not modified
+		return nil
+
+	}
+
+	// Set the ArgoCD instance as the owner and controller
+	if err := controllerutil.SetControllerReference(cr, networkPolicy, r.Scheme); err != nil {
+		log.Error(err, "Failed to set controller reference on redis network policy")
+		return fmt.Errorf("failed to set controller reference on redis network policy. error: %w", err)
+	}
+
+	argoutil.LogResourceCreation(log, networkPolicy)
+	if err := r.Create(context.TODO(), networkPolicy); err != nil {
+		log.Error(err, "Failed to create redis network policy")
+		return fmt.Errorf("failed to create redis network policy. error: %w", err)
+	}
+
+	return nil
+
+}
+
+// ReconcileRedisHANetworkPolicy creates and reconciles network policy for Redis HA
+func (r *ReconcileClusterArgoCD) ReconcileRedisHANetworkPolicy(cr *argoproj.ClusterArgoCD) error {
+
+	networkPolicy := &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", cr.Name, RedisHANetworkPolicy),
+			Namespace: cr.Spec.ControlPlaneNamespace,
+		},
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app.kubernetes.io/name": nameWithSuffix("redis-ha-haproxy", cr),
+				},
+			},
+			PolicyTypes: []networkingv1.PolicyType{
+				networkingv1.PolicyTypeIngress,
+			},
+			Ingress: []networkingv1.NetworkPolicyIngressRule{
+				{
+					From: []networkingv1.NetworkPolicyPeer{
+						{
+							PodSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"app.kubernetes.io/name": nameWithSuffix("application-controller", cr),
+								},
+							},
+						},
+						{
+							PodSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"app.kubernetes.io/name": nameWithSuffix("repo-server", cr),
+								},
+							},
+						},
+						{
+							PodSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"app.kubernetes.io/name": nameWithSuffix("server", cr),
+								},
+							},
+						},
+					},
+					Ports: []networkingv1.NetworkPolicyPort{
+						{
+							Protocol: TCPProtocol,
+							Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 6379},
+						},
+						{
+							Protocol: TCPProtocol,
+							Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 26379},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Check if the network policy already exists
+	existing := &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", cr.Name, RedisHANetworkPolicy),
+			Namespace: cr.Spec.ControlPlaneNamespace,
+		},
+	}
+
+	npExists, err := argoutil.IsObjectFound(r.Client, cr.Spec.ControlPlaneNamespace, existing.Name, existing)
+	if err != nil {
+		return err
+	}
+	if npExists {
+
+		modified := false
+		explanation := ""
+		if !reflect.DeepEqual(existing.Spec.PodSelector, networkPolicy.Spec.PodSelector) {
+			existing.Spec.PodSelector = networkPolicy.Spec.PodSelector
+			explanation = "pod selector"
+			modified = true
+		}
+		if !reflect.DeepEqual(existing.Spec.PolicyTypes, networkPolicy.Spec.PolicyTypes) {
+			existing.Spec.PolicyTypes = networkPolicy.Spec.PolicyTypes
+			if modified {
+				explanation += ", "
+			}
+			explanation += "policy types"
+			modified = true
+		}
+		if !reflect.DeepEqual(existing.Spec.Ingress, networkPolicy.Spec.Ingress) {
+			existing.Spec.Ingress = networkPolicy.Spec.Ingress
+			if modified {
+				explanation += ", "
+			}
+			explanation += "ingress rules"
+			modified = true
+		}
+
+		if modified {
+			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
+			err := r.Update(context.TODO(), existing)
+			if err != nil {
+				log.Error(err, "Failed to update redis ha network policy")
+				return fmt.Errorf("failed to update redis ha network policy. error: %w", err)
+			}
+		}
+
+		// Nothing to do, NetworkPolicy already exists and not modified
+		return nil
+
+	}
+
+	// Set the ArgoCD instance as the owner and controller
+	if err := controllerutil.SetControllerReference(cr, networkPolicy, r.Scheme); err != nil {
+		log.Error(err, "Failed to set controller reference on redis ha network policy")
+		return fmt.Errorf("failed to set controller reference on redis ha network policy. error: %w", err)
+	}
+
+	argoutil.LogResourceCreation(log, networkPolicy)
+
+	if err := r.Create(context.TODO(), networkPolicy); err != nil {
+		log.Error(err, "Failed to create redis ha network policy")
+		return fmt.Errorf("failed to create redis ha network policy. error: %w", err)
+	}
+
+	return nil
+
+}

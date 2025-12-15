@@ -30,7 +30,6 @@ Install the required CRDs and start the Argo CD operator in development mode.
 
 ```bash
 make install
-export ARGOCD_CLUSTER_CONFIG_NAMESPACES="argocd"
 make run
 ```
 

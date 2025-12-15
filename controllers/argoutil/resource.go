@@ -31,7 +31,6 @@ import (
 	"github.com/go-logr/logr"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 )
 
@@ -141,15 +140,15 @@ func newEvent(meta metav1.ObjectMeta) *corev1.Event {
 }
 
 // LabelsForCluster returns the labels for all cluster resources.
-func LabelsForCluster(cr *argoproj.ArgoCD) map[string]string {
-	labels := common.DefaultLabels(cr.Name)
+func LabelsForCluster(cr metav1.Object) map[string]string {
+	labels := common.DefaultLabels(cr.GetName())
 	return labels
 }
 
 // annotationsForCluster returns the annotations for all cluster resources.
-func AnnotationsForCluster(cr *argoproj.ArgoCD) map[string]string {
-	annotations := common.DefaultAnnotations(cr.Name, cr.Namespace)
-	for key, val := range cr.Annotations {
+func AnnotationsForCluster(cr metav1.Object) map[string]string {
+	annotations := common.DefaultAnnotations(cr.GetName(), cr.GetNamespace())
+	for key, val := range cr.GetAnnotations() {
 		annotations[key] = val
 	}
 	return annotations
@@ -257,9 +256,9 @@ func TruncateCRName(crName string) string {
 }
 
 // GetTruncatedCRName returns the truncated CR name using the deterministic truncate function
-func GetTruncatedCRName(cr *argoproj.ArgoCD) string {
+func GetTruncatedCRName(cr metav1.Object) string {
 	// Always use the deterministic truncate function as source of truth
-	return TruncateCRName(cr.Name)
+	return TruncateCRName(cr.GetName())
 }
 
 // GetImagePullPolicy returns the effective image pull policy for Argo CD components.

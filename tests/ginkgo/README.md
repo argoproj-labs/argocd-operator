@@ -26,7 +26,7 @@ make e2e-tests-parallel-ginkgo
 ```bash
 # 1) Start operator locally
 make start-e2e
-# You can instead use 'make run', BUT, `make run` is missing the `ARGOCD_CLUSTER_CONFIG_NAMESPACES` env var
+# You can instead use 'make run'
 
 # 2) Start tests in LOCAL_RUN mode (this skips tests that require Subscription or CSVs)
 LOCAL_RUN=true  make e2e-tests-sequential-ginkgo

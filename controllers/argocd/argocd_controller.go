@@ -74,17 +74,6 @@ type ReconcileArgoCD struct {
 	client.Client
 	Scheme            *runtime.Scheme
 	ManagedNamespaces *corev1.NamespaceList
-	// Stores a list of ApplicationSourceNamespaces as keys
-	ManagedSourceNamespaces map[string]string
-
-	// Stores a list of ApplicationSetSourceNamespaces as keys (value is not used)
-	// - list of namespaces that currently have the 'common.ArgoCDApplicationSetManagedByClusterArgoCDLabel' label
-	// - items in the list that are NOT mentioned in .spec.applicationset.sourceNamespaces will be cleaned up
-	// - (or if ALL resources in the list will be cleaned up if ArgoCD instance in namespace-scoped)
-	ManagedApplicationSetSourceNamespaces map[string]string
-
-	// Stores a list of NotificationsSourceNamespaces as keys
-	ManagedNotificationsSourceNamespaces map[string]string
 
 	// Stores label selector used to reconcile a subset of ArgoCD
 	LabelSelector string
@@ -256,17 +245,6 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 				}
 			}
 
-			if err := r.removeUnmanagedSourceNamespaceResources(argocd); err != nil {
-				return reconcile.Result{}, argocd, argoCDStatus, fmt.Errorf("failed to remove resources from sourceNamespaces, error: %w", err)
-			}
-
-			if err := r.removeUnmanagedApplicationSetSourceNamespaceResources(argocd); err != nil {
-				return reconcile.Result{}, argocd, argoCDStatus, fmt.Errorf("failed to remove resources from applicationSetSourceNamespaces, error: %w", err)
-			}
-			if err := r.removeUnmanagedNotificationsSourceNamespaceResources(argocd); err != nil {
-				return reconcile.Result{}, argocd, argoCDStatus, fmt.Errorf("failed to remove resources from notificationsSourceNamespaces, error: %w", err)
-			}
-
 			if err := r.removeDeletionFinalizer(argocd); err != nil {
 				return reconcile.Result{}, argocd, argoCDStatus, err
 			}
@@ -289,16 +267,6 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 		return reconcile.Result{}, argocd, argoCDStatus, err
 	}
 
-	if err = r.setManagedSourceNamespaces(argocd); err != nil {
-		return reconcile.Result{}, argocd, argoCDStatus, err
-	}
-
-	if err = r.setManagedApplicationSetSourceNamespaces(argocd); err != nil {
-		return reconcile.Result{}, argocd, argoCDStatus, err
-	}
-	if err = r.setManagedNotificationsSourceNamespaces(argocd); err != nil {
-		return reconcile.Result{}, argocd, argoCDStatus, err
-	}
 	// Handle NamespaceManagement reconciliation and check if Namespace Management is enabled via the Subscription env variable.
 	if isNamespaceManagementEnabled() {
 		if err := r.reconcileNamespaceManagement(argocd); err != nil {

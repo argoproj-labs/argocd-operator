@@ -34,7 +34,7 @@ import (
 
 // ReconcilePrincipalRoute reconciles the principal route for the ArgoCD agent.
 // It creates, updates, or deletes the route based on the principal configuration.
-func ReconcilePrincipalRoute(client client.Client, compName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme) error {
+func ReconcilePrincipalRoute(client client.Client, compName string, cr *argoproj.ClusterArgoCD, scheme *runtime.Scheme) error {
 	// Verify Route API is available (only if not already checked)
 	if !argoutil.IsRouteAPIAvailable() {
 		if err := argoutil.VerifyRouteAPI(); err != nil {
@@ -117,7 +117,7 @@ func ReconcilePrincipalRoute(client client.Client, compName string, cr *argoproj
 }
 
 // buildRoute creates a base Route object for the ArgoCD agent principal.
-func buildRoute(compName string, cr *argoproj.ArgoCD) *routev1.Route {
+func buildRoute(compName string, cr *argoproj.ClusterArgoCD) *routev1.Route {
 	return &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      generateAgentResourceName(cr.Name, compName),
@@ -128,7 +128,7 @@ func buildRoute(compName string, cr *argoproj.ArgoCD) *routev1.Route {
 }
 
 // buildPrincipalRouteSpec creates the RouteSpec for the ArgoCD agent principal route.
-func buildPrincipalRouteSpec(compName string, cr *argoproj.ArgoCD) routev1.RouteSpec {
+func buildPrincipalRouteSpec(compName string, cr *argoproj.ClusterArgoCD) routev1.RouteSpec {
 	return routev1.RouteSpec{
 		Port: &routev1.RoutePort{
 			TargetPort: intstr.FromInt(PrincipalServiceTargetPort),

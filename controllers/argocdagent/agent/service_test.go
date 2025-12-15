@@ -33,7 +33,7 @@ func TestReconcileAgentMetricsService_ServiceDoesNotExist_AgentDisabled(t *testi
 	// Test case: Service doesn't exist and agent is disabled
 	// Expected behavior: Should do nothing (no creation, no error)
 
-	cr := makeTestArgoCD(withAgentEnabled(false))
+	cr := makeTestClusterArgoCD(withAgentEnabled(false))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -55,7 +55,7 @@ func TestReconcileAgentMetricsService_ServiceDoesNotExist_AgentEnabled(t *testin
 	// Test case: Service doesn't exist and agent is enabled
 	// Expected behavior: Should create the Service with expected spec
 
-	cr := makeTestArgoCD(withAgentEnabled(true))
+	cr := makeTestClusterArgoCD(withAgentEnabled(true))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -99,7 +99,7 @@ func TestReconcileAgentMetricsService_ServiceExists_AgentDisabled(t *testing.T) 
 	// Test case: Service exists and agent is disabled
 	// Expected behavior: Should delete the Service
 
-	cr := makeTestArgoCD(withAgentEnabled(false))
+	cr := makeTestClusterArgoCD(withAgentEnabled(false))
 
 	// Create existing Service
 	expectedSvc := buildService(generateAgentResourceName(cr.Name, testAgentCompName)+"-metrics", testAgentCompName, cr)
@@ -133,7 +133,7 @@ func TestReconcileAgentMetricsService_ServiceExists_AgentEnabled_SameSpec(t *tes
 	// Test case: Metrics service exists, agent is enabled, and spec is the same
 	// Expected behavior: Should do nothing (no update)
 
-	cr := makeTestArgoCD(withAgentEnabled(true))
+	cr := makeTestClusterArgoCD(withAgentEnabled(true))
 
 	expectedSvc := buildService(generateAgentResourceName(cr.Name, testAgentCompName)+"-metrics", testAgentCompName, cr)
 	expectedSvc.Spec = buildAgentMetricsServiceSpec(testAgentCompName, cr)
@@ -169,7 +169,7 @@ func TestReconcileAgentMetricsService_ServiceExists_AgentEnabled_DifferentSpec(t
 	// Test case: Metrics service exists, agent is enabled, but spec is different
 	// Expected behavior: Should update the metrics service with expected spec
 
-	cr := makeTestArgoCD(withAgentEnabled(true))
+	cr := makeTestClusterArgoCD(withAgentEnabled(true))
 
 	// Create existing Service with different spec
 	differentSpec := corev1.ServiceSpec{
@@ -222,7 +222,7 @@ func TestReconcileAgentMetricsService_ServiceExists_AgentNotSet(t *testing.T) {
 	// Test case: Metrics service exists but agent spec is not set (nil)
 	// Expected behavior: Should delete the metrics service
 
-	cr := makeTestArgoCD() // No agent configuration
+	cr := makeTestClusterArgoCD() // No agent configuration
 
 	// Create existing Service
 	expectedSvc := buildService(generateAgentResourceName(cr.Name, testAgentCompName)+"-metrics", testAgentCompName, cr)
@@ -256,7 +256,7 @@ func TestReconcileAgentMetricsService_ServiceDoesNotExist_AgentNotSet(t *testing
 	// Test case: Metrics service doesn't exist and agent spec is not set (nil)
 	// Expected behavior: Should do nothing
 
-	cr := makeTestArgoCD() // No agent configuration
+	cr := makeTestClusterArgoCD() // No agent configuration
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -280,7 +280,7 @@ func TestReconcileAgentHealthzService_ServiceDoesNotExist_AgentDisabled(t *testi
 	// Test case: Healthz service doesn't exist and agent is disabled
 	// Expected behavior: Should do nothing (no creation, no error)
 
-	cr := makeTestArgoCD(withAgentEnabled(false))
+	cr := makeTestClusterArgoCD(withAgentEnabled(false))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -302,7 +302,7 @@ func TestReconcileAgentHealthzService_ServiceDoesNotExist_AgentEnabled(t *testin
 	// Test case: Healthz service doesn't exist and agent is enabled
 	// Expected behavior: Should create the Service with expected spec
 
-	cr := makeTestArgoCD(withAgentEnabled(true))
+	cr := makeTestClusterArgoCD(withAgentEnabled(true))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -346,7 +346,7 @@ func TestReconcileAgentHealthzService_ServiceExists_AgentDisabled(t *testing.T) 
 	// Test case: Healthz service exists and agent is disabled
 	// Expected behavior: Should delete the Service
 
-	cr := makeTestArgoCD(withAgentEnabled(false))
+	cr := makeTestClusterArgoCD(withAgentEnabled(false))
 
 	// Create existing Service
 	expectedSvc := buildService(generateAgentResourceName(cr.Name, testAgentCompName)+"-healthz", testAgentCompName, cr)
@@ -380,7 +380,7 @@ func TestReconcileAgentHealthzService_ServiceExists_AgentEnabled_SameSpec(t *tes
 	// Test case: Healthz service exists, agent is enabled, and spec is the same
 	// Expected behavior: Should do nothing (no update)
 
-	cr := makeTestArgoCD(withAgentEnabled(true))
+	cr := makeTestClusterArgoCD(withAgentEnabled(true))
 
 	expectedSvc := buildService(generateAgentResourceName(cr.Name, testAgentCompName)+"-healthz", testAgentCompName, cr)
 	expectedSvc.Spec = buildAgentHealthzServiceSpec(testAgentCompName, cr)
@@ -416,7 +416,7 @@ func TestReconcileAgentHealthzService_ServiceExists_AgentEnabled_DifferentSpec(t
 	// Test case: Healthz service exists, agent is enabled, but spec is different
 	// Expected behavior: Should update the healthz service with expected spec
 
-	cr := makeTestArgoCD(withAgentEnabled(true))
+	cr := makeTestClusterArgoCD(withAgentEnabled(true))
 
 	// Create existing Service with different spec
 	differentSpec := corev1.ServiceSpec{
@@ -469,7 +469,7 @@ func TestReconcileAgentHealthzService_ServiceExists_AgentNotSet(t *testing.T) {
 	// Test case: Healthz service exists but agent spec is not set (nil)
 	// Expected behavior: Should delete the healthz service
 
-	cr := makeTestArgoCD() // No agent configuration
+	cr := makeTestClusterArgoCD() // No agent configuration
 
 	// Create existing Service
 	expectedSvc := buildService(generateAgentResourceName(cr.Name, testAgentCompName)+"-healthz", testAgentCompName, cr)
@@ -503,7 +503,7 @@ func TestReconcileAgentHealthzService_ServiceDoesNotExist_AgentNotSet(t *testing
 	// Test case: Healthz service doesn't exist and agent spec is not set (nil)
 	// Expected behavior: Should do nothing
 
-	cr := makeTestArgoCD() // No agent configuration
+	cr := makeTestClusterArgoCD() // No agent configuration
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()

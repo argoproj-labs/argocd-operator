@@ -44,7 +44,7 @@ func TestReconcileAgentRoleBinding_RoleBindingDoesNotExist_AgentDisabled(t *test
 	// Test case: RoleBinding doesn't exist and agent is disabled
 	// Expected behavior: Should do nothing (no creation, no error)
 
-	cr := makeTestArgoCD(withAgentEnabled(false))
+	cr := makeTestClusterArgoCD(withAgentEnabled(false))
 	sa := makeTestServiceAccount()
 
 	resObjs := []client.Object{cr, sa}
@@ -67,7 +67,7 @@ func TestReconcileAgentRoleBinding_RoleBindingDoesNotExist_AgentEnabled(t *testi
 	// Test case: RoleBinding doesn't exist and agent is enabled
 	// Expected behavior: Should create the RoleBinding with expected subjects and roleRef
 
-	cr := makeTestArgoCD(withAgentEnabled(true))
+	cr := makeTestClusterArgoCD(withAgentEnabled(true))
 	sa := makeTestServiceAccount()
 
 	resObjs := []client.Object{cr, sa}
@@ -108,7 +108,7 @@ func TestReconcileAgentRoleBinding_RoleBindingExists_AgentDisabled(t *testing.T)
 	// Test case: RoleBinding exists and agent is disabled
 	// Expected behavior: Should delete the RoleBinding
 
-	cr := makeTestArgoCD(withAgentEnabled(false))
+	cr := makeTestClusterArgoCD(withAgentEnabled(false))
 	sa := makeTestServiceAccount()
 
 	// Create existing RoleBinding
@@ -142,7 +142,7 @@ func TestReconcileAgentRoleBinding_RoleBindingExists_AgentEnabled_SameConfigurat
 	// Test case: RoleBinding exists, agent is enabled, and configuration is the same
 	// Expected behavior: Should do nothing (no update)
 
-	cr := makeTestArgoCD(withAgentEnabled(true))
+	cr := makeTestClusterArgoCD(withAgentEnabled(true))
 	sa := makeTestServiceAccount()
 
 	expectedSubjects := buildSubjects(sa, cr)
@@ -181,7 +181,7 @@ func TestReconcileAgentRoleBinding_RoleBindingExists_AgentEnabled_DifferentSubje
 	// Test case: RoleBinding exists, agent is enabled, but subjects are different
 	// Expected behavior: Should update the RoleBinding with new subjects
 
-	cr := makeTestArgoCD(withAgentEnabled(true))
+	cr := makeTestClusterArgoCD(withAgentEnabled(true))
 	sa := makeTestServiceAccount()
 
 	// Create existing RoleBinding with different subjects
@@ -228,7 +228,7 @@ func TestReconcileAgentRoleBinding_RoleBindingExists_AgentEnabled_DifferentRoleR
 	// Test case: RoleBinding exists, agent is enabled, but roleRef is different
 	// Expected behavior: Should update the RoleBinding with new roleRef
 
-	cr := makeTestArgoCD(withAgentEnabled(true))
+	cr := makeTestClusterArgoCD(withAgentEnabled(true))
 	sa := makeTestServiceAccount()
 
 	expectedSubjects := buildSubjects(sa, cr)
@@ -274,7 +274,7 @@ func TestReconcileAgentRoleBinding_RoleBindingExists_AgentNotSet(t *testing.T) {
 	// Test case: RoleBinding exists but agent is not set (nil)
 	// Expected behavior: Should delete the RoleBinding
 
-	cr := makeTestArgoCD() // No agent configuration
+	cr := makeTestClusterArgoCD() // No agent configuration
 	sa := makeTestServiceAccount()
 
 	// Create existing RoleBinding
@@ -310,7 +310,7 @@ func TestReconcileAgentClusterRoleBinding_ClusterRoleBindingDoesNotExist_AgentDi
 	// Test case: ClusterRoleBinding doesn't exist and agent is disabled
 	// Expected behavior: Should do nothing (no creation, no error)
 
-	cr := makeTestArgoCD(withAgentEnabled(false))
+	cr := makeTestClusterArgoCD(withAgentEnabled(false))
 	sa := makeTestServiceAccount()
 
 	resObjs := []client.Object{cr, sa}
@@ -332,8 +332,7 @@ func TestReconcileAgentClusterRoleBinding_ClusterRoleBindingDoesNotExist_AgentEn
 	// Test case: ClusterRoleBinding doesn't exist and agent is enabled
 	// Expected behavior: Should create the ClusterRoleBinding with expected subjects and roleRef
 
-	cr := makeTestArgoCD(withAgentEnabled(true))
-	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", cr.Namespace)
+	cr := makeTestClusterArgoCD(withAgentEnabled(true))
 	sa := makeTestServiceAccount()
 
 	resObjs := []client.Object{cr, sa}
@@ -370,7 +369,7 @@ func TestReconcileAgentClusterRoleBinding_ClusterRoleBindingExists_AgentDisabled
 	// Test case: ClusterRoleBinding exists and agent is disabled
 	// Expected behavior: Should delete the ClusterRoleBinding
 
-	cr := makeTestArgoCD(withAgentEnabled(false))
+	cr := makeTestClusterArgoCD(withAgentEnabled(false))
 	sa := makeTestServiceAccount()
 
 	// Create existing ClusterRoleBinding
@@ -402,8 +401,7 @@ func TestReconcileAgentClusterRoleBinding_ClusterRoleBindingExists_AgentEnabled_
 	// Test case: ClusterRoleBinding exists, agent is enabled, and configuration is the same
 	// Expected behavior: Should do nothing (no update)
 
-	cr := makeTestArgoCD(withAgentEnabled(true))
-	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", cr.Namespace)
+	cr := makeTestClusterArgoCD(withAgentEnabled(true))
 	sa := makeTestServiceAccount()
 
 	expectedSubjects := buildSubjects(sa, cr)
@@ -440,8 +438,7 @@ func TestReconcileAgentClusterRoleBinding_ClusterRoleBindingExists_AgentEnabled_
 	// Test case: ClusterRoleBinding exists, agent is enabled, but subjects are different
 	// Expected behavior: Should update the ClusterRoleBinding with new subjects
 
-	cr := makeTestArgoCD(withAgentEnabled(true))
-	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", cr.Namespace)
+	cr := makeTestClusterArgoCD(withAgentEnabled(true))
 	sa := makeTestServiceAccount()
 
 	// Create existing ClusterRoleBinding with different subjects
@@ -486,8 +483,7 @@ func TestReconcileAgentClusterRoleBinding_ClusterRoleBindingExists_AgentEnabled_
 	// Test case: ClusterRoleBinding exists, agent is enabled, but roleRef is different
 	// Expected behavior: Should update the ClusterRoleBinding with new roleRef
 
-	cr := makeTestArgoCD(withAgentEnabled(true))
-	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", cr.Namespace)
+	cr := makeTestClusterArgoCD(withAgentEnabled(true))
 	sa := makeTestServiceAccount()
 
 	expectedSubjects := buildSubjects(sa, cr)
@@ -531,7 +527,7 @@ func TestReconcileAgentClusterRoleBinding_ClusterRoleBindingExists_AgentNotSet(t
 	// Test case: ClusterRoleBinding exists but agent is not set (nil)
 	// Expected behavior: Should delete the ClusterRoleBinding
 
-	cr := makeTestArgoCD() // No agent configuration
+	cr := makeTestClusterArgoCD() // No agent configuration
 	sa := makeTestServiceAccount()
 
 	// Create existing ClusterRoleBinding
@@ -563,7 +559,7 @@ func TestReconcileAgentRoleBinding_RoleBindingDoesNotExist_AgentNotSet(t *testin
 	// Test case: RoleBinding doesn't exist and ArgoCDAgent is not set (nil)
 	// Expected behavior: Should do nothing since agent is effectively disabled
 
-	cr := makeTestArgoCD() // No agent configuration
+	cr := makeTestClusterArgoCD() // No agent configuration
 	sa := makeTestServiceAccount()
 
 	resObjs := []client.Object{cr, sa}
@@ -586,7 +582,7 @@ func TestReconcileAgentClusterRoleBinding_ClusterRoleBindingDoesNotExist_AgentNo
 	// Test case: ClusterRoleBinding doesn't exist and ArgoCDAgent is not set (nil)
 	// Expected behavior: Should do nothing since agent is effectively disabled
 
-	cr := makeTestArgoCD() // No agent configuration
+	cr := makeTestClusterArgoCD() // No agent configuration
 	sa := makeTestServiceAccount()
 
 	resObjs := []client.Object{cr, sa}

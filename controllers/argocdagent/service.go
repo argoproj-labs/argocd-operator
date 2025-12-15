@@ -68,7 +68,7 @@ const (
 
 // ReconcilePrincipalService reconciles the principal service for the ArgoCD agent.
 // It creates, updates, or deletes the service based on the principal configuration.
-func ReconcilePrincipalService(client client.Client, compName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme) error {
+func ReconcilePrincipalService(client client.Client, compName string, cr *argoproj.ClusterArgoCD, scheme *runtime.Scheme) error {
 	service := buildService(generateAgentResourceName(cr.Name, compName), compName, cr)
 	expectedSpec := buildPrincipalServiceSpec(compName, cr)
 
@@ -129,7 +129,7 @@ func ReconcilePrincipalService(client client.Client, compName string, cr *argopr
 
 // ReconcilePrincipalMetricsService reconciles the principal metrics service for the ArgoCD agent.
 // It creates, updates, or deletes the metrics service based on the principal configuration.
-func ReconcilePrincipalMetricsService(client client.Client, compName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme) error {
+func ReconcilePrincipalMetricsService(client client.Client, compName string, cr *argoproj.ClusterArgoCD, scheme *runtime.Scheme) error {
 
 	service := buildService(generateAgentResourceName(cr.Name, compName+"-metrics"), compName, cr)
 	expectedSpec := buildPrincipalMetricsServiceSpec(compName, cr)
@@ -191,7 +191,7 @@ func ReconcilePrincipalMetricsService(client client.Client, compName string, cr 
 
 // ReconcilePrincipalRedisProxyService reconciles the principal Redis proxy service for the ArgoCD agent.
 // It creates, updates, or deletes the Redis proxy service based on the principal configuration.
-func ReconcilePrincipalRedisProxyService(client client.Client, compName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme) error {
+func ReconcilePrincipalRedisProxyService(client client.Client, compName string, cr *argoproj.ClusterArgoCD, scheme *runtime.Scheme) error {
 
 	service := buildService(argoutil.GenerateAgentPrincipalRedisProxyServiceName(cr.Name), compName, cr)
 	expectedSpec := buildPrincipalRedisProxyServiceSpec(compName, cr)
@@ -253,7 +253,7 @@ func ReconcilePrincipalRedisProxyService(client client.Client, compName string, 
 
 // ReconcilePrincipalResourceProxyService reconciles the principal resource proxy service for the ArgoCD agent.
 // It creates, updates, or deletes the resource proxy service based on the principal configuration.
-func ReconcilePrincipalResourceProxyService(client client.Client, compName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme) error {
+func ReconcilePrincipalResourceProxyService(client client.Client, compName string, cr *argoproj.ClusterArgoCD, scheme *runtime.Scheme) error {
 
 	service := buildService(generateAgentResourceName(cr.Name, compName+"-resource-proxy"), compName, cr)
 	expectedSpec := buildPrincipalResourceProxyServiceSpec(compName, cr)
@@ -315,7 +315,7 @@ func ReconcilePrincipalResourceProxyService(client client.Client, compName strin
 
 // ReconcilePrincipalHealthzService reconciles the principal healthz service for the ArgoCD agent.
 // It creates, updates, or deletes the healthz service based on the principal configuration.
-func ReconcilePrincipalHealthzService(client client.Client, compName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme) error {
+func ReconcilePrincipalHealthzService(client client.Client, compName string, cr *argoproj.ClusterArgoCD, scheme *runtime.Scheme) error {
 
 	service := buildService(generateAgentResourceName(cr.Name, compName+"-healthz"), compName, cr)
 	expectedSpec := buildPrincipalHealthzServiceSpec(compName, cr)
@@ -375,7 +375,7 @@ func ReconcilePrincipalHealthzService(client client.Client, compName string, cr 
 	return nil
 }
 
-func buildPrincipalServiceSpec(compName string, cr *argoproj.ArgoCD) corev1.ServiceSpec {
+func buildPrincipalServiceSpec(compName string, cr *argoproj.ClusterArgoCD) corev1.ServiceSpec {
 	return corev1.ServiceSpec{
 		Ports: []corev1.ServicePort{
 			{
@@ -392,7 +392,7 @@ func buildPrincipalServiceSpec(compName string, cr *argoproj.ArgoCD) corev1.Serv
 	}
 }
 
-func buildPrincipalMetricsServiceSpec(compName string, cr *argoproj.ArgoCD) corev1.ServiceSpec {
+func buildPrincipalMetricsServiceSpec(compName string, cr *argoproj.ClusterArgoCD) corev1.ServiceSpec {
 	return corev1.ServiceSpec{
 		Ports: []corev1.ServicePort{
 			{
@@ -409,7 +409,7 @@ func buildPrincipalMetricsServiceSpec(compName string, cr *argoproj.ArgoCD) core
 	}
 }
 
-func buildPrincipalRedisProxyServiceSpec(compName string, cr *argoproj.ArgoCD) corev1.ServiceSpec {
+func buildPrincipalRedisProxyServiceSpec(compName string, cr *argoproj.ClusterArgoCD) corev1.ServiceSpec {
 	return corev1.ServiceSpec{
 		Ports: []corev1.ServicePort{
 			{
@@ -426,7 +426,7 @@ func buildPrincipalRedisProxyServiceSpec(compName string, cr *argoproj.ArgoCD) c
 	}
 }
 
-func buildPrincipalResourceProxyServiceSpec(compName string, cr *argoproj.ArgoCD) corev1.ServiceSpec {
+func buildPrincipalResourceProxyServiceSpec(compName string, cr *argoproj.ClusterArgoCD) corev1.ServiceSpec {
 	return corev1.ServiceSpec{
 		Ports: []corev1.ServicePort{
 			{
@@ -443,7 +443,7 @@ func buildPrincipalResourceProxyServiceSpec(compName string, cr *argoproj.ArgoCD
 	}
 }
 
-func buildPrincipalHealthzServiceSpec(compName string, cr *argoproj.ArgoCD) corev1.ServiceSpec {
+func buildPrincipalHealthzServiceSpec(compName string, cr *argoproj.ClusterArgoCD) corev1.ServiceSpec {
 	return corev1.ServiceSpec{
 		Ports: []corev1.ServicePort{
 			{
@@ -460,7 +460,7 @@ func buildPrincipalHealthzServiceSpec(compName string, cr *argoproj.ArgoCD) core
 	}
 }
 
-func buildService(name, compName string, cr *argoproj.ArgoCD) *corev1.Service {
+func buildService(name, compName string, cr *argoproj.ClusterArgoCD) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -471,7 +471,7 @@ func buildService(name, compName string, cr *argoproj.ArgoCD) *corev1.Service {
 }
 
 // getPrincipalServiceType will return the principal service type.
-func getPrincipalServiceType(cr *argoproj.ArgoCD) corev1.ServiceType {
+func getPrincipalServiceType(cr *argoproj.ClusterArgoCD) corev1.ServiceType {
 	if cr.Spec.ArgoCDAgent != nil &&
 		cr.Spec.ArgoCDAgent.Principal != nil &&
 		cr.Spec.ArgoCDAgent.Principal.Server != nil &&

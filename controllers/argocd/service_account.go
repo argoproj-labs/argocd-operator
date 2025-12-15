@@ -66,37 +66,7 @@ func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoproj.ArgoCD) error {
 		}
 	}
 
-	clusterParams := getPolicyRuleClusterRoleList()
-
-	for _, clusterParam := range clusterParams {
-		if err := r.reconcileServiceAccountClusterPermissions(clusterParam.name, clusterParam.policyRule, cr); err != nil {
-			return err
-		}
-	}
-
 	return nil
-}
-
-func (r *ReconcileArgoCD) reconcileServiceAccountClusterPermissions(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) error {
-
-	if name == common.ArgoCDApplicationControllerComponentAdmin || name == common.ArgoCDApplicationControllerComponentView {
-		// Don't create ServiceAccounts
-		return nil
-	}
-
-	var role *v1.ClusterRole
-	var err error
-
-	_, err = r.reconcileServiceAccount(name, cr)
-	if err != nil {
-		return err
-	}
-
-	if role, err = r.reconcileClusterRole(name, rules, cr); err != nil {
-		return err
-	}
-
-	return r.reconcileClusterRoleBinding(name, role, cr)
 }
 
 func (r *ReconcileArgoCD) reconcileServiceAccountPermissions(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) error {

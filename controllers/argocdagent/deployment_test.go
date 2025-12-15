@@ -32,7 +32,7 @@ import (
 )
 
 // Helper function to create a test deployment
-func makeTestDeployment(cr *argoproj.ArgoCD) *appsv1.Deployment {
+func makeTestDeployment(cr *argoproj.ClusterArgoCD) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      generateAgentResourceName(cr.Name, testCompName),
@@ -44,7 +44,7 @@ func makeTestDeployment(cr *argoproj.ArgoCD) *appsv1.Deployment {
 }
 
 // Helper function to create a test deployment with custom image
-func makeTestDeploymentWithCustomImage(cr *argoproj.ArgoCD, customImage string) *appsv1.Deployment {
+func makeTestDeploymentWithCustomImage(cr *argoproj.ClusterArgoCD, customImage string) *appsv1.Deployment {
 	deployment := makeTestDeployment(cr)
 	deployment.Spec.Template.Spec.Containers[0].Image = customImage
 	return deployment
@@ -52,7 +52,7 @@ func makeTestDeploymentWithCustomImage(cr *argoproj.ArgoCD, customImage string) 
 
 // Helper function to create ArgoCD with custom principal image
 func withPrincipalImage(image string) argoCDOpt {
-	return func(a *argoproj.ArgoCD) {
+	return func(a *argoproj.ClusterArgoCD) {
 		if a.Spec.ArgoCDAgent == nil {
 			a.Spec.ArgoCDAgent = &argoproj.ArgoCDAgentSpec{}
 		}
@@ -69,7 +69,7 @@ func TestReconcilePrincipalDeployment_DeploymentDoesNotExist_PrincipalDisabled(t
 	// Test case: Deployment doesn't exist and principal is disabled
 	// Expected behavior: Should do nothing (no creation, no error)
 
-	cr := makeTestArgoCD(withPrincipalEnabled(false))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(false))
 	saName := generateAgentResourceName(cr.Name, testCompName)
 
 	resObjs := []client.Object{cr}
@@ -92,7 +92,7 @@ func TestReconcilePrincipalDeployment_DeploymentDoesNotExist_PrincipalEnabled(t 
 	// Test case: Deployment doesn't exist and principal is enabled
 	// Expected behavior: Should create the Deployment with expected spec
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 	saName := generateAgentResourceName(cr.Name, testCompName)
 
 	resObjs := []client.Object{cr}
@@ -145,7 +145,7 @@ func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalDisabled(t *test
 	// Test case: Deployment exists and principal is disabled
 	// Expected behavior: Should delete the Deployment
 
-	cr := makeTestArgoCD(withPrincipalEnabled(false))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(false))
 	saName := generateAgentResourceName(cr.Name, testCompName)
 
 	// Create existing Deployment
@@ -171,7 +171,7 @@ func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalEnabled_NoChange
 	// Test case: Deployment exists, principal is enabled, and no changes are needed
 	// Expected behavior: Should not update the Deployment
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 	saName := generateAgentResourceName(cr.Name, testCompName)
 
 	// Create existing Deployment with correct spec
@@ -199,7 +199,7 @@ func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalEnabled_ImageCha
 	// Test case: Deployment exists, principal is enabled, but image has changed
 	// Expected behavior: Should update the Deployment with new image
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true), withPrincipalImage("quay.io/argoproj/argocd-agent:v2"))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true), withPrincipalImage("quay.io/argoproj/argocd-agent:v2"))
 	saName := generateAgentResourceName(cr.Name, testCompName)
 
 	// Create existing Deployment with old image
@@ -226,7 +226,7 @@ func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalEnabled_ServiceA
 	// Test case: Deployment exists, principal is enabled, but service account has changed
 	// Expected behavior: Should update the Deployment with new service account
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 	oldSAName := "old-service-account"
 	newSAName := "new-service-account"
 
@@ -255,7 +255,7 @@ func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalNotSet(t *testin
 	// Test case: Deployment exists but principal is not set (nil)
 	// Expected behavior: Should delete the Deployment
 
-	cr := makeTestArgoCD() // No principal configuration
+	cr := makeTestClusterArgoCD() // No principal configuration
 	saName := generateAgentResourceName(cr.Name, testCompName)
 
 	// Create existing Deployment
@@ -281,7 +281,7 @@ func TestReconcilePrincipalDeployment_DeploymentDoesNotExist_AgentNotSet(t *test
 	// Test case: Deployment doesn't exist and ArgoCDAgent is not set (nil)
 	// Expected behavior: Should do nothing since principal is effectively disabled
 
-	cr := makeTestArgoCD() // No agent configuration
+	cr := makeTestClusterArgoCD() // No agent configuration
 	saName := generateAgentResourceName(cr.Name, testCompName)
 
 	resObjs := []client.Object{cr}
@@ -304,7 +304,7 @@ func TestReconcilePrincipalDeployment_DeploymentExists_AgentNotSet(t *testing.T)
 	// Test case: Deployment exists but ArgoCDAgent is not set (nil)
 	// Expected behavior: Should delete the Deployment
 
-	cr := makeTestArgoCD() // No agent configuration
+	cr := makeTestClusterArgoCD() // No agent configuration
 	saName := generateAgentResourceName(cr.Name, testCompName)
 
 	// Create existing Deployment
@@ -330,7 +330,7 @@ func TestReconcilePrincipalDeployment_VerifyDeploymentSpec(t *testing.T) {
 	// Test case: Verify the deployment spec has correct configuration
 	// Expected behavior: Should create deployment with correct security context, ports, etc.
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 	saName := generateAgentResourceName(cr.Name, testCompName)
 
 	resObjs := []client.Object{cr}
@@ -439,7 +439,7 @@ func TestReconcilePrincipalDeployment_CustomImage(t *testing.T) {
 	// Expected behavior: Should create deployment with custom image
 
 	customImage := "custom-registry/argocd-agent:custom-tag"
-	cr := makeTestArgoCD(withPrincipalEnabled(true), withPrincipalImage(customImage))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true), withPrincipalImage(customImage))
 	saName := generateAgentResourceName(cr.Name, testCompName)
 
 	resObjs := []client.Object{cr}
@@ -463,7 +463,7 @@ func TestReconcilePrincipalDeployment_DefaultImage(t *testing.T) {
 	// Test case: Verify default image is used when no custom image is specified
 	// Expected behavior: Should create deployment with default image
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 	saName := generateAgentResourceName(cr.Name, testCompName)
 
 	resObjs := []client.Object{cr}
@@ -487,7 +487,7 @@ func TestReconcilePrincipalDeployment_VolumeMountsAndVolumes(t *testing.T) {
 	// Test case: Verify volume mounts and volumes are correctly configured
 	// Expected behavior: Should create deployment with JWT and userpass volume mounts and volumes
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 	saName := generateAgentResourceName(cr.Name, testCompName)
 
 	resObjs := []client.Object{cr}
@@ -538,14 +538,14 @@ func TestReconcilePrincipalDeployment_VolumeMountsAndVolumes(t *testing.T) {
 func TestBuildPrincipalImage(t *testing.T) {
 	tests := []struct {
 		name          string
-		cr            *argoproj.ArgoCD
+		cr            *argoproj.ClusterArgoCD
 		envImage      string
 		expectedImage string
 		description   string
 	}{
 		{
 			name: "CR specification takes precedence",
-			cr: makeTestArgoCD(
+			cr: makeTestClusterArgoCD(
 				withPrincipalEnabled(true),
 				withPrincipalImage("custom-registry/argocd-agent:custom-tag"),
 			),
@@ -555,7 +555,7 @@ func TestBuildPrincipalImage(t *testing.T) {
 		},
 		{
 			name: "Environment variable used when CR image not specified",
-			cr: makeTestArgoCD(
+			cr: makeTestClusterArgoCD(
 				withPrincipalEnabled(true),
 			),
 			envImage:      "env-registry/argocd-agent:env-tag",
@@ -564,7 +564,7 @@ func TestBuildPrincipalImage(t *testing.T) {
 		},
 		{
 			name: "Default image used when neither CR nor environment specified",
-			cr: makeTestArgoCD(
+			cr: makeTestClusterArgoCD(
 				withPrincipalEnabled(true),
 			),
 			envImage:      "",
@@ -573,7 +573,7 @@ func TestBuildPrincipalImage(t *testing.T) {
 		},
 		{
 			name: "Empty CR image should not override environment variable",
-			cr: makeTestArgoCD(
+			cr: makeTestClusterArgoCD(
 				withPrincipalEnabled(true),
 				withPrincipalImage(""),
 			),
@@ -583,7 +583,7 @@ func TestBuildPrincipalImage(t *testing.T) {
 		},
 		{
 			name: "Default image used when CR image is empty and no environment variable",
-			cr: makeTestArgoCD(
+			cr: makeTestClusterArgoCD(
 				withPrincipalEnabled(true),
 				withPrincipalImage(""),
 			),

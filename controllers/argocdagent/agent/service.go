@@ -48,7 +48,7 @@ const (
 
 // ReconcileAgentMetricsService reconciles the agent metrics service for the ArgoCD agent.
 // It creates, updates, or deletes the metrics service based on the agent configuration.
-func ReconcileAgentMetricsService(client client.Client, compName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme) error {
+func ReconcileAgentMetricsService(client client.Client, compName string, cr *argoproj.ClusterArgoCD, scheme *runtime.Scheme) error {
 
 	service := buildService(generateAgentResourceName(cr.Name, compName)+"-metrics", compName, cr)
 	expectedSpec := buildAgentMetricsServiceSpec(compName, cr)
@@ -110,7 +110,7 @@ func ReconcileAgentMetricsService(client client.Client, compName string, cr *arg
 
 // ReconcileAgentHealthzService reconciles the agent healthz service for the ArgoCD agent.
 // It creates, updates, or deletes the healthz service based on the agent configuration.
-func ReconcileAgentHealthzService(client client.Client, compName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme) error {
+func ReconcileAgentHealthzService(client client.Client, compName string, cr *argoproj.ClusterArgoCD, scheme *runtime.Scheme) error {
 
 	service := buildService(generateAgentResourceName(cr.Name, compName)+"-healthz", compName, cr)
 	expectedSpec := buildAgentHealthzServiceSpec(compName, cr)
@@ -170,7 +170,7 @@ func ReconcileAgentHealthzService(client client.Client, compName string, cr *arg
 	return nil
 }
 
-func buildAgentMetricsServiceSpec(compName string, cr *argoproj.ArgoCD) corev1.ServiceSpec {
+func buildAgentMetricsServiceSpec(compName string, cr *argoproj.ClusterArgoCD) corev1.ServiceSpec {
 	return corev1.ServiceSpec{
 		Ports: []corev1.ServicePort{
 			{
@@ -185,7 +185,7 @@ func buildAgentMetricsServiceSpec(compName string, cr *argoproj.ArgoCD) corev1.S
 	}
 }
 
-func buildAgentHealthzServiceSpec(compName string, cr *argoproj.ArgoCD) corev1.ServiceSpec {
+func buildAgentHealthzServiceSpec(compName string, cr *argoproj.ClusterArgoCD) corev1.ServiceSpec {
 	return corev1.ServiceSpec{
 		Ports: []corev1.ServicePort{
 			{
@@ -200,7 +200,7 @@ func buildAgentHealthzServiceSpec(compName string, cr *argoproj.ArgoCD) corev1.S
 	}
 }
 
-func buildService(name, compName string, cr *argoproj.ArgoCD) *corev1.Service {
+func buildService(name, compName string, cr *argoproj.ClusterArgoCD) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,

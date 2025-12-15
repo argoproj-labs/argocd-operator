@@ -37,7 +37,7 @@ import (
 
 // ReconcileAgentDeployment reconciles the ArgoCD agent's agent deployment.
 // It creates, updates, or deletes the deployment based on the ArgoCD CR configuration.
-func ReconcileAgentDeployment(client client.Client, compName, saName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme) error {
+func ReconcileAgentDeployment(client client.Client, compName, saName string, cr *argoproj.ClusterArgoCD, scheme *runtime.Scheme) error {
 	deployment := buildDeployment(compName, cr)
 
 	// Check if deployment already exists
@@ -86,7 +86,7 @@ func ReconcileAgentDeployment(client client.Client, compName, saName string, cr 
 	return nil
 }
 
-func buildDeployment(compName string, cr *argoproj.ArgoCD) *appsv1.Deployment {
+func buildDeployment(compName string, cr *argoproj.ClusterArgoCD) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      generateAgentResourceName(cr.Name, compName),
@@ -96,7 +96,7 @@ func buildDeployment(compName string, cr *argoproj.ArgoCD) *appsv1.Deployment {
 	}
 }
 
-func buildAgentSpec(compName, saName string, cr *argoproj.ArgoCD) appsv1.DeploymentSpec {
+func buildAgentSpec(compName, saName string, cr *argoproj.ClusterArgoCD) appsv1.DeploymentSpec {
 	return appsv1.DeploymentSpec{
 		Selector: buildSelector(compName, cr),
 		Template: corev1.PodTemplateSpec{
@@ -123,7 +123,7 @@ func buildAgentSpec(compName, saName string, cr *argoproj.ArgoCD) appsv1.Deploym
 	}
 }
 
-func buildSelector(compName string, cr *argoproj.ArgoCD) *metav1.LabelSelector {
+func buildSelector(compName string, cr *argoproj.ClusterArgoCD) *metav1.LabelSelector {
 	return &metav1.LabelSelector{
 		MatchLabels: buildLabelsForAgent(cr.Name, compName),
 	}
@@ -166,7 +166,7 @@ func buildArgs(compName string) []string {
 	return args
 }
 
-func buildAgentImage(cr *argoproj.ArgoCD) string {
+func buildAgentImage(cr *argoproj.ClusterArgoCD) string {
 	// Check CR specification first
 	if hasAgent(cr) && cr.Spec.ArgoCDAgent.Agent.Image != "" {
 		return cr.Spec.ArgoCDAgent.Agent.Image
@@ -213,7 +213,7 @@ func buildVolumes() []corev1.Volume {
 // updateDeploymentIfChanged compares the current deployment with the desired state
 // and updates it if any changes are detected. Returns the updated deployment and a boolean
 // indicating whether any changes were made.
-func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, deployment *appsv1.Deployment) (*appsv1.Deployment, bool) {
+func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ClusterArgoCD, deployment *appsv1.Deployment) (*appsv1.Deployment, bool) {
 	changed := false
 
 	if !reflect.DeepEqual(deployment.Spec.Selector, buildSelector(compName, cr)) {
@@ -267,7 +267,7 @@ func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, dep
 	return deployment, changed
 }
 
-func buildAgentContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
+func buildAgentContainerEnv(cr *argoproj.ClusterArgoCD) []corev1.EnvVar {
 	env := []corev1.EnvVar{
 		{
 			Name:  EnvArgoCDAgentLogLevel,
@@ -376,63 +376,63 @@ const (
 )
 
 // Logging Configuration
-func getAgentLogLevel(cr *argoproj.ArgoCD) string {
+func getAgentLogLevel(cr *argoproj.ClusterArgoCD) string {
 	if hasAgent(cr) && cr.Spec.ArgoCDAgent.Agent.LogLevel != "" {
 		return cr.Spec.ArgoCDAgent.Agent.LogLevel
 	}
 	return "info"
 }
 
-func getAgentLogFormat(cr *argoproj.ArgoCD) string {
+func getAgentLogFormat(cr *argoproj.ClusterArgoCD) string {
 	if hasAgent(cr) && cr.Spec.ArgoCDAgent.Agent.LogFormat != "" {
 		return cr.Spec.ArgoCDAgent.Agent.LogFormat
 	}
 	return "text"
 }
 
-func getAgentPrincipalServerAddress(cr *argoproj.ArgoCD) string {
+func getAgentPrincipalServerAddress(cr *argoproj.ClusterArgoCD) string {
 	if hasClient(cr) && cr.Spec.ArgoCDAgent.Agent.Client.PrincipalServerAddress != "" {
 		return cr.Spec.ArgoCDAgent.Agent.Client.PrincipalServerAddress
 	}
 	return ""
 }
 
-func getAgentPrincipalServerPort(cr *argoproj.ArgoCD) string {
+func getAgentPrincipalServerPort(cr *argoproj.ClusterArgoCD) string {
 	if hasClient(cr) && cr.Spec.ArgoCDAgent.Agent.Client.PrincipalServerPort != "" {
 		return cr.Spec.ArgoCDAgent.Agent.Client.PrincipalServerPort
 	}
 	return "443"
 }
 
-func getAgentTLSSecretName(cr *argoproj.ArgoCD) string {
+func getAgentTLSSecretName(cr *argoproj.ClusterArgoCD) string {
 	if hasTLS(cr) && cr.Spec.ArgoCDAgent.Agent.TLS.SecretName != "" {
 		return cr.Spec.ArgoCDAgent.Agent.TLS.SecretName
 	}
 	return "argocd-agent-client-tls"
 }
 
-func getAgentTLSInsecure(cr *argoproj.ArgoCD) string {
+func getAgentTLSInsecure(cr *argoproj.ClusterArgoCD) string {
 	if hasTLS(cr) && cr.Spec.ArgoCDAgent.Agent.TLS.Insecure != nil && *cr.Spec.ArgoCDAgent.Agent.TLS.Insecure {
 		return "true"
 	}
 	return "false"
 }
 
-func getAgentTLSRootCASecretName(cr *argoproj.ArgoCD) string {
+func getAgentTLSRootCASecretName(cr *argoproj.ClusterArgoCD) string {
 	if hasTLS(cr) && cr.Spec.ArgoCDAgent.Agent.TLS.RootCASecretName != "" {
 		return cr.Spec.ArgoCDAgent.Agent.TLS.RootCASecretName
 	}
 	return "argocd-agent-ca"
 }
 
-func getAgentMode(cr *argoproj.ArgoCD) string {
+func getAgentMode(cr *argoproj.ClusterArgoCD) string {
 	if hasClient(cr) && cr.Spec.ArgoCDAgent.Agent.Client.Mode != "" {
 		return cr.Spec.ArgoCDAgent.Agent.Client.Mode
 	}
 	return "managed"
 }
 
-func getAgentCreds(cr *argoproj.ArgoCD) string {
+func getAgentCreds(cr *argoproj.ClusterArgoCD) string {
 	if hasAgent(cr) && cr.Spec.ArgoCDAgent.Agent.Creds != "" {
 		return cr.Spec.ArgoCDAgent.Agent.Creds
 	}
@@ -440,14 +440,14 @@ func getAgentCreds(cr *argoproj.ArgoCD) string {
 }
 
 // WebSocket Configuration
-func getAgentEnableWebSocket(cr *argoproj.ArgoCD) string {
+func getAgentEnableWebSocket(cr *argoproj.ClusterArgoCD) string {
 	if hasClient(cr) && cr.Spec.ArgoCDAgent.Agent.Client.EnableWebSocket != nil {
 		return strconv.FormatBool(*cr.Spec.ArgoCDAgent.Agent.Client.EnableWebSocket)
 	}
 	return "false"
 }
 
-func getAgentEnableCompression(cr *argoproj.ArgoCD) string {
+func getAgentEnableCompression(cr *argoproj.ClusterArgoCD) string {
 	if hasClient(cr) && cr.Spec.ArgoCDAgent.Agent.Client.EnableCompression != nil {
 		return strconv.FormatBool(*cr.Spec.ArgoCDAgent.Agent.Client.EnableCompression)
 	}
@@ -455,7 +455,7 @@ func getAgentEnableCompression(cr *argoproj.ArgoCD) string {
 }
 
 // Keep Alive Configuration
-func getAgentKeepAliveInterval(cr *argoproj.ArgoCD) string {
+func getAgentKeepAliveInterval(cr *argoproj.ClusterArgoCD) string {
 	if hasClient(cr) && cr.Spec.ArgoCDAgent.Agent.Client.KeepAliveInterval != "" {
 		return cr.Spec.ArgoCDAgent.Agent.Client.KeepAliveInterval
 	}
@@ -463,30 +463,30 @@ func getAgentKeepAliveInterval(cr *argoproj.ArgoCD) string {
 }
 
 // Redis Configuration
-func getAgentRedisAddress(cr *argoproj.ArgoCD) string {
+func getAgentRedisAddress(cr *argoproj.ClusterArgoCD) string {
 	if hasRedis(cr) && cr.Spec.ArgoCDAgent.Agent.Redis.ServerAddress != "" {
 		return cr.Spec.ArgoCDAgent.Agent.Redis.ServerAddress
 	}
 	return fmt.Sprintf("%s-%s:%d", cr.Name, "redis", common.ArgoCDDefaultRedisPort)
 }
 
-func hasAgent(cr *argoproj.ArgoCD) bool {
+func hasAgent(cr *argoproj.ClusterArgoCD) bool {
 	return cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Agent != nil
 }
 
-func hasClient(cr *argoproj.ArgoCD) bool {
+func hasClient(cr *argoproj.ClusterArgoCD) bool {
 	return cr.Spec.ArgoCDAgent != nil &&
 		cr.Spec.ArgoCDAgent.Agent != nil &&
 		cr.Spec.ArgoCDAgent.Agent.Client != nil
 }
 
-func hasTLS(cr *argoproj.ArgoCD) bool {
+func hasTLS(cr *argoproj.ClusterArgoCD) bool {
 	return cr.Spec.ArgoCDAgent != nil &&
 		cr.Spec.ArgoCDAgent.Agent != nil &&
 		cr.Spec.ArgoCDAgent.Agent.TLS != nil
 }
 
-func hasRedis(cr *argoproj.ArgoCD) bool {
+func hasRedis(cr *argoproj.ClusterArgoCD) bool {
 	return cr.Spec.ArgoCDAgent != nil &&
 		cr.Spec.ArgoCDAgent.Agent != nil &&
 		cr.Spec.ArgoCDAgent.Agent.Redis != nil

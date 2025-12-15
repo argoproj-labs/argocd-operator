@@ -36,14 +36,14 @@ func FetchSecret(client client.Client, meta metav1.ObjectMeta, name string) (*co
 }
 
 // NewTLSSecret returns a new TLS Secret based on the given metadata with the provided suffix on the Name.
-func NewTLSSecret(cr *argoproj.ArgoCD, suffix string) *corev1.Secret {
+func NewTLSSecret(cr metav1.Object, suffix string) *corev1.Secret {
 	secret := NewSecretWithSuffix(cr, suffix)
 	secret.Type = corev1.SecretTypeTLS
 	return secret
 }
 
 // NewSecret returns a new Secret based on the given metadata.
-func NewSecret(cr *argoproj.ArgoCD) *corev1.Secret {
+func NewSecret(cr metav1.Object) *corev1.Secret {
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: LabelsForCluster(cr),
@@ -55,13 +55,13 @@ func NewSecret(cr *argoproj.ArgoCD) *corev1.Secret {
 }
 
 // NewSecretWithName returns a new Secret based on the given metadata with the provided Name.
-func NewSecretWithName(cr *argoproj.ArgoCD, name string) *corev1.Secret {
+func NewSecretWithName(cr metav1.Object, name string) *corev1.Secret {
 	secret := NewSecret(cr)
 
 	// Truncate the name to stay within 63 character limit for both name and labels
 	truncatedName := TruncateWithHash(name, GetMaxLabelLength())
 	secret.Name = truncatedName
-	secret.Namespace = cr.Namespace
+	secret.Namespace = cr.GetNamespace()
 	secret.Labels[common.ArgoCDKeyName] = truncatedName
 
 	return secret
@@ -69,7 +69,7 @@ func NewSecretWithName(cr *argoproj.ArgoCD, name string) *corev1.Secret {
 
 // NewSecretWithSuffix returns a new Secret based on the given metadata with the provided suffix on the Name.
 // This uses the better truncation approach: truncate CR name first, then append full suffix
-func NewSecretWithSuffix(cr *argoproj.ArgoCD, suffix string) *corev1.Secret {
+func NewSecretWithSuffix(cr metav1.Object, suffix string) *corev1.Secret {
 	truncatedCRName := GetTruncatedCRName(cr)
 	secretName := fmt.Sprintf("%s-%s", truncatedCRName, suffix)
 	return NewSecretWithName(cr, secretName)
@@ -77,7 +77,7 @@ func NewSecretWithSuffix(cr *argoproj.ArgoCD, suffix string) *corev1.Secret {
 
 // GetSecretNameWithSuffix returns the secret name using truncated CR name + full suffix.
 // This function should be used when referencing secret names in other resources.
-func GetSecretNameWithSuffix(cr *argoproj.ArgoCD, suffix string) string {
+func GetSecretNameWithSuffix(cr metav1.Object, suffix string) string {
 	truncatedCRName := GetTruncatedCRName(cr)
 	return fmt.Sprintf("%s-%s", truncatedCRName, suffix)
 }

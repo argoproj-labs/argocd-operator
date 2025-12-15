@@ -321,28 +321,6 @@ func policyRuleForNotificationsControllerClusterRole() []v1.PolicyRule {
 	}
 }
 
-func policyRuleForServerApplicationSourceNamespaces() []v1.PolicyRule {
-	return []v1.PolicyRule{
-		{
-			APIGroups: []string{
-				"argoproj.io",
-			},
-			Resources: []string{
-				"applications",
-			},
-			Verbs: []string{
-				"create",
-				"get",
-				"list",
-				"patch",
-				"update",
-				"watch",
-				"delete",
-			},
-		},
-	}
-}
-
 func policyRuleForServerClusterRole() []v1.PolicyRule {
 	return []v1.PolicyRule{
 		{
@@ -597,28 +575,6 @@ func policyRuleForApplicationSetController() []v1.PolicyRule {
 				"patch",
 				"update",
 				"watch",
-			},
-		},
-	}
-}
-
-func policyRuleForServerApplicationSetSourceNamespaces() []v1.PolicyRule {
-	return []v1.PolicyRule{
-		{
-			APIGroups: []string{
-				"argoproj.io",
-			},
-			Resources: []string{
-				"applicationsets",
-			},
-			Verbs: []string{
-				"create",
-				"get",
-				"list",
-				"patch",
-				"update",
-				"watch",
-				"delete",
 			},
 		},
 	}

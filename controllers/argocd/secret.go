@@ -19,7 +19,6 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -320,10 +319,6 @@ func (r *ReconcileArgoCD) reconcileClusterSecrets(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
-	if err := r.reconcileClusterPermissionsSecret(cr); err != nil {
-		return err
-	}
-
 	if err := r.reconcileGrafanaSecret(cr); err != nil {
 		return err
 	}
@@ -504,110 +499,6 @@ func combineClusterSecretNamespacesWithManagedNamespaces(clusterSecret corev1.Se
 
 	return namespacesToManageString
 
-}
-
-// reconcileClusterPermissionsSecret ensures ArgoCD instance is namespace-scoped
-func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoproj.ArgoCD) error {
-
-	managedNamespaceList, err := generateSortedManagedNamespaceListForArgoCDCR(cr, r.Client)
-	if err != nil {
-		return err
-	}
-
-	// isArgoCDAClusterConfigInstance indicates whether 'cr' is a cluster config instance (mentioned in ARGOCD_CLUSTER_CONFIG_NAMESPACES)
-	var isArgoCDAClusterConfigInstance bool
-
-	if argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace) {
-		isArgoCDAClusterConfigInstance = true
-	}
-
-	// Get all existing cluster secrets in the namespace
-	clusterSecrets, err := r.getClusterSecrets(cr)
-	if err != nil {
-		return err
-	}
-
-	// Find the cluster secret in the list that points to  common.ArgoCDDefaultServer (default server address)
-	var localClusterSecret *corev1.Secret
-	for x, clusterSecret := range clusterSecrets.Items {
-
-		// check if cluster secret with default server address exists
-		if string(clusterSecret.Data["server"]) == common.ArgoCDDefaultServer {
-			localClusterSecret = &clusterSecrets.Items[x]
-		}
-	}
-
-	if localClusterSecret != nil {
-
-		// If the default Cluster Secret already exists
-
-		secretUpdateRequired := false
-
-		// if the cluster belongs to cluster config namespace,
-		// remove all namespaces from cluster secret,
-		// else update the list of namespaces if value differs.
-		var explanation string
-		if isArgoCDAClusterConfigInstance {
-
-			if _, exists := localClusterSecret.Data["namespaces"]; exists {
-				delete(localClusterSecret.Data, "namespaces")
-				explanation = "removing namespaces from cluster secret"
-				secretUpdateRequired = true
-			}
-
-		} else {
-
-			namespacesToManageString := combineClusterSecretNamespacesWithManagedNamespaces(*localClusterSecret, managedNamespaceList)
-
-			var existingNamespacesValue string
-			if localClusterSecret.Data["namespaces"] != nil {
-				existingNamespacesValue = string(localClusterSecret.Data["namespaces"])
-			}
-
-			if existingNamespacesValue != namespacesToManageString {
-				localClusterSecret.Data["namespaces"] = []byte(namespacesToManageString)
-				explanation = "updating namespaces in cluster secret"
-				secretUpdateRequired = true
-			}
-		}
-
-		if secretUpdateRequired {
-			// We found the Secret, and the field needs to be updated
-			argoutil.LogResourceUpdate(log, localClusterSecret, explanation)
-			return r.Update(context.TODO(), localClusterSecret)
-		}
-
-		// We found the Secret, but the field hasn't changed: no update needed.
-		return nil
-	}
-
-	// If ArgoCD is configured as a cluster-scoped, no need to create a Namespace containing managed namespaces
-	if isArgoCDAClusterConfigInstance {
-		// do nothing
-		return nil
-	}
-
-	// Create the Secret, since we could not find it above
-	secret := argoutil.NewSecretWithSuffix(cr, "default-cluster-config")
-	secret.Labels[common.ArgoCDSecretTypeLabel] = "cluster"
-	dataBytes, _ := json.Marshal(map[string]interface{}{
-		"tlsClientConfig": map[string]interface{}{
-			"insecure": false,
-		},
-	})
-
-	secret.Data = map[string][]byte{
-		"config":     dataBytes,
-		"name":       []byte("in-cluster"),
-		"server":     []byte(common.ArgoCDDefaultServer),
-		"namespaces": []byte(strings.Join(managedNamespaceList, ",")),
-	}
-
-	if err := controllerutil.SetControllerReference(cr, secret, r.Scheme); err != nil {
-		return err
-	}
-	argoutil.LogResourceCreation(log, secret)
-	return r.Create(context.TODO(), secret)
 }
 
 // reconcileRedisTLSSecret checks whether the argocd-operator-redis-tls secret

@@ -8606,8 +8606,10 @@ spec:
                       will be mounted on the ApplicationSet Controller (optional).
                     type: string
                   sourceNamespaces:
-                    description: SourceNamespaces defines the namespaces applicationset
-                      resources are allowed to be created in
+                    description: |-
+                      SourceNamespaces defines the namespaces applicationset resources are allowed to be created in
+                      Deprecated: This field is deprecated for namespace-scoped ArgoCD instances and will be removed in a future release.
+                      Use ClusterArgoCD for cluster-scoped instances that support cross-namespace application management.
                     items:
                       type: string
                     type: array
@@ -10643,8 +10645,10 @@ spec:
                     type: object
                 type: object
               argoCDAgent:
-                description: ArgoCDAgent defines configurations for the ArgoCD Agent
-                  component.
+                description: |-
+                  ArgoCDAgent defines configurations for the ArgoCD Agent component.
+                  Deprecated: This field is deprecated for namespace-scoped ArgoCD instances and will be removed in a future release.
+                  Use ClusterArgoCD for cluster-scoped instances that support cross-namespace application management.
                 properties:
                   agent:
                     description: Agent defines configurations for the Agent component
@@ -17119,9 +17123,10 @@ spec:
                         type: object
                     type: object
                   sourceNamespaces:
-                    description: SourceNamespaces is a list of namespaces from which
-                      the notifications controller will watch for ArgoCD Notification
-                      resources.
+                    description: |-
+                      SourceNamespaces is a list of namespaces from which the notifications controller will watch for ArgoCD Notification resources.
+                      Deprecated: This field is deprecated for namespace-scoped ArgoCD instances and will be removed in a future release.
+                      Use ClusterArgoCD for cluster-scoped instances that support cross-namespace application management.
                     items:
                       type: string
                     type: array
@@ -27774,8 +27779,10 @@ spec:
                     type: array
                 type: object
               sourceNamespaces:
-                description: SourceNamespaces defines the namespaces application resources
-                  are allowed to be created in
+                description: |-
+                  SourceNamespaces defines the namespaces application resources are allowed to be created in
+                  Deprecated: This field is deprecated for namespace-scoped ArgoCD instances and will be removed in a future release.
+                  Use ClusterArgoCD for cluster-scoped instances that support cross-namespace application management.
                 items:
                   type: string
                 type: array

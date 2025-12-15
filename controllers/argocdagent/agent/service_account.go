@@ -36,7 +36,7 @@ var log = logr.Log.WithName("controller_agent")
 
 // ReconcileAgentServiceAccount reconciles the service account for the ArgoCD agent component.
 // It handles creation, deletion, and updates of the service account based on the agent configuration.
-func ReconcileAgentServiceAccount(client client.Client, compName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme) (*corev1.ServiceAccount, error) {
+func ReconcileAgentServiceAccount(client client.Client, compName string, cr *argoproj.ClusterArgoCD, scheme *runtime.Scheme) (*corev1.ServiceAccount, error) {
 	sa := buildServiceAccount(compName, cr)
 
 	// Check if the service account already exists
@@ -78,7 +78,7 @@ func ReconcileAgentServiceAccount(client client.Client, compName string, cr *arg
 	return sa, nil
 }
 
-func buildServiceAccount(compName string, cr *argoproj.ArgoCD) *corev1.ServiceAccount {
+func buildServiceAccount(compName string, cr *argoproj.ClusterArgoCD) *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      generateAgentResourceName(cr.Name, compName),

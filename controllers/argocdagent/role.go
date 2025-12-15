@@ -33,7 +33,7 @@ import (
 
 // ReconcilePrincipalRole manages the lifecycle of a Role resource for the ArgoCD agent principal.
 // This function creates, updates, or deletes the Role based on the principal's enabled status.
-func ReconcilePrincipalRole(client client.Client, compName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme) (*v1.Role, error) {
+func ReconcilePrincipalRole(client client.Client, compName string, cr *argoproj.ClusterArgoCD, scheme *runtime.Scheme) (*v1.Role, error) {
 	role := buildRole(compName, cr)
 	expectedPolicyRule := buildPolicyRuleForRole()
 
@@ -86,11 +86,9 @@ func ReconcilePrincipalRole(client client.Client, compName string, cr *argoproj.
 
 // ReconcilePrincipalClusterRoles manages the lifecycle of a ClusterRole resource for the ArgoCD agent principal.
 // This function creates, updates, or deletes the ClusterRole based on the principal's enabled status.
-func ReconcilePrincipalClusterRoles(client client.Client, compName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme) (*v1.ClusterRole, error) {
+func ReconcilePrincipalClusterRoles(client client.Client, compName string, cr *argoproj.ClusterArgoCD, scheme *runtime.Scheme) (*v1.ClusterRole, error) {
 	clusterRole := buildClusterRole(compName, cr)
 	expectedPolicyRule := buildPolicyRuleForClusterRole()
-
-	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
 
 	// Check if the ClusterRole already exists
 	exists := true
@@ -103,7 +101,7 @@ func ReconcilePrincipalClusterRoles(client client.Client, compName string, cr *a
 
 	// If ClusterRole exists, handle updates or deletion
 	if exists {
-		if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() || !allowed {
+		if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
 			argoutil.LogResourceDeletion(log, clusterRole, "principal clusterRole is being deleted as principal is disabled")
 			if err := client.Delete(context.TODO(), clusterRole); err != nil {
 				return clusterRole, fmt.Errorf("failed to delete principal clusterRole %s: %v", clusterRole.Name, err)
@@ -122,7 +120,7 @@ func ReconcilePrincipalClusterRoles(client client.Client, compName string, cr *a
 	}
 
 	// If ClusterRole doesn't exist and principal is disabled, nothing to do
-	if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() || !allowed {
+	if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
 		return clusterRole, nil
 	}
 
@@ -135,7 +133,7 @@ func ReconcilePrincipalClusterRoles(client client.Client, compName string, cr *a
 	return clusterRole, nil
 }
 
-func buildRole(compName string, cr *argoproj.ArgoCD) *v1.Role {
+func buildRole(compName string, cr *argoproj.ClusterArgoCD) *v1.Role {
 	return &v1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      generateAgentResourceName(cr.Name, compName),
@@ -145,7 +143,7 @@ func buildRole(compName string, cr *argoproj.ArgoCD) *v1.Role {
 	}
 }
 
-func buildClusterRole(compName string, cr *argoproj.ArgoCD) *v1.ClusterRole {
+func buildClusterRole(compName string, cr *argoproj.ClusterArgoCD) *v1.ClusterRole {
 	return &v1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   generateAgentResourceName(cr.Name+"-"+cr.Namespace, compName),

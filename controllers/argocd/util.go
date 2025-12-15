@@ -40,8 +40,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocdagent"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocdagent/agent"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
 	configv1 "github.com/openshift/api/config/v1"
@@ -158,8 +156,6 @@ func getArgoApplicationControllerResources(cr *argoproj.ArgoCD) corev1.ResourceR
 // getArgoApplicationControllerCommand will return the command for the ArgoCD Application Controller component.
 func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 
-	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
-
 	cmd := []string{
 		"argocd-application-controller",
 		"--operation-processors", fmt.Sprint(getArgoServerOperationProcessors(cr)),
@@ -188,10 +184,6 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 
 	cmd = append(cmd, "--status-processors", fmt.Sprint(getArgoServerStatusProcessors(cr)))
 	cmd = append(cmd, "--kubectl-parallelism-limit", fmt.Sprint(getArgoControllerParellismLimit(cr)))
-
-	if len(cr.Spec.SourceNamespaces) > 0 && allowed {
-		cmd = append(cmd, "--application-namespaces", fmt.Sprint(strings.Join(cr.Spec.SourceNamespaces, ",")))
-	}
 
 	cmd = append(cmd, "--loglevel")
 	cmd = append(cmd, getLogLevel(cr.Spec.Controller.LogLevel))
@@ -760,10 +752,6 @@ func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoproj.ArgoCD) bool {
 // reconcileResources will reconcile common ArgoCD resources.
 func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus) error {
 
-	if err := r.ensureSourceNamespacesAllowed(cr); err != nil {
-		return err
-	}
-
 	log.Info("reconciling SSO")
 	if err := r.reconcileSSO(cr, argocdStatus); err != nil {
 		log.Info(err.Error())
@@ -866,21 +854,6 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *
 		}
 	}
 
-	// check ManagedApplicationSetSourceNamespaces for proper cleanup
-	if cr.Spec.ApplicationSet != nil || len(r.ManagedApplicationSetSourceNamespaces) > 0 {
-		log.Info("reconciling ApplicationSet controller")
-		if err := r.reconcileApplicationSetController(cr); err != nil {
-			return err
-		}
-	}
-
-	if !reflect.DeepEqual(cr.Spec.Notifications, argoproj.ArgoCDNotifications{}) || len(r.ManagedNotificationsSourceNamespaces) > 0 {
-		log.Info("reconciling Notifications controller")
-		if err := r.reconcileNotificationsController(cr); err != nil {
-			return err
-		}
-	}
-
 	if IsImageUpdaterAPIAvailable() {
 		log.Info("reconciling Image Updater controller")
 		if err := r.reconcileImageUpdaterController(cr); err != nil {
@@ -899,10 +872,6 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *
 	}
 
 	if err := r.ReconcileNetworkPolicies(cr); err != nil {
-		return err
-	}
-
-	if err := r.reconcileArgoCDAgent(cr); err != nil {
 		return err
 	}
 
@@ -1370,162 +1339,6 @@ func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
 	return nil
 }
 
-// getSourceNamespaces retrieves a list of namespaces that match the sourceNamespaces
-// pattern specified in the given ArgoCD
-func (r *ReconcileArgoCD) getSourceNamespaces(cr *argoproj.ArgoCD) ([]string, error) {
-
-	if err := r.ensureSourceNamespacesAllowed(cr); err != nil {
-		return nil, err
-	}
-
-	sourceNamespaces := []string{}
-	namespaces := &corev1.NamespaceList{}
-
-	if err := r.List(context.TODO(), namespaces, &client.ListOptions{}); err != nil {
-		return nil, err
-	}
-
-	for _, namespace := range namespaces.Items {
-		if glob.MatchStringInList(cr.Spec.SourceNamespaces, namespace.Name, glob.REGEXP) {
-			sourceNamespaces = append(sourceNamespaces, namespace.Name)
-		}
-	}
-
-	return sourceNamespaces, nil
-}
-
-func (r *ReconcileArgoCD) setManagedSourceNamespaces(cr *argoproj.ArgoCD) error {
-	r.ManagedSourceNamespaces = make(map[string]string)
-	namespaces := &corev1.NamespaceList{}
-	listOption := client.MatchingLabels{
-		common.ArgoCDManagedByClusterArgoCDLabel: cr.Namespace,
-	}
-
-	// get the list of namespaces managed by the Argo CD instance
-	if err := r.List(context.TODO(), namespaces, listOption); err != nil {
-		return err
-	}
-
-	for _, namespace := range namespaces.Items {
-		r.ManagedSourceNamespaces[namespace.Name] = ""
-	}
-
-	return nil
-}
-
-// removeUnmanagedSourceNamespaceResources cleansup resources from SourceNamespaces if namespace is not managed by argocd instance.
-// It also removes the managed-by-cluster-argocd label from the namespace
-func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(cr *argoproj.ArgoCD) error {
-
-	for ns := range r.ManagedSourceNamespaces {
-		managedNamespace := false
-		if cr.GetDeletionTimestamp() == nil {
-			sourceNamespaces, err := r.getSourceNamespaces(cr)
-			if err != nil {
-				return err
-			}
-			for _, namespace := range sourceNamespaces {
-				if namespace == ns {
-					managedNamespace = true
-					break
-				}
-			}
-		}
-
-		if !managedNamespace {
-			if err := r.cleanupUnmanagedSourceNamespaceResources(cr, ns); err != nil {
-				log.Error(err, fmt.Sprintf("error cleaning up resources for namespace %s", ns))
-				continue
-			}
-			delete(r.ManagedSourceNamespaces, ns)
-		}
-	}
-	return nil
-}
-
-func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.ArgoCD, ns string) error {
-	namespace := corev1.Namespace{}
-	if err := r.Get(context.TODO(), types.NamespacedName{Name: ns}, &namespace); err != nil {
-		if !apierrors.IsNotFound(err) {
-			return err
-		}
-		return nil
-	}
-	// Remove managed-by-cluster-argocd from the namespace
-	delete(namespace.Labels, common.ArgoCDManagedByClusterArgoCDLabel)
-	argoutil.LogResourceUpdate(log, &namespace, "removing 'managed-by-cluster-argocd' label from umanaged source namespace")
-	if err := r.Update(context.TODO(), &namespace); err != nil {
-		log.Error(err, fmt.Sprintf("failed to remove label from namespace [%s]", namespace.Name))
-	}
-
-	// Delete Roles for SourceNamespaces
-	existingRole := v1.Role{}
-	roleName := getRoleNameForApplicationSourceNamespaces(namespace.Name, cr)
-	if err := r.Get(context.TODO(), types.NamespacedName{Name: roleName, Namespace: namespace.Name}, &existingRole); err != nil {
-		if !apierrors.IsNotFound(err) {
-			return fmt.Errorf("failed to fetch the role for the service account associated with %s : %s", common.ArgoCDServerComponent, err)
-		}
-	}
-	if existingRole.Name != "" {
-		argoutil.LogResourceDeletion(log, &existingRole, "cleaning up unmanaged source namespace")
-		if err := r.Delete(context.TODO(), &existingRole); err != nil {
-			return err
-		}
-	}
-	// Delete RoleBindings for SourceNamespaces
-	existingRoleBinding := &v1.RoleBinding{}
-	roleBindingName := getRoleBindingNameForSourceNamespaces(cr.Name, namespace.Name)
-	if err := r.Get(context.TODO(), types.NamespacedName{Name: roleBindingName, Namespace: namespace.Name}, existingRoleBinding); err != nil {
-		if !apierrors.IsNotFound(err) {
-			return fmt.Errorf("failed to get the rolebinding associated with %s : %s", common.ArgoCDServerComponent, err)
-		}
-	}
-	if existingRoleBinding.Name != "" {
-		argoutil.LogResourceDeletion(log, existingRoleBinding, "cleaning up unmanaged source namespace")
-		if err := r.Delete(context.TODO(), existingRoleBinding); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (r *ReconcileArgoCD) cleanupAllSourceNamespaces(cr *argoproj.ArgoCD) {
-	if len(r.ManagedSourceNamespaces) == 0 {
-		return
-	}
-
-	for ns := range r.ManagedSourceNamespaces {
-		if err := r.cleanupUnmanagedSourceNamespaceResources(cr, ns); err != nil {
-			log.Error(err, fmt.Sprintf("error cleaning up resources for namespace %s", ns))
-			continue
-		}
-		delete(r.ManagedSourceNamespaces, ns)
-	}
-}
-
-func (r *ReconcileArgoCD) ensureSourceNamespacesAllowed(cr *argoproj.ArgoCD) error {
-	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
-
-	// if sourceNamespaces is empty, cleanup all existing source namespaces
-	if len(cr.Spec.SourceNamespaces) == 0 {
-		if !allowed {
-			r.cleanupAllSourceNamespaces(cr)
-		}
-		return nil
-	}
-
-	// if sourceNamespaces is not empty, and the namespace is allowed, return nil
-	if allowed {
-		return nil
-	}
-
-	// if sourceNamespaces is not empty, and the namespace is not allowed, skip the reconciliation
-	log.Info(fmt.Sprintf("Skipping sourceNamespaces reconciliation for namespace %s", cr.Namespace))
-	r.cleanupAllSourceNamespaces(cr)
-
-	return nil
-}
-
 func AddSeccompProfileForOpenShift(client client.Client, podspec *corev1.PodSpec) {
 	if !IsVersionAPIAvailable() {
 		return
@@ -1832,129 +1645,6 @@ func appendUniqueArgs(cmd []string, extraArgs []string) []string {
 	}
 
 	return result
-}
-
-// reconcileArgoCDAgent will reconcile all ArgoCD Agent resources.
-func (r *ReconcileArgoCD) reconcileArgoCDAgent(cr *argoproj.ArgoCD) error {
-	log.Info("reconciling ArgoCD Agent resources")
-
-	principalEnabled := cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Principal != nil && cr.Spec.ArgoCDAgent.Principal.IsEnabled()
-	agentEnabled := cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Agent != nil && cr.Spec.ArgoCDAgent.Agent.IsEnabled()
-
-	if principalEnabled && agentEnabled {
-		return fmt.Errorf("spec.argoCDAgent.principal and spec.argoCDAgent.agent cannot both be enabled")
-	}
-
-	log.Info("reconciling ArgoCD Agent's Principal resources")
-	compName := "principal"
-	var sa *corev1.ServiceAccount
-	var err error
-
-	log.Info("reconciling ArgoCD Agent's Principal service account")
-	if sa, err = argocdagent.ReconcilePrincipalServiceAccount(r.Client, compName, cr, r.Scheme); err != nil {
-		return err
-	}
-
-	log.Info("reconciling ArgoCD Agent's Principal role")
-	if _, err := argocdagent.ReconcilePrincipalRole(r.Client, compName, cr, r.Scheme); err != nil {
-		return err
-	}
-
-	log.Info("reconciling ArgoCD Agent's Principal cluster role")
-	if _, err := argocdagent.ReconcilePrincipalClusterRoles(r.Client, compName, cr, r.Scheme); err != nil {
-		return err
-	}
-
-	log.Info("reconciling ArgoCD Agent's Principal role binding")
-	if err := argocdagent.ReconcilePrincipalRoleBinding(r.Client, compName, sa, cr, r.Scheme); err != nil {
-		return err
-	}
-
-	log.Info("reconciling ArgoCD Agent's Principal cluster role binding")
-	if err := argocdagent.ReconcilePrincipalClusterRoleBinding(r.Client, compName, sa, cr, r.Scheme); err != nil {
-		return err
-	}
-
-	log.Info("reconciling ArgoCD Agent's Principal service")
-	if err := argocdagent.ReconcilePrincipalService(r.Client, compName, cr, r.Scheme); err != nil {
-		return err
-	}
-
-	log.Info("reconciling ArgoCD Agent's Principal metrics service")
-	if err := argocdagent.ReconcilePrincipalMetricsService(r.Client, compName, cr, r.Scheme); err != nil {
-		return err
-	}
-
-	log.Info("reconciling ArgoCD Agent's Principal redis proxy service")
-	if err := argocdagent.ReconcilePrincipalRedisProxyService(r.Client, compName, cr, r.Scheme); err != nil {
-		return err
-	}
-
-	log.Info("reconciling ArgoCD Agent's Principal resource proxy service")
-	if err := argocdagent.ReconcilePrincipalResourceProxyService(r.Client, compName, cr, r.Scheme); err != nil {
-		return err
-	}
-
-	log.Info("reconciling ArgoCD Agent's Principal healthz service")
-	if err := argocdagent.ReconcilePrincipalHealthzService(r.Client, compName, cr, r.Scheme); err != nil {
-		return err
-	}
-
-	log.Info("reconciling ArgoCD Agent's Principal route")
-	if err := argocdagent.ReconcilePrincipalRoute(r.Client, compName, cr, r.Scheme); err != nil {
-		return err
-	}
-
-	log.Info("reconciling ArgoCD Agent's Principal deployment")
-	if err := argocdagent.ReconcilePrincipalDeployment(r.Client, compName, sa.Name, cr, r.Scheme); err != nil {
-		return err
-	}
-
-	log.Info("reconciling ArgoCD Agent's Agent resources")
-	agentCompName := "agent"
-
-	log.Info("reconciling ArgoCD Agent's Agent service account")
-	var agentSa *corev1.ServiceAccount
-	if agentSa, err = agent.ReconcileAgentServiceAccount(r.Client, agentCompName, cr, r.Scheme); err != nil {
-		return err
-	}
-
-	log.Info("reconciling ArgoCD Agent's Agent role")
-	if _, err := agent.ReconcileAgentRole(r.Client, agentCompName, cr, r.Scheme); err != nil {
-		return err
-	}
-
-	log.Info("reconciling ArgoCD Agent's Agent cluster role")
-	if _, err := agent.ReconcileAgentClusterRoles(r.Client, agentCompName, cr, r.Scheme); err != nil {
-		return err
-	}
-
-	log.Info("reconciling ArgoCD Agent's Agent role binding")
-	if err := agent.ReconcileAgentRoleBinding(r.Client, agentCompName, agentSa, cr, r.Scheme); err != nil {
-		return err
-	}
-
-	log.Info("reconciling ArgoCD Agent's Agent cluster role binding")
-	if err := agent.ReconcileAgentClusterRoleBinding(r.Client, agentCompName, agentSa, cr, r.Scheme); err != nil {
-		return err
-	}
-
-	log.Info("reconciling ArgoCD Agent's Agent metrics service")
-	if err := agent.ReconcileAgentMetricsService(r.Client, agentCompName, cr, r.Scheme); err != nil {
-		return err
-	}
-
-	log.Info("reconciling ArgoCD Agent's Agent healthz service")
-	if err := agent.ReconcileAgentHealthzService(r.Client, agentCompName, cr, r.Scheme); err != nil {
-		return err
-	}
-
-	log.Info("reconciling ArgoCD Agent's Agent deployment")
-	if err := agent.ReconcileAgentDeployment(r.Client, agentCompName, agentSa.Name, cr, r.Scheme); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (r *ReconcileArgoCD) namespaceManagementFilterPredicate() predicate.Predicate {

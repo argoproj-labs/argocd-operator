@@ -34,7 +34,7 @@ import (
 
 // Test helper function for route configuration
 func withRouteEnabled(enabled bool) argoCDOpt {
-	return func(a *argoproj.ArgoCD) {
+	return func(a *argoproj.ClusterArgoCD) {
 		if a.Spec.ArgoCDAgent == nil {
 			a.Spec.ArgoCDAgent = &argoproj.ArgoCDAgentSpec{}
 		}
@@ -59,7 +59,7 @@ func makeTestReconcilerSchemeWithRoute() *runtime.Scheme {
 }
 
 // Helper function to create a test route
-func makeTestRoute(cr *argoproj.ArgoCD) *routev1.Route {
+func makeTestRoute(cr *argoproj.ClusterArgoCD) *routev1.Route {
 	return &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      generateAgentResourceName(cr.Name, testCompName),
@@ -75,7 +75,7 @@ func TestReconcilePrincipalRoute_RouteDoesNotExist_PrincipalDisabled(t *testing.
 	// Expected behavior: Should do nothing (no creation, no error)
 	argoutil.SetRouteAPIFound(true)
 
-	cr := makeTestArgoCD(withPrincipalEnabled(false))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(false))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerSchemeWithRoute()
@@ -98,7 +98,7 @@ func TestReconcilePrincipalRoute_RouteDoesNotExist_PrincipalEnabled(t *testing.T
 	// Expected behavior: Should create the Route with expected spec
 	argoutil.SetRouteAPIFound(true)
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerSchemeWithRoute()
@@ -138,10 +138,10 @@ func TestReconcilePrincipalRoute_RouteExists_PrincipalDisabled(t *testing.T) {
 	// Expected behavior: Should delete the Route
 	argoutil.SetRouteAPIFound(true)
 
-	cr := makeTestArgoCD(withPrincipalEnabled(false))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(false))
 
 	// Create existing Route
-	existingRoute := makeTestRoute(makeTestArgoCD(withPrincipalEnabled(true)))
+	existingRoute := makeTestRoute(makeTestClusterArgoCD(withPrincipalEnabled(true)))
 
 	resObjs := []client.Object{cr, existingRoute}
 	sch := makeTestReconcilerSchemeWithRoute()
@@ -164,7 +164,7 @@ func TestReconcilePrincipalRoute_RouteExists_PrincipalEnabled_SameSpec(t *testin
 	// Expected behavior: Should do nothing (no update)
 	argoutil.SetRouteAPIFound(true)
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	existingRoute := makeTestRoute(cr)
 
@@ -194,7 +194,7 @@ func TestReconcilePrincipalRoute_RouteExists_PrincipalEnabled_DifferentSpec(t *t
 	// Expected behavior: Should update the Route with expected spec
 	argoutil.SetRouteAPIFound(true)
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	// Create existing Route with different spec
 	existingRoute := makeTestRoute(cr)
@@ -227,10 +227,10 @@ func TestReconcilePrincipalRoute_RouteExists_PrincipalNotSet(t *testing.T) {
 	// Expected behavior: Should delete the Route
 	argoutil.SetRouteAPIFound(true)
 
-	cr := makeTestArgoCD() // No principal configuration
+	cr := makeTestClusterArgoCD() // No principal configuration
 
 	// Create existing Route
-	existingRoute := makeTestRoute(makeTestArgoCD(withPrincipalEnabled(true)))
+	existingRoute := makeTestRoute(makeTestClusterArgoCD(withPrincipalEnabled(true)))
 
 	resObjs := []client.Object{cr, existingRoute}
 	sch := makeTestReconcilerSchemeWithRoute()
@@ -253,7 +253,7 @@ func TestReconcilePrincipalRoute_RouteDoesNotExist_AgentNotSet(t *testing.T) {
 	// Expected behavior: Should do nothing
 	argoutil.SetRouteAPIFound(true)
 
-	cr := makeTestArgoCD() // No agent configuration
+	cr := makeTestClusterArgoCD() // No agent configuration
 	cr.Spec.ArgoCDAgent = nil
 
 	resObjs := []client.Object{cr}
@@ -277,7 +277,7 @@ func TestReconcilePrincipalRoute_VerifyRouteSpec(t *testing.T) {
 	// Expected behavior: Should create route with correct port, target service, and TLS configuration
 	argoutil.SetRouteAPIFound(true)
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerSchemeWithRoute()
@@ -313,7 +313,7 @@ func TestReconcilePrincipalRoute_RouteDisabled_RouteDoesNotExist(t *testing.T) {
 	// Expected behavior: Should not create the Route
 	argoutil.SetRouteAPIFound(true)
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true), withRouteEnabled(false))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true), withRouteEnabled(false))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerSchemeWithRoute()
@@ -336,10 +336,10 @@ func TestReconcilePrincipalRoute_RouteDisabled_RouteExists(t *testing.T) {
 	// Expected behavior: Should delete the Route
 	argoutil.SetRouteAPIFound(true)
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true), withRouteEnabled(false))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true), withRouteEnabled(false))
 
 	// Create existing Route
-	existingRoute := makeTestRoute(makeTestArgoCD(withPrincipalEnabled(true), withRouteEnabled(true)))
+	existingRoute := makeTestRoute(makeTestClusterArgoCD(withPrincipalEnabled(true), withRouteEnabled(true)))
 
 	resObjs := []client.Object{cr, existingRoute}
 	sch := makeTestReconcilerSchemeWithRoute()
@@ -362,7 +362,7 @@ func TestReconcilePrincipalRoute_RouteEnabled_RouteDoesNotExist(t *testing.T) {
 	// Expected behavior: Should create the Route
 	argoutil.SetRouteAPIFound(true)
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true), withRouteEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true), withRouteEnabled(true))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerSchemeWithRoute()
@@ -391,7 +391,7 @@ func TestReconcilePrincipalRoute_RouteEnabled_RouteExists(t *testing.T) {
 	// Expected behavior: Should keep the Route
 	argoutil.SetRouteAPIFound(true)
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true), withRouteEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true), withRouteEnabled(true))
 
 	// Create existing Route
 	existingRoute := makeTestRoute(cr)
@@ -424,7 +424,7 @@ func TestReconcilePrincipalRoute_RouteToggle_EnabledToDisabled(t *testing.T) {
 	argoutil.SetRouteAPIFound(true)
 
 	// First create with route enabled
-	crEnabled := makeTestArgoCD(withPrincipalEnabled(true), withRouteEnabled(true))
+	crEnabled := makeTestClusterArgoCD(withPrincipalEnabled(true), withRouteEnabled(true))
 	existingRoute := makeTestRoute(crEnabled)
 
 	resObjs := []client.Object{crEnabled, existingRoute}
@@ -440,7 +440,7 @@ func TestReconcilePrincipalRoute_RouteToggle_EnabledToDisabled(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Now disable the route
-	crDisabled := makeTestArgoCD(withPrincipalEnabled(true), withRouteEnabled(false))
+	crDisabled := makeTestClusterArgoCD(withPrincipalEnabled(true), withRouteEnabled(false))
 
 	err = ReconcilePrincipalRoute(cl, testCompName, crDisabled, sch)
 	assert.NoError(t, err)
@@ -460,7 +460,7 @@ func TestReconcilePrincipalRoute_RouteToggle_DisabledToEnabled(t *testing.T) {
 	argoutil.SetRouteAPIFound(true)
 
 	// First ensure no route exists with route disabled
-	crDisabled := makeTestArgoCD(withPrincipalEnabled(true), withRouteEnabled(false))
+	crDisabled := makeTestClusterArgoCD(withPrincipalEnabled(true), withRouteEnabled(false))
 
 	resObjs := []client.Object{crDisabled}
 	sch := makeTestReconcilerSchemeWithRoute()
@@ -478,7 +478,7 @@ func TestReconcilePrincipalRoute_RouteToggle_DisabledToEnabled(t *testing.T) {
 	assert.True(t, errors.IsNotFound(err))
 
 	// Now enable the route
-	crEnabled := makeTestArgoCD(withPrincipalEnabled(true), withRouteEnabled(true))
+	crEnabled := makeTestClusterArgoCD(withPrincipalEnabled(true), withRouteEnabled(true))
 
 	err = ReconcilePrincipalRoute(cl, testCompName, crEnabled, sch)
 	assert.NoError(t, err)
@@ -504,7 +504,7 @@ func TestReconcilePrincipalRoute_DefaultBehavior_RouteCreated(t *testing.T) {
 	argoutil.SetRouteAPIFound(true)
 
 	// Create ArgoCD without explicit route configuration
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerSchemeWithRoute()

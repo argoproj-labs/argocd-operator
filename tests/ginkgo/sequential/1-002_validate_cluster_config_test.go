@@ -25,7 +25,7 @@ import (
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
-	argocdFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/argocd"
+	clusterArgoCDFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/clusterargocd"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/configmap"
 	k8sFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/k8s"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
@@ -57,19 +57,24 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			ns, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("argocd-e2e-cluster-config")
 			defer cleanupFunc()
 
-			argoCDInstance := &argov1beta1api.ArgoCD{
-				ObjectMeta: metav1.ObjectMeta{Name: "example-argocd", Namespace: ns.Name},
-				Spec: argov1beta1api.ArgoCDSpec{
+			clusterArgoCDInstance := &argov1beta1api.ClusterArgoCD{
+				ObjectMeta: metav1.ObjectMeta{Name: "example-argocd"},
+				Spec: argov1beta1api.ClusterArgoCDSpec{
+					ControlPlaneNamespace: ns.Name,
 					InitialSSHKnownHosts: argov1beta1api.SSHHostsSpec{
 						ExcludeDefaultHosts: true,
 						Keys:                "github.com ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==",
 					},
 				},
 			}
-			Expect(k8sClient.Create(ctx, argoCDInstance)).To(Succeed())
+			Expect(k8sClient.Create(ctx, clusterArgoCDInstance)).To(Succeed())
 
-			Eventually(argoCDInstance, "5m", "5s").Should(argocdFixture.BeAvailable())
-			Eventually(argoCDInstance, "5m", "5s").Should(argocdFixture.HaveServerStatus("Running"))
+			defer func() {
+				_ = k8sClient.Delete(context.Background(), clusterArgoCDInstance)
+			}()
+
+			Eventually(clusterArgoCDInstance, "5m", "5s").Should(clusterArgoCDFixture.BeAvailable())
+			Eventually(clusterArgoCDInstance, "5m", "5s").Should(clusterArgoCDFixture.HaveServerStatus("Running"))
 
 			By("verifying ClusterRole/Bindings exist")
 			appcontrollerCRB := &rbacv1.ClusterRoleBinding{
@@ -109,7 +114,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			By("enabling applicationset and setting sourceNamespaces and SCMProviders")
 
-			argocdFixture.Update(argoCDInstance, func(ac *argov1beta1api.ArgoCD) {
+			clusterArgoCDFixture.Update(clusterArgoCDInstance, func(ac *argov1beta1api.ClusterArgoCD) {
 				ac.Spec.ApplicationSet = &argov1beta1api.ArgoCDApplicationSet{
 					SourceNamespaces: []string{"some-namespace", "some-other-namespace"},
 					SCMProviders:     []string{"github.com"},
@@ -118,7 +123,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			By("verifying ClusterRole/Bindings exist")
 
-			Eventually(argoCDInstance, "5m", "5s").Should(argocdFixture.HaveApplicationSetControllerStatus("Running"))
+			Eventually(clusterArgoCDInstance, "5m", "5s").Should(clusterArgoCDFixture.HaveApplicationSetControllerStatus("Running"))
 
 			appSetClusterRole := &rbacv1.ClusterRole{
 				ObjectMeta: metav1.ObjectMeta{Name: "example-argocd-argocd-e2e-cluster-config-argocd-applicationset-controller"},

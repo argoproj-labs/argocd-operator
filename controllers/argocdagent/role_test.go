@@ -32,7 +32,7 @@ func TestReconcilePrincipalRole_RoleDoesNotExist_PrincipalDisabled(t *testing.T)
 	// Test case: Role doesn't exist and principal is disabled
 	// Expected behavior: Should do nothing (no creation, no error)
 
-	cr := makeTestArgoCD(withPrincipalEnabled(false))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(false))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -55,7 +55,7 @@ func TestReconcilePrincipalRole_RoleDoesNotExist_PrincipalEnabled(t *testing.T) 
 	// Test case: Role doesn't exist and principal is enabled
 	// Expected behavior: Should create the Role with expected rules
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -92,7 +92,7 @@ func TestReconcilePrincipalRole_RoleExists_PrincipalDisabled(t *testing.T) {
 	// Test case: Role exists and principal is disabled
 	// Expected behavior: Should delete the Role
 
-	cr := makeTestArgoCD(withPrincipalEnabled(false))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(false))
 
 	// Create existing Role
 	existingRole := &v1.Role{
@@ -125,7 +125,7 @@ func TestReconcilePrincipalRole_RoleExists_PrincipalEnabled_SameRules(t *testing
 	// Test case: Role exists, principal is enabled, and rules are the same
 	// Expected behavior: Should do nothing (no update)
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	expectedRules := buildPolicyRuleForRole()
 	existingRole := &v1.Role{
@@ -159,7 +159,7 @@ func TestReconcilePrincipalRole_RoleExists_PrincipalEnabled_DifferentRules(t *te
 	// Test case: Role exists, principal is enabled, but rules are different
 	// Expected behavior: Should update the Role with new rules
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	// Create existing Role with different rules
 	existingRole := &v1.Role{
@@ -201,7 +201,7 @@ func TestReconcilePrincipalRole_RoleExists_PrincipalNotSet(t *testing.T) {
 	// Test case: Role exists but principal is not set (nil)
 	// Expected behavior: Should delete the Role
 
-	cr := makeTestArgoCD() // No principal configuration
+	cr := makeTestClusterArgoCD() // No principal configuration
 
 	// Create existing Role
 	existingRole := &v1.Role{
@@ -236,7 +236,7 @@ func TestReconcilePrincipalClusterRoles_ClusterRoleDoesNotExist_PrincipalDisable
 	// Test case: ClusterRole doesn't exist and principal is disabled
 	// Expected behavior: Should do nothing (no creation, no error)
 
-	cr := makeTestArgoCD(withPrincipalEnabled(false))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(false))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -258,8 +258,7 @@ func TestReconcilePrincipalClusterRoles_ClusterRoleDoesNotExist_PrincipalEnabled
 	// Test case: ClusterRole doesn't exist and principal is enabled
 	// Expected behavior: Should create the ClusterRole with expected rules
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
-	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", cr.Namespace)
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -292,7 +291,7 @@ func TestReconcilePrincipalClusterRoles_ClusterRoleExists_PrincipalDisabled(t *t
 	// Test case: ClusterRole exists and principal is disabled
 	// Expected behavior: Should delete the ClusterRole
 
-	cr := makeTestArgoCD(withPrincipalEnabled(false))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(false))
 
 	// Create existing ClusterRole
 	existingClusterRole := &v1.ClusterRole{
@@ -323,8 +322,7 @@ func TestReconcilePrincipalClusterRoles_ClusterRoleExists_PrincipalEnabled_SameR
 	// Test case: ClusterRole exists, principal is enabled, and rules are the same
 	// Expected behavior: Should do nothing (no update)
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
-	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", cr.Namespace)
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	expectedRules := buildPolicyRuleForClusterRole()
 	existingClusterRole := &v1.ClusterRole{
@@ -356,8 +354,7 @@ func TestReconcilePrincipalClusterRoles_ClusterRoleExists_PrincipalEnabled_Diffe
 	// Test case: ClusterRole exists, principal is enabled, but rules are different
 	// Expected behavior: Should update the ClusterRole with new rules
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
-	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", cr.Namespace)
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	// Create existing ClusterRole with different rules
 	existingClusterRole := &v1.ClusterRole{
@@ -397,7 +394,7 @@ func TestReconcilePrincipalClusterRoles_ClusterRoleExists_PrincipalNotSet(t *tes
 	// Test case: ClusterRole exists but principal is not set (nil)
 	// Expected behavior: Should delete the ClusterRole
 
-	cr := makeTestArgoCD() // No principal configuration
+	cr := makeTestClusterArgoCD() // No principal configuration
 
 	// Create existing ClusterRole
 	existingClusterRole := &v1.ClusterRole{

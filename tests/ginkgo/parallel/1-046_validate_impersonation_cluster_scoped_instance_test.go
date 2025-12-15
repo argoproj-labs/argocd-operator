@@ -57,7 +57,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 		It("creates a cluster-scoped Argo CD instance, then verifies that when impersonation is enabled, that Argo CD is not able to deploy to a Namespace which the appproject does not have access to", func() {
 
-			By("creating simple cluster-scoped Argo CD instance. The namespace should be specified within ARGOCD_CLUSTER_CONFIG_NAMESPACES env var, in order to ensure it is cluster-scoped")
+			By("creating simple cluster-scoped Argo CD instance. ")
 			argoCD_NS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("argocd-test-impersonation-1-046")
 			defer cleanupFunc()
 

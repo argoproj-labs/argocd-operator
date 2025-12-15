@@ -35,7 +35,7 @@ func TestReconcilePrincipalService_ServiceDoesNotExist_PrincipalDisabled(t *test
 	// Test case: Service doesn't exist and principal is disabled
 	// Expected behavior: Should do nothing (no creation, no error)
 
-	cr := makeTestArgoCD(withPrincipalEnabled(false))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(false))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -57,7 +57,7 @@ func TestReconcilePrincipalService_ServiceDoesNotExist_PrincipalEnabled(t *testi
 	// Test case: Service doesn't exist and principal is enabled
 	// Expected behavior: Should create the Service with expected spec
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -107,7 +107,7 @@ func TestReconcilePrincipalService_ServiceExists_PrincipalDisabled(t *testing.T)
 	// Test case: Service exists and principal is disabled
 	// Expected behavior: Should delete the Service
 
-	cr := makeTestArgoCD(withPrincipalEnabled(false))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(false))
 
 	// Create existing Service
 	existingSvc := &corev1.Service{
@@ -139,7 +139,7 @@ func TestReconcilePrincipalService_ServiceExists_PrincipalEnabled_SameSpec(t *te
 	// Test case: Service exists, principal is enabled, and spec is the same
 	// Expected behavior: Should do nothing (no update)
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	expectedSpec := buildPrincipalServiceSpec(testCompName, cr)
 	existingSvc := &corev1.Service{
@@ -174,7 +174,7 @@ func TestReconcilePrincipalService_ServiceExists_PrincipalEnabled_DifferentSpec(
 	// Test case: Service exists, principal is enabled, but spec is different
 	// Expected behavior: Should update the Service with expected spec
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	// Create existing Service with different spec
 	differentSpec := corev1.ServiceSpec{
@@ -226,7 +226,7 @@ func TestReconcilePrincipalService_ServiceExists_PrincipalNotSet(t *testing.T) {
 	// Test case: Service exists but principal spec is not set (nil)
 	// Expected behavior: Should delete the Service
 
-	cr := makeTestArgoCD() // No principal configuration
+	cr := makeTestClusterArgoCD() // No principal configuration
 
 	// Create existing Service
 	existingSvc := &corev1.Service{
@@ -258,7 +258,7 @@ func TestReconcilePrincipalService_ServiceDoesNotExist_AgentNotSet(t *testing.T)
 	// Test case: Service doesn't exist and agent spec is not set (nil)
 	// Expected behavior: Should do nothing
 
-	cr := makeTestArgoCD() // No agent configuration
+	cr := makeTestClusterArgoCD() // No agent configuration
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -282,7 +282,7 @@ func TestReconcilePrincipalMetricsService_ServiceDoesNotExist_PrincipalDisabled(
 	// Test case: Metrics service doesn't exist and principal is disabled
 	// Expected behavior: Should do nothing (no creation, no error)
 
-	cr := makeTestArgoCD(withPrincipalEnabled(false))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(false))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -304,7 +304,7 @@ func TestReconcilePrincipalMetricsService_ServiceDoesNotExist_PrincipalEnabled(t
 	// Test case: Metrics service doesn't exist and principal is enabled
 	// Expected behavior: Should create the metrics service with expected spec
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -354,7 +354,7 @@ func TestReconcilePrincipalMetricsService_ServiceExists_PrincipalDisabled(t *tes
 	// Test case: Metrics service exists and principal is disabled
 	// Expected behavior: Should delete the metrics service
 
-	cr := makeTestArgoCD(withPrincipalEnabled(false))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(false))
 
 	// Create existing Service
 	existingSvc := &corev1.Service{
@@ -386,7 +386,7 @@ func TestReconcilePrincipalMetricsService_ServiceExists_PrincipalEnabled_SameSpe
 	// Test case: Metrics service exists, principal is enabled, and spec is the same
 	// Expected behavior: Should do nothing (no update)
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	expectedSpec := buildPrincipalMetricsServiceSpec(testCompName, cr)
 	existingSvc := &corev1.Service{
@@ -421,7 +421,7 @@ func TestReconcilePrincipalMetricsService_ServiceExists_PrincipalEnabled_Differe
 	// Test case: Metrics service exists, principal is enabled, but spec is different
 	// Expected behavior: Should update the metrics service with expected spec
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	// Create existing Service with different spec
 	differentSpec := corev1.ServiceSpec{
@@ -473,7 +473,7 @@ func TestReconcilePrincipalMetricsService_ServiceExists_PrincipalNotSet(t *testi
 	// Test case: Metrics service exists but principal spec is not set (nil)
 	// Expected behavior: Should delete the metrics service
 
-	cr := makeTestArgoCD() // No principal configuration
+	cr := makeTestClusterArgoCD() // No principal configuration
 
 	// Create existing Service
 	existingSvc := &corev1.Service{
@@ -505,7 +505,7 @@ func TestReconcilePrincipalMetricsService_ServiceDoesNotExist_AgentNotSet(t *tes
 	// Test case: Metrics service doesn't exist and agent spec is not set (nil)
 	// Expected behavior: Should do nothing
 
-	cr := makeTestArgoCD() // No agent configuration
+	cr := makeTestClusterArgoCD() // No agent configuration
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -527,7 +527,7 @@ func TestReconcilePrincipalMetricsService_VerifyMetricsServiceSpec(t *testing.T)
 	// Test case: Verify the metrics service spec has correct metrics-specific configuration
 	// Expected behavior: Should create service with metrics port and correct selector
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -566,7 +566,7 @@ func TestReconcilePrincipalService_VerifyPrincipalServiceSpec(t *testing.T) {
 	// Test case: Verify the principal service spec has correct HTTPS port configuration
 	// Expected behavior: Should create service with HTTPS port (443) and correct selector
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -607,7 +607,7 @@ func TestReconcilePrincipalRedisProxyService_ServiceDoesNotExist_PrincipalDisabl
 	// Test case: Redis proxy service doesn't exist and principal is disabled
 	// Expected behavior: Should do nothing (no creation, no error)
 
-	cr := makeTestArgoCD(withPrincipalEnabled(false))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(false))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -629,7 +629,7 @@ func TestReconcilePrincipalRedisProxyService_ServiceDoesNotExist_PrincipalEnable
 	// Test case: Redis proxy service doesn't exist and principal is enabled
 	// Expected behavior: Should create the Redis proxy service with expected spec
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -679,7 +679,7 @@ func TestReconcilePrincipalRedisProxyService_ServiceExists_PrincipalDisabled(t *
 	// Test case: Redis proxy service exists and principal is disabled
 	// Expected behavior: Should delete the Redis proxy service
 
-	cr := makeTestArgoCD(withPrincipalEnabled(false))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(false))
 
 	// Create existing Service
 	existingSvc := &corev1.Service{
@@ -711,7 +711,7 @@ func TestReconcilePrincipalRedisProxyService_ServiceExists_PrincipalEnabled_Same
 	// Test case: Redis proxy service exists, principal is enabled, and spec is the same
 	// Expected behavior: Should do nothing (no update)
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	expectedSpec := buildPrincipalRedisProxyServiceSpec(testCompName, cr)
 	existingSvc := &corev1.Service{
@@ -746,7 +746,7 @@ func TestReconcilePrincipalRedisProxyService_ServiceExists_PrincipalEnabled_Diff
 	// Test case: Redis proxy service exists, principal is enabled, but spec is different
 	// Expected behavior: Should update the Redis proxy service with expected spec
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	// Create existing Service with different spec
 	differentSpec := corev1.ServiceSpec{
@@ -798,7 +798,7 @@ func TestReconcilePrincipalRedisProxyService_ServiceExists_PrincipalNotSet(t *te
 	// Test case: Redis proxy service exists but principal spec is not set (nil)
 	// Expected behavior: Should delete the Redis proxy service
 
-	cr := makeTestArgoCD() // No principal configuration
+	cr := makeTestClusterArgoCD() // No principal configuration
 
 	// Create existing Service
 	existingSvc := &corev1.Service{
@@ -830,7 +830,7 @@ func TestReconcilePrincipalRedisProxyService_ServiceDoesNotExist_AgentNotSet(t *
 	// Test case: Redis proxy service doesn't exist and agent spec is not set (nil)
 	// Expected behavior: Should do nothing
 
-	cr := makeTestArgoCD() // No agent configuration
+	cr := makeTestClusterArgoCD() // No agent configuration
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -852,7 +852,7 @@ func TestReconcilePrincipalRedisProxyService_VerifyRedisProxyServiceSpec(t *test
 	// Test case: Verify the Redis proxy service spec has correct Redis-specific configuration
 	// Expected behavior: Should create service with Redis proxy port and correct selector
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -891,7 +891,7 @@ func TestReconcilePrincipalResourceProxyService_ServiceDoesNotExist_PrincipalDis
 	// Test case: Principal is disabled, resource proxy service should not be created
 	// Expected behavior: No service should be created
 
-	cr := makeTestArgoCD(withPrincipalEnabled(false))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(false))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -913,7 +913,7 @@ func TestReconcilePrincipalResourceProxyService_ServiceDoesNotExist_PrincipalEna
 	// Test case: Principal is enabled, resource proxy service should be created
 	// Expected behavior: Service should be created with correct configuration
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -952,7 +952,7 @@ func TestReconcilePrincipalResourceProxyService_ServiceExists_PrincipalDisabled(
 	// Test case: Resource proxy service exists and principal is disabled
 	// Expected behavior: Should delete the resource proxy service
 
-	cr := makeTestArgoCD(withPrincipalEnabled(false))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(false))
 
 	// Create existing Service
 	existingSvc := &corev1.Service{
@@ -984,7 +984,7 @@ func TestReconcilePrincipalResourceProxyService_ServiceExists_PrincipalEnabled_S
 	// Test case: Resource proxy service exists, principal is enabled, and spec is the same
 	// Expected behavior: Should do nothing (no update)
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	expectedSpec := buildPrincipalResourceProxyServiceSpec(testCompName, cr)
 	existingSvc := &corev1.Service{
@@ -1017,7 +1017,7 @@ func TestReconcilePrincipalResourceProxyService_ServiceExists_PrincipalEnabled_D
 	// Test case: Resource proxy service exists, principal is enabled, but spec is different
 	// Expected behavior: Should update the service spec
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	// Create existing Service with different spec
 	existingSvc := &corev1.Service{
@@ -1065,7 +1065,7 @@ func TestReconcilePrincipalResourceProxyService_ServiceExists_PrincipalNotSet(t 
 	// Test case: Resource proxy service exists but principal is not set in CR
 	// Expected behavior: Should delete the service
 
-	cr := makeTestArgoCD()
+	cr := makeTestClusterArgoCD()
 
 	// Create existing Service
 	existingSvc := &corev1.Service{
@@ -1097,7 +1097,7 @@ func TestReconcilePrincipalResourceProxyService_ServiceDoesNotExist_AgentNotSet(
 	// Test case: Resource proxy service doesn't exist and agent is not set in CR
 	// Expected behavior: Should do nothing
 
-	cr := makeTestArgoCD()
+	cr := makeTestClusterArgoCD()
 	cr.Spec.ArgoCDAgent = nil
 
 	resObjs := []client.Object{cr}
@@ -1120,7 +1120,7 @@ func TestReconcilePrincipalResourceProxyService_VerifyResourceProxyServiceSpec(t
 	// Test case: Verify the resource proxy service spec has correct resource proxy-specific configuration
 	// Expected behavior: Should create service with resource proxy port and correct selector
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -1161,7 +1161,7 @@ func TestReconcilePrincipalHealthzService_ServiceDoesNotExist_PrincipalDisabled(
 	// Test case: Principal is disabled, healthz service should not be created
 	// Expected behavior: No service should be created
 
-	cr := makeTestArgoCD(withPrincipalEnabled(false))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(false))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -1183,7 +1183,7 @@ func TestReconcilePrincipalHealthzService_ServiceDoesNotExist_PrincipalEnabled(t
 	// Test case: Principal is enabled, healthz service should be created
 	// Expected behavior: Service should be created with correct configuration
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -1222,7 +1222,7 @@ func TestReconcilePrincipalHealthzService_ServiceExists_PrincipalDisabled(t *tes
 	// Test case: Healthz service exists and principal is disabled
 	// Expected behavior: Should delete the healthz service
 
-	cr := makeTestArgoCD(withPrincipalEnabled(false))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(false))
 
 	// Create existing Service
 	existingSvc := &corev1.Service{
@@ -1254,7 +1254,7 @@ func TestReconcilePrincipalHealthzService_ServiceExists_PrincipalEnabled_SameSpe
 	// Test case: Healthz service exists, principal is enabled, and spec is the same
 	// Expected behavior: Should do nothing (no update)
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	expectedSpec := buildPrincipalHealthzServiceSpec(testCompName, cr)
 	existingSvc := &corev1.Service{
@@ -1287,7 +1287,7 @@ func TestReconcilePrincipalHealthzService_ServiceExists_PrincipalEnabled_Differe
 	// Test case: Healthz service exists, principal is enabled, but spec is different
 	// Expected behavior: Should update the service spec
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	// Create existing Service with different spec
 	existingSvc := &corev1.Service{
@@ -1335,7 +1335,7 @@ func TestReconcilePrincipalHealthzService_ServiceExists_PrincipalNotSet(t *testi
 	// Test case: Healthz service exists but principal is not set in CR
 	// Expected behavior: Should delete the service
 
-	cr := makeTestArgoCD()
+	cr := makeTestClusterArgoCD()
 
 	// Create existing Service
 	existingSvc := &corev1.Service{
@@ -1367,7 +1367,7 @@ func TestReconcilePrincipalHealthzService_ServiceDoesNotExist_AgentNotSet(t *tes
 	// Test case: Healthz service doesn't exist and agent is not set in CR
 	// Expected behavior: Should do nothing
 
-	cr := makeTestArgoCD()
+	cr := makeTestClusterArgoCD()
 	cr.Spec.ArgoCDAgent = nil
 
 	resObjs := []client.Object{cr}
@@ -1390,7 +1390,7 @@ func TestReconcilePrincipalHealthzService_VerifyHealthzServiceSpec(t *testing.T)
 	// Test case: Verify the healthz service spec has correct healthz-specific configuration
 	// Expected behavior: Should create service with healthz port and correct selector
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -1426,7 +1426,7 @@ func TestReconcilePrincipalHealthzService_VerifyHealthzServiceSpec(t *testing.T)
 }
 
 func withServiceType(serviceType corev1.ServiceType) argoCDOpt {
-	return func(a *argoproj.ArgoCD) {
+	return func(a *argoproj.ClusterArgoCD) {
 		if a.Spec.ArgoCDAgent.Principal.Server == nil {
 			a.Spec.ArgoCDAgent.Principal.Server = &argoproj.PrincipalServerSpec{}
 		}
@@ -1440,7 +1440,7 @@ func TestReconcilePrincipalService_ServiceType_ClusterIP(t *testing.T) {
 	// Test case: Service type is explicitly set to ClusterIP
 	// Expected behavior: Should create service with ClusterIP type
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true), withServiceType(corev1.ServiceTypeClusterIP))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true), withServiceType(corev1.ServiceTypeClusterIP))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -1463,7 +1463,7 @@ func TestReconcilePrincipalService_ServiceType_LoadBalancer(t *testing.T) {
 	// Test case: Service type is set to LoadBalancer
 	// Expected behavior: Should create service with LoadBalancer type
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true), withServiceType(corev1.ServiceTypeLoadBalancer))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true), withServiceType(corev1.ServiceTypeLoadBalancer))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -1486,7 +1486,7 @@ func TestReconcilePrincipalService_ServiceType_Default(t *testing.T) {
 	// Test case: Service type is not specified (empty)
 	// Expected behavior: Should create service with default ClusterIP type
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -1509,7 +1509,7 @@ func TestReconcilePrincipalService_ServiceType_Update(t *testing.T) {
 	// Test case: Service exists with ClusterIP, then updated to LoadBalancer
 	// Expected behavior: Should update service type
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true), withServiceType(corev1.ServiceTypeClusterIP))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true), withServiceType(corev1.ServiceTypeClusterIP))
 
 	// Create existing Service with ClusterIP
 	existingService := &corev1.Service{

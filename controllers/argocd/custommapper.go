@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/argoproj/argo-cd/v3/util/glob"
-
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 
@@ -173,7 +171,6 @@ func (r *ReconcileArgoCD) namespaceResourceMapper(ctx context.Context, o client.
 
 	argocds := &argoproj.ArgoCDList{}
 	labels := o.GetLabels()
-	namespaceName := o.GetName()
 	// If the namespace is managed by an Argo CD instance in another namespace, then reconcile that instance
 	if v, ok := labels[common.ArgoCDManagedByLabel]; ok {
 		if err := r.List(context.TODO(), argocds, &client.ListOptions{Namespace: v}); err != nil {
@@ -203,25 +200,7 @@ func (r *ReconcileArgoCD) namespaceResourceMapper(ctx context.Context, o client.
 			result = append(result, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(&argocd)})
 		}
 
-	} else {
-		// If the namespace does not have the expected managed-by label,
-		// iterate through each ArgoCD instance to identify if the observed namespace
-		// matches any configured sourceNamespace pattern. If a match is found,
-		// generate a reconcile request for the instances.
-		if err := r.List(ctx, argocds, &client.ListOptions{}); err != nil {
-			return result
-		}
-		for _, argocd := range argocds.Items {
-			if glob.MatchStringInList(argocd.Spec.SourceNamespaces, namespaceName, glob.GLOB) {
-				namespacedName := client.ObjectKey{
-					Name:      argocd.Name,
-					Namespace: argocd.Namespace,
-				}
-				result = append(result, reconcile.Request{NamespacedName: namespacedName})
-			}
-		}
 	}
-
 	return result
 }
 

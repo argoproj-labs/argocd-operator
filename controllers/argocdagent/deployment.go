@@ -38,7 +38,7 @@ import (
 
 // ReconcilePrincipalDeployment reconciles the ArgoCD agent principal deployment.
 // It creates, updates, or deletes the deployment based on the ArgoCD CR configuration.
-func ReconcilePrincipalDeployment(client client.Client, compName, saName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme) error {
+func ReconcilePrincipalDeployment(client client.Client, compName, saName string, cr *argoproj.ClusterArgoCD, scheme *runtime.Scheme) error {
 	deployment := buildDeployment(compName, cr)
 
 	// Check if deployment already exists
@@ -87,7 +87,7 @@ func ReconcilePrincipalDeployment(client client.Client, compName, saName string,
 	return nil
 }
 
-func buildDeployment(compName string, cr *argoproj.ArgoCD) *appsv1.Deployment {
+func buildDeployment(compName string, cr *argoproj.ClusterArgoCD) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      generateAgentResourceName(cr.Name, compName),
@@ -97,7 +97,7 @@ func buildDeployment(compName string, cr *argoproj.ArgoCD) *appsv1.Deployment {
 	}
 }
 
-func buildPrincipalSpec(compName, saName string, cr *argoproj.ArgoCD) appsv1.DeploymentSpec {
+func buildPrincipalSpec(compName, saName string, cr *argoproj.ClusterArgoCD) appsv1.DeploymentSpec {
 	return appsv1.DeploymentSpec{
 		Selector: buildSelector(compName, cr),
 		Template: corev1.PodTemplateSpec{
@@ -124,7 +124,7 @@ func buildPrincipalSpec(compName, saName string, cr *argoproj.ArgoCD) appsv1.Dep
 	}
 }
 
-func buildSelector(compName string, cr *argoproj.ArgoCD) *metav1.LabelSelector {
+func buildSelector(compName string, cr *argoproj.ClusterArgoCD) *metav1.LabelSelector {
 	return &metav1.LabelSelector{
 		MatchLabels: buildLabelsForAgentPrincipal(cr.Name, compName),
 	}
@@ -182,7 +182,7 @@ func buildArgs(compName string) []string {
 	return args
 }
 
-func buildPrincipalImage(cr *argoproj.ArgoCD) string {
+func buildPrincipalImage(cr *argoproj.ClusterArgoCD) string {
 	// Check CR specification first
 	if hasPrincipal(cr) && cr.Spec.ArgoCDAgent.Principal.Image != "" {
 		return cr.Spec.ArgoCDAgent.Principal.Image
@@ -248,7 +248,7 @@ func buildVolumes() []corev1.Volume {
 // updateDeploymentIfChanged compares the current deployment with the desired state
 // and updates it if any changes are detected. Returns the updated deployment and a boolean
 // indicating whether any changes were made.
-func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, deployment *appsv1.Deployment) (*appsv1.Deployment, bool) {
+func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ClusterArgoCD, deployment *appsv1.Deployment) (*appsv1.Deployment, bool) {
 	changed := false
 
 	if !reflect.DeepEqual(deployment.Spec.Selector, buildSelector(compName, cr)) {
@@ -308,7 +308,7 @@ func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, dep
 	return deployment, changed
 }
 
-func buildPrincipalContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
+func buildPrincipalContainerEnv(cr *argoproj.ClusterArgoCD) []corev1.EnvVar {
 	env := []corev1.EnvVar{
 		{
 			Name:  EnvArgoCDPrincipalLogLevel,
@@ -422,21 +422,21 @@ const (
 )
 
 // Logging Configuration
-func getPrincipalLogLevel(cr *argoproj.ArgoCD) string {
+func getPrincipalLogLevel(cr *argoproj.ClusterArgoCD) string {
 	if hasPrincipal(cr) && cr.Spec.ArgoCDAgent.Principal.LogLevel != "" {
 		return cr.Spec.ArgoCDAgent.Principal.LogLevel
 	}
 	return "info"
 }
 
-func getPrincipalLogFormat(cr *argoproj.ArgoCD) string {
+func getPrincipalLogFormat(cr *argoproj.ClusterArgoCD) string {
 	if hasPrincipal(cr) && cr.Spec.ArgoCDAgent.Principal.LogFormat != "" {
 		return cr.Spec.ArgoCDAgent.Principal.LogFormat
 	}
 	return "text"
 }
 
-func getPrincipalAllowedNamespaces(cr *argoproj.ArgoCD) string {
+func getPrincipalAllowedNamespaces(cr *argoproj.ClusterArgoCD) string {
 	if hasNamespace(cr) &&
 		cr.Spec.ArgoCDAgent.Principal.Namespace.AllowedNamespaces != nil &&
 		len(cr.Spec.ArgoCDAgent.Principal.Namespace.AllowedNamespaces) > 0 {
@@ -445,28 +445,28 @@ func getPrincipalAllowedNamespaces(cr *argoproj.ArgoCD) string {
 	return ""
 }
 
-func getPrincipalNamespaceCreateEnable(cr *argoproj.ArgoCD) string {
+func getPrincipalNamespaceCreateEnable(cr *argoproj.ClusterArgoCD) string {
 	if hasNamespace(cr) && cr.Spec.ArgoCDAgent.Principal.Namespace.EnableNamespaceCreate != nil {
 		return strconv.FormatBool(*cr.Spec.ArgoCDAgent.Principal.Namespace.EnableNamespaceCreate)
 	}
 	return "false"
 }
 
-func getPrincipalNamespaceCreatePattern(cr *argoproj.ArgoCD) string {
+func getPrincipalNamespaceCreatePattern(cr *argoproj.ClusterArgoCD) string {
 	if hasNamespace(cr) && cr.Spec.ArgoCDAgent.Principal.Namespace.NamespaceCreatePattern != "" {
 		return cr.Spec.ArgoCDAgent.Principal.Namespace.NamespaceCreatePattern
 	}
 	return ""
 }
 
-func getPrincipalNamespaceCreateLabels(cr *argoproj.ArgoCD) string {
+func getPrincipalNamespaceCreateLabels(cr *argoproj.ClusterArgoCD) string {
 	if hasNamespace(cr) && len(cr.Spec.ArgoCDAgent.Principal.Namespace.NamespaceCreateLabels) > 0 {
 		return strings.Join(cr.Spec.ArgoCDAgent.Principal.Namespace.NamespaceCreateLabels, ",")
 	}
 	return ""
 }
 
-func getPrincipalTLSServerAllowGenerate(cr *argoproj.ArgoCD) string {
+func getPrincipalTLSServerAllowGenerate(cr *argoproj.ClusterArgoCD) string {
 	if hasTLS(cr) && cr.Spec.ArgoCDAgent.Principal.TLS.InsecureGenerate != nil {
 		return strconv.FormatBool(*cr.Spec.ArgoCDAgent.Principal.TLS.InsecureGenerate)
 	}
@@ -474,7 +474,7 @@ func getPrincipalTLSServerAllowGenerate(cr *argoproj.ArgoCD) string {
 }
 
 // JWT Configuration
-func getPrincipalJWTAllowGenerate(cr *argoproj.ArgoCD) string {
+func getPrincipalJWTAllowGenerate(cr *argoproj.ClusterArgoCD) string {
 	if hasJWT(cr) && cr.Spec.ArgoCDAgent.Principal.JWT.InsecureGenerate != nil {
 		return strconv.FormatBool(*cr.Spec.ArgoCDAgent.Principal.JWT.InsecureGenerate)
 	}
@@ -482,7 +482,7 @@ func getPrincipalJWTAllowGenerate(cr *argoproj.ArgoCD) string {
 }
 
 // Authentication Configuration
-func getPrincipalAuth(cr *argoproj.ArgoCD) string {
+func getPrincipalAuth(cr *argoproj.ClusterArgoCD) string {
 	if hasPrincipal(cr) && cr.Spec.ArgoCDAgent.Principal.Auth != "" {
 		return cr.Spec.ArgoCDAgent.Principal.Auth
 	}
@@ -490,7 +490,7 @@ func getPrincipalAuth(cr *argoproj.ArgoCD) string {
 }
 
 // WebSocket Configuration
-func getPrincipalEnableWebSocket(cr *argoproj.ArgoCD) string {
+func getPrincipalEnableWebSocket(cr *argoproj.ClusterArgoCD) string {
 	if hasServer(cr) && cr.Spec.ArgoCDAgent.Principal.Server.EnableWebSocket != nil {
 		return strconv.FormatBool(*cr.Spec.ArgoCDAgent.Principal.Server.EnableWebSocket)
 	}
@@ -498,7 +498,7 @@ func getPrincipalEnableWebSocket(cr *argoproj.ArgoCD) string {
 }
 
 // Keep Alive Configuration
-func getPrincipalKeepAliveMinInterval(cr *argoproj.ArgoCD) string {
+func getPrincipalKeepAliveMinInterval(cr *argoproj.ClusterArgoCD) string {
 	if hasServer(cr) && cr.Spec.ArgoCDAgent.Principal.Server.KeepAliveMinInterval != "" {
 		return cr.Spec.ArgoCDAgent.Principal.Server.KeepAliveMinInterval
 	}
@@ -506,90 +506,90 @@ func getPrincipalKeepAliveMinInterval(cr *argoproj.ArgoCD) string {
 }
 
 // Redis Configuration
-func getPrincipalRedisServerAddress(cr *argoproj.ArgoCD) string {
+func getPrincipalRedisServerAddress(cr *argoproj.ClusterArgoCD) string {
 	if hasRedis(cr) && cr.Spec.ArgoCDAgent.Principal.Redis.ServerAddress != "" {
 		return cr.Spec.ArgoCDAgent.Principal.Redis.ServerAddress
 	}
 	return fmt.Sprintf("%s-%s:%d", cr.Name, "redis", common.ArgoCDDefaultRedisPort)
 }
 
-func getPrincipalRedisCompressionType(cr *argoproj.ArgoCD) string {
+func getPrincipalRedisCompressionType(cr *argoproj.ClusterArgoCD) string {
 	if hasRedis(cr) && cr.Spec.ArgoCDAgent.Principal.Redis.CompressionType != "" {
 		return cr.Spec.ArgoCDAgent.Principal.Redis.CompressionType
 	}
 	return "gzip"
 }
 
-func getPrincipalJWTSecretName(cr *argoproj.ArgoCD) string {
+func getPrincipalJWTSecretName(cr *argoproj.ClusterArgoCD) string {
 	if hasJWT(cr) && cr.Spec.ArgoCDAgent.Principal.JWT.SecretName != "" {
 		return cr.Spec.ArgoCDAgent.Principal.JWT.SecretName
 	}
 	return "argocd-agent-jwt"
 }
 
-func getPrincipalResourceProxyCaSecretName(cr *argoproj.ArgoCD) string {
+func getPrincipalResourceProxyCaSecretName(cr *argoproj.ClusterArgoCD) string {
 	if hasResourceProxy(cr) && cr.Spec.ArgoCDAgent.Principal.ResourceProxy.CASecretName != "" {
 		return cr.Spec.ArgoCDAgent.Principal.ResourceProxy.CASecretName
 	}
 	return "argocd-agent-ca"
 }
 
-func getPrincipalResourceProxySecretName(cr *argoproj.ArgoCD) string {
+func getPrincipalResourceProxySecretName(cr *argoproj.ClusterArgoCD) string {
 	if hasResourceProxy(cr) && cr.Spec.ArgoCDAgent.Principal.ResourceProxy.SecretName != "" {
 		return cr.Spec.ArgoCDAgent.Principal.ResourceProxy.SecretName
 	}
 	return "argocd-agent-resource-proxy-tls"
 }
 
-func getPrincipalTLSServerSecretName(cr *argoproj.ArgoCD) string {
+func getPrincipalTLSServerSecretName(cr *argoproj.ClusterArgoCD) string {
 	if hasTLS(cr) && cr.Spec.ArgoCDAgent.Principal.TLS.SecretName != "" {
 		return cr.Spec.ArgoCDAgent.Principal.TLS.SecretName
 	}
 	return "argocd-agent-principal-tls"
 }
 
-func getPrincipalTlsServerRootCASecretName(cr *argoproj.ArgoCD) string {
+func getPrincipalTlsServerRootCASecretName(cr *argoproj.ClusterArgoCD) string {
 	if hasTLS(cr) && cr.Spec.ArgoCDAgent.Principal.TLS.RootCASecretName != "" {
 		return cr.Spec.ArgoCDAgent.Principal.TLS.RootCASecretName
 	}
 	return "argocd-agent-ca"
 }
 
-func hasPrincipal(cr *argoproj.ArgoCD) bool {
+func hasPrincipal(cr *argoproj.ClusterArgoCD) bool {
 	return cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Principal != nil
 }
 
-func hasServer(cr *argoproj.ArgoCD) bool {
+func hasServer(cr *argoproj.ClusterArgoCD) bool {
 	return cr.Spec.ArgoCDAgent != nil &&
 		cr.Spec.ArgoCDAgent.Principal != nil &&
 		cr.Spec.ArgoCDAgent.Principal.Server != nil
 }
 
-func hasNamespace(cr *argoproj.ArgoCD) bool {
+func hasNamespace(cr *argoproj.ClusterArgoCD) bool {
 	return cr.Spec.ArgoCDAgent != nil &&
 		cr.Spec.ArgoCDAgent.Principal != nil &&
 		cr.Spec.ArgoCDAgent.Principal.Namespace != nil
 }
 
-func hasTLS(cr *argoproj.ArgoCD) bool {
+func hasTLS(cr *argoproj.ClusterArgoCD) bool {
 	return cr.Spec.ArgoCDAgent != nil &&
 		cr.Spec.ArgoCDAgent.Principal != nil &&
 		cr.Spec.ArgoCDAgent.Principal.TLS != nil
 }
 
-func hasResourceProxy(cr *argoproj.ArgoCD) bool {
+func hasResourceProxy(cr *argoproj.ClusterArgoCD) bool {
 	return cr.Spec.ArgoCDAgent != nil &&
 		cr.Spec.ArgoCDAgent.Principal != nil &&
 		cr.Spec.ArgoCDAgent.Principal.ResourceProxy != nil
 }
 
-func hasJWT(cr *argoproj.ArgoCD) bool {
+func hasJWT(cr *argoproj.ClusterArgoCD) bool {
 	return cr.Spec.ArgoCDAgent != nil &&
 		cr.Spec.ArgoCDAgent.Principal != nil &&
 		cr.Spec.ArgoCDAgent.Principal.JWT != nil
 }
 
-func hasRedis(cr *argoproj.ArgoCD) bool {
+func hasRedis(cr *argoproj.ClusterArgoCD) bool {
 	return cr.Spec.ArgoCDAgent != nil &&
 		cr.Spec.ArgoCDAgent.Principal != nil &&
 		cr.Spec.ArgoCDAgent.Principal.Redis != nil

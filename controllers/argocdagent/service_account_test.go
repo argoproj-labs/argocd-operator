@@ -39,10 +39,10 @@ const (
 )
 
 // Test helper functions
-type argoCDOpt func(*argoproj.ArgoCD)
+type argoCDOpt func(*argoproj.ClusterArgoCD)
 
-func makeTestArgoCD(opts ...argoCDOpt) *argoproj.ArgoCD {
-	a := &argoproj.ArgoCD{
+func makeTestClusterArgoCD(opts ...argoCDOpt) *argoproj.ClusterArgoCD {
+	a := &argoproj.ClusterArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testArgoCDName,
 			Namespace: testNamespace,
@@ -55,7 +55,7 @@ func makeTestArgoCD(opts ...argoCDOpt) *argoproj.ArgoCD {
 }
 
 func withPrincipalEnabled(enabled bool) argoCDOpt {
-	return func(a *argoproj.ArgoCD) {
+	return func(a *argoproj.ClusterArgoCD) {
 		if a.Spec.ArgoCDAgent == nil {
 			a.Spec.ArgoCDAgent = &argoproj.ArgoCDAgentSpec{}
 		}
@@ -86,7 +86,7 @@ func TestReconcilePrincipalServiceAccount_ServiceAccountDoesNotExist_PrincipalDi
 	// Test case: ServiceAccount doesn't exist and principal is disabled
 	// Expected behavior: Should do nothing (no creation, no error)
 
-	cr := makeTestArgoCD(withPrincipalEnabled(false))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(false))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -109,7 +109,7 @@ func TestReconcilePrincipalServiceAccount_ServiceAccountDoesNotExist_PrincipalEn
 	// Test case: ServiceAccount doesn't exist and principal is enabled
 	// Expected behavior: Should create the ServiceAccount
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -142,7 +142,7 @@ func TestReconcilePrincipalServiceAccount_ServiceAccountExists_PrincipalDisabled
 	// Test case: ServiceAccount exists and principal is disabled
 	// Expected behavior: Should delete the ServiceAccount
 
-	cr := makeTestArgoCD(withPrincipalEnabled(false))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(false))
 
 	// Create existing ServiceAccount
 	existingSA := &corev1.ServiceAccount{
@@ -174,7 +174,7 @@ func TestReconcilePrincipalServiceAccount_ServiceAccountExists_PrincipalEnabled(
 	// Test case: ServiceAccount exists and principal is enabled
 	// Expected behavior: Should return the existing ServiceAccount without modification
 
-	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr := makeTestClusterArgoCD(withPrincipalEnabled(true))
 
 	// Create existing ServiceAccount
 	existingSA := &corev1.ServiceAccount{
@@ -209,7 +209,7 @@ func TestReconcilePrincipalServiceAccount_ServiceAccountExists_PrincipalNotSet(t
 	// Test case: ServiceAccount exists but principal is not set (nil)
 	// Expected behavior: Should delete the ServiceAccount
 
-	cr := makeTestArgoCD() // No principal configuration
+	cr := makeTestClusterArgoCD() // No principal configuration
 
 	// Create existing ServiceAccount
 	existingSA := &corev1.ServiceAccount{
@@ -241,7 +241,7 @@ func TestReconcilePrincipalServiceAccount_ServiceAccountDoesNotExist_PrincipalNo
 	// Test case: ServiceAccount doesn't exist and principal is not set (nil)
 	// Expected behavior: Should do nothing (no creation, no error)
 
-	cr := makeTestArgoCD() // No principal configuration
+	cr := makeTestClusterArgoCD() // No principal configuration
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -264,7 +264,7 @@ func TestReconcilePrincipalServiceAccount_ServiceAccountDoesNotExist_AgentNotSet
 	// Test case: ServiceAccount doesn't exist and agent is not set (nil)
 	// Expected behavior: Should do nothing (no creation, no error)
 
-	cr := makeTestArgoCD() // No agent configuration
+	cr := makeTestClusterArgoCD() // No agent configuration
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -287,7 +287,7 @@ func TestReconcilePrincipalServiceAccount_ServiceAccountExists_AgentNotSet(t *te
 	// Test case: ServiceAccount exists but agent is not set (nil)
 	// Expected behavior: Should delete the ServiceAccount
 
-	cr := makeTestArgoCD() // No agent configuration
+	cr := makeTestClusterArgoCD() // No agent configuration
 
 	// Create existing ServiceAccount
 	existingSA := &corev1.ServiceAccount{

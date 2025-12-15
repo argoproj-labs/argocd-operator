@@ -126,8 +126,7 @@ argocd-operator-controller-manager-6c449c6998-ts95w   2/2     Running   0       
 !!! info
     If you see `Error: container's runAsUser breaks non-root policy`, means container wants to have admin privilege. run `oc adm policy add-scc-to-user privileged -z default -n argocd-operator-system` to enable admin on the namespace and change the following line in deployment resource: `runAsNonRoot: false`. This is a quick fix to make it running, this is not a suggested approach for *production*.
 
-!!! info
-    ArgoCD instance deployed by operator will be namespace scoped. To make it cluster scoped, add environment variable `ARGOCD_CLUSTER_CONFIG_NAMESPACES` with `argocd-operator-system` as a value to `argocd-operator-controller-manager` deployment.
+
 
 ## Usage
 

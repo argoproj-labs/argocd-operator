@@ -39,10 +39,10 @@ const (
 )
 
 // Test helper functions
-type argoCDOpt func(*argoproj.ArgoCD)
+type argoCDOpt func(*argoproj.ClusterArgoCD)
 
-func makeTestArgoCD(opts ...argoCDOpt) *argoproj.ArgoCD {
-	a := &argoproj.ArgoCD{
+func makeTestClusterArgoCD(opts ...argoCDOpt) *argoproj.ClusterArgoCD {
+	a := &argoproj.ClusterArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testArgoCDName,
 			Namespace: testNamespace,
@@ -55,7 +55,7 @@ func makeTestArgoCD(opts ...argoCDOpt) *argoproj.ArgoCD {
 }
 
 func withAgentEnabled(enabled bool) argoCDOpt {
-	return func(a *argoproj.ArgoCD) {
+	return func(a *argoproj.ClusterArgoCD) {
 		if a.Spec.ArgoCDAgent == nil {
 			a.Spec.ArgoCDAgent = &argoproj.ArgoCDAgentSpec{}
 		}
@@ -86,7 +86,7 @@ func TestReconcileAgentServiceAccount_ServiceAccountDoesNotExist_AgentDisabled(t
 	// Test case: ServiceAccount doesn't exist and agent is disabled
 	// Expected behavior: Should do nothing (no creation, no error)
 
-	cr := makeTestArgoCD(withAgentEnabled(false))
+	cr := makeTestClusterArgoCD(withAgentEnabled(false))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -109,7 +109,7 @@ func TestReconcileAgentServiceAccount_ServiceAccountDoesNotExist_AgentEnabled(t 
 	// Test case: ServiceAccount doesn't exist and agent is enabled
 	// Expected behavior: Should create the ServiceAccount
 
-	cr := makeTestArgoCD(withAgentEnabled(true))
+	cr := makeTestClusterArgoCD(withAgentEnabled(true))
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -142,7 +142,7 @@ func TestReconcileAgentServiceAccount_ServiceAccountExists_AgentDisabled(t *test
 	// Test case: ServiceAccount exists and agent is disabled
 	// Expected behavior: Should delete the ServiceAccount
 
-	cr := makeTestArgoCD(withAgentEnabled(false))
+	cr := makeTestClusterArgoCD(withAgentEnabled(false))
 
 	// Create existing ServiceAccount
 	existingSA := &corev1.ServiceAccount{
@@ -174,7 +174,7 @@ func TestReconcileAgentServiceAccount_ServiceAccountExists_AgentEnabled(t *testi
 	// Test case: ServiceAccount exists and agent is enabled
 	// Expected behavior: Should return the existing ServiceAccount without modification
 
-	cr := makeTestArgoCD(withAgentEnabled(true))
+	cr := makeTestClusterArgoCD(withAgentEnabled(true))
 
 	// Create existing ServiceAccount
 	existingSA := &corev1.ServiceAccount{
@@ -209,7 +209,7 @@ func TestReconcileAgentServiceAccount_ServiceAccountExists_AgentNotSet(t *testin
 	// Test case: ServiceAccount exists but agent is not set (nil)
 	// Expected behavior: Should delete the ServiceAccount
 
-	cr := makeTestArgoCD() // No agent configuration
+	cr := makeTestClusterArgoCD() // No agent configuration
 
 	// Create existing ServiceAccount
 	existingSA := &corev1.ServiceAccount{
@@ -241,7 +241,7 @@ func TestReconcileAgentServiceAccount_ServiceAccountDoesNotExist_AgentNotSet(t *
 	// Test case: ServiceAccount doesn't exist and agent is not set (nil)
 	// Expected behavior: Should do nothing (no creation, no error)
 
-	cr := makeTestArgoCD() // No agent configuration
+	cr := makeTestClusterArgoCD() // No agent configuration
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()

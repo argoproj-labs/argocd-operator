@@ -34,7 +34,7 @@ import (
 
 // ReconcilePrincipalRoleBinding reconciles a RoleBinding for the ArgoCD agent principal component.
 // This function handles the creation, update, and deletion of RoleBindings based on the principal's enabled state.
-func ReconcilePrincipalRoleBinding(client client.Client, compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD, scheme *runtime.Scheme) error {
+func ReconcilePrincipalRoleBinding(client client.Client, compName string, sa *corev1.ServiceAccount, cr *argoproj.ClusterArgoCD, scheme *runtime.Scheme) error {
 	roleBinding := buildRoleBinding(compName, cr)
 	expectedSubjects := buildSubjects(sa, cr)
 	expectedRoleRef := buildRoleRef(generateAgentResourceName(cr.Name, compName), "Role")
@@ -95,12 +95,10 @@ func ReconcilePrincipalRoleBinding(client client.Client, compName string, sa *co
 
 // ReconcilePrincipalClusterRoleBinding reconciles a ClusterRoleBinding for the ArgoCD agent principal component.
 // This function handles the creation, update, and deletion of ClusterRoleBindings based on the principal's enabled state.
-func ReconcilePrincipalClusterRoleBinding(client client.Client, compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD, scheme *runtime.Scheme) error {
+func ReconcilePrincipalClusterRoleBinding(client client.Client, compName string, sa *corev1.ServiceAccount, cr *argoproj.ClusterArgoCD, scheme *runtime.Scheme) error {
 	clusterRoleBinding := buildClusterRoleBinding(compName, cr)
 	expectedSubjects := buildSubjects(sa, cr)
 	expectedRoleRef := buildRoleRef(generateAgentResourceName(cr.Name+"-"+cr.Namespace, compName), "ClusterRole")
-
-	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
 
 	// Check if the ClusterRoleBinding already exists
 	exists := true
@@ -113,7 +111,7 @@ func ReconcilePrincipalClusterRoleBinding(client client.Client, compName string,
 
 	// If ClusterRoleBinding exists, handle updates or deletion
 	if exists {
-		if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() || !allowed {
+		if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
 			argoutil.LogResourceDeletion(log, clusterRoleBinding, "principal clusterRoleBinding is being deleted as principal is disabled")
 			if err := client.Delete(context.TODO(), clusterRoleBinding); err != nil {
 				return fmt.Errorf("failed to delete principal clusterRoleBinding %s: %v", clusterRoleBinding.Name, err)
@@ -136,7 +134,7 @@ func ReconcilePrincipalClusterRoleBinding(client client.Client, compName string,
 	}
 
 	// If ClusterRoleBinding doesn't exist and principal is disabled, nothing to do
-	if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() || !allowed {
+	if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
 		return nil
 	}
 
@@ -152,7 +150,7 @@ func ReconcilePrincipalClusterRoleBinding(client client.Client, compName string,
 	return nil
 }
 
-func buildSubjects(sa *corev1.ServiceAccount, cr *argoproj.ArgoCD) []v1.Subject {
+func buildSubjects(sa *corev1.ServiceAccount, cr *argoproj.ClusterArgoCD) []v1.Subject {
 	return []v1.Subject{
 		{
 			Kind:      v1.ServiceAccountKind,
@@ -170,7 +168,7 @@ func buildRoleRef(name, kind string) v1.RoleRef {
 	}
 }
 
-func buildRoleBinding(compName string, cr *argoproj.ArgoCD) *v1.RoleBinding {
+func buildRoleBinding(compName string, cr *argoproj.ClusterArgoCD) *v1.RoleBinding {
 	return &v1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      generateAgentResourceName(cr.Name, compName),
@@ -180,7 +178,7 @@ func buildRoleBinding(compName string, cr *argoproj.ArgoCD) *v1.RoleBinding {
 	}
 }
 
-func buildClusterRoleBinding(compName string, cr *argoproj.ArgoCD) *v1.ClusterRoleBinding {
+func buildClusterRoleBinding(compName string, cr *argoproj.ClusterArgoCD) *v1.ClusterRoleBinding {
 	return &v1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   generateAgentResourceName(cr.Name+"-"+cr.Namespace, compName),

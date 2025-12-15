@@ -214,25 +214,7 @@ rules:
   - '*'
 ```
 
-## Cluster Scoped Instance
 
-The Argo CD instance created above can also be used to manage the cluster scoped resources by adding the namespace of the Argo CD instance to the `ARGOCD_CLUSTER_CONFIG_NAMESPACES` environment variable of subscription resource as shown below.
-
-```yml
-apiVersion: operators.coreos.com/v1alpha1
-kind: Subscription
-metadata:
-  name: argocd-operator
-spec:
-  config:
-   env: 
-    - name: ARGOCD_CLUSTER_CONFIG_NAMESPACES
-      value: <list of namespaces of cluster-scoped Argo CD instances>
-  channel: alpha
-  name: argocd-operator
-  source: argocd-catalog
-  sourceNamespace: olm
-```
 
 ### In-built permissions for cluster configuration
 

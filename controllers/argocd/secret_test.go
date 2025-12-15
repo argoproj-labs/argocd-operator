@@ -563,56 +563,6 @@ func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 	})
 }
 
-func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCDInNamespace("argocd-cluster-permissions-test")
-
-	resObjs := []client.Object{a}
-	subresObjs := []client.Object{a}
-	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
-
-	assert.NoError(t, createNamespace(r, a.Namespace, ""))
-
-	testSecret := argoutil.NewSecretWithSuffix(a, "default-cluster-config")
-	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
-	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
-	assert.Error(t, r.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
-	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret).Error(), "not found")
-
-	assert.NoError(t, r.reconcileClusterPermissionsSecret(a))
-	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
-	assert.Equal(t, string(testSecret.Data["namespaces"]), a.Namespace)
-
-	want := "argocd-cluster-permissions-test,someRandomNamespace"
-	testSecret.Data["namespaces"] = []byte("someRandomNamespace")
-	err := r.Update(context.TODO(), testSecret)
-	assert.NoError(t, err)
-
-	// reconcile to check namespace with the label gets added
-	assert.NoError(t, r.reconcileClusterPermissionsSecret(a))
-	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
-	assert.Equal(t, string(testSecret.Data["namespaces"]), want)
-
-	assert.NoError(t, createNamespace(r, "xyz", a.Namespace))
-	want = "argocd-cluster-permissions-test,someRandomNamespace,xyz"
-	// reconcile to check namespace with the label gets added
-	assert.NoError(t, r.reconcileClusterPermissionsSecret(a))
-	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
-	assert.Equal(t, string(testSecret.Data["namespaces"]), want)
-
-	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
-
-	assert.NoError(t, r.reconcileClusterPermissionsSecret(a))
-	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
-	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
-	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
-	assert.Nil(t, r.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
-	assert.True(t, argoutil.IsTrackedByOperator(testSecret.Labels))
-}
-
 func TestGenerateSortedManagedNamespaceListForArgoCDCR(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(func(cr *argoproj.ArgoCD) {
