@@ -30,7 +30,7 @@ import (
 )
 
 func init() {
-	SchemeBuilder.Register(&ArgoCD{}, &ArgoCDList{})
+	SchemeBuilder.Register(&ArgoCD{}, &ArgoCDList{}, &ClusterArgoCD{}, &ClusterArgoCDList{})
 }
 
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
@@ -200,6 +200,8 @@ type ArgoCDApplicationSet struct {
 	Enabled *bool `json:"enabled,omitempty"`
 
 	// SourceNamespaces defines the namespaces applicationset resources are allowed to be created in
+	// Deprecated: This field is deprecated for namespace-scoped ArgoCD instances and will be removed in a future release.
+	// Use ClusterArgoCD for cluster-scoped instances that support cross-namespace application management.
 	SourceNamespaces []string `json:"sourceNamespaces,omitempty"`
 
 	// SCMProviders defines the list of allowed custom SCM provider API URLs
@@ -412,6 +414,8 @@ type ArgoCDNotifications struct {
 	Enabled bool `json:"enabled"`
 
 	// SourceNamespaces is a list of namespaces from which the notifications controller will watch for ArgoCD Notification resources.
+	// Deprecated: This field is deprecated for namespace-scoped ArgoCD instances and will be removed in a future release.
+	// Use ClusterArgoCD for cluster-scoped instances that support cross-namespace application management.
 	SourceNamespaces []string `json:"sourceNamespaces,omitempty"`
 
 	// Env let you specify environment variables for Notifications pods
@@ -985,6 +989,8 @@ type ArgoCDSpec struct {
 	Server ArgoCDServerSpec `json:"server,omitempty"`
 
 	// SourceNamespaces defines the namespaces application resources are allowed to be created in
+	// Deprecated: This field is deprecated for namespace-scoped ArgoCD instances and will be removed in a future release.
+	// Use ClusterArgoCD for cluster-scoped instances that support cross-namespace application management.
 	SourceNamespaces []string `json:"sourceNamespaces,omitempty"`
 
 	// SSO defines the Single Sign-on configuration for Argo CD
@@ -1019,6 +1025,8 @@ type ArgoCDSpec struct {
 	CmdParams map[string]string `json:"cmdParams,omitempty"`
 
 	// ArgoCDAgent defines configurations for the ArgoCD Agent component.
+	// Deprecated: This field is deprecated for namespace-scoped ArgoCD instances and will be removed in a future release.
+	// Use ClusterArgoCD for cluster-scoped instances that support cross-namespace application management.
 	ArgoCDAgent *ArgoCDAgentSpec `json:"argoCDAgent,omitempty"`
 
 	// NamespaceManagement defines the list of namespaces that Argo CD is allowed to manage.
