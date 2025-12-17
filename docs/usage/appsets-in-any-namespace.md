@@ -14,7 +14,9 @@ To manage the `ApplicationSet` resources in non-control plane namespaces i.e out
 
 ## Enable ApplicationSets in a namespace
 
-To enable this feature in a namespace, add the namespace name under `.spec.applicationSet.sourceNamespaces` field in ArgoCD CR.
+To enable this feature in a namespace, add the namespace name under `.spec.applicationSet.sourceNamespaces` field in ArgoCD CR. This field supports wildcard patterns, allowing flexible and dynamic namespace configurations.
+
+### Enable ApplicationSets in a specific namespace
 
 For example, following configuration will allow `example` Argo CD instance to create & manage `ApplicationSet` resource in `foo` namespace. 
 ```yaml
@@ -28,7 +30,37 @@ spec:
       - foo
 ```
 
-As of now, wildcards are not supported in `.spec.applicationSet.sourceNamespaces`. 
+### Enable ApplicationSets in namespaces matching a glob pattern
+
+You can use wildcard patterns to automatically provision ApplicationSet permissions in all namespaces that match the pattern:
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example
+spec:
+  applicationSet:
+    sourceNamespaces:
+      - team-*
+```
+
+In this example, permissions are granted to namespaces matching the pattern `team-*`, such as `team-1`, `team-2`, `team-frontend`, etc. The Operator will automatically create the necessary RBAC permissions in all existing namespaces that match the pattern, and will continue to provision permissions for newly created namespaces that match the pattern.
+
+### Enable ApplicationSets in all namespaces
+
+You can use the `*` wildcard to enable ApplicationSets in all namespaces:
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example
+spec:
+  applicationSet:
+    sourceNamespaces:
+      - '*'
+``` 
 
 !!! important 
     Ensure that [Apps in Any Namespace](./apps-in-any-namespace.md) is enabled on target namespace i.e the target namespace name is part of `.spec.sourceNamespaces` field in ArgoCD CR.
