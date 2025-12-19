@@ -32,6 +32,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/argoproj/argo-cd/v3/util/glob"
+
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
@@ -70,27 +72,31 @@ func (r *ReconcileArgoCD) getArgoApplicationSetCommand(cr *argoproj.ArgoCD) []st
 	if argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace) {
 
 		// appset source namespaces should be subset of apps source namespaces
-		appsetsSourceNamespaces := []string{}
-		appsNamespaces, err := r.getSourceNamespaces(cr)
-		if err == nil {
-			for _, ns := range cr.Spec.ApplicationSet.SourceNamespaces {
-				if contains(appsNamespaces, ns) {
-					appsetsSourceNamespaces = append(appsetsSourceNamespaces, ns)
-				} else {
-					log.V(1).Info(fmt.Sprintf("Apps in target sourceNamespace %s is not enabled, thus skipping the namespace in deployment command.", ns))
+		appsetsSourceNamespacesExpanded, err := r.getApplicationSetSourceNamespaces(cr)
+		if err != nil {
+			log.Error(err, "failed to getting ApplicationSet source namespaces")
+		} else {
+			appsNamespaces, err := r.getSourceNamespaces(cr)
+			if err == nil {
+				appsetsSourceNamespaces := []string{}
+				for _, ns := range appsetsSourceNamespacesExpanded {
+					if contains(appsNamespaces, ns) {
+						appsetsSourceNamespaces = append(appsetsSourceNamespaces, ns)
+					} else {
+						log.V(1).Info(fmt.Sprintf("Apps in target sourceNamespace %s is not enabled, thus skipping the namespace in deployment command.", ns))
+					}
+				}
+				if len(appsetsSourceNamespaces) > 0 {
+					cmd = append(cmd, "--applicationset-namespaces", fmt.Sprint(strings.Join(appsetsSourceNamespaces, ",")))
+				}
+
+				// appset in any ns is enabled and no scmProviders allow list is specified,
+				// disables scm & PR generators to prevent potential security issues
+				// https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/Appset-Any-Namespace/#scm-providers-secrets-consideration
+				if len(appsetsSourceNamespaces) > 0 && (len(cr.Spec.ApplicationSet.SCMProviders) <= 0) {
+					cmd = append(cmd, "--enable-scm-providers=false")
 				}
 			}
-		}
-
-		if len(appsetsSourceNamespaces) > 0 {
-			cmd = append(cmd, "--applicationset-namespaces", fmt.Sprint(strings.Join(appsetsSourceNamespaces, ",")))
-		}
-
-		// appset in any ns is enabled and no scmProviders allow list is specified,
-		// disables scm & PR generators to prevent potential security issues
-		// https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/Appset-Any-Namespace/#scm-providers-secrets-consideration
-		if len(appsetsSourceNamespaces) > 0 && (len(cr.Spec.ApplicationSet.SCMProviders) <= 0) {
-			cmd = append(cmd, "--enable-scm-providers=false")
 		}
 	}
 
@@ -653,14 +659,20 @@ func (r *ReconcileArgoCD) reconcileApplicationSetSourceNamespacesResources(cr *a
 	}
 
 	// create resources for each appset source namespace
-	for _, sourceNamespace := range cr.Spec.ApplicationSet.SourceNamespaces {
+	appsetsSourceNamespacesExpanded, err := r.getApplicationSetSourceNamespaces(cr)
+	if err != nil {
+		return fmt.Errorf("failed getting ApplicationSet source namespaces: %w", err)
+	}
 
-		// source ns should be part of app-in-any-ns
-		appsNamespaces, err := r.getSourceNamespaces(cr)
-		if err != nil {
-			reconciliationErrors = append(reconciliationErrors, err)
-			continue
-		}
+	// source ns should be part of app-in-any-ns
+	appsNamespaces, err := r.getSourceNamespaces(cr)
+	if err != nil {
+		return fmt.Errorf("failed to get apps source namespaces: %w", err)
+	}
+
+	// create resources for each appset source namespace (after wildcard expansion)
+	for _, sourceNamespace := range appsetsSourceNamespacesExpanded {
+		// Only process namespaces that are also in apps source namespaces
 		if !contains(appsNamespaces, sourceNamespace) {
 			log.Info(fmt.Sprintf("skipping reconciliation of resources for sourceNamespace %s as Apps in target sourceNamespace is not enabled", sourceNamespace))
 			continue
@@ -986,17 +998,16 @@ func (r *ReconcileArgoCD) removeUnmanagedApplicationSetSourceNamespaceResources(
 
 			if cr.Spec.ApplicationSet != nil && cr.GetDeletionTimestamp() == nil {
 
-				// namespace is valid if it's mentioend in cr.Spec.ApplicationSet.SourceNamespaces AND cr.Spec.SourceNamespaces
-				//
+				// namespace is valid if it matches any pattern in cr.Spec.ApplicationSet.SourceNamespaces AND is in cr.Spec.SourceNamespaces
 				appsNamespaces, err := r.getSourceNamespaces(cr)
 				if err != nil {
 					return err
 				}
-				for _, namespace := range cr.Spec.ApplicationSet.SourceNamespaces {
+				// Check if the namespace matches any of the ApplicationSet source namespace patterns
+				if glob.MatchStringInList(cr.Spec.ApplicationSet.SourceNamespaces, appsetsInAnyNamespaceLabelledNS, glob.REGEXP) {
 					// appset ns should be part of apps ns
-					if namespace == appsetsInAnyNamespaceLabelledNS && contains(appsNamespaces, namespace) {
+					if contains(appsNamespaces, appsetsInAnyNamespaceLabelledNS) {
 						managedNamespace = true
-						break
 					}
 				}
 			}
@@ -1170,10 +1181,25 @@ func (r *ReconcileArgoCD) reconcileSourceNamespaceRoleBinding(roleBinding v1.Rol
 	return nil
 }
 
-// getApplicationSetSourceNamespaces return list of namespaces from .spec.ApplicationSet.SourceNamespaces
-func (r *ReconcileArgoCD) getApplicationSetSourceNamespaces(cr *argoproj.ArgoCD) []string {
-	if cr.Spec.ApplicationSet != nil {
-		return cr.Spec.ApplicationSet.SourceNamespaces
+// getApplicationSetSourceNamespaces returns the list of actual namespaces that match the patterns
+// specified in .spec.ApplicationSet.SourceNamespaces. It supports wildcard patterns (e.g., team-*).
+func (r *ReconcileArgoCD) getApplicationSetSourceNamespaces(cr *argoproj.ArgoCD) ([]string, error) {
+	if cr.Spec.ApplicationSet == nil {
+		return []string(nil), nil
 	}
-	return []string(nil)
+
+	sourceNamespaces := []string{}
+	namespaces := &corev1.NamespaceList{}
+
+	if err := r.List(context.TODO(), namespaces, &client.ListOptions{}); err != nil {
+		return nil, err
+	}
+
+	for _, namespace := range namespaces.Items {
+		if glob.MatchStringInList(cr.Spec.ApplicationSet.SourceNamespaces, namespace.Name, glob.REGEXP) {
+			sourceNamespaces = append(sourceNamespaces, namespace.Name)
+		}
+	}
+
+	return sourceNamespaces, nil
 }
