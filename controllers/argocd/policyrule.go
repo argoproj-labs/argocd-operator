@@ -291,6 +291,36 @@ func policyRuleForNotificationsController() []v1.PolicyRule {
 	}
 }
 
+func policyRuleForNotificationsControllerClusterRole() []v1.PolicyRule {
+	return []v1.PolicyRule{
+		{
+			APIGroups: []string{
+				"argoproj.io",
+			},
+			Resources: []string{
+				"applications",
+			},
+			Verbs: []string{
+				"list",
+				"watch",
+			},
+		},
+		{
+			APIGroups: []string{
+				"",
+			},
+			Resources: []string{
+				"configmaps",
+				"secrets",
+			},
+			Verbs: []string{
+				"list",
+				"watch",
+			},
+		},
+	}
+}
+
 func policyRuleForServerApplicationSourceNamespaces() []v1.PolicyRule {
 	return []v1.PolicyRule{
 		{
@@ -308,20 +338,6 @@ func policyRuleForServerApplicationSourceNamespaces() []v1.PolicyRule {
 				"update",
 				"watch",
 				"delete",
-			},
-		},
-		{
-			APIGroups: []string{
-				"batch",
-			},
-			Resources: []string{
-				"jobs",
-				"cronjobs",
-				"cronjobs/finalizers",
-			},
-			Verbs: []string{
-				"create",
-				"update",
 			},
 		},
 	}
@@ -684,6 +700,16 @@ func policyRuleForRoleForImageUpdaterController() []v1.PolicyRule {
 				"watch",
 			},
 		},
+		{
+			APIGroups: []string{""},
+			Resources: []string{
+				"events",
+			},
+			Verbs: []string{
+				"create",
+				"patch",
+			},
+		},
 	}
 }
 
@@ -754,6 +780,7 @@ func policyRuleForClusterRoleForImageUpdaterController() []v1.PolicyRule {
 				"list",
 				"patch",
 				"update",
+				"watch",
 			},
 		},
 	}

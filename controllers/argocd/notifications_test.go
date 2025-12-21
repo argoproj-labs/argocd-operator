@@ -3,6 +3,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -142,14 +143,92 @@ func TestReconcileNotifications_CreateRoleBinding(t *testing.T) {
 	assert.True(t, errors.IsNotFound(err))
 }
 
+func TestReconcileNotifications_CreateClusterRole(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCDInNamespace("noti-test", func(a *argoproj.ArgoCD) {
+		a.Spec.Notifications.Enabled = true
+	})
+	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	_, err := r.reconcileNotificationsClusterRole(a)
+	assert.NoError(t, err)
+
+	testClusterRole := &rbacv1.ClusterRole{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
+		Name: GenerateUniqueResourceName(common.ArgoCDNotificationsControllerComponent, a),
+	}, testClusterRole))
+
+	desiredPolicyRules := policyRuleForNotificationsControllerClusterRole()
+
+	assert.Equal(t, desiredPolicyRules, testClusterRole.Rules)
+
+	a.Spec.Notifications.Enabled = false
+	_, err = r.reconcileNotificationsClusterRole(a)
+	assert.NoError(t, err)
+
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name: GenerateUniqueResourceName(common.ArgoCDNotificationsControllerComponent, a),
+	}, testClusterRole)
+	assert.True(t, errors.IsNotFound(err))
+}
+
+func TestReconcileNotifications_CreateClusterRoleBinding(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCDInNamespace("noti-test", func(a *argoproj.ArgoCD) {
+		a.Spec.Notifications.Enabled = true
+	})
+	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	clusterRole := &rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: "cluster-role-name"}}
+	sa := &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa-name", Namespace: a.Namespace}}
+
+	err := r.reconcileNotificationsClusterRoleBinding(a, clusterRole, sa)
+	assert.NoError(t, err)
+
+	clusterRoleBinding := &rbacv1.ClusterRoleBinding{}
+	assert.NoError(t, r.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name: GenerateUniqueResourceName(common.ArgoCDNotificationsControllerComponent, a),
+		},
+		clusterRoleBinding))
+
+	assert.Equal(t, clusterRoleBinding.RoleRef.Name, clusterRole.Name)
+	assert.Equal(t, clusterRoleBinding.RoleRef.Kind, "ClusterRole")
+	assert.Equal(t, clusterRoleBinding.Subjects[0].Name, sa.Name)
+	assert.Equal(t, clusterRoleBinding.Subjects[0].Namespace, sa.Namespace)
+
+	a.Spec.Notifications.Enabled = false
+	err = r.reconcileNotificationsClusterRoleBinding(a, clusterRole, sa)
+	assert.NoError(t, err)
+
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name: GenerateUniqueResourceName(common.ArgoCDNotificationsControllerComponent, a),
+	}, clusterRoleBinding)
+	assert.True(t, errors.IsNotFound(err))
+}
+
 func TestReconcileNotifications_Deployments_Command(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
-		name           string
-		argocdSpec     argoproj.ArgoCDSpec
-		expectedCmd    []string
-		notExpectedCmd []string
+		name                  string
+		argocdSpec            argoproj.ArgoCDSpec
+		expectedCmd           []string
+		notExpectedCmd        []string
+		namespaceScopedArgoCD bool
 	}{
 		{
 			name: "Notifications contained in spec.sourceNamespaces",
@@ -186,12 +265,29 @@ func TestReconcileNotifications_Deployments_Command(t *testing.T) {
 			expectedCmd:    []string{},
 			notExpectedCmd: []string{"--application-namespaces", "foo", "--self-service-notification-enabled", "true"},
 		},
+		{
+			name:                  "Namespace scoped Argo CD, no application namespaces arg",
+			namespaceScopedArgoCD: true,
+			argocdSpec: argoproj.ArgoCDSpec{
+				Notifications: argoproj.ArgoCDNotifications{
+					Enabled:          true,
+					SourceNamespaces: []string{"foo"},
+				},
+				SourceNamespaces: []string{"foo"},
+			},
+			expectedCmd:    []string{},
+			notExpectedCmd: []string{"--application-namespaces", "foo", "--self-service-notification-enabled", "true"},
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
 			a := makeTestArgoCD()
+			os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
+			if test.namespaceScopedArgoCD {
+				os.Unsetenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")
+			}
 			ns1 := v1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "foo",
@@ -759,6 +855,8 @@ func TestNotifications_removeUnmanagedNotificationsSourceNamespaceResources(t *t
 	ns1 := "foo"
 	ns2 := "bar"
 	a := makeTestArgoCD()
+	allowClusterConfigNamespaces(t, a.Namespace)
+
 	a.Spec = argoproj.ArgoCDSpec{
 		SourceNamespaces: []string{ns1, ns2},
 		Notifications: argoproj.ArgoCDNotifications{
@@ -783,6 +881,10 @@ func TestNotifications_removeUnmanagedNotificationsSourceNamespaceResources(t *t
 
 	// create resources
 	err = r.reconcileNotificationsSourceNamespacesResources(a)
+	assert.NoError(t, err)
+
+	// populate ManagedNotificationsSourceNamespaces to track managed namespaces
+	err = r.setManagedNotificationsSourceNamespaces(a)
 	assert.NoError(t, err)
 
 	// remove notifications ns
@@ -855,6 +957,7 @@ func TestReconcileNotifications_NotificationsConfigurationInSourceNamespaceWhenD
 		a.Spec.Notifications.SourceNamespaces = []string{sourceNamespace}
 		a.Spec.SourceNamespaces = []string{sourceNamespace}
 	})
+	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
 
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
@@ -891,6 +994,7 @@ func TestReconcileNotifications_SourceNamespaceResourcesIncludeNotificationsConf
 		a.Spec.Notifications.SourceNamespaces = []string{sourceNamespace}
 		a.Spec.SourceNamespaces = []string{sourceNamespace}
 	})
+	allowClusterConfigNamespaces(t, a.Namespace)
 
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}

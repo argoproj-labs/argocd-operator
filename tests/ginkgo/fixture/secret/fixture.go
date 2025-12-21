@@ -98,6 +98,16 @@ func HaveDataKeyValue(key string, value []byte) matcher.GomegaMatcher {
 
 }
 
+// NotHaveDataKey returns true if Secret's .data 'key' does not exist, false otherwise
+func NotHaveDataKey(key string) matcher.GomegaMatcher {
+	return fetchSecret(func(secret *corev1.Secret) bool {
+		_, exists := secret.Data[key]
+		GinkgoWriter.Println("NotHaveDataKey - key:", key, "Exists:", exists)
+		return !exists
+	})
+
+}
+
 // This is intentionally NOT exported, for now. Create another function in this file/package that calls this function, and export that.
 func fetchSecret(f func(*corev1.Secret) bool) matcher.GomegaMatcher {
 

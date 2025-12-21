@@ -31,6 +31,11 @@ The operator creates the `argocd-notifications-cm` configmap which is populated 
 
 Instructions for appropriate configuration of these resources can be found within [upstream documentation](https://argo-cd.readthedocs.io/en/stable/operator-manual/notifications/).
 
+## Notifications in Any Namespace
+
+By default, Argo CD Notifications uses a centralized configuration model where all notification settings are managed in the main Argo CD namespace (typically `argocd`). The operator supports delegating notification configuration to specific namespaces, allowing teams to manage their own notification settings.
+
+For detailed information on enabling and using notifications in any namespace, see the [Notifications in Any Namespace](./notifications-in-any-namespace.md) documentation.
 
 ## Uninstallation
 

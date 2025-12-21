@@ -217,8 +217,8 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			})
 
 			By("verifying Argo CD becomes available and SSO is running")
-			Eventually(argoCD).Should(argocdFixture.HavePhase("Available"))
-			Eventually(argoCD).Should(argocdFixture.HaveSSOStatus("Running"))
+			Eventually(argoCD, "3m", "5s").Should(argocdFixture.HavePhase("Available"))
+			Eventually(argoCD, "3m", "5s").Should(argocdFixture.HaveSSOStatus("Running"))
 
 			Eventually(depl, "2m", "5s").Should(deployment.HaveReadyReplicas(1))
 

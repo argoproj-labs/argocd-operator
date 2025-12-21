@@ -102,7 +102,7 @@ func TestReconcileArgoCD_reconcileRole_for_new_namespace(t *testing.T) {
 
 func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
+	a := makeTestArgoCDInNamespace("argocd-cluster-role-test")
 
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
@@ -198,6 +198,7 @@ func TestReconcileArgoCD_reconcileRoleForApplicationSourceNamespaces(t *testing.
 	logf.SetLogger(ZapLogger(true))
 	sourceNamespace := "newNamespaceTest"
 	a := makeTestArgoCD()
+	allowClusterConfigNamespaces(t, a.Namespace)
 	a.Spec = argoproj.ArgoCDSpec{
 		SourceNamespaces: []string{
 			sourceNamespace,

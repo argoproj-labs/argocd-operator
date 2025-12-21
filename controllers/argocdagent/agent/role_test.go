@@ -259,6 +259,7 @@ func TestReconcileAgentClusterRoles_ClusterRoleDoesNotExist_AgentEnabled(t *test
 	// Expected behavior: Should create the ClusterRole with expected rules
 
 	cr := makeTestArgoCD(withAgentEnabled(true))
+	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", cr.Namespace)
 
 	resObjs := []client.Object{cr}
 	sch := makeTestReconcilerScheme()
@@ -323,6 +324,7 @@ func TestReconcileAgentClusterRoles_ClusterRoleExists_AgentEnabled_SameRules(t *
 	// Expected behavior: Should do nothing (no update)
 
 	cr := makeTestArgoCD(withAgentEnabled(true))
+	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", cr.Namespace)
 
 	expectedRules := buildPolicyRuleForClusterRole()
 	existingClusterRole := &v1.ClusterRole{
@@ -355,6 +357,7 @@ func TestReconcileAgentClusterRoles_ClusterRoleExists_AgentEnabled_DifferentRule
 	// Expected behavior: Should update the ClusterRole with new rules
 
 	cr := makeTestArgoCD(withAgentEnabled(true))
+	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", cr.Namespace)
 
 	// Create existing ClusterRole with different rules
 	existingClusterRole := &v1.ClusterRole{

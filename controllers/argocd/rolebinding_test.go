@@ -300,6 +300,7 @@ func TestReconcileArgoCD_reconcileRoleBinding_forSourceNamespaces(t *testing.T) 
 	// Use a long namespace to test the truncation fix
 	sourceNamespace := "grp-bk-time-deposit-servicing-activity-topic-streaming-12345678"
 	a := makeTestArgoCD()
+	allowClusterConfigNamespaces(t, a.Namespace)
 	a.Spec = argoproj.ArgoCDSpec{
 		SourceNamespaces: []string{
 			sourceNamespace,

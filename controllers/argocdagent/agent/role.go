@@ -90,6 +90,8 @@ func ReconcileAgentClusterRoles(client client.Client, compName string, cr *argop
 	clusterRole := buildClusterRole(compName, cr)
 	expectedPolicyRule := buildPolicyRuleForClusterRole()
 
+	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
+
 	// Check if the ClusterRole already exists
 	exists := true
 	if err := client.Get(context.TODO(), types.NamespacedName{Name: clusterRole.Name}, clusterRole); err != nil {
@@ -101,7 +103,7 @@ func ReconcileAgentClusterRoles(client client.Client, compName string, cr *argop
 
 	// If ClusterRole exists, handle updates or deletion
 	if exists {
-		if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
+		if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() || !allowed {
 			argoutil.LogResourceDeletion(log, clusterRole, "agent clusterRole is being deleted as agent is disabled")
 			if err := client.Delete(context.TODO(), clusterRole); err != nil {
 				return clusterRole, fmt.Errorf("failed to delete agent clusterRole %s: %v", clusterRole.Name, err)
@@ -120,7 +122,7 @@ func ReconcileAgentClusterRoles(client client.Client, compName string, cr *argop
 	}
 
 	// If ClusterRole doesn't exist and agent is disabled, nothing to do
-	if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
+	if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() || !allowed {
 		return clusterRole, nil
 	}
 

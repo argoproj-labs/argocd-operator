@@ -23,6 +23,8 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	crdv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 
+	imageUpdater "github.com/argoproj-labs/argocd-image-updater/api/v1alpha1"
+
 	argov1alpha1api "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 
@@ -119,6 +121,10 @@ func getKubeClient(config *rest.Config) (client.Client, *runtime.Scheme, error) 
 	}
 
 	if err := batchv1.AddToScheme(scheme); err != nil {
+		return nil, nil, err
+	}
+
+	if err := imageUpdater.AddToScheme(scheme); err != nil {
 		return nil, nil, err
 	}
 

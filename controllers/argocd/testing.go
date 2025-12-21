@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -94,6 +95,19 @@ func makeTestArgoCD(opts ...argoCDOpt) *argoproj.ArgoCD {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testArgoCDName,
 			Namespace: testNamespace,
+		},
+	}
+	for _, o := range opts {
+		o(a)
+	}
+	return a
+}
+
+func makeTestArgoCDInNamespace(ns string, opts ...argoCDOpt) *argoproj.ArgoCD {
+	a := &argoproj.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testArgoCDName,
+			Namespace: ns,
 		},
 	}
 	for _, o := range opts {
@@ -301,4 +315,14 @@ func merge(base map[string]string, diff map[string]string) map[string]string {
 	}
 
 	return result
+}
+func allowClusterConfigNamespaces(t *testing.T, namespaces ...string) {
+	t.Helper()
+
+	if len(namespaces) == 0 {
+		t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", "")
+		return
+	}
+
+	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", strings.Join(namespaces, ","))
 }

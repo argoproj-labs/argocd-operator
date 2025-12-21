@@ -565,7 +565,7 @@ func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 
 func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
+	a := makeTestArgoCDInNamespace("argocd-cluster-permissions-test")
 
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
@@ -586,7 +586,7 @@ func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
 	assert.Equal(t, string(testSecret.Data["namespaces"]), a.Namespace)
 
-	want := "argocd,someRandomNamespace"
+	want := "argocd-cluster-permissions-test,someRandomNamespace"
 	testSecret.Data["namespaces"] = []byte("someRandomNamespace")
 	err := r.Update(context.TODO(), testSecret)
 	assert.NoError(t, err)
@@ -597,7 +597,7 @@ func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 	assert.Equal(t, string(testSecret.Data["namespaces"]), want)
 
 	assert.NoError(t, createNamespace(r, "xyz", a.Namespace))
-	want = "argocd,someRandomNamespace,xyz"
+	want = "argocd-cluster-permissions-test,someRandomNamespace,xyz"
 	// reconcile to check namespace with the label gets added
 	assert.NoError(t, r.reconcileClusterPermissionsSecret(a))
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
