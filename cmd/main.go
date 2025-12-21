@@ -295,10 +295,15 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "NotificationsConfiguration")
 		os.Exit(1)
 	}
+	// Register validation webhook for ArgoCD v1beta1
+	if err = v1beta1.SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create validation webhook", "webhook", "ArgoCD")
+		os.Exit(1)
+	}
 
-	// Start webhook only if ENABLE_CONVERSION_WEBHOOK is set
+	// Start conversion webhook only if ENABLE_CONVERSION_WEBHOOK is set
 	if strings.EqualFold(os.Getenv("ENABLE_CONVERSION_WEBHOOK"), "true") {
-		if err = (&v1beta1.ArgoCD{}).SetupWebhookWithManager(mgr); err != nil {
+		if err = v1beta1.SetupWebhookWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "ArgoCD")
 			os.Exit(1)
 		}
