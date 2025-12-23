@@ -1013,6 +1013,108 @@ func TestReconcileArgoCD_reconcileRedisHAProxyDeployment_ModifyContainerSpec(t *
 	})
 }
 
+func TestReconcileArgoCD_reconcileRedisHAProxyDeployment_replicas(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	var (
+		oneReplica                 int32 = 1
+		twoReplicas                int32 = 2
+		argocdDefaultRedisReplicas       = common.ArgoCDDefaultRedisHAReplicas
+	)
+	tests := []struct {
+		name             string
+		initialReplicas  *int32
+		expectedReplicas *int32
+		description      string
+	}{
+		{
+			name:             "deployment with 1 replica should be updated to 3 replicas",
+			initialReplicas:  &oneReplica,
+			expectedReplicas: &argocdDefaultRedisReplicas,
+			description:      "simulates upgrade where deployment had 1 replica",
+		},
+		{
+			name:             "deployment with 2 replicas should be updated to 3 replicas",
+			initialReplicas:  &twoReplicas,
+			expectedReplicas: &argocdDefaultRedisReplicas,
+			description:      "simulates deployment with incorrect replica count",
+		},
+		{
+			name:             "deployment with nil replicas should be set to 3 replicas",
+			initialReplicas:  nil,
+			expectedReplicas: &argocdDefaultRedisReplicas,
+			description:      "simulates deployment with unset replica count",
+		},
+		{
+			name:             "deployment with 3 replicas should remain 3 replicas",
+			initialReplicas:  &argocdDefaultRedisReplicas,
+			expectedReplicas: &argocdDefaultRedisReplicas,
+			description:      "simulates deployment already at correct replica count",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.HA.Enabled = true
+			})
+
+			// Create an existing deployment with the initial replica count
+			existingDeployment := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      a.Name + "-redis-ha-haproxy",
+					Namespace: a.Namespace,
+					Labels: map[string]string{
+						common.ArgoCDKeyName:      a.Name + "-redis-ha-haproxy",
+						common.ArgoCDKeyComponent: "redis",
+						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+						common.ArgoCDKeyManagedBy: a.Namespace,
+					},
+				},
+				Spec: appsv1.DeploymentSpec{
+					Replicas: test.initialReplicas,
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "haproxy",
+									Image: getRedisHAProxyContainerImage(a),
+								},
+							},
+						},
+					},
+				},
+			}
+
+			resObjs := []client.Object{a, existingDeployment}
+			subresObjs := []client.Object{a, existingDeployment}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			// Reconcile the deployment
+			assert.NoError(t, r.reconcileRedisHAProxyDeployment(a))
+
+			// Verify the replica count was updated correctly
+			deployment := &appsv1.Deployment{}
+			assert.NoError(t, r.Get(
+				context.TODO(),
+				types.NamespacedName{
+					Name:      a.Name + "-redis-ha-haproxy",
+					Namespace: a.Namespace,
+				},
+				deployment))
+
+			if test.expectedReplicas == nil {
+				assert.Nil(t, deployment.Spec.Replicas, test.description)
+			} else {
+				assert.NotNil(t, deployment.Spec.Replicas, "replicas should not be nil")
+				assert.Equal(t, *test.expectedReplicas, *deployment.Spec.Replicas, test.description)
+			}
+		})
+	}
+}
+
 func TestReconcileArgoCD_reconcileRepoDeployment_updatesVolumeMounts(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
