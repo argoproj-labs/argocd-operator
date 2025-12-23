@@ -901,6 +901,14 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 			explanation += "deployment strategy"
 			changed = true
 		}
+		if !reflect.DeepEqual(deploy.Spec.Replicas, existing.Spec.Replicas) {
+			existing.Spec.Replicas = deploy.Spec.Replicas
+			if changed {
+				explanation += ", "
+			}
+			explanation += "replicas"
+			changed = true
+		}
 		if changed {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			return r.Update(context.TODO(), existing)
