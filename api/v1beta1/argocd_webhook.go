@@ -31,9 +31,9 @@ type ArgoCDValidator struct {
 
 var _ admission.CustomValidator = &ArgoCDValidator{}
 
-func SetupWebhookWithManager(mgr ctrl.Manager) error {
+func (r ArgoCD) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(&ArgoCD{}).WithValidator(&ArgoCDValidator{}).
+		For(&r).WithValidator(&ArgoCDValidator{}).
 		Complete()
 }
 
