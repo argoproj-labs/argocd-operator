@@ -13,4 +13,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: quay.io/nittalaakhil/openshift-gitops-operator
-  newTag: v0.0.1
+  newTag: v0.0.9
