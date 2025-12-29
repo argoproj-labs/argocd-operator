@@ -93,7 +93,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 		})
 
-		It("should set ARGOCD_RECONCILIATION_TIMEOUT with timeout.reconciliation value in configmap", func() {
+		It("should set environment variable ARGOCD_RECONCILIATION_TIMEOUT with timeout.reconciliation value in configmap", func() {
 			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 			defer cleanupFunc()
 
