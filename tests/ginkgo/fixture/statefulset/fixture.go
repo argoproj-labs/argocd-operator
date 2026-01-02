@@ -4,6 +4,7 @@ import (
 	"context"
 	"reflect"
 	"strings"
+	"time"
 
 	//lint:ignore ST1001 "This is a common practice in Gomega tests for readability."
 	. "github.com/onsi/ginkgo/v2" //nolint:all
@@ -37,6 +38,16 @@ func Update(obj *appsv1.StatefulSet, modify func(*appsv1.StatefulSet)) {
 		return k8sClient.Update(context.Background(), obj)
 	})
 	Expect(err).ToNot(HaveOccurred())
+}
+
+// Restart triggers a rollout restart by updating the restartedAt annotation
+func Restart(obj *appsv1.StatefulSet) {
+	Update(obj, func(ss *appsv1.StatefulSet) {
+		if ss.Spec.Template.Annotations == nil {
+			ss.Spec.Template.Annotations = make(map[string]string)
+		}
+		ss.Spec.Template.Annotations["kubectl.kubernetes.io/restartedAt"] = time.Now().Format(time.RFC3339)
+	})
 }
 
 func HaveReplicas(replicas int) matcher.GomegaMatcher {
@@ -251,6 +262,35 @@ func HaveContainerWithEnvVar(envKey string, envValue string, containerIndex int)
 				GinkgoWriter.Println("HaveContainerWithEnvVar - Key ", envKey, " Expected:", envValue, "Actual:", env.Value)
 				if env.Value == envValue {
 					return true
+				}
+			}
+		}
+
+		return false
+	})
+}
+
+// HaveContainerWithEnvVarFromConfigMap checks if a container has an env var that references a ConfigMap key
+func HaveContainerWithEnvVarFromConfigMap(envKey string, configMapName string, configMapKey string, containerIndex int) matcher.GomegaMatcher {
+	return fetchStatefulSet(func(ss *appsv1.StatefulSet) bool {
+
+		containers := ss.Spec.Template.Spec.Containers
+
+		if len(containers) <= containerIndex {
+			GinkgoWriter.Println("current container slice has length", len(containers), "index is", containerIndex)
+			return false
+		}
+
+		container := containers[containerIndex]
+
+		for _, env := range container.Env {
+			if env.Name == envKey {
+				if env.ValueFrom != nil && env.ValueFrom.ConfigMapKeyRef != nil {
+					ref := env.ValueFrom.ConfigMapKeyRef
+					GinkgoWriter.Println("HaveContainerWithEnvVarFromConfigMap - Key:", envKey,
+						"Expected ConfigMap:", configMapName, "Key:", configMapKey,
+						"Actual ConfigMap:", ref.Name, "Key:", ref.Key)
+					return ref.Name == configMapName && ref.Key == configMapKey
 				}
 			}
 		}
