@@ -416,6 +416,13 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 						Key:                  "controller.resource.health.persist",
 					},
 				}},
+				{Name: "ARGOCD_RECONCILIATION_TIMEOUT", ValueFrom: &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDConfigMapName},
+						Key:                  common.ArgoCDKeyTimeout,
+						Optional:             boolPtr(true),
+					},
+				}},
 				{Name: "HOME", Value: "/home/argocd"},
 				{Name: "REDIS_PASSWORD", Value: "",
 					ValueFrom: &corev1.EnvVarSource{
@@ -440,6 +447,13 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
 						Key:                  "controller.resource.health.persist",
+					},
+				}},
+				{Name: "ARGOCD_RECONCILIATION_TIMEOUT", ValueFrom: &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDConfigMapName},
+						Key:                  common.ArgoCDKeyTimeout,
+						Optional:             boolPtr(true),
 					},
 				}},
 				{Name: "HOME", Value: "/home/argocd"},
@@ -468,6 +482,13 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 						Key:                  "controller.resource.health.persist",
 					},
 				}},
+				{Name: "ARGOCD_RECONCILIATION_TIMEOUT", ValueFrom: &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDConfigMapName},
+						Key:                  common.ArgoCDKeyTimeout,
+						Optional:             boolPtr(true),
+					},
+				}},
 				{Name: "HOME", Value: "/home/argocd"},
 				{Name: "REDIS_PASSWORD", Value: "",
 					ValueFrom: &corev1.EnvVarSource{
@@ -494,6 +515,13 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
 						Key:                  "controller.resource.health.persist",
+					},
+				}},
+				{Name: "ARGOCD_RECONCILIATION_TIMEOUT", ValueFrom: &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDConfigMapName},
+						Key:                  common.ArgoCDKeyTimeout,
+						Optional:             boolPtr(true),
 					},
 				}},
 				{Name: "HOME", Value: "/home/argocd"},
@@ -610,6 +638,13 @@ func TestReconcileArgoCD_reconcileApplicationController_withEnv(t *testing.T) {
 			ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
 				Key:                  "controller.resource.health.persist",
+			},
+		}},
+		{Name: "ARGOCD_RECONCILIATION_TIMEOUT", ValueFrom: &corev1.EnvVarSource{
+			ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDConfigMapName},
+				Key:                  common.ArgoCDKeyTimeout,
+				Optional:             boolPtr(true),
 			},
 		}},
 		{Name: "CUSTOM_ENV_VAR", Value: "custom-value"},
