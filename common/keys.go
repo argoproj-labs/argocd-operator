@@ -140,6 +140,9 @@ const (
 	// ArgoCDKeyStatusBadgeEnabled is the configuration key for enabling the status badge.
 	ArgoCDKeyStatusBadgeEnabled = "statusbadge.enabled"
 
+	// ArgoCDKeyTimeout is the configuration key for the reconciliation timeout in argocd-cm.
+	ArgoCDKeyTimeout = "timeout.reconciliation"
+
 	// ArgoCDKeyBannerContent is the configuration key for a banner message content.
 	ArgoCDKeyBannerContent = "ui.bannercontent"
 
