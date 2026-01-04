@@ -606,6 +606,21 @@ func getArgoControllerContainerEnv(cr *argoproj.ArgoCD, replicas int32) []corev1
 			Name:  "ARGOCD_RECONCILIATION_TIMEOUT",
 			Value: strconv.FormatInt(int64(cr.Spec.Controller.AppSync.Seconds()), 10) + "s",
 		})
+	} else {
+		// ARGOCD_RECONCILIATION_TIMEOUT is read from argocd-cm ConfigMap (timeout.reconciliation key)
+		// This aligns with upstream ArgoCD behavior where the value is sourced from argocd-cm
+		env = append(env, corev1.EnvVar{
+			Name: "ARGOCD_RECONCILIATION_TIMEOUT",
+			ValueFrom: &corev1.EnvVarSource{
+				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDConfigMapName,
+					},
+					Key:      common.ArgoCDKeyTimeout,
+					Optional: boolPtr(true),
+				},
+			},
+		})
 	}
 
 	env = append(env, corev1.EnvVar{
