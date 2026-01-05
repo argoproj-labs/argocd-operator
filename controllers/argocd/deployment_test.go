@@ -1090,7 +1090,7 @@ func TestReconcileArgoCD_reconcileRedisHAProxyDeployment_replicas(t *testing.T) 
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+			r := makeTestReconciler(cl, sch)
 
 			// Reconcile the deployment
 			assert.NoError(t, r.reconcileRedisHAProxyDeployment(a))
