@@ -1,6 +1,6 @@
+redis_pwd="$(cat /redis-initial-pass/admin.password)"
 response=$(
-  redis-cli \
-    -a "${AUTH}" --no-auth-warning \
+  env REDISCLI_AUTH="${redis_pwd}" redis-cli \
     -h localhost \
     -p 6379 \
 {{- if eq .UseTLS "true"}}

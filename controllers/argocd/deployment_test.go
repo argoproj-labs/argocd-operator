@@ -40,6 +40,18 @@ var (
 		"argocd-dex-server",
 		"argocd-redis",
 		"argocd-server"}
+
+	// TODO: Delete after replaced by volume mounted secret
+	redisPasswordEnvRef = corev1.EnvVar{Name: "REDIS_PASSWORD", Value: "",
+		ValueFrom: &corev1.EnvVarSource{
+			SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "argocd-redis-initial-password",
+				},
+				Key: "admin.password",
+			},
+		},
+	}
 )
 
 type MockTrueFipsChecker struct{}
@@ -1376,18 +1388,7 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 					"--logformat",
 					"text",
 				},
-				Env: []corev1.EnvVar{
-					{Name: "REDIS_PASSWORD", Value: "",
-						ValueFrom: &corev1.EnvVarSource{
-							SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "argocd-redis-initial-password",
-								},
-								Key: "admin.password",
-							},
-						},
-					},
-				},
+				Env: []corev1.EnvVar{redisPasswordEnvRef},
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},
 					{ContainerPort: 8083},
@@ -1878,18 +1879,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 					"--logformat",
 					"text",
 				},
-				Env: []corev1.EnvVar{
-					{Name: "REDIS_PASSWORD", Value: "",
-						ValueFrom: &corev1.EnvVarSource{
-							SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "argocd-redis-initial-password",
-								},
-								Key: "admin.password",
-							},
-						},
-					},
-				},
+				Env: []corev1.EnvVar{redisPasswordEnvRef},
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},
 					{ContainerPort: 8083},
@@ -1974,18 +1964,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 					"--logformat",
 					"text",
 				},
-				Env: []corev1.EnvVar{
-					{Name: "REDIS_PASSWORD", Value: "",
-						ValueFrom: &corev1.EnvVarSource{
-							SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "argocd-redis-initial-password",
-								},
-								Key: "admin.password",
-							},
-						},
-					},
-				},
+				Env: []corev1.EnvVar{redisPasswordEnvRef},
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},
 					{ContainerPort: 8083},

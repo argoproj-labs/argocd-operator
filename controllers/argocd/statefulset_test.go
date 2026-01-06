@@ -424,15 +424,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 					},
 				}},
 				{Name: "HOME", Value: "/home/argocd"},
-				{Name: "REDIS_PASSWORD", Value: "",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "argocd-redis-initial-password",
-							},
-							Key: "admin.password",
-						},
-					}},
+				redisPasswordEnvRef,
 			},
 		},
 		{
@@ -457,15 +449,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 					},
 				}},
 				{Name: "HOME", Value: "/home/argocd"},
-				{Name: "REDIS_PASSWORD", Value: "",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "argocd-redis-initial-password",
-							},
-							Key: "admin.password",
-						},
-					}},
+				redisPasswordEnvRef,
 			},
 		},
 		{
@@ -490,15 +474,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 					},
 				}},
 				{Name: "HOME", Value: "/home/argocd"},
-				{Name: "REDIS_PASSWORD", Value: "",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "argocd-redis-initial-password",
-							},
-							Key: "admin.password",
-						},
-					}},
+				redisPasswordEnvRef,
 			},
 		},
 		{
@@ -525,16 +501,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 					},
 				}},
 				{Name: "HOME", Value: "/home/argocd"},
-				{Name: "REDIS_PASSWORD", Value: "",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "argocd-redis-initial-password",
-							},
-							Key: "admin.password",
-						},
-					},
-				},
+				redisPasswordEnvRef,
 			},
 		},
 	}
@@ -589,15 +556,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withAppSync(t *testing.T
 		}},
 		{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "600s"},
 		{Name: "HOME", Value: "/home/argocd"},
-		{Name: "REDIS_PASSWORD", Value: "",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "argocd-redis-initial-password",
-					},
-					Key: "admin.password",
-				},
-			}},
+		redisPasswordEnvRef,
 	}
 
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
@@ -649,15 +608,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withEnv(t *testing.T) {
 		}},
 		{Name: "CUSTOM_ENV_VAR", Value: "custom-value"},
 		{Name: "HOME", Value: "/home/argocd"},
-		{Name: "REDIS_PASSWORD", Value: "",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "argocd-redis-initial-password",
-					},
-					Key: "admin.password",
-				},
-			}},
+		redisPasswordEnvRef,
 	}
 
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {

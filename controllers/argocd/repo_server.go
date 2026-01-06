@@ -118,7 +118,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 		ValueFrom: &corev1.EnvVarSource{
 			SecretKeyRef: &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: fmt.Sprintf("%s-%s", cr.Name, "redis-initial-password"),
+					Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
 				},
 				Key: "admin.password",
 			},
