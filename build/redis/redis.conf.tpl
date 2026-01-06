@@ -20,7 +20,7 @@ rdbcompression yes
 repl-diskless-sync yes
 save ""
 protected-mode no
-requirepass replace-default-auth
-masterauth replace-default-auth
+requirepass __REPLACE_DEFAULT_AUTH__
+masterauth __REPLACE_DEFAULT_AUTH__
 
 

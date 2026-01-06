@@ -636,15 +636,7 @@ func TestGetArgoApplicationContainerEnv(t *testing.T) {
 
 	sync60s := []corev1.EnvVar{
 		{Name: "HOME", Value: "/home/argocd", ValueFrom: (*corev1.EnvVarSource)(nil)},
-		{Name: "REDIS_PASSWORD", Value: "",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "argocd-redis-initial-password",
-					},
-					Key: "admin.password",
-				},
-			}},
+		redisPasswordEnvRef,
 		{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "60s", ValueFrom: (*corev1.EnvVarSource)(nil)},
 		{Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST", ValueFrom: &corev1.EnvVarSource{
 			ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
