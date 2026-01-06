@@ -591,17 +591,8 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 			MaxSurge: &intstr.IntOrString{IntVal: 0},
 		},
 	}
-	var redisEnv = append(proxyEnvVars(), corev1.EnvVar{
-		Name: "AUTH",
-		ValueFrom: &corev1.EnvVarSource{
-			SecretKeyRef: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
-				},
-				Key: "admin.password",
-			},
-		},
-	})
+
+	var redisEnv = proxyEnvVars()
 
 	deploy.Spec.Replicas = getRedisHAReplicas()
 
@@ -668,6 +659,10 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 			{
 				Name:      common.ArgoCDRedisServerTLSSecretName,
 				MountPath: "/app/config/redis/tls",
+			},
+			{
+				Name:      "redis-initial-pass",
+				MountPath: "/redis-initial-pass",
 			},
 		},
 	}}
@@ -739,7 +734,6 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
-					Optional:   boolPtr(true),
 				},
 			},
 		},

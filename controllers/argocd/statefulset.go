@@ -98,17 +98,7 @@ func newStatefulSetWithSuffix(suffix string, component string, cr *argoproj.Argo
 func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 	ss := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
 
-	redisEnv := append(proxyEnvVars(), corev1.EnvVar{
-		Name: "AUTH",
-		ValueFrom: &corev1.EnvVarSource{
-			SecretKeyRef: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
-				},
-				Key: "admin.password",
-			},
-		},
-	})
+	redisEnv := proxyEnvVars()
 
 	ss.Spec.PodManagementPolicy = appsv1.OrderedReadyPodManagement
 	ss.Spec.Replicas = getRedisHAReplicas()
@@ -209,6 +199,10 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 					Name:      common.ArgoCDRedisServerTLSSecretName,
 					MountPath: "/app/config/redis/tls",
 				},
+				{
+					Name:      "redis-initial-pass",
+					MountPath: "/redis-initial-pass",
+				},
 			},
 		},
 		{
@@ -292,6 +286,10 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 					Name:      common.ArgoCDRedisServerTLSSecretName,
 					MountPath: "/app/config/redis/tls",
 				},
+				{
+					Name:      "redis-initial-pass",
+					MountPath: "/redis-initial-pass",
+				},
 			},
 		},
 	}
@@ -316,17 +314,6 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				Name:  "SENTINEL_ID_2",
 				Value: "2bbec7894d954a8af3bb54d13eaec53cb024e2ca", // TODO: Should this be hard-coded?
 			},
-			{
-				Name: "AUTH",
-				ValueFrom: &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
-						},
-						Key: "admin.password",
-					},
-				},
-			},
 		},
 		Image:           getRedisHAContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
@@ -346,6 +333,10 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 			{
 				Name:      common.ArgoCDRedisServerTLSSecretName,
 				MountPath: "/app/config/redis/tls",
+			},
+			{
+				Name:      "redis-initial-pass",
+				MountPath: "/redis-initial-pass",
 			},
 		},
 	}}
@@ -408,6 +399,14 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
 					Optional:   boolPtr(true),
+				},
+			},
+		},
+		{
+			Name: "redis-initial-pass",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
 				},
 			},
 		},
