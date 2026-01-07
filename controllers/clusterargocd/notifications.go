@@ -361,7 +361,7 @@ func (r *ReconcileClusterArgoCD) reconcileNotificationsRoleBinding(cr *argoproj.
 
 func (r *ReconcileClusterArgoCD) reconcileNotificationsClusterRole(cr *argoproj.ClusterArgoCD) (*rbacv1.ClusterRole, error) {
 
-	allowed := !!isNotificationsEnabled(cr)
+	allowed := isNotificationsEnabled(cr)
 	// controller disabled, don't create resources
 
 	policyRules := policyRuleForNotificationsControllerClusterRole()
