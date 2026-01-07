@@ -47,21 +47,6 @@ spec:
 
 In this example, permissions are granted to namespaces matching the pattern `team-*`, such as `team-1`, `team-2`, `team-frontend`, etc. The Operator will automatically create the necessary RBAC permissions in all existing namespaces that match the pattern, and will continue to provision permissions for newly created namespaces that match the pattern.
 
-### Enable ApplicationSets in all namespaces
-
-You can use the `*` wildcard to enable ApplicationSets in all namespaces:
-
-```yaml
-apiVersion: argoproj.io/v1beta1
-kind: ArgoCD
-metadata:
-  name: example
-spec:
-  applicationSet:
-    sourceNamespaces:
-      - '*'
-``` 
-
 !!! important 
     Ensure that [Apps in Any Namespace](./apps-in-any-namespace.md) is enabled on target namespace i.e the target namespace name is part of `.spec.sourceNamespaces` field in ArgoCD CR.
 
