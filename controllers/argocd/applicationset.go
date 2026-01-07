@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -1200,6 +1201,6 @@ func (r *ReconcileArgoCD) getApplicationSetSourceNamespaces(cr *argoproj.ArgoCD)
 			sourceNamespaces = append(sourceNamespaces, namespace.Name)
 		}
 	}
-
+	sort.Strings(sourceNamespaces)
 	return sourceNamespaces, nil
 }
