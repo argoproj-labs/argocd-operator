@@ -57,6 +57,7 @@ import (
 	v1 "k8s.io/api/rbac/v1"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	amerr "k8s.io/apimachinery/pkg/util/errors"
 
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -2058,4 +2059,76 @@ func (r *ReconcileArgoCD) reconcileArgoCDAgent(cr *argoproj.ArgoCD) error {
 	}
 
 	return nil
+}
+
+// restoreTrackingLabelOnNamespacesWithResources adds back the appropriate tracking labels
+// to namespaces that have ArgoCD resources created in them, in case those labels were lost.
+func (r *ReconcileArgoCD) restoreTrackingLabelOnNamespacesWithResources(cr *argoproj.ArgoCD) error {
+	var aggregatedErrors []error
+
+	roles := &v1.RoleList{}
+	labelSelector := client.MatchingLabels{
+		common.ArgoCDKeyManagedBy: cr.Name,
+		common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+	}
+
+	if err := r.Client.List(context.TODO(), roles, labelSelector, client.InNamespace(metav1.NamespaceAll)); err != nil {
+		return err
+	}
+
+	for _, role := range roles.Items {
+		// resources in ArgoCD instance namespace are implicitly tracked
+		// and don't need explicit tracking label on the namespace
+		if role.Namespace == cr.Namespace {
+			continue
+		}
+
+		missingTrackingLabels := make(map[string]string)
+
+		// Check for namespaces with ApplicationSet source namespace resources
+		appsetRoleName := getResourceNameForApplicationSetSourceNamespaces(cr)
+		if role.Name == appsetRoleName {
+			missingTrackingLabels[common.ArgoCDApplicationSetManagedByClusterArgoCDLabel] = cr.Namespace
+		}
+
+		// Check for namespaces with Application source namespace resources
+		appsRoleName := getRoleNameForApplicationSourceNamespaces(role.Namespace, cr)
+		if role.Name == appsRoleName {
+			missingTrackingLabels[common.ArgoCDManagedByClusterArgoCDLabel] = cr.Namespace
+		}
+
+		if len(missingTrackingLabels) > 0 {
+			namespace := &corev1.Namespace{}
+			err := r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Namespace}, namespace)
+			if err != nil {
+				if !apierrors.IsNotFound(err) {
+					aggregatedErrors = append(aggregatedErrors, err)
+				}
+				continue
+			}
+
+			changed := false
+			for key, value := range missingTrackingLabels {
+				if namespace.Labels == nil {
+					namespace.Labels = make(map[string]string)
+				}
+
+				// we are only interested in adding missing labels, not updating existing ones
+				_, found := namespace.Labels[key]
+				if !found {
+					namespace.Labels[key] = value
+					changed = true
+				}
+			}
+
+			if changed {
+				argoutil.LogResourceUpdate(log, namespace, "restoring tracking labels on namespace")
+				if err := r.Client.Update(context.TODO(), namespace); err != nil {
+					aggregatedErrors = append(aggregatedErrors, err)
+				}
+			}
+		}
+	}
+
+	return amerr.NewAggregate(aggregatedErrors)
 }

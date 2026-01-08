@@ -18,8 +18,10 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	testclient "k8s.io/client-go/kubernetes/fake"
 )
 
@@ -1459,5 +1461,163 @@ func TestAppendUniqueArgs(t *testing.T) {
 				t.Errorf("appendUniqueArgs() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func Test_restoreTrackingLabelOnNamespacesWithResources(t *testing.T) {
+
+	a := &argoproj.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd",
+			Namespace: "argocd",
+		},
+	}
+
+	nsWithOutAppsetLabel := &v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "ns-without-appset-label",
+			Labels: map[string]string{
+				// intentionally missing ArgoCDApplicationSetManagedByClusterArgoCDLabel
+				common.ArgoCDManagedByClusterArgoCDLabel: a.Namespace,
+			},
+		},
+	}
+
+	nsWithAppsetLabel := &v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "ns-with-appset-label",
+			Labels: map[string]string{
+				common.ArgoCDManagedByClusterArgoCDLabel:               a.Namespace,
+				common.ArgoCDApplicationSetManagedByClusterArgoCDLabel: a.Namespace,
+			},
+		},
+	}
+
+	nsRandom := &v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "random-ns",
+			Labels: map[string]string{
+				common.ArgoCDManagedByClusterArgoCDLabel:               a.Namespace,
+				common.ArgoCDApplicationSetManagedByClusterArgoCDLabel: a.Namespace,
+			},
+		},
+	}
+
+	// also include argocd instance namespace object so we can assert it isn't changed
+	argocdNs := &v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: a.Namespace,
+		},
+	}
+
+	// label already exists so do nothing
+	appsetRoleInLabelledNs := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      getResourceNameForApplicationSetSourceNamespaces(a),
+			Namespace: nsWithAppsetLabel.Name,
+			Labels: map[string]string{
+				common.ArgoCDKeyManagedBy: a.Name,
+				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+			},
+		},
+	}
+
+	// label should be added onto the namespace as role belongs to appset source namespaces
+	appsetRoleInUnLabelledNs := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      getResourceNameForApplicationSetSourceNamespaces(a),
+			Namespace: nsWithOutAppsetLabel.Name,
+			Labels: map[string]string{
+				common.ArgoCDKeyManagedBy: a.Name,
+				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+			},
+		},
+	}
+
+	// no label should be added as argocd instance namespace doesn't require labels for tracking resources
+	roleInArgoCDNs := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			// even if name matches, function should skip due to Namespace == a.Namespace
+			Name:      getResourceNameForApplicationSetSourceNamespaces(a),
+			Namespace: a.Namespace,
+			Labels: map[string]string{
+				common.ArgoCDKeyManagedBy: a.Name,
+				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+			},
+		},
+	}
+
+	// no label should be added on ns as role doesn't belong to appset source namespaces
+	randomRole := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "random-role",
+			Namespace: nsRandom.Name,
+			Labels: map[string]string{
+				common.ArgoCDKeyManagedBy: a.Name,
+				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+			},
+		},
+	}
+
+	resObjs := []client.Object{nsWithOutAppsetLabel, nsWithAppsetLabel, nsRandom, argocdNs, a, roleInArgoCDNs, appsetRoleInLabelledNs, appsetRoleInUnLabelledNs, randomRole}
+	subresObjs := []client.Object{nsWithOutAppsetLabel, nsWithAppsetLabel, nsRandom, argocdNs, a, roleInArgoCDNs, appsetRoleInLabelledNs, appsetRoleInUnLabelledNs, randomRole}
+	runtimeObjs := []runtime.Object{}
+
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	// capture original labels (for "unchanged" assertions)
+	origWithout := map[string]string{}
+	for k, v := range nsWithOutAppsetLabel.Labels {
+		origWithout[k] = v
+	}
+	origWith := map[string]string{}
+	for k, v := range nsWithAppsetLabel.Labels {
+		origWith[k] = v
+	}
+	origRandom := map[string]string{}
+	for k, v := range nsRandom.Labels {
+		origRandom[k] = v
+	}
+
+	err := r.restoreTrackingLabelOnNamespacesWithResources(a)
+	assert.NoError(t, err)
+
+	// --- Assertions ---
+
+	// 1) has resources but appset label missing -> add label
+	updatedWithout := &v1.Namespace{}
+	err = cl.Get(context.TODO(), types.NamespacedName{Name: nsWithOutAppsetLabel.Name}, updatedWithout)
+	assert.NoError(t, err)
+
+	assert.Equal(t, origWithout[common.ArgoCDManagedByClusterArgoCDLabel],
+		updatedWithout.Labels[common.ArgoCDManagedByClusterArgoCDLabel])
+
+	assert.Equal(t, a.Namespace,
+		updatedWithout.Labels[common.ArgoCDApplicationSetManagedByClusterArgoCDLabel],
+		"expected appset tracking label to be restored")
+
+	// 2) has resources and label present -> do nothing (unchanged)
+	updatedWith := &v1.Namespace{}
+	err = cl.Get(context.TODO(), types.NamespacedName{Name: nsWithAppsetLabel.Name}, updatedWith)
+	assert.NoError(t, err)
+	assert.Equal(t, origWith, updatedWith.Labels, "expected labelled namespace to remain unchanged")
+
+	// 3) role exists but not the appset source role -> do nothing (unchanged)
+	updatedRandom := &v1.Namespace{}
+	err = cl.Get(context.TODO(), types.NamespacedName{Name: nsRandom.Name}, updatedRandom)
+	assert.NoError(t, err)
+	assert.Equal(t, origRandom, updatedRandom.Labels, "expected random namespace to remain unchanged")
+
+	// 4) argocd instance namespace should not get tracking labels (implicitly tracked)
+	updatedArgoCDNS := &v1.Namespace{}
+	err = cl.Get(context.TODO(), types.NamespacedName{Name: a.Namespace}, updatedArgoCDNS)
+	assert.NoError(t, err)
+	if updatedArgoCDNS.Labels != nil {
+		_, hasAppset := updatedArgoCDNS.Labels[common.ArgoCDApplicationSetManagedByClusterArgoCDLabel]
+		_, hasApps := updatedArgoCDNS.Labels[common.ArgoCDManagedByClusterArgoCDLabel]
+		assert.False(t, hasAppset, "did not expect appset tracking label on argocd instance namespace")
+		assert.False(t, hasApps, "did not expect apps tracking label on argocd instance namespace")
 	}
 }
