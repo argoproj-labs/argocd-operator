@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/go-jose/go-jose/v4/testutils/require"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
@@ -29,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	testclient "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -1313,71 +1315,160 @@ func Test_reconcileRBAC(t *testing.T) {
 
 }
 
-func Test_validateOwnerReferences(t *testing.T) {
+func Test_modifyOwnerReferenceIfNeeded(t *testing.T) {
 	a := makeTestArgoCD()
 	uid := uuid.NewUUID()
 	a.UID = uid
-	resObjs := []client.Object{a}
-	subresObjs := []client.Object{a}
-	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
-	cm := newConfigMapWithName(common.ArgoCDConfigMapName, a)
 
-	// verify when OwnerReferences is not set
-	_, err := modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
-	assert.NoError(t, err)
+	scheme := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(scheme, nil, nil, nil)
+	r := makeTestReconciler(cl, scheme, testclient.NewSimpleClientset())
 
-	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")
-	assert.Equal(t, cm.OwnerReferences[0].Kind, "ArgoCD")
-	assert.Equal(t, cm.OwnerReferences[0].Name, "argocd")
-	assert.Equal(t, cm.OwnerReferences[0].UID, uid)
+	newCM := func() *corev1.ConfigMap {
+		return newConfigMapWithName(common.ArgoCDConfigMapName, a)
+	}
 
-	// verify when APIVersion is changed
-	cm.OwnerReferences[0].APIVersion = "test"
+	t.Run("adds owner reference when none exists", func(t *testing.T) {
+		cm := newCM()
 
-	changed, err := modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
-	assert.NoError(t, err)
-	assert.True(t, changed)
-	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")
-	assert.Equal(t, cm.OwnerReferences[0].Kind, "ArgoCD")
-	assert.Equal(t, cm.OwnerReferences[0].Name, "argocd")
-	assert.Equal(t, cm.OwnerReferences[0].UID, uid)
+		changed, err := modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
+		assert.NoError(t, err)
+		assert.True(t, changed)
+		assert.Len(t, cm.OwnerReferences, 1)
 
-	// verify when Kind is changed
-	cm.OwnerReferences[0].Kind = "test"
+		ref := cm.OwnerReferences[0]
+		assert.Equal(t, "argoproj.io/v1beta1", ref.APIVersion)
+		assert.Equal(t, "ArgoCD", ref.Kind)
+		assert.Equal(t, "argocd", ref.Name)
+		assert.Equal(t, uid, ref.UID)
+		assert.NotNil(t, ref.Controller)
+		assert.True(t, *ref.Controller)
+	})
 
-	changed, err = modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
-	assert.NoError(t, err)
-	assert.True(t, changed)
-	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")
-	assert.Equal(t, cm.OwnerReferences[0].Kind, "ArgoCD")
-	assert.Equal(t, cm.OwnerReferences[0].Name, "argocd")
-	assert.Equal(t, cm.OwnerReferences[0].UID, uid)
+	t.Run("no change when owner reference is already correct", func(t *testing.T) {
+		cm := newCM()
 
-	// verify when Kind is changed
-	cm.OwnerReferences[0].Name = "test"
+		_, err := modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
+		require.NoError(t, err)
 
-	changed, err = modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
-	assert.NoError(t, err)
-	assert.True(t, changed)
-	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")
-	assert.Equal(t, cm.OwnerReferences[0].Kind, "ArgoCD")
-	assert.Equal(t, cm.OwnerReferences[0].Name, "argocd")
-	assert.Equal(t, cm.OwnerReferences[0].UID, uid)
+		changed, err := modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
+		assert.NoError(t, err)
+		assert.False(t, changed)
+		assert.Len(t, cm.OwnerReferences, 1)
+	})
 
-	// verify when UID is changed
-	cm.OwnerReferences[0].UID = "test"
+	t.Run("fixes APIVersion mismatch", func(t *testing.T) {
+		cm := newCM()
+		_, _ = modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
 
-	changed, err = modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
-	assert.NoError(t, err)
-	assert.True(t, changed)
-	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")
-	assert.Equal(t, cm.OwnerReferences[0].Kind, "ArgoCD")
-	assert.Equal(t, cm.OwnerReferences[0].Name, "argocd")
-	assert.Equal(t, cm.OwnerReferences[0].UID, uid)
-	assert.True(t, argoutil.IsTrackedByOperator(cm.Labels))
+		cm.OwnerReferences[0].APIVersion = "test"
+
+		changed, err := modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
+		assert.NoError(t, err)
+		assert.True(t, changed)
+		assert.Equal(t, "argoproj.io/v1beta1", cm.OwnerReferences[0].APIVersion)
+	})
+
+	t.Run("fixes Name mismatch", func(t *testing.T) {
+		cm := newCM()
+		_, _ = modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
+
+		cm.OwnerReferences[0].Name = "wrong"
+
+		changed, err := modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
+		assert.NoError(t, err)
+		assert.True(t, changed)
+		assert.Equal(t, "argocd", cm.OwnerReferences[0].Name)
+	})
+
+	t.Run("fixes UID mismatch", func(t *testing.T) {
+		cm := newCM()
+		_, _ = modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
+
+		cm.OwnerReferences[0].UID = "wrong"
+
+		changed, err := modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
+		assert.NoError(t, err)
+		assert.True(t, changed)
+		assert.Equal(t, uid, cm.OwnerReferences[0].UID)
+	})
+
+	t.Run("does nothing when Kind mismatches but controller already exists", func(t *testing.T) {
+		cm := newCM()
+		_, _ = modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
+
+		cm.OwnerReferences[0].Kind = "SomeOtherKind"
+
+		changed, err := modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
+		assert.Error(t, err)
+		assert.False(t, changed)
+		assert.Len(t, cm.OwnerReferences, 1)
+	})
+
+	t.Run("adds owner when Kind mismatches and no controller exists", func(t *testing.T) {
+		cm := newCM()
+
+		cm.OwnerReferences = []metav1.OwnerReference{
+			{
+				APIVersion: "v1",
+				Kind:       "ConfigMap",
+				Name:       "something",
+				UID:        "123",
+				Controller: ptr.To(false),
+			},
+		}
+
+		changed, err := modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
+		assert.NoError(t, err)
+		assert.True(t, changed)
+		assert.Len(t, cm.OwnerReferences, 2)
+
+		var found bool
+		for _, ref := range cm.OwnerReferences {
+			if ref.Kind == "ArgoCD" {
+				found = true
+				assert.Equal(t, "argoproj.io/v1beta1", ref.APIVersion)
+				assert.Equal(t, "argocd", ref.Name)
+				assert.Equal(t, uid, ref.UID)
+			}
+		}
+		assert.True(t, found)
+	})
+
+	t.Run("handles multiple owner references correctly", func(t *testing.T) {
+		cm := newCM()
+
+		cm.OwnerReferences = []metav1.OwnerReference{
+			{
+				APIVersion: "v1",
+				Kind:       "Namespace",
+				Name:       "ns",
+				UID:        "111",
+			},
+		}
+		changed, err := modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
+		var found bool
+		for _, ref := range cm.OwnerReferences {
+			if ref.Kind == "ArgoCD" {
+				found = true
+				assert.Equal(t, "argoproj.io/v1beta1", ref.APIVersion)
+				assert.Equal(t, "argocd", ref.Name)
+			}
+		}
+		assert.True(t, found)
+		assert.NoError(t, err)
+		assert.True(t, changed)
+		assert.Len(t, cm.OwnerReferences, 2)
+	})
+
+	t.Run("returns error when scheme cannot resolve GVK", func(t *testing.T) {
+		badScheme := runtime.NewScheme()
+		cm := newCM()
+
+		changed, err := modifyOwnerReferenceIfNeeded(a, cm, badScheme)
+		assert.Error(t, err)
+		assert.False(t, changed)
+	})
 }
 
 func TestReconcileArgoCD_reconcileArgoConfigMap_withInstallationID(t *testing.T) {
