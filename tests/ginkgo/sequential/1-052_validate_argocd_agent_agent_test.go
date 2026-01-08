@@ -449,5 +449,139 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				Expect(container.Env).To(ContainElement(corev1.EnvVar{Name: key, Value: value}), "Environment variable %s should be set to %s", key, value)
 			}
 		})
+
+		It("should deploy agent via namespace-scoped ArgoCD instance and verify cluster role and cluster role binding are not created", func() {
+
+			By("Create namespace-scoped ArgoCD instance")
+
+			// Create namespace for hosting namespace-scoped ArgoCD instance with agent
+			nsScoped, cleanupFuncScoped := fixture.CreateNamespaceWithCleanupFunc("argocd-agent-agent-ns-scoped-1-052")
+			defer cleanupFuncScoped()
+
+			// Update namespace in ArgoCD CR
+			argoCD.Namespace = nsScoped.Name
+
+			// Update namespace in resource references
+			serviceAccount.Namespace = nsScoped.Name
+			role.Namespace = nsScoped.Name
+			roleBinding.Namespace = nsScoped.Name
+			agentDeployment.Namespace = nsScoped.Name
+			clusterRole.Name = fmt.Sprintf("%s-%s-agent-agent", argoCDName, nsScoped.Name)
+			clusterRoleBinding.Name = fmt.Sprintf("%s-%s-agent-agent", argoCDName, nsScoped.Name)
+
+			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+
+			By("Verify namespace-scoped resources are created for agent")
+
+			Eventually(serviceAccount, "30s", "2s").Should(k8sFixture.ExistByName())
+			Eventually(role, "30s", "2s").Should(k8sFixture.ExistByName())
+			Eventually(roleBinding, "30s", "2s").Should(k8sFixture.ExistByName())
+			Eventually(agentDeployment, "30s", "2s").Should(k8sFixture.ExistByName())
+			for _, serviceName := range serviceNames {
+				service := &corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      serviceName,
+						Namespace: nsScoped.Name,
+					},
+				}
+				Eventually(service, "30s", "2s").Should(k8sFixture.ExistByName(),
+					"Service '%s' should exist in namespace '%s'", serviceName, nsScoped.Name)
+			}
+
+			By("Verify ClusterRole and ClusterRoleBinding are not created")
+
+			Consistently(clusterRole, "30s", "1s").Should(k8sFixture.NotExistByName(),
+				"ClusterRole '%s' should not exist for namespace-scoped ArgoCD instance", clusterRole.Name)
+
+			Consistently(clusterRoleBinding, "30s", "1s").Should(k8sFixture.NotExistByName(),
+				"ClusterRoleBinding '%s' should not exist for namespace-scoped ArgoCD instance", clusterRoleBinding.Name)
+
+			By("Delete ArgoCD instance")
+			Expect(k8sClient.Delete(ctx, argoCD)).To(Succeed())
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, client.ObjectKey{Name: argoCD.Name, Namespace: argoCD.Namespace}, argoCD)
+				return err != nil
+			}, "60s", "2s").Should(BeTrue(), "ArgoCD should be deleted")
+		})
+
+		It("should delete existing cluster role and cluster role binding if ArgoCD instance is namespace-scoped", func() {
+
+			By("Create namespace-scoped ArgoCD instance namespace")
+
+			// Create namespace for hosting namespace-scoped ArgoCD instance with agent
+			nsScoped, cleanupFuncScoped := fixture.CreateNamespaceWithCleanupFunc("argocd-agent-agent-ns-scoped-1-052")
+			defer cleanupFuncScoped()
+
+			// Update namespace in ArgoCD CR
+			argoCD.Namespace = nsScoped.Name
+
+			// Update namespace in resource references
+			serviceAccount.Namespace = nsScoped.Name
+			role.Namespace = nsScoped.Name
+			roleBinding.Namespace = nsScoped.Name
+			agentDeployment.Namespace = nsScoped.Name
+			clusterRole.Name = fmt.Sprintf("%s-%s-agent-agent", argoCDName, nsScoped.Name)
+			clusterRoleBinding.Name = fmt.Sprintf("%s-%s-agent-agent", argoCDName, nsScoped.Name)
+
+			By("Pre-create ClusterRole and ClusterRoleBinding before ArgoCD instance")
+
+			preExistingClusterRole := &rbacv1.ClusterRole{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: clusterRole.Name,
+					Labels: map[string]string{
+						"app.kubernetes.io/name": "test",
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, preExistingClusterRole)).To(Succeed())
+
+			preExistingClusterRoleBinding := &rbacv1.ClusterRoleBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: clusterRoleBinding.Name,
+					Labels: map[string]string{
+						"app.kubernetes.io/name": "test",
+					},
+				},
+				Subjects: []rbacv1.Subject{
+					{
+						Kind:      rbacv1.ServiceAccountKind,
+						Name:      "default",
+						Namespace: nsScoped.Name,
+					},
+				},
+				RoleRef: rbacv1.RoleRef{
+					APIGroup: rbacv1.GroupName,
+					Kind:     "ClusterRole",
+					Name:     clusterRole.Name,
+				},
+			}
+			Expect(k8sClient.Create(ctx, preExistingClusterRoleBinding)).To(Succeed())
+
+			By("Verify pre-existing ClusterRole and ClusterRoleBinding exist")
+
+			Eventually(clusterRole, "10s", "1s").Should(k8sFixture.ExistByName(),
+				"Pre-existing ClusterRole '%s' should exist before ArgoCD instance creation", clusterRole.Name)
+			Eventually(clusterRoleBinding, "10s", "1s").Should(k8sFixture.ExistByName(),
+				"Pre-existing ClusterRoleBinding '%s' should exist before ArgoCD instance creation", clusterRoleBinding.Name)
+
+			By("Create namespace-scoped ArgoCD instance with agent")
+
+			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+
+			By("Verify pre-existing ClusterRole and ClusterRoleBinding are deleted")
+
+			Eventually(clusterRole, "60s", "2s").Should(k8sFixture.NotExistByName(),
+				"ClusterRole '%s' should be deleted for namespace-scoped ArgoCD instance", clusterRole.Name)
+
+			Eventually(clusterRoleBinding, "60s", "2s").Should(k8sFixture.NotExistByName(),
+				"ClusterRoleBinding '%s' should be deleted for namespace-scoped ArgoCD instance", clusterRoleBinding.Name)
+
+			By("Delete ArgoCD instance")
+			Expect(k8sClient.Delete(ctx, argoCD)).To(Succeed())
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, client.ObjectKey{Name: argoCD.Name, Namespace: argoCD.Namespace}, argoCD)
+				return err != nil
+			}, "60s", "2s").Should(BeTrue(), "ArgoCD should be deleted")
+		})
 	})
 })
