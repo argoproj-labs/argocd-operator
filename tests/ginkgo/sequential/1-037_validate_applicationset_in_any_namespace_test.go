@@ -328,7 +328,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			})
 
 			Eventually(appsetDeployment).Should(k8sFixture.ExistByName())
-			Eventually(appsetDeployment).Should(deploymentFixture.HaveContainerCommandSubstring("--applicationset-namespaces appset-old-ns,appset-new-ns", 0))
+			Eventually(appsetDeployment).Should(deploymentFixture.HaveContainerCommandSubstring("--applicationset-namespaces appset-new-ns,appset-old-ns", 0))
 
 			By("verifying that appset-old-ns gains Role/RoleBindings similar to appset-new-ns")
 			example_appset_old_nsRole := &rbacv1.Role{

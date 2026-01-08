@@ -1196,6 +1196,9 @@ func (r *ReconcileArgoCD) getApplicationSetSourceNamespaces(cr *argoproj.ArgoCD)
 		return nil, err
 	}
 
+	// Intentional: use REGEXP so .spec.applicationSet.sourceNamespaces can contain either
+	// glob-like wildcards or full regular expressions. We expand to concrete namespaces here,
+	// and pass the final list to the controller via --applicationset-namespaces.
 	for _, namespace := range namespaces.Items {
 		if glob.MatchStringInList(cr.Spec.ApplicationSet.SourceNamespaces, namespace.Name, glob.REGEXP) {
 			sourceNamespaces = append(sourceNamespaces, namespace.Name)

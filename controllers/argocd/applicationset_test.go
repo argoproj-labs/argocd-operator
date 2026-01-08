@@ -1276,7 +1276,7 @@ func TestArgoCDApplicationSet_getApplicationSetSourceNamespaces(t *testing.T) {
 			expected:   []string(nil),
 		},
 		{
-			name: "Appset source namespaces",
+			name: "Appset source namespaces - exact match",
 			appSetField: &argoproj.ArgoCDApplicationSet{
 				SourceNamespaces: []string{"foo", "bar"},
 			},
@@ -1287,16 +1287,85 @@ func TestArgoCDApplicationSet_getApplicationSetSourceNamespaces(t *testing.T) {
 			expected: []string{"foo", "bar"},
 		},
 		{
-			name: "Appset source namespaces with wildcard pattern",
+			name: "Appset source namespaces with wildcard glob pattern",
 			appSetField: &argoproj.ArgoCDApplicationSet{
 				SourceNamespaces: []string{"team-*"},
 			},
 			namespaces: []client.Object{
 				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-1"}},
 				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-2"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-frontend"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-backend"}},
 				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "other-ns"}},
 			},
+			expected: []string{"team-1", "team-2", "team-backend", "team-frontend"},
+		},
+		{
+			name: "Appset source namespaces with regex pattern - anchored",
+			appSetField: &argoproj.ArgoCDApplicationSet{
+				SourceNamespaces: []string{"/^team-(1|2)$/"},
+			},
+			namespaces: []client.Object{
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-1"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-2"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-frontend"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-10"}},
+			},
 			expected: []string{"team-1", "team-2"},
+		},
+		{
+			name: "Appset source namespaces with regex pattern - unanchored",
+			appSetField: &argoproj.ArgoCDApplicationSet{
+				SourceNamespaces: []string{"/team-.*/"},
+			},
+			namespaces: []client.Object{
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-1"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-2"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-frontend"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "other-ns"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "not-team"}},
+			},
+			expected: []string{"team-1", "team-2", "team-frontend"},
+		},
+		{
+			name: "Appset source namespaces with regex pattern - character class",
+			appSetField: &argoproj.ArgoCDApplicationSet{
+				SourceNamespaces: []string{"/^team-[0-9]+$/"},
+			},
+			namespaces: []client.Object{
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-1"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-2"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-10"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-frontend"}},
+			},
+			expected: []string{"team-1", "team-10", "team-2"},
+		},
+		{
+			name: "Appset source namespaces with multiple patterns",
+			appSetField: &argoproj.ArgoCDApplicationSet{
+				SourceNamespaces: []string{"team-*", "app-*"},
+			},
+			namespaces: []client.Object{
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-1"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-2"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "app-frontend"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "app-backend"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "other-ns"}},
+			},
+			expected: []string{"app-backend", "app-frontend", "team-1", "team-2"},
+		},
+		{
+			name: "Appset source namespaces with regex pattern - starts with",
+			appSetField: &argoproj.ArgoCDApplicationSet{
+				SourceNamespaces: []string{"/^prod-.*/"},
+			},
+			namespaces: []client.Object{
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "prod-frontend"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "prod-backend"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "dev-frontend"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "staging-prod"}},
+			},
+			expected: []string{"prod-backend", "prod-frontend"},
 		},
 	}
 

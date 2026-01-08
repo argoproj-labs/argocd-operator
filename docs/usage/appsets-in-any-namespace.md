@@ -14,7 +14,17 @@ To manage the `ApplicationSet` resources in non-control plane namespaces i.e out
 
 ## Enable ApplicationSets in a namespace
 
-To enable this feature in a namespace, add the namespace name under `.spec.applicationSet.sourceNamespaces` field in ArgoCD CR. This field supports wildcard patterns, allowing flexible and dynamic namespace configurations.
+To enable this feature in a namespace, add the namespace name under `.spec.applicationSet.sourceNamespaces` in the ArgoCD CR.
+This field supports both:
+ - Glob-style wildcards (e.g., `team-*`, `team-frontend`, `app-??`)
+ - Regular expressions (wrapped in forward slashes, e.g., `/^team-(frontend|backend)$/`, `/^team-.*$/`)
+ 
+ The operator resolves these patterns to actual namespaces at reconcile time and passes the expanded, concrete list to the ApplicationSet controller.
+ 
+ !!! note
+     Regular expression patterns must be wrapped in forward slashes (`/pattern/`) to be treated as regex. Patterns without slashes are treated as glob patterns. For example:
+     - `team-*` - glob pattern (matches team-1, team-2, etc.)
+     - `/^team-[0-9]+$/` - regex pattern (matches team-1, team-2, but not team-frontend)
 
 ### Enable ApplicationSets in a specific namespace
 
@@ -30,10 +40,11 @@ spec:
       - foo
 ```
 
-### Enable ApplicationSets in namespaces matching a glob pattern
+### Enable ApplicationSets in namespaces matching a pattern
 
-You can use wildcard patterns to automatically provision ApplicationSet permissions in all namespaces that match the pattern:
+You can use wildcard patterns or regular expressions to automatically provision ApplicationSet permissions in all namespaces that match the pattern:
 
+**Using glob patterns:**
 ```yaml
 apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
@@ -42,13 +53,33 @@ metadata:
 spec:
   applicationSet:
     sourceNamespaces:
-      - team-*
+      - team-*           # glob pattern
 ```
 
-In this example, permissions are granted to namespaces matching the pattern `team-*`, such as `team-1`, `team-2`, `team-frontend`, etc. The Operator will automatically create the necessary RBAC permissions in all existing namespaces that match the pattern, and will continue to provision permissions for newly created namespaces that match the pattern.
+**Using regular expressions:**
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example
+spec:
+  applicationSet:
+    sourceNamespaces:
+      - /^team-(frontend|backend)$/    # regex pattern (note the /.../ wrapper)
+      - /^team-[0-9]+$/                # regex: matches team-1, team-2, etc. (numbers only)
+```
+
+In the glob pattern example, permissions are granted to namespaces matching `team-*`, such as `team-1`, `team-2`, `team-frontend`, etc. In the regex example, permissions are granted only to namespaces matching the specific regex patterns (e.g., `team-frontend` and `team-backend` for the first pattern, or numeric-only namespaces like `team-1`, `team-2` for the second pattern).
+
+The Operator will automatically create the necessary RBAC permissions in all existing namespaces that match the pattern, and will continue to provision permissions for newly created namespaces that match the pattern. 
+
+!!! warning 
+    Exercise caution when using broad wildcard patterns such as `*` or `*-prod`. These patterns can match a large number of namespaces, including system namespaces or sensitive environments, potentially granting unintended access. Always use the most specific pattern that meets your requirements and regularly audit which namespaces match your patterns.    
 
 !!! important 
     Ensure that [Apps in Any Namespace](./apps-in-any-namespace.md) is enabled on target namespace i.e the target namespace name is part of `.spec.sourceNamespaces` field in ArgoCD CR.
+    
+For more details about ApplicationSets in Any Namespace, see the upstream [Argo CD documentation](https://argo-cd.readthedocs.io/en/latest/operator-manual/applicationset/Appset-Any-Namespace/).
 
 The Operator creates/modifies below RBAC resources when ApplicationSets in Any Namespace is enabled
 
