@@ -6,7 +6,6 @@ require (
 	github.com/argoproj/argo-cd/v3 v3.2.1
 	github.com/argoproj/gitops-engine v0.7.1-0.20251108235403-13d5172d3ee2
 	github.com/cert-manager/cert-manager v1.15.4
-	github.com/go-jose/go-jose/v4 v4.1.2
 	github.com/go-logr/logr v1.4.3
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.1-0.20241114170450-2d3c2a9cc518

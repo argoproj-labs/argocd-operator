@@ -20,9 +20,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/go-jose/go-jose/v4/testutils/require"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
