@@ -22,6 +22,10 @@ import (
 	"sync"
 	"time"
 
+	rbacv1 "k8s.io/api/rbac/v1"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/prometheus/client_golang/prometheus"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -30,9 +34,11 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	amerr "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/kubernetes"
 
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -284,7 +290,9 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 			return reconcile.Result{}, argocd, argoCDStatus, err
 		}
 	}
-
+	if err = r.restoreTrackingLabelsForOrphanedNamespaces(ctx, argocd); err != nil {
+		return reconcile.Result{}, argocd, argoCDStatus, err
+	}
 	if err = r.setManagedNamespaces(argocd); err != nil {
 		return reconcile.Result{}, argocd, argoCDStatus, err
 	}
@@ -366,4 +374,158 @@ func (r *ReconcileArgoCD) SetupWithManager(mgr ctrl.Manager) error {
 	bldr := ctrl.NewControllerManagedBy(mgr)
 	r.setResourceWatches(bldr, r.clusterResourceMapper, r.tlsSecretMapper, r.namespaceResourceMapper, r.clusterSecretResourceMapper, r.applicationSetSCMTLSConfigMapMapper, r.nmMapper)
 	return bldr.Complete(r)
+}
+
+func (r *ReconcileArgoCD) restoreTrackingLabelsForOrphanedNamespaces(ctx context.Context, cr *argoproj.ArgoCD) error {
+	var aggregatedErrors []error
+	// List all Roles owned by this ArgoCD CR across all namespaces
+	roles := &rbacv1.RoleList{}
+	if err := r.Client.List(ctx, roles, client.MatchingLabels{
+		common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+		common.ArgoCDKeyManagedBy: cr.Name,
+	}, client.InNamespace(metav1.NamespaceAll)); err != nil {
+		return err
+	}
+	for _, role := range roles.Items {
+		// Skip ArgoCD namespace (implicitly tracked)
+		if role.Namespace == cr.Namespace {
+			continue
+		}
+		// Strict orphan validation
+		if !isValidOrphanRole(&role, cr) {
+			continue
+		}
+		requiredLabels := requiredTrackingLabelsForRole(&role, cr)
+		if len(requiredLabels) == 0 {
+			continue
+		}
+		// Fetch namespace
+		namespace := &corev1.Namespace{}
+		if err := r.Client.Get(ctx, types.NamespacedName{Name: role.Namespace}, namespace); err != nil {
+			if !apierrors.IsNotFound(err) {
+				aggregatedErrors = append(aggregatedErrors, err)
+			}
+			continue
+		}
+		// Add only missing labels
+		if addMissingLabels(namespace, requiredLabels) {
+			argoutil.LogResourceUpdate(log, namespace, "restoring ArgoCD tracking labels for orphaned namespace")
+			if err := r.Client.Update(ctx, namespace); err != nil {
+				aggregatedErrors = append(aggregatedErrors, err)
+			}
+		}
+	}
+	return amerr.NewAggregate(aggregatedErrors)
+}
+
+//
+// ======================
+// Orphan validation helpers
+// ======================
+//
+
+// Core predicate that guarantees convergence and safety
+func isValidOrphanRole(role *rbacv1.Role, cr *argoproj.ArgoCD) bool {
+	if !hasRequiredOwnershipLabels(role, cr) {
+		return false
+	}
+	isAppSetRole := role.Name == getResourceNameForApplicationSetSourceNamespaces(cr)
+	isAppRole := role.Name == getRoleNameForApplicationSourceNamespaces(role.Namespace, cr)
+
+	if !isAppSetRole && !isAppRole {
+		return false
+	}
+
+	if !hasApplicationScopedRules(role.Rules) {
+		return false
+	}
+
+	return true
+}
+
+func hasRequiredOwnershipLabels(role *rbacv1.Role, cr *argoproj.ArgoCD) bool {
+
+	labels := role.GetLabels()
+	if labels == nil {
+		return false
+	}
+
+	if labels[common.ArgoCDKeyPartOf] != common.ArgoCDAppName {
+		return false
+	}
+
+	if labels[common.ArgoCDKeyManagedBy] != cr.Name {
+		return false
+	}
+
+	return true
+}
+
+//
+// ======================
+// RBAC scope validation
+// ======================
+//
+
+func hasApplicationScopedRules(rules []rbacv1.PolicyRule) bool {
+
+	const argoCDAPIGroup = "argoproj.io"
+
+	for _, rule := range rules {
+
+		if !contains(rule.APIGroups, argoCDAPIGroup) {
+			continue
+		}
+
+		for _, res := range rule.Resources {
+			switch res {
+			case
+				"applications",
+				"applications/status",
+				"applicationsets",
+				"applicationsets/status":
+				return true
+			}
+		}
+	}
+	return false
+}
+
+/// ======================
+// Namespace mutation helpers
+// ======================
+//
+
+func requiredTrackingLabelsForRole(role *rbacv1.Role, cr *argoproj.ArgoCD) map[string]string {
+
+	labels := map[string]string{}
+
+	if role.Name == getResourceNameForApplicationSetSourceNamespaces(cr) {
+		labels[common.ArgoCDApplicationSetManagedByClusterArgoCDLabel] =
+			cr.Namespace
+	}
+
+	if role.Name == getRoleNameForApplicationSourceNamespaces(role.Namespace, cr) {
+		labels[common.ArgoCDManagedByClusterArgoCDLabel] =
+			cr.Namespace
+	}
+
+	return labels
+}
+
+func addMissingLabels(ns *corev1.Namespace, required map[string]string) bool {
+
+	if ns.Labels == nil {
+		ns.Labels = map[string]string{}
+	}
+
+	changed := false
+	for k, v := range required {
+		if _, exists := ns.Labels[k]; !exists {
+			ns.Labels[k] = v
+			changed = true
+		}
+	}
+
+	return changed
 }
