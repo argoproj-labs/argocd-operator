@@ -261,13 +261,14 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 		}
 		role.Namespace = namespace.Name
 		// patch rules if appset in source namespace is allowed
-		if contains(r.getApplicationSetSourceNamespaces(cr), sourceNamespace) {
+		appsetSourceNamespaces, err := r.getApplicationSetSourceNamespaces(cr)
+		if err == nil && contains(appsetSourceNamespaces, sourceNamespace) {
 			role.Rules = append(role.Rules, policyRuleForServerApplicationSetSourceNamespaces()...)
 		}
 
 		created := false
 		existingRole := v1.Role{}
-		err := r.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: namespace.Name}, &existingRole)
+		err = r.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: namespace.Name}, &existingRole)
 		if err != nil {
 			if !errors.IsNotFound(err) {
 				return fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", name, err)

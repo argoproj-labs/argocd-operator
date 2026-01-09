@@ -3,6 +3,7 @@ package sequential
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -45,7 +46,8 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 		AfterEach(func() {
 
-			fixture.OutputDebugOnFail("appset-argocd", "appset-old-ns", "appset-new-ns", "appset-namespace-scoped", "target-ns-1-037")
+			fixture.OutputDebugOnFail("appset-argocd", "appset-old-ns", "appset-new-ns", "appset-namespace-scoped", "target-ns-1-037",
+				"team-1", "team-2", "team-frontend", "team-backend", "team-3", "other-ns")
 
 			// Clean up namespaces created
 			for _, namespaceCleanupFunction := range cleanupFunctions {
@@ -326,7 +328,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			})
 
 			Eventually(appsetDeployment).Should(k8sFixture.ExistByName())
-			Eventually(appsetDeployment).Should(deploymentFixture.HaveContainerCommandSubstring("--applicationset-namespaces appset-old-ns,appset-new-ns", 0))
+			Eventually(appsetDeployment).Should(deploymentFixture.HaveContainerCommandSubstring("--applicationset-namespaces appset-new-ns,appset-old-ns", 0))
 
 			By("verifying that appset-old-ns gains Role/RoleBindings similar to appset-new-ns")
 			example_appset_old_nsRole := &rbacv1.Role{
@@ -732,6 +734,241 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			By("verifying that the roles/rolebindings we created in the previous steps are now automatically cleaned up, because the namespace had the ArgoCDApplicationSetManagedByClusterArgoCDLabel")
 			Eventually(roleBindingInTargetNS).Should(k8sFixture.NotExistByName())
 			Eventually(roleInTargetNS).Should(k8sFixture.NotExistByName())
+		})
+
+		It("verifies that wildcard patterns in .spec.applicationSet.sourceNamespaces correctly match and manage multiple namespaces", func() {
+
+			By("0) create namespaces: appset-argocd, team-1, team-2, team-frontend, team-backend, other-ns")
+
+			appset_wildcard_argocdNS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("appset-argocd")
+			cleanupFunctions = append(cleanupFunctions, cleanupFunc)
+
+			team1NS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("team-1")
+			cleanupFunctions = append(cleanupFunctions, cleanupFunc)
+
+			team2NS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("team-2")
+			cleanupFunctions = append(cleanupFunctions, cleanupFunc)
+
+			teamFrontendNS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("team-frontend")
+			cleanupFunctions = append(cleanupFunctions, cleanupFunc)
+
+			teamBackendNS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("team-backend")
+			cleanupFunctions = append(cleanupFunctions, cleanupFunc)
+
+			otherNS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("other-ns")
+			cleanupFunctions = append(cleanupFunctions, cleanupFunc)
+
+			// -----
+
+			By("1) create Argo CD instance with wildcard pattern 'team-*' in both sourceNamespaces and applicationSet.sourceNamespaces")
+
+			argoCD := &v1beta1.ArgoCD{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "wildcard-example",
+					Namespace: appset_wildcard_argocdNS.Name,
+				},
+				Spec: v1beta1.ArgoCDSpec{
+					SourceNamespaces: []string{
+						"team-*",
+					},
+					ApplicationSet: &v1beta1.ArgoCDApplicationSet{
+						SourceNamespaces: []string{
+							"team-*",
+						},
+						SCMProviders: []string{
+							"github.com",
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+
+			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
+			Eventually(argoCD).Should(argocdFixture.HaveApplicationSetControllerStatus("Running"))
+
+			By("2) verifying that the appset deployment contains all matching namespaces in the command")
+			appsetDeployment := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "wildcard-example-applicationset-controller",
+					Namespace: argoCD.Namespace,
+				},
+			}
+			Eventually(appsetDeployment).Should(k8sFixture.ExistByName())
+
+			// Verify that all team-* namespaces are included (order may vary)
+			Eventually(appsetDeployment).Should(deploymentFixture.HaveContainerCommandSubstring("--applicationset-namespaces", 0))
+			Eventually(func() bool {
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(appsetDeployment), appsetDeployment); err != nil {
+					return false
+				}
+				if len(appsetDeployment.Spec.Template.Spec.Containers) == 0 {
+					return false
+				}
+				cmd := appsetDeployment.Spec.Template.Spec.Containers[0].Command
+				cmdStr := strings.Join(cmd, " ")
+				if strings.Contains(cmdStr, "--applicationset-namespaces") {
+					// Check that all team-* namespaces are present
+					return strings.Contains(cmdStr, "team-1") &&
+						strings.Contains(cmdStr, "team-2") &&
+						strings.Contains(cmdStr, "team-frontend") &&
+						strings.Contains(cmdStr, "team-backend")
+				}
+				return false
+			}).Should(BeTrue())
+
+			By("3) verifying that Role and RoleBinding are created in all matching team-* namespaces")
+			verifyAppSetResourcesInNamespace := func(namespaceName string) {
+				appsetRole := &rbacv1.Role{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "wildcard-example-appset-argocd-applicationset",
+						Namespace: namespaceName,
+					},
+				}
+				Eventually(appsetRole).Should(k8sFixture.ExistByName())
+
+				appsetRoleBinding := &rbacv1.RoleBinding{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "wildcard-example-appset-argocd-applicationset",
+						Namespace: namespaceName,
+					},
+				}
+				Eventually(appsetRoleBinding).Should(k8sFixture.ExistByName())
+				Expect(appsetRoleBinding.RoleRef).To(Equal(rbacv1.RoleRef{
+					APIGroup: "rbac.authorization.k8s.io",
+					Kind:     "Role",
+					Name:     "wildcard-example-appset-argocd-applicationset",
+				}))
+				Expect(appsetRoleBinding.Subjects).To(ContainElement(rbacv1.Subject{
+					Kind:      "ServiceAccount",
+					Name:      "wildcard-example-applicationset-controller",
+					Namespace: appset_wildcard_argocdNS.Name,
+				}))
+			}
+
+			verifyAppSetResourcesInNamespace(team1NS.Name)
+			verifyAppSetResourcesInNamespace(team2NS.Name)
+			verifyAppSetResourcesInNamespace(teamFrontendNS.Name)
+			verifyAppSetResourcesInNamespace(teamBackendNS.Name)
+
+			By("4) verifying that namespace labels are set correctly for all matching namespaces")
+			Eventually(team1NS).Should(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", appset_wildcard_argocdNS.Name))
+			Eventually(team2NS).Should(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", appset_wildcard_argocdNS.Name))
+			Eventually(teamFrontendNS).Should(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", appset_wildcard_argocdNS.Name))
+			Eventually(teamBackendNS).Should(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", appset_wildcard_argocdNS.Name))
+
+			By("5) verifying that non-matching namespace (other-ns) does NOT have appset resources")
+			otherNSAppSetRole := &rbacv1.Role{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "wildcard-example-appset-argocd-applicationset",
+					Namespace: otherNS.Name,
+				},
+			}
+			Consistently(otherNSAppSetRole).Should(k8sFixture.NotExistByName())
+
+			otherNSAppSetRoleBinding := &rbacv1.RoleBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "wildcard-example-appset-argocd-applicationset",
+					Namespace: otherNS.Name,
+				},
+			}
+			Consistently(otherNSAppSetRoleBinding).Should(k8sFixture.NotExistByName())
+
+			Consistently(otherNS).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", appset_wildcard_argocdNS.Name))
+
+			By("6) creating a new namespace that matches the pattern and verifying it gets resources automatically")
+			team3NS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("team-3")
+			cleanupFunctions = append(cleanupFunctions, cleanupFunc)
+
+			// Wait for reconciliation to pick up the new namespace
+			Eventually(func() bool {
+				appsetRole := &rbacv1.Role{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "wildcard-example-appset-argocd-applicationset",
+						Namespace: team3NS.Name,
+					},
+				}
+				return k8sClient.Get(ctx, client.ObjectKeyFromObject(appsetRole), appsetRole) == nil
+			}, "2m", "5s").Should(BeTrue())
+
+			verifyAppSetResourcesInNamespace(team3NS.Name)
+			Eventually(team3NS).Should(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", appset_wildcard_argocdNS.Name))
+
+			By("7) updating ArgoCD to use a more specific pattern 'team-*' -> 'team-1' and verifying cleanup")
+			argocdFixture.Update(argoCD, func(ac *v1beta1.ArgoCD) {
+				ac.Spec.SourceNamespaces = []string{
+					"team-1",
+				}
+				ac.Spec.ApplicationSet.SourceNamespaces = []string{
+					"team-1",
+				}
+				ac.Spec.ApplicationSet.SCMProviders = []string{
+					"github.com",
+				}
+			})
+
+			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
+
+			By("8) verifying that team-1 still has resources")
+			team1AppSetRole := &rbacv1.Role{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "wildcard-example-appset-argocd-applicationset",
+					Namespace: team1NS.Name,
+				},
+			}
+			Eventually(team1AppSetRole).Should(k8sFixture.ExistByName())
+
+			By("9) verifying that other team-* namespaces have resources cleaned up")
+			team2AppSetRole := &rbacv1.Role{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "wildcard-example-appset-argocd-applicationset",
+					Namespace: team2NS.Name,
+				},
+			}
+			Eventually(team2AppSetRole).Should(k8sFixture.NotExistByName())
+			Consistently(team2AppSetRole).Should(k8sFixture.NotExistByName())
+
+			team3AppSetRole := &rbacv1.Role{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "wildcard-example-appset-argocd-applicationset",
+					Namespace: team3NS.Name,
+				},
+			}
+			Eventually(team3AppSetRole).Should(k8sFixture.NotExistByName())
+			Consistently(team3AppSetRole).Should(k8sFixture.NotExistByName())
+
+			teamFrontendAppSetRole := &rbacv1.Role{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "wildcard-example-appset-argocd-applicationset",
+					Namespace: teamFrontendNS.Name,
+				},
+			}
+			Eventually(teamFrontendAppSetRole).Should(k8sFixture.NotExistByName())
+			Consistently(teamFrontendAppSetRole).Should(k8sFixture.NotExistByName())
+
+			By("10) verifying that labels are removed from namespaces that no longer match")
+			Eventually(team2NS).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", appset_wildcard_argocdNS.Name))
+			Eventually(team3NS).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", appset_wildcard_argocdNS.Name))
+			Eventually(teamFrontendNS).ShouldNot(namespaceFixture.HaveLabel("argocd.argoproj.io/applicationset-managed-by-cluster-argocd", appset_wildcard_argocdNS.Name))
+
+			By("11) verifying deployment command only includes team-1")
+			Eventually(func() bool {
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(appsetDeployment), appsetDeployment); err != nil {
+					return false
+				}
+				if len(appsetDeployment.Spec.Template.Spec.Containers) == 0 {
+					return false
+				}
+				cmd := appsetDeployment.Spec.Template.Spec.Containers[0].Command
+				cmdStr := strings.Join(cmd, " ")
+				if strings.Contains(cmdStr, "--applicationset-namespaces") {
+					return strings.Contains(cmdStr, "team-1") &&
+						!strings.Contains(cmdStr, "team-2") &&
+						!strings.Contains(cmdStr, "team-3") &&
+						!strings.Contains(cmdStr, "team-frontend")
+				}
+				return false
+			}).Should(BeTrue())
+
 		})
 
 	})
