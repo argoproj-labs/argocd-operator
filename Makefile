@@ -5,6 +5,13 @@
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= 0.18.0
 
+# ARGO_CD_TARGET_VERSION is the target version that argocd-operator will install.
+# Update this when you upgrade the Argo CD dependencies of the project.
+# After updating, call 'make update-dependencies'.
+# Notes:
+# - String should NOT begin with 'v' prefix, e.g. 'v3.1.1'
+ARGO_CD_TARGET_VERSION ?= 3.2.3
+
 # Try to detect Docker or Podman
 CONTAINER_RUNTIME := $(shell command -v docker 2> /dev/null || command -v podman 2> /dev/null)
 
@@ -363,3 +370,8 @@ if [ $$(printf '%s\n' $$requiredver $$currentver | sort -V | head -n1) = $$requi
 rm -rf $$TMP_DIR ;\
 }
 endef
+
+# Updates upstream dependencies throughout the repository
+.PHONY: update-dependencies
+update-dependencies:
+	hack/update-dependencies-script/run.sh
