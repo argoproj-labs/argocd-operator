@@ -669,6 +669,9 @@ func (r *ReconcileArgoCD) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argop
 	return nil // ConfigMap exists and nothing to do, move along...
 }
 
+// modifyOwnerReferenceIfNeeded reverts any changes to the OwnerReference of the
+// given config map. Returns true if the owner reference was modified, false if
+// not.
 func modifyOwnerReferenceIfNeeded(cr *argoproj.ArgoCD, cm *corev1.ConfigMap, scheme *runtime.Scheme) (bool, error) {
 	gvk, err := apiutil.GVKForObject(cr, scheme)
 	if err != nil {
