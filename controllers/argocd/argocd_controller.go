@@ -34,7 +34,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -402,7 +401,7 @@ func (r *ReconcileArgoCD) restoreTrackingLabelsForOrphanedNamespaces(ctx context
 		// Fetch namespace
 		namespace := &corev1.Namespace{}
 		if err := r.Client.Get(ctx, types.NamespacedName{Name: role.Namespace}, namespace); err != nil {
-			if !apierrors.IsNotFound(err) {
+			if !errors.IsNotFound(err) {
 				aggregatedErrors = append(aggregatedErrors, err)
 			}
 			continue
