@@ -1846,7 +1846,7 @@ func (r *ReconcileArgoCD) reconcileArgoCDAgent(cr *argoproj.ArgoCD) error {
 	}
 
 	log.Info("reconciling ArgoCD Agent's Principal resources")
-	compName := "principal"
+	compName := string(argoproj.AgentComponentTypePrincipal)
 	var sa *corev1.ServiceAccount
 	var err error
 
@@ -1911,7 +1911,7 @@ func (r *ReconcileArgoCD) reconcileArgoCDAgent(cr *argoproj.ArgoCD) error {
 	}
 
 	log.Info("reconciling ArgoCD Agent's Agent resources")
-	agentCompName := "agent"
+	agentCompName := string(argoproj.AgentComponentTypeAgent)
 
 	log.Info("reconciling ArgoCD Agent's Agent service account")
 	var agentSa *corev1.ServiceAccount

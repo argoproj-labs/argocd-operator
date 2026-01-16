@@ -557,7 +557,7 @@ func TestReconcileApplicationSet_Deployments_Command(t *testing.T) {
 				},
 				SourceNamespaces: []string{"foo", "bar"},
 			},
-			expectedCmd: []string{"--applicationset-namespaces", "foo,bar", "--enable-scm-providers=false"},
+			expectedCmd: []string{"--applicationset-namespaces", "bar,foo", "--enable-scm-providers=false"},
 		},
 		{
 			name: "with SCM provider list",
@@ -1258,11 +1258,13 @@ func TestArgoCDApplicationSet_getApplicationSetSourceNamespaces(t *testing.T) {
 	tests := []struct {
 		name        string
 		appSetField *argoproj.ArgoCDApplicationSet
+		namespaces  []client.Object
 		expected    []string
 	}{
 		{
 			name:        "Appsets not enabled",
 			appSetField: nil,
+			namespaces:  []client.Object{},
 			expected:    []string(nil),
 		},
 		{
@@ -1270,14 +1272,100 @@ func TestArgoCDApplicationSet_getApplicationSetSourceNamespaces(t *testing.T) {
 			appSetField: &argoproj.ArgoCDApplicationSet{
 				Enabled: boolPtr(true),
 			},
-			expected: []string(nil),
+			namespaces: []client.Object{},
+			expected:   []string(nil),
 		},
 		{
-			name: "Appset source namespaces",
+			name: "Appset source namespaces - exact match",
 			appSetField: &argoproj.ArgoCDApplicationSet{
 				SourceNamespaces: []string{"foo", "bar"},
 			},
+			namespaces: []client.Object{
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "foo"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "bar"}},
+			},
 			expected: []string{"foo", "bar"},
+		},
+		{
+			name: "Appset source namespaces with wildcard glob pattern",
+			appSetField: &argoproj.ArgoCDApplicationSet{
+				SourceNamespaces: []string{"team-*"},
+			},
+			namespaces: []client.Object{
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-1"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-2"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-frontend"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-backend"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "other-ns"}},
+			},
+			expected: []string{"team-1", "team-2", "team-backend", "team-frontend"},
+		},
+		{
+			name: "Appset source namespaces with regex pattern - anchored",
+			appSetField: &argoproj.ArgoCDApplicationSet{
+				SourceNamespaces: []string{"/^team-(1|2)$/"},
+			},
+			namespaces: []client.Object{
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-1"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-2"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-frontend"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-10"}},
+			},
+			expected: []string{"team-1", "team-2"},
+		},
+		{
+			name: "Appset source namespaces with regex pattern - unanchored",
+			appSetField: &argoproj.ArgoCDApplicationSet{
+				SourceNamespaces: []string{"/team-.*/"},
+			},
+			namespaces: []client.Object{
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-1"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-2"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-frontend"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "other-ns"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "not-team"}},
+			},
+			expected: []string{"team-1", "team-2", "team-frontend"},
+		},
+		{
+			name: "Appset source namespaces with regex pattern - character class",
+			appSetField: &argoproj.ArgoCDApplicationSet{
+				SourceNamespaces: []string{"/^team-[0-9]+$/"},
+			},
+			namespaces: []client.Object{
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-1"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-2"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-10"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-frontend"}},
+			},
+			expected: []string{"team-1", "team-10", "team-2"},
+		},
+		{
+			name: "Appset source namespaces with multiple patterns",
+			appSetField: &argoproj.ArgoCDApplicationSet{
+				SourceNamespaces: []string{"team-*", "app-*"},
+			},
+			namespaces: []client.Object{
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-1"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-2"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "app-frontend"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "app-backend"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "other-ns"}},
+			},
+			expected: []string{"app-backend", "app-frontend", "team-1", "team-2"},
+		},
+		{
+			name: "Appset source namespaces with regex pattern - starts with",
+			appSetField: &argoproj.ArgoCDApplicationSet{
+				SourceNamespaces: []string{"/^prod-.*/"},
+			},
+			namespaces: []client.Object{
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "prod-frontend"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "prod-backend"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "dev-frontend"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "staging-prod"}},
+			},
+			expected: []string{"prod-backend", "prod-frontend"},
 		},
 	}
 
@@ -1286,6 +1374,7 @@ func TestArgoCDApplicationSet_getApplicationSetSourceNamespaces(t *testing.T) {
 
 			a := makeTestArgoCD()
 			resObjs := []client.Object{a}
+			resObjs = append(resObjs, test.namespaces...)
 			subresObjs := []client.Object{a}
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
@@ -1297,8 +1386,21 @@ func TestArgoCDApplicationSet_getApplicationSetSourceNamespaces(t *testing.T) {
 
 			a.Spec.ApplicationSet = test.appSetField
 
-			actual := r.getApplicationSetSourceNamespaces(a)
-			assert.Equal(t, test.expected, actual)
+			actual, err := r.getApplicationSetSourceNamespaces(a)
+			assert.NoError(t, err)
+
+			if actual == nil {
+				actual = []string{}
+			}
+			expected := test.expected
+			if expected == nil {
+				expected = []string{}
+			}
+
+			sort.Strings(actual)
+			sort.Strings(expected)
+
+			assert.Equal(t, expected, actual)
 		})
 	}
 }
