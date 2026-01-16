@@ -650,13 +650,13 @@ func (r *ReconcileArgoCD) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argop
 	}
 
 	// Check OwnerReferences
-	var refChanged bool
+	var ownerRefChanged bool
 	var err error
-	if refChanged, err = modifyOwnerReferenceIfNeeded(cr, cm, r.Scheme); err != nil {
+	if ownerRefChanged, err = modifyOwnerReferenceIfNeeded(cr, cm, r.Scheme); err != nil {
 		return err
 	}
 
-	if refChanged {
+	if ownerRefChanged {
 		explanation += ", owner reference"
 		changed = true
 	}
