@@ -242,28 +242,18 @@ metadata:
               "provider": "dex"
             }
           }
-        },
-        {
-          "apiVersion": "argoproj.io/v1beta1",
-          "kind": "NamespaceManagement",
-          "metadata": {
-            "name": "namespacemanagement-sample"
-          },
-          "spec": {
-            "managedBy": "argocd-ns"
-          }
         }
       ]
     capabilities: Deep Insights
     categories: Integration & Delivery
     certified: "false"
-    createdAt: "2025-12-16T12:52:16Z"
+    createdAt: "2025-07-08T08:36:42Z"
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v1.35.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
     repository: https://github.com/argoproj-labs/argocd-operator
     support: Argo CD
-  name: argocd-operator.v0.16.0
+  name: argocd-operator.v0.14.1
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -451,10 +441,8 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
-      - description: 'Deprecated: ConfigManagementPlugins field is no longer supported.
-          Argo CD now requires plugins to be defined as sidecar containers of repo
-          server component. See ''.spec.repo.sidecarContainers''. ConfigManagementPlugins
-          was previously used to specify additional config management plugins.'
+      - description: ConfigManagementPlugins is used to specify additional config
+          management plugins.
         displayName: Config Management Plugins'
         path: configManagementPlugins
         x-descriptors:
@@ -1070,10 +1058,8 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
-      - description: 'Deprecated: ConfigManagementPlugins field is no longer supported.
-          Argo CD now requires plugins to be defined as sidecar containers of repo
-          server component. See ''.spec.repo.sidecarContainers''. ConfigManagementPlugins
-          was previously used to specify additional config management plugins.'
+      - description: ConfigManagementPlugins is used to specify additional config
+          management plugins.
         displayName: Config Management Plugins'
         path: configManagementPlugins
         x-descriptors:
@@ -1203,8 +1189,8 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Import
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'Deprecated: InitialRepositories to configure Argo CD with upon
-          creation of the cluster.'
+      - description: InitialRepositories to configure Argo CD with upon creation of
+          the cluster.
         displayName: Initial Repositories'
         path: initialRepositories
         x-descriptors:
@@ -1565,12 +1551,6 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       version: v1beta1
-    - description: NamespaceManagement is the Schema for the namespacemanagements
-        API
-      displayName: Namespace Management
-      kind: NamespaceManagement
-      name: namespacemanagements.argoproj.io
-      version: v1beta1
     - description: NotificationsConfiguration is the Schema for the notificationsconfiguration
         API
       displayName: NotificationsConfiguration
@@ -1768,6 +1748,12 @@ spec:
           verbs:
           - update
         - apiGroups:
+          - apps.openshift.io
+          resources:
+          - deploymentconfigs
+          verbs:
+          - '*'
+        - apiGroups:
           - argoproj.io
           resources:
           - applications
@@ -1778,9 +1764,6 @@ spec:
           - argocds
           - argocds/finalizers
           - argocds/status
-          - namespacemanagements
-          - namespacemanagements/finalizers
-          - namespacemanagements/status
           - notificationsconfigurations
           - notificationsconfigurations/finalizers
           verbs:
@@ -1909,7 +1892,7 @@ spec:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
                 - name: ENABLE_CONVERSION_WEBHOOK
                   value: "true"
-                image: quay.io/argoprojlabs/argocd-operator@sha256:0c697bdd14d2432c481db757507f5ea506b2aa97c944e50d72664dbb4fba047a
+                image: quay.io/argoprojlabs/argocd-operator@sha256:d881cc9bb2790245cb90e9f7ba1a3b261ed844fc6a94b95084350641cea6ca4c
                 livenessProbe:
                   httpGet:
                     path: /healthz
@@ -1996,13 +1979,13 @@ spec:
   - name: Operator Source Code
     url: https://github.com/argoproj-labs/argocd-operator
   maintainers:
-  - email: sghadi@redhat.com
-    name: Siddhesh Ghadi
+  - email: aveerama@redhat.com
+    name: Abhishek Veeramalla
   maturity: alpha
   provider:
     name: Argo CD Community
-  replaces: argocd-operator.v0.15.0
-  version: 0.16.0
+  replaces: argocd-operator.v0.14.0
+  version: 0.14.1
   webhookdefinitions:
   - admissionReviewVersions:
     - v1alpha1
