@@ -35,7 +35,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -731,7 +730,7 @@ func Test_restoreTrackingLabelsForOrphanedNamespaces(t *testing.T) {
 
 	scheme := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(scheme, resObjs, subresObjs, runtimeObjs)
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := testclient.NewSimpleClientset()
 
 	reconciler := makeTestReconciler(cl, scheme, kubeClient)
 
