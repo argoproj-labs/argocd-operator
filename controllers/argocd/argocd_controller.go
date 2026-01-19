@@ -417,12 +417,7 @@ func (r *ReconcileArgoCD) restoreTrackingLabelsForOrphanedNamespaces(ctx context
 	return amerr.NewAggregate(aggregatedErrors)
 }
 
-//
-// ======================
 // Orphan validation helpers
-// ======================
-//
-
 // Core predicate that guarantees convergence and safety
 func isValidOrphanRole(role *rbacv1.Role, cr *argoproj.ArgoCD) bool {
 	if !hasRequiredOwnershipLabels(role, cr) {
@@ -434,48 +429,33 @@ func isValidOrphanRole(role *rbacv1.Role, cr *argoproj.ArgoCD) bool {
 	if !isAppSetRole && !isAppRole {
 		return false
 	}
-
 	if !hasApplicationScopedRules(role.Rules) {
 		return false
 	}
-
 	return true
 }
 
 func hasRequiredOwnershipLabels(role *rbacv1.Role, cr *argoproj.ArgoCD) bool {
-
 	labels := role.GetLabels()
 	if labels == nil {
 		return false
 	}
-
 	if labels[common.ArgoCDKeyPartOf] != common.ArgoCDAppName {
 		return false
 	}
-
 	if labels[common.ArgoCDKeyManagedBy] != cr.Name {
 		return false
 	}
-
 	return true
 }
 
-//
-// ======================
 // RBAC scope validation
-// ======================
-//
-
 func hasApplicationScopedRules(rules []rbacv1.PolicyRule) bool {
-
 	const argoCDAPIGroup = "argoproj.io"
-
 	for _, rule := range rules {
-
 		if !contains(rule.APIGroups, argoCDAPIGroup) {
 			continue
 		}
-
 		for _, res := range rule.Resources {
 			switch res {
 			case
@@ -490,34 +470,23 @@ func hasApplicationScopedRules(rules []rbacv1.PolicyRule) bool {
 	return false
 }
 
-/// ======================
 // Namespace mutation helpers
-// ======================
-//
-
 func requiredTrackingLabelsForRole(role *rbacv1.Role, cr *argoproj.ArgoCD) map[string]string {
-
 	labels := map[string]string{}
-
 	if role.Name == getResourceNameForApplicationSetSourceNamespaces(cr) {
-		labels[common.ArgoCDApplicationSetManagedByClusterArgoCDLabel] =
-			cr.Namespace
+		labels[common.ArgoCDApplicationSetManagedByClusterArgoCDLabel] = cr.Namespace
 	}
 
 	if role.Name == getRoleNameForApplicationSourceNamespaces(role.Namespace, cr) {
-		labels[common.ArgoCDManagedByClusterArgoCDLabel] =
-			cr.Namespace
+		labels[common.ArgoCDManagedByClusterArgoCDLabel] = cr.Namespace
 	}
-
 	return labels
 }
 
 func addMissingLabels(ns *corev1.Namespace, required map[string]string) bool {
-
 	if ns.Labels == nil {
 		ns.Labels = map[string]string{}
 	}
-
 	changed := false
 	for k, v := range required {
 		if _, exists := ns.Labels[k]; !exists {
@@ -525,6 +494,5 @@ func addMissingLabels(ns *corev1.Namespace, required map[string]string) bool {
 			changed = true
 		}
 	}
-
 	return changed
 }

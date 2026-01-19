@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"maps"
 	"strings"
 	"testing"
 	"time"
@@ -34,6 +35,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -599,4 +601,174 @@ func TestReconcileArgoCD_Cleanup_RBACs_When_NamespaceManagement_Disabled(t *test
 	updatedSecret, err := client.CoreV1().Secrets(argoCD.Namespace).Get(context.TODO(), secret.Name, metav1.GetOptions{})
 	assert.NoError(t, err)
 	assert.Equal(t, "", string(updatedSecret.Data["namespaces"]))
+}
+
+func Test_restoreTrackingLabelsForOrphanedNamespaces(t *testing.T) {
+	ctx := context.Background()
+	// Test setup
+	argocd := &argoproj.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd",
+			Namespace: "argocd",
+		},
+	}
+
+	nsWithoutAppsetLabel := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "ns-without-appset-label",
+			Labels: map[string]string{
+				// intentionally missing appset tracking label
+				common.ArgoCDManagedByClusterArgoCDLabel: argocd.Namespace,
+			},
+		},
+	}
+
+	nsWithAppsetLabel := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "ns-with-appset-label",
+			Labels: map[string]string{
+				common.ArgoCDManagedByClusterArgoCDLabel:               argocd.Namespace,
+				common.ArgoCDApplicationSetManagedByClusterArgoCDLabel: argocd.Namespace,
+			},
+		},
+	}
+
+	nsRandom := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "random-ns",
+			Labels: map[string]string{
+				common.ArgoCDManagedByClusterArgoCDLabel:               argocd.Namespace,
+				common.ArgoCDApplicationSetManagedByClusterArgoCDLabel: argocd.Namespace,
+			},
+		},
+	}
+
+	// ArgoCD instance namespace (must never be mutated)
+	argocdNamespace := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: argocd.Namespace,
+		},
+	}
+
+	// RBAC rules required for orphan validation
+	appScopedRules := []rbacv1.PolicyRule{
+		{
+			APIGroups: []string{"argoproj.io"},
+			Resources: []string{"applicationsets"},
+			Verbs:     []string{"get", "list"},
+		},
+	}
+
+	// Roles
+	appsetRoleName := getResourceNameForApplicationSetSourceNamespaces(argocd)
+
+	// AppSet role in namespace that already has the label
+	appsetRoleInLabelledNS := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      appsetRoleName,
+			Namespace: nsWithAppsetLabel.Name,
+			Labels: map[string]string{
+				common.ArgoCDKeyManagedBy: argocd.Name,
+				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+			},
+		},
+		Rules: appScopedRules,
+	}
+
+	// AppSet role in namespace missing the label (should trigger restore)
+	appsetRoleInUnlabelledNS := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      appsetRoleName,
+			Namespace: nsWithoutAppsetLabel.Name,
+			Labels: map[string]string{
+				common.ArgoCDKeyManagedBy: argocd.Name,
+				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+			},
+		},
+		Rules: appScopedRules,
+	}
+
+	// Same role name but in ArgoCD namespace (must be ignored)
+	roleInArgoCDNS := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      appsetRoleName,
+			Namespace: argocd.Namespace,
+			Labels: map[string]string{
+				common.ArgoCDKeyManagedBy: argocd.Name,
+				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+			},
+		},
+		Rules: appScopedRules,
+	}
+
+	// Completely unrelated role (no rules, should be ignored)
+	randomRole := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "random-role",
+			Namespace: nsRandom.Name,
+			Labels: map[string]string{
+				common.ArgoCDKeyManagedBy: argocd.Name,
+				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+			},
+		},
+	}
+
+	// Fake client + reconciler
+	resObjs := []client.Object{
+		argocd,
+		nsWithoutAppsetLabel,
+		nsWithAppsetLabel,
+		nsRandom,
+		argocdNamespace,
+		appsetRoleInLabelledNS,
+		appsetRoleInUnlabelledNS,
+		roleInArgoCDNS,
+		randomRole,
+	}
+
+	subresObjs := append([]client.Object{}, resObjs...)
+	runtimeObjs := []runtime.Object{}
+
+	scheme := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(scheme, resObjs, subresObjs, runtimeObjs)
+	kubeClient := fake.NewSimpleClientset()
+
+	reconciler := makeTestReconciler(cl, scheme, kubeClient)
+
+	// Capture original labels for immutability assertions
+	origWithout := maps.Clone(nsWithoutAppsetLabel.Labels)
+	origWith := maps.Clone(nsWithAppsetLabel.Labels)
+	origRandom := maps.Clone(nsRandom.Labels)
+
+	// Execute
+	err := reconciler.restoreTrackingLabelsForOrphanedNamespaces(ctx, argocd)
+	assert.NoError(t, err)
+
+	// Assertions
+	// 1) Namespace with AppSet resources but missing label -> label restored
+	updatedWithout := &corev1.Namespace{}
+	assert.NoError(t, cl.Get(ctx, types.NamespacedName{Name: nsWithoutAppsetLabel.Name}, updatedWithout))
+
+	assert.Equal(t, origWithout[common.ArgoCDManagedByClusterArgoCDLabel], updatedWithout.Labels[common.ArgoCDManagedByClusterArgoCDLabel])
+
+	assert.Equal(t, argocd.Namespace, updatedWithout.Labels[common.ArgoCDApplicationSetManagedByClusterArgoCDLabel], "expected appset tracking label to be restored")
+
+	// 2) Namespace already labelled -> unchanged
+	updatedWith := &corev1.Namespace{}
+	assert.NoError(t, cl.Get(ctx, types.NamespacedName{Name: nsWithAppsetLabel.Name}, updatedWith))
+	assert.Equal(t, origWith, updatedWith.Labels)
+
+	// 3) Namespace with unrelated role -> unchanged
+	updatedRandom := &corev1.Namespace{}
+	assert.NoError(t, cl.Get(ctx, types.NamespacedName{Name: nsRandom.Name}, updatedRandom))
+	assert.Equal(t, origRandom, updatedRandom.Labels)
+
+	// 4) ArgoCD instance namespace -> never labeled
+	updatedArgoCDNS := &corev1.Namespace{}
+	assert.NoError(t, cl.Get(ctx, types.NamespacedName{Name: argocd.Namespace}, updatedArgoCDNS))
+
+	if updatedArgoCDNS.Labels != nil {
+		assert.NotContains(t, updatedArgoCDNS.Labels, common.ArgoCDApplicationSetManagedByClusterArgoCDLabel)
+		assert.NotContains(t, updatedArgoCDNS.Labels, common.ArgoCDManagedByClusterArgoCDLabel)
+	}
 }
