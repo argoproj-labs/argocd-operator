@@ -10,7 +10,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.1-0.20241114170450-2d3c2a9cc518
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/ginkgo/v2 v2.25.3
+	github.com/onsi/ginkgo/v2 v2.27.5
 	github.com/onsi/gomega v1.39.0
 	github.com/openshift/api v0.0.0-20240906151052-5d963dce87aa
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.73.2
@@ -30,10 +30,7 @@ require (
 	sigs.k8s.io/yaml v1.6.0
 )
 
-require (
-	go.uber.org/automaxprocs v1.6.0 // indirect
-	sigs.k8s.io/structured-merge-diff/v6 v6.3.1-0.20251003215857-446d8398e19c // indirect
-)
+require sigs.k8s.io/structured-merge-diff/v6 v6.3.1-0.20251003215857-446d8398e19c // indirect
 
 require (
 	github.com/argoproj-labs/argocd-image-updater v1.0.0
