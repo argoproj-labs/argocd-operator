@@ -379,7 +379,7 @@ func (r *ReconcileArgoCD) restoreTrackingLabelsForOrphanedNamespaces(ctx context
 	var aggregatedErrors []error
 	// List all Roles owned by this ArgoCD CR across all namespaces
 	roles := &rbacv1.RoleList{}
-	if err := r.Client.List(ctx, roles, client.MatchingLabels{
+	if err := r.List(ctx, roles, client.MatchingLabels{
 		common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
 		common.ArgoCDKeyManagedBy: cr.Name,
 	}, client.InNamespace(metav1.NamespaceAll)); err != nil {
@@ -400,7 +400,7 @@ func (r *ReconcileArgoCD) restoreTrackingLabelsForOrphanedNamespaces(ctx context
 		}
 		// Fetch namespace
 		namespace := &corev1.Namespace{}
-		if err := r.Client.Get(ctx, types.NamespacedName{Name: role.Namespace}, namespace); err != nil {
+		if err := r.Get(ctx, types.NamespacedName{Name: role.Namespace}, namespace); err != nil {
 			if !errors.IsNotFound(err) {
 				aggregatedErrors = append(aggregatedErrors, err)
 			}
@@ -409,7 +409,7 @@ func (r *ReconcileArgoCD) restoreTrackingLabelsForOrphanedNamespaces(ctx context
 		// Add only missing labels
 		if addMissingLabels(namespace, requiredLabels) {
 			argoutil.LogResourceUpdate(log, namespace, "restoring ArgoCD tracking labels for orphaned namespace")
-			if err := r.Client.Update(ctx, namespace); err != nil {
+			if err := r.Update(ctx, namespace); err != nil {
 				aggregatedErrors = append(aggregatedErrors, err)
 			}
 		}
