@@ -843,6 +843,7 @@ type ArgoCDNodePlacementSpec struct {
 
 // ArgoCDSpec defines the desired state of ArgoCD
 // +k8s:openapi-gen=true
+// +kubebuilder:validation:XValidation:rule="!(has(self.sso) && has(self.oidcConfig))",message="spec.sso and spec.oidcConfig cannot both be set"
 type ArgoCDSpec struct {
 
 	// ArgoCDApplicationSet defines whether the Argo CD ApplicationSet controller should be installed.
