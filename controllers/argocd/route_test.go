@@ -43,8 +43,9 @@ func TestReconcileRouteSetLabels(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
-	assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
+	assert.NoError(t, createNamespace(r, reqState, argoCD.Namespace, ""))
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -79,8 +80,9 @@ func TestReconcileRouteSetsInsecure(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
-	assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
+	assert.NoError(t, createNamespace(r, reqState, argoCD.Namespace, ""))
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -156,7 +158,8 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
+	reqState := &RequestState{}
+	assert.NoError(t, createNamespace(r, reqState, argoCD.Namespace, ""))
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -238,8 +241,9 @@ func TestReconcileRouteApplicationSetHost(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
-	assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
+	assert.NoError(t, createNamespace(r, reqState, argoCD.Namespace, ""))
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -294,8 +298,9 @@ func TestReconcileRouteApplicationSetTlsTermination(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
-	assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
+	assert.NoError(t, createNamespace(r, reqState, argoCD.Namespace, ""))
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -366,8 +371,9 @@ func TestReconcileRouteApplicationSetTls(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
-	assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
+	assert.NoError(t, createNamespace(r, reqState, argoCD.Namespace, ""))
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -475,8 +481,9 @@ func TestReconcileRouteForShorteningHostname(t *testing.T) {
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+			reqState := &RequestState{}
 
-			assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
+			assert.NoError(t, createNamespace(r, reqState, argoCD.Namespace, ""))
 
 			req := reconcile.Request{
 				NamespacedName: types.NamespacedName{
@@ -550,8 +557,9 @@ func TestReconcileRouteForShorteningRoutename(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
-	assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
+	assert.NoError(t, createNamespace(r, reqState, argoCD.Namespace, ""))
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{

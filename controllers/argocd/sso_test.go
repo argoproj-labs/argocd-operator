@@ -138,12 +138,13 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme, templatev1.Install, oappsv1.Install, routev1.Install)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+			reqState := &RequestState{}
 
-			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
+			assert.NoError(t, createNamespace(r, reqState, test.argoCD.Namespace, ""))
 
 			argoCDStatus := argoproj.ArgoCDStatus{}
 
-			err := r.reconcileSSO(test.argoCD, &argoCDStatus)
+			err := r.reconcileSSO(test.argoCD, &argoCDStatus, reqState)
 			assert.Equal(t, test.wantSSOConfigLegalStatus, argoCDStatus.SSO)
 			if err != nil {
 				if !test.wantErr {

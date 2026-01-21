@@ -308,10 +308,12 @@ func TestReconcileNotifications_Deployments_Command(t *testing.T) {
 			err := r.Create(context.Background(), cm, &client.CreateOptions{})
 			assert.NoError(t, err)
 
+			reqState := &RequestState{}
+
 			a.Spec = test.argocdSpec
 
 			sa := v1.ServiceAccount{}
-			assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
+			assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa, reqState))
 
 			deployment := &appsv1.Deployment{}
 			assert.NoError(t, r.Get(
@@ -347,7 +349,9 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 	sa := v1.ServiceAccount{}
 
-	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
+	reqState := &RequestState{}
+
+	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa, reqState))
 
 	deployment := &appsv1.Deployment{}
 	assert.NoError(t, r.Get(
@@ -431,7 +435,7 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 	}
 
 	a.Spec.Notifications.Enabled = false
-	err := r.reconcileNotificationsDeployment(a, &sa)
+	err := r.reconcileNotificationsDeployment(a, &sa, reqState)
 	assert.NoError(t, err)
 
 	err = r.Get(context.TODO(), types.NamespacedName{
@@ -497,9 +501,11 @@ func TestReconcileNotifications_CreateServiceMonitor(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
+	reqState := &RequestState{}
+
 	// Notifications controller service monitor should not be created when Prometheus API is not found.
 	prometheusAPIFound = false
-	err = r.reconcileNotificationsController(a)
+	err = r.reconcileNotificationsController(a, reqState)
 	assert.NoError(t, err)
 
 	testServiceMonitor := &monitoringv1.ServiceMonitor{}
@@ -510,7 +516,7 @@ func TestReconcileNotifications_CreateServiceMonitor(t *testing.T) {
 
 	// Prometheus API found, Verify notification controller service monitor exists.
 	prometheusAPIFound = true
-	err = r.reconcileNotificationsController(a)
+	err = r.reconcileNotificationsController(a, reqState)
 	assert.NoError(t, err)
 
 	testServiceMonitor = &monitoringv1.ServiceMonitor{}
@@ -577,9 +583,10 @@ func TestReconcileNotifications_testEnvVars(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
 	sa := v1.ServiceAccount{}
-	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
+	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa, reqState))
 
 	deployment := &appsv1.Deployment{}
 	assert.NoError(t, r.Get(
@@ -610,7 +617,7 @@ func TestReconcileNotifications_testEnvVars(t *testing.T) {
 	assert.NoError(t, r.Update(context.TODO(), deployment))
 
 	// Reconcile back
-	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
+	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa, reqState))
 
 	// Get the updated deployment
 	assert.NoError(t, r.Get(
@@ -640,9 +647,10 @@ func TestReconcileNotifications_testLogLevel(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
 	sa := v1.ServiceAccount{}
-	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
+	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa, reqState))
 
 	deployment := &appsv1.Deployment{}
 	assert.NoError(t, r.Get(
@@ -678,7 +686,7 @@ func TestReconcileNotifications_testLogLevel(t *testing.T) {
 	assert.NoError(t, r.Update(context.TODO(), deployment))
 
 	// Reconcile back
-	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
+	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa, reqState))
 
 	// Get the updated deployment
 	assert.NoError(t, r.Get(
@@ -708,8 +716,10 @@ func TestReconcileNotifications_testLogFormat(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
+	reqState := &RequestState{}
+
 	sa := v1.ServiceAccount{}
-	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
+	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa, reqState))
 
 	deployment := &appsv1.Deployment{}
 	assert.NoError(t, r.Get(
@@ -745,7 +755,7 @@ func TestReconcileNotifications_testLogFormat(t *testing.T) {
 	assert.NoError(t, r.Update(context.TODO(), deployment))
 
 	// Reconcile back
-	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
+	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa, reqState))
 
 	// Get the updated deployment
 	assert.NoError(t, r.Get(
@@ -843,12 +853,13 @@ func TestArgoCDNotifications_setManagedNotificationsSourceNamespaces(t *testing.
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
-	err := r.setManagedNotificationsSourceNamespaces(a)
+	err := r.setManagedNotificationsSourceNamespaces(a, reqState)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 1, len(r.ManagedNotificationsSourceNamespaces))
-	assert.Contains(t, r.ManagedNotificationsSourceNamespaces, "test-namespace-1")
+	assert.Equal(t, 1, len(reqState.ManagedNotificationsSourceNamespaces))
+	assert.Contains(t, reqState.ManagedNotificationsSourceNamespaces, "test-namespace-1")
 }
 
 func TestNotifications_removeUnmanagedNotificationsSourceNamespaceResources(t *testing.T) {
@@ -874,17 +885,19 @@ func TestNotifications_removeUnmanagedNotificationsSourceNamespaceResources(t *t
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	err = createNamespace(r, ns1, "")
+	reqState := &RequestState{}
+
+	err = createNamespace(r, reqState, ns1, "")
 	assert.NoError(t, err)
-	err = createNamespace(r, ns2, "")
+	err = createNamespace(r, reqState, ns2, "")
 	assert.NoError(t, err)
 
 	// create resources
-	err = r.reconcileNotificationsSourceNamespacesResources(a)
+	err = r.reconcileNotificationsSourceNamespacesResources(a, reqState)
 	assert.NoError(t, err)
 
 	// populate ManagedNotificationsSourceNamespaces to track managed namespaces
-	err = r.setManagedNotificationsSourceNamespaces(a)
+	err = r.setManagedNotificationsSourceNamespaces(a, reqState)
 	assert.NoError(t, err)
 
 	// remove notifications ns
@@ -897,7 +910,7 @@ func TestNotifications_removeUnmanagedNotificationsSourceNamespaceResources(t *t
 	}
 
 	// clean up unmanaged namespaces resources
-	err = r.removeUnmanagedNotificationsSourceNamespaceResources(a)
+	err = r.removeUnmanagedNotificationsSourceNamespaceResources(a, reqState)
 	assert.NoError(t, err)
 
 	// resources shouldn't exist in ns1
@@ -967,9 +980,10 @@ func TestReconcileNotifications_NotificationsConfigurationInSourceNamespaceWhenD
 	assert.NoError(t, err)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
 	// Create the source namespace
-	err = createNamespace(r, sourceNamespace, "")
+	err = createNamespace(r, reqState, sourceNamespace, "")
 	assert.NoError(t, err)
 
 	// Reconcile should not create NotificationsConfiguration CR when notifications are disabled
@@ -1005,12 +1019,14 @@ func TestReconcileNotifications_SourceNamespaceResourcesIncludeNotificationsConf
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
+	reqState := &RequestState{}
+
 	// Create the source namespace
-	err = createNamespace(r, sourceNamespace, "")
+	err = createNamespace(r, reqState, sourceNamespace, "")
 	assert.NoError(t, err)
 
 	// Reconcile source namespace resources (this should create NotificationsConfiguration CR)
-	err = r.reconcileNotificationsSourceNamespacesResources(a)
+	err = r.reconcileNotificationsSourceNamespacesResources(a, reqState)
 	assert.NoError(t, err)
 
 	// Verify NotificationsConfiguration CR was created in source namespace

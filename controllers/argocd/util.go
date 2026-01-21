@@ -758,32 +758,32 @@ func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoproj.ArgoCD) bool {
 }
 
 // reconcileResources will reconcile common ArgoCD resources.
-func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus) error {
+func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus, reqState *RequestState) error {
 
-	if err := r.ensureSourceNamespacesAllowed(cr); err != nil {
+	if err := r.ensureSourceNamespacesAllowed(cr, reqState); err != nil {
 		return err
 	}
 
 	log.Info("reconciling SSO")
-	if err := r.reconcileSSO(cr, argocdStatus); err != nil {
+	if err := r.reconcileSSO(cr, argocdStatus, reqState); err != nil {
 		log.Info(err.Error())
 		return err
 	}
 
 	log.Info("reconciling roles")
-	if err := r.reconcileRoles(cr); err != nil {
+	if err := r.reconcileRoles(cr, reqState); err != nil {
 		log.Info(err.Error())
 		return err
 	}
 
 	log.Info("reconciling rolebindings")
-	if err := r.reconcileRoleBindings(cr); err != nil {
+	if err := r.reconcileRoleBindings(cr, reqState); err != nil {
 		log.Info(err.Error())
 		return err
 	}
 
 	log.Info("reconciling service accounts")
-	if err := r.reconcileServiceAccounts(cr); err != nil {
+	if err := r.reconcileServiceAccounts(cr, reqState); err != nil {
 		log.Info(err.Error())
 		return err
 	}
@@ -867,16 +867,16 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *
 	}
 
 	// check ManagedApplicationSetSourceNamespaces for proper cleanup
-	if cr.Spec.ApplicationSet != nil || len(r.ManagedApplicationSetSourceNamespaces) > 0 {
+	if cr.Spec.ApplicationSet != nil || len(reqState.ManagedApplicationSetSourceNamespaces) > 0 {
 		log.Info("reconciling ApplicationSet controller")
-		if err := r.reconcileApplicationSetController(cr); err != nil {
+		if err := r.reconcileApplicationSetController(cr, reqState); err != nil {
 			return err
 		}
 	}
 
-	if !reflect.DeepEqual(cr.Spec.Notifications, argoproj.ArgoCDNotifications{}) || len(r.ManagedNotificationsSourceNamespaces) > 0 {
+	if !reflect.DeepEqual(cr.Spec.Notifications, argoproj.ArgoCDNotifications{}) || len(reqState.ManagedNotificationsSourceNamespaces) > 0 {
 		log.Info("reconciling Notifications controller")
-		if err := r.reconcileNotificationsController(cr); err != nil {
+		if err := r.reconcileNotificationsController(cr, reqState); err != nil {
 			return err
 		}
 	}
@@ -1012,32 +1012,8 @@ func removeString(slice []string, s string) []string {
 
 // setResourceWatches will register Watches for each of the supported Resources.
 func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, clusterSecretResourceMapper, applicationSetGitlabSCMTLSConfigMapMapper, nmMapper handler.MapFunc) *builder.Builder {
-
-	// Add new predicate to delete Notifications Resources. The predicate watches the Argo CD CR for changes to the `.spec.Notifications.Enabled`
-	// field. When a change is detected that results in notifications being disabled, we trigger deletion of notifications resources
-	deleteNotificationsPred := predicate.Funcs{
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			newCR, ok := e.ObjectNew.(*argoproj.ArgoCD)
-			if !ok {
-				return false
-			}
-			oldCR, ok := e.ObjectOld.(*argoproj.ArgoCD)
-			if !ok {
-				return false
-			}
-			if oldCR.Spec.Notifications.Enabled && !newCR.Spec.Notifications.Enabled {
-				err := r.deleteNotificationsResources(newCR)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Failed to delete notifications controller resources for ArgoCD %s in namespace %s",
-						newCR.Name, newCR.Namespace))
-				}
-			}
-			return true
-		},
-	}
-
 	// Watch for changes to primary resource ArgoCD
-	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(deleteNotificationsPred, r.argoCDNamespaceManagementFilterPredicate()))
+	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(r.argoCDNamespaceManagementFilterPredicate()))
 
 	// Watch for changes to ConfigMap sub-resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.ConfigMap{})
@@ -1354,7 +1330,7 @@ func getLogFormat(logField string) string {
 	return common.ArgoCDDefaultLogFormat
 }
 
-func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD, reqState *RequestState) error {
 	namespaces := &corev1.NamespaceList{}
 	listOption := client.MatchingLabels{
 		common.ArgoCDManagedByLabel: cr.Namespace,
@@ -1366,15 +1342,15 @@ func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
 	}
 
 	namespaces.Items = append(namespaces.Items, corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: cr.Namespace}})
-	r.ManagedNamespaces = namespaces
+	reqState.ManagedNamespaces = namespaces
 	return nil
 }
 
 // getSourceNamespaces retrieves a list of namespaces that match the sourceNamespaces
 // pattern specified in the given ArgoCD
-func (r *ReconcileArgoCD) getSourceNamespaces(cr *argoproj.ArgoCD) ([]string, error) {
+func (r *ReconcileArgoCD) getSourceNamespaces(cr *argoproj.ArgoCD, reqState *RequestState) ([]string, error) {
 
-	if err := r.ensureSourceNamespacesAllowed(cr); err != nil {
+	if err := r.ensureSourceNamespacesAllowed(cr, reqState); err != nil {
 		return nil, err
 	}
 
@@ -1394,8 +1370,8 @@ func (r *ReconcileArgoCD) getSourceNamespaces(cr *argoproj.ArgoCD) ([]string, er
 	return sourceNamespaces, nil
 }
 
-func (r *ReconcileArgoCD) setManagedSourceNamespaces(cr *argoproj.ArgoCD) error {
-	r.ManagedSourceNamespaces = make(map[string]string)
+func (r *ReconcileArgoCD) setManagedSourceNamespaces(cr *argoproj.ArgoCD, reqState *RequestState) error {
+	reqState.ManagedSourceNamespaces = make(map[string]string)
 	namespaces := &corev1.NamespaceList{}
 	listOption := client.MatchingLabels{
 		common.ArgoCDManagedByClusterArgoCDLabel: cr.Namespace,
@@ -1407,7 +1383,7 @@ func (r *ReconcileArgoCD) setManagedSourceNamespaces(cr *argoproj.ArgoCD) error 
 	}
 
 	for _, namespace := range namespaces.Items {
-		r.ManagedSourceNamespaces[namespace.Name] = ""
+		reqState.ManagedSourceNamespaces[namespace.Name] = ""
 	}
 
 	return nil
@@ -1415,12 +1391,12 @@ func (r *ReconcileArgoCD) setManagedSourceNamespaces(cr *argoproj.ArgoCD) error 
 
 // removeUnmanagedSourceNamespaceResources cleansup resources from SourceNamespaces if namespace is not managed by argocd instance.
 // It also removes the managed-by-cluster-argocd label from the namespace
-func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(cr *argoproj.ArgoCD, reqState *RequestState) error {
 
-	for ns := range r.ManagedSourceNamespaces {
+	for ns := range reqState.ManagedSourceNamespaces {
 		managedNamespace := false
 		if cr.GetDeletionTimestamp() == nil {
-			sourceNamespaces, err := r.getSourceNamespaces(cr)
+			sourceNamespaces, err := r.getSourceNamespaces(cr, reqState)
 			if err != nil {
 				return err
 			}
@@ -1437,7 +1413,7 @@ func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(cr *argoproj.A
 				log.Error(err, fmt.Sprintf("error cleaning up resources for namespace %s", ns))
 				continue
 			}
-			delete(r.ManagedSourceNamespaces, ns)
+			delete(reqState.ManagedSourceNamespaces, ns)
 		}
 	}
 	return nil
@@ -1489,27 +1465,27 @@ func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.
 	return nil
 }
 
-func (r *ReconcileArgoCD) cleanupAllSourceNamespaces(cr *argoproj.ArgoCD) {
-	if len(r.ManagedSourceNamespaces) == 0 {
+func (r *ReconcileArgoCD) cleanupAllSourceNamespaces(cr *argoproj.ArgoCD, reqState *RequestState) {
+	if len(reqState.ManagedSourceNamespaces) == 0 {
 		return
 	}
 
-	for ns := range r.ManagedSourceNamespaces {
+	for ns := range reqState.ManagedSourceNamespaces {
 		if err := r.cleanupUnmanagedSourceNamespaceResources(cr, ns); err != nil {
 			log.Error(err, fmt.Sprintf("error cleaning up resources for namespace %s", ns))
 			continue
 		}
-		delete(r.ManagedSourceNamespaces, ns)
+		delete(reqState.ManagedSourceNamespaces, ns)
 	}
 }
 
-func (r *ReconcileArgoCD) ensureSourceNamespacesAllowed(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) ensureSourceNamespacesAllowed(cr *argoproj.ArgoCD, reqState *RequestState) error {
 	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
 
 	// if sourceNamespaces is empty, cleanup all existing source namespaces
 	if len(cr.Spec.SourceNamespaces) == 0 {
 		if !allowed {
-			r.cleanupAllSourceNamespaces(cr)
+			r.cleanupAllSourceNamespaces(cr, reqState)
 		}
 		return nil
 	}
@@ -1521,7 +1497,7 @@ func (r *ReconcileArgoCD) ensureSourceNamespacesAllowed(cr *argoproj.ArgoCD) err
 
 	// if sourceNamespaces is not empty, and the namespace is not allowed, skip the reconciliation
 	log.Info(fmt.Sprintf("Skipping sourceNamespaces reconciliation for namespace %s", cr.Namespace))
-	r.cleanupAllSourceNamespaces(cr)
+	r.cleanupAllSourceNamespaces(cr, reqState)
 
 	return nil
 }

@@ -87,11 +87,11 @@ func newRoleBindingWithname(name string, cr *argoproj.ArgoCD) *v1.RoleBinding {
 }
 
 // reconcileRoleBindings will ensure that all ArgoCD RoleBindings are configured.
-func (r *ReconcileArgoCD) reconcileRoleBindings(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileRoleBindings(cr *argoproj.ArgoCD, reqState *RequestState) error {
 	params := getPolicyRuleList(r.Client)
 
 	for _, param := range params {
-		if err := r.reconcileRoleBinding(param.name, param.policyRule, cr); err != nil {
+		if err := r.reconcileRoleBinding(param.name, param.policyRule, cr, reqState); err != nil {
 			return fmt.Errorf("error reconciling roleBinding for %q: %w", param.name, err)
 		}
 	}
@@ -101,7 +101,7 @@ func (r *ReconcileArgoCD) reconcileRoleBindings(cr *argoproj.ArgoCD) error {
 
 // reconcileRoleBinding, creates RoleBindings for every role and associates it with the right ServiceAccount.
 // This would create RoleBindings for all the namespaces managed by the ArgoCD instance.
-func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD, reqState *RequestState) error {
 	var sa *corev1.ServiceAccount
 	var error error
 
@@ -109,11 +109,11 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 		return error
 	}
 
-	if _, error = r.reconcileRole(name, rules, cr); error != nil {
+	if _, error = r.reconcileRole(name, rules, cr, reqState); error != nil {
 		return error
 	}
 
-	for _, namespace := range r.ManagedNamespaces.Items {
+	for _, namespace := range reqState.ManagedNamespaces.Items {
 		// If encountering a terminating namespace remove managed-by label from it and skip reconciliation - This should trigger
 		// clean-up of roles/rolebindings and removal of namespace from cluster secret
 		if namespace.DeletionTimestamp != nil {
@@ -231,7 +231,7 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 		}
 
 		// reconcile rolebindings for all source namespaces for argocd-server
-		sourceNamespaces, err := r.getSourceNamespaces(cr)
+		sourceNamespaces, err := r.getSourceNamespaces(cr, reqState)
 		if err != nil {
 			return err
 		}

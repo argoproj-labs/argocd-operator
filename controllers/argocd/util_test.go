@@ -869,12 +869,13 @@ func TestSetManagedNamespaces(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
-	err := r.setManagedNamespaces(a)
+	err := r.setManagedNamespaces(a, reqState)
 	assert.NoError(t, err)
 
-	assert.Equal(t, len(r.ManagedNamespaces.Items), 3)
-	for _, n := range r.ManagedNamespaces.Items {
+	assert.Equal(t, len(reqState.ManagedNamespaces.Items), 3)
+	for _, n := range reqState.ManagedNamespaces.Items {
 		if n.Labels[common.ArgoCDManagedByLabel] != testNamespace && n.Name != testNamespace {
 			t.Errorf("Expected namespace %s to be managed by Argo CD instance %s", n.Name, testNamespace)
 		}
@@ -903,12 +904,13 @@ func TestSetManagedSourceNamespaces(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
-	err := r.setManagedSourceNamespaces(a)
+	err := r.setManagedSourceNamespaces(a, reqState)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 1, len(r.ManagedSourceNamespaces))
-	assert.Contains(t, r.ManagedSourceNamespaces, "test-namespace-1")
+	assert.Equal(t, 1, len(reqState.ManagedSourceNamespaces))
+	assert.Contains(t, reqState.ManagedSourceNamespaces, "test-namespace-1")
 }
 
 func TestGetSourceNamespacesWithWildcardPatternNamespace(t *testing.T) {
@@ -941,8 +943,9 @@ func TestGetSourceNamespacesWithWildcardPatternNamespace(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
-	sourceNamespaces, err := r.getSourceNamespaces(a)
+	sourceNamespaces, err := r.getSourceNamespaces(a, reqState)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(sourceNamespaces))
 	assert.Contains(t, sourceNamespaces, "test-namespace-1")
@@ -979,8 +982,9 @@ func TestGetSourceNamespacesWithSpecificNamespace(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
-	sourceNamespaces, err := r.getSourceNamespaces(a)
+	sourceNamespaces, err := r.getSourceNamespaces(a, reqState)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(sourceNamespaces))
 	assert.Contains(t, sourceNamespaces, "test")
@@ -1023,8 +1027,9 @@ func TestGetSourceNamespacesWithMultipleSourceNamespaces(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
-	sourceNamespaces, err := r.getSourceNamespaces(a)
+	sourceNamespaces, err := r.getSourceNamespaces(a, reqState)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(sourceNamespaces))
 	assert.Contains(t, sourceNamespaces, "test")
@@ -1062,8 +1067,9 @@ func TestGetSourceNamespacesWithWildCardNamespace(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
-	sourceNamespaces, err := r.getSourceNamespaces(a)
+	sourceNamespaces, err := r.getSourceNamespaces(a, reqState)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(sourceNamespaces))
 	assert.Contains(t, sourceNamespaces, "other-namespace")
@@ -1099,8 +1105,9 @@ func TestGetSourceNamespacesWithRegExpNamespace(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
-	sourceNamespaces, err := r.getSourceNamespaces(a)
+	sourceNamespaces, err := r.getSourceNamespaces(a, reqState)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(sourceNamespaces))
 	assert.Contains(t, sourceNamespaces, "testtest")
@@ -1152,8 +1159,9 @@ func TestReconcileArgoCD_reconcileDexOAuthClientSecret(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
-	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	assert.NoError(t, createNamespace(r, reqState, a.Namespace, ""))
 	_, err := r.reconcileServiceAccount(common.ArgoCDDefaultDexServiceAccountName, a)
 	assert.NoError(t, err)
 	_, err = r.getDexOAuthClientSecret(a)
@@ -1258,6 +1266,7 @@ func TestUpdateStatusConditionOfArgoCD_Success(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
 	argocd := argoproj.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1266,7 +1275,7 @@ func TestUpdateStatusConditionOfArgoCD_Success(t *testing.T) {
 		},
 	}
 
-	assert.NoError(t, createNamespace(r, argocd.Namespace, ""))
+	assert.NoError(t, createNamespace(r, reqState, argocd.Namespace, ""))
 	assert.NoError(t, r.Create(ctx, &argocd))
 
 	assert.NoError(t, updateStatusAndConditionsOfArgoCD(ctx, createCondition(""), &argocd, &argocd.Status, r.Client, log))
@@ -1287,6 +1296,7 @@ func TestUpdateStatusConditionOfArgoCD_Fail(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
 	argocd := argoproj.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1295,7 +1305,7 @@ func TestUpdateStatusConditionOfArgoCD_Fail(t *testing.T) {
 		},
 	}
 
-	assert.NoError(t, createNamespace(r, argocd.Namespace, ""))
+	assert.NoError(t, createNamespace(r, reqState, argocd.Namespace, ""))
 	assert.NoError(t, r.Create(ctx, &argocd))
 	assert.NoError(t, updateStatusAndConditionsOfArgoCD(ctx, createCondition("some error"), &argocd, &argocd.Status, r.Client, log))
 
