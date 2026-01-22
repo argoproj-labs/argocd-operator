@@ -18,6 +18,7 @@ package argocd
 
 import (
 	"context"
+	amerr "errors"
 	"fmt"
 	"sync"
 	"time"
@@ -31,13 +32,11 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	amerr "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/kubernetes"
 
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -376,15 +375,12 @@ func (r *ReconcileArgoCD) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *ReconcileArgoCD) restoreTrackingLabelsForOrphanedNamespaces(ctx context.Context, cr *argoproj.ArgoCD) error {
-	var aggregatedErrors []error
 	// List all Roles owned by this ArgoCD CR across all namespaces
 	roles := &rbacv1.RoleList{}
-	if err := r.List(ctx, roles, client.MatchingLabels{
-		common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-		common.ArgoCDKeyManagedBy: cr.Name,
-	}, client.InNamespace(metav1.NamespaceAll)); err != nil {
+	if err := r.List(ctx, roles, client.MatchingLabels{common.ArgoCDKeyPartOf: common.ArgoCDAppName, common.ArgoCDKeyManagedBy: cr.Name}, client.InNamespace(metav1.NamespaceAll)); err != nil {
 		return err
 	}
+	var aggregatedErr error
 	for _, role := range roles.Items {
 		// Skip ArgoCD namespace (implicitly tracked)
 		if role.Namespace == cr.Namespace {
@@ -402,7 +398,7 @@ func (r *ReconcileArgoCD) restoreTrackingLabelsForOrphanedNamespaces(ctx context
 		namespace := &corev1.Namespace{}
 		if err := r.Get(ctx, types.NamespacedName{Name: role.Namespace}, namespace); err != nil {
 			if !errors.IsNotFound(err) {
-				aggregatedErrors = append(aggregatedErrors, err)
+				aggregatedErr = amerr.Join(aggregatedErr, err)
 			}
 			continue
 		}
@@ -410,11 +406,11 @@ func (r *ReconcileArgoCD) restoreTrackingLabelsForOrphanedNamespaces(ctx context
 		if addMissingLabels(namespace, requiredLabels) {
 			argoutil.LogResourceUpdate(log, namespace, "restoring ArgoCD tracking labels for orphaned namespace")
 			if err := r.Update(ctx, namespace); err != nil {
-				aggregatedErrors = append(aggregatedErrors, err)
+				aggregatedErr = amerr.Join(aggregatedErr, err)
 			}
 		}
 	}
-	return amerr.NewAggregate(aggregatedErrors)
+	return aggregatedErr
 }
 
 // Orphan validation helpers
