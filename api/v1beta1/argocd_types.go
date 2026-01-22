@@ -591,6 +591,9 @@ type ArgoCDRepoSpec struct {
 
 	// Custom labels to pods deployed by the operator
 	Labels map[string]string `json:"labels,omitempty"`
+
+	// Custom certificates to inject into the repo server container and its plugins to trust source hosting sites
+	SystemCATrust *ArgoCDSystemCATrustSpec `json:"systemCATrust,omitempty"`
 }
 
 func (a *ArgoCDRepoSpec) IsEnabled() bool {
@@ -599,6 +602,18 @@ func (a *ArgoCDRepoSpec) IsEnabled() bool {
 
 func (a *ArgoCDRepoSpec) IsRemote() bool {
 	return a.Remote != nil && *a.Remote != ""
+}
+
+// ArgoCDSystemCATrustSpec defines custom certificates to inject into the repo server container and its plugins to trust source hosting sites
+type ArgoCDSystemCATrustSpec struct {
+	// DropImageCertificates will remove all certs that are present in the image, leaving only those explicitly configured here.
+	DropImageCertificates bool `json:"dropImageCertificates,omitempty"`
+	// ClusterTrustBundles is a list of projected ClusterTrustBundle volume definitions from where to take the trust certs.
+	ClusterTrustBundles []corev1.ClusterTrustBundleProjection `json:"clusterTrustBundles,omitempty"`
+	// Secrets is a list of projected Secret volume definitions from where to take the trust certs.
+	Secrets []corev1.SecretProjection `json:"secrets,omitempty"`
+	// ConfigMaps is a list of projected ConfigMap volume definitions from where to take the trust certs.
+	ConfigMaps []corev1.ConfigMapProjection `json:"configMaps,omitempty"`
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.
