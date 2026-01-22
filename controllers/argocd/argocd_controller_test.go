@@ -622,6 +622,16 @@ func Test_restoreTrackingLabelsForOrphanedNamespaces(t *testing.T) {
 		},
 	}
 
+	nsWithoutAppsetLabelButWildcard := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "ns-without-appset-label-but-wildcard",
+			Labels: map[string]string{
+				// intentionally missing appset tracking label
+				common.ArgoCDManagedByClusterArgoCDLabel: argocd.Namespace,
+			},
+		},
+	}
+
 	nsWithAppsetLabel := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "ns-with-appset-label",
@@ -687,6 +697,25 @@ func Test_restoreTrackingLabelsForOrphanedNamespaces(t *testing.T) {
 		Rules: appScopedRules,
 	}
 
+	// AppSet role in namespace missing the label (should trigger restore) but having resources has *
+	appSetRoleInUnlabelledNSWithWildcard := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      appsetRoleName,
+			Namespace: nsWithoutAppsetLabelButWildcard.Name,
+			Labels: map[string]string{
+				common.ArgoCDKeyManagedBy: argocd.Name,
+				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+			},
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{"argoproj.io"},
+				Resources: []string{"*"},
+				Verbs:     []string{"get", "list"},
+			},
+		},
+	}
+
 	// Same role name but in ArgoCD namespace (must be ignored)
 	roleInArgoCDNS := &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
@@ -716,11 +745,13 @@ func Test_restoreTrackingLabelsForOrphanedNamespaces(t *testing.T) {
 	resObjs := []client.Object{
 		argocd,
 		nsWithoutAppsetLabel,
+		nsWithoutAppsetLabelButWildcard,
 		nsWithAppsetLabel,
 		nsRandom,
 		argocdNamespace,
 		appsetRoleInLabelledNS,
 		appsetRoleInUnlabelledNS,
+		appSetRoleInUnlabelledNSWithWildcard,
 		roleInArgoCDNS,
 		randomRole,
 	}
@@ -736,6 +767,7 @@ func Test_restoreTrackingLabelsForOrphanedNamespaces(t *testing.T) {
 
 	// Capture original labels for immutability assertions
 	origWithout := maps.Clone(nsWithoutAppsetLabel.Labels)
+	origWithoutButWildcard := maps.Clone(nsWithoutAppsetLabelButWildcard.Labels)
 	origWith := maps.Clone(nsWithAppsetLabel.Labels)
 	origRandom := maps.Clone(nsRandom.Labels)
 
@@ -751,6 +783,14 @@ func Test_restoreTrackingLabelsForOrphanedNamespaces(t *testing.T) {
 	assert.Equal(t, origWithout[common.ArgoCDManagedByClusterArgoCDLabel], updatedWithout.Labels[common.ArgoCDManagedByClusterArgoCDLabel])
 
 	assert.Equal(t, argocd.Namespace, updatedWithout.Labels[common.ArgoCDApplicationSetManagedByClusterArgoCDLabel], "expected appset tracking label to be restored")
+
+	// 1b) Namespace with wildcard resources but missing label -> label restored
+	updatedWithoutButWildcard := &corev1.Namespace{}
+	assert.NoError(t, cl.Get(ctx, types.NamespacedName{Name: nsWithoutAppsetLabelButWildcard.Name}, updatedWithoutButWildcard))
+
+	assert.Equal(t, origWithoutButWildcard[common.ArgoCDManagedByClusterArgoCDLabel], updatedWithoutButWildcard.Labels[common.ArgoCDManagedByClusterArgoCDLabel])
+
+	assert.Equal(t, argocd.Namespace, updatedWithoutButWildcard.Labels[common.ArgoCDApplicationSetManagedByClusterArgoCDLabel], "expected appset tracking label to be restored")
 
 	// 2) Namespace already labelled -> unchanged
 	updatedWith := &corev1.Namespace{}

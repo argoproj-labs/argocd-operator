@@ -452,6 +452,9 @@ func hasApplicationScopedRules(rules []rbacv1.PolicyRule) bool {
 		if !contains(rule.APIGroups, argoCDAPIGroup) {
 			continue
 		}
+		if contains(rule.Resources, "*") {
+			return true
+		}
 		for _, res := range rule.Resources {
 			switch res {
 			case
