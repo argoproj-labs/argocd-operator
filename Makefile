@@ -204,7 +204,7 @@ gosec: go_sec
 .PHONY: lint
 lint: golangci_lint
 	$(GOLANGCI_LINT) --version
-	GOMAXPROCS=2 $(GOLANGCI_LINT) run --fix --verbose --timeout 300s
+	$(GOLANGCI_LINT) run --fix --verbose --timeout 300s
 
 
 GO_SEC = $(shell pwd)/bin/gosec
