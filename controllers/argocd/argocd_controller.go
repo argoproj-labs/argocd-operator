@@ -18,7 +18,7 @@ package argocd
 
 import (
 	"context"
-	amerr "errors"
+	errs "errors"
 	"fmt"
 	"sync"
 	"time"
@@ -398,7 +398,7 @@ func (r *ReconcileArgoCD) restoreTrackingLabelsForOrphanedNamespaces(ctx context
 		namespace := &corev1.Namespace{}
 		if err := r.Get(ctx, types.NamespacedName{Name: role.Namespace}, namespace); err != nil {
 			if !errors.IsNotFound(err) {
-				aggregatedErr = amerr.Join(aggregatedErr, err)
+				aggregatedErr = errs.Join(aggregatedErr, err)
 			}
 			continue
 		}
@@ -406,7 +406,7 @@ func (r *ReconcileArgoCD) restoreTrackingLabelsForOrphanedNamespaces(ctx context
 		if addMissingLabels(namespace, requiredLabels) {
 			argoutil.LogResourceUpdate(log, namespace, "restoring ArgoCD tracking labels for orphaned namespace")
 			if err := r.Update(ctx, namespace); err != nil {
-				aggregatedErr = amerr.Join(aggregatedErr, err)
+				aggregatedErr = errs.Join(aggregatedErr, err)
 			}
 		}
 	}
