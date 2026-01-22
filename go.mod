@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/argoproj/argo-cd/v3 v3.2.3
-	github.com/argoproj/gitops-engine v0.7.1-0.20251217140045-5baed5604d2d
+	github.com/argoproj/gitops-engine v0.7.3
 	github.com/cert-manager/cert-manager v1.15.4
 	github.com/go-logr/logr v1.4.3
 	github.com/google/go-cmp v0.7.0
@@ -31,6 +31,7 @@ require (
 )
 
 require (
+	github.com/evanphx/json-patch v5.9.11+incompatible // indirect
 	go.uber.org/automaxprocs v1.6.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.1-0.20251003215857-446d8398e19c // indirect
 )
