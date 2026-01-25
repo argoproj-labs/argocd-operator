@@ -20,6 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	testclient "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/utils/ptr"
 )
 
 const (
@@ -1803,7 +1804,7 @@ func TestGetRedisServerAddressWithCustomDomain(t *testing.T) {
 		},
 		{
 			name:         "remote redis - custom domain ignored",
-			remoteRedis:  stringPtr("remote-redis:6379"),
+			remoteRedis:  ptr.To("remote-redis:6379"),
 			expectedAddr: "remote-redis:6379",
 		},
 	}
@@ -1819,11 +1820,6 @@ func TestGetRedisServerAddressWithCustomDomain(t *testing.T) {
 			assert.Equal(t, tt.expectedAddr, result)
 		})
 	}
-}
-
-// stringPtr is a helper function to get a pointer to a string
-func stringPtr(s string) *string {
-	return &s
 }
 
 func TestGetDexServerAddressWithCustomDomain(t *testing.T) {
@@ -1874,7 +1870,7 @@ func TestGetRepoServerAddressWithCustomDomain(t *testing.T) {
 		},
 		{
 			name:         "remote repo server - custom domain ignored",
-			remoteRepo:   stringPtr("remote-repo:8081"),
+			remoteRepo:   ptr.To("remote-repo:8081"),
 			expectedAddr: "remote-repo:8081",
 		},
 	}
