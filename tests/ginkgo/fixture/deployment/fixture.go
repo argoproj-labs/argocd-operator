@@ -41,7 +41,7 @@ func GetEnv(d *appsv1.Deployment, container string, key string) (*string, error)
 				currEnv := containers[idc].Env[idx]
 
 				if currEnv.Name == key {
-					return &currEnv.Name, nil
+					return &currEnv.Value, nil
 				}
 			}
 		}

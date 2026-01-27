@@ -324,7 +324,7 @@ func EnvCI() bool {
 // This can be used before a test starts to ensure that Operator or Argo CD containers are back to default state.
 //
 //nolint:unused
-func waitForAllEnvVarsToBeRemovedFromDeployments(ns string, envVarKeys []string, k8sClient client.Client) error {
+func waitForAllEnvVarsToBeRemovedFromDeployments(ns string, envVarKeys []string, k8sClient client.Client) {
 
 	Eventually(func() bool {
 		var deplList appsv1.DeploymentList
@@ -365,7 +365,6 @@ func waitForAllEnvVarsToBeRemovedFromDeployments(ns string, envVarKeys []string,
 
 	}, "3m", "1s").Should(BeTrue())
 
-	return nil
 }
 
 func WaitForAllDeploymentsInTheNamespaceToBeReady(ns string, k8sClient client.Client) {
