@@ -298,7 +298,7 @@ func createNamespaceManagedByClusterArgoCDLabel(r *ReconcileArgoCD, reqState *Re
 	}
 
 	if reqState.ManagedSourceNamespaces == nil {
-		reqState.ManagedSourceNamespaces = make(map[string]string)
+		reqState.ManagedSourceNamespaces = make(map[string]any)
 	}
 	reqState.ManagedSourceNamespaces[ns.Name] = ""
 

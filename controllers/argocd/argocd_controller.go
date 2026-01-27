@@ -104,8 +104,8 @@ type RequestState struct {
 	// ManagedNamespaces contains a list of namespaces managed by namespace managagement feature
 	ManagedNamespaces *corev1.NamespaceList
 
-	// Stores a list of ApplicationSourceNamespaces as keys
-	ManagedSourceNamespaces map[string]string
+	// Stores a list of ApplicationSourceNamespaces as keys (value is not used)
+	ManagedSourceNamespaces map[string]any
 
 	// Stores a list of ApplicationSetSourceNamespaces as keys (value is not used)
 	// - list of namespaces that currently have the 'common.ArgoCDApplicationSetManagedByClusterArgoCDLabel' label

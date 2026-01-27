@@ -304,9 +304,10 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 			}
 		}
 
+		// Add 'sourceNamespace' to ManagedSourceNamespaces (if it doesn't already exist)
 		if _, ok := reqState.ManagedSourceNamespaces[sourceNamespace]; !ok {
 			if reqState.ManagedSourceNamespaces == nil {
-				reqState.ManagedSourceNamespaces = make(map[string]string)
+				reqState.ManagedSourceNamespaces = make(map[string]any)
 			}
 			reqState.ManagedSourceNamespaces[sourceNamespace] = ""
 		}
