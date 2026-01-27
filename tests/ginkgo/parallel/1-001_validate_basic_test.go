@@ -62,6 +62,19 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 			defer cleanupFunc()
 
+			By("Verify Argocd instance creation fails when sso and oidc config both exists")
+			argocdFailure := &argov1beta1api.ArgoCD{
+				ObjectMeta: metav1.ObjectMeta{Name: "example-argocd", Namespace: ns.Name,
+					Labels: map[string]string{"example": "basic"}},
+				Spec: argov1beta1api.ArgoCDSpec{
+					SSO: &argov1beta1api.ArgoCDSSOSpec{
+						Provider: "dex",
+					},
+				},
+			}
+			argocdFailure.Spec.OIDCConfig = "keycloak"
+			Expect(k8sClient.Create(ctx, argocdFailure)).To(MatchError("ArgoCD.argoproj.io \"example-argocd\" is invalid: spec: Invalid value: \"object\": spec.sso and spec.oidcConfig cannot both be set"))
+
 			By("1) creating simple namespace-scoped Argo CD instance")
 			argoCD := &argov1beta1api.ArgoCD{
 				ObjectMeta: metav1.ObjectMeta{Name: "example-argocd", Namespace: ns.Name,
