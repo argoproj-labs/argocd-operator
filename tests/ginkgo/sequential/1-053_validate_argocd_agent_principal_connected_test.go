@@ -279,6 +279,9 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 		})
 
 		AfterEach(func() {
+
+			fixture.OutputDebugOnFail(namespaceAgentPrincipal, namespaceManagedAgent, namespaceAutonomousAgent, managedAgentClusterName, autonomousAgentClusterName, managedAgentApplicationNamespace, autonomousAgentApplicationNamespace)
+
 			By("Cleanup cluster-scoped resources")
 			_ = k8sClient.Delete(ctx, clusterRolePrincipal)
 			_ = k8sClient.Delete(ctx, clusterRoleBindingPrincipal)

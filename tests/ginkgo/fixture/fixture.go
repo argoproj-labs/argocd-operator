@@ -320,6 +320,54 @@ func EnvCI() bool {
 	return exists
 }
 
+// waitForAllEnvVarsToBeRemovedFromDeployments checks all Deployments in the Namespace, to ensure that none of those Deployments contain environment variables defined within envVarKeys.
+// This can be used before a test starts to ensure that Operator or Argo CD containers are back to default state.
+//
+//nolint:unused
+func waitForAllEnvVarsToBeRemovedFromDeployments(ns string, envVarKeys []string, k8sClient client.Client) error {
+
+	Eventually(func() bool {
+		var deplList appsv1.DeploymentList
+
+		if err := k8sClient.List(context.Background(), &deplList, client.InNamespace(ns)); err != nil {
+			GinkgoWriter.Println(err)
+			return false
+		}
+
+		// For each Deployment in the list...
+		for _, depl := range deplList.Items {
+
+			// If at least one of the Deployments has not been observed, wait and try again
+			if depl.Generation != depl.Status.ObservedGeneration {
+				return false
+			}
+
+			// For each container of the deployment
+			for _, container := range depl.Spec.Template.Spec.Containers {
+
+				// For each env var we are looking for
+				for _, envVarKey := range envVarKeys {
+
+					for _, containerEnvKey := range container.Env {
+
+						if containerEnvKey.Name == envVarKey {
+							GinkgoWriter.Println("Waiting:", containerEnvKey, "is still present in Deployment ", depl.Name)
+							return false
+						}
+
+					}
+				}
+			}
+		}
+
+		// All Deployments in NS are reconciled and ready
+		return true
+
+	}, "3m", "1s").Should(BeTrue())
+
+	return nil
+}
+
 func WaitForAllDeploymentsInTheNamespaceToBeReady(ns string, k8sClient client.Client) {
 
 	Eventually(func() bool {

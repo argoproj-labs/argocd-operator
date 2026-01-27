@@ -327,15 +327,15 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			}
 
 			// Store original env value for cleanup
-			originalEnvValue, _ := deploymentFixture.GetEnv(operatorDeployment, common.ArgoCDImagePullPolicyEnvName)
+			originalEnvValue, _ := deploymentFixture.GetEnv(operatorDeployment, "manager", common.ArgoCDImagePullPolicyEnvName)
 
 			// Ensure cleanup happens
 			defer func() {
 				By("restoring original operator deployment env var")
 				if originalEnvValue != nil {
-					deploymentFixture.SetEnv(operatorDeployment, common.ArgoCDImagePullPolicyEnvName, *originalEnvValue)
+					deploymentFixture.SetEnv(operatorDeployment, "manager", common.ArgoCDImagePullPolicyEnvName, *originalEnvValue)
 				} else {
-					deploymentFixture.RemoveEnv(operatorDeployment, common.ArgoCDImagePullPolicyEnvName)
+					deploymentFixture.RemoveEnv(operatorDeployment, "manager", common.ArgoCDImagePullPolicyEnvName)
 				}
 				By("waiting for operator pod to restart with original settings")
 				time.Sleep(30 * time.Second)
@@ -343,7 +343,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			}()
 
 			By("setting IMAGE_PULL_POLICY env var on operator deployment to Always")
-			deploymentFixture.SetEnv(operatorDeployment, common.ArgoCDImagePullPolicyEnvName, "Always")
+			deploymentFixture.SetEnv(operatorDeployment, "manager", common.ArgoCDImagePullPolicyEnvName, "Always")
 
 			By("waiting for operator pod to restart with new env var")
 			time.Sleep(30 * time.Second) // Give time for pod to start terminating
@@ -424,7 +424,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			}, "60s", "2s").Should(BeTrue(), "Second instance should use CR policy (Never)")
 
 			By("changing operator env var to IfNotPresent")
-			deploymentFixture.SetEnv(operatorDeployment, common.ArgoCDImagePullPolicyEnvName, "IfNotPresent")
+			deploymentFixture.SetEnv(operatorDeployment, "manager", common.ArgoCDImagePullPolicyEnvName, "IfNotPresent")
 
 			By("waiting for operator pod to restart with updated env var")
 			time.Sleep(30 * time.Second)
