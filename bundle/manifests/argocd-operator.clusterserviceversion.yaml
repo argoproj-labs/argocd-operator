@@ -257,7 +257,7 @@ metadata:
     capabilities: Deep Insights
     categories: Integration & Delivery
     certified: "false"
-    createdAt: "2026-01-27T10:26:00Z"
+    createdAt: "2026-01-27T12:10:27Z"
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v1.35.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
@@ -1083,7 +1083,7 @@ spec:
           service FQDNs. Defaults to "cluster.local". The full FQDN will be: <service>.<namespace>.svc.<clusterDomain>
           This is useful for clusters that use a different DNS suffix (e.g., "CLUSTER_ID.cluster.local",
           "edge.local").'
-        displayName: Cluster Domain'
+        displayName: Cluster Domain
         path: clusterDomain
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
