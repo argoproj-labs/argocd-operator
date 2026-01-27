@@ -65,3 +65,5 @@ git apply  /tmp/compare/gitops-operator/gitops-operator-patch.patch
 cd "(argocd-operator repository you will use to commit patch)"
 git apply  /tmp/compare/argocd-operator/argocd-operator-patch.patch
 ```
+
+NOTE: If you see `patch does not apply` error, you can use `git apply --reject` instead, to apply only parts of the patch that succeed. Rejected patch segments will be stored with `.rej` file suffix, and can be manually applied.
