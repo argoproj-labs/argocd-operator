@@ -98,7 +98,7 @@ type ReconcileArgoCD struct {
 // RequestState stores variables with a lifetime equal to the ReconcileArgoCD.Reconcile(...) call:
 // - These values are only relevant to a single ArgoCD CR's single reconciliation request.
 // - These values are regenerated at the beginning of every request
-// - They are discarded  at the end of every request.
+// - They are discarded at the end of every request.
 type RequestState struct {
 
 	// ManagedNamespaces contains a list of namespaces managed by namespace managagement feature

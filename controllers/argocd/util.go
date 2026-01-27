@@ -874,12 +874,12 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *
 		}
 	}
 
-	if !reflect.DeepEqual(cr.Spec.Notifications, argoproj.ArgoCDNotifications{}) || len(reqState.ManagedNotificationsSourceNamespaces) > 0 {
-		log.Info("reconciling Notifications controller")
-		if err := r.reconcileNotificationsController(cr, reqState); err != nil {
-			return err
-		}
+	fmt.Println("JGW A1", reqState.ManagedNotificationsSourceNamespaces)
+	log.Info("reconciling Notifications controller")
+	if err := r.reconcileNotificationsController(cr, reqState); err != nil {
+		return err
 	}
+	fmt.Println("JGW A2")
 
 	if IsImageUpdaterAPIAvailable() {
 		log.Info("reconciling Image Updater controller")

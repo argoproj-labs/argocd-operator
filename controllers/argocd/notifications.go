@@ -87,7 +87,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsController(cr *argoproj.ArgoCD, 
 	}
 
 	// remove resources for namespaces not part of SourceNamespaces
-	log.Info("performing cleanup for notifications source namespaces")
+	log.Info("JGW performing cleanup for notifications source namespaces")
 	if err := r.removeUnmanagedNotificationsSourceNamespaceResources(cr, reqState); err != nil {
 		return err
 	}
@@ -802,6 +802,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsSourceNamespacesResources(cr *ar
 			if reqState.ManagedNotificationsSourceNamespaces == nil {
 				reqState.ManagedNotificationsSourceNamespaces = make(map[string]string)
 			}
+			fmt.Println("JGW-RNSNR", sourceNamespace)
 			reqState.ManagedNotificationsSourceNamespaces[sourceNamespace] = ""
 		}
 	}
@@ -908,6 +909,7 @@ func (r *ReconcileArgoCD) setManagedNotificationsSourceNamespaces(cr *argoproj.A
 	}
 
 	for _, namespace := range namespaces.Items {
+		fmt.Println("JGW10", namespace)
 		reqState.ManagedNotificationsSourceNamespaces[namespace.Name] = ""
 	}
 
@@ -917,6 +919,8 @@ func (r *ReconcileArgoCD) setManagedNotificationsSourceNamespaces(cr *argoproj.A
 // removeUnmanagedNotificationsSourceNamespaceResources cleans up resources from NotificationsSourceNamespaces if namespace is not managed by argocd instance.
 // ManagedNotificationsSourceNamespaces var keeps track of namespaces with notifications resources.
 func (r *ReconcileArgoCD) removeUnmanagedNotificationsSourceNamespaceResources(cr *argoproj.ArgoCD, reqState *RequestState) error {
+
+	fmt.Println("JGW-removeUnmanagedNotificationsSourceNamespaceResources")
 
 	for ns := range reqState.ManagedNotificationsSourceNamespaces {
 
@@ -988,7 +992,10 @@ func (r *ReconcileArgoCD) removeUnmanagedNotificationsSourceNamespaceResources(c
 
 // isNotificationsEnabled returns true if notifications are configured and enabled in the ArgoCD CR
 func isNotificationsEnabled(cr *argoproj.ArgoCD) bool {
-	return !reflect.DeepEqual(cr.Spec.Notifications, argoproj.ArgoCDNotifications{}) && cr.Spec.Notifications.Enabled
+	if cr == nil {
+		return false
+	}
+	return cr.Spec.Notifications.Enabled
 }
 
 // cleanupUnmanagedNotificationsSourceNamespaceResources removes the notifications resources from target namespace
