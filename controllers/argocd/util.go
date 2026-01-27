@@ -1503,44 +1503,46 @@ func (r *ReconcileArgoCD) ensureSourceNamespacesAllowed(cr *argoproj.ArgoCD, req
 	return nil
 }
 
-// cleanupOrphanedSourceNamespacedAcrossAllNamespaces lists all namespaces with common.ArgoCDManagedByClusterArgoCDLabel label, and verifies that there exists an ArgoCD instance in that namespace. If no namespace exists, the roles/rolebindings are removed from the namespace.
-func (r *ReconcileArgoCD) cleanupOrphanedSourceNamespacesAcrossAllNamespaces(cr *argoproj.ArgoCD) error {
+// // cleanupOrphanedSourceNamespacedAcrossAllNamespaces lists all namespaces with common.ArgoCDManagedByClusterArgoCDLabel label, and verifies that there exists an ArgoCD instance in that namespace. If no namespace exists, the roles/rolebindings are removed from the namespace.
+// func (r *ReconcileArgoCD) cleanupOrphanedSourceNamespacesAcrossAllNamespaces(cr *argoproj.ArgoCD) error {
 
-	// List all namespaces with the managed-by-cluster-argocd label
-	namespaces := &corev1.NamespaceList{}
-	if err := r.List(context.TODO(), namespaces); err != nil {
-		return err
-	}
+// 	// JGW-TODO: Call this on startup
 
-	for _, namespace := range namespaces.Items {
-		// Check if namespace has the managed-by-cluster-argocd label
-		argoCDNamespace, ok := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]
-		if !ok || argoCDNamespace == "" {
-			continue
-		}
+// 	// List all namespaces with the managed-by-cluster-argocd label
+// 	namespaces := &corev1.NamespaceList{}
+// 	if err := r.List(context.TODO(), namespaces); err != nil {
+// 		return err
+// 	}
 
-		// Check if an ArgoCD CR exists in the namespace specified by the label value
-		argocds := &argoproj.ArgoCDList{}
-		if err := r.List(context.TODO(), argocds, &client.ListOptions{Namespace: argoCDNamespace}); err != nil {
-			log.Error(err, fmt.Sprintf("failed to list ArgoCD instances in namespace %s", argoCDNamespace))
-			continue
-		}
+// 	for _, namespace := range namespaces.Items {
+// 		// Check if namespace has the managed-by-cluster-argocd label
+// 		argoCDNamespace, ok := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]
+// 		if !ok || argoCDNamespace == "" {
+// 			continue
+// 		}
 
-		// If an ArgoCD CR exists in the managing namespace, skip cleanup
-		if len(argocds.Items) > 0 {
-			continue
-		}
+// 		// Check if an ArgoCD CR exists in the namespace specified by the label value
+// 		argocds := &argoproj.ArgoCDList{}
+// 		if err := r.List(context.TODO(), argocds, &client.ListOptions{Namespace: argoCDNamespace}); err != nil {
+// 			log.Error(err, fmt.Sprintf("failed to list ArgoCD instances in namespace %s", argoCDNamespace))
+// 			continue
+// 		}
 
-		// No ArgoCD CR exists in the managing namespace - this namespace is orphaned
-		log.Info(fmt.Sprintf("Cleaning up orphaned source namespace %s (managing ArgoCD instance in namespace %s no longer exists)", namespace.Name, argoCDNamespace))
+// 		// If an ArgoCD CR exists in the managing namespace, skip cleanup
+// 		if len(argocds.Items) > 0 {
+// 			continue
+// 		}
 
-		if err := r.cleanupUnmanagedSourceNamespaceResources(cr, namespace.Name); err != nil {
-			return fmt.Errorf("unable to cleanup unmanaged source namespace '%s' resource: %v", namespace.Name, err)
-		}
-	}
+// 		// No ArgoCD CR exists in the managing namespace - this namespace is orphaned
+// 		log.Info(fmt.Sprintf("Cleaning up orphaned source namespace %s (managing ArgoCD instance in namespace %s no longer exists)", namespace.Name, argoCDNamespace))
 
-	return nil
-}
+// 		if err := r.cleanupUnmanagedSourceNamespaceResources(cr, namespace.Name); err != nil {
+// 			return fmt.Errorf("unable to cleanup unmanaged source namespace '%s' resource: %v", namespace.Name, err)
+// 		}
+// 	}
+
+// 	return nil
+// }
 
 func AddSeccompProfileForOpenShift(client client.Client, podspec *corev1.PodSpec) {
 	if !IsVersionAPIAvailable() {

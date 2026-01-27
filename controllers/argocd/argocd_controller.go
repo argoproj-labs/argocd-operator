@@ -248,6 +248,23 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 
 	ActiveInstanceReconciliationCount.WithLabelValues(argocd.Namespace).Inc()
 
+	// First we initialize the reqState variables with context for the current CR
+
+	if err = r.setManagedNamespaces(argocd, reqState); err != nil {
+		return reconcile.Result{}, argocd, argoCDStatus, fmt.Errorf("unable to retrieve managed namespaces: %v", err)
+	}
+
+	if err = r.setManagedSourceNamespaces(argocd, reqState); err != nil {
+		return reconcile.Result{}, argocd, argoCDStatus, fmt.Errorf("unable to retrieve managed source namespaces: %v", err)
+	}
+
+	if err = r.setManagedApplicationSetSourceNamespaces(argocd, reqState); err != nil {
+		return reconcile.Result{}, argocd, argoCDStatus, fmt.Errorf("unable to retrieve managed appset source namespaces: %v", err)
+	}
+	if err = r.setManagedNotificationsSourceNamespaces(argocd, reqState); err != nil {
+		return reconcile.Result{}, argocd, argoCDStatus, fmt.Errorf("unable to retrieve managed notification source namespaces: %v", err)
+	}
+
 	if argocd.GetDeletionTimestamp() != nil {
 
 		argoCDStatus.Phase = "Unknown" // Set to Unknown since we are in the process of deleting ArgoCD CR
@@ -303,20 +320,6 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 		}
 	}
 
-	if err = r.setManagedNamespaces(argocd, reqState); err != nil {
-		return reconcile.Result{}, argocd, argoCDStatus, err
-	}
-
-	if err = r.setManagedSourceNamespaces(argocd, reqState); err != nil {
-		return reconcile.Result{}, argocd, argoCDStatus, err
-	}
-
-	if err = r.setManagedApplicationSetSourceNamespaces(argocd, reqState); err != nil {
-		return reconcile.Result{}, argocd, argoCDStatus, err
-	}
-	if err = r.setManagedNotificationsSourceNamespaces(argocd, reqState); err != nil {
-		return reconcile.Result{}, argocd, argoCDStatus, err
-	}
 	// Handle NamespaceManagement reconciliation and check if Namespace Management is enabled via the Subscription env variable.
 	if isNamespaceManagementEnabled() {
 		if err := r.reconcileNamespaceManagement(argocd, reqState); err != nil {

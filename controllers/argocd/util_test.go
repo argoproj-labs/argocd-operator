@@ -1620,6 +1620,340 @@ func TestNamespaceManagementHandlers(t *testing.T) {
 	})
 }
 
+// func TestCleanupOrphanedSourceNamespacesAcrossAllNamespaces(t *testing.T) {
+// 	logf.SetLogger(ZapLogger(true))
+
+// 	t.Run("No namespaces with managed-by-cluster-argocd label", func(t *testing.T) {
+// 		a := makeTestArgoCD()
+
+// 		// Create namespaces without the managed-by-cluster-argocd label
+// 		ns1 := corev1.Namespace{
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name: "ns-without-label-1",
+// 			},
+// 		}
+// 		ns2 := corev1.Namespace{
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name:   "ns-without-label-2",
+// 				Labels: map[string]string{"some-other-label": "value"},
+// 			},
+// 		}
+
+// 		resObjs := []client.Object{a, &ns1, &ns2}
+// 		subresObjs := []client.Object{a}
+// 		runtimeObjs := []runtime.Object{}
+// 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+// 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+// 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+// 		err := r.cleanupOrphanedSourceNamespacesAcrossAllNamespaces(a)
+// 		assert.NoError(t, err)
+// 	})
+
+// 	t.Run("Namespace with label and ArgoCD instance exists - no cleanup", func(t *testing.T) {
+// 		a := makeTestArgoCD()
+
+// 		// Create a namespace with the managed-by-cluster-argocd label pointing to the ArgoCD namespace
+// 		sourceNs := corev1.Namespace{
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name: "source-namespace",
+// 				Labels: map[string]string{
+// 					common.ArgoCDManagedByClusterArgoCDLabel: a.Namespace,
+// 				},
+// 			},
+// 		}
+
+// 		// Create the ArgoCD namespace
+// 		argoCDNs := corev1.Namespace{
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name: a.Namespace,
+// 			},
+// 		}
+
+// 		// Create a Role and RoleBinding in the source namespace
+// 		roleName := getRoleNameForApplicationSourceNamespaces(sourceNs.Name, a)
+// 		role := &rbacv1.Role{
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name:      roleName,
+// 				Namespace: sourceNs.Name,
+// 				Labels:    argoutil.LabelsForCluster(a),
+// 			},
+// 		}
+
+// 		roleBindingName := getRoleBindingNameForSourceNamespaces(a.Name, sourceNs.Name)
+// 		roleBinding := &rbacv1.RoleBinding{
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name:      roleBindingName,
+// 				Namespace: sourceNs.Name,
+// 				Labels:    argoutil.LabelsForCluster(a),
+// 			},
+// 		}
+
+// 		resObjs := []client.Object{a, &sourceNs, &argoCDNs, role, roleBinding}
+// 		subresObjs := []client.Object{a}
+// 		runtimeObjs := []runtime.Object{}
+// 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+// 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+// 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+// 		err := r.cleanupOrphanedSourceNamespacesAcrossAllNamespaces(a)
+// 		assert.NoError(t, err)
+
+// 		// Verify that the Role and RoleBinding still exist (not cleaned up)
+// 		existingRole := &rbacv1.Role{}
+// 		err = r.Get(context.TODO(), types.NamespacedName{Name: roleName, Namespace: sourceNs.Name}, existingRole)
+// 		assert.NoError(t, err)
+// 		assert.Equal(t, roleName, existingRole.Name)
+
+// 		existingRoleBinding := &rbacv1.RoleBinding{}
+// 		err = r.Get(context.TODO(), types.NamespacedName{Name: roleBindingName, Namespace: sourceNs.Name}, existingRoleBinding)
+// 		assert.NoError(t, err)
+// 		assert.Equal(t, roleBindingName, existingRoleBinding.Name)
+
+// 		// Verify that the label still exists on the namespace
+// 		existingNs := &corev1.Namespace{}
+// 		err = r.Get(context.TODO(), types.NamespacedName{Name: sourceNs.Name}, existingNs)
+// 		assert.NoError(t, err)
+// 		assert.Equal(t, a.Namespace, existingNs.Labels[common.ArgoCDManagedByClusterArgoCDLabel])
+// 	})
+
+// 	t.Run("Namespace with label but ArgoCD instance does not exist - cleanup orphaned", func(t *testing.T) {
+// 		a := makeTestArgoCD()
+
+// 		// Create a namespace with the managed-by-cluster-argocd label pointing to a non-existent ArgoCD namespace
+// 		sourceNs := corev1.Namespace{
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name: "orphaned-source-namespace",
+// 				Labels: map[string]string{
+// 					common.ArgoCDManagedByClusterArgoCDLabel: "non-existent-argocd-namespace",
+// 				},
+// 			},
+// 		}
+
+// 		// Create the ArgoCD namespace (but without any ArgoCD instance in non-existent-argocd-namespace)
+// 		argoCDNs := corev1.Namespace{
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name: a.Namespace,
+// 			},
+// 		}
+
+// 		// Create a Role and RoleBinding in the orphaned source namespace
+// 		roleName := getRoleNameForApplicationSourceNamespaces(sourceNs.Name, a)
+// 		role := &rbacv1.Role{
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name:      roleName,
+// 				Namespace: sourceNs.Name,
+// 				Labels:    argoutil.LabelsForCluster(a),
+// 			},
+// 		}
+
+// 		roleBindingName := getRoleBindingNameForSourceNamespaces(a.Name, sourceNs.Name)
+// 		roleBinding := &rbacv1.RoleBinding{
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name:      roleBindingName,
+// 				Namespace: sourceNs.Name,
+// 				Labels:    argoutil.LabelsForCluster(a),
+// 			},
+// 		}
+
+// 		resObjs := []client.Object{a, &sourceNs, &argoCDNs, role, roleBinding}
+// 		subresObjs := []client.Object{a}
+// 		runtimeObjs := []runtime.Object{}
+// 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+// 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+// 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+// 		err := r.cleanupOrphanedSourceNamespacesAcrossAllNamespaces(a)
+// 		assert.NoError(t, err)
+
+// 		// Verify that the Role was deleted
+// 		existingRole := &rbacv1.Role{}
+// 		err = r.Get(context.TODO(), types.NamespacedName{Name: roleName, Namespace: sourceNs.Name}, existingRole)
+// 		assert.True(t, apierrors.IsNotFound(err))
+
+// 		// Verify that the RoleBinding was deleted
+// 		existingRoleBinding := &rbacv1.RoleBinding{}
+// 		err = r.Get(context.TODO(), types.NamespacedName{Name: roleBindingName, Namespace: sourceNs.Name}, existingRoleBinding)
+// 		assert.True(t, apierrors.IsNotFound(err))
+
+// 		// Verify that the label was removed from the namespace
+// 		existingNs := &corev1.Namespace{}
+// 		err = r.Get(context.TODO(), types.NamespacedName{Name: sourceNs.Name}, existingNs)
+// 		assert.NoError(t, err)
+// 		_, hasLabel := existingNs.Labels[common.ArgoCDManagedByClusterArgoCDLabel]
+// 		assert.False(t, hasLabel)
+// 	})
+
+// 	t.Run("Multiple namespaces - mixed scenarios", func(t *testing.T) {
+// 		a := makeTestArgoCD()
+
+// 		// Create another ArgoCD instance in a different namespace
+// 		anotherArgoCDNs := "another-argocd-ns"
+// 		anotherArgoCD := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+// 			ac.Name = "another-argocd"
+// 			ac.Namespace = anotherArgoCDNs
+// 		})
+
+// 		// Namespace 1: Has label pointing to existing ArgoCD - should NOT be cleaned up
+// 		sourceNs1 := corev1.Namespace{
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name: "source-ns-1",
+// 				Labels: map[string]string{
+// 					common.ArgoCDManagedByClusterArgoCDLabel: a.Namespace,
+// 				},
+// 			},
+// 		}
+
+// 		// Namespace 2: Has label pointing to non-existent ArgoCD - should be cleaned up (orphaned)
+// 		sourceNs2 := corev1.Namespace{
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name: "source-ns-2",
+// 				Labels: map[string]string{
+// 					common.ArgoCDManagedByClusterArgoCDLabel: "deleted-argocd-namespace",
+// 				},
+// 			},
+// 		}
+
+// 		// Namespace 3: Has label pointing to another existing ArgoCD - should NOT be cleaned up
+// 		sourceNs3 := corev1.Namespace{
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name: "source-ns-3",
+// 				Labels: map[string]string{
+// 					common.ArgoCDManagedByClusterArgoCDLabel: anotherArgoCDNs,
+// 				},
+// 			},
+// 		}
+
+// 		// Namespace 4: No label - should be ignored
+// 		sourceNs4 := corev1.Namespace{
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name: "source-ns-4",
+// 			},
+// 		}
+
+// 		// Create the ArgoCD namespaces
+// 		argoCDNs := corev1.Namespace{
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name: a.Namespace,
+// 			},
+// 		}
+// 		anotherArgoCDNamespace := corev1.Namespace{
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name: anotherArgoCDNs,
+// 			},
+// 		}
+
+// 		// Create Roles and RoleBindings for all source namespaces
+// 		role1Name := getRoleNameForApplicationSourceNamespaces(sourceNs1.Name, a)
+// 		role1 := &rbacv1.Role{
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name:      role1Name,
+// 				Namespace: sourceNs1.Name,
+// 				Labels:    argoutil.LabelsForCluster(a),
+// 			},
+// 		}
+
+// 		role2Name := getRoleNameForApplicationSourceNamespaces(sourceNs2.Name, a)
+// 		role2 := &rbacv1.Role{
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name:      role2Name,
+// 				Namespace: sourceNs2.Name,
+// 				Labels:    argoutil.LabelsForCluster(a),
+// 			},
+// 		}
+
+// 		role3Name := getRoleNameForApplicationSourceNamespaces(sourceNs3.Name, anotherArgoCD)
+// 		role3 := &rbacv1.Role{
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name:      role3Name,
+// 				Namespace: sourceNs3.Name,
+// 				Labels:    argoutil.LabelsForCluster(anotherArgoCD),
+// 			},
+// 		}
+
+// 		roleBinding1Name := getRoleBindingNameForSourceNamespaces(a.Name, sourceNs1.Name)
+// 		roleBinding1 := &rbacv1.RoleBinding{
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name:      roleBinding1Name,
+// 				Namespace: sourceNs1.Name,
+// 				Labels:    argoutil.LabelsForCluster(a),
+// 			},
+// 		}
+
+// 		roleBinding2Name := getRoleBindingNameForSourceNamespaces(a.Name, sourceNs2.Name)
+// 		roleBinding2 := &rbacv1.RoleBinding{
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name:      roleBinding2Name,
+// 				Namespace: sourceNs2.Name,
+// 				Labels:    argoutil.LabelsForCluster(a),
+// 			},
+// 		}
+
+// 		roleBinding3Name := getRoleBindingNameForSourceNamespaces(anotherArgoCD.Name, sourceNs3.Name)
+// 		roleBinding3 := &rbacv1.RoleBinding{
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name:      roleBinding3Name,
+// 				Namespace: sourceNs3.Name,
+// 				Labels:    argoutil.LabelsForCluster(anotherArgoCD),
+// 			},
+// 		}
+
+// 		resObjs := []client.Object{
+// 			a, anotherArgoCD,
+// 			&sourceNs1, &sourceNs2, &sourceNs3, &sourceNs4,
+// 			&argoCDNs, &anotherArgoCDNamespace,
+// 			role1, role2, role3,
+// 			roleBinding1, roleBinding2, roleBinding3,
+// 		}
+// 		subresObjs := []client.Object{a, anotherArgoCD}
+// 		runtimeObjs := []runtime.Object{}
+// 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+// 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+// 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+// 		err := r.cleanupOrphanedSourceNamespacesAcrossAllNamespaces(a)
+// 		assert.NoError(t, err)
+
+// 		// Verify sourceNs1 - should NOT be cleaned up (ArgoCD exists)
+// 		existingRole1 := &rbacv1.Role{}
+// 		err = r.Get(context.TODO(), types.NamespacedName{Name: role1Name, Namespace: sourceNs1.Name}, existingRole1)
+// 		assert.NoError(t, err)
+// 		existingRoleBinding1 := &rbacv1.RoleBinding{}
+// 		err = r.Get(context.TODO(), types.NamespacedName{Name: roleBinding1Name, Namespace: sourceNs1.Name}, existingRoleBinding1)
+// 		assert.NoError(t, err)
+// 		existingNs1 := &corev1.Namespace{}
+// 		err = r.Get(context.TODO(), types.NamespacedName{Name: sourceNs1.Name}, existingNs1)
+// 		assert.NoError(t, err)
+// 		assert.Equal(t, a.Namespace, existingNs1.Labels[common.ArgoCDManagedByClusterArgoCDLabel])
+
+// 		// Verify sourceNs2 - should be cleaned up (ArgoCD does NOT exist - orphaned)
+// 		existingRole2 := &rbacv1.Role{}
+// 		err = r.Get(context.TODO(), types.NamespacedName{Name: role2Name, Namespace: sourceNs2.Name}, existingRole2)
+// 		assert.True(t, apierrors.IsNotFound(err))
+// 		existingRoleBinding2 := &rbacv1.RoleBinding{}
+// 		err = r.Get(context.TODO(), types.NamespacedName{Name: roleBinding2Name, Namespace: sourceNs2.Name}, existingRoleBinding2)
+// 		assert.True(t, apierrors.IsNotFound(err))
+// 		existingNs2 := &corev1.Namespace{}
+// 		err = r.Get(context.TODO(), types.NamespacedName{Name: sourceNs2.Name}, existingNs2)
+// 		assert.NoError(t, err)
+// 		_, hasLabel := existingNs2.Labels[common.ArgoCDManagedByClusterArgoCDLabel]
+// 		assert.False(t, hasLabel)
+
+// 		// Verify sourceNs3 - should NOT be cleaned up (another ArgoCD exists)
+// 		existingRole3 := &rbacv1.Role{}
+// 		err = r.Get(context.TODO(), types.NamespacedName{Name: role3Name, Namespace: sourceNs3.Name}, existingRole3)
+// 		assert.NoError(t, err)
+// 		existingRoleBinding3 := &rbacv1.RoleBinding{}
+// 		err = r.Get(context.TODO(), types.NamespacedName{Name: roleBinding3Name, Namespace: sourceNs3.Name}, existingRoleBinding3)
+// 		assert.NoError(t, err)
+// 		existingNs3 := &corev1.Namespace{}
+// 		err = r.Get(context.TODO(), types.NamespacedName{Name: sourceNs3.Name}, existingNs3)
+// 		assert.NoError(t, err)
+// 		assert.Equal(t, anotherArgoCDNs, existingNs3.Labels[common.ArgoCDManagedByClusterArgoCDLabel])
+// 	})
+
+// }
+
 func TestGetNamespacesToDelete(t *testing.T) {
 	tests := []struct {
 		name           string
