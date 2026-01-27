@@ -43,14 +43,16 @@ func TestReconcileArgoCD_reconcileServiceAccountPermissions(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	reqState := &RequestState{}
+
+	assert.NoError(t, createNamespace(r, reqState, a.Namespace, ""))
 
 	// objective is to verify if the right rule associations have happened.
 
 	expectedRules := policyRuleForApplicationController()
 	workloadIdentifier := "xrb"
 
-	assert.NoError(t, r.reconcileServiceAccountPermissions(workloadIdentifier, expectedRules, a))
+	assert.NoError(t, r.reconcileServiceAccountPermissions(workloadIdentifier, expectedRules, a, reqState))
 
 	reconciledServiceAccount := &corev1.ServiceAccount{}
 	reconciledRole := &v1.Role{}
@@ -72,7 +74,7 @@ func TestReconcileArgoCD_reconcileServiceAccountPermissions(t *testing.T) {
 	assert.Equal(t, reconciledRole.Rules, dirtyRole.Rules)
 
 	// Have the reconciler override them
-	assert.NoError(t, r.reconcileServiceAccountPermissions(workloadIdentifier, expectedRules, a))
+	assert.NoError(t, r.reconcileServiceAccountPermissions(workloadIdentifier, expectedRules, a, reqState))
 
 	// fetch it
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))

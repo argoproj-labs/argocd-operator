@@ -20,13 +20,14 @@ import (
 
 	autoscaling "k8s.io/api/autoscaling/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
-var (
+const (
 	maxReplicas int32 = 3
 	minReplicas int32 = 1
 	tcup        int32 = 50
@@ -63,8 +64,8 @@ func (r *ReconcileArgoCD) reconcileServerHPA(cr *argoproj.ArgoCD) error {
 	defaultHPA := newHorizontalPodAutoscalerWithSuffix("server", cr)
 	defaultHPA.Spec = autoscaling.HorizontalPodAutoscalerSpec{
 		MaxReplicas:                    maxReplicas,
-		MinReplicas:                    &minReplicas,
-		TargetCPUUtilizationPercentage: &tcup,
+		MinReplicas:                    ptr.To(minReplicas),
+		TargetCPUUtilizationPercentage: ptr.To(tcup),
 		ScaleTargetRef: autoscaling.CrossVersionObjectReference{
 			APIVersion: "apps/v1",
 			Kind:       "Deployment",

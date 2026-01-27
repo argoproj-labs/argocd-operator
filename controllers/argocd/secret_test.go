@@ -574,7 +574,8 @@ func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	reqState := &RequestState{}
+	assert.NoError(t, createNamespace(r, reqState, a.Namespace, ""))
 
 	testSecret := argoutil.NewSecretWithSuffix(a, "default-cluster-config")
 	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
@@ -596,7 +597,7 @@ func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
 	assert.Equal(t, string(testSecret.Data["namespaces"]), want)
 
-	assert.NoError(t, createNamespace(r, "xyz", a.Namespace))
+	assert.NoError(t, createNamespace(r, reqState, "xyz", a.Namespace))
 	want = "argocd-cluster-permissions-test,someRandomNamespace,xyz"
 	// reconcile to check namespace with the label gets added
 	assert.NoError(t, r.reconcileClusterPermissionsSecret(a))
@@ -634,8 +635,9 @@ func TestGenerateSortedManagedNamespaceListForArgoCDCR(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
-	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	assert.NoError(t, createNamespace(r, reqState, a.Namespace, ""))
 
 	t.Run("should return default and managedBy namespaces", func(t *testing.T) {
 		ns := corev1.Namespace{
@@ -746,8 +748,9 @@ func TestCombineClusterSecretNamespacesWithManagedNamespaces(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
-	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	assert.NoError(t, createNamespace(r, reqState, a.Namespace, ""))
 
 	// 1) Namespaces already listed in the cluster secret should be preserved
 	res := combineClusterSecretNamespacesWithManagedNamespaces(corev1.Secret{

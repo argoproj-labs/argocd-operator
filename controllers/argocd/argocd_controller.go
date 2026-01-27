@@ -57,7 +57,7 @@ type TokenRenewalTimer struct {
 }
 
 type LocalUsersInfo struct {
-	// Stores the the timers that will auto-renew the API tokens for local users
+	// Stores the timers that will auto-renew the API tokens for local users
 	// after they expire. The key format is "argocd-namespace/user-name"
 	TokenRenewalTimers map[string]*TokenRenewalTimer
 	// Protects access to the token renewal timers and the K8S resources that
@@ -72,10 +72,40 @@ var _ reconcile.Reconciler = &ReconcileArgoCD{}
 // TODO(upgrade): rename to ArgoCDRecoonciler
 type ReconcileArgoCD struct {
 	client.Client
-	Scheme            *runtime.Scheme
+	Scheme *runtime.Scheme
+
+	// Stores label selector used to reconcile a subset of ArgoCD
+	LabelSelector string
+
+	// K8sClient is client-go API interface to the cluster (using same cluster credentials client.Client). This is useful for interacting with client-go-based code (for example, from Argo CD)
+	// In most cases, you likely should use 'client.Client' above
+	K8sClient kubernetes.Interface
+
+	// LocalUsers maintains lists of token renewel timers, for renewing local user tokens
+	// - NOTE: this field is shared between the reconciliation of multiple Argo CD instances
+	LocalUsers *LocalUsersInfo
+
+	// FipsConfigChecker checks if the deployment needs FIPS specific environment variables set.
+	FipsConfigChecker argoutil.FipsConfigChecker
+
+	// ActiveInstanceMap keeps track of running Argo CD instances using their namespaces as key and phase as value
+	// This map will be used for the performance metrics purposes
+	// Important note: This assumes that each instance only contains one Argo CD instance
+	// as, having multiple Argo CD instances in the same namespace is considered an anti-pattern
+	ActiveInstanceMap map[string]string
+}
+
+// RequestState stores variables with a lifetime equal to the ReconcileArgoCD.Reconcile(...) call:
+// - These values are only relevant to a single ArgoCD CR's single reconciliation request.
+// - These values are regenerated at the beginning of every request
+// - They are discarded at the end of every request.
+type RequestState struct {
+
+	// ManagedNamespaces contains a list of namespaces managed by namespace managagement feature
 	ManagedNamespaces *corev1.NamespaceList
-	// Stores a list of ApplicationSourceNamespaces as keys
-	ManagedSourceNamespaces map[string]string
+
+	// Stores a list of ApplicationSourceNamespaces as keys (value is not used)
+	ManagedSourceNamespaces map[string]any
 
 	// Stores a list of ApplicationSetSourceNamespaces as keys (value is not used)
 	// - list of namespaces that currently have the 'common.ArgoCDApplicationSetManagedByClusterArgoCDLabel' label
@@ -85,23 +115,9 @@ type ReconcileArgoCD struct {
 
 	// Stores a list of NotificationsSourceNamespaces as keys
 	ManagedNotificationsSourceNamespaces map[string]string
-
-	// Stores label selector used to reconcile a subset of ArgoCD
-	LabelSelector string
-
-	K8sClient  kubernetes.Interface
-	LocalUsers *LocalUsersInfo
-	// FipsConfigChecker checks if the deployment needs FIPS specific environment variables set.
-	FipsConfigChecker argoutil.FipsConfigChecker
 }
 
 var log = logr.Log.WithName("controller_argocd")
-
-// Map to keep track of running Argo CD instances using their namespaces as key and phase as value
-// This map will be used for the performance metrics purposes
-// Important note: This assumes that each instance only contains one Argo CD instance
-// as, having multiple Argo CD instances in the same namespace is considered an anti-pattern
-var ActiveInstanceMap = make(map[string]string)
 
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;clusterrolebindings,verbs=*
 //+kubebuilder:rbac:groups="",resources=configmaps;endpoints;events;persistentvolumeclaims;pods;namespaces;secrets;serviceaccounts;services;services/finalizers,verbs=*
@@ -160,6 +176,8 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 
 func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, *argoproj.ArgoCD, *argoproj.ArgoCDStatus, error) {
 
+	reqState := &RequestState{}
+
 	argoCDStatus := &argoproj.ArgoCDStatus{} // Start with a blank canvas
 
 	reconcileStartTS := time.Now()
@@ -210,9 +228,9 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 	// If we discover a new Argo CD instance in a previously un-seen namespace
 	// we add it to the map and increment active instance count by phase
 	// as well as total active instance count
-	if _, ok := ActiveInstanceMap[request.Namespace]; !ok {
+	if _, ok := r.ActiveInstanceMap[request.Namespace]; !ok {
 		if newPhase != "" {
-			ActiveInstanceMap[request.Namespace] = newPhase
+			r.ActiveInstanceMap[request.Namespace] = newPhase
 			ActiveInstancesByPhase.WithLabelValues(newPhase).Inc()
 			ActiveInstancesTotal.Inc()
 		}
@@ -221,8 +239,8 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 		// increment instance count with new phase and decrement instance count with old phase
 		// update the phase in corresponding map entry
 		// total instance count remains the same
-		if oldPhase := ActiveInstanceMap[argocd.Namespace]; oldPhase != newPhase {
-			ActiveInstanceMap[argocd.Namespace] = newPhase
+		if oldPhase := r.ActiveInstanceMap[argocd.Namespace]; oldPhase != newPhase {
+			r.ActiveInstanceMap[argocd.Namespace] = newPhase
 			ActiveInstancesByPhase.WithLabelValues(newPhase).Inc()
 			ActiveInstancesByPhase.WithLabelValues(oldPhase).Dec()
 		}
@@ -230,13 +248,30 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 
 	ActiveInstanceReconciliationCount.WithLabelValues(argocd.Namespace).Inc()
 
+	// First we initialize the reqState variables with context for the current CR
+
+	if err = r.setManagedNamespaces(argocd, reqState); err != nil {
+		return reconcile.Result{}, argocd, argoCDStatus, fmt.Errorf("unable to retrieve managed namespaces: %v", err)
+	}
+
+	if err = r.setManagedSourceNamespaces(argocd, reqState); err != nil {
+		return reconcile.Result{}, argocd, argoCDStatus, fmt.Errorf("unable to retrieve managed source namespaces: %v", err)
+	}
+
+	if err = r.setManagedApplicationSetSourceNamespaces(argocd, reqState); err != nil {
+		return reconcile.Result{}, argocd, argoCDStatus, fmt.Errorf("unable to retrieve managed appset source namespaces: %v", err)
+	}
+	if err = r.setManagedNotificationsSourceNamespaces(argocd, reqState); err != nil {
+		return reconcile.Result{}, argocd, argoCDStatus, fmt.Errorf("unable to retrieve managed notification source namespaces: %v", err)
+	}
+
 	if argocd.GetDeletionTimestamp() != nil {
 
 		argoCDStatus.Phase = "Unknown" // Set to Unknown since we are in the process of deleting ArgoCD CR
 
 		// Argo CD instance marked for deletion; remove entry from activeInstances map and decrement active instance count
 		// by phase as well as total
-		delete(ActiveInstanceMap, argocd.Namespace)
+		delete(r.ActiveInstanceMap, argocd.Namespace)
 		ActiveInstancesByPhase.WithLabelValues(newPhase).Dec()
 		ActiveInstancesTotal.Dec()
 		ActiveInstanceReconciliationCount.DeleteLabelValues(argocd.Namespace)
@@ -256,14 +291,14 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 				}
 			}
 
-			if err := r.removeUnmanagedSourceNamespaceResources(argocd); err != nil {
+			if err := r.removeUnmanagedSourceNamespaceResources(argocd, reqState); err != nil {
 				return reconcile.Result{}, argocd, argoCDStatus, fmt.Errorf("failed to remove resources from sourceNamespaces, error: %w", err)
 			}
 
-			if err := r.removeUnmanagedApplicationSetSourceNamespaceResources(argocd); err != nil {
+			if err := r.removeUnmanagedApplicationSetSourceNamespaceResources(argocd, reqState); err != nil {
 				return reconcile.Result{}, argocd, argoCDStatus, fmt.Errorf("failed to remove resources from applicationSetSourceNamespaces, error: %w", err)
 			}
-			if err := r.removeUnmanagedNotificationsSourceNamespaceResources(argocd); err != nil {
+			if err := r.removeUnmanagedNotificationsSourceNamespaceResources(argocd, reqState); err != nil {
 				return reconcile.Result{}, argocd, argoCDStatus, fmt.Errorf("failed to remove resources from notificationsSourceNamespaces, error: %w", err)
 			}
 
@@ -285,23 +320,9 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 		}
 	}
 
-	if err = r.setManagedNamespaces(argocd); err != nil {
-		return reconcile.Result{}, argocd, argoCDStatus, err
-	}
-
-	if err = r.setManagedSourceNamespaces(argocd); err != nil {
-		return reconcile.Result{}, argocd, argoCDStatus, err
-	}
-
-	if err = r.setManagedApplicationSetSourceNamespaces(argocd); err != nil {
-		return reconcile.Result{}, argocd, argoCDStatus, err
-	}
-	if err = r.setManagedNotificationsSourceNamespaces(argocd); err != nil {
-		return reconcile.Result{}, argocd, argoCDStatus, err
-	}
 	// Handle NamespaceManagement reconciliation and check if Namespace Management is enabled via the Subscription env variable.
 	if isNamespaceManagementEnabled() {
-		if err := r.reconcileNamespaceManagement(argocd); err != nil {
+		if err := r.reconcileNamespaceManagement(argocd, reqState); err != nil {
 			return reconcile.Result{}, argocd, argoCDStatus, err
 		}
 	} else if argocd.Spec.NamespaceManagement != nil {
@@ -352,7 +373,7 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 		}
 	}
 
-	if err := r.reconcileResources(argocd, argoCDStatus); err != nil {
+	if err := r.reconcileResources(argocd, argoCDStatus, reqState); err != nil {
 		// Error reconciling ArgoCD sub-resources - requeue the request.
 		return reconcile.Result{}, argocd, argoCDStatus, err
 	}

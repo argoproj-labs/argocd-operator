@@ -544,17 +544,17 @@ func (r *ReconcileArgoCD) reconcileDexService(cr *argoproj.ArgoCD) error {
 
 // reconcileDexResources consolidates all dex resources reconciliation calls. It serves as the single place to trigger both creation
 // and deletion of dex resources based on the specified configuration of dex
-func (r *ReconcileArgoCD) reconcileDexResources(cr *argoproj.ArgoCD) error {
-	if _, err := r.reconcileRole(common.ArgoCDDexServerComponent, policyRuleForDexServer(), cr); err != nil {
+func (r *ReconcileArgoCD) reconcileDexResources(cr *argoproj.ArgoCD, reqState *RequestState) error {
+	if _, err := r.reconcileRole(common.ArgoCDDexServerComponent, policyRuleForDexServer(), cr, reqState); err != nil {
 		log.Error(err, "error reconciling dex role")
 		return err
 	}
 
-	if err := r.reconcileRoleBinding(common.ArgoCDDexServerComponent, policyRuleForDexServer(), cr); err != nil {
+	if err := r.reconcileRoleBinding(common.ArgoCDDexServerComponent, policyRuleForDexServer(), cr, reqState); err != nil {
 		log.Error(err, "error reconciling dex rolebinding")
 	}
 
-	if err := r.reconcileServiceAccountPermissions(common.ArgoCDDexServerComponent, policyRuleForDexServer(), cr); err != nil {
+	if err := r.reconcileServiceAccountPermissions(common.ArgoCDDexServerComponent, policyRuleForDexServer(), cr, reqState); err != nil {
 		return err
 	}
 

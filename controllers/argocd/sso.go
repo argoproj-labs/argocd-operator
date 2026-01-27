@@ -33,7 +33,7 @@ const (
 // The operator must support `.spec.sso.dex` fields for dex.
 // The operator must identify edge cases involving partial configurations of specs, spec mismatch with
 // active provider, contradicting configuration etc, and throw the appropriate errors.
-func (r *ReconcileArgoCD) reconcileSSO(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus) error {
+func (r *ReconcileArgoCD) reconcileSSO(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus, reqState *RequestState) error {
 
 	// case 1
 	if cr.Spec.SSO == nil {
@@ -111,7 +111,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoproj.ArgoCD, argocdStatus *argopr
 		// Keycloak functionality has been removed, skipping reconciliation
 	} else if UseDex(cr) {
 		// dex
-		if err := r.reconcileDexResources(cr); err != nil {
+		if err := r.reconcileDexResources(cr, reqState); err != nil {
 			argocdStatus.SSO = "Failed"
 			return err
 		}

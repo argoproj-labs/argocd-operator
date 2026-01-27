@@ -345,7 +345,7 @@ e2e-tests-parallel-ginkgo: ginkgo
 GINKGO_CLI = $(shell pwd)/bin/ginkgo
 .PHONY: ginkgo
 ginkgo: ## Download ginkgo locally if necessary.
-	$(call go-get-tool,$(GINKGO_CLI),github.com/onsi/ginkgo/v2/ginkgo@v2.22.2)
+	$(call go-get-tool,$(GINKGO_CLI),github.com/onsi/ginkgo/v2/ginkgo@v2.25.3)
 
 
 # go-get-tool will 'go install' any package $2 and install it to $1.

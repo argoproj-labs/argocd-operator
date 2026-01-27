@@ -93,12 +93,13 @@ func TestReconcileArgoCD_reconcileStatusSSO(t *testing.T) {
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+			reqState := &RequestState{}
 
 			argocdStatus := argoproj.ArgoCDStatus{}
 
-			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
+			assert.NoError(t, createNamespace(r, reqState, test.argoCD.Namespace, ""))
 
-			_ = r.reconcileSSO(test.argoCD, &argocdStatus)
+			_ = r.reconcileSSO(test.argoCD, &argocdStatus, reqState)
 
 			if argocdStatus.SSO == "" { // only call statusSSO if reconcileSSO has not already set a value
 				_ = r.reconcileStatusSSO(test.argoCD, &argocdStatus)
@@ -233,19 +234,19 @@ func TestReconcileArgoCD_reconcileStatusNotificationsController(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
-
+	reqState := &RequestState{}
 	argocdStatus := a.DeepCopy().Status
 
 	assert.NoError(t, r.reconcileStatusNotifications(a, &argocdStatus))
 	assert.Equal(t, "", argocdStatus.NotificationsController)
 
 	a.Spec.Notifications.Enabled = true
-	assert.NoError(t, r.reconcileNotificationsController(a))
+	assert.NoError(t, r.reconcileNotificationsController(a, reqState))
 	assert.NoError(t, r.reconcileStatusNotifications(a, &argocdStatus))
 	assert.Equal(t, "Pending", argocdStatus.NotificationsController)
 
 	a.Spec.Notifications.Enabled = false
-	assert.NoError(t, r.deleteNotificationsResources(a))
+	assert.NoError(t, r.deleteNotificationsResources(a, reqState))
 	assert.NoError(t, r.reconcileStatusNotifications(a, &argocdStatus))
 	assert.Equal(t, "", argocdStatus.NotificationsController)
 }
@@ -261,13 +262,15 @@ func TestReconcileArgoCD_reconcileStatusApplicationSetController(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
+	reqState := RequestState{}
+
 	argocdStatus := a.DeepCopy().Status
 
 	assert.NoError(t, r.reconcileStatusApplicationSetController(a, &argocdStatus))
 	assert.Equal(t, "Unknown", argocdStatus.ApplicationSetController)
 
 	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{}
-	assert.NoError(t, r.reconcileApplicationSetController(a))
+	assert.NoError(t, r.reconcileApplicationSetController(a, &reqState))
 	assert.NoError(t, r.reconcileStatusApplicationSetController(a, &argocdStatus))
 	assert.Equal(t, "Pending", argocdStatus.ApplicationSetController)
 }

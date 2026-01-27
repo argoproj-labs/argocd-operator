@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	testclient "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -38,8 +39,8 @@ func TestReconcileHPA(t *testing.T) {
 
 	defaultHPASpec := autoscaling.HorizontalPodAutoscalerSpec{
 		MaxReplicas:                    maxReplicas,
-		MinReplicas:                    &minReplicas,
-		TargetCPUUtilizationPercentage: &tcup,
+		MinReplicas:                    ptr.To(minReplicas),
+		TargetCPUUtilizationPercentage: ptr.To(tcup),
 		ScaleTargetRef: autoscaling.CrossVersionObjectReference{
 			APIVersion: "apps/v1",
 			Kind:       "Deployment",
