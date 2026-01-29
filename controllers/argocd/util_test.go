@@ -20,6 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	testclient "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/utils/ptr"
 )
 
 const (
@@ -1695,6 +1696,193 @@ func TestGetNamespacesToDelete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := getNamespacesToDelete(tt.oldList, tt.newList, tt.allNamespaces)
 			assert.ElementsMatch(t, tt.expectedDelete, result)
+		})
+	}
+}
+
+func TestGetClusterDomain(t *testing.T) {
+	tests := []struct {
+		name           string
+		clusterDomain  string
+		expectedDomain string
+	}{
+		{
+			name:           "default cluster domain when not specified",
+			clusterDomain:  "",
+			expectedDomain: "cluster.local",
+		},
+		{
+			name:           "custom cluster domain",
+			clusterDomain:  "CLUSTER_ID.cluster.local",
+			expectedDomain: "CLUSTER_ID.cluster.local",
+		},
+		{
+			name:           "custom domain for different cloud provider",
+			clusterDomain:  "eks.amazonaws.com",
+			expectedDomain: "eks.amazonaws.com",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := makeTestArgoCD()
+			a.Spec.ClusterDomain = tt.clusterDomain
+
+			result := getClusterDomain(a)
+			assert.Equal(t, tt.expectedDomain, result)
+		})
+	}
+}
+
+func TestFqdnServiceRefWithCustomDomain(t *testing.T) {
+	tests := []struct {
+		name          string
+		service       string
+		port          int
+		clusterDomain string
+		expectedFQDN  string
+	}{
+		{
+			name:          "default cluster domain",
+			service:       "redis",
+			port:          6379,
+			clusterDomain: "",
+			expectedFQDN:  "argocd-redis.argocd.svc.cluster.local:6379",
+		},
+		{
+			name:          "custom cluster domain",
+			service:       "redis",
+			port:          6379,
+			clusterDomain: "CLUSTER_ID.cluster.local",
+			expectedFQDN:  "argocd-redis.argocd.svc.CLUSTER_ID.cluster.local:6379",
+		},
+		{
+			name:          "repo server with custom domain",
+			service:       "repo-server",
+			port:          8081,
+			clusterDomain: "eks.amazonaws.com",
+			expectedFQDN:  "argocd-repo-server.argocd.svc.eks.amazonaws.com:8081",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := makeTestArgoCD()
+			a.Spec.ClusterDomain = tt.clusterDomain
+
+			result := fqdnServiceRef(tt.service, tt.port, a)
+			assert.Equal(t, tt.expectedFQDN, result)
+		})
+	}
+}
+
+func TestGetRedisServerAddressWithCustomDomain(t *testing.T) {
+	tests := []struct {
+		name          string
+		clusterDomain string
+		haEnabled     bool
+		remoteRedis   *string
+		expectedAddr  string
+	}{
+		{
+			name:          "default cluster domain - standalone redis",
+			clusterDomain: "",
+			haEnabled:     false,
+			expectedAddr:  "argocd-redis.argocd.svc.cluster.local:6379",
+		},
+		{
+			name:          "custom cluster domain - standalone redis",
+			clusterDomain: "CLUSTER_ID.cluster.local",
+			haEnabled:     false,
+			expectedAddr:  "argocd-redis.argocd.svc.CLUSTER_ID.cluster.local:6379",
+		},
+		{
+			name:          "custom cluster domain - HA redis",
+			clusterDomain: "eks.amazonaws.com",
+			haEnabled:     true,
+			expectedAddr:  "argocd-redis-ha-haproxy.argocd.svc.eks.amazonaws.com:6379",
+		},
+		{
+			name:         "remote redis - custom domain ignored",
+			remoteRedis:  ptr.To("remote-redis:6379"),
+			expectedAddr: "remote-redis:6379",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := makeTestArgoCD()
+			a.Spec.ClusterDomain = tt.clusterDomain
+			a.Spec.HA.Enabled = tt.haEnabled
+			a.Spec.Redis.Remote = tt.remoteRedis
+
+			result := getRedisServerAddress(a)
+			assert.Equal(t, tt.expectedAddr, result)
+		})
+	}
+}
+
+func TestGetDexServerAddressWithCustomDomain(t *testing.T) {
+	tests := []struct {
+		name          string
+		clusterDomain string
+		expectedAddr  string
+	}{
+		{
+			name:          "default cluster domain",
+			clusterDomain: "",
+			expectedAddr:  "https://argocd-dex-server.argocd.svc.cluster.local:5556",
+		},
+		{
+			name:          "custom cluster domain",
+			clusterDomain: "CLUSTER_ID.cluster.local",
+			expectedAddr:  "https://argocd-dex-server.argocd.svc.CLUSTER_ID.cluster.local:5556",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := makeTestArgoCD()
+			a.Spec.ClusterDomain = tt.clusterDomain
+
+			result := getDexServerAddress(a)
+			assert.Equal(t, tt.expectedAddr, result)
+		})
+	}
+}
+
+func TestGetRepoServerAddressWithCustomDomain(t *testing.T) {
+	tests := []struct {
+		name          string
+		clusterDomain string
+		remoteRepo    *string
+		expectedAddr  string
+	}{
+		{
+			name:          "default cluster domain",
+			clusterDomain: "",
+			expectedAddr:  "argocd-repo-server.argocd.svc.cluster.local:8081",
+		},
+		{
+			name:          "custom cluster domain",
+			clusterDomain: "CLUSTER_ID.cluster.local",
+			expectedAddr:  "argocd-repo-server.argocd.svc.CLUSTER_ID.cluster.local:8081",
+		},
+		{
+			name:         "remote repo server - custom domain ignored",
+			remoteRepo:   ptr.To("remote-repo:8081"),
+			expectedAddr: "remote-repo:8081",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := makeTestArgoCD()
+			a.Spec.ClusterDomain = tt.clusterDomain
+			a.Spec.Repo.Remote = tt.remoteRepo
+
+			result := getRepoServerAddress(a)
+			assert.Equal(t, tt.expectedAddr, result)
 		})
 	}
 }
