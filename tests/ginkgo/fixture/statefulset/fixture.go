@@ -321,3 +321,23 @@ func fetchStatefulSet(f func(*appsv1.StatefulSet) bool) matcher.GomegaMatcher {
 	}, BeTrue())
 
 }
+
+// verifyStatefulSetImagePullPolicy checks if all containers in a statefulset have the expected imagePullPolicy
+func VerifyStatefulSetImagePullPolicy(name, namespace string, expectedPolicy corev1.PullPolicy, ss *appsv1.StatefulSet) func() bool {
+	return func() bool {
+		k8sClient, _ := utils.GetE2ETestKubeClient()
+		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: name, Namespace: namespace}, ss)
+		if err != nil {
+			return false
+		}
+		if len(ss.Spec.Template.Spec.Containers) == 0 {
+			return false
+		}
+		for _, container := range ss.Spec.Template.Spec.Containers {
+			if container.ImagePullPolicy != expectedPolicy {
+				return false
+			}
+		}
+		return true
+	}
+}

@@ -149,7 +149,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			if !fixture.IsUpstreamOperatorTests() {
 				// Downstream operator adds these arguments
-				expectedString += "redis-server --protected-mode no"
+				expectedString = "redis-server --protected-mode no " + expectedString
 			}
 
 			Expect(redisDepl).To(deplFixture.HaveContainerCommandSubstring(expectedString, 0),
