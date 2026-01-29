@@ -724,7 +724,7 @@ func (pt *podTrust) fetch() {
 
 	out, err := osFixture.ExecCommandWithOutputParam(false, false, "kubectl", "-n", pt.ns.Name, "events")
 	if err != nil {
-		panic(err)
+		Expect(err).NotTo(HaveOccurred())
 	}
 	pt.events = out
 }
