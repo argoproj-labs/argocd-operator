@@ -742,23 +742,24 @@ func repoServerSystemCaTrust(ns *corev1.Namespace) *podTrust {
 
 // expectReconcile makes sure the action has either caused or not caused the repo server to reconcile
 func expectReconcile(k8sClient client.Client, ns *corev1.Namespace, reconcile bool, action func()) {
-	oldPodName := findRunningRepoServerPod(k8sClient, ns).Name
-
-	var condition matcher.GomegaMatcher
-	var message string
-	if reconcile {
-		message = "expected pod to reconcile"
-		condition = Not(Equal(oldPodName))
-	} else {
-		message = "expected pod not to reconcile"
-		condition = Equal(oldPodName)
+	podNameFunc := func() string {
+		return findRunningRepoServerPod(k8sClient, ns).Name
 	}
+	oldPodName := podNameFunc()
+
+	By(fmt.Sprintf("Expecting reconcile of old pod %s: %v", oldPodName, reconcile))
 
 	action()
 
-	Eventually(func() string {
-		return findRunningRepoServerPod(k8sClient, ns).Name
-	}, "3s", "1s").WithOffset(1).Should(condition, message)
+	if reconcile {
+		Eventually(podNameFunc, "30s", "5s").
+			WithOffset(1).
+			Should(Not(Equal(oldPodName)), "expected pod to reconcile")
+	} else {
+		Consistently(podNameFunc, "30s", "5s").
+			WithOffset(1).
+			Should(Equal(oldPodName), "expected pod not to reconcile")
+	}
 }
 
 func trustCerts(countMatcher, logMatcher matcher.GomegaMatcher) matcher.GomegaMatcher {

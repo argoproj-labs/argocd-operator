@@ -18,6 +18,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"hash"
 	"reflect"
 	"strings"
 	"time"
@@ -28,6 +29,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
@@ -594,7 +597,16 @@ func (r *ReconcileArgoCD) injectCATrustToContainers(cr *argocdoperatorv1beta1.Ar
 		return
 	}
 
-	sources, sourceNames := r.caTrustVolumes(cr)
+	sources, sourceNames, sourcesChecksum := r.caTrustVolumes(cr)
+
+	// Update pod checksum so eventual update to sources causes deployment rollout
+	if deploy.Spec.Template.Annotations == nil {
+		deploy.Spec.Template.Annotations = make(map[string]string)
+	}
+	if old, ok := deploy.Spec.Template.Annotations[common.ArgoCDCATrustChecksum]; ok && old != sourcesChecksum {
+		log.Info("repo-server " + common.ArgoCDCATrustChecksum + " changed")
+	}
+	deploy.Spec.Template.Annotations[common.ArgoCDCATrustChecksum] = sourcesChecksum
 
 	volumeSource := "argocd-ca-trust-source"
 	volumeTarget := "argocd-ca-trust-target"
@@ -625,10 +637,10 @@ func (r *ReconcileArgoCD) injectCATrustToContainers(cr *argocdoperatorv1beta1.Ar
 		}
 	}
 
-	argoImage := getArgoContainerImage(cr)
+	repoServerImage := getRepoServerContainerImage(cr)
 	deploy.Spec.Template.Spec.InitContainers = append(
 		deploy.Spec.Template.Spec.InitContainers,
-		caTrustInitContainer(cr, argoImage, volumeSource, volumeTarget, volumeTmp),
+		caTrustInitContainer(cr, repoServerImage, volumeSource, volumeTarget, volumeTmp),
 	)
 
 	prodVolumeMounts := func() []corev1.VolumeMount {
@@ -642,7 +654,7 @@ func (r *ReconcileArgoCD) injectCATrustToContainers(cr *argocdoperatorv1beta1.Ar
 	var containerNames []string
 	for i, container := range deploy.Spec.Template.Spec.Containers {
 		// This can only work with ubuntu or compatible, so do not inject to potentially incompatible containers
-		if container.Image == argoImage {
+		if container.Image == repoServerImage {
 			// Accessing by index because the container is a copy of the original struct
 			deploy.Spec.Template.Spec.Containers[i].VolumeMounts = append(deploy.Spec.Template.Spec.Containers[i].VolumeMounts, prodVolumeMounts()...)
 			containerNames = append(containerNames, container.Name)
@@ -658,7 +670,7 @@ func (r *ReconcileArgoCD) injectCATrustToContainers(cr *argocdoperatorv1beta1.Ar
 	deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, repoServerVolumes...)
 }
 
-func (r *ReconcileArgoCD) caTrustVolumes(cr *argocdoperatorv1beta1.ArgoCD) (sources []corev1.VolumeProjection, sourceNames []string) {
+func (r *ReconcileArgoCD) caTrustVolumes(cr *argocdoperatorv1beta1.ArgoCD) (sources []corev1.VolumeProjection, sourceNames []string, checksum string) {
 	// The projected file needs to have the `.crt` suffix for the update-ca-certificates to work correctly. Add it if not present.
 	ensureValidPath := func(path string) string {
 		if strings.HasSuffix(path, ".crt") {
@@ -675,33 +687,68 @@ func (r *ReconcileArgoCD) caTrustVolumes(cr *argocdoperatorv1beta1.ArgoCD) (sour
 		sourceNames = append(sourceNames, path)
 	}
 
-	for _, bundle := range cr.Spec.Repo.SystemCATrust.ClusterTrustBundles {
-		bundle = *bundle.DeepCopy()
+	// Create checksum from the source projection spec and the source contents.
+	// This is to detect that either of them has changed and rollout is needed.
+	objectChecksum := newObjectChecksum()
+
+	// Relevant bundles cannot be queried independently and need to be looked up through `isRelevantCtb`, so pulled as a list ahead of time
+	bundles := certificatesv1beta1.ClusterTrustBundleList{}
+	if len(cr.Spec.Repo.SystemCATrust.ClusterTrustBundles) > 0 {
+		err := r.List(context.TODO(), &bundles)
+		if err != nil {
+			log.Error(err, "failed querying ClusterTrustBundles for System CA Trust checksum")
+		}
+	}
+
+	for i, bundleProjection := range cr.Spec.Repo.SystemCATrust.ClusterTrustBundles {
+		bundleProjection = *bundleProjection.DeepCopy()
 		// Using .Path, because .Name might not be specified
-		trackSource("ClusterTrustBundle", bundle.Path, bundle.Optional)
+		trackSource("ClusterTrustBundle", bundleProjection.Path, bundleProjection.Optional)
 
-		bundle.Path = ensureValidPath(bundle.Path)
-		sources = append(sources, corev1.VolumeProjection{ClusterTrustBundle: &bundle})
-	}
-	for _, secret := range cr.Spec.Repo.SystemCATrust.Secrets {
-		secret = *secret.DeepCopy()
-		trackSource("Secret", secret.Name, secret.Optional)
+		bundleProjection.Path = ensureValidPath(bundleProjection.Path)
+		sources = append(sources, corev1.VolumeProjection{ClusterTrustBundle: &bundleProjection})
 
-		for i, item := range secret.Items {
-			secret.Items[i].Path = ensureValidPath(item.Path)
+		objectChecksum.sprintf("ctb:%d:%s", i, bundleProjection.Path)
+		for _, bundle := range findRelevantBundles(bundles, bundleProjection) {
+			objectChecksum.writeObject(&bundle)
 		}
-		sources = append(sources, corev1.VolumeProjection{Secret: &secret})
 	}
-	for _, cm := range cr.Spec.Repo.SystemCATrust.ConfigMaps {
-		cm = *cm.DeepCopy()
-		trackSource("ConfigMap", cm.Name, cm.Optional)
+	for i, secretProjection := range cr.Spec.Repo.SystemCATrust.Secrets {
+		secretProjection = *secretProjection.DeepCopy()
+		trackSource("Secret", secretProjection.Name, secretProjection.Optional)
 
-		for i, cmi := range cm.Items {
-			cm.Items[i].Path = ensureValidPath(cmi.Path)
+		for i, item := range secretProjection.Items {
+			secretProjection.Items[i].Path = ensureValidPath(item.Path)
 		}
-		sources = append(sources, corev1.VolumeProjection{ConfigMap: &cm})
+		sources = append(sources, corev1.VolumeProjection{Secret: &secretProjection})
+
+		objectChecksum.sprintf("secret:%d:%s", i, secretProjection.Name)
+		var secret corev1.Secret
+		err := r.Get(context.TODO(), types.NamespacedName{Namespace: cr.Namespace, Name: secretProjection.Name}, &secret)
+		if err != nil && !errors.IsNotFound(err) {
+			log.Error(err, "failed querying Secret for System CA Trust checksum", "name", secretProjection.Name, "namespace", cr.Namespace)
+		}
+		objectChecksum.writeObject(&secret)
 	}
-	return sources, sourceNames
+	for i, cmProjection := range cr.Spec.Repo.SystemCATrust.ConfigMaps {
+		cmProjection = *cmProjection.DeepCopy()
+		trackSource("ConfigMap", cmProjection.Name, cmProjection.Optional)
+
+		for i, cmi := range cmProjection.Items {
+			cmProjection.Items[i].Path = ensureValidPath(cmi.Path)
+		}
+		sources = append(sources, corev1.VolumeProjection{ConfigMap: &cmProjection})
+
+		objectChecksum.sprintf("cm:%d:%s", i, cmProjection.Name)
+		var cm corev1.ConfigMap
+		err := r.Get(context.TODO(), types.NamespacedName{Namespace: cr.Namespace, Name: cmProjection.Name}, &cm)
+		if err != nil && !errors.IsNotFound(err) {
+			log.Error(err, "failed querying ConfigMap for System CA Trust checksum", "name", cmProjection.Name, "namespace", cr.Namespace)
+		}
+		objectChecksum.writeObject(&cm)
+	}
+
+	return sources, sourceNames, objectChecksum.hexSum()
 }
 
 func caTrustInitContainer(cr *argocdoperatorv1beta1.ArgoCD, argoImage string, volumeSource string, volumeTarget string, tmpVolume string) corev1.Container {
@@ -733,6 +780,7 @@ func caTrustInitContainer(cr *argocdoperatorv1beta1.ArgoCD, argoImage string, vo
                 update-ca-certificates --verbose --certsdir "$IMAGE_CERT_PATH"
                 echo "Resulting /etc/ssl/certs/"
                 ls -l /etc/ssl/certs/
+
                 echo "Done!"
         `},
 		VolumeMounts: []corev1.VolumeMount{
@@ -956,16 +1004,13 @@ func (r *ReconcileArgoCD) reconcileRepoServerTLSSecret(cr *argocdoperatorv1beta1
 }
 
 // systemCATrustMapper triggers reconciliation of repo-server Deployment if some of the tracked Secrets, ConfigMaps or ClusterTrustBundles have changed
-func (r *ReconcileArgoCD) systemCATrustMapper(ctx context.Context, o client.Object) []reconcile.Request {
-	// Track Argo CDs whose repo-servers need a rollout, and id of the resource that changed
-	rolloutBecause := make(map[*argocdoperatorv1beta1.ArgoCD]string)
-
+func (r *ReconcileArgoCD) systemCATrustMapper(ctx context.Context, o client.Object) (toReconcile []reconcile.Request) {
 	// For cluster-wide resources, it is needed to consult all argos. For cluster-scoped ones, only the argos in the same NS.
 	argoNamespace := client.InNamespace(o.GetNamespace())
 	var argoCDs argocdoperatorv1beta1.ArgoCDList
 	if err := r.List(ctx, &argoCDs, argoNamespace); err != nil {
 		log.Error(err, "unable to list ArgoCD instances")
-		return []reconcile.Request{}
+		return
 	}
 
 	for _, argocd := range argoCDs.Items {
@@ -977,21 +1022,36 @@ func (r *ReconcileArgoCD) systemCATrustMapper(ctx context.Context, o client.Obje
 		case *corev1.Secret:
 			for _, trustSource := range argocd.Spec.Repo.SystemCATrust.Secrets {
 				if trustSource.Name == obj.Name {
-					rolloutBecause[&argocd] = fmt.Sprintf("Secret %s/%s", obj.Namespace, obj.Name)
+					toReconcile = append(toReconcile, reconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Namespace: argocd.Namespace,
+							Name:      argocd.Name,
+						},
+					})
 					break
 				}
 			}
 		case *corev1.ConfigMap:
 			for _, trustSource := range argocd.Spec.Repo.SystemCATrust.ConfigMaps {
 				if trustSource.Name == obj.Name {
-					rolloutBecause[&argocd] = fmt.Sprintf("ConfigMap %s/%s", obj.Namespace, obj.Name)
+					toReconcile = append(toReconcile, reconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Namespace: argocd.Namespace,
+							Name:      argocd.Name,
+						},
+					})
 					break
 				}
 			}
 		case *certificatesv1beta1.ClusterTrustBundle:
 			for _, trustSource := range argocd.Spec.Repo.SystemCATrust.ClusterTrustBundles {
 				if isRelevantCtb(trustSource, obj) {
-					rolloutBecause[&argocd] = fmt.Sprintf("ClusterTrustBundle %s", obj.Name)
+					toReconcile = append(toReconcile, reconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Namespace: argocd.Namespace,
+							Name:      argocd.Name,
+						},
+					})
 					break
 				}
 			}
@@ -1000,34 +1060,11 @@ func (r *ReconcileArgoCD) systemCATrustMapper(ctx context.Context, o client.Obje
 		}
 	}
 
-	for argocd, cause := range rolloutBecause {
-		// Instead of triggering rollout, delete the pod to force trust recomputation
-		pods := &corev1.PodList{}
-		err := r.List(context.TODO(), pods,
-			client.InNamespace(argocd.Namespace),
-			client.MatchingLabelsSelector{Selector: labels.SelectorFromSet(map[string]string{
-				"app.kubernetes.io/name": nameWithSuffix("repo-server", argocd),
-			})},
-		)
-		if err != nil {
-			log.Error(err, "unable to list repo-server pods for argocd", "ns", argocd.Namespace, "name", argocd.Name)
-		}
-
-		// In normal circumstances, there would be 1 pod. There can be multiple during ongoing rollout. None if not yet started, or recovering from an error.
-		for _, pod := range pods.Items {
-			log.Info(
-				"restarting repo-server pod after SystemCATrust change in "+cause,
-				"pod", pod.Name, "ns", pod.Namespace, "phase", pod.Status.Phase,
-			)
-			if err := r.Delete(context.TODO(), &pod); err != nil {
-				log.Error(err, "unable to delete repo-server pod 1", "pod", pod.Name, "ns", pod.Namespace, "phase", pod.Status.Phase)
-			}
-		}
-	}
-	// No need to reconcile. The pods have been restarted
-	return []reconcile.Request{}
+	return
 }
 
+// isRelevantCtb detects if the actual ClusterTrustBundle matches the projection
+// Ref.: https://github.com/kubernetes/kubernetes/blob/66452049f3d692768c39c797b21b793dce80314e/pkg/kubelet/clustertrustbundle/clustertrustbundle_manager.go#L231
 func isRelevantCtb(proj corev1.ClusterTrustBundleProjection, actual *certificatesv1beta1.ClusterTrustBundle) bool {
 	// ClusterTrustBundle uses either .Name or .SignerName plus eventual .LabelSelector to identify the source
 	if proj.Name != nil && *proj.Name == actual.Name {
@@ -1053,4 +1090,52 @@ func isRelevantCtb(proj corev1.ClusterTrustBundleProjection, actual *certificate
 	}
 
 	return false
+}
+
+func findRelevantBundles(bundles certificatesv1beta1.ClusterTrustBundleList, bundleProjection corev1.ClusterTrustBundleProjection) []certificatesv1beta1.ClusterTrustBundle {
+	var relevant []certificatesv1beta1.ClusterTrustBundle
+	for _, bundle := range bundles.Items {
+		if isRelevantCtb(bundleProjection, &bundle) {
+			relevant = append(relevant, bundle)
+		}
+	}
+	return relevant
+}
+
+type objectChecksum struct {
+	hash.Hash
+	serializer *json.Serializer
+}
+
+func newObjectChecksum() *objectChecksum {
+	serializer := json.NewSerializerWithOptions(
+		json.DefaultMetaFactory,
+		nil,
+		nil,
+		json.SerializerOptions{
+			Yaml:   false,
+			Pretty: false,
+			Strict: false,
+		},
+	)
+
+	return &objectChecksum{sha256.New(), serializer}
+}
+
+func (och *objectChecksum) writeObject(obj runtime.Object) {
+	err := och.serializer.Encode(obj, och)
+	if err != nil {
+		log.Error(err, "unable to fingerprint object", "object", obj)
+	}
+}
+
+func (och *objectChecksum) sprintf(format string, a ...interface{}) {
+	_, err := och.Write(fmt.Appendf([]byte{}, format, a...))
+	if err != nil {
+		log.Error(err, "unable to fingerprint string", "format", format)
+	}
+}
+
+func (och *objectChecksum) hexSum() string {
+	return fmt.Sprintf("%x", och.Sum([]byte{}))
 }
