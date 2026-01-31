@@ -184,7 +184,7 @@ require (
 )
 
 replace (
-	// This replace block is from Argo CD v3.2.1 go.mod
+	// This replace block is from Argo CD v3.2.3 go.mod
 	github.com/golang/protobuf => github.com/golang/protobuf v1.5.4
 	github.com/grpc-ecosystem/grpc-gateway => github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	golang.org/x/tools => golang.org/x/tools v0.35.0
@@ -226,5 +226,5 @@ replace (
 	k8s.io/pod-security-admission => k8s.io/pod-security-admission v0.34.0
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.34.0
 	k8s.io/sample-cli-plugin => k8s.io/sample-cli-plugin v0.34.0
-	k8s.io/sample-controller => k8s.io/sample-controller v0.33.1
+	k8s.io/sample-controller => k8s.io/sample-controller v0.34.0
 )
