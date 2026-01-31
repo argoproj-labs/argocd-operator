@@ -57,11 +57,11 @@ func getServiceAccountName(crName, name string) string {
 }
 
 // reconcileServiceAccounts will ensure that all ArgoCD Service Accounts are configured.
-func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoproj.ArgoCD, reqState *RequestState) error {
 	params := getPolicyRuleList(r.Client)
 
 	for _, param := range params {
-		if err := r.reconcileServiceAccountPermissions(param.name, param.policyRule, cr); err != nil {
+		if err := r.reconcileServiceAccountPermissions(param.name, param.policyRule, cr, reqState); err != nil {
 			return err
 		}
 	}
@@ -99,8 +99,8 @@ func (r *ReconcileArgoCD) reconcileServiceAccountClusterPermissions(name string,
 	return r.reconcileClusterRoleBinding(name, role, cr)
 }
 
-func (r *ReconcileArgoCD) reconcileServiceAccountPermissions(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) error {
-	return r.reconcileRoleBinding(name, rules, cr)
+func (r *ReconcileArgoCD) reconcileServiceAccountPermissions(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD, reqState *RequestState) error {
+	return r.reconcileRoleBinding(name, rules, cr, reqState)
 }
 
 func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoproj.ArgoCD) (*corev1.ServiceAccount, error) {

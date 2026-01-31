@@ -30,7 +30,7 @@ const (
 	DefaultNotificationsConfigurationInstanceName = "default-notifications-configuration"
 )
 
-func (r *ReconcileArgoCD) reconcileNotificationsController(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileNotificationsController(cr *argoproj.ArgoCD, reqState *RequestState) error {
 
 	log.Info("reconciling notifications serviceaccount")
 	sa, err := r.reconcileNotificationsServiceAccount(cr)
@@ -71,7 +71,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsController(cr *argoproj.ArgoCD) 
 	}
 
 	log.Info("reconciling notifications deployment")
-	if err := r.reconcileNotificationsDeployment(cr, sa); err != nil {
+	if err := r.reconcileNotificationsDeployment(cr, sa, reqState); err != nil {
 		return err
 	}
 
@@ -82,13 +82,13 @@ func (r *ReconcileArgoCD) reconcileNotificationsController(cr *argoproj.ArgoCD) 
 
 	// reconcile source namespace roles & rolebindings
 	log.Info("reconciling notifications roles & rolebindings in source namespaces")
-	if err := r.reconcileNotificationsSourceNamespacesResources(cr); err != nil {
+	if err := r.reconcileNotificationsSourceNamespacesResources(cr, reqState); err != nil {
 		return err
 	}
 
 	// remove resources for namespaces not part of SourceNamespaces
-	log.Info("performing cleanup for notifications source namespaces")
-	if err := r.removeUnmanagedNotificationsSourceNamespaceResources(cr); err != nil {
+	log.Info("JGW performing cleanup for notifications source namespaces")
+	if err := r.removeUnmanagedNotificationsSourceNamespaceResources(cr, reqState); err != nil {
 		return err
 	}
 
@@ -148,7 +148,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsConfigurationCR(cr *argoproj.Arg
 // RoleBinding and deployment are dependent on these resouces. During deletion the order is reversed.
 // Deployment and RoleBinding must be deleted before the role and sa. deleteNotificationsResources will only be called during
 // delete events, so we don't need to worry about duplicate, recurring reconciliation calls
-func (r *ReconcileArgoCD) deleteNotificationsResources(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) deleteNotificationsResources(cr *argoproj.ArgoCD, reqState *RequestState) error {
 
 	sa := &corev1.ServiceAccount{}
 	role := &rbacv1.Role{}
@@ -165,7 +165,7 @@ func (r *ReconcileArgoCD) deleteNotificationsResources(cr *argoproj.ArgoCD) erro
 	}
 
 	log.Info("reconciling notifications deployment")
-	if err := r.reconcileNotificationsDeployment(cr, sa); err != nil {
+	if err := r.reconcileNotificationsDeployment(cr, sa, reqState); err != nil {
 		return err
 	}
 
@@ -477,7 +477,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsClusterRoleBinding(cr *argoproj.
 	return nil
 }
 
-func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, sa *corev1.ServiceAccount) error {
+func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, sa *corev1.ServiceAccount, reqState *RequestState) error {
 
 	desiredDeployment := newDeploymentWithSuffix("notifications-controller", "controller", cr)
 
@@ -531,7 +531,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, 
 	}
 
 	podSpec.Containers = []corev1.Container{{
-		Command:         r.getNotificationsCommand(cr),
+		Command:         r.getNotificationsCommand(cr, reqState),
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            common.ArgoCDNotificationsControllerComponent,
@@ -682,7 +682,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsSecret(cr *argoproj.ArgoCD) erro
 
 // reconcileNotificationsSourceNamespacesResources creates role & rolebinding in target source namespaces for notifications controller
 // Notifications resources are only created if target source ns is subset of apps source namespaces
-func (r *ReconcileArgoCD) reconcileNotificationsSourceNamespacesResources(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileNotificationsSourceNamespacesResources(cr *argoproj.ArgoCD, reqState *RequestState) error {
 
 	var reconciliationErrors []error
 
@@ -700,7 +700,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsSourceNamespacesResources(cr *ar
 	for _, sourceNamespace := range cr.Spec.Notifications.SourceNamespaces {
 
 		// source ns should be part of app-in-any-ns
-		appsNamespaces, err := r.getSourceNamespaces(cr)
+		appsNamespaces, err := r.getSourceNamespaces(cr, reqState)
 		if err != nil {
 			reconciliationErrors = append(reconciliationErrors, err)
 			continue
@@ -725,7 +725,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsSourceNamespacesResources(cr *ar
 			log.Info(fmt.Sprintf("Skipping reconciling resources for namespace %s as it is already managed-by namespace %s.", namespace.Name, value))
 			// remove any source namespace resources
 			if val, ok1 := namespace.Labels[common.ArgoCDNotificationsManagedByClusterArgoCDLabel]; ok1 && val != cr.Namespace {
-				delete(r.ManagedNotificationsSourceNamespaces, namespace.Name)
+				delete(reqState.ManagedNotificationsSourceNamespaces, namespace.Name)
 				if err := r.cleanupUnmanagedNotificationsSourceNamespaceResources(cr, namespace.Name); err != nil {
 					log.Error(err, fmt.Sprintf("error cleaning up resources for namespace %s", namespace.Name))
 				}
@@ -798,11 +798,12 @@ func (r *ReconcileArgoCD) reconcileNotificationsSourceNamespacesResources(cr *ar
 
 		// notifications permissions for argocd server in source namespaces are handled by apps-in-any-ns code
 
-		if _, ok := r.ManagedNotificationsSourceNamespaces[sourceNamespace]; !ok {
-			if r.ManagedNotificationsSourceNamespaces == nil {
-				r.ManagedNotificationsSourceNamespaces = make(map[string]string)
+		if _, ok := reqState.ManagedNotificationsSourceNamespaces[sourceNamespace]; !ok {
+			if reqState.ManagedNotificationsSourceNamespaces == nil {
+				reqState.ManagedNotificationsSourceNamespaces = make(map[string]string)
 			}
-			r.ManagedNotificationsSourceNamespaces[sourceNamespace] = ""
+			fmt.Println("JGW-RNSNR", sourceNamespace)
+			reqState.ManagedNotificationsSourceNamespaces[sourceNamespace] = ""
 		}
 	}
 
@@ -836,7 +837,7 @@ func (r *ReconcileArgoCD) reconcileSourceNamespaceNotificationsConfigurationCR(c
 	return nil
 }
 
-func (r *ReconcileArgoCD) getNotificationsCommand(cr *argoproj.ArgoCD) []string {
+func (r *ReconcileArgoCD) getNotificationsCommand(cr *argoproj.ArgoCD, reqState *RequestState) []string {
 
 	cmd := make([]string, 0)
 	cmd = append(cmd, "argocd-notifications")
@@ -855,7 +856,7 @@ func (r *ReconcileArgoCD) getNotificationsCommand(cr *argoproj.ArgoCD) []string 
 
 	// notifications source namespaces should be subset of apps source namespaces
 	notificationsSourceNamespaces := []string{}
-	appsNamespaces, err := r.getSourceNamespaces(cr)
+	appsNamespaces, err := r.getSourceNamespaces(cr, reqState)
 	if err == nil {
 		for _, ns := range cr.Spec.Notifications.SourceNamespaces {
 			if contains(appsNamespaces, ns) {
@@ -893,9 +894,9 @@ func getResourceNameForNotificationsSourceNamespaces(cr *argoproj.ArgoCD) string
 
 // setManagedNotificationSourceNamespaces populates ManagedNotificationsSourceNamespaces var with namespaces
 // with "argocd.argoproj.io/notifications-managed-by-cluster-argocd" label.
-func (r *ReconcileArgoCD) setManagedNotificationsSourceNamespaces(cr *argoproj.ArgoCD) error {
-	if r.ManagedNotificationsSourceNamespaces == nil {
-		r.ManagedNotificationsSourceNamespaces = make(map[string]string)
+func (r *ReconcileArgoCD) setManagedNotificationsSourceNamespaces(cr *argoproj.ArgoCD, reqState *RequestState) error {
+	if reqState.ManagedNotificationsSourceNamespaces == nil {
+		reqState.ManagedNotificationsSourceNamespaces = make(map[string]string)
 	}
 	namespaces := &corev1.NamespaceList{}
 	listOption := client.MatchingLabels{
@@ -908,7 +909,8 @@ func (r *ReconcileArgoCD) setManagedNotificationsSourceNamespaces(cr *argoproj.A
 	}
 
 	for _, namespace := range namespaces.Items {
-		r.ManagedNotificationsSourceNamespaces[namespace.Name] = ""
+		fmt.Println("JGW10", namespace)
+		reqState.ManagedNotificationsSourceNamespaces[namespace.Name] = ""
 	}
 
 	return nil
@@ -916,9 +918,11 @@ func (r *ReconcileArgoCD) setManagedNotificationsSourceNamespaces(cr *argoproj.A
 
 // removeUnmanagedNotificationsSourceNamespaceResources cleans up resources from NotificationsSourceNamespaces if namespace is not managed by argocd instance.
 // ManagedNotificationsSourceNamespaces var keeps track of namespaces with notifications resources.
-func (r *ReconcileArgoCD) removeUnmanagedNotificationsSourceNamespaceResources(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) removeUnmanagedNotificationsSourceNamespaceResources(cr *argoproj.ArgoCD, reqState *RequestState) error {
 
-	for ns := range r.ManagedNotificationsSourceNamespaces {
+	fmt.Println("JGW-removeUnmanagedNotificationsSourceNamespaceResources")
+
+	for ns := range reqState.ManagedNotificationsSourceNamespaces {
 
 		// Retrieve the namespace object in the 'managed application source namespaces' list
 		ns_namespace := &corev1.Namespace{
@@ -958,7 +962,7 @@ func (r *ReconcileArgoCD) removeUnmanagedNotificationsSourceNamespaceResources(c
 
 		managedNamespace := false
 		if isNotificationsEnabled(cr) && cr.GetDeletionTimestamp() == nil {
-			notificationsNamespaces, err := r.getSourceNamespaces(cr)
+			notificationsNamespaces, err := r.getSourceNamespaces(cr, reqState)
 			if err != nil {
 				return err
 			}
@@ -980,7 +984,7 @@ func (r *ReconcileArgoCD) removeUnmanagedNotificationsSourceNamespaceResources(c
 				log.Error(err, fmt.Sprintf("error cleaning up notifications resources for namespace %s", ns))
 				continue
 			}
-			delete(r.ManagedNotificationsSourceNamespaces, ns)
+			delete(reqState.ManagedNotificationsSourceNamespaces, ns)
 		}
 	}
 	return nil
@@ -988,7 +992,10 @@ func (r *ReconcileArgoCD) removeUnmanagedNotificationsSourceNamespaceResources(c
 
 // isNotificationsEnabled returns true if notifications are configured and enabled in the ArgoCD CR
 func isNotificationsEnabled(cr *argoproj.ArgoCD) bool {
-	return !reflect.DeepEqual(cr.Spec.Notifications, argoproj.ArgoCDNotifications{}) && cr.Spec.Notifications.Enabled
+	if cr == nil {
+		return false
+	}
+	return cr.Spec.Notifications.Enabled
 }
 
 // cleanupUnmanagedNotificationsSourceNamespaceResources removes the notifications resources from target namespace

@@ -37,12 +37,11 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
-
-var _ reconcile.Reconciler = &ReconcileArgoCD{}
 
 // When the ArgoCD object has been marked as deleting, we should not reconcile,
 // and trigger the creation of new objects.
@@ -60,8 +59,9 @@ func TestReconcileArgoCD_Reconcile_with_deleted(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
-	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	assert.NoError(t, createNamespace(r, reqState, a.Namespace, ""))
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -98,11 +98,12 @@ func TestReconcileArgoCD_DexWorkloads(t *testing.T) {
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install, v1alpha1.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
-	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	assert.NoError(t, createNamespace(r, reqState, a.Namespace, ""))
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -197,8 +198,9 @@ func TestReconcileArgoCD_Reconcile(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
-	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	assert.NoError(t, createNamespace(r, reqState, a.Namespace, ""))
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -241,8 +243,9 @@ func TestReconcileArgoCD_LabelSelector(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	rt := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
-	assert.NoError(t, createNamespace(rt, a.Namespace, ""))
+	assert.NoError(t, createNamespace(rt, reqState, a.Namespace, ""))
 
 	// All ArgoCD instances should be reconciled if no label-selctor is applied to the operator.
 
@@ -406,8 +409,9 @@ func TestReconcileArgoCD_CleanUp(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resources, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
-	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	assert.NoError(t, createNamespace(r, reqState, a.Namespace, ""))
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -489,8 +493,10 @@ func TestReconcileArgoCD_Status_Condition(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	rt := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
+
 	rt.LabelSelector = "foo=bar"
-	assert.NoError(t, createNamespace(rt, a.Namespace, ""))
+	assert.NoError(t, createNamespace(rt, reqState, a.Namespace, ""))
 
 	// Instance is not reconciled as the label does not match, error is expected
 	reqTest := reconcile.Request{
@@ -553,8 +559,9 @@ func TestReconcileArgoCD_Cleanup_RBACs_When_NamespaceManagement_Disabled(t *test
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	reqState := &RequestState{}
 
-	assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
+	assert.NoError(t, createNamespace(r, reqState, argoCD.Namespace, ""))
 
 	// Create Role and RoleBinding
 	client := r.K8sClient.(*testclient.Clientset)

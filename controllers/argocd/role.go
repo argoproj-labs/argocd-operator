@@ -64,11 +64,11 @@ func newClusterRole(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) *v1
 }
 
 // reconcileRoles will ensure that all ArgoCD Service Accounts are configured.
-func (r *ReconcileArgoCD) reconcileRoles(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileRoles(cr *argoproj.ArgoCD, reqState *RequestState) error {
 	params := getPolicyRuleList(r.Client)
 
 	for _, param := range params {
-		if _, err := r.reconcileRole(param.name, param.policyRule, cr); err != nil {
+		if _, err := r.reconcileRole(param.name, param.policyRule, cr, reqState); err != nil {
 			return err
 		}
 	}
@@ -84,13 +84,13 @@ func (r *ReconcileArgoCD) reconcileRoles(cr *argoproj.ArgoCD) error {
 	log.Info("reconciling roles for source namespaces")
 	policyRuleForApplicationSourceNamespaces := policyRuleForServerApplicationSourceNamespaces()
 	// reconcile roles is source namespaces for ArgoCD Server
-	if err := r.reconcileRoleForApplicationSourceNamespaces(common.ArgoCDServerComponent, policyRuleForApplicationSourceNamespaces, cr); err != nil {
+	if err := r.reconcileRoleForApplicationSourceNamespaces(common.ArgoCDServerComponent, policyRuleForApplicationSourceNamespaces, cr, reqState); err != nil {
 		return err
 	}
 
 	log.Info("performing cleanup for source namespaces")
 	// remove resources for namespaces not part of SourceNamespaces
-	if err := r.removeUnmanagedSourceNamespaceResources(cr); err != nil {
+	if err := r.removeUnmanagedSourceNamespaceResources(cr, reqState); err != nil {
 		return err
 	}
 
@@ -99,11 +99,11 @@ func (r *ReconcileArgoCD) reconcileRoles(cr *argoproj.ArgoCD) error {
 
 // reconcileRole, reconciles the policy rules for different ArgoCD components, for each namespace
 // Managed by a single instance of ArgoCD.
-func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule, cr *argoproj.ArgoCD) ([]*v1.Role, error) {
+func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule, cr *argoproj.ArgoCD, reqState *RequestState) ([]*v1.Role, error) {
 	var roles []*v1.Role
 
 	// create policy rules for each namespace
-	for _, namespace := range r.ManagedNamespaces.Items {
+	for _, namespace := range reqState.ManagedNamespaces.Items {
 		// If encountering a terminating namespace remove managed-by label from it and skip reconciliation - This should trigger
 		// clean-up of roles/rolebindings and removal of namespace from cluster secret
 		if namespace.DeletionTimestamp != nil {
@@ -215,14 +215,14 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 	return roles, nil
 }
 
-func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name string, policyRules []v1.PolicyRule, cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name string, policyRules []v1.PolicyRule, cr *argoproj.ArgoCD, reqState *RequestState) error {
 
 	if !argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace) {
 		return nil
 	}
 
 	// create policy rules for each source namespace for ArgoCD Server
-	sourceNamespaces, err := r.getSourceNamespaces(cr)
+	sourceNamespaces, err := r.getSourceNamespaces(cr, reqState)
 	if err != nil {
 		return err
 	}
@@ -239,7 +239,7 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 			log.Info(fmt.Sprintf("Skipping reconciling resources for namespace %s as it is already managed-by namespace %s.", namespace.Name, value))
 			// if managed-by-cluster-argocd label is also present, remove the namespace from the ManagedSourceNamespaces.
 			if val, ok1 := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]; ok1 && val == cr.Namespace {
-				delete(r.ManagedSourceNamespaces, namespace.Name)
+				delete(reqState.ManagedSourceNamespaces, namespace.Name)
 				if err := r.cleanupUnmanagedSourceNamespaceResources(cr, namespace.Name); err != nil {
 					log.Error(err, fmt.Sprintf("error cleaning up resources for namespace %s", namespace.Name))
 				}
@@ -304,11 +304,12 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 			}
 		}
 
-		if _, ok := r.ManagedSourceNamespaces[sourceNamespace]; !ok {
-			if r.ManagedSourceNamespaces == nil {
-				r.ManagedSourceNamespaces = make(map[string]string)
+		// Add 'sourceNamespace' to ManagedSourceNamespaces (if it doesn't already exist)
+		if _, ok := reqState.ManagedSourceNamespaces[sourceNamespace]; !ok {
+			if reqState.ManagedSourceNamespaces == nil {
+				reqState.ManagedSourceNamespaces = make(map[string]any)
 			}
-			r.ManagedSourceNamespaces[sourceNamespace] = ""
+			reqState.ManagedSourceNamespaces[sourceNamespace] = ""
 		}
 
 	}

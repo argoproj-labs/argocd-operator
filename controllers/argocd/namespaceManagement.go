@@ -19,7 +19,7 @@ import (
 // reconcileNamespaceManagement ensures that ArgoCD managed namespaces are properly tracked
 // and updated based on the NamespaceManagement CRs. It identifies the namespaces managed by
 // ArgoCD, validates them against the management rules, and updates their status accordingly.
-func (r *ReconcileArgoCD) reconcileNamespaceManagement(argocd *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileNamespaceManagement(argocd *argoproj.ArgoCD, reqState *RequestState) error {
 	log.Info("Reconciling NamespaceManagement")
 	ctx := context.TODO()
 
@@ -78,20 +78,20 @@ func (r *ReconcileArgoCD) reconcileNamespaceManagement(argocd *argoproj.ArgoCD) 
 	})
 
 	// Initializing to avoid panics
-	if r.ManagedNamespaces == nil {
-		r.ManagedNamespaces = &corev1.NamespaceList{}
+	if reqState.ManagedNamespaces == nil {
+		reqState.ManagedNamespaces = &corev1.NamespaceList{}
 	}
 
 	// Avoid duplicates before appending to r.ManagedNamespaces.Items
 	existingNamespaces := make(map[string]bool)
 
-	for _, ns := range r.ManagedNamespaces.Items {
+	for _, ns := range reqState.ManagedNamespaces.Items {
 		existingNamespaces[ns.Name] = true
 	}
 
 	for _, ns := range managedNamespaces {
 		if !existingNamespaces[ns.Name] {
-			r.ManagedNamespaces.Items = append(r.ManagedNamespaces.Items, ns)
+			reqState.ManagedNamespaces.Items = append(reqState.ManagedNamespaces.Items, ns)
 			existingNamespaces[ns.Name] = true
 		}
 	}
