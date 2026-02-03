@@ -12,6 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
@@ -27,6 +28,18 @@ const (
 	RedisNetworkPolicy = "redis-network-policy"
 	// RedisHAIngressNetworkPolicy is the name of the network policy which controls Redis HA Ingress traffic
 	RedisHANetworkPolicy = "redis-ha-network-policy"
+	// ArgoCDServerNetworkPolicy is the name of the network policy which controls Argo CD Server traffic
+	ArgoCDServerNetworkPolicy = "server-network-policy"
+	// ArgoCDApplicationControllerNetworkPolicy is the name of the network policy which controls Argo CD Application Controller traffic
+	ArgoCDApplicationControllerNetworkPolicy = "application-controller-network-policy"
+	// ArgoCDRepoServerNetworkPolicy is the name of the network policy which controls Argo CD Repo Server traffic
+	ArgoCDRepoServerNetworkPolicy = "repo-server-network-policy"
+	// ArgoCDNotificationsControllerNetworkPolicy is the name of the network policy which controls Argo CD Notifications Controller traffic
+	ArgoCDNotificationsControllerNetworkPolicy = "notifications-controller-network-policy"
+	// ArgoCDDexServerNetworkPolicy is the name of the network policy which controls Argo CD Dex Server traffic
+	ArgoCDDexServerNetworkPolicy = "dex-server-network-policy"
+	// ArgoCDApplicationSetControllerNetworkPolicy is the name of the network policy which controls Argo CD ApplicationSet Controller traffic
+	ArgoCDApplicationSetControllerNetworkPolicy = "applicationset-controller-network-policy"
 )
 
 func (r *ReconcileArgoCD) ReconcileNetworkPolicies(cr *argoproj.ArgoCD) error {
@@ -39,6 +52,266 @@ func (r *ReconcileArgoCD) ReconcileNetworkPolicies(cr *argoproj.ArgoCD) error {
 	// Reconcile Redis HA network policy
 	if err := r.ReconcileRedisHANetworkPolicy(cr); err != nil {
 		return err
+	}
+
+	// Reconcile Notifications Controller network policy
+	if err := r.ReconcileNotificationsControllerNetworkPolicy(cr); err != nil {
+		return err
+	}
+
+	// Reconcile Dex Server network policy
+	if err := r.ReconcileDexServerNetworkPolicy(cr); err != nil {
+		return err
+	}
+
+	// Reconcile ApplicationSet Controller network policy
+	if err := r.ReconcileApplicationSetControllerNetworkPolicy(cr); err != nil {
+		return err
+	}
+
+	if err := r.ReconcileArgoCDServerNetworkPolicy(cr); err != nil {
+		return err
+	}
+
+	if err := r.ReconcileArgoCDApplicationControllerNetworkPolicy(cr); err != nil {
+		return err
+	}
+
+	if err := r.ReconcileArgoCDRepoServerNetworkPolicy(cr); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ReconcileDexServerNetworkPolicy creates and reconciles network policy for Dex Server
+func (r *ReconcileArgoCD) ReconcileDexServerNetworkPolicy(cr *argoproj.ArgoCD) error {
+
+	desired := &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDDexServerNetworkPolicy),
+			Namespace: cr.Namespace,
+		},
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app.kubernetes.io/name": nameWithSuffix("dex-server", cr),
+				},
+			},
+			PolicyTypes: []networkingv1.PolicyType{
+				networkingv1.PolicyTypeIngress,
+			},
+			Ingress: []networkingv1.NetworkPolicyIngressRule{
+				{
+					From: []networkingv1.NetworkPolicyPeer{
+						{
+							PodSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"app.kubernetes.io/name": nameWithSuffix("server", cr),
+								},
+							},
+						},
+					},
+					Ports: []networkingv1.NetworkPolicyPort{
+						{
+							Protocol: TCPProtocol,
+							Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: common.ArgoCDDefaultDexHTTPPort},
+						},
+						{
+							Protocol: TCPProtocol,
+							Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: common.ArgoCDDefaultDexGRPCPort},
+						},
+					},
+				},
+				{
+					From: []networkingv1.NetworkPolicyPeer{
+						{
+							NamespaceSelector: &metav1.LabelSelector{},
+						},
+					},
+					Ports: []networkingv1.NetworkPolicyPort{
+						{
+							Protocol: TCPProtocol,
+							Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: common.ArgoCDDefaultDexMetricsPort},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	existing := &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDDexServerNetworkPolicy),
+			Namespace: cr.Namespace,
+		},
+	}
+
+	npExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
+	if err != nil {
+		return err
+	}
+
+	if !UseDex(cr) {
+		if npExists {
+			argoutil.LogResourceDeletion(log, existing, "dex uninstallation has been requested")
+			return r.Delete(context.TODO(), existing)
+		}
+		return nil
+	}
+
+	if npExists {
+		modified := false
+		explanation := ""
+		if !reflect.DeepEqual(existing.Spec.PodSelector, desired.Spec.PodSelector) {
+			existing.Spec.PodSelector = desired.Spec.PodSelector
+			explanation = "pod selector"
+			modified = true
+		}
+		if !reflect.DeepEqual(existing.Spec.PolicyTypes, desired.Spec.PolicyTypes) {
+			existing.Spec.PolicyTypes = desired.Spec.PolicyTypes
+			if modified {
+				explanation += ", "
+			}
+			explanation += "policy types"
+			modified = true
+		}
+		if !reflect.DeepEqual(existing.Spec.Ingress, desired.Spec.Ingress) {
+			existing.Spec.Ingress = desired.Spec.Ingress
+			if modified {
+				explanation += ", "
+			}
+			explanation += "ingress rules"
+			modified = true
+		}
+
+		if modified {
+			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
+			if err := r.Update(context.TODO(), existing); err != nil {
+				log.Error(err, "Failed to update dex server network policy")
+				return fmt.Errorf("failed to update dex server network policy. error: %w", err)
+			}
+		}
+		return nil
+	}
+
+	if err := controllerutil.SetControllerReference(cr, desired, r.Scheme); err != nil {
+		log.Error(err, "Failed to set controller reference on dex server network policy")
+		return fmt.Errorf("failed to set controller reference on dex server network policy. error: %w", err)
+	}
+
+	argoutil.LogResourceCreation(log, desired)
+	if err := r.Create(context.TODO(), desired); err != nil {
+		log.Error(err, "Failed to create dex server network policy")
+		return fmt.Errorf("failed to create dex server network policy. error: %w", err)
+	}
+
+	return nil
+}
+
+// ReconcileApplicationSetControllerNetworkPolicy creates and reconciles network policy for ApplicationSet Controller
+func (r *ReconcileArgoCD) ReconcileApplicationSetControllerNetworkPolicy(cr *argoproj.ArgoCD) error {
+
+	desired := &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDApplicationSetControllerNetworkPolicy),
+			Namespace: cr.Namespace,
+		},
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app.kubernetes.io/name": "argocd-applicationset-controller",
+				},
+			},
+			PolicyTypes: []networkingv1.PolicyType{
+				networkingv1.PolicyTypeIngress,
+			},
+			Ingress: []networkingv1.NetworkPolicyIngressRule{
+				{
+					From: []networkingv1.NetworkPolicyPeer{
+						{
+							NamespaceSelector: &metav1.LabelSelector{},
+						},
+					},
+					Ports: []networkingv1.NetworkPolicyPort{
+						{
+							Protocol: TCPProtocol,
+							Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 7000},
+						},
+						{
+							Protocol: TCPProtocol,
+							Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 8080},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	existing := &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDApplicationSetControllerNetworkPolicy),
+			Namespace: cr.Namespace,
+		},
+	}
+
+	npExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
+	if err != nil {
+		return err
+	}
+
+	if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.IsEnabled() {
+		if npExists {
+			argoutil.LogResourceDeletion(log, existing, "application set not enabled")
+			return r.Delete(context.TODO(), existing)
+		}
+		return nil
+	}
+
+	if npExists {
+		modified := false
+		explanation := ""
+		if !reflect.DeepEqual(existing.Spec.PodSelector, desired.Spec.PodSelector) {
+			existing.Spec.PodSelector = desired.Spec.PodSelector
+			explanation = "pod selector"
+			modified = true
+		}
+		if !reflect.DeepEqual(existing.Spec.PolicyTypes, desired.Spec.PolicyTypes) {
+			existing.Spec.PolicyTypes = desired.Spec.PolicyTypes
+			if modified {
+				explanation += ", "
+			}
+			explanation += "policy types"
+			modified = true
+		}
+		if !reflect.DeepEqual(existing.Spec.Ingress, desired.Spec.Ingress) {
+			existing.Spec.Ingress = desired.Spec.Ingress
+			if modified {
+				explanation += ", "
+			}
+			explanation += "ingress rules"
+			modified = true
+		}
+
+		if modified {
+			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
+			if err := r.Update(context.TODO(), existing); err != nil {
+				log.Error(err, "Failed to update applicationset controller network policy")
+				return fmt.Errorf("failed to update applicationset controller network policy. error: %w", err)
+			}
+		}
+		return nil
+	}
+
+	if err := controllerutil.SetControllerReference(cr, desired, r.Scheme); err != nil {
+		log.Error(err, "Failed to set controller reference on applicationset controller network policy")
+		return fmt.Errorf("failed to set controller reference on applicationset controller network policy. error: %w", err)
+	}
+
+	argoutil.LogResourceCreation(log, desired)
+	if err := r.Create(context.TODO(), desired); err != nil {
+		log.Error(err, "Failed to create applicationset controller network policy")
+		return fmt.Errorf("failed to create applicationset controller network policy. error: %w", err)
 	}
 
 	return nil
@@ -309,4 +582,322 @@ func (r *ReconcileArgoCD) ReconcileRedisHANetworkPolicy(cr *argoproj.ArgoCD) err
 
 	return nil
 
+}
+
+// ReconcileNotificationsControllerNetworkPolicy creates and reconciles network policy for Notifications Controller
+func (r *ReconcileArgoCD) ReconcileNotificationsControllerNetworkPolicy(cr *argoproj.ArgoCD) error {
+
+	desired := &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDNotificationsControllerNetworkPolicy),
+			Namespace: cr.Namespace,
+		},
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app.kubernetes.io/name": nameWithSuffix("notifications-controller", cr),
+				},
+			},
+			PolicyTypes: []networkingv1.PolicyType{
+				networkingv1.PolicyTypeIngress,
+			},
+			Ingress: []networkingv1.NetworkPolicyIngressRule{
+				{
+					From: []networkingv1.NetworkPolicyPeer{
+						{
+							NamespaceSelector: &metav1.LabelSelector{},
+						},
+					},
+					Ports: []networkingv1.NetworkPolicyPort{
+						{
+							Protocol: TCPProtocol,
+							Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 9001},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	existing := &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDNotificationsControllerNetworkPolicy),
+			Namespace: cr.Namespace,
+		},
+	}
+
+	npExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
+	if err != nil {
+		return err
+	}
+
+	if !isNotificationsEnabled(cr) {
+		if npExists {
+			argoutil.LogResourceDeletion(log, existing, "notifications are disabled")
+			return r.Delete(context.TODO(), existing)
+		}
+		return nil
+	}
+
+	if npExists {
+		modified := false
+		explanation := ""
+		if !reflect.DeepEqual(existing.Spec.PodSelector, desired.Spec.PodSelector) {
+			existing.Spec.PodSelector = desired.Spec.PodSelector
+			explanation = "pod selector"
+			modified = true
+		}
+		if !reflect.DeepEqual(existing.Spec.PolicyTypes, desired.Spec.PolicyTypes) {
+			existing.Spec.PolicyTypes = desired.Spec.PolicyTypes
+			if modified {
+				explanation += ", "
+			}
+			explanation += "policy types"
+			modified = true
+		}
+		if !reflect.DeepEqual(existing.Spec.Ingress, desired.Spec.Ingress) {
+			existing.Spec.Ingress = desired.Spec.Ingress
+			if modified {
+				explanation += ", "
+			}
+			explanation += "ingress rules"
+			modified = true
+		}
+
+		if modified {
+			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
+			if err := r.Update(context.TODO(), existing); err != nil {
+				log.Error(err, "Failed to update notifications controller network policy")
+				return fmt.Errorf("failed to update notifications controller network policy. error: %w", err)
+			}
+		}
+		return nil
+	}
+
+	if err := controllerutil.SetControllerReference(cr, desired, r.Scheme); err != nil {
+		log.Error(err, "Failed to set controller reference on notifications controller network policy")
+		return fmt.Errorf("failed to set controller reference on notifications controller network policy. error: %w", err)
+	}
+
+	argoutil.LogResourceCreation(log, desired)
+	if err := r.Create(context.TODO(), desired); err != nil {
+		log.Error(err, "Failed to create notifications controller network policy")
+		return fmt.Errorf("failed to create notifications controller network policy. error: %w", err)
+	}
+
+	return nil
+}
+
+func (r *ReconcileArgoCD) ReconcileArgoCDServerNetworkPolicy(cr *argoproj.ArgoCD) error {
+	// if cr.spec.NetworkPolicy.enabled {
+	networkPolicy := &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDServerNetworkPolicy),
+			Namespace: cr.Namespace,
+		},
+
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app.kubernetes.io/name": nameWithSuffix("server", cr),
+				},
+			},
+
+			PolicyTypes: []networkingv1.PolicyType{
+				networkingv1.PolicyTypeIngress,
+			},
+			Ingress: []networkingv1.NetworkPolicyIngressRule{
+				{},
+			},
+		},
+	}
+	// }
+
+	existing := &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDServerNetworkPolicy),
+			Namespace: cr.Namespace,
+		},
+	}
+
+	npExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
+	if err != nil {
+		return err
+	}
+
+	if err := controllerutil.SetControllerReference(cr, networkPolicy, r.Scheme); err != nil {
+		log.Error(err, "Failed to set controller reference on dex server network policy")
+		return fmt.Errorf("failed to set controller reference on dex server network policy. error: %w", err)
+	}
+
+	if !npExists {
+		argoutil.LogResourceCreation(log, networkPolicy)
+		if err := r.Create(context.TODO(), networkPolicy); err != nil {
+			log.Error(err, "Failed to create server network policy")
+			return fmt.Errorf("failed to create server network policy. error: %w", err)
+		}
+	}
+	return nil
+}
+
+func (r *ReconcileArgoCD) ReconcileArgoCDApplicationControllerNetworkPolicy(cr *argoproj.ArgoCD) error {
+	networkPolicy := &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDApplicationControllerNetworkPolicy),
+			Namespace: cr.Namespace,
+		},
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app.kubernetes.io/name": nameWithSuffix("application-controller", cr),
+				},
+			},
+			PolicyTypes: []networkingv1.PolicyType{
+				networkingv1.PolicyTypeIngress,
+			},
+			Ingress: []networkingv1.NetworkPolicyIngressRule{
+				{
+					From: []networkingv1.NetworkPolicyPeer{
+						{
+							NamespaceSelector: &metav1.LabelSelector{},
+						},
+					},
+					Ports: []networkingv1.NetworkPolicyPort{
+						{
+							Protocol: TCPProtocol,
+							Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 8082},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Check if the network policy already exists
+	existing := &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDApplicationControllerNetworkPolicy),
+			Namespace: cr.Namespace,
+		},
+	}
+
+	// Check if the network policy already exists
+	npExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
+	if err != nil {
+		return err
+	}
+
+	if err := controllerutil.SetControllerReference(cr, networkPolicy, r.Scheme); err != nil {
+		log.Error(err, "Failed to set controller reference on dex server network policy")
+		return fmt.Errorf("failed to set controller reference on dex server network policy. error: %w", err)
+	}
+
+	if !npExists {
+		argoutil.LogResourceCreation(log, networkPolicy)
+		if err := r.Create(context.TODO(), networkPolicy); err != nil {
+			log.Error(err, "Failed to create application controller network policy")
+			return fmt.Errorf("failed to create application controller network policy. error: %w", err)
+		}
+	}
+	return nil
+}
+
+func (r *ReconcileArgoCD) ReconcileArgoCDRepoServerNetworkPolicy(cr *argoproj.ArgoCD) error {
+	networkPolicy := &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDRepoServerNetworkPolicy),
+			Namespace: cr.Namespace,
+		},
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app.kubernetes.io/name": nameWithSuffix("repo-server", cr),
+				},
+			},
+			PolicyTypes: []networkingv1.PolicyType{
+				networkingv1.PolicyTypeIngress,
+			},
+			Ingress: []networkingv1.NetworkPolicyIngressRule{
+				{
+					From: []networkingv1.NetworkPolicyPeer{
+						{
+							PodSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"app.kubernetes.io/name": nameWithSuffix("application-controller", cr),
+								},
+							},
+						},
+						{
+							PodSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"app.kubernetes.io/name": nameWithSuffix("server", cr),
+								},
+							},
+						},
+						{
+							PodSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"app.kubernetes.io/name": nameWithSuffix("notifications-controller", cr),
+								},
+							},
+						},
+						{
+							PodSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"app.kubernetes.io/name": nameWithSuffix("applicationset-controller", cr),
+								},
+							},
+						},
+					},
+					Ports: []networkingv1.NetworkPolicyPort{
+						{
+							Protocol: TCPProtocol,
+							Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 8081},
+						},
+					},
+				},
+				{
+					From: []networkingv1.NetworkPolicyPeer{
+						{
+							NamespaceSelector: &metav1.LabelSelector{},
+						},
+					},
+					Ports: []networkingv1.NetworkPolicyPort{
+						{
+							Protocol: TCPProtocol,
+							Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 8084},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Check if the network policy already exists
+	existing := &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDRepoServerNetworkPolicy),
+			Namespace: cr.Namespace,
+		},
+	}
+
+	// Check if the network policy already exists
+	npExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
+	if err != nil {
+		return err
+	}
+
+	if err := controllerutil.SetControllerReference(cr, networkPolicy, r.Scheme); err != nil {
+		log.Error(err, "Failed to set controller reference on dex server network policy")
+		return fmt.Errorf("failed to set controller reference on dex server network policy. error: %w", err)
+	}
+
+	if !npExists {
+		argoutil.LogResourceCreation(log, networkPolicy)
+		if err := r.Create(context.TODO(), networkPolicy); err != nil {
+			log.Error(err, "Failed to create repo server network policy")
+			return fmt.Errorf("failed to create repo server network policy. error: %w", err)
+		}
+	}
+	return nil
 }
