@@ -257,7 +257,7 @@ metadata:
     capabilities: Deep Insights
     categories: Integration & Delivery
     certified: "false"
-    createdAt: "2026-01-21T09:23:21Z"
+    createdAt: "2026-01-30T19:24:37Z"
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v1.35.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
@@ -424,7 +424,7 @@ spec:
       specDescriptors:
       - description: ApplicationInstanceLabelKey is the key name where Argo CD injects
           the app name as a tracking label.
-        displayName: Application Instance Label Key'
+        displayName: Application Instance Label Key
         path: applicationInstanceLabelKey
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
@@ -436,7 +436,7 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: Enabled will toggle the creation of the Ingress.
-        displayName: Ingress Enabled'
+        displayName: Ingress Enabled
         path: applicationSet.webhookServer.ingress.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
@@ -444,7 +444,7 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       - description: Enabled will toggle the creation of the OpenShift Route.
-        displayName: Route Enabled'
+        displayName: Route Enabled
         path: applicationSet.webhookServer.route.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
@@ -455,26 +455,26 @@ spec:
           Argo CD now requires plugins to be defined as sidecar containers of repo
           server component. See ''.spec.repo.sidecarContainers''. ConfigManagementPlugins
           was previously used to specify additional config management plugins.'
-        displayName: Config Management Plugins'
+        displayName: Config Management Plugins
         path: configManagementPlugins
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: Operation is the number of application operation processors.
-        displayName: Operation Processor Count'
+        displayName: Operation Processor Count
         path: controller.processors.operation
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Controller
         - urn:alm:descriptor:com.tectonic.ui:number
       - description: Status is the number of application status processors.
-        displayName: Status Processor Count'
+        displayName: Status Processor Count
         path: controller.processors.status
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Controller
         - urn:alm:descriptor:com.tectonic.ui:number
       - description: Resources defines the Compute Resources required by the container
           for the Application Controller.
-        displayName: Resource Requirements'
+        displayName: Resource Requirements
         path: controller.resources
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Controller
@@ -493,14 +493,14 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: OpenShiftOAuth enables OpenShift OAuth authentication for the
           Dex server.
-        displayName: OpenShift OAuth Enabled'
+        displayName: OpenShift OAuth Enabled
         path: dex.openShiftOAuth
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       - description: Resources defines the Compute Resources required by the container
           for Dex.
-        displayName: Resource Requirements'
+        displayName: Resource Requirements
         path: dex.resources
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
@@ -513,13 +513,13 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: GAAnonymizeUsers toggles user IDs being hashed before sending
           to google analytics.
-        displayName: Google Analytics Anonymize Users'
+        displayName: Google Analytics Anonymize Users
         path: gaAnonymizeUsers
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
         - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: GATrackingID is the google analytics tracking ID to use.
-        displayName: Google Analytics Tracking ID'
+        displayName: Google Analytics Tracking ID
         path: gaTrackingID
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
@@ -543,7 +543,7 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: Enabled will toggle the creation of the Ingress.
-        displayName: Ingress Enabled'
+        displayName: Ingress Enabled
         path: grafana.ingress.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
@@ -552,13 +552,13 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       - description: Resources defines the Compute Resources required by the container
           for Grafana.
-        displayName: Resource Requirements'
+        displayName: Resource Requirements
         path: grafana.resources
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       - description: Enabled will toggle the creation of the OpenShift Route.
-        displayName: Route Enabled'
+        displayName: Route Enabled
         path: grafana.route.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
@@ -585,14 +585,14 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       - description: HelpChatText is the text for getting chat help, defaults to "Chat
           now!"
-        displayName: Help Chat Text'
+        displayName: Help Chat Text
         path: helpChatText
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: HelpChatURL is the URL for getting chat help, this will typically
           be your Slack channel for support.
-        displayName: Help Chat URL'
+        displayName: Help Chat URL
         path: helpChatURL
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
@@ -627,7 +627,7 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: InitialRepositories to configure Argo CD with upon creation of
           the cluster.
-        displayName: Initial Repositories'
+        displayName: Initial Repositories
         path: initialRepositories
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
@@ -641,13 +641,13 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: KustomizeVersions is a listing of configured versions of Kustomize
           to be made available within ArgoCD.
-        displayName: Kustomize Build Options'
+        displayName: Kustomize Build Options
         path: kustomizeVersions
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: OIDCConfig is the OIDC configuration as an alternative to dex.
-        displayName: OIDC Config'
+        displayName: OIDC Config
         path: oidcConfig
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
@@ -665,7 +665,7 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: Enabled will toggle the creation of the Ingress.
-        displayName: Ingress Enabled'
+        displayName: Ingress Enabled
         path: prometheus.ingress.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
@@ -673,7 +673,7 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       - description: Enabled will toggle the creation of the OpenShift Route.
-        displayName: Route Enabled'
+        displayName: Route Enabled
         path: prometheus.route.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
@@ -689,7 +689,7 @@ spec:
       - description: DefaultPolicy is the name of the default role which Argo CD will
           falls back to, when authorizing API requests (optional). If omitted or empty,
           users may be still be able to login, but will see no apps, projects, etc...
-        displayName: Default Policy'
+        displayName: Default Policy
         path: rbac.defaultPolicy
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:RBAC
@@ -719,7 +719,7 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: Resources defines the Compute Resources required by the container
           for Redis.
-        displayName: Resource Requirements'
+        displayName: Resource Requirements
         path: redis.resources
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Redis
@@ -732,13 +732,13 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: Resources defines the Compute Resources required by the container
           for Redis.
-        displayName: Resource Requirements'
+        displayName: Resource Requirements
         path: repo.resources
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Repo
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       - description: ResourceActions customizes resource action behavior.
-        displayName: Resource Action Customizations'
+        displayName: Resource Action Customizations
         path: resourceActions
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
@@ -747,41 +747,41 @@ spec:
           customizes resource behavior. Keys are in the form: group/Kind. Please note
           that this is being deprecated in favor of ResourceHealthChecks, ResourceIgnoreDifferences,
           and ResourceActions.'
-        displayName: Resource Customizations'
+        displayName: Resource Customizations
         path: resourceCustomizations
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: ResourceExclusions is used to completely ignore entire classes
           of resource group/kinds.
-        displayName: Resource Exclusions'
+        displayName: Resource Exclusions
         path: resourceExclusions
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: ResourceHealthChecks customizes resource health check behavior.
-        displayName: Resource Health Check Customizations'
+        displayName: Resource Health Check Customizations
         path: resourceHealthChecks
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: ResourceIgnoreDifferences customizes resource ignore difference
           behavior.
-        displayName: Resource Ignore Difference Customizations'
+        displayName: Resource Ignore Difference Customizations
         path: resourceIgnoreDifferences
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: ResourceTrackingMethod defines how Argo CD should track resources
           that it manages
-        displayName: Resource Tracking Method'
+        displayName: Resource Tracking Method
         path: resourceTrackingMethod
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: Enabled will toggle autoscaling support for the Argo CD Server
           component.
-        displayName: Autoscale Enabled'
+        displayName: Autoscale Enabled
         path: server.autoscale.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
@@ -794,13 +794,13 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: Ingress defines the desired state for the Argo CD Server GRPC
           Ingress.
-        displayName: GRPC Ingress Enabled'
+        displayName: GRPC Ingress Enabled
         path: server.grpc.ingress
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       - description: Enabled will toggle the creation of the Ingress.
-        displayName: Ingress Enabled'
+        displayName: Ingress Enabled
         path: server.grpc.ingress.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
@@ -814,7 +814,7 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: Enabled will toggle the creation of the Ingress.
-        displayName: Ingress Enabled'
+        displayName: Ingress Enabled
         path: server.ingress.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
@@ -829,13 +829,13 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       - description: Resources defines the Compute Resources required by the container
           for the Argo CD server component.
-        displayName: Resource Requirements'
+        displayName: Resource Requirements
         path: server.resources
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       - description: Enabled will toggle the creation of the OpenShift Route.
-        displayName: Route Enabled'
+        displayName: Route Enabled
         path: server.route.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
@@ -843,7 +843,7 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       - description: Type is the ServiceType to use for the Service resource.
-        displayName: Service Type'
+        displayName: Service Type
         path: server.service.type
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
@@ -862,14 +862,14 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: OpenShiftOAuth enables OpenShift OAuth authentication for the
           Dex server.
-        displayName: OpenShift OAuth Enabled'
+        displayName: OpenShift OAuth Enabled
         path: sso.dex.openShiftOAuth
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       - description: Resources defines the Compute Resources required by the container
           for Dex.
-        displayName: Resource Requirements'
+        displayName: Resource Requirements
         path: sso.dex.resources
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
@@ -881,14 +881,14 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: StatusBadgeEnabled toggles application status badge feature.
-        displayName: Status Badge Enabled'
+        displayName: Status Badge Enabled
         path: statusBadgeEnabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
         - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: UsersAnonymousEnabled toggles anonymous user access. The anonymous
           users get default role permissions specified argocd-rbac-cm.
-        displayName: Anonymous Users Enabled'
+        displayName: Anonymous Users Enabled
         path: usersAnonymousEnabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
@@ -1052,7 +1052,7 @@ spec:
       specDescriptors:
       - description: ApplicationInstanceLabelKey is the key name where Argo CD injects
           the app name as a tracking label.
-        displayName: Application Instance Label Key'
+        displayName: Application Instance Label Key
         path: applicationInstanceLabelKey
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
@@ -1064,7 +1064,7 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: Enabled will toggle the creation of the Ingress.
-        displayName: Ingress Enabled'
+        displayName: Ingress Enabled
         path: applicationSet.webhookServer.ingress.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
@@ -1072,7 +1072,7 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       - description: Enabled will toggle the creation of the OpenShift Route.
-        displayName: Route Enabled'
+        displayName: Route Enabled
         path: applicationSet.webhookServer.route.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
@@ -1083,39 +1083,39 @@ spec:
           Argo CD now requires plugins to be defined as sidecar containers of repo
           server component. See ''.spec.repo.sidecarContainers''. ConfigManagementPlugins
           was previously used to specify additional config management plugins.'
-        displayName: Config Management Plugins'
+        displayName: Config Management Plugins
         path: configManagementPlugins
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: Operation is the number of application operation processors.
-        displayName: Operation Processor Count'
+        displayName: Operation Processor Count
         path: controller.processors.operation
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Controller
         - urn:alm:descriptor:com.tectonic.ui:number
       - description: Status is the number of application status processors.
-        displayName: Status Processor Count'
+        displayName: Status Processor Count
         path: controller.processors.status
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Controller
         - urn:alm:descriptor:com.tectonic.ui:number
       - description: Resources defines the Compute Resources required by the container
           for the Application Controller.
-        displayName: Resource Requirements'
+        displayName: Resource Requirements
         path: controller.resources
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Controller
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       - description: GAAnonymizeUsers toggles user IDs being hashed before sending
           to google analytics.
-        displayName: Google Analytics Anonymize Users'
+        displayName: Google Analytics Anonymize Users
         path: gaAnonymizeUsers
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
         - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: GATrackingID is the google analytics tracking ID to use.
-        displayName: Google Analytics Tracking ID'
+        displayName: Google Analytics Tracking ID
         path: gaTrackingID
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
@@ -1139,7 +1139,7 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: Enabled will toggle the creation of the Ingress.
-        displayName: Ingress Enabled'
+        displayName: Ingress Enabled
         path: grafana.ingress.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
@@ -1148,13 +1148,13 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       - description: Resources defines the Compute Resources required by the container
           for Grafana.
-        displayName: Resource Requirements'
+        displayName: Resource Requirements
         path: grafana.resources
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       - description: Enabled will toggle the creation of the OpenShift Route.
-        displayName: Route Enabled'
+        displayName: Route Enabled
         path: grafana.route.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
@@ -1181,14 +1181,14 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       - description: HelpChatText is the text for getting chat help, defaults to "Chat
           now!"
-        displayName: Help Chat Text'
+        displayName: Help Chat Text
         path: helpChatText
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: HelpChatURL is the URL for getting chat help, this will typically
           be your Slack channel for support.
-        displayName: Help Chat URL'
+        displayName: Help Chat URL
         path: helpChatURL
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
@@ -1223,7 +1223,7 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Deprecated: InitialRepositories to configure Argo CD with upon
           creation of the cluster.'
-        displayName: Initial Repositories'
+        displayName: Initial Repositories
         path: initialRepositories
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
@@ -1237,13 +1237,13 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: KustomizeVersions is a listing of configured versions of Kustomize
           to be made available within ArgoCD.
-        displayName: Kustomize Build Options'
+        displayName: Kustomize Build Options
         path: kustomizeVersions
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: OIDCConfig is the OIDC configuration as an alternative to dex.
-        displayName: OIDC Config'
+        displayName: OIDC Config
         path: oidcConfig
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
@@ -1261,7 +1261,7 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: Enabled will toggle the creation of the Ingress.
-        displayName: Ingress Enabled'
+        displayName: Ingress Enabled
         path: prometheus.ingress.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
@@ -1269,7 +1269,7 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       - description: Enabled will toggle the creation of the OpenShift Route.
-        displayName: Route Enabled'
+        displayName: Route Enabled
         path: prometheus.route.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
@@ -1285,7 +1285,7 @@ spec:
       - description: DefaultPolicy is the name of the default role which Argo CD will
           falls back to, when authorizing API requests (optional). If omitted or empty,
           users may be still be able to login, but will see no apps, projects, etc...
-        displayName: Default Policy'
+        displayName: Default Policy
         path: rbac.defaultPolicy
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:RBAC
@@ -1315,7 +1315,7 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: Resources defines the Compute Resources required by the container
           for Redis.
-        displayName: Resource Requirements'
+        displayName: Resource Requirements
         path: redis.resources
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Redis
@@ -1328,47 +1328,47 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: Resources defines the Compute Resources required by the container
           for Redis.
-        displayName: Resource Requirements'
+        displayName: Resource Requirements
         path: repo.resources
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Repo
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       - description: ResourceActions customizes resource action behavior.
-        displayName: Resource Action Customizations'
+        displayName: Resource Action Customizations
         path: resourceActions
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: ResourceExclusions is used to completely ignore entire classes
           of resource group/kinds.
-        displayName: Resource Exclusions'
+        displayName: Resource Exclusions
         path: resourceExclusions
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: ResourceHealthChecks customizes resource health check behavior.
-        displayName: Resource Health Check Customizations'
+        displayName: Resource Health Check Customizations
         path: resourceHealthChecks
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: ResourceIgnoreDifferences customizes resource ignore difference
           behavior.
-        displayName: Resource Ignore Difference Customizations'
+        displayName: Resource Ignore Difference Customizations
         path: resourceIgnoreDifferences
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: ResourceTrackingMethod defines how Argo CD should track resources
           that it manages
-        displayName: Resource Tracking Method'
+        displayName: Resource Tracking Method
         path: resourceTrackingMethod
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: Enabled will toggle autoscaling support for the Argo CD Server
           component.
-        displayName: Autoscale Enabled'
+        displayName: Autoscale Enabled
         path: server.autoscale.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
@@ -1381,13 +1381,13 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: Ingress defines the desired state for the Argo CD Server GRPC
           Ingress.
-        displayName: GRPC Ingress Enabled'
+        displayName: GRPC Ingress Enabled
         path: server.grpc.ingress
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       - description: Enabled will toggle the creation of the Ingress.
-        displayName: Ingress Enabled'
+        displayName: Ingress Enabled
         path: server.grpc.ingress.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
@@ -1401,7 +1401,7 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: Enabled will toggle the creation of the Ingress.
-        displayName: Ingress Enabled'
+        displayName: Ingress Enabled
         path: server.ingress.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
@@ -1416,13 +1416,13 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       - description: Resources defines the Compute Resources required by the container
           for the Argo CD server component.
-        displayName: Resource Requirements'
+        displayName: Resource Requirements
         path: server.resources
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       - description: Enabled will toggle the creation of the OpenShift Route.
-        displayName: Route Enabled'
+        displayName: Route Enabled
         path: server.route.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
@@ -1430,7 +1430,7 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       - description: Type is the ServiceType to use for the Service resource.
-        displayName: Service Type'
+        displayName: Service Type
         path: server.service.type
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
@@ -1449,14 +1449,14 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: OpenShiftOAuth enables OpenShift OAuth authentication for the
           Dex server.
-        displayName: OpenShift OAuth Enabled'
+        displayName: OpenShift OAuth Enabled
         path: sso.dex.openShiftOAuth
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       - description: Resources defines the Compute Resources required by the container
           for Dex.
-        displayName: Resource Requirements'
+        displayName: Resource Requirements
         path: sso.dex.resources
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
@@ -1468,14 +1468,14 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: StatusBadgeEnabled toggles application status badge feature.
-        displayName: Status Badge Enabled'
+        displayName: Status Badge Enabled
         path: statusBadgeEnabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
         - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: UsersAnonymousEnabled toggles anonymous user access. The anonymous
           users get default role permissions specified argocd-rbac-cm.
-        displayName: Anonymous Users Enabled'
+        displayName: Anonymous Users Enabled
         path: usersAnonymousEnabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
