@@ -542,7 +542,7 @@ func buildAppProjectResource(nsName string, agentMode argov1beta1api.AgentMode) 
 			Namespace: nsName,
 		},
 		Spec: argocdv1alpha1.AppProjectSpec{
-			ClusterResourceWhitelist: []metav1.GroupKind{{
+			ClusterResourceWhitelist: []argocdv1alpha1.ClusterResourceRestrictionItem{{
 				Group: "*",
 				Kind:  "*",
 			}},
