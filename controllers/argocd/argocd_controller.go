@@ -387,7 +387,7 @@ func (r *ReconcileArgoCD) restoreTrackingLabelsForOrphanedNamespaces(ctx context
 			continue
 		}
 		// Strict orphan validation
-		if !isValidOrphanRole(&role, cr) {
+		if !isOrphanedRole(&role, cr) {
 			continue
 		}
 		requiredLabels := requiredTrackingLabelsForRole(&role, cr)
@@ -415,10 +415,7 @@ func (r *ReconcileArgoCD) restoreTrackingLabelsForOrphanedNamespaces(ctx context
 
 // Orphan validation helpers
 // Core predicate that guarantees convergence and safety
-func isValidOrphanRole(role *rbacv1.Role, cr *argoproj.ArgoCD) bool {
-	if !hasRequiredOwnershipLabels(role, cr) {
-		return false
-	}
+func isOrphanedRole(role *rbacv1.Role, cr *argoproj.ArgoCD) bool {
 	isAppSetRole := role.Name == getResourceNameForApplicationSetSourceNamespaces(cr)
 	isAppRole := role.Name == getRoleNameForApplicationSourceNamespaces(role.Namespace, cr)
 
@@ -426,20 +423,6 @@ func isValidOrphanRole(role *rbacv1.Role, cr *argoproj.ArgoCD) bool {
 		return false
 	}
 	if !hasApplicationScopedRules(role.Rules) {
-		return false
-	}
-	return true
-}
-
-func hasRequiredOwnershipLabels(role *rbacv1.Role, cr *argoproj.ArgoCD) bool {
-	labels := role.GetLabels()
-	if labels == nil {
-		return false
-	}
-	if labels[common.ArgoCDKeyPartOf] != common.ArgoCDAppName {
-		return false
-	}
-	if labels[common.ArgoCDKeyManagedBy] != cr.Name {
 		return false
 	}
 	return true
