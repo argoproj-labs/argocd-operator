@@ -35,6 +35,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
+	errs "errors"
+
+	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logr "sigs.k8s.io/controller-runtime/pkg/log"
@@ -284,7 +288,9 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 			return reconcile.Result{}, argocd, argoCDStatus, err
 		}
 	}
-
+	if err = r.restoreTrackingLabelsForOrphanedNamespaces(ctx, argocd); err != nil {
+		return reconcile.Result{}, argocd, argoCDStatus, err
+	}
 	if err = r.setManagedNamespaces(argocd); err != nil {
 		return reconcile.Result{}, argocd, argoCDStatus, err
 	}
@@ -366,4 +372,109 @@ func (r *ReconcileArgoCD) SetupWithManager(mgr ctrl.Manager) error {
 	bldr := ctrl.NewControllerManagedBy(mgr)
 	r.setResourceWatches(bldr, r.clusterResourceMapper, r.tlsSecretMapper, r.namespaceResourceMapper, r.clusterSecretResourceMapper, r.applicationSetSCMTLSConfigMapMapper, r.nmMapper)
 	return bldr.Complete(r)
+}
+
+func (r *ReconcileArgoCD) restoreTrackingLabelsForOrphanedNamespaces(ctx context.Context, cr *argoproj.ArgoCD) error {
+	// List all Roles owned by this ArgoCD CR across all namespaces
+	roles := &rbacv1.RoleList{}
+	if err := r.List(ctx, roles, client.MatchingLabels{common.ArgoCDKeyPartOf: common.ArgoCDAppName, common.ArgoCDKeyManagedBy: cr.Name}, client.InNamespace(metav1.NamespaceAll)); err != nil {
+		return err
+	}
+	var aggregatedErr error
+	for _, role := range roles.Items {
+		// Skip ArgoCD namespace (implicitly tracked)
+		if role.Namespace == cr.Namespace {
+			continue
+		}
+		// Strict orphan validation
+		if !isOrphanedRole(&role, cr) {
+			continue
+		}
+		requiredLabels := requiredTrackingLabelsForRole(&role, cr)
+		if len(requiredLabels) == 0 {
+			continue
+		}
+		// Fetch namespace
+		namespace := &corev1.Namespace{}
+		if err := r.Get(ctx, types.NamespacedName{Name: role.Namespace}, namespace); err != nil {
+			if !errors.IsNotFound(err) {
+				aggregatedErr = errs.Join(aggregatedErr, err)
+			}
+			continue
+		}
+		// Add only missing labels
+		if addMissingLabels(namespace, requiredLabels) {
+			argoutil.LogResourceUpdate(log, namespace, "restoring ArgoCD tracking labels for orphaned namespace")
+			if err := r.Update(ctx, namespace); err != nil {
+				aggregatedErr = errs.Join(aggregatedErr, err)
+			}
+		}
+	}
+	return aggregatedErr
+}
+
+// Orphan validation helpers
+// Core predicate that guarantees convergence and safety
+func isOrphanedRole(role *rbacv1.Role, cr *argoproj.ArgoCD) bool {
+	isAppSetRole := role.Name == getResourceNameForApplicationSetSourceNamespaces(cr)
+	isAppRole := role.Name == getRoleNameForApplicationSourceNamespaces(role.Namespace, cr)
+
+	if !isAppSetRole && !isAppRole {
+		return false
+	}
+	if !hasApplicationScopedRules(role.Rules) {
+		return false
+	}
+	return true
+}
+
+// RBAC scope validation
+func hasApplicationScopedRules(rules []rbacv1.PolicyRule) bool {
+	const argoCDAPIGroup = "argoproj.io"
+	for _, rule := range rules {
+		if !contains(rule.APIGroups, argoCDAPIGroup) {
+			continue
+		}
+		if contains(rule.Resources, "*") {
+			return true
+		}
+		for _, res := range rule.Resources {
+			switch res {
+			case
+				"applications",
+				"applications/status",
+				"applicationsets",
+				"applicationsets/status":
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// Namespace mutation helpers
+func requiredTrackingLabelsForRole(role *rbacv1.Role, cr *argoproj.ArgoCD) map[string]string {
+	labels := map[string]string{}
+	if role.Name == getResourceNameForApplicationSetSourceNamespaces(cr) {
+		labels[common.ArgoCDApplicationSetManagedByClusterArgoCDLabel] = cr.Namespace
+	}
+
+	if role.Name == getRoleNameForApplicationSourceNamespaces(role.Namespace, cr) {
+		labels[common.ArgoCDManagedByClusterArgoCDLabel] = cr.Namespace
+	}
+	return labels
+}
+
+func addMissingLabels(ns *corev1.Namespace, required map[string]string) bool {
+	if ns.Labels == nil {
+		ns.Labels = map[string]string{}
+	}
+	changed := false
+	for k, v := range required {
+		if _, exists := ns.Labels[k]; !exists {
+			ns.Labels[k] = v
+			changed = true
+		}
+	}
+	return changed
 }
