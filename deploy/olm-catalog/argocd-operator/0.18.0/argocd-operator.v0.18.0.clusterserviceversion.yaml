@@ -257,7 +257,11 @@ metadata:
     capabilities: Deep Insights
     categories: Integration & Delivery
     certified: "false"
+<<<<<<< HEAD
     createdAt: "2026-02-05T16:40:28Z"
+=======
+    createdAt: "2026-02-05T08:39:31Z"
+>>>>>>> 959881e3 (rebase)
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v1.35.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
