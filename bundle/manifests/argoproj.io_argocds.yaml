@@ -1900,6 +1900,18 @@ spec:
                   - name
                   type: object
                 type: array
+              networkPolicy:
+                description: NetworkPolicy controls whether the operator should create
+                  NetworkPolicy resources for this Argo CD instance.
+                properties:
+                  enabled:
+                    default: true
+                    description: |-
+                      Enabled defines whether NetworkPolicy resources are created for this Argo CD instance.
+                      When enabled, the operator will reconcile NetworkPolicies for Argo CD components.
+                      When disabled, the operator will remove any previously-created NetworkPolicies.
+                    type: boolean
+                type: object
               nodePlacement:
                 description: NodePlacement defines NodeSelectors and Taints for Argo
                   CD workloads
@@ -17981,6 +17993,18 @@ spec:
                   - name
                   type: object
                 type: array
+              networkPolicy:
+                description: NetworkPolicy controls whether the operator should create
+                  NetworkPolicy resources for this Argo CD instance.
+                properties:
+                  enabled:
+                    default: true
+                    description: |-
+                      Enabled defines whether NetworkPolicy resources are created for this Argo CD instance.
+                      When enabled, the operator will reconcile NetworkPolicies for Argo CD components.
+                      When disabled, the operator will remove any previously-created NetworkPolicies.
+                    type: boolean
+                type: object
               nodePlacement:
                 description: NodePlacement defines NodeSelectors and Taints for Argo
                   CD workloads
