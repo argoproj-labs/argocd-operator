@@ -1065,6 +1065,11 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 	bldr.Owns(&appsv1.Deployment{})
 	bldr.Owns(&networkingv1.Ingress{})
 	bldr.Owns(&appsv1.StatefulSet{})
+
+	// Watch for changes to NetworkPolicy sub-resources owned by ArgoCD instances.
+	// This ensures that if a NetworkPolicy is deleted, the controller reconciles and recreates it.
+	bldr.Owns(&networkingv1.NetworkPolicy{})
+
 	bldr.Owns(&v1.Role{})
 	bldr.Owns(&v1.RoleBinding{})
 	bldr.Owns(&v1alpha1.NotificationsConfiguration{})
