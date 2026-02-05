@@ -40,39 +40,9 @@ func getPrometheusHost(cr *argoproj.ArgoCD) string {
 	return host
 }
 
-// getPrometheusSize will return the size value for the Prometheus replica count.
-func getPrometheusReplicas(cr *argoproj.ArgoCD) *int32 {
-	replicas := common.ArgoCDDefaultPrometheusReplicas
-	if cr.Spec.Prometheus.Size != nil {
-		if *cr.Spec.Prometheus.Size >= 0 && *cr.Spec.Prometheus.Size != replicas {
-			replicas = *cr.Spec.Prometheus.Size
-		}
-	}
-	return &replicas
-}
-
 // IsPrometheusAPIAvailable returns true if the Prometheus API is present.
 func IsPrometheusAPIAvailable() bool {
 	return prometheusAPIFound
-}
-
-// hasPrometheusSpecChanged will return true if the supported properties differs in the actual versus the desired state.
-func hasPrometheusSpecChanged(actual *monitoringv1.Prometheus, desired *argoproj.ArgoCD) bool {
-	// Replica count
-	if desired.Spec.Prometheus.Size != nil && *desired.Spec.Prometheus.Size >= 0 { // Valid replica count specified in desired state
-		if actual.Spec.Replicas != nil { // Actual replicas value is set
-			if *actual.Spec.Replicas != *desired.Spec.Prometheus.Size {
-				return true
-			}
-		} else if *desired.Spec.Prometheus.Size != common.ArgoCDDefaultPrometheusReplicas { // Actual replicas value is NOT set, but desired replicas differs from the default
-			return true
-		}
-	} else { // Replica count NOT specified in desired state
-		if actual.Spec.Replicas != nil && *actual.Spec.Replicas != common.ArgoCDDefaultPrometheusReplicas {
-			return true
-		}
-	}
-	return false
 }
 
 // verifyPrometheusAPI will verify that the Prometheus API is present.
@@ -163,7 +133,9 @@ func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) er
 	return r.Create(context.TODO(), sm)
 }
 
-// reconcilePrometheus will ensure that Prometheus is present for ArgoCD metrics.
+// reconcilePrometheus will ensure that Prometheus CR is deleted.
+// The Prometheus CR is deprecated and no longer created by the operator.
+// If it exists, it will be deleted.
 func (r *ReconcileArgoCD) reconcilePrometheus(cr *argoproj.ArgoCD) error {
 	prometheus := newPrometheus(cr)
 	prExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, prometheus.Name, prometheus)
@@ -171,32 +143,12 @@ func (r *ReconcileArgoCD) reconcilePrometheus(cr *argoproj.ArgoCD) error {
 		return err
 	}
 	if prExists {
-		if !cr.Spec.Prometheus.Enabled {
-			// Prometheus exists but enabled flag has been set to false, delete the Prometheus
-			argoutil.LogResourceDeletion(log, prometheus, "prometheus is disabled")
-			return r.Delete(context.TODO(), prometheus)
-		}
-		if hasPrometheusSpecChanged(prometheus, cr) {
-			prometheus.Spec.Replicas = cr.Spec.Prometheus.Size
-			argoutil.LogResourceUpdate(log, prometheus, "updating replica count")
-			return r.Update(context.TODO(), prometheus)
-		}
-		return nil // Prometheus found, do nothing
+		// Prometheus CR is deprecated, delete it if it exists
+		argoutil.LogResourceDeletion(log, prometheus, "prometheus CR is deprecated and no longer supported")
+		return r.Delete(context.TODO(), prometheus)
 	}
 
-	if !cr.Spec.Prometheus.Enabled {
-		return nil // Prometheus not enabled, do nothing.
-	}
-
-	prometheus.Spec.Replicas = getPrometheusReplicas(cr)
-	prometheus.Spec.ServiceAccountName = "prometheus-k8s"
-	prometheus.Spec.ServiceMonitorSelector = &metav1.LabelSelector{}
-
-	if err := controllerutil.SetControllerReference(cr, prometheus, r.Scheme); err != nil {
-		return err
-	}
-	argoutil.LogResourceCreation(log, prometheus)
-	return r.Create(context.TODO(), prometheus)
+	return nil // Prometheus CR does not exist, nothing to do
 }
 
 // reconcileRepoServerServiceMonitor will ensure that the ServiceMonitor is present for the Repo Server metrics Service.
