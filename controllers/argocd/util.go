@@ -31,6 +31,8 @@ import (
 	"text/template"
 	"time"
 
+	configv1 "github.com/openshift/api/config/v1"
+
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
 	"github.com/argoproj/argo-cd/v3/util/glob"
@@ -44,7 +46,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdagent/agent"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
-	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/sethvargo/go-password/password"
@@ -757,6 +758,17 @@ func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoproj.ArgoCD) bool {
 	return false
 }
 
+func (r *ReconcileArgoCD) IsExternalAuthenticationEnabledOnOpenShiftCluster() bool {
+	fmt.Println("Checking if external authentication is enabled on OpenShift cluster...")
+	var authConfig configv1.Authentication
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: "cluster"}, &authConfig); err != nil {
+		log.Error(err, "could not get Authentication config")
+		return false
+	}
+	r.IsExternalAuthenticationEnabledForOpenShiftCluster = authConfig.Spec.Type == "OIDC"
+	return r.IsExternalAuthenticationEnabledForOpenShiftCluster
+}
+
 // reconcileResources will reconcile common ArgoCD resources.
 func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus) error {
 
@@ -765,9 +777,15 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *
 	}
 
 	log.Info("reconciling SSO")
-	if err := r.reconcileSSO(cr, argocdStatus); err != nil {
-		log.Info(err.Error())
-		return err
+	if !r.IsExternalAuthenticationEnabledOnOpenShiftCluster() {
+		fmt.Println("External authentication is not enabled on OpenShift cluster.")
+		if err := r.reconcileSSO(cr, argocdStatus); err != nil {
+			log.Info(err.Error())
+			return err
+		}
+	} else {
+		fmt.Println("External authentication is enabled on OpenShift cluster.")
+		argocdStatus.SSO = "External Authentication is enabled on cluster, please provide OIDC configuration."
 	}
 
 	log.Info("reconciling roles")

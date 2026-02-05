@@ -97,6 +97,8 @@ type ReconcileArgoCD struct {
 	LocalUsers *LocalUsersInfo
 	// FipsConfigChecker checks if the deployment needs FIPS specific environment variables set.
 	FipsConfigChecker argoutil.FipsConfigChecker
+	// IsExternalAuthenticationEnabledForOpenShiftCluster checks if openshift cluster has enabled external authentication
+	IsExternalAuthenticationEnabledForOpenShiftCluster bool
 }
 
 var log = logr.Log.WithName("controller_argocd")

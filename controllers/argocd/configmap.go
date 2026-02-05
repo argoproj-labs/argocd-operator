@@ -447,7 +447,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	}
 
 	// create dex config if dex is enabled through `.spec.sso`
-	if UseDex(cr) {
+	if UseDex(cr) && !r.IsExternalAuthenticationEnabledForOpenShiftCluster {
 		dexConfig := getDexConfig(cr)
 
 		// Append the default OpenShift dex config if the openShiftOAuth is requested through `.spec.sso.dex`.
@@ -524,7 +524,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 
 		// reconcile dex configuration if dex is enabled `.spec.sso.dex.provider` or there is
 		// existing dex configuration
-		if UseDex(cr) {
+		if UseDex(cr) && !r.IsExternalAuthenticationEnabledForOpenShiftCluster {
 			if err := r.reconcileDexConfiguration(existingCM, cr); err != nil {
 				return err
 			}
@@ -637,7 +637,7 @@ func (r *ReconcileArgoCD) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argop
 
 	// Scopes
 	if cr.Spec.RBAC.Scopes != nil && cm.Data[common.ArgoCDKeyRBACScopes] != *cr.Spec.RBAC.Scopes {
-		if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeKeycloak {
+		if !r.IsExternalAuthenticationEnabledForOpenShiftCluster && cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeKeycloak {
 			log.Info("Keycloak SSO provider is no longer supported. RBAC scopes configuration is ignored.")
 		} else {
 			cm.Data[common.ArgoCDKeyRBACScopes] = *cr.Spec.RBAC.Scopes
