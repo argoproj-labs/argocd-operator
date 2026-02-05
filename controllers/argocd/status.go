@@ -388,6 +388,7 @@ func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoproj.ArgoCD, argocdStatus 
 			if route.Status.Ingress == nil {
 				argocdStatus.Host = ""
 				argocdStatus.Phase = "Pending"
+				log.Info("Route '" + route.Name + "' has 'status.ingress' value of nil, so ArgoCD .status.phase is set to Pending")
 			} else {
 				// conditions exist and type is RouteAdmitted
 				if len(route.Status.Ingress[0].Conditions) > 0 && route.Status.Ingress[0].Conditions[0].Type == routev1.RouteAdmitted {
@@ -396,12 +397,14 @@ func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoproj.ArgoCD, argocdStatus 
 					} else {
 						argocdStatus.Host = ""
 						argocdStatus.Phase = "Pending"
+						log.Info("Route '" + route.Name + "' has 'status.ingress[0].conditions[RouteAdmitted]' value of false or empty, so ArgoCD .status.phase is set to Pending")
 					}
 				} else {
 					// no conditions are available
 					if route.Status.Ingress[0].Host != "" {
 						argocdStatus.Host = route.Status.Ingress[0].Host
 					} else {
+						log.Info("Route '" + route.Name + "' has 'status.ingress[0].host' value of \"\", so ArgoCD .status.phase is set to Pending")
 						argocdStatus.Host = "Unavailable"
 						argocdStatus.Phase = "Pending"
 					}
