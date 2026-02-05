@@ -458,13 +458,17 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
-      - description: Enabled will toggle Prometheus support globally for ArgoCD.
+      - description: Enabled will toggle Prometheus support globally for ArgoCD. When
+          set to true, ServiceMonitors and PrometheusRules will be created for Argo
+          CD metrics. The Prometheus CR, Route, and Ingress are deprecated and will
+          no longer be created.
         displayName: Enabled
         path: prometheus.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
-      - description: Host is the hostname to use for Ingress/Route resources.
+      - description: 'Host is the hostname to use for Ingress/Route resources. Deprecated:
+          This field is no longer used and will be ignored.'
         displayName: Host
         path: prometheus.host
         x-descriptors:
@@ -486,7 +490,8 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
-      - description: Size is the replica count for the Prometheus StatefulSet.
+      - description: 'Size is the replica count for the Prometheus StatefulSet. Deprecated:
+          This field is no longer used and will be ignored.'
         displayName: Size
         path: prometheus.size
         x-descriptors:
@@ -1077,13 +1082,17 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
-      - description: Enabled will toggle Prometheus support globally for ArgoCD.
+      - description: Enabled will toggle Prometheus support globally for ArgoCD. When
+          set to true, ServiceMonitors and PrometheusRules will be created for Argo
+          CD metrics. The Prometheus CR, Route, and Ingress are deprecated and will
+          no longer be created.
         displayName: Enabled
         path: prometheus.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
-      - description: Host is the hostname to use for Ingress/Route resources.
+      - description: 'Host is the hostname to use for Ingress/Route resources. Deprecated:
+          This field is no longer used and will be ignored.'
         displayName: Host
         path: prometheus.host
         x-descriptors:
@@ -1105,7 +1114,8 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
-      - description: Size is the replica count for the Prometheus StatefulSet.
+      - description: 'Size is the replica count for the Prometheus StatefulSet. Deprecated:
+          This field is no longer used and will be ignored.'
         displayName: Size
         path: prometheus.size
         x-descriptors:
