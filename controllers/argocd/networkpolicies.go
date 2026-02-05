@@ -44,6 +44,10 @@ const (
 
 func (r *ReconcileArgoCD) ReconcileNetworkPolicies(cr *argoproj.ArgoCD) error {
 
+	if !cr.Spec.NetworkPolicy.IsEnabled() {
+		return r.deleteArgoCDNetworkPolicies(cr)
+	}
+
 	// Reconcile Redis network policy
 	if err := r.ReconcileRedisNetworkPolicy(cr); err != nil {
 		return err
@@ -79,6 +83,41 @@ func (r *ReconcileArgoCD) ReconcileNetworkPolicies(cr *argoproj.ArgoCD) error {
 
 	if err := r.ReconcileArgoCDRepoServerNetworkPolicy(cr); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (r *ReconcileArgoCD) deleteArgoCDNetworkPolicies(cr *argoproj.ArgoCD) error {
+	names := []string{
+		fmt.Sprintf("%s-%s", cr.Name, ArgoCDNotificationsControllerNetworkPolicy),
+		fmt.Sprintf("%s-%s", cr.Name, ArgoCDDexServerNetworkPolicy),
+		fmt.Sprintf("%s-%s", cr.Name, ArgoCDApplicationSetControllerNetworkPolicy),
+		fmt.Sprintf("%s-%s", cr.Name, ArgoCDServerNetworkPolicy),
+		fmt.Sprintf("%s-%s", cr.Name, ArgoCDApplicationControllerNetworkPolicy),
+		fmt.Sprintf("%s-%s", cr.Name, ArgoCDRepoServerNetworkPolicy),
+	}
+
+	for _, name := range names {
+		existing := &networkingv1.NetworkPolicy{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: cr.Namespace,
+			},
+		}
+
+		found, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
+		if err != nil {
+			return err
+		}
+		if !found {
+			continue
+		}
+
+		argoutil.LogResourceDeletion(log, existing, "networkPolicy is disabled")
+		if err := r.Delete(context.TODO(), existing); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -220,7 +259,7 @@ func (r *ReconcileArgoCD) ReconcileApplicationSetControllerNetworkPolicy(cr *arg
 		Spec: networkingv1.NetworkPolicySpec{
 			PodSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app.kubernetes.io/name": "argocd-applicationset-controller",
+					"app.kubernetes.io/name": nameWithSuffix("applicationset-controller", cr),
 				},
 			},
 			PolicyTypes: []networkingv1.PolicyType{
@@ -689,8 +728,7 @@ func (r *ReconcileArgoCD) ReconcileNotificationsControllerNetworkPolicy(cr *argo
 }
 
 func (r *ReconcileArgoCD) ReconcileArgoCDServerNetworkPolicy(cr *argoproj.ArgoCD) error {
-	// if cr.spec.NetworkPolicy.enabled {
-	networkPolicy := &networkingv1.NetworkPolicy{
+	desired := &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDServerNetworkPolicy),
 			Namespace: cr.Namespace,
@@ -711,7 +749,6 @@ func (r *ReconcileArgoCD) ReconcileArgoCDServerNetworkPolicy(cr *argoproj.ArgoCD
 			},
 		},
 	}
-	// }
 
 	existing := &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
@@ -725,23 +762,57 @@ func (r *ReconcileArgoCD) ReconcileArgoCDServerNetworkPolicy(cr *argoproj.ArgoCD
 		return err
 	}
 
-	if err := controllerutil.SetControllerReference(cr, networkPolicy, r.Scheme); err != nil {
-		log.Error(err, "Failed to set controller reference on dex server network policy")
-		return fmt.Errorf("failed to set controller reference on dex server network policy. error: %w", err)
+	if npExists {
+		modified := false
+		explanation := ""
+		if !reflect.DeepEqual(existing.Spec.PodSelector, desired.Spec.PodSelector) {
+			existing.Spec.PodSelector = desired.Spec.PodSelector
+			explanation = "pod selector"
+			modified = true
+		}
+		if !reflect.DeepEqual(existing.Spec.PolicyTypes, desired.Spec.PolicyTypes) {
+			existing.Spec.PolicyTypes = desired.Spec.PolicyTypes
+			if modified {
+				explanation += ", "
+			}
+			explanation += "policy types"
+			modified = true
+		}
+		if !reflect.DeepEqual(existing.Spec.Ingress, desired.Spec.Ingress) {
+			existing.Spec.Ingress = desired.Spec.Ingress
+			if modified {
+				explanation += ", "
+			}
+			explanation += "ingress rules"
+			modified = true
+		}
+
+		if modified {
+			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
+			if err := r.Update(context.TODO(), existing); err != nil {
+				log.Error(err, "Failed to update server network policy")
+				return fmt.Errorf("failed to update server network policy. error: %w", err)
+			}
+		}
+		return nil
 	}
 
-	if !npExists {
-		argoutil.LogResourceCreation(log, networkPolicy)
-		if err := r.Create(context.TODO(), networkPolicy); err != nil {
-			log.Error(err, "Failed to create server network policy")
-			return fmt.Errorf("failed to create server network policy. error: %w", err)
-		}
+	if err := controllerutil.SetControllerReference(cr, desired, r.Scheme); err != nil {
+		log.Error(err, "Failed to set controller reference on argocd server network policy")
+		return fmt.Errorf("failed to set controller reference on argocd server network policy. error: %w", err)
 	}
+
+	argoutil.LogResourceCreation(log, desired)
+	if err := r.Create(context.TODO(), desired); err != nil {
+		log.Error(err, "Failed to create server network policy")
+		return fmt.Errorf("failed to create server network policy. error: %w", err)
+	}
+
 	return nil
 }
 
 func (r *ReconcileArgoCD) ReconcileArgoCDApplicationControllerNetworkPolicy(cr *argoproj.ArgoCD) error {
-	networkPolicy := &networkingv1.NetworkPolicy{
+	desired := &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDApplicationControllerNetworkPolicy),
 			Namespace: cr.Namespace,
@@ -787,23 +858,57 @@ func (r *ReconcileArgoCD) ReconcileArgoCDApplicationControllerNetworkPolicy(cr *
 		return err
 	}
 
-	if err := controllerutil.SetControllerReference(cr, networkPolicy, r.Scheme); err != nil {
-		log.Error(err, "Failed to set controller reference on dex server network policy")
-		return fmt.Errorf("failed to set controller reference on dex server network policy. error: %w", err)
+	if npExists {
+		modified := false
+		explanation := ""
+		if !reflect.DeepEqual(existing.Spec.PodSelector, desired.Spec.PodSelector) {
+			existing.Spec.PodSelector = desired.Spec.PodSelector
+			explanation = "pod selector"
+			modified = true
+		}
+		if !reflect.DeepEqual(existing.Spec.PolicyTypes, desired.Spec.PolicyTypes) {
+			existing.Spec.PolicyTypes = desired.Spec.PolicyTypes
+			if modified {
+				explanation += ", "
+			}
+			explanation += "policy types"
+			modified = true
+		}
+		if !reflect.DeepEqual(existing.Spec.Ingress, desired.Spec.Ingress) {
+			existing.Spec.Ingress = desired.Spec.Ingress
+			if modified {
+				explanation += ", "
+			}
+			explanation += "ingress rules"
+			modified = true
+		}
+
+		if modified {
+			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
+			if err := r.Update(context.TODO(), existing); err != nil {
+				log.Error(err, "Failed to update application controller network policy")
+				return fmt.Errorf("failed to update application controller network policy. error: %w", err)
+			}
+		}
+		return nil
 	}
 
-	if !npExists {
-		argoutil.LogResourceCreation(log, networkPolicy)
-		if err := r.Create(context.TODO(), networkPolicy); err != nil {
-			log.Error(err, "Failed to create application controller network policy")
-			return fmt.Errorf("failed to create application controller network policy. error: %w", err)
-		}
+	if err := controllerutil.SetControllerReference(cr, desired, r.Scheme); err != nil {
+		log.Error(err, "Failed to set controller reference on argocd application controller network policy")
+		return fmt.Errorf("failed to set controller reference on argocd application controller network policy. error: %w", err)
 	}
+
+	argoutil.LogResourceCreation(log, desired)
+	if err := r.Create(context.TODO(), desired); err != nil {
+		log.Error(err, "Failed to create application controller network policy")
+		return fmt.Errorf("failed to create application controller network policy. error: %w", err)
+	}
+
 	return nil
 }
 
 func (r *ReconcileArgoCD) ReconcileArgoCDRepoServerNetworkPolicy(cr *argoproj.ArgoCD) error {
-	networkPolicy := &networkingv1.NetworkPolicy{
+	desired := &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDRepoServerNetworkPolicy),
 			Namespace: cr.Namespace,
@@ -887,17 +992,51 @@ func (r *ReconcileArgoCD) ReconcileArgoCDRepoServerNetworkPolicy(cr *argoproj.Ar
 		return err
 	}
 
-	if err := controllerutil.SetControllerReference(cr, networkPolicy, r.Scheme); err != nil {
-		log.Error(err, "Failed to set controller reference on dex server network policy")
-		return fmt.Errorf("failed to set controller reference on dex server network policy. error: %w", err)
+	if npExists {
+		modified := false
+		explanation := ""
+		if !reflect.DeepEqual(existing.Spec.PodSelector, desired.Spec.PodSelector) {
+			existing.Spec.PodSelector = desired.Spec.PodSelector
+			explanation = "pod selector"
+			modified = true
+		}
+		if !reflect.DeepEqual(existing.Spec.PolicyTypes, desired.Spec.PolicyTypes) {
+			existing.Spec.PolicyTypes = desired.Spec.PolicyTypes
+			if modified {
+				explanation += ", "
+			}
+			explanation += "policy types"
+			modified = true
+		}
+		if !reflect.DeepEqual(existing.Spec.Ingress, desired.Spec.Ingress) {
+			existing.Spec.Ingress = desired.Spec.Ingress
+			if modified {
+				explanation += ", "
+			}
+			explanation += "ingress rules"
+			modified = true
+		}
+
+		if modified {
+			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
+			if err := r.Update(context.TODO(), existing); err != nil {
+				log.Error(err, "Failed to update repo server network policy")
+				return fmt.Errorf("failed to update repo server network policy. error: %w", err)
+			}
+		}
+		return nil
 	}
 
-	if !npExists {
-		argoutil.LogResourceCreation(log, networkPolicy)
-		if err := r.Create(context.TODO(), networkPolicy); err != nil {
-			log.Error(err, "Failed to create repo server network policy")
-			return fmt.Errorf("failed to create repo server network policy. error: %w", err)
-		}
+	if err := controllerutil.SetControllerReference(cr, desired, r.Scheme); err != nil {
+		log.Error(err, "Failed to set controller reference on argocd repo server network policy")
+		return fmt.Errorf("failed to set controller reference on argocd repo server network policy. error: %w", err)
 	}
+
+	argoutil.LogResourceCreation(log, desired)
+	if err := r.Create(context.TODO(), desired); err != nil {
+		log.Error(err, "Failed to create repo server network policy")
+		return fmt.Errorf("failed to create repo server network policy. error: %w", err)
+	}
+
 	return nil
 }
