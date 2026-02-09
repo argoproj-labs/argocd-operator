@@ -44,10 +44,6 @@ const (
 
 func (r *ReconcileArgoCD) ReconcileNetworkPolicies(cr *argoproj.ArgoCD) error {
 
-	if !cr.Spec.NetworkPolicy.IsEnabled() {
-		return r.deleteArgoCDNetworkPolicies(cr)
-	}
-
 	// Reconcile Redis network policy
 	if err := r.ReconcileRedisNetworkPolicy(cr); err != nil {
 		return err
@@ -56,6 +52,10 @@ func (r *ReconcileArgoCD) ReconcileNetworkPolicies(cr *argoproj.ArgoCD) error {
 	// Reconcile Redis HA network policy
 	if err := r.ReconcileRedisHANetworkPolicy(cr); err != nil {
 		return err
+	}
+
+	if !cr.Spec.NetworkPolicy.IsEnabled() {
+		return r.deleteArgoCDNetworkPolicies(cr)
 	}
 
 	// Reconcile Notifications Controller network policy
