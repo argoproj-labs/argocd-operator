@@ -225,11 +225,8 @@ func (r *ReconcileArgoCD) reconcileStatusPhase(cr *argoproj.ArgoCD, argocdStatus
 
 	ssoAvailable := (!cr.Spec.SSO.IsEnabled() && argocdStatus.SSO == "Unknown") || argocdStatus.SSO == "Running"
 
-	if appControllerAvailable &&
-		redisAvailable &&
-		repoServerAvailable &&
-		serverAvailable &&
-		ssoAvailable {
+	required := appControllerAvailable && redisAvailable && repoServerAvailable && serverAvailable
+	if required && (r.IsExternalAuthenticationEnabledForOpenShiftCluster || ssoAvailable) {
 		phase = "Available"
 	} else {
 		phase = "Pending"
