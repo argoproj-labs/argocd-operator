@@ -777,12 +777,10 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *
 		return err
 	}
 
-	if r.IsExternalAuthenticationEnabledForOpenShiftCluster {
-		log.Info("reconciling SSO")
-		if err := r.reconcileSSO(cr, argocdStatus); err != nil {
-			log.Info(err.Error())
-			return err
-		}
+	log.Info("reconciling SSO")
+	if err := r.reconcileSSO(cr, argocdStatus); err != nil {
+		log.Info(err.Error())
+		return err
 	}
 
 	log.Info("reconciling roles")
