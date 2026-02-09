@@ -1754,7 +1754,7 @@ func createCondition(message string, externalAuthEnabledOnCluster bool) []metav1
 
 	if externalAuthEnabledOnCluster {
 		conditions = append(conditions, metav1.Condition{
-			Type:    argoproj.ArgoCDConditionType,
+			Type:    argoproj.ArgoCDConditionExternalAuth,
 			Reason:  argoproj.ArgoCDConditionReasonFail,
 			Message: "External Authentication is enabled on cluster, Please provide OIDC Configuration",
 			Status:  metav1.ConditionFalse,
@@ -1762,14 +1762,13 @@ func createCondition(message string, externalAuthEnabledOnCluster bool) []metav1
 	}
 
 	if message == "" {
-		return []metav1.Condition{
-			{
-				Type:    argoproj.ArgoCDConditionType,
-				Reason:  argoproj.ArgoCDConditionReasonSuccess,
-				Message: "",
-				Status:  metav1.ConditionTrue,
-			},
-		}
+		conditions = append(conditions, metav1.Condition{
+			Type:    argoproj.ArgoCDConditionType,
+			Reason:  argoproj.ArgoCDConditionReasonSuccess,
+			Message: "",
+			Status:  metav1.ConditionTrue,
+		})
+		return conditions
 	}
 
 	return []metav1.Condition{

@@ -1036,7 +1036,8 @@ type ManagedNamespaces struct {
 }
 
 const (
-	ArgoCDConditionType = "Reconciled"
+	ArgoCDConditionType         = "Reconciled"
+	ArgoCDConditionExternalAuth = "ExternalAuthentication"
 )
 
 const (
