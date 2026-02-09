@@ -97,8 +97,6 @@ type ReconcileArgoCD struct {
 	LocalUsers *LocalUsersInfo
 	// FipsConfigChecker checks if the deployment needs FIPS specific environment variables set.
 	FipsConfigChecker argoutil.FipsConfigChecker
-	// IsExternalAuthenticationEnabledForOpenShiftCluster checks if openshift cluster has enabled external authentication
-	IsExternalAuthenticationEnabledForOpenShiftCluster bool
 }
 
 var log = logr.Log.WithName("controller_argocd")
@@ -157,7 +155,7 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 		message = "unable to reconcile ArgoCD CR .status field"
 	}
 
-	if updateStatusErr := updateStatusAndConditionsOfArgoCD(ctx, createCondition(message, r.IsExternalAuthenticationEnabledForOpenShiftCluster), argocd, argocdStatus, r.Client, log); updateStatusErr != nil {
+	if updateStatusErr := updateStatusAndConditionsOfArgoCD(ctx, createCondition(message, r.IsExternalAuthenticationEnabledOnOpenShiftCluster()), argocd, argocdStatus, r.Client, log); updateStatusErr != nil {
 		log.Error(updateStatusErr, "unable to update status of ArgoCD")
 		return reconcile.Result{}, updateStatusErr
 	}

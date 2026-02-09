@@ -451,7 +451,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 		dexConfig := getDexConfig(cr)
 
 		// Append the default OpenShift dex config if the openShiftOAuth is requested through `.spec.sso.dex`.
-		if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.OpenShiftOAuth && !r.IsExternalAuthenticationEnabledForOpenShiftCluster {
+		if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.OpenShiftOAuth && !r.IsExternalAuthenticationEnabledOnOpenShiftCluster() {
 			cfg, err := r.getOpenShiftDexConfig(cr)
 			if err != nil {
 				return err

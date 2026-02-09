@@ -197,6 +197,8 @@ func (r *ReconcileArgoCD) reconcileStatusSSO(cr *argoproj.ArgoCD, argocdStatus *
 		// Keycloak functionality has been removed, skipping reconciliation
 		argocdStatus.SSO = "Failed"
 
+	} else if cr.Spec.SSO == nil && r.IsExternalAuthenticationEnabledOnOpenShiftCluster() {
+		argocdStatus.SSO = "ConfigurationError"
 	} else {
 		// C) All other cases
 		argocdStatus.SSO = "Unknown"
@@ -220,7 +222,7 @@ func (r *ReconcileArgoCD) reconcileStatusPhase(cr *argoproj.ArgoCD, argocdStatus
 	ssoAvailable := (!cr.Spec.SSO.IsEnabled() && argocdStatus.SSO == "Unknown") || argocdStatus.SSO == "Running"
 
 	required := appControllerAvailable && redisAvailable && repoServerAvailable && serverAvailable
-	if required && (r.IsExternalAuthenticationEnabledForOpenShiftCluster || ssoAvailable) {
+	if required && (r.IsExternalAuthenticationEnabledOnOpenShiftCluster() || ssoAvailable) {
 		phase = "Available"
 	} else {
 		phase = "Pending"
