@@ -1269,7 +1269,7 @@ func TestUpdateStatusConditionOfArgoCD_Success(t *testing.T) {
 	assert.NoError(t, createNamespace(r, argocd.Namespace, ""))
 	assert.NoError(t, r.Create(ctx, &argocd))
 
-	assert.NoError(t, updateStatusAndConditionsOfArgoCD(ctx, createCondition(""), &argocd, &argocd.Status, r.Client, log))
+	assert.NoError(t, updateStatusAndConditionsOfArgoCD(ctx, createCondition("", false), &argocd, &argocd.Status, r.Client, log, false))
 
 	assert.Equal(t, argocd.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
 	assert.Equal(t, argocd.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonSuccess)
@@ -1297,7 +1297,7 @@ func TestUpdateStatusConditionOfArgoCD_Fail(t *testing.T) {
 
 	assert.NoError(t, createNamespace(r, argocd.Namespace, ""))
 	assert.NoError(t, r.Create(ctx, &argocd))
-	assert.NoError(t, updateStatusAndConditionsOfArgoCD(ctx, createCondition("some error"), &argocd, &argocd.Status, r.Client, log))
+	assert.NoError(t, updateStatusAndConditionsOfArgoCD(ctx, createCondition("some error", false), &argocd, &argocd.Status, r.Client, log, false))
 
 	assert.Equal(t, argocd.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
 	assert.Equal(t, argocd.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonErrorOccurred)
@@ -1305,7 +1305,7 @@ func TestUpdateStatusConditionOfArgoCD_Fail(t *testing.T) {
 	assert.Equal(t, argocd.Status.Conditions[0].Status, metav1.ConditionFalse)
 
 	// Update error condition
-	assert.NoError(t, updateStatusAndConditionsOfArgoCD(ctx, createCondition("some other error"), &argocd, &argocd.Status, r.Client, log))
+	assert.NoError(t, updateStatusAndConditionsOfArgoCD(ctx, createCondition("some other error", false), &argocd, &argocd.Status, r.Client, log, false))
 
 	assert.Equal(t, argocd.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
 	assert.Equal(t, argocd.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonErrorOccurred)
@@ -1313,7 +1313,7 @@ func TestUpdateStatusConditionOfArgoCD_Fail(t *testing.T) {
 	assert.Equal(t, argocd.Status.Conditions[0].Status, metav1.ConditionFalse)
 
 	// Update success condition
-	assert.NoError(t, updateStatusAndConditionsOfArgoCD(ctx, createCondition(""), &argocd, &argocd.Status, r.Client, log))
+	assert.NoError(t, updateStatusAndConditionsOfArgoCD(ctx, createCondition("", false), &argocd, &argocd.Status, r.Client, log, false))
 
 	assert.Equal(t, argocd.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
 	assert.Equal(t, argocd.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonSuccess)
@@ -1324,20 +1324,22 @@ func TestUpdateStatusConditionOfArgoCD_Fail(t *testing.T) {
 func TestInsertOrUpdateConditionsInSlice_add_new_condition(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	existingConditions := []metav1.Condition{}
-	newCondition := metav1.Condition{
-		Type:    argoproj.ArgoCDConditionType,
-		Status:  metav1.ConditionTrue,
-		Reason:  "test reason",
-		Message: "test message",
+	newCondition := []metav1.Condition{
+		{
+			Type:    argoproj.ArgoCDConditionType,
+			Status:  metav1.ConditionTrue,
+			Reason:  "test reason",
+			Message: "test message",
+		},
 	}
 	changed, conditions := insertOrUpdateConditionsInSlice(newCondition, existingConditions)
 
 	assert.True(t, changed)
 	assert.Len(t, conditions, 1)
-	assert.Equal(t, conditions[0].Type, newCondition.Type)
-	assert.Equal(t, conditions[0].Status, newCondition.Status)
-	assert.Equal(t, conditions[0].Reason, newCondition.Reason)
-	assert.Equal(t, conditions[0].Message, newCondition.Message)
+	assert.Equal(t, conditions[0].Type, newCondition[0].Type)
+	assert.Equal(t, conditions[0].Status, newCondition[0].Status)
+	assert.Equal(t, conditions[0].Reason, newCondition[0].Reason)
+	assert.Equal(t, conditions[0].Message, newCondition[0].Message)
 }
 
 func TestInsertOrUpdateConditionsInSlice_change_existing_condition(t *testing.T) {
@@ -1350,30 +1352,34 @@ func TestInsertOrUpdateConditionsInSlice_change_existing_condition(t *testing.T)
 			Message: "test message",
 		},
 	}
-	newCondition := metav1.Condition{
-		Type:    argoproj.ArgoCDConditionType,
-		Status:  metav1.ConditionFalse,
-		Reason:  "Updated test reason",
-		Message: "Updated test message",
+	newCondition := []metav1.Condition{
+		{
+			Type:    argoproj.ArgoCDConditionType,
+			Status:  metav1.ConditionFalse,
+			Reason:  "Updated test reason",
+			Message: "Updated test message",
+		},
 	}
 
 	changed, conditions := insertOrUpdateConditionsInSlice(newCondition, existingConditions)
 
 	assert.True(t, changed)
 	assert.Len(t, conditions, 1)
-	assert.Equal(t, conditions[0].Type, newCondition.Type)
-	assert.Equal(t, conditions[0].Status, newCondition.Status)
-	assert.Equal(t, conditions[0].Reason, newCondition.Reason)
-	assert.Equal(t, conditions[0].Message, newCondition.Message)
+	assert.Equal(t, conditions[0].Type, newCondition[0].Type)
+	assert.Equal(t, conditions[0].Status, newCondition[0].Status)
+	assert.Equal(t, conditions[0].Reason, newCondition[0].Reason)
+	assert.Equal(t, conditions[0].Message, newCondition[0].Message)
 }
 
 func TestInsertOrUpdateConditionsInSlice_add_another_condition(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	newCondition := metav1.Condition{
-		Type:    argoproj.ArgoCDConditionType,
-		Status:  metav1.ConditionTrue,
-		Reason:  "test reason",
-		Message: "test message",
+	newCondition := []metav1.Condition{
+		{
+			Type:    argoproj.ArgoCDConditionType,
+			Status:  metav1.ConditionTrue,
+			Reason:  "test reason",
+			Message: "test message",
+		},
 	}
 	unrelatedCondition := metav1.Condition{
 		Type:    "UnrelatedCondition",
@@ -1396,10 +1402,10 @@ func TestInsertOrUpdateConditionsInSlice_add_another_condition(t *testing.T) {
 	assert.Equal(t, conditions[0].Message, unrelatedCondition.Message)
 
 	//Check that the new condition was added
-	assert.Equal(t, conditions[1].Type, newCondition.Type)
-	assert.Equal(t, conditions[1].Status, newCondition.Status)
-	assert.Equal(t, conditions[1].Reason, newCondition.Reason)
-	assert.Equal(t, conditions[1].Message, newCondition.Message)
+	assert.Equal(t, conditions[1].Type, newCondition[0].Type)
+	assert.Equal(t, conditions[1].Status, newCondition[0].Status)
+	assert.Equal(t, conditions[1].Reason, newCondition[0].Reason)
+	assert.Equal(t, conditions[1].Message, newCondition[0].Message)
 }
 
 func TestAppendUniqueArgs(t *testing.T) {
