@@ -1763,17 +1763,16 @@ func createCondition(message string, externalAuthEnabledOnCluster bool) []metav1
 			Message: "",
 			Status:  metav1.ConditionTrue,
 		})
-		return conditions
-	}
-
-	return []metav1.Condition{
-		{
+	} else {
+		conditions = append(conditions, metav1.Condition{
 			Type:    argoproj.ArgoCDConditionType,
 			Reason:  argoproj.ArgoCDConditionReasonErrorOccurred,
 			Message: message,
 			Status:  metav1.ConditionFalse,
-		},
+		})
 	}
+
+	return conditions
 }
 
 // appendUniqueArgs appends extraArgs to cmd while ignoring any duplicate flags.
