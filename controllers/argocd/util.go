@@ -1669,7 +1669,7 @@ func addKubernetesData(source map[string]string, live map[string]string) {
 }
 
 // updateStatusAndConditionsOfArgoCD will update .status field with provided param, and upsert .status.conditions with provided condition
-func updateStatusAndConditionsOfArgoCD(ctx context.Context, condition []metav1.Condition, cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus, k8sClient client.Client, log logr.Logger, externalAuthEnabledOnCluster bool) error {
+func updateStatusAndConditionsOfArgoCD(ctx context.Context, condition []metav1.Condition, cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus, k8sClient client.Client, log logr.Logger) error {
 	changed, newConditions := insertOrUpdateConditionsInSlice(condition, cr.Status.Conditions)
 
 	// get the latest version of argocd instance

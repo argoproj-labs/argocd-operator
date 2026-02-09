@@ -157,7 +157,7 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 		message = "unable to reconcile ArgoCD CR .status field"
 	}
 
-	if updateStatusErr := updateStatusAndConditionsOfArgoCD(ctx, createCondition(message, r.IsExternalAuthenticationEnabledForOpenShiftCluster), argocd, argocdStatus, r.Client, log, r.IsExternalAuthenticationEnabledForOpenShiftCluster); updateStatusErr != nil {
+	if updateStatusErr := updateStatusAndConditionsOfArgoCD(ctx, createCondition(message, r.IsExternalAuthenticationEnabledForOpenShiftCluster), argocd, argocdStatus, r.Client, log); updateStatusErr != nil {
 		log.Error(updateStatusErr, "unable to update status of ArgoCD")
 		return reconcile.Result{}, updateStatusErr
 	}
