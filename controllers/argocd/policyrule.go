@@ -399,7 +399,7 @@ func policyRuleForServerClusterRole() []v1.PolicyRule {
 	}
 }
 
-func getPolicyRuleList(client client.Client, externalAuthEnabled bool) []struct {
+func getPolicyRuleList(client client.Client) []struct {
 	name       string
 	policyRule []v1.PolicyRule
 } {
@@ -410,6 +410,10 @@ func getPolicyRuleList(client client.Client, externalAuthEnabled bool) []struct 
 		{
 			name:       common.ArgoCDApplicationControllerComponent,
 			policyRule: policyRuleForApplicationController(),
+		},
+		{
+			name:       common.ArgoCDDexServerComponent,
+			policyRule: policyRuleForDexServer(),
 		}, {
 			name:       common.ArgoCDServerComponent,
 			policyRule: policyRuleForServer(),
@@ -420,16 +424,6 @@ func getPolicyRuleList(client client.Client, externalAuthEnabled bool) []struct 
 			name:       common.ArgoCDRedisComponent,
 			policyRule: policyRuleForRedis(client),
 		},
-	}
-
-	if !externalAuthEnabled {
-		policyRuleList = append(policyRuleList, struct {
-			name       string
-			policyRule []v1.PolicyRule
-		}{
-			name:       common.ArgoCDDexServerComponent,
-			policyRule: policyRuleForDexServer(),
-		})
 	}
 
 	return policyRuleList

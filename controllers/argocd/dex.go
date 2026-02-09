@@ -109,7 +109,7 @@ func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *ar
 	actual := cm.Data[common.ArgoCDKeyDexConfig]
 	desired := getDexConfig(cr)
 	// Append the default OpenShift dex config if the openShiftOAuth is requested through `.spec.sso.dex`.
-	if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.OpenShiftOAuth {
+	if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.OpenShiftOAuth && !r.IsExternalAuthenticationEnabledForOpenShiftCluster {
 		cfg, err := r.getOpenShiftDexConfig(cr)
 		if err != nil {
 			return err
@@ -145,9 +145,6 @@ func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *ar
 
 // getOpenShiftDexConfig will return the configuration for the Dex server running on OpenShift.
 func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoproj.ArgoCD) (string, error) {
-	if r.IsExternalAuthenticationEnabledForOpenShiftCluster {
-		return "", nil // External authentication is enabled on OpenShift cluster, skip reconciling Dex configuration
-	}
 	groups := []string{}
 
 	// Allow override of groups from CR
@@ -209,9 +206,6 @@ func addDexConfigFromCR(cr *argoproj.ArgoCD, dex map[string]interface{}) error {
 
 // reconcileDexServiceAccount will ensure that the Dex ServiceAccount is configured properly for OpenShift OAuth.
 func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoproj.ArgoCD) error {
-	if r.IsExternalAuthenticationEnabledForOpenShiftCluster {
-		return nil // External authentication is enabled on OpenShift cluster, skip reconciling Dex configuration
-	}
 	// if openShiftOAuth set to false in `.spec.sso.dex`, no need to configure it
 	if cr.Spec.SSO == nil || cr.Spec.SSO.Dex == nil || !cr.Spec.SSO.Dex.OpenShiftOAuth {
 		return nil // OpenShift OAuth not enabled, move along...

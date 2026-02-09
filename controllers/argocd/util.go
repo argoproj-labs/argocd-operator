@@ -765,7 +765,8 @@ func (r *ReconcileArgoCD) IsExternalAuthenticationEnabledOnOpenShiftCluster(cr *
 		log.Error(err, "could not get Authentication config")
 		return false
 	}
-	r.IsExternalAuthenticationEnabledForOpenShiftCluster = authConfig.Spec.Type == "OIDC" && cr.Spec.SSO.Dex.OpenShiftOAuth
+	// when cluster has external auth enabled and argocd cr has openshiftAuth true the we should not allow creating sso resources.
+	r.IsExternalAuthenticationEnabledForOpenShiftCluster = authConfig.Spec.Type == "OIDC"
 	return r.IsExternalAuthenticationEnabledForOpenShiftCluster
 }
 
@@ -777,15 +778,9 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *
 	}
 
 	log.Info("reconciling SSO")
-	if !r.IsExternalAuthenticationEnabledOnOpenShiftCluster(cr) {
-		fmt.Println("External authentication is not enabled on OpenShift cluster.")
-		if err := r.reconcileSSO(cr, argocdStatus); err != nil {
-			log.Info(err.Error())
-			return err
-		}
-	} else {
-		fmt.Println("External authentication is enabled on OpenShift cluster.")
-		argocdStatus.SSO = "Failed"
+	if err := r.reconcileSSO(cr, argocdStatus); err != nil {
+		log.Info(err.Error())
+		return err
 	}
 
 	log.Info("reconciling roles")
