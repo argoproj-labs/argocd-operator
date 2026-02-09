@@ -1042,6 +1042,7 @@ const (
 const (
 	ArgoCDConditionReasonSuccess       = "Success"
 	ArgoCDConditionReasonErrorOccurred = "ErrorOccurred"
+	ArgoCDConditionReasonFail          = "Failed"
 )
 
 // ArgoCDStatus defines the observed state of ArgoCD

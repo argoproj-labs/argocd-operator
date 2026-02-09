@@ -758,14 +758,14 @@ func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoproj.ArgoCD) bool {
 	return false
 }
 
-func (r *ReconcileArgoCD) IsExternalAuthenticationEnabledOnOpenShiftCluster() bool {
+func (r *ReconcileArgoCD) IsExternalAuthenticationEnabledOnOpenShiftCluster(cr *argoproj.ArgoCD) bool {
 	fmt.Println("Checking if external authentication is enabled on OpenShift cluster...")
 	var authConfig configv1.Authentication
 	if err := r.Get(context.TODO(), types.NamespacedName{Name: "cluster"}, &authConfig); err != nil {
 		log.Error(err, "could not get Authentication config")
 		return false
 	}
-	r.IsExternalAuthenticationEnabledForOpenShiftCluster = authConfig.Spec.Type == "OIDC"
+	r.IsExternalAuthenticationEnabledForOpenShiftCluster = authConfig.Spec.Type == "OIDC" && cr.Spec.SSO.Dex.OpenShiftOAuth
 	return r.IsExternalAuthenticationEnabledForOpenShiftCluster
 }
 
@@ -777,7 +777,7 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *
 	}
 
 	log.Info("reconciling SSO")
-	if !r.IsExternalAuthenticationEnabledOnOpenShiftCluster() {
+	if !r.IsExternalAuthenticationEnabledOnOpenShiftCluster(cr) {
 		fmt.Println("External authentication is not enabled on OpenShift cluster.")
 		if err := r.reconcileSSO(cr, argocdStatus); err != nil {
 			log.Info(err.Error())
@@ -785,7 +785,7 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *
 		}
 	} else {
 		fmt.Println("External authentication is enabled on OpenShift cluster.")
-		argocdStatus.SSO = "External Authentication is enabled on cluster, please provide OIDC configuration."
+		argocdStatus.SSO = "Failed"
 	}
 
 	log.Info("reconciling roles")
@@ -1674,7 +1674,7 @@ func addKubernetesData(source map[string]string, live map[string]string) {
 }
 
 // updateStatusAndConditionsOfArgoCD will update .status field with provided param, and upsert .status.conditions with provided condition
-func updateStatusAndConditionsOfArgoCD(ctx context.Context, condition metav1.Condition, cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus, k8sClient client.Client, log logr.Logger) error {
+func updateStatusAndConditionsOfArgoCD(ctx context.Context, condition []metav1.Condition, cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus, k8sClient client.Client, log logr.Logger, externalAuthEnabledOnCluster bool) error {
 	changed, newConditions := insertOrUpdateConditionsInSlice(condition, cr.Status.Conditions)
 
 	// get the latest version of argocd instance
@@ -1707,58 +1707,78 @@ func updateStatusAndConditionsOfArgoCD(ctx context.Context, condition metav1.Con
 }
 
 // insertOrUpdateConditionsInSlice is a generic function for inserting/updating metav1.Condition into a slice of []metav1.Condition
-func insertOrUpdateConditionsInSlice(newCondition metav1.Condition, existingConditions []metav1.Condition) (bool, []metav1.Condition) {
-
-	// Check if condition with same type is already set, if Yes then check if content is same,
-	// If content is not same update LastTransitionTime
-	index := -1
-	for i, Condition := range existingConditions {
-		if Condition.Type == newCondition.Type {
-			index = i
-			break
-		}
-	}
-
+func insertOrUpdateConditionsInSlice(newConditions []metav1.Condition, existingConditions []metav1.Condition) (bool, []metav1.Condition) {
 	now := metav1.Now()
-
 	changed := false
 
-	if index == -1 {
-		newCondition.LastTransitionTime = now
-		existingConditions = append(existingConditions, newCondition)
-		changed = true
-
-	} else if existingConditions[index].Message != newCondition.Message ||
-		existingConditions[index].Reason != newCondition.Reason ||
-		existingConditions[index].Status != newCondition.Status {
-
-		newCondition.LastTransitionTime = now
-		existingConditions[index] = newCondition
-		changed = true
+	// Index existing conditions by Type
+	indexByType := make(map[string]int, len(existingConditions))
+	for i, c := range existingConditions {
+		indexByType[c.Type] = i
 	}
 
+	for _, newCond := range newConditions {
+		if idx, found := indexByType[newCond.Type]; !found {
+			// New condition
+			newCond.LastTransitionTime = now
+			existingConditions = append(existingConditions, newCond)
+			indexByType[newCond.Type] = len(existingConditions) - 1
+			changed = true
+			continue
+		} else {
+			// Existing condition
+			oldCond := existingConditions[idx]
+			// Only update if something meaningful changed
+			if oldCond.Status != newCond.Status ||
+				oldCond.Reason != newCond.Reason ||
+				oldCond.Message != newCond.Message {
+				// Update transition time only if Status changed
+				if oldCond.Status != newCond.Status {
+					newCond.LastTransitionTime = now
+				} else {
+					newCond.LastTransitionTime = oldCond.LastTransitionTime
+				}
+				existingConditions[idx] = newCond
+				changed = true
+			}
+		}
+	}
 	return changed, existingConditions
-
 }
 
 // createCondition returns Condition based on input provided.
 // 1. Returns Success condition if no error message is provided, all fields are default.
 // 2. If Message is provided, it returns Failed condition having all default fields except Message.
-func createCondition(message string) metav1.Condition {
-	if message == "" {
-		return metav1.Condition{
+func createCondition(message string, externalAuthEnabledOnCluster bool) []metav1.Condition {
+	conditions := []metav1.Condition{}
+
+	if externalAuthEnabledOnCluster {
+		conditions = append(conditions, metav1.Condition{
 			Type:    argoproj.ArgoCDConditionType,
-			Reason:  argoproj.ArgoCDConditionReasonSuccess,
-			Message: "",
-			Status:  metav1.ConditionTrue,
+			Reason:  argoproj.ArgoCDConditionReasonFail,
+			Message: "External Authentication is enabled on cluster, Please provide OIDC Configuration",
+			Status:  metav1.ConditionFalse,
+		})
+	}
+
+	if message == "" {
+		return []metav1.Condition{
+			{
+				Type:    argoproj.ArgoCDConditionType,
+				Reason:  argoproj.ArgoCDConditionReasonSuccess,
+				Message: "",
+				Status:  metav1.ConditionTrue,
+			},
 		}
 	}
 
-	return metav1.Condition{
-		Type:    argoproj.ArgoCDConditionType,
-		Reason:  argoproj.ArgoCDConditionReasonErrorOccurred,
-		Message: message,
-		Status:  metav1.ConditionFalse,
+	return []metav1.Condition{
+		{
+			Type:    argoproj.ArgoCDConditionType,
+			Reason:  argoproj.ArgoCDConditionReasonErrorOccurred,
+			Message: message,
+			Status:  metav1.ConditionFalse,
+		},
 	}
 }
 
@@ -2122,23 +2142,26 @@ func cleanupRBACsForNamespaceManagement(argocdNamespace, nms string, k8sClient k
 }
 
 // updateStatusConditionOfArgoCD calls Set Condition of NamespaceManagement status
-func updateStatusConditionOfNamespaceManagement(ctx context.Context, condition metav1.Condition, cr *argoproj.NamespaceManagement, k8sClient client.Client, log logr.Logger) error {
-	changed, newConditions := insertOrUpdateConditionsInSlice(condition, cr.Status.Conditions)
-
-	if changed {
-		// get the latest version of namespacemanagement before updating
-		if err := k8sClient.Get(ctx, types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}, cr); err != nil {
-			if apierrors.IsNotFound(err) {
-				return nil
-			}
-			return err
-		}
-		cr.Status.Conditions = newConditions
-		if err := k8sClient.Status().Update(ctx, cr); err != nil {
-			log.Error(err, "unable to update NamespaceManagement status condition")
-			return err
-		}
+func updateStatusConditionOfNamespaceManagement(ctx context.Context, conditions []metav1.Condition, cr *argoproj.NamespaceManagement, k8sClient client.Client, log logr.Logger) error {
+	changed, newConditions := insertOrUpdateConditionsInSlice(conditions, cr.Status.Conditions)
+	if !changed {
+		return nil
 	}
+	// Always fetch the latest object before status update
+	if err := k8sClient.Get(ctx, types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}, cr); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	cr.Status.Conditions = newConditions
+
+	if err := k8sClient.Status().Update(ctx, cr); err != nil {
+		log.Error(err, "unable to update NamespaceManagement status conditions")
+		return err
+	}
+
 	return nil
 }
 

@@ -108,9 +108,6 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string,
 func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *argoproj.ArgoCD) error {
 	actual := cm.Data[common.ArgoCDKeyDexConfig]
 	desired := getDexConfig(cr)
-	if r.IsExternalAuthenticationEnabledForOpenShiftCluster {
-		return nil // External authentication is enabled on OpenShift cluster, skip reconciling Dex configuration
-	}
 	// Append the default OpenShift dex config if the openShiftOAuth is requested through `.spec.sso.dex`.
 	if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.OpenShiftOAuth {
 		cfg, err := r.getOpenShiftDexConfig(cr)

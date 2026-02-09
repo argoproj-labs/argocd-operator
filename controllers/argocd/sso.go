@@ -34,10 +34,6 @@ const (
 // The operator must identify edge cases involving partial configurations of specs, spec mismatch with
 // active provider, contradicting configuration etc, and throw the appropriate errors.
 func (r *ReconcileArgoCD) reconcileSSO(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus) error {
-	if r.IsExternalAuthenticationEnabledForOpenShiftCluster {
-		return nil // External authentication is enabled on OpenShift cluster, skip reconciling SSO configuration
-	}
-
 	// case 1
 	if cr.Spec.SSO == nil {
 		// no SSO configured, nothing to do here

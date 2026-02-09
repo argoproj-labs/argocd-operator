@@ -98,7 +98,7 @@ func (r *ReconcileArgoCD) reconcileNamespaceManagement(argocd *argoproj.ArgoCD) 
 
 	// update status conditions once for each NamespaceManagement CR
 	for _, update := range statusUpdates {
-		if err := updateStatusConditionOfNamespaceManagement(ctx, createCondition(update.message), &update.nm, r.Client, log); err != nil {
+		if err := updateStatusConditionOfNamespaceManagement(ctx, createCondition(update.message, r.IsExternalAuthenticationEnabledForOpenShiftCluster), &update.nm, r.Client, log); err != nil {
 			log.Error(err, "Failed to update status of NamespaceManagement CR", "namespace", update.nm.Namespace)
 			errorMessages = append(errorMessages, fmt.Sprintf("status update failed for namespace %s: %v", update.nm.Namespace, err))
 		}
