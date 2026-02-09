@@ -403,15 +403,14 @@ func getPolicyRuleList(client client.Client) []struct {
 	name       string
 	policyRule []v1.PolicyRule
 } {
-	policyRuleList := []struct {
+	return []struct {
 		name       string
 		policyRule []v1.PolicyRule
 	}{
 		{
 			name:       common.ArgoCDApplicationControllerComponent,
 			policyRule: policyRuleForApplicationController(),
-		},
-		{
+		}, {
 			name:       common.ArgoCDDexServerComponent,
 			policyRule: policyRuleForDexServer(),
 		}, {
@@ -425,8 +424,6 @@ func getPolicyRuleList(client client.Client) []struct {
 			policyRule: policyRuleForRedis(client),
 		},
 	}
-
-	return policyRuleList
 }
 
 func getPolicyRuleClusterRoleList() []struct {

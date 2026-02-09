@@ -158,6 +158,7 @@ func (r *ReconcileArgoCD) reconcileStatusApplicationSetController(cr *argoproj.A
 
 // reconcileStatusSSOConfig will ensure that the SSOConfig status is updated for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileStatusSSO(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus) error {
+
 	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeDex {
 		// A) If Dex is enabled
 
