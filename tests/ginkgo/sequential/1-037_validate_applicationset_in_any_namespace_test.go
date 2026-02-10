@@ -1028,8 +1028,8 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					Name: argoCD.Name + "-" + argoCD.Namespace + "-" + common.ArgoCDApplicationSetControllerComponent,
 				},
 			}
-			Eventually(appsetClusterRole).Should(k8sFixture.ExistByName())
-			Eventually(appsetClusterRole).Should(clusterroleFixture.HaveRules([]rbacv1.PolicyRule{
+			Eventually(appsetClusterRole, "5m", "10s").Should(k8sFixture.ExistByName())
+			Eventually(appsetClusterRole, "5m", "10s").Should(clusterroleFixture.HaveRules([]rbacv1.PolicyRule{
 				{
 					APIGroups: []string{"argoproj.io"},
 					Resources: []string{
