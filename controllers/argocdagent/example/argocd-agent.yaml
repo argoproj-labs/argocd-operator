@@ -20,7 +20,7 @@ spec:
       # Log format (text or json)
       logFormat: "text"
       # Container image for the ArgoCD Agent
-      image: "quay.io/argoprojlabs/argocd-agent:v0.3.2"
+      image: "quay.io/argoprojlabs/argocd-agent:v0.6.0"
       # Environment variables for the Agent component
       env:
         - name: GRPC_GO_LOG_VERBOSITY_LEVEL
@@ -29,7 +29,7 @@ spec:
           value: "info"
         - name: GODEBUG
           value: "http2debug=2"
-      
+
       # Client configuration for the Agent component
       client:
         # Address of the principal server to connect to
@@ -45,7 +45,7 @@ spec:
         enableCompression: false
         # Keep-alive interval for pings to the principal
         keepAliveInterval: "30s"
-      
+
       # TLS configuration for the agent
       tls:
         # Secret containing the agent client TLS certificate
@@ -54,7 +54,7 @@ spec:
         rootCASecretName: "argocd-agent-ca"
         # Skip TLS certificate validation (insecure, for development only)
         insecure: false
-      
+
       # Redis configuration for caching and state management
       redis:
         # Redis server address

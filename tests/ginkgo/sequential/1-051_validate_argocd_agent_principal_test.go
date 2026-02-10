@@ -393,7 +393,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			By("Create ArgoCD instance")
 
-			argoCD.Spec.ArgoCDAgent.Principal.Image = "quay.io/argoprojlabs/argocd-agent:v0.5.0"
+			argoCD.Spec.ArgoCDAgent.Principal.Image = common.ArgoCDAgentPrincipalDefaultImageName
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 
 			By("Verify expected resources are created for principal pod")
@@ -404,7 +404,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			container := deploymentFixture.GetTemplateSpecContainerByName(argoCDAgentPrincipalName, *principalDeployment)
 			Expect(container).ToNot(BeNil())
-			Expect(container.Image).To(Equal("quay.io/argoprojlabs/argocd-agent:v0.5.0"))
+			Expect(container.Image).To(Equal(common.ArgoCDAgentPrincipalDefaultImageName))
 
 			By("Verify environment variables are set correctly")
 
