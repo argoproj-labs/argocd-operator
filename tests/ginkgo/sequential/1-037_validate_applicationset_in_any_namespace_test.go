@@ -53,7 +53,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 		AfterEach(func() {
 
 			fixture.OutputDebugOnFail("appset-argocd", "appset-old-ns", "appset-new-ns", "appset-namespace-scoped", "target-ns-1-037",
-				"team-1", "team-2", "team-frontend", "team-backend", "team-3", "other-ns")
+				"team-1", "team-2", "team-frontend", "team-backend", "team-3", "other-ns", "appset-argocd-clusterrole", "appset-target-ns")
 
 			// Clean up namespaces created
 			for _, namespaceCleanupFunction := range cleanupFunctions {
@@ -1171,8 +1171,8 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				},
 			}
 			Eventually(generatedApp, "5m", "10s").Should(k8sFixture.ExistByName())
-			Eventually(generatedApp).Should(applicationFixture.HaveHealthStatusCode(health.HealthStatusMissing))
-			Eventually(generatedApp).Should(applicationFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeOutOfSync))
+			Eventually(generatedApp, "5m", "10s").Should(applicationFixture.HaveHealthStatusCode(health.HealthStatusMissing))
+			Eventually(generatedApp, "5m", "10s").Should(applicationFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeOutOfSync))
 			By("Cleaning up the ApplicationSet")
 			Expect(k8sClient.Delete(ctx, appset)).To(Succeed())
 			Eventually(appset).Should(k8sFixture.NotExistByName())
