@@ -148,7 +148,7 @@ func TestReconcileArgoCD_reconcileRedisHAHealthConfigMap(t *testing.T) {
 	exists, err = argoutil.IsObjectFound(cl, cr.Namespace, common.ArgoCDRedisHAHealthConfigMapName, existingCMAfter)
 	assert.True(t, exists)
 	assert.Nil(t, err)
-	assert.Equal(t, getRedisLivenessScript(false), existingCMAfter.Data["redis_liveness.sh"])
+	assert.Equal(t, argoutil.GetRedisLivenessScript(false), existingCMAfter.Data["redis_liveness.sh"])
 
 	// Disable HA and ensure ConfigMap is deleted
 	cr.Spec.HA.Enabled = false
@@ -191,7 +191,7 @@ func TestReconcileArgoCD_reconcileRedisHAConfigMap(t *testing.T) {
 	exists, err = argoutil.IsObjectFound(cl, cr.Namespace, common.ArgoCDRedisHAConfigMapName, existingCMAfter)
 	assert.Nil(t, err)
 	assert.True(t, exists)
-	assert.Equal(t, getRedisHAProxyConfig(cr, false), existingCMAfter.Data["haproxy.cfg"])
+	assert.Equal(t, argoutil.GetRedisHAProxyConfig(cr, false), existingCMAfter.Data["haproxy.cfg"])
 
 	// Disable HA and ensure ConfigMap is deleted
 	cr.Spec.HA.Enabled = false

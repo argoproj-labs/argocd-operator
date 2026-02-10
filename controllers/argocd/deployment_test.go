@@ -1076,7 +1076,7 @@ func TestReconcileArgoCD_reconcileRedisHAProxyDeployment_replicas(t *testing.T) 
 							Containers: []corev1.Container{
 								{
 									Name:  "haproxy",
-									Image: getRedisHAProxyContainerImage(a),
+									Image: argoutil.GetRedisHAProxyContainerImage(a),
 								},
 							},
 						},
@@ -2598,7 +2598,7 @@ func TestArgoCDRepoServerDeploymentCommand(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	testRedisServerAddress := getRedisServerAddress(a)
+	testRedisServerAddress := argoutil.GetRedisServerAddress(a)
 
 	baseCommand := []string{
 		"uid_entrypoint.sh",
