@@ -1006,10 +1006,22 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					},
 				},
 			}
-
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 			Eventually(argoCD).Should(argocdFixture.HaveApplicationSetControllerStatus("Running"))
+
+			By("2) verifying that the appset deployment contains matching namespace in the command")
+			appsetDeployment := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "appset-example-applicationset-controller",
+					Namespace: argoCD.Namespace,
+				},
+			}
+			Eventually(appsetDeployment).Should(k8sFixture.ExistByName())
+
+			// Verify that target namespace is included
+			Eventually(appsetDeployment).Should(deploymentFixture.HaveContainerCommandSubstring("--applicationset-namespaces", 0))
 
 			appProject := &appv1alpha1.AppProject{
 				ObjectMeta: metav1.ObjectMeta{
