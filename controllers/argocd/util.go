@@ -62,6 +62,7 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -1726,7 +1727,13 @@ func insertOrUpdateConditionsInSlice(newCondition metav1.Condition, existingCond
 // createCondition returns Condition based on input provided.
 // 1. Returns Success condition if no error message is provided, all fields are default.
 // 2. If Message is provided, it returns Failed condition having all default fields except Message.
-func createCondition(message string) metav1.Condition {
+func createCondition(message string, cfg *rest.Config) metav1.Condition {
+
+	if valid, err := oAuthEndpointReachable(cfg); !valid && err != nil {
+		log.Error(err, "unable to reach OAuth endpoint")
+		message = fmt.Sprintf("unable to reach OAuth endpoint: %s", err.Error())
+	}
+
 	if message == "" {
 		return metav1.Condition{
 			Type:    argoproj.ArgoCDConditionType,

@@ -34,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 
 	errs "errors"
 
@@ -97,6 +98,7 @@ type ReconcileArgoCD struct {
 	LocalUsers *LocalUsersInfo
 	// FipsConfigChecker checks if the deployment needs FIPS specific environment variables set.
 	FipsConfigChecker argoutil.FipsConfigChecker
+	Config            *rest.Config
 }
 
 var log = logr.Log.WithName("controller_argocd")
@@ -138,7 +140,6 @@ var ActiveInstanceMap = make(map[string]string)
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
-
 	result, argocd, argocdStatus, err := r.internalReconcile(ctx, request)
 
 	message := ""
@@ -154,7 +155,7 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 		message = "unable to reconcile ArgoCD CR .status field"
 	}
 
-	if updateStatusErr := updateStatusAndConditionsOfArgoCD(ctx, createCondition(message), argocd, argocdStatus, r.Client, log); updateStatusErr != nil {
+	if updateStatusErr := updateStatusAndConditionsOfArgoCD(ctx, createCondition(message, r.Config), argocd, argocdStatus, r.Client, log); updateStatusErr != nil {
 		log.Error(updateStatusErr, "unable to update status of ArgoCD")
 		return reconcile.Result{}, updateStatusErr
 	}

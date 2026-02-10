@@ -2,6 +2,7 @@ package argocd
 
 import (
 	"context"
+	"errors"
 	e "errors"
 	"fmt"
 	"reflect"
@@ -10,6 +11,8 @@ import (
 
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/rest"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -18,6 +21,8 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj/argo-cd/v3/pkg/client/clientset/versioned/scheme"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 // DexConnector represents an authentication connector for Dex.
@@ -104,18 +109,46 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string,
 	return &token, nil
 }
 
+func oAuthEndpointReachable(cfg *rest.Config) (bool, error) {
+	if cfg == nil {
+		return false, fmt.Errorf("rest.Config is nil")
+	}
+
+	restCfg := rest.CopyConfig(cfg)
+	restCfg.APIPath = "/"
+	restCfg.GroupVersion = &schema.GroupVersion{}
+	restCfg.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
+
+	client, err := rest.UnversionedRESTClientFor(restCfg)
+	if err != nil {
+		return false, err
+	}
+
+	raw, err := client.Get().AbsPath("/.well-known/oauth-authorization-server").Do(context.TODO()).Raw()
+
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, errors.New("OAuth endpoint not found at /.well-known/oauth-authorization-server")
+		}
+		return false, err
+	}
+
+	return len(raw) > 0, nil
+}
+
 // reconcileDexConfiguration will ensure that Dex is configured properly.
 func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *argoproj.ArgoCD) error {
 	actual := cm.Data[common.ArgoCDKeyDexConfig]
 	desired := getDexConfig(cr)
-
 	// Append the default OpenShift dex config if the openShiftOAuth is requested through `.spec.sso.dex`.
 	if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.OpenShiftOAuth {
-		cfg, err := r.getOpenShiftDexConfig(cr)
-		if err != nil {
-			return err
+		if reachable, oauthErr := oAuthEndpointReachable(r.Config); reachable && oauthErr == nil {
+			cfg, err := r.getOpenShiftDexConfig(cr)
+			if err != nil {
+				return err
+			}
+			desired = cfg
 		}
-		desired = cfg
 	}
 
 	if actual != desired {
