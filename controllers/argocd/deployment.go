@@ -275,7 +275,7 @@ func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 	}
 
 	if cr.Spec.Redis.IsEnabled() {
-		cmd = append(cmd, "--redis", getRedisServerAddress(cr))
+		cmd = append(cmd, "--redis", argoutil.GetRedisServerAddress(cr))
 	} else {
 		log.Info("Redis is Disabled. Skipping adding Redis configuration to ArgoCD Server.")
 	}
@@ -321,7 +321,7 @@ func isMergable(extraArgs []string, cmd []string) error {
 
 // getDexServerAddress will return the Dex server address.
 func getDexServerAddress(cr *argoproj.ArgoCD) string {
-	return fmt.Sprintf("https://%s", fqdnServiceRef("dex-server", common.ArgoCDDefaultDexHTTPPort, cr))
+	return fmt.Sprintf("https://%s", argoutil.FqdnServiceRef("dex-server", common.ArgoCDDefaultDexHTTPPort, cr))
 }
 
 // newDeployment returns a new Deployment instance for the given ArgoCD.
@@ -442,7 +442,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Args:            getArgoRedisArgs(useTLS),
-		Image:           getRedisContainerImage(cr),
+		Image:           argoutil.GetRedisContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            "redis",
 		Ports: []corev1.ContainerPort{
@@ -450,7 +450,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 				ContainerPort: common.ArgoCDDefaultRedisPort,
 			},
 		},
-		Resources:       getRedisResources(cr),
+		Resources:       argoutil.GetRedisResources(cr),
 		Env:             env,
 		SecurityContext: argoutil.DefaultSecurityContext(),
 		VolumeMounts: []corev1.VolumeMount{
@@ -502,7 +502,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 		changed := false
 		explanation := ""
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
-		desiredImage := getRedisContainerImage(cr)
+		desiredImage := argoutil.GetRedisContainerImage(cr)
 		actualImagePullPolicy := existing.Spec.Template.Spec.Containers[0].ImagePullPolicy
 		desiredImagePullPolicy := argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy)
 		if actualImage != desiredImage {
@@ -615,7 +615,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 
 	var redisEnv = proxyEnvVars()
 
-	deploy.Spec.Replicas = getRedisHAReplicas()
+	deploy.Spec.Replicas = argoutil.GetRedisHAReplicas()
 
 	deploy.Spec.Template.Spec.Affinity = &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
@@ -648,7 +648,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 	redisAuthVolume, redisAuthMount := argoutil.MountRedisAuthToArgo(cr)
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
-		Image:           getRedisHAProxyContainerImage(cr),
+		Image:           argoutil.GetRedisHAProxyContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            "haproxy",
 		Env:             redisEnv,
@@ -668,7 +668,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 				Name:          "redis",
 			},
 		},
-		Resources:       getRedisHAResources(cr),
+		Resources:       argoutil.GetRedisHAResources(cr),
 		SecurityContext: argoutil.DefaultSecurityContext(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -694,11 +694,11 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 		Command: []string{
 			"sh",
 		},
-		Image:           getRedisHAProxyContainerImage(cr),
+		Image:           argoutil.GetRedisHAProxyContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            "config-init",
 		Env:             proxyEnvVars(),
-		Resources:       getRedisHAResources(cr),
+		Resources:       argoutil.GetRedisHAResources(cr),
 		SecurityContext: argoutil.DefaultSecurityContext(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -792,7 +792,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 		changed := false
 		explanation := ""
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
-		desiredImage := getRedisHAProxyContainerImage(cr)
+		desiredImage := argoutil.GetRedisHAProxyContainerImage(cr)
 		actualImagePullPolicy := existing.Spec.Template.Spec.Containers[0].ImagePullPolicy
 		desiredImagePullPolicy := argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy)
 

@@ -62,7 +62,7 @@ func getArgoRepoCommand(cr *argocdoperatorv1beta1.ArgoCD, useTLSForRedis bool) [
 	cmd = append(cmd, "argocd-repo-server")
 
 	if cr.Spec.Redis.IsEnabled() {
-		cmd = append(cmd, "--redis", getRedisServerAddress(cr))
+		cmd = append(cmd, "--redis", argoutil.GetRedisServerAddress(cr))
 	} else {
 		log.Info("Redis is Disabled. Skipping adding Redis configuration to Repo Server.")
 	}
@@ -94,7 +94,7 @@ func getRepoServerAddress(cr *argocdoperatorv1beta1.ArgoCD) string {
 	if cr.Spec.Repo.IsRemote() {
 		return *cr.Spec.Repo.Remote
 	}
-	return fqdnServiceRef("repo-server", common.ArgoCDDefaultRepoServerPort, cr)
+	return argoutil.FqdnServiceRef("repo-server", common.ArgoCDDefaultRepoServerPort, cr)
 }
 
 // reconcileRepoDeployment will ensure the Deployment resource is present for the ArgoCD Repo component.

@@ -132,6 +132,12 @@ func NameWithSuffix(meta metav1.ObjectMeta, suffix string) string {
 	return fmt.Sprintf("%s-%s", meta.Name, suffix)
 }
 
+// FqdnServiceRef will return the FQDN referencing a specific service name, as set up by the operator, with the
+// given port.
+func FqdnServiceRef(service string, port int, cr *argoproj.ArgoCD) string {
+	return fmt.Sprintf("%s.%s.svc.cluster.local:%d", NameWithSuffix(cr.ObjectMeta, service), cr.Namespace, port)
+}
+
 func newEvent(meta metav1.ObjectMeta) *corev1.Event {
 	event := &corev1.Event{}
 	event.GenerateName = fmt.Sprintf("%s-", meta.Name)
@@ -199,10 +205,6 @@ func LogResourceAction(log logr.Logger, action string, object metav1.Object, exp
 	}
 
 	log.Info(msg)
-}
-
-func GenerateAgentPrincipalRedisProxyServiceName(crName string) string {
-	return fmt.Sprintf("%s-agent-%s", crName, "principal-redisproxy")
 }
 
 // AddTrackedByOperatorLabel adds the ArgoCDTrackedByOperator label to the resource
