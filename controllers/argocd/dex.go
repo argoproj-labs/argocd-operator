@@ -9,8 +9,10 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v2"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	kubernetes "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 
 	corev1 "k8s.io/api/core/v1"
@@ -20,8 +22,6 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	kubernetes "k8s.io/client-go/kubernetes/scheme"
 )
 
 // DexConnector represents an authentication connector for Dex.
