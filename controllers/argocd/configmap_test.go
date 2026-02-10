@@ -357,7 +357,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-		err := r.reconcileArgoConfigMap(a)
+		err := r.reconcileArgoConfigMap(a, true)
 		assert.NoError(t, err)
 
 		cm := &corev1.ConfigMap{}
@@ -399,7 +399,7 @@ func TestReconcileArgoCD_reconcileEmptyArgoConfigMap(t *testing.T) {
 	err := r.Create(context.TODO(), emptyArgoConfigmap)
 	assert.NoError(t, err)
 
-	err = r.reconcileArgoConfigMap(a)
+	err = r.reconcileArgoConfigMap(a, true)
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
@@ -424,7 +424,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDisableAdmin(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	err := r.reconcileArgoConfigMap(a)
+	err := r.reconcileArgoConfigMap(a, true)
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
@@ -522,7 +522,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 			if test.updateCrSpecFunc != nil {
 				test.updateCrSpecFunc(a)
 			}
-			err := r.reconcileArgoConfigMap(a)
+			err := r.reconcileArgoConfigMap(a, true)
 			assert.NoError(t, err)
 
 			cm := &corev1.ConfigMap{}
@@ -589,7 +589,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexDisabled(t *testing.T) {
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-			err := r.reconcileArgoConfigMap(test.argoCD)
+			err := r.reconcileArgoConfigMap(test.argoCD, true)
 			assert.NoError(t, err)
 
 			cm := &corev1.ConfigMap{}
@@ -651,7 +651,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_dexConfigDeletedwhenDexDisabled(
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-			err := r.reconcileArgoConfigMap(test.argoCD)
+			err := r.reconcileArgoConfigMap(test.argoCD, true)
 			assert.NoError(t, err)
 
 			cm := &corev1.ConfigMap{}
@@ -669,7 +669,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_dexConfigDeletedwhenDexDisabled(
 				test.updateCrFunc(test.argoCD)
 			}
 
-			err = r.reconcileDexConfiguration(cm, test.argoCD)
+			err = r.reconcileDexConfiguration(cm, test.argoCD, true)
 			assert.NoError(t, err)
 
 			err = r.Get(context.TODO(), types.NamespacedName{
@@ -706,7 +706,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withKustomizeVersions(t *testing
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	err := r.reconcileArgoConfigMap(a)
+	err := r.reconcileArgoConfigMap(a, true)
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
@@ -757,7 +757,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceTrackingMethod(t *te
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	err := r.reconcileArgoConfigMap(a)
+	err := r.reconcileArgoConfigMap(a, true)
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
@@ -787,7 +787,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceTrackingMethod(t *te
 
 	t.Run("Set tracking method to annotation+label", func(t *testing.T) {
 		a.Spec.ResourceTrackingMethod = argoproj.ResourceTrackingMethodAnnotationAndLabel.String()
-		err = r.reconcileArgoConfigMap(a)
+		err = r.reconcileArgoConfigMap(a, true)
 		assert.NoError(t, err)
 
 		err = r.Get(context.TODO(), types.NamespacedName{
@@ -803,7 +803,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceTrackingMethod(t *te
 
 	t.Run("Set tracking method to annotation", func(t *testing.T) {
 		a.Spec.ResourceTrackingMethod = argoproj.ResourceTrackingMethodAnnotation.String()
-		err = r.reconcileArgoConfigMap(a)
+		err = r.reconcileArgoConfigMap(a, true)
 		assert.NoError(t, err)
 
 		err = r.Get(context.TODO(), types.NamespacedName{
@@ -820,7 +820,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceTrackingMethod(t *te
 	// Invalid value sets the default "label"
 	t.Run("Set tracking method to invalid value", func(t *testing.T) {
 		a.Spec.ResourceTrackingMethod = "anotaions"
-		err = r.reconcileArgoConfigMap(a)
+		err = r.reconcileArgoConfigMap(a, true)
 		assert.NoError(t, err)
 
 		err = r.Get(context.TODO(), types.NamespacedName{
@@ -852,7 +852,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceInclusions(t *testin
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	err := r.reconcileArgoConfigMap(a)
+	err := r.reconcileArgoConfigMap(a, true)
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
@@ -867,7 +867,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceInclusions(t *testin
 	}
 
 	a.Spec.ResourceInclusions = updatedCustomizations
-	err = r.reconcileArgoConfigMap(a)
+	err = r.reconcileArgoConfigMap(a, true)
 	assert.NoError(t, err)
 
 	err = r.Get(context.TODO(), types.NamespacedName{
@@ -972,7 +972,7 @@ managedfieldsmanagers:
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	err := r.reconcileArgoConfigMap(a)
+	err := r.reconcileArgoConfigMap(a, true)
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
@@ -1010,7 +1010,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withExtraConfig(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	err := r.reconcileArgoConfigMap(a)
+	err := r.reconcileArgoConfigMap(a, true)
 	assert.NoError(t, err)
 
 	// Verify Argo CD configmap is created.
@@ -1026,7 +1026,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withExtraConfig(t *testing.T) {
 	err = r.Update(context.TODO(), cm)
 	assert.NoError(t, err)
 
-	err = r.reconcileArgoConfigMap(a)
+	err = r.reconcileArgoConfigMap(a, true)
 	assert.NoError(t, err)
 
 	err = r.Get(context.TODO(), types.NamespacedName{
@@ -1042,7 +1042,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withExtraConfig(t *testing.T) {
 		"foo": "bar",
 	}
 
-	err = r.reconcileArgoConfigMap(a)
+	err = r.reconcileArgoConfigMap(a, true)
 	assert.NoError(t, err)
 
 	err = r.Get(context.TODO(), types.NamespacedName{
@@ -1057,7 +1057,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withExtraConfig(t *testing.T) {
 	a.Spec.DisableAdmin = true
 	a.Spec.ExtraConfig["admin.enabled"] = "true"
 
-	err = r.reconcileArgoConfigMap(a)
+	err = r.reconcileArgoConfigMap(a, true)
 	assert.NoError(t, err)
 
 	err = r.Get(context.TODO(), types.NamespacedName{
@@ -1072,7 +1072,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withExtraConfig(t *testing.T) {
 	// created by FirstClass citizens.
 	a.Spec.ExtraConfig = make(map[string]string, 0)
 
-	err = r.reconcileArgoConfigMap(a)
+	err = r.reconcileArgoConfigMap(a, true)
 	assert.NoError(t, err)
 
 	err = r.Get(context.TODO(), types.NamespacedName{
@@ -1098,7 +1098,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withRespectRBAC(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	err := r.reconcileArgoConfigMap(a)
+	err := r.reconcileArgoConfigMap(a, true)
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
@@ -1111,7 +1111,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withRespectRBAC(t *testing.T) {
 	// update config
 	a.Spec.Controller.RespectRBAC = "strict"
 
-	err = r.reconcileArgoConfigMap(a)
+	err = r.reconcileArgoConfigMap(a, true)
 	assert.NoError(t, err)
 
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: common.ArgoCDConfigMapName, Namespace: testNamespace}, cm))
@@ -1122,7 +1122,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withRespectRBAC(t *testing.T) {
 	// update config
 	a.Spec.Controller.RespectRBAC = ""
 
-	err = r.reconcileArgoConfigMap(a)
+	err = r.reconcileArgoConfigMap(a, true)
 	assert.NoError(t, err)
 
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: common.ArgoCDConfigMapName, Namespace: testNamespace}, cm))
@@ -1147,7 +1147,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withLocalUsers(t *testing.T) {
 		},
 	}
 
-	err := r.reconcileArgoConfigMap(a)
+	err := r.reconcileArgoConfigMap(a, true)
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
@@ -1167,7 +1167,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withLocalUsers(t *testing.T) {
 		},
 	}
 
-	err = r.reconcileArgoConfigMap(a)
+	err = r.reconcileArgoConfigMap(a, true)
 	assert.NoError(t, err)
 
 	cm = &corev1.ConfigMap{}
@@ -1204,7 +1204,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withLocalUsers_extraConfigOverri
 		"accounts.alice": "login",
 	}
 
-	err := r.reconcileArgoConfigMap(a)
+	err := r.reconcileArgoConfigMap(a, true)
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
@@ -1230,7 +1230,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withLocalUsers_extraConfigOverri
 		"accounts.alice.enabled": "true",
 	}
 
-	err = r.reconcileArgoConfigMap(a)
+	err = r.reconcileArgoConfigMap(a, true)
 	assert.NoError(t, err)
 
 	cm = &corev1.ConfigMap{}
@@ -1486,7 +1486,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withInstallationID(t *testing.T)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	// Test initial installationID
-	err := r.reconcileArgoConfigMap(a)
+	err := r.reconcileArgoConfigMap(a, true)
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
@@ -1501,7 +1501,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withInstallationID(t *testing.T)
 
 	//Test updating installationID
 	a.Spec.InstallationID = "test-id-2"
-	err = r.reconcileArgoConfigMap(a)
+	err = r.reconcileArgoConfigMap(a, true)
 	assert.NoError(t, err)
 
 	cm = &corev1.ConfigMap{}
@@ -1515,7 +1515,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withInstallationID(t *testing.T)
 
 	// Test removing installationID
 	a.Spec.InstallationID = ""
-	err = r.reconcileArgoConfigMap(a)
+	err = r.reconcileArgoConfigMap(a, true)
 	assert.NoError(t, err)
 
 	err = r.Get(context.TODO(), types.NamespacedName{
@@ -1554,7 +1554,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withMultipleInstances(t *testing
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	// Test first instance
-	err := r.reconcileArgoConfigMap(argocd1)
+	err := r.reconcileArgoConfigMap(argocd1, true)
 	assert.NoError(t, err)
 
 	cm1 := &corev1.ConfigMap{}
@@ -1568,7 +1568,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withMultipleInstances(t *testing
 	assert.Equal(t, "instance-1", cm1.Data[common.ArgoCDKeyInstallationID])
 	assert.True(t, argoutil.IsTrackedByOperator(cm1.Labels))
 	// Test second instance
-	err = r.reconcileArgoConfigMap(argocd2)
+	err = r.reconcileArgoConfigMap(argocd2, true)
 	assert.NoError(t, err)
 
 	cm2 := &corev1.ConfigMap{}
@@ -1773,7 +1773,7 @@ func TestReconcileArgoCD_RemovesLegacyLogEnforceFlag(t *testing.T) {
 	r := &ReconcileArgoCD{Client: client, Scheme: scheme}
 
 	// Call reconcile
-	err := r.reconcileArgoConfigMap(cr)
+	err := r.reconcileArgoConfigMap(cr, true)
 	assert.NoError(t, err)
 
 	// Fetch updated ConfigMap
