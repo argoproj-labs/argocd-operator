@@ -20,8 +20,8 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
-	"github.com/argoproj/argo-cd/v3/pkg/client/clientset/versioned/scheme"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	kubernetes "k8s.io/client-go/kubernetes/scheme"
 )
 
 // DexConnector represents an authentication connector for Dex.
@@ -116,14 +116,16 @@ func oAuthEndpointReachable(cfg *rest.Config) (bool, error) {
 	restCfg := rest.CopyConfig(cfg)
 	restCfg.APIPath = "/"
 	restCfg.GroupVersion = &schema.GroupVersion{}
-	restCfg.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
+	restCfg.NegotiatedSerializer = kubernetes.Codecs.WithoutConversion()
 
 	client, err := rest.UnversionedRESTClientFor(restCfg)
 	if err != nil {
 		return false, err
 	}
 
-	raw, err := client.Get().AbsPath("/.well-known/oauth-authorization-server").Do(context.TODO()).Raw()
+	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	defer cancel()
+	raw, err := client.Get().AbsPath("/.well-known/oauth-authorization-server").Do(ctx).Raw()
 
 	if err != nil {
 		if apierrors.IsNotFound(err) {
