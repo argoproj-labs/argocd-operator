@@ -376,6 +376,301 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 	}
 }
 
+func TestReconcileArgoCD_reconcileArgoConfigMap_oAuthEnabledFalse(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		name           string
+		argoCD         *argoproj.ArgoCD
+		expectedConfig string
+		description    string
+	}{
+		{
+			name: "OpenShiftOAuth enabled but oAuthEnabled=false should use base Dex config",
+			argoCD: makeTestArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
+						OpenShiftOAuth: true,
+					},
+				}
+			}),
+			expectedConfig: "", // Base Dex config is empty by default
+			description:    "When oAuthEnabled=false, should not fetch OpenShift config and use base Dex config",
+		},
+		{
+			name: "OpenShiftOAuth enabled with custom Dex config but oAuthEnabled=false should use custom config",
+			argoCD: makeTestArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
+						OpenShiftOAuth: true,
+						Config:         "connectors:\n  - type: ldap\n    id: ldap\n    name: LDAP",
+					},
+				}
+			}),
+			expectedConfig: "connectors:\n  - type: ldap\n    id: ldap\n    name: LDAP",
+			description:    "When oAuthEnabled=false, should use custom Dex config from CR, not OpenShift config",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resObjs := []client.Object{tt.argoCD}
+			subresObjs := []client.Object{tt.argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			// Call reconcileArgoConfigMap with oAuthEnabled=false
+			err := r.reconcileArgoConfigMap(tt.argoCD, false)
+			assert.NoError(t, err, tt.description)
+
+			cm := &corev1.ConfigMap{}
+			err = r.Get(context.TODO(), types.NamespacedName{
+				Name:      common.ArgoCDConfigMapName,
+				Namespace: testNamespace,
+			}, cm)
+			assert.NoError(t, err)
+
+			// Verify dex.config does not contain OpenShift-specific configuration
+			dexConfig, exists := cm.Data[common.ArgoCDKeyDexConfig]
+			if tt.expectedConfig == "" {
+				// If expected is empty, config should be empty or not exist
+				if exists {
+					assert.Equal(t, "", dexConfig, "dex.config should be empty when oAuthEnabled=false and no custom config")
+				}
+			} else {
+				assert.True(t, exists, "dex.config should exist")
+				assert.Equal(t, tt.expectedConfig, dexConfig, "dex.config should match base Dex config, not OpenShift config")
+			}
+
+			// Verify the config does NOT contain OpenShift connector
+			if exists && dexConfig != "" {
+				assert.NotContains(t, dexConfig, "type: openshift", "dex.config should not contain OpenShift connector when oAuthEnabled=false")
+				assert.NotContains(t, dexConfig, "issuer: https://kubernetes.default.svc", "dex.config should not contain OpenShift issuer when oAuthEnabled=false")
+			}
+		})
+	}
+}
+
+func TestReconcileArgoCD_reconcileDexConfiguration_oAuthEnabledFalse(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		name           string
+		argoCD         *argoproj.ArgoCD
+		initialConfig  string
+		expectedConfig string
+		description    string
+	}{
+		{
+			name: "OpenShiftOAuth enabled but oAuthEnabled=false should keep base Dex config",
+			argoCD: makeTestArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
+						OpenShiftOAuth: true,
+					},
+				}
+			}),
+			initialConfig:  "",
+			expectedConfig: "",
+			description:    "When oAuthEnabled=false, reconcileDexConfiguration should not fetch OpenShift config",
+		},
+		{
+			name: "OpenShiftOAuth enabled with custom Dex config but oAuthEnabled=false should preserve custom config",
+			argoCD: makeTestArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
+						OpenShiftOAuth: true,
+						Config:         "connectors:\n  - type: ldap\n    id: ldap\n    name: LDAP",
+					},
+				}
+			}),
+			initialConfig:  "",
+			expectedConfig: "connectors:\n  - type: ldap\n    id: ldap\n    name: LDAP",
+			description:    "When oAuthEnabled=false, reconcileDexConfiguration should use custom Dex config from CR",
+		},
+		{
+			name: "OpenShiftOAuth enabled with existing config but oAuthEnabled=false should not overwrite with OpenShift config",
+			argoCD: makeTestArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
+						OpenShiftOAuth: true,
+						Config:         "connectors:\n  - type: ldap\n    id: ldap\n    name: LDAP",
+					},
+				}
+			}),
+			initialConfig:  "connectors:\n  - type: ldap\n    id: ldap\n    name: LDAP",
+			expectedConfig: "connectors:\n  - type: ldap\n    id: ldap\n    name: LDAP",
+			description:    "When oAuthEnabled=false, reconcileDexConfiguration should not overwrite existing config with OpenShift config",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create ConfigMap with initial dex config
+			cm := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      common.ArgoCDConfigMapName,
+					Namespace: testNamespace,
+				},
+				Data: map[string]string{
+					common.ArgoCDKeyDexConfig: tt.initialConfig,
+				},
+			}
+			argoutil.AddTrackedByOperatorLabel(&cm.ObjectMeta)
+
+			resObjs := []client.Object{tt.argoCD, cm}
+			subresObjs := []client.Object{tt.argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			// Call reconcileDexConfiguration with oAuthEnabled=false
+			err := r.reconcileDexConfiguration(cm, tt.argoCD, false)
+			assert.NoError(t, err, tt.description)
+
+			// Fetch updated ConfigMap
+			updatedCM := &corev1.ConfigMap{}
+			err = r.Get(context.TODO(), types.NamespacedName{
+				Name:      common.ArgoCDConfigMapName,
+				Namespace: testNamespace,
+			}, updatedCM)
+			assert.NoError(t, err)
+
+			// Verify dex.config does not contain OpenShift-specific configuration
+			dexConfig, exists := updatedCM.Data[common.ArgoCDKeyDexConfig]
+			if tt.expectedConfig == "" {
+				// If expected is empty, config should be empty or not exist
+				if exists {
+					assert.Equal(t, "", dexConfig, "dex.config should be empty when oAuthEnabled=false and no custom config")
+				}
+			} else {
+				assert.True(t, exists, "dex.config should exist")
+				assert.Equal(t, tt.expectedConfig, dexConfig, "dex.config should match base Dex config, not OpenShift config")
+			}
+
+			// Verify the config does NOT contain OpenShift connector
+			if exists && dexConfig != "" {
+				assert.NotContains(t, dexConfig, "type: openshift", "dex.config should not contain OpenShift connector when oAuthEnabled=false")
+				assert.NotContains(t, dexConfig, "issuer: https://kubernetes.default.svc", "dex.config should not contain OpenShift issuer when oAuthEnabled=false")
+			}
+		})
+	}
+}
+
+func TestReconcileArgoCD_reconcileDexConfiguration_oAuthEndpointUnreachable(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	// This test simulates the scenario where OIDC endpoint is unreachable
+	// by setting oAuthEnabled=false, which should cause fallback to base Dex configuration
+	t.Run("OIDC endpoint unreachable falls back to base Dex config", func(t *testing.T) {
+		baseDexConfig := "connectors:\n  - type: ldap\n    id: ldap\n    name: LDAP\n    config:\n      host: ldap.example.com"
+
+		a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+			a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+				Provider: argoproj.SSOProviderTypeDex,
+				Dex: &argoproj.ArgoCDDexSpec{
+					OpenShiftOAuth: true,
+					Config:         baseDexConfig,
+				},
+			}
+		})
+
+		// Create ConfigMap with initial base Dex config
+		cm := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      common.ArgoCDConfigMapName,
+				Namespace: testNamespace,
+			},
+			Data: map[string]string{
+				common.ArgoCDKeyDexConfig: baseDexConfig,
+			},
+		}
+		argoutil.AddTrackedByOperatorLabel(&cm.ObjectMeta)
+
+		resObjs := []client.Object{a, cm}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		// Simulate OIDC endpoint unreachable by setting oAuthEnabled=false
+		// This should cause the code to fall back to base Dex configuration
+		err := r.reconcileDexConfiguration(cm, a, false)
+		assert.NoError(t, err, "reconcileDexConfiguration should succeed even when OIDC endpoint is unreachable")
+
+		// Fetch updated ConfigMap
+		updatedCM := &corev1.ConfigMap{}
+		err = r.Get(context.TODO(), types.NamespacedName{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: testNamespace,
+		}, updatedCM)
+		assert.NoError(t, err)
+
+		// Verify that the config falls back to base Dex config (not OpenShift config)
+		dexConfig, exists := updatedCM.Data[common.ArgoCDKeyDexConfig]
+		assert.True(t, exists, "dex.config should exist")
+		assert.Equal(t, baseDexConfig, dexConfig, "dex.config should fall back to base Dex config when OIDC endpoint is unreachable")
+
+		// Verify the config does NOT contain OpenShift-specific configuration
+		assert.NotContains(t, dexConfig, "type: openshift", "dex.config should not contain OpenShift connector when OIDC endpoint is unreachable")
+		assert.NotContains(t, dexConfig, "issuer: https://kubernetes.default.svc", "dex.config should not contain OpenShift issuer when OIDC endpoint is unreachable")
+		assert.Contains(t, dexConfig, "type: ldap", "dex.config should contain base Dex connector configuration")
+	})
+
+	t.Run("OIDC endpoint unreachable with reconcileArgoConfigMap falls back to base Dex config", func(t *testing.T) {
+		baseDexConfig := "connectors:\n  - type: ldap\n    id: ldap\n    name: LDAP"
+
+		a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+			a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+				Provider: argoproj.SSOProviderTypeDex,
+				Dex: &argoproj.ArgoCDDexSpec{
+					OpenShiftOAuth: true,
+					Config:         baseDexConfig,
+				},
+			}
+		})
+
+		resObjs := []client.Object{a}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		// Simulate OIDC endpoint unreachable by setting oAuthEnabled=false
+		// This should cause the code to fall back to base Dex configuration
+		err := r.reconcileArgoConfigMap(a, false)
+		assert.NoError(t, err, "reconcileArgoConfigMap should succeed even when OIDC endpoint is unreachable")
+
+		// Fetch updated ConfigMap
+		cm := &corev1.ConfigMap{}
+		err = r.Get(context.TODO(), types.NamespacedName{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: testNamespace,
+		}, cm)
+		assert.NoError(t, err)
+
+		// Verify that the config falls back to base Dex config (not OpenShift config)
+		dexConfig, exists := cm.Data[common.ArgoCDKeyDexConfig]
+		assert.True(t, exists, "dex.config should exist")
+		assert.Equal(t, baseDexConfig, dexConfig, "dex.config should fall back to base Dex config when OIDC endpoint is unreachable")
+
+		// Verify the config does NOT contain OpenShift-specific configuration
+		assert.NotContains(t, dexConfig, "type: openshift", "dex.config should not contain OpenShift connector when OIDC endpoint is unreachable")
+		assert.NotContains(t, dexConfig, "issuer: https://kubernetes.default.svc", "dex.config should not contain OpenShift issuer when OIDC endpoint is unreachable")
+		assert.Contains(t, dexConfig, "type: ldap", "dex.config should contain base Dex connector configuration")
+	})
+}
+
 func TestReconcileArgoCD_reconcileEmptyArgoConfigMap(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
