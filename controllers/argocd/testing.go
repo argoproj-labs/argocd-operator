@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -59,6 +60,7 @@ func makeTestReconciler(client client.Client, sch *runtime.Scheme, k8sClient kub
 		Client:    client,
 		Scheme:    sch,
 		K8sClient: k8sClient,
+		Config:    &rest.Config{},
 		LocalUsers: &LocalUsersInfo{
 			TokenRenewalTimers: map[string]*TokenRenewalTimer{},
 		},
