@@ -1269,7 +1269,7 @@ func TestUpdateStatusConditionOfArgoCD_Success(t *testing.T) {
 	assert.NoError(t, createNamespace(r, argocd.Namespace, ""))
 	assert.NoError(t, r.Create(ctx, &argocd))
 
-	assert.NoError(t, updateStatusAndConditionsOfArgoCD(ctx, createCondition("", r.Config), &argocd, &argocd.Status, r.Client, log))
+	assert.NoError(t, updateStatusAndConditionsOfArgoCD(ctx, createCondition("", nil), &argocd, &argocd.Status, r.Client, log))
 
 	assert.Equal(t, argocd.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
 	assert.Equal(t, argocd.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonSuccess)
@@ -1297,7 +1297,7 @@ func TestUpdateStatusConditionOfArgoCD_Fail(t *testing.T) {
 
 	assert.NoError(t, createNamespace(r, argocd.Namespace, ""))
 	assert.NoError(t, r.Create(ctx, &argocd))
-	assert.NoError(t, updateStatusAndConditionsOfArgoCD(ctx, createCondition("some error", r.Config), &argocd, &argocd.Status, r.Client, log))
+	assert.NoError(t, updateStatusAndConditionsOfArgoCD(ctx, createCondition("some error", nil), &argocd, &argocd.Status, r.Client, log))
 
 	assert.Equal(t, argocd.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
 	assert.Equal(t, argocd.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonErrorOccurred)
@@ -1305,7 +1305,7 @@ func TestUpdateStatusConditionOfArgoCD_Fail(t *testing.T) {
 	assert.Equal(t, argocd.Status.Conditions[0].Status, metav1.ConditionFalse)
 
 	// Update error condition
-	assert.NoError(t, updateStatusAndConditionsOfArgoCD(ctx, createCondition("some other error", r.Config), &argocd, &argocd.Status, r.Client, log))
+	assert.NoError(t, updateStatusAndConditionsOfArgoCD(ctx, createCondition("some other error", nil), &argocd, &argocd.Status, r.Client, log))
 
 	assert.Equal(t, argocd.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
 	assert.Equal(t, argocd.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonErrorOccurred)
@@ -1313,7 +1313,7 @@ func TestUpdateStatusConditionOfArgoCD_Fail(t *testing.T) {
 	assert.Equal(t, argocd.Status.Conditions[0].Status, metav1.ConditionFalse)
 
 	// Update success condition
-	assert.NoError(t, updateStatusAndConditionsOfArgoCD(ctx, createCondition("", r.Config), &argocd, &argocd.Status, r.Client, log))
+	assert.NoError(t, updateStatusAndConditionsOfArgoCD(ctx, createCondition("", nil), &argocd, &argocd.Status, r.Client, log))
 
 	assert.Equal(t, argocd.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
 	assert.Equal(t, argocd.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonSuccess)

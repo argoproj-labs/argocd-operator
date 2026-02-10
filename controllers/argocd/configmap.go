@@ -303,8 +303,8 @@ func newConfigMapWithName(name string, cr *argoproj.ArgoCD) *corev1.ConfigMap {
 }
 
 // reconcileConfigMaps will ensure that all ArgoCD ConfigMaps are present.
-func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
-	if err := r.reconcileArgoConfigMap(cr); err != nil {
+func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoproj.ArgoCD, useTLSForRedis bool, oAuthEnabled bool) error {
+	if err := r.reconcileArgoConfigMap(cr, oAuthEnabled); err != nil {
 		return err
 	}
 
@@ -374,7 +374,7 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileConfiguration will ensure that the main ConfigMap for ArgoCD is present.
-func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD, oAuthEnabled bool) error {
 	cm := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
 	cm.Data = make(map[string]string)
 	cm.Data = setRespectRBAC(cr, cm.Data)
@@ -451,7 +451,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 		dexConfig := getDexConfig(cr)
 		// Append the default OpenShift dex config if the openShiftOAuth is requested through `.spec.sso.dex`.
 		if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.OpenShiftOAuth {
-			if reachable, oAuthErr := oAuthEndpointReachable(r.Config); reachable && oAuthErr == nil {
+			if oAuthEnabled {
 				cfg, err := r.getOpenShiftDexConfig(cr)
 				if err != nil {
 					return err
@@ -526,7 +526,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 		// reconcile dex configuration if dex is enabled `.spec.sso.dex.provider` or there is
 		// existing dex configuration
 		if UseDex(cr) {
-			if err := r.reconcileDexConfiguration(existingCM, cr); err != nil {
+			if err := r.reconcileDexConfiguration(existingCM, cr, oAuthEnabled); err != nil {
 				return err
 			}
 			cm.Data[common.ArgoCDKeyDexConfig] = existingCM.Data[common.ArgoCDKeyDexConfig]

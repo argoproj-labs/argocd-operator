@@ -62,7 +62,6 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -759,14 +758,14 @@ func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoproj.ArgoCD) bool {
 }
 
 // reconcileResources will reconcile common ArgoCD resources.
-func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus) error {
+func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus, oAuthEnabled bool) error {
 
 	if err := r.ensureSourceNamespacesAllowed(cr); err != nil {
 		return err
 	}
 
 	log.Info("reconciling SSO")
-	if err := r.reconcileSSO(cr, argocdStatus); err != nil {
+	if err := r.reconcileSSO(cr, argocdStatus, oAuthEnabled); err != nil {
 		log.Info(err.Error())
 		return err
 	}
@@ -802,7 +801,7 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *
 	useTLSForRedis := r.redisShouldUseTLS(cr)
 
 	log.Info("reconciling config maps")
-	if err := r.reconcileConfigMaps(cr, useTLSForRedis); err != nil {
+	if err := r.reconcileConfigMaps(cr, useTLSForRedis, oAuthEnabled); err != nil {
 		return err
 	}
 
@@ -1727,11 +1726,9 @@ func insertOrUpdateConditionsInSlice(newCondition metav1.Condition, existingCond
 // createCondition returns Condition based on input provided.
 // 1. Returns Success condition if no error message is provided, all fields are default.
 // 2. If Message is provided, it returns Failed condition having all default fields except Message.
-func createCondition(message string, cfg *rest.Config) metav1.Condition {
-
-	if valid, err := oAuthEndpointReachable(cfg); !valid && err != nil {
-		log.Error(err, "unable to reach OAuth endpoint")
-		message = fmt.Sprintf("unable to reach OAuth endpoint: %s", err.Error())
+func createCondition(message string, oAuthErr error) metav1.Condition {
+	if oAuthErr != nil {
+		message = oAuthErr.Error()
 	}
 
 	if message == "" {

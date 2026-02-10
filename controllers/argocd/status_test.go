@@ -98,7 +98,7 @@ func TestReconcileArgoCD_reconcileStatusSSO(t *testing.T) {
 
 			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
 
-			_ = r.reconcileSSO(test.argoCD, &argocdStatus)
+			_ = r.reconcileSSO(test.argoCD, &argocdStatus, false)
 
 			if argocdStatus.SSO == "" { // only call statusSSO if reconcileSSO has not already set a value
 				_ = r.reconcileStatusSSO(test.argoCD, &argocdStatus)

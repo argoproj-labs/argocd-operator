@@ -143,7 +143,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 
 			argoCDStatus := argoproj.ArgoCDStatus{}
 
-			err := r.reconcileSSO(test.argoCD, &argoCDStatus)
+			err := r.reconcileSSO(test.argoCD, &argoCDStatus, false)
 			assert.Equal(t, test.wantSSOConfigLegalStatus, argoCDStatus.SSO)
 			if err != nil {
 				if !test.wantErr {

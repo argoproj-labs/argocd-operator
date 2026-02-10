@@ -137,12 +137,12 @@ func oAuthEndpointReachable(cfg *rest.Config) (bool, error) {
 }
 
 // reconcileDexConfiguration will ensure that Dex is configured properly.
-func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *argoproj.ArgoCD, oAuthEnabled bool) error {
 	actual := cm.Data[common.ArgoCDKeyDexConfig]
 	desired := getDexConfig(cr)
 	// Append the default OpenShift dex config if the openShiftOAuth is requested through `.spec.sso.dex`.
 	if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.OpenShiftOAuth {
-		if reachable, oauthErr := oAuthEndpointReachable(r.Config); reachable && oauthErr == nil {
+		if oAuthEnabled {
 			cfg, err := r.getOpenShiftDexConfig(cr)
 			if err != nil {
 				return err
@@ -577,7 +577,7 @@ func (r *ReconcileArgoCD) reconcileDexService(cr *argoproj.ArgoCD) error {
 
 // reconcileDexResources consolidates all dex resources reconciliation calls. It serves as the single place to trigger both creation
 // and deletion of dex resources based on the specified configuration of dex
-func (r *ReconcileArgoCD) reconcileDexResources(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileDexResources(cr *argoproj.ArgoCD, oAuthEnabled bool) error {
 	if _, err := r.reconcileRole(common.ArgoCDDexServerComponent, policyRuleForDexServer(), cr); err != nil {
 		log.Error(err, "error reconciling dex role")
 		return err
@@ -598,7 +598,7 @@ func (r *ReconcileArgoCD) reconcileDexResources(cr *argoproj.ArgoCD) error {
 	}
 
 	// Reconcile dex config in argocd-cm, create dex config in argocd-cm if required (right after dex is enabled)
-	if err := r.reconcileArgoConfigMap(cr); err != nil {
+	if err := r.reconcileArgoConfigMap(cr, oAuthEnabled); err != nil {
 		log.Error(err, "error reconciling argocd-cm configmap")
 		return err
 	}
