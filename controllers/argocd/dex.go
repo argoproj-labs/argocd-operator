@@ -2,7 +2,6 @@ package argocd
 
 import (
 	"context"
-	"errors"
 	e "errors"
 	"fmt"
 	"reflect"
@@ -128,7 +127,7 @@ func oAuthEndpointReachable(cfg *rest.Config) (bool, error) {
 
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return false, errors.New("OAuth endpoint not found at /.well-known/oauth-authorization-server")
+			return false, e.New("OAuth endpoint not found at /.well-known/oauth-authorization-server")
 		}
 		return false, err
 	}
