@@ -132,7 +132,7 @@ setup_defaults() {
 
 redis_ping() {
 set +e
-    AUTH="$(cat /redis-initial-pass/admin.password)"
+    AUTH="$(cat /app/config/redis-auth/auth)"
     if [ "$REDIS_PORT" -eq 0 ]; then
         env REDISCLI_AUTH="${AUTH}" redis-cli -h "${MASTER}" -p "${REDIS_TLS_PORT}" --tls --cacert /app/config/redis/tls/tls.crt ping
     else
@@ -253,7 +253,7 @@ else
     setup_defaults
 fi
 
-AUTH="$(cat /redis-initial-pass/admin.password)"
+AUTH="$(cat /app/config/redis-auth/auth)"
 if [ -z "${AUTH}" ]; then
     echo "Error: Redis password not mounted correctly"
     exit 1
