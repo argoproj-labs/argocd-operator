@@ -225,7 +225,6 @@ func getArgoRedisArgs(useTLS bool) []string {
 
 	args = append(args, "--save", "")
 	args = append(args, "--appendonly", "no")
-	args = append(args, "--requirepass $(REDIS_PASSWORD)")
 
 	if useTLS {
 		args = append(args, "--tls-port", "6379")
@@ -276,7 +275,7 @@ func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 	}
 
 	if cr.Spec.Redis.IsEnabled() {
-		cmd = append(cmd, "--redis", getRedisServerAddress(cr))
+		cmd = append(cmd, "--redis", argoutil.GetRedisServerAddress(cr))
 	} else {
 		log.Info("Redis is Disabled. Skipping adding Redis configuration to ArgoCD Server.")
 	}
@@ -322,7 +321,7 @@ func isMergable(extraArgs []string, cmd []string) error {
 
 // getDexServerAddress will return the Dex server address.
 func getDexServerAddress(cr *argoproj.ArgoCD) string {
-	return fmt.Sprintf("https://%s", fqdnServiceRef("dex-server", common.ArgoCDDefaultDexHTTPPort, cr))
+	return fmt.Sprintf("https://%s", argoutil.FqdnServiceRef("dex-server", common.ArgoCDDefaultDexHTTPPort, cr))
 }
 
 // newDeployment returns a new Deployment instance for the given ArgoCD.
@@ -429,19 +428,11 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error 
 func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS bool) error {
 	deploy := newDeploymentWithSuffix("redis", "redis", cr)
 
-	env := append(proxyEnvVars(), corev1.EnvVar{
-		Name: "REDIS_PASSWORD",
-		ValueFrom: &corev1.EnvVarSource{
-			SecretKeyRef: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
-				},
-				Key: "admin.password",
-			},
-		},
-	})
+	env := proxyEnvVars()
 
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
+
+	redisVolume, redisMount := argoutil.MountRedisAuthToArgo(cr)
 
 	if !IsOpenShiftCluster() {
 		deploy.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
@@ -451,7 +442,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Args:            getArgoRedisArgs(useTLS),
-		Image:           getRedisContainerImage(cr),
+		Image:           argoutil.GetRedisContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            "redis",
 		Ports: []corev1.ContainerPort{
@@ -459,7 +450,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 				ContainerPort: common.ArgoCDDefaultRedisPort,
 			},
 		},
-		Resources:       getRedisResources(cr),
+		Resources:       argoutil.GetRedisResources(cr),
 		Env:             env,
 		SecurityContext: argoutil.DefaultSecurityContext(),
 		VolumeMounts: []corev1.VolumeMount{
@@ -467,6 +458,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 				Name:      common.ArgoCDRedisServerTLSSecretName,
 				MountPath: "/app/config/redis/tls",
 			},
+			redisMount,
 		},
 	}}
 
@@ -481,6 +473,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 				},
 			},
 		},
+		redisVolume,
 	}
 
 	if err := applyReconcilerHook(cr, deploy, ""); err != nil {
@@ -509,7 +502,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 		changed := false
 		explanation := ""
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
-		desiredImage := getRedisContainerImage(cr)
+		desiredImage := argoutil.GetRedisContainerImage(cr)
 		actualImagePullPolicy := existing.Spec.Template.Spec.Containers[0].ImagePullPolicy
 		desiredImagePullPolicy := argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy)
 		if actualImage != desiredImage {
@@ -619,19 +612,10 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 			MaxSurge: &intstr.IntOrString{IntVal: 0},
 		},
 	}
-	var redisEnv = append(proxyEnvVars(), corev1.EnvVar{
-		Name: "AUTH",
-		ValueFrom: &corev1.EnvVarSource{
-			SecretKeyRef: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
-				},
-				Key: "admin.password",
-			},
-		},
-	})
 
-	deploy.Spec.Replicas = getRedisHAReplicas()
+	var redisEnv = proxyEnvVars()
+
+	deploy.Spec.Replicas = argoutil.GetRedisHAReplicas()
 
 	deploy.Spec.Template.Spec.Affinity = &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
@@ -661,8 +645,10 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 		},
 	}
 
+	redisAuthVolume, redisAuthMount := argoutil.MountRedisAuthToArgo(cr)
+
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
-		Image:           getRedisHAProxyContainerImage(cr),
+		Image:           argoutil.GetRedisHAProxyContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            "haproxy",
 		Env:             redisEnv,
@@ -682,7 +668,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 				Name:          "redis",
 			},
 		},
-		Resources:       getRedisHAResources(cr),
+		Resources:       argoutil.GetRedisHAResources(cr),
 		SecurityContext: argoutil.DefaultSecurityContext(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -697,6 +683,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 				Name:      common.ArgoCDRedisServerTLSSecretName,
 				MountPath: "/app/config/redis/tls",
 			},
+			redisAuthMount,
 		},
 	}}
 
@@ -707,11 +694,11 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 		Command: []string{
 			"sh",
 		},
-		Image:           getRedisHAProxyContainerImage(cr),
+		Image:           argoutil.GetRedisHAProxyContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            "config-init",
 		Env:             proxyEnvVars(),
-		Resources:       getRedisHAResources(cr),
+		Resources:       argoutil.GetRedisHAResources(cr),
 		SecurityContext: argoutil.DefaultSecurityContext(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -723,10 +710,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 				Name:      "data",
 				MountPath: "/data",
 			},
-			{
-				Name:      "redis-initial-pass",
-				MountPath: "/redis-initial-pass",
-			},
+			redisAuthMount,
 		},
 	}}
 
@@ -762,15 +746,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 				},
 			},
 		},
-		{
-			Name: "redis-initial-pass",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
-					Optional:   boolPtr(true),
-				},
-			},
-		},
+		redisAuthVolume,
 	}
 
 	if IsOpenShiftCluster() {
@@ -816,7 +792,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 		changed := false
 		explanation := ""
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
-		desiredImage := getRedisHAProxyContainerImage(cr)
+		desiredImage := argoutil.GetRedisHAProxyContainerImage(cr)
 		actualImagePullPolicy := existing.Spec.Template.Spec.Containers[0].ImagePullPolicy
 		desiredImagePullPolicy := argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy)
 
@@ -931,23 +907,15 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	deploy := newDeploymentWithSuffix("server", "server", cr)
 	serverEnv := cr.Spec.Server.Env
-	serverEnv = append(serverEnv, corev1.EnvVar{
-		Name: "REDIS_PASSWORD",
-		ValueFrom: &corev1.EnvVarSource{
-			SecretKeyRef: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
-				},
-				Key: "admin.password",
-			},
-		},
-	})
 	serverEnv = argoutil.EnvMerge(serverEnv, proxyEnvVars(), false)
+	serverEnv = argoutil.EnvMerge(serverEnv, argoutil.GetRedisAuthEnv(), false)
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
 
 	if cr.Spec.Server.InitContainers != nil {
 		deploy.Spec.Template.Spec.InitContainers = append(deploy.Spec.Template.Spec.InitContainers, cr.Spec.Server.InitContainers...)
 	}
+
+	redisAuthVolume, redisAuthMount := argoutil.MountRedisAuthToArgo(cr)
 
 	serverVolumeMounts := []corev1.VolumeMount{
 		{
@@ -977,6 +945,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			Name:      "tmp",
 			MountPath: "/tmp",
 		},
+		redisAuthMount,
 	}
 
 	if cr.Spec.Server.VolumeMounts != nil {
@@ -1090,6 +1059,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
+		redisAuthVolume,
 	}
 
 	if cr.Spec.Server.Volumes != nil {

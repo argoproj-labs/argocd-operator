@@ -87,6 +87,20 @@ func controllerDefaultVolumes() []corev1.Volume {
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
+		{
+			Name: argoutil.RedisAuthVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: "argocd-redis-initial-password",
+					Items: []corev1.KeyToPath{
+						{
+							Key:  "admin.password",
+							Path: "auth",
+						},
+					},
+				},
+			},
+		},
 	}
 	return volumes
 }
@@ -112,6 +126,10 @@ func controllerDefaultVolumeMounts() []corev1.VolumeMount {
 		{
 			Name:      "argocd-application-controller-tmp",
 			MountPath: "/tmp",
+		},
+		{
+			Name:      argoutil.RedisAuthVolumeName,
+			MountPath: argoutil.RedisAuthMountPath,
 		},
 	}
 	return mounts
@@ -424,15 +442,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 					},
 				}},
 				{Name: "HOME", Value: "/home/argocd"},
-				{Name: "REDIS_PASSWORD", Value: "",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "argocd-redis-initial-password",
-							},
-							Key: "admin.password",
-						},
-					}},
+				{Name: "REDIS_CREDS_DIR_PATH", Value: argoutil.RedisAuthMountPath},
 			},
 		},
 		{
@@ -457,15 +467,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 					},
 				}},
 				{Name: "HOME", Value: "/home/argocd"},
-				{Name: "REDIS_PASSWORD", Value: "",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "argocd-redis-initial-password",
-							},
-							Key: "admin.password",
-						},
-					}},
+				{Name: "REDIS_CREDS_DIR_PATH", Value: argoutil.RedisAuthMountPath},
 			},
 		},
 		{
@@ -490,15 +492,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 					},
 				}},
 				{Name: "HOME", Value: "/home/argocd"},
-				{Name: "REDIS_PASSWORD", Value: "",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "argocd-redis-initial-password",
-							},
-							Key: "admin.password",
-						},
-					}},
+				{Name: "REDIS_CREDS_DIR_PATH", Value: argoutil.RedisAuthMountPath},
 			},
 		},
 		{
@@ -525,16 +519,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 					},
 				}},
 				{Name: "HOME", Value: "/home/argocd"},
-				{Name: "REDIS_PASSWORD", Value: "",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "argocd-redis-initial-password",
-							},
-							Key: "admin.password",
-						},
-					},
-				},
+				{Name: "REDIS_CREDS_DIR_PATH", Value: argoutil.RedisAuthMountPath},
 			},
 		},
 	}
@@ -589,15 +574,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withAppSync(t *testing.T
 		}},
 		{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "600s"},
 		{Name: "HOME", Value: "/home/argocd"},
-		{Name: "REDIS_PASSWORD", Value: "",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "argocd-redis-initial-password",
-					},
-					Key: "admin.password",
-				},
-			}},
+		{Name: "REDIS_CREDS_DIR_PATH", Value: argoutil.RedisAuthMountPath},
 	}
 
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
@@ -649,15 +626,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withEnv(t *testing.T) {
 		}},
 		{Name: "CUSTOM_ENV_VAR", Value: "custom-value"},
 		{Name: "HOME", Value: "/home/argocd"},
-		{Name: "REDIS_PASSWORD", Value: "",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "argocd-redis-initial-password",
-					},
-					Key: "admin.password",
-				},
-			}},
+		{Name: "REDIS_CREDS_DIR_PATH", Value: argoutil.RedisAuthMountPath},
 	}
 
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
