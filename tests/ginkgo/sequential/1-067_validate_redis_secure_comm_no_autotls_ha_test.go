@@ -217,7 +217,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				"TLS .spec.template.spec.containers.command for argocd-application-controller statefulsets is wrong")
 		})
 
-		It("verify redis credential distribution", func() {
+		It("verify redis HA credential distribution", func() {
 			By("verifying we are running on a cluster with at least 3 nodes. This is required for Redis HA")
 			nodeFixture.ExpectHasAtLeastXNodes(3)
 
@@ -271,7 +271,18 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			)
 
 			Expect(err).ToNot(HaveOccurred(), "Output: "+redisPingOut)
+			Expect(redisPingOut).NotTo(ContainSubstring("NOAUTH Authentication required"))
 			Expect(redisPingOut).To(ContainSubstring("PONG"))
+
+			By("verifying redis rejects unauthenticated requests")
+			redisPingOut, err = osFixture.ExecCommandWithOutputParam(false, false,
+				"kubectl", "exec", "-n", ns.Name, "-c", "redis", "pod/argocd-redis-ha-server-0", "--",
+				"redis-cli", "ping", // no auth provided
+			)
+
+			Expect(err).ToNot(HaveOccurred(), "Output: "+redisPingOut)
+			Expect(redisPingOut).To(ContainSubstring("NOAUTH Authentication required"))
+			Expect(redisPingOut).NotTo(ContainSubstring("PONG"))
 		})
 	})
 })
