@@ -513,9 +513,50 @@ func (r *ReconcileArgoCD) reconcileApplicationSetClusterRole(cr *argoproj.ArgoCD
 			Resources: []string{
 				"applications",
 				"applicationsets",
+				"applicationsets/finalizers",
 			},
 			Verbs: []string{
+				"create",
+				"delete",
+				"get",
 				"list",
+				"patch",
+				"update",
+				"watch",
+			},
+		},
+		{
+			APIGroups: []string{"argoproj.io"},
+			Resources: []string{
+				"appprojects",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
+		},
+		{
+			APIGroups: []string{"argoproj.io"},
+			Resources: []string{
+				"applicationsets/status",
+			},
+			Verbs: []string{
+				"get",
+				"patch",
+				"update",
+			},
+		},
+		{
+			APIGroups: []string{""},
+			Resources: []string{
+				"events",
+			},
+			Verbs: []string{
+				"create",
+				"get",
+				"list",
+				"patch",
 				"watch",
 			},
 		},
@@ -524,10 +565,35 @@ func (r *ReconcileArgoCD) reconcileApplicationSetClusterRole(cr *argoproj.ArgoCD
 			APIGroups: []string{""},
 			Resources: []string{
 				"secrets",
+				"configmaps",
 			},
 			Verbs: []string{
+				"get",
 				"list",
 				"watch",
+			},
+		},
+		{
+			APIGroups: []string{"coordination.k8s.io"},
+			Resources: []string{
+				"leases",
+			},
+			Verbs: []string{
+				"create",
+			},
+		},
+		{
+			APIGroups: []string{"coordination.k8s.io"},
+			Resources: []string{
+				"leases",
+			},
+			Verbs: []string{
+				"get",
+				"update",
+				"create",
+			},
+			ResourceNames: []string{
+				"58ac56fa.applicationsets.argoproj.io",
 			},
 		},
 	}
