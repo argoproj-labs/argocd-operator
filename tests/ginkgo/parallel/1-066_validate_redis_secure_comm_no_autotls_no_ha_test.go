@@ -21,6 +21,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -178,5 +179,66 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 		})
 
+		It("verify redis credential distribution", func() {
+
+			By("creating simple Argo CD instance")
+			ns, cleanupFunc = fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
+
+			argoCD := &argov1beta1api.ArgoCD{
+				ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: ns.Name},
+				Spec:       argov1beta1api.ArgoCDSpec{},
+			}
+			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+
+			By("waiting for ArgoCD CR to be reconciled and the instance to be ready")
+			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
+
+			By("verify redis creds are correctly passed to pods")
+			const expectedMsg = "Loading Redis credentials from mounted directory: /app/config/redis-auth/"
+			expectedComponents := []string{
+				"statefulset/" + argoCD.Name + "-" + "application-controller",
+				"deployment/" + argoCD.Name + "-" + "repo-server",
+				"deployment/" + argoCD.Name + "-" + "server",
+			}
+			for _, component := range expectedComponents {
+				logOutput, err := osFixture.ExecCommandWithOutputParam(false, true,
+					"kubectl", "logs", component, "-n", ns.Name,
+				)
+				Expect(err).ToNot(HaveOccurred(), "Output: "+logOutput)
+				Expect(logOutput).To(ContainSubstring(expectedMsg))
+				// Some logs how redis disconnect manifests
+				Expect(logOutput).ToNot(ContainSubstring("manifest cache error"))
+				Expect(logOutput).ToNot(ContainSubstring("WRONGPASS"))
+			}
+
+			By("verifying redis password is correct")
+			redisInitialSecret := &corev1.Secret{}
+			redisPwdSecretKey := client.ObjectKey{
+				Name:      argoutil.GetSecretNameWithSuffix(argoCD, "redis-initial-password"),
+				Namespace: ns.Name,
+			}
+			Expect(k8sClient.Get(ctx, redisPwdSecretKey, redisInitialSecret)).Should(Succeed())
+			expectedRedisPwd := string(redisInitialSecret.Data["admin.password"])
+			Expect(expectedRedisPwd).ShouldNot(Equal(""))
+
+			redisPingOut, err := osFixture.ExecCommandWithOutputParam(false, false,
+				"kubectl", "exec", "-n", ns.Name, "-c", "redis", "deployment/argocd-redis", "--",
+				"redis-cli", "-a", expectedRedisPwd, "--no-auth-warning", "ping",
+			)
+
+			Expect(err).ToNot(HaveOccurred(), "Output: "+redisPingOut)
+			Expect(redisPingOut).NotTo(ContainSubstring("NOAUTH Authentication required"))
+			Expect(redisPingOut).To(ContainSubstring("PONG"))
+
+			By("verifying redis rejects unauthenticated requests")
+			redisPingOut, err = osFixture.ExecCommandWithOutputParam(false, false,
+				"kubectl", "exec", "-n", ns.Name, "-c", "redis", "deployment/argocd-redis", "--",
+				"redis-cli", "ping", // no auth provided
+			)
+
+			Expect(err).ToNot(HaveOccurred(), "Output: "+redisPingOut)
+			Expect(redisPingOut).To(ContainSubstring("NOAUTH Authentication required"))
+			Expect(redisPingOut).NotTo(ContainSubstring("PONG"))
+		})
 	})
 })
