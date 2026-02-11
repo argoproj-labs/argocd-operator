@@ -271,6 +271,7 @@ func main() {
 	if err = (&argocd.ReconcileArgoCD{
 		Client:        client,
 		Scheme:        mgr.GetScheme(),
+		Config:        mgr.GetConfig(),
 		LabelSelector: labelSelectorFlag,
 		K8sClient:     k8sClient,
 		LocalUsers: &argocd.LocalUsersInfo{
