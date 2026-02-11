@@ -128,6 +128,7 @@ var ActiveInstanceMap = make(map[string]string)
 //+kubebuilder:rbac:groups="apiregistration.k8s.io",resources="apiservices",verbs=get;list
 //+kubebuilder:rbac:groups=argoproj.io,resources=namespacemanagements;namespacemanagements/finalizers;namespacemanagements/status,verbs=*
 //+kubebuilder:rbac:groups=argocd-image-updater.argoproj.io,resources=imageupdaters;imageupdaters/finalizers,verbs=*
+//+kubebuilder:rbac:groups=certificates.k8s.io,resources=clustertrustbundles,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -370,7 +371,7 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 // SetupWithManager sets up the controller with the Manager.
 func (r *ReconcileArgoCD) SetupWithManager(mgr ctrl.Manager) error {
 	bldr := ctrl.NewControllerManagedBy(mgr)
-	r.setResourceWatches(bldr, r.clusterResourceMapper, r.tlsSecretMapper, r.namespaceResourceMapper, r.clusterSecretResourceMapper, r.applicationSetSCMTLSConfigMapMapper, r.nmMapper)
+	r.setResourceWatches(bldr, r.clusterResourceMapper, r.tlsSecretMapper, r.namespaceResourceMapper, r.clusterSecretResourceMapper, r.applicationSetSCMTLSConfigMapMapper, r.nmMapper, r.systemCATrustMapper)
 	return bldr.Complete(r)
 }
 
