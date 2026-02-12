@@ -6,13 +6,18 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+
 	"time"
+
+	configv1 "github.com/openshift/api/config/v1"
 
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -115,7 +120,9 @@ func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *ar
 		if err != nil {
 			return err
 		}
-		desired = cfg
+		if cfg != "" {
+			desired = cfg
+		}
 	}
 
 	if actual != desired {
@@ -144,8 +151,24 @@ func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *ar
 	return nil
 }
 
+func IsExternalAuthenticationEnabledOnCluster(ctx context.Context, c client.Client) bool {
+	var authConfig configv1.Authentication
+	if err := c.Get(ctx, types.NamespacedName{Name: "cluster"}, &authConfig); err != nil {
+		log.Error(err, "unable to fetch cluster authentication configuration")
+		return false
+	}
+	return authConfig.Spec.Type == "OIDC"
+}
+
 // getOpenShiftDexConfig will return the configuration for the Dex server running on OpenShift.
 func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoproj.ArgoCD) (string, error) {
+	if IsOpenShiftCluster() && IsExternalAuthenticationEnabledOnCluster(context.TODO(), r.Client) {
+		if updateStatusErr := updateStatusAndConditionsOfArgoCD(context.TODO(), createCondition(argoproj.OpenshiftOAuthErrorMessage), cr, &cr.Status, r.Client, log); updateStatusErr != nil {
+			log.Error(updateStatusErr, "unable to update status of ArgoCD")
+			return "", updateStatusErr
+		}
+		return "", nil
+	}
 	groups := []string{}
 
 	// Allow override of groups from CR
