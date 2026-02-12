@@ -1742,7 +1742,7 @@ func removeCondition(conditions *[]metav1.Condition, conditionType string) {
 // 1. Returns Success condition if no error message is provided, all fields are default.
 // 2. If Message is provided, it returns Failed condition having all default fields except Message.
 func createCondition(message string) metav1.Condition {
-	if message == argoproj.OpenshiftOAuthErrorMessage {
+	if message == argoproj.OpenShiftOAuthErrorMessage {
 		return metav1.Condition{
 			Type:    argoproj.ArgoCDConditionSSOConfigurationError,
 			Reason:  argoproj.ArgoCDConditionReasonSSOError,

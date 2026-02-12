@@ -163,7 +163,7 @@ func IsExternalAuthenticationEnabledOnCluster(ctx context.Context, c client.Clie
 // getOpenShiftDexConfig will return the configuration for the Dex server running on OpenShift.
 func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoproj.ArgoCD) (string, error) {
 	if IsOpenShiftCluster() && IsExternalAuthenticationEnabledOnCluster(context.TODO(), r.Client) {
-		if updateStatusErr := updateStatusAndConditionsOfArgoCD(context.TODO(), createCondition(argoproj.OpenshiftOAuthErrorMessage), cr, &cr.Status, r.Client, log); updateStatusErr != nil {
+		if updateStatusErr := updateStatusAndConditionsOfArgoCD(context.TODO(), createCondition(argoproj.OpenShiftOAuthErrorMessage), cr, &cr.Status, r.Client, log); updateStatusErr != nil {
 			log.Error(updateStatusErr, "unable to update status of ArgoCD")
 			return "", updateStatusErr
 		}
