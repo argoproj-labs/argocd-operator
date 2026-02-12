@@ -164,11 +164,11 @@ func (r *ReconcileArgoCD) reconcileStatusSSO(cr *argoproj.ArgoCD, argocdStatus *
 		// A) If Dex is enabled
 
 		if cr.Spec.SSO.Dex != nil && !cr.Spec.SSO.Dex.OpenShiftOAuth {
-			removeCondition(&cr.Status.Conditions, argoproj.ArgoCDConditionSSOConfigurationError)
+			removeCondition(&cr.Status.Conditions, argoproj.ArgoCDConditionConfigurationError)
 		}
 
 		for _, statusCondition := range cr.Status.Conditions {
-			if statusCondition.Type == argoproj.ArgoCDConditionSSOConfigurationError && statusCondition.Status == metav1.ConditionTrue {
+			if statusCondition.Type == argoproj.ArgoCDConditionConfigurationError && statusCondition.Status == metav1.ConditionTrue {
 				// SSO configuration error detected
 				argocdStatus.SSO = "Failed"
 				return nil
@@ -212,7 +212,7 @@ func (r *ReconcileArgoCD) reconcileStatusSSO(cr *argoproj.ArgoCD, argocdStatus *
 	} else {
 		argocdStatus.SSO = "Unknown"
 		// C) All other cases
-		removeCondition(&cr.Status.Conditions, argoproj.ArgoCDConditionSSOConfigurationError)
+		removeCondition(&cr.Status.Conditions, argoproj.ArgoCDConditionConfigurationError)
 	}
 
 	return nil

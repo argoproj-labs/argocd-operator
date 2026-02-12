@@ -1052,8 +1052,8 @@ type ManagedNamespaces struct {
 
 const OpenShiftOAuthErrorMessage = "OpenShiftOAuth is not supported when external authentication is enabled on cluster, please provide OIDC config"
 const (
-	ArgoCDConditionType                  = "Reconciled"
-	ArgoCDConditionSSOConfigurationError = "UnsupportedConfiguration"
+	ArgoCDConditionType               = "Reconciled"
+	ArgoCDConditionConfigurationError = "UnsupportedConfiguration"
 )
 
 const (

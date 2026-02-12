@@ -1744,7 +1744,7 @@ func removeCondition(conditions *[]metav1.Condition, conditionType string) {
 func createCondition(message string) metav1.Condition {
 	if message == argoproj.OpenShiftOAuthErrorMessage {
 		return metav1.Condition{
-			Type:    argoproj.ArgoCDConditionSSOConfigurationError,
+			Type:    argoproj.ArgoCDConditionConfigurationError,
 			Reason:  argoproj.ArgoCDConditionReasonSSOError,
 			Message: message,
 			Status:  metav1.ConditionTrue,
