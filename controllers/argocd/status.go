@@ -21,6 +21,7 @@ import (
 
 	routev1 "github.com/openshift/api/route/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -162,6 +163,17 @@ func (r *ReconcileArgoCD) reconcileStatusSSO(cr *argoproj.ArgoCD, argocdStatus *
 	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeDex {
 		// A) If Dex is enabled
 
+		if cr.Spec.SSO.Dex != nil && !cr.Spec.SSO.Dex.OpenShiftOAuth {
+			removeCondition(&cr.Status.Conditions, argoproj.ArgoCDConditionConfigurationError)
+		}
+
+		for _, statusCondition := range cr.Status.Conditions {
+			if statusCondition.Type == argoproj.ArgoCDConditionConfigurationError && statusCondition.Status == metav1.ConditionTrue {
+				// SSO configuration error detected
+				argocdStatus.SSO = "Failed"
+				return nil
+			}
+		}
 		deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
 		deplExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy)
 		if err != nil {
@@ -169,7 +181,6 @@ func (r *ReconcileArgoCD) reconcileStatusSSO(cr *argoproj.ArgoCD, argocdStatus *
 			return err
 		}
 		status := "Unknown"
-
 		if deplExists {
 			status = "Pending"
 
@@ -199,8 +210,9 @@ func (r *ReconcileArgoCD) reconcileStatusSSO(cr *argoproj.ArgoCD, argocdStatus *
 		argocdStatus.SSO = "Failed"
 
 	} else {
-		// C) All other cases
 		argocdStatus.SSO = "Unknown"
+		// C) All other cases
+		removeCondition(&cr.Status.Conditions, argoproj.ArgoCDConditionConfigurationError)
 	}
 
 	return nil
