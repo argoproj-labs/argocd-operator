@@ -36,6 +36,7 @@ import (
 	"github.com/argoproj/argo-cd/v3/util/glob"
 	"github.com/distribution/reference"
 	"github.com/go-logr/logr"
+	certificates "k8s.io/api/certificates/v1beta1"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -76,8 +77,9 @@ const (
 )
 
 var (
-	versionAPIFound      = false
-	imageUpdaterAPIFound = false
+	versionAPIFound            = false
+	imageUpdaterAPIFound       = false
+	clusterTrustBundleAPIFound = false
 )
 
 // IsVersionAPIAvailable returns true if the version api is present
@@ -88,6 +90,10 @@ func IsVersionAPIAvailable() bool {
 // IsImageUpdaterAPIAvailable returns true if the image updater api is present
 func IsImageUpdaterAPIAvailable() bool {
 	return imageUpdaterAPIFound
+}
+
+func IsClusterTrustBundleAPIFound() bool {
+	return clusterTrustBundleAPIFound
 }
 
 // verifyVersionAPI will verify that the template API is present.
@@ -107,6 +113,16 @@ func verifyImageUpdaterAPI() error {
 		return err
 	}
 	imageUpdaterAPIFound = found
+	return nil
+}
+
+// verifyClusterTrustBundleAPI will verify that the ClusterTrustBundle API is present.
+func verifyClusterTrustBundleAPI() error {
+	found, err := argoutil.VerifyAPI(certificates.GroupName, certificates.SchemeGroupVersion.Version)
+	if err != nil {
+		return err
+	}
+	clusterTrustBundleAPIFound = found
 	return nil
 }
 
@@ -691,6 +707,9 @@ func InspectCluster() error {
 	if err := verifyVersionAPI(); err != nil {
 		return err
 	}
+	if err := verifyClusterTrustBundleAPI(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -1011,7 +1030,7 @@ func removeString(slice []string, s string) []string {
 }
 
 // setResourceWatches will register Watches for each of the supported Resources.
-func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, clusterSecretResourceMapper, applicationSetGitlabSCMTLSConfigMapMapper, nmMapper handler.MapFunc) *builder.Builder {
+func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, clusterSecretResourceMapper, applicationSetGitlabSCMTLSConfigMapMapper, nmMapper, systemCATrustMapper handler.MapFunc) *builder.Builder {
 
 	// Add new predicate to delete Notifications Resources. The predicate watches the Argo CD CR for changes to the `.spec.Notifications.Enabled`
 	// field. When a change is detected that results in notifications being disabled, we trigger deletion of notifications resources
@@ -1039,56 +1058,36 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 	// Watch for changes to primary resource ArgoCD
 	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(deleteNotificationsPred, r.argoCDNamespaceManagementFilterPredicate()))
 
-	// Watch for changes to ConfigMap sub-resources owned by ArgoCD instances.
+	// Watch for changes to sub-resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.ConfigMap{})
-
-	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.Secret{})
-
-	// Watch for changes to Service sub-resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.Service{})
-
-	// Watch for changes to Deployment sub-resources owned by ArgoCD instances.
 	bldr.Owns(&appsv1.Deployment{})
-
-	// Watch for changes to Ingress sub-resources owned by ArgoCD instances.
 	bldr.Owns(&networkingv1.Ingress{})
-
+	bldr.Owns(&appsv1.StatefulSet{})
 	bldr.Owns(&v1.Role{})
-
 	bldr.Owns(&v1.RoleBinding{})
+	bldr.Owns(&v1alpha1.NotificationsConfiguration{})
 
-	nmMapperResourceHandler := handler.EnqueueRequestsFromMapFunc(nmMapper)
-
-	bldr.Watches(&argoproj.NamespaceManagement{}, nmMapperResourceHandler, builder.WithPredicates(r.namespaceManagementFilterPredicate()))
+	bldr.Watches(&argoproj.NamespaceManagement{}, handler.EnqueueRequestsFromMapFunc(nmMapper), builder.WithPredicates(r.namespaceManagementFilterPredicate()))
 
 	clusterResourceHandler := handler.EnqueueRequestsFromMapFunc(clusterResourceMapper)
-
-	clusterSecretResourceHandler := handler.EnqueueRequestsFromMapFunc(clusterSecretResourceMapper)
-
-	appSetGitlabSCMTLSConfigMapHandler := handler.EnqueueRequestsFromMapFunc(applicationSetGitlabSCMTLSConfigMapMapper)
-
-	tlsSecretHandler := handler.EnqueueRequestsFromMapFunc(tlsSecretMapper)
-
 	bldr.Watches(&v1.ClusterRoleBinding{}, clusterResourceHandler)
-
 	bldr.Watches(&v1.ClusterRole{}, clusterResourceHandler)
 
 	bldr.Watches(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{
 		Name: common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName,
-	}}, appSetGitlabSCMTLSConfigMapHandler)
+	}}, handler.EnqueueRequestsFromMapFunc(applicationSetGitlabSCMTLSConfigMapMapper))
 
 	// Watch for secrets of type TLS that might be created by external processes
-	bldr.Watches(&corev1.Secret{Type: corev1.SecretTypeTLS}, tlsSecretHandler)
+	bldr.Watches(&corev1.Secret{Type: corev1.SecretTypeTLS}, handler.EnqueueRequestsFromMapFunc(tlsSecretMapper))
 
 	// Watch for cluster secrets added to the argocd instance
 	bldr.Watches(&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
 		Labels: map[string]string{
 			common.ArgoCDManagedByClusterArgoCDLabel: "cluster",
-		}}}, clusterSecretResourceHandler)
-
-	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
-	bldr.Owns(&appsv1.StatefulSet{})
+		},
+	}}, handler.EnqueueRequestsFromMapFunc(clusterSecretResourceMapper))
 
 	// Inspect cluster to verify availability of extra features
 	// This sets the flags that are used in subsequent checks
@@ -1109,11 +1108,14 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 		bldr.Owns(&monitoringv1.ServiceMonitor{})
 	}
 
-	// Watch for changes to NotificationsConfiguration CR
-	bldr.Owns(&v1alpha1.NotificationsConfiguration{})
+	systemCATrustHandler := handler.EnqueueRequestsFromMapFunc(systemCATrustMapper)
+	bldr.Watches(&corev1.Secret{}, systemCATrustHandler)
+	bldr.Watches(&corev1.ConfigMap{}, systemCATrustHandler)
+	if IsClusterTrustBundleAPIFound() {
+		bldr.Watches(&certificates.ClusterTrustBundle{}, systemCATrustHandler)
+	}
 
 	namespaceHandler := handler.EnqueueRequestsFromMapFunc(namespaceResourceMapper)
-
 	bldr.Watches(&corev1.Namespace{}, namespaceHandler, builder.WithPredicates(r.namespaceFilterPredicate()))
 
 	bldrHook := newBuilderHook(r.Client, bldr)

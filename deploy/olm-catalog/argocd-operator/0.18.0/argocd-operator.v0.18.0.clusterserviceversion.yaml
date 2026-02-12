@@ -1827,6 +1827,14 @@ spec:
           verbs:
           - '*'
         - apiGroups:
+          - certificates.k8s.io
+          resources:
+          - clustertrustbundles
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
           - config.openshift.io
           resources:
           - authentications
