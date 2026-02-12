@@ -685,7 +685,7 @@ type ArgoCDNodePlacementSpec struct {
 
 // ArgoCDNetworkPolicySpec defines whether the operator should create NetworkPolicies for an Argo CD instance.
 type ArgoCDNetworkPolicySpec struct {
-	// Enabled defines whether NetworkPolicy resources are created for this Argo CD instance.
+	// Enabled defines whether NetworkPolicy resources should be created for this Argo CD instance.
 	// When enabled, the operator will reconcile NetworkPolicies for Argo CD components.
 	// When disabled, the operator will remove any previously-created NetworkPolicies.
 	// +kubebuilder:default=true
