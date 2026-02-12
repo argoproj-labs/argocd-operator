@@ -4,11 +4,16 @@ import (
 	"context"
 	"fmt"
 
+	appv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
+	"github.com/argoproj/gitops-engine/pkg/health"
+
 	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
+	applicationFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/application"
+	appprojectFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/appproject"
 	argocdFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/argocd"
+	clusterroleFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/clusterrole"
 	deploymentFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/deployment"
 	k8sFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/k8s"
 	namespaceFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/namespace"
@@ -22,6 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -45,7 +51,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 		AfterEach(func() {
 
-			fixture.OutputDebugOnFail("appset-argocd", "appset-old-ns", "appset-new-ns", "appset-namespace-scoped", "target-ns-1-037")
+			fixture.OutputDebugOnFail("appset-argocd", "appset-old-ns", "appset-new-ns", "appset-namespace-scoped", "target-ns-1-037", "appset-argocd-clusterrole", "appset-target-ns")
 
 			// Clean up namespaces created
 			for _, namespaceCleanupFunction := range cleanupFunctions {
@@ -732,6 +738,219 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			By("verifying that the roles/rolebindings we created in the previous steps are now automatically cleaned up, because the namespace had the ArgoCDApplicationSetManagedByClusterArgoCDLabel")
 			Eventually(roleBindingInTargetNS).Should(k8sFixture.NotExistByName())
 			Eventually(roleInTargetNS).Should(k8sFixture.NotExistByName())
+		})
+
+		It("verifies ApplicationSet clusterrole rules and creates appset/app in another namespace", func() {
+
+			By("creating Argo CD namespace and target source namespace")
+			argoNamespace, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("appset-argocd-clusterrole")
+			cleanupFunctions = append(cleanupFunctions, cleanupFunc)
+
+			targetNS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("appset-target-ns")
+			cleanupFunctions = append(cleanupFunctions, cleanupFunc)
+
+			By("creating Argo CD instance with source namespaces")
+			argoCD := &v1beta1.ArgoCD{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "appset-example",
+					Namespace: argoNamespace.Name,
+				},
+				Spec: v1beta1.ArgoCDSpec{
+					SourceNamespaces: []string{
+						targetNS.Name,
+					},
+					ApplicationSet: &v1beta1.ArgoCDApplicationSet{
+						SourceNamespaces: []string{
+							targetNS.Name,
+						},
+						SCMProviders: []string{
+							"github.com",
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+
+			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
+			Eventually(argoCD).Should(argocdFixture.HaveApplicationSetControllerStatus("Running"))
+
+			By("2) verifying that the appset deployment contains matching namespace in the command")
+			appsetDeployment := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "appset-example-applicationset-controller",
+					Namespace: argoCD.Namespace,
+				},
+			}
+			Eventually(appsetDeployment).Should(k8sFixture.ExistByName())
+
+			// Verify that target namespace is included
+			Eventually(appsetDeployment).Should(deploymentFixture.HaveContainerCommandSubstring("--applicationset-namespaces", 0))
+
+			appProject := &appv1alpha1.AppProject{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default",
+					Namespace: argoCD.Namespace,
+				},
+			}
+			Eventually(appProject).Should(k8sFixture.ExistByName())
+			appprojectFixture.Update(appProject, func(appProject *appv1alpha1.AppProject) {
+				appProject.Spec.SourceNamespaces = append(appProject.Spec.SourceNamespaces, targetNS.Name)
+			})
+
+			By("verifying ApplicationSet controller ClusterRole has expected rules")
+			appsetClusterRole := &rbacv1.ClusterRole{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: argoCD.Name + "-" + argoCD.Namespace + "-" + common.ArgoCDApplicationSetControllerComponent,
+				},
+			}
+			Eventually(appsetClusterRole, "5m", "10s").Should(k8sFixture.ExistByName())
+			Eventually(appsetClusterRole, "5m", "10s").Should(clusterroleFixture.HaveRules([]rbacv1.PolicyRule{
+				{
+					APIGroups: []string{"argoproj.io"},
+					Resources: []string{
+						"applications",
+						"applicationsets",
+						"applicationsets/finalizers",
+					},
+					Verbs: []string{
+						"create",
+						"delete",
+						"get",
+						"list",
+						"patch",
+						"update",
+						"watch",
+					},
+				},
+				{
+					APIGroups: []string{"argoproj.io"},
+					Resources: []string{
+						"appprojects",
+					},
+					Verbs: []string{
+						"get",
+						"list",
+						"watch",
+					},
+				},
+				{
+					APIGroups: []string{"argoproj.io"},
+					Resources: []string{
+						"applicationsets/status",
+					},
+					Verbs: []string{
+						"get",
+						"patch",
+						"update",
+					},
+				},
+				{
+					APIGroups: []string{""},
+					Resources: []string{
+						"events",
+					},
+					Verbs: []string{
+						"create",
+						"get",
+						"list",
+						"patch",
+						"watch",
+					},
+				},
+				{
+					APIGroups: []string{""},
+					Resources: []string{
+						"secrets",
+						"configmaps",
+					},
+					Verbs: []string{
+						"get",
+						"list",
+						"watch",
+					},
+				},
+				{
+					APIGroups: []string{"coordination.k8s.io"},
+					Resources: []string{
+						"leases",
+					},
+					Verbs: []string{
+						"create",
+					},
+				},
+				{
+					APIGroups: []string{"coordination.k8s.io"},
+					Resources: []string{
+						"leases",
+					},
+					Verbs: []string{
+						"get",
+						"update",
+						"create",
+					},
+					ResourceNames: []string{
+						"58ac56fa.applicationsets.argoproj.io",
+					},
+				},
+			}))
+
+			By("creating an ApplicationSet in the target namespace")
+			appset := &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "argoproj.io/v1alpha1",
+					"kind":       "ApplicationSet",
+					"metadata": map[string]interface{}{
+						"name":      "guestbook-appset",
+						"namespace": targetNS.Name,
+					},
+					"spec": map[string]interface{}{
+						"generators": []interface{}{
+							map[string]interface{}{
+								"list": map[string]interface{}{
+									"elements": []interface{}{
+										map[string]interface{}{
+											"name": "guestbook",
+										},
+									},
+								},
+							},
+						},
+						"template": map[string]interface{}{
+							"metadata": map[string]interface{}{
+								"name": "{{name}}",
+							},
+							"spec": map[string]interface{}{
+								"project": "default",
+								"source": map[string]interface{}{
+									"repoURL":        "https://github.com/argoproj/argocd-example-apps.git",
+									"targetRevision": "HEAD",
+									"path":           "guestbook",
+								},
+								"destination": map[string]interface{}{
+									"server":    "https://kubernetes.default.svc",
+									"namespace": targetNS.Name,
+								},
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, appset)).To(Succeed())
+			Eventually(appset).Should(k8sFixture.ExistByName())
+
+			By("verifying ApplicationSet generates Application in target namespace")
+			generatedApp := &appv1alpha1.Application{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "guestbook",
+					Namespace: targetNS.Name,
+				},
+			}
+			Eventually(generatedApp, "5m", "10s").Should(k8sFixture.ExistByName())
+			Eventually(generatedApp, "5m", "10s").Should(applicationFixture.HaveHealthStatusCode(health.HealthStatusMissing))
+			Eventually(generatedApp, "5m", "10s").Should(applicationFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeOutOfSync))
+			By("Cleaning up the ApplicationSet")
+			Expect(k8sClient.Delete(ctx, appset)).To(Succeed())
+			Eventually(appset).Should(k8sFixture.NotExistByName())
 		})
 
 	})
