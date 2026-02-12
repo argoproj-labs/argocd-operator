@@ -1058,7 +1058,7 @@ const (
 
 const (
 	ArgoCDConditionReasonSuccess       = "Success"
-	ArgoCDConditionReasonSSOError      = "UnSupportedSSOConfiguration"
+	ArgoCDConditionReasonSSOError      = "UnsupportedSSOConfiguration"
 	ArgoCDConditionReasonErrorOccurred = "ErrorOccurred"
 )
 
