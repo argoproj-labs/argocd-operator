@@ -124,55 +124,52 @@ func (r *ReconcileArgoCD) deleteArgoCDNetworkPolicies(cr *argoproj.ArgoCD) error
 }
 
 // ReconcileDexServerNetworkPolicy creates and reconciles network policy for Dex Server
+// This network policy allows ingress traffic to the dex server from the server and any namespace.
+// Referenced from https://github.com/argoproj/argo-cd/blob/master/manifests/base/dex/argocd-dex-server-network-policy.yaml
 func (r *ReconcileArgoCD) ReconcileDexServerNetworkPolicy(cr *argoproj.ArgoCD) error {
 
-	desired := &networkingv1.NetworkPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDDexServerNetworkPolicy),
-			Namespace: cr.Namespace,
+	desired := returnNetworkPolicyHeaders(cr, ArgoCDDexServerNetworkPolicy, "dex-server")
+	desired.Spec = networkingv1.NetworkPolicySpec{
+		PodSelector: metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				"app.kubernetes.io/name": nameWithSuffix("dex-server", cr),
+			},
 		},
-		Spec: networkingv1.NetworkPolicySpec{
-			PodSelector: metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app.kubernetes.io/name": nameWithSuffix("dex-server", cr),
-				},
-			},
-			PolicyTypes: []networkingv1.PolicyType{
-				networkingv1.PolicyTypeIngress,
-			},
-			Ingress: []networkingv1.NetworkPolicyIngressRule{
-				{
-					From: []networkingv1.NetworkPolicyPeer{
-						{
-							PodSelector: &metav1.LabelSelector{
-								MatchLabels: map[string]string{
-									"app.kubernetes.io/name": nameWithSuffix("server", cr),
-								},
+		PolicyTypes: []networkingv1.PolicyType{
+			networkingv1.PolicyTypeIngress,
+		},
+		Ingress: []networkingv1.NetworkPolicyIngressRule{
+			{
+				From: []networkingv1.NetworkPolicyPeer{
+					{
+						PodSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"app.kubernetes.io/name": nameWithSuffix("server", cr),
 							},
 						},
 					},
-					Ports: []networkingv1.NetworkPolicyPort{
-						{
-							Protocol: TCPProtocol,
-							Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: common.ArgoCDDefaultDexHTTPPort},
-						},
-						{
-							Protocol: TCPProtocol,
-							Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: common.ArgoCDDefaultDexGRPCPort},
-						},
+				},
+				Ports: []networkingv1.NetworkPolicyPort{
+					{
+						Protocol: TCPProtocol,
+						Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: common.ArgoCDDefaultDexHTTPPort},
+					},
+					{
+						Protocol: TCPProtocol,
+						Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: common.ArgoCDDefaultDexGRPCPort},
 					},
 				},
-				{
-					From: []networkingv1.NetworkPolicyPeer{
-						{
-							NamespaceSelector: &metav1.LabelSelector{},
-						},
+			},
+			{
+				From: []networkingv1.NetworkPolicyPeer{
+					{
+						NamespaceSelector: &metav1.LabelSelector{},
 					},
-					Ports: []networkingv1.NetworkPolicyPort{
-						{
-							Protocol: TCPProtocol,
-							Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: common.ArgoCDDefaultDexMetricsPort},
-						},
+				},
+				Ports: []networkingv1.NetworkPolicyPort{
+					{
+						Protocol: TCPProtocol,
+						Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: common.ArgoCDDefaultDexMetricsPort},
 					},
 				},
 			},
@@ -227,8 +224,8 @@ func (r *ReconcileArgoCD) ReconcileDexServerNetworkPolicy(cr *argoproj.ArgoCD) e
 		if modified {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			if err := r.Update(context.TODO(), existing); err != nil {
-				log.Error(err, "Failed to update dex server network policy")
-				return fmt.Errorf("failed to update dex server network policy. error: %w", err)
+				log.Error(err, "Failed to update %s network policy in namespace %s", existing.Name, cr.Namespace)
+				return fmt.Errorf("failed to update %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 			}
 		}
 		return nil
@@ -241,46 +238,43 @@ func (r *ReconcileArgoCD) ReconcileDexServerNetworkPolicy(cr *argoproj.ArgoCD) e
 
 	argoutil.LogResourceCreation(log, desired)
 	if err := r.Create(context.TODO(), desired); err != nil {
-		log.Error(err, "Failed to create dex server network policy")
-		return fmt.Errorf("failed to create dex server network policy. error: %w", err)
+		log.Error(err, "Failed to create %s network policy in namespace %s", existing.Name, cr.Namespace)
+		return fmt.Errorf("failed to create %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 	}
 
 	return nil
 }
 
 // ReconcileApplicationSetControllerNetworkPolicy creates and reconciles network policy for ApplicationSet Controller
+// This network policy allows ingress traffic to the applicationset controller from any namespace.
+// Referenced from https://github.com/argoproj/argo-cd/blob/master/manifests/base/applicationset-controller/argocd-applicationset-controller-network-policy.yaml
 func (r *ReconcileArgoCD) ReconcileApplicationSetControllerNetworkPolicy(cr *argoproj.ArgoCD) error {
 
-	desired := &networkingv1.NetworkPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDApplicationSetControllerNetworkPolicy),
-			Namespace: cr.Namespace,
+	desired := returnNetworkPolicyHeaders(cr, ArgoCDApplicationSetControllerNetworkPolicy, "applicationset-controller")
+	desired.Spec = networkingv1.NetworkPolicySpec{
+		PodSelector: metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				"app.kubernetes.io/name": nameWithSuffix("applicationset-controller", cr),
+			},
 		},
-		Spec: networkingv1.NetworkPolicySpec{
-			PodSelector: metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app.kubernetes.io/name": nameWithSuffix("applicationset-controller", cr),
-				},
-			},
-			PolicyTypes: []networkingv1.PolicyType{
-				networkingv1.PolicyTypeIngress,
-			},
-			Ingress: []networkingv1.NetworkPolicyIngressRule{
-				{
-					From: []networkingv1.NetworkPolicyPeer{
-						{
-							NamespaceSelector: &metav1.LabelSelector{},
-						},
+		PolicyTypes: []networkingv1.PolicyType{
+			networkingv1.PolicyTypeIngress,
+		},
+		Ingress: []networkingv1.NetworkPolicyIngressRule{
+			{
+				From: []networkingv1.NetworkPolicyPeer{
+					{
+						NamespaceSelector: &metav1.LabelSelector{},
 					},
-					Ports: []networkingv1.NetworkPolicyPort{
-						{
-							Protocol: TCPProtocol,
-							Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 7000},
-						},
-						{
-							Protocol: TCPProtocol,
-							Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 8080},
-						},
+				},
+				Ports: []networkingv1.NetworkPolicyPort{
+					{
+						Protocol: TCPProtocol,
+						Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 7000},
+					},
+					{
+						Protocol: TCPProtocol,
+						Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 8080},
 					},
 				},
 			},
@@ -335,8 +329,8 @@ func (r *ReconcileArgoCD) ReconcileApplicationSetControllerNetworkPolicy(cr *arg
 		if modified {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			if err := r.Update(context.TODO(), existing); err != nil {
-				log.Error(err, "Failed to update applicationset controller network policy")
-				return fmt.Errorf("failed to update applicationset controller network policy. error: %w", err)
+				log.Error(err, "Failed to update %s network policy in namespace %s", existing.Name, cr.Namespace)
+				return fmt.Errorf("failed to update %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 			}
 		}
 		return nil
@@ -349,8 +343,8 @@ func (r *ReconcileArgoCD) ReconcileApplicationSetControllerNetworkPolicy(cr *arg
 
 	argoutil.LogResourceCreation(log, desired)
 	if err := r.Create(context.TODO(), desired); err != nil {
-		log.Error(err, "Failed to create applicationset controller network policy")
-		return fmt.Errorf("failed to create applicationset controller network policy. error: %w", err)
+		log.Error(err, "Failed to create %s network policy in namespace %s", existing.Name, cr.Namespace)
+		return fmt.Errorf("failed to create %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 	}
 
 	return nil
@@ -624,34 +618,31 @@ func (r *ReconcileArgoCD) ReconcileRedisHANetworkPolicy(cr *argoproj.ArgoCD) err
 }
 
 // ReconcileNotificationsControllerNetworkPolicy creates and reconciles network policy for Notifications Controller
+// This network policy allows ingress traffic to the notifications controller from any namespace.
+// Referenced from https://github.com/argoproj/argo-cd/blob/master/manifests/base/notifications-controller/argocd-notifications-controller-network-policy.yaml
 func (r *ReconcileArgoCD) ReconcileNotificationsControllerNetworkPolicy(cr *argoproj.ArgoCD) error {
 
-	desired := &networkingv1.NetworkPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDNotificationsControllerNetworkPolicy),
-			Namespace: cr.Namespace,
+	desired := returnNetworkPolicyHeaders(cr, ArgoCDNotificationsControllerNetworkPolicy, "notifications-controller")
+	desired.Spec = networkingv1.NetworkPolicySpec{
+		PodSelector: metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				"app.kubernetes.io/name": nameWithSuffix("notifications-controller", cr),
+			},
 		},
-		Spec: networkingv1.NetworkPolicySpec{
-			PodSelector: metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app.kubernetes.io/name": nameWithSuffix("notifications-controller", cr),
-				},
-			},
-			PolicyTypes: []networkingv1.PolicyType{
-				networkingv1.PolicyTypeIngress,
-			},
-			Ingress: []networkingv1.NetworkPolicyIngressRule{
-				{
-					From: []networkingv1.NetworkPolicyPeer{
-						{
-							NamespaceSelector: &metav1.LabelSelector{},
-						},
+		PolicyTypes: []networkingv1.PolicyType{
+			networkingv1.PolicyTypeIngress,
+		},
+		Ingress: []networkingv1.NetworkPolicyIngressRule{
+			{
+				From: []networkingv1.NetworkPolicyPeer{
+					{
+						NamespaceSelector: &metav1.LabelSelector{},
 					},
-					Ports: []networkingv1.NetworkPolicyPort{
-						{
-							Protocol: TCPProtocol,
-							Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 9001},
-						},
+				},
+				Ports: []networkingv1.NetworkPolicyPort{
+					{
+						Protocol: TCPProtocol,
+						Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 9001},
 					},
 				},
 			},
@@ -706,8 +697,8 @@ func (r *ReconcileArgoCD) ReconcileNotificationsControllerNetworkPolicy(cr *argo
 		if modified {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			if err := r.Update(context.TODO(), existing); err != nil {
-				log.Error(err, "Failed to update notifications controller network policy")
-				return fmt.Errorf("failed to update notifications controller network policy. error: %w", err)
+				log.Error(err, "Failed to update %s network policy in namespace %s", existing.Name, cr.Namespace)
+				return fmt.Errorf("failed to update %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 			}
 		}
 		return nil
@@ -720,33 +711,29 @@ func (r *ReconcileArgoCD) ReconcileNotificationsControllerNetworkPolicy(cr *argo
 
 	argoutil.LogResourceCreation(log, desired)
 	if err := r.Create(context.TODO(), desired); err != nil {
-		log.Error(err, "Failed to create notifications controller network policy")
-		return fmt.Errorf("failed to create notifications controller network policy. error: %w", err)
+		log.Error(err, "Failed to create %s network policy in namespace %s", existing.Name, cr.Namespace)
+		return fmt.Errorf("failed to create %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 	}
 
 	return nil
 }
 
+// ReconcileArgoCDServerNetworkPolicy creates and reconciles network policy for Argo CD Server
+// This network policy allows ingress traffic to the server from the application controller, repo server, notifications controller, applicationset controller, and any namespace.
+// Referenced from https://github.com/argoproj/argo-cd/blob/master/manifests/base/server/argocd-server-network-policy.yaml
 func (r *ReconcileArgoCD) ReconcileArgoCDServerNetworkPolicy(cr *argoproj.ArgoCD) error {
-	desired := &networkingv1.NetworkPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDServerNetworkPolicy),
-			Namespace: cr.Namespace,
+	desired := returnNetworkPolicyHeaders(cr, ArgoCDServerNetworkPolicy, "server")
+	desired.Spec = networkingv1.NetworkPolicySpec{
+		PodSelector: metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				"app.kubernetes.io/name": nameWithSuffix("server", cr),
+			},
 		},
-
-		Spec: networkingv1.NetworkPolicySpec{
-			PodSelector: metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app.kubernetes.io/name": nameWithSuffix("server", cr),
-				},
-			},
-
-			PolicyTypes: []networkingv1.PolicyType{
-				networkingv1.PolicyTypeIngress,
-			},
-			Ingress: []networkingv1.NetworkPolicyIngressRule{
-				{},
-			},
+		PolicyTypes: []networkingv1.PolicyType{
+			networkingv1.PolicyTypeIngress,
+		},
+		Ingress: []networkingv1.NetworkPolicyIngressRule{
+			{},
 		},
 	}
 
@@ -790,8 +777,8 @@ func (r *ReconcileArgoCD) ReconcileArgoCDServerNetworkPolicy(cr *argoproj.ArgoCD
 		if modified {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			if err := r.Update(context.TODO(), existing); err != nil {
-				log.Error(err, "Failed to update server network policy")
-				return fmt.Errorf("failed to update server network policy. error: %w", err)
+				log.Error(err, "Failed to update %s network policy in namespace %s", existing.Name, cr.Namespace)
+				return fmt.Errorf("failed to update %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 			}
 		}
 		return nil
@@ -804,40 +791,39 @@ func (r *ReconcileArgoCD) ReconcileArgoCDServerNetworkPolicy(cr *argoproj.ArgoCD
 
 	argoutil.LogResourceCreation(log, desired)
 	if err := r.Create(context.TODO(), desired); err != nil {
-		log.Error(err, "Failed to create server network policy")
-		return fmt.Errorf("failed to create server network policy. error: %w", err)
+		log.Error(err, "Failed to create %s network policy in namespace %s", existing.Name, cr.Namespace)
+		return fmt.Errorf("failed to create %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 	}
 
 	return nil
 }
 
+// ReconcileArgoCDApplicationControllerNetworkPolicy creates and reconciles network policy for Argo CD Application Controller
+// This network policy allows ingress traffic to the application controller from any namespace.
+// Referenced from https://github.com/argoproj/argo-cd/blob/master/manifests/base/application-controller/argocd-application-controller-network-policy.yaml
 func (r *ReconcileArgoCD) ReconcileArgoCDApplicationControllerNetworkPolicy(cr *argoproj.ArgoCD) error {
-	desired := &networkingv1.NetworkPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDApplicationControllerNetworkPolicy),
-			Namespace: cr.Namespace,
+	desired := returnNetworkPolicyHeaders(cr, ArgoCDApplicationControllerNetworkPolicy, "application-controller")
+
+	desired.Spec = networkingv1.NetworkPolicySpec{
+		PodSelector: metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				"app.kubernetes.io/name": nameWithSuffix("application-controller", cr),
+			},
 		},
-		Spec: networkingv1.NetworkPolicySpec{
-			PodSelector: metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app.kubernetes.io/name": nameWithSuffix("application-controller", cr),
-				},
-			},
-			PolicyTypes: []networkingv1.PolicyType{
-				networkingv1.PolicyTypeIngress,
-			},
-			Ingress: []networkingv1.NetworkPolicyIngressRule{
-				{
-					From: []networkingv1.NetworkPolicyPeer{
-						{
-							NamespaceSelector: &metav1.LabelSelector{},
-						},
+		PolicyTypes: []networkingv1.PolicyType{
+			networkingv1.PolicyTypeIngress,
+		},
+		Ingress: []networkingv1.NetworkPolicyIngressRule{
+			{
+				From: []networkingv1.NetworkPolicyPeer{
+					{
+						NamespaceSelector: &metav1.LabelSelector{},
 					},
-					Ports: []networkingv1.NetworkPolicyPort{
-						{
-							Protocol: TCPProtocol,
-							Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 8082},
-						},
+				},
+				Ports: []networkingv1.NetworkPolicyPort{
+					{
+						Protocol: TCPProtocol,
+						Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 8082},
 					},
 				},
 			},
@@ -886,8 +872,8 @@ func (r *ReconcileArgoCD) ReconcileArgoCDApplicationControllerNetworkPolicy(cr *
 		if modified {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			if err := r.Update(context.TODO(), existing); err != nil {
-				log.Error(err, "Failed to update application controller network policy")
-				return fmt.Errorf("failed to update application controller network policy. error: %w", err)
+				log.Error(err, "Failed to update %s network policy in namespace %s", existing.Name, cr.Namespace)
+				return fmt.Errorf("failed to update %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 			}
 		}
 		return nil
@@ -900,78 +886,77 @@ func (r *ReconcileArgoCD) ReconcileArgoCDApplicationControllerNetworkPolicy(cr *
 
 	argoutil.LogResourceCreation(log, desired)
 	if err := r.Create(context.TODO(), desired); err != nil {
-		log.Error(err, "Failed to create application controller network policy")
-		return fmt.Errorf("failed to create application controller network policy. error: %w", err)
+		log.Error(err, "Failed to create %s network policy in namespace %s", existing.Name, cr.Namespace)
+		return fmt.Errorf("failed to create %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 	}
 
 	return nil
 }
 
+// ReconcileArgoCDRepoServerNetworkPolicy creates and reconciles network policy for Argo CD Repo Server
+// This network policy allows ingress traffic to the repo server from the application controller, server, notifications controller, applicationset controller, and any namespace.
+// Referenced from https://github.com/argoproj/argo-cd/blob/master/manifests/base/repo-server/argocd-repo-server-network-policy.yaml
 func (r *ReconcileArgoCD) ReconcileArgoCDRepoServerNetworkPolicy(cr *argoproj.ArgoCD) error {
-	desired := &networkingv1.NetworkPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDRepoServerNetworkPolicy),
-			Namespace: cr.Namespace,
+
+	desired := returnNetworkPolicyHeaders(cr, ArgoCDRepoServerNetworkPolicy, "repo-server")
+	desired.Spec = networkingv1.NetworkPolicySpec{
+		PodSelector: metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				"app.kubernetes.io/name": nameWithSuffix("repo-server", cr),
+			},
 		},
-		Spec: networkingv1.NetworkPolicySpec{
-			PodSelector: metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app.kubernetes.io/name": nameWithSuffix("repo-server", cr),
-				},
-			},
-			PolicyTypes: []networkingv1.PolicyType{
-				networkingv1.PolicyTypeIngress,
-			},
-			Ingress: []networkingv1.NetworkPolicyIngressRule{
-				{
-					From: []networkingv1.NetworkPolicyPeer{
-						{
-							PodSelector: &metav1.LabelSelector{
-								MatchLabels: map[string]string{
-									"app.kubernetes.io/name": nameWithSuffix("application-controller", cr),
-								},
-							},
-						},
-						{
-							PodSelector: &metav1.LabelSelector{
-								MatchLabels: map[string]string{
-									"app.kubernetes.io/name": nameWithSuffix("server", cr),
-								},
-							},
-						},
-						{
-							PodSelector: &metav1.LabelSelector{
-								MatchLabels: map[string]string{
-									"app.kubernetes.io/name": nameWithSuffix("notifications-controller", cr),
-								},
-							},
-						},
-						{
-							PodSelector: &metav1.LabelSelector{
-								MatchLabels: map[string]string{
-									"app.kubernetes.io/name": nameWithSuffix("applicationset-controller", cr),
-								},
+		PolicyTypes: []networkingv1.PolicyType{
+			networkingv1.PolicyTypeIngress,
+		},
+		Ingress: []networkingv1.NetworkPolicyIngressRule{
+			{
+				From: []networkingv1.NetworkPolicyPeer{
+					{
+						PodSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"app.kubernetes.io/name": nameWithSuffix("application-controller", cr),
 							},
 						},
 					},
-					Ports: []networkingv1.NetworkPolicyPort{
-						{
-							Protocol: TCPProtocol,
-							Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 8081},
+					{
+						PodSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"app.kubernetes.io/name": nameWithSuffix("server", cr),
+							},
+						},
+					},
+					{
+						PodSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"app.kubernetes.io/name": nameWithSuffix("notifications-controller", cr),
+							},
+						},
+					},
+					{
+						PodSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"app.kubernetes.io/name": nameWithSuffix("applicationset-controller", cr),
+							},
 						},
 					},
 				},
-				{
-					From: []networkingv1.NetworkPolicyPeer{
-						{
-							NamespaceSelector: &metav1.LabelSelector{},
-						},
+				Ports: []networkingv1.NetworkPolicyPort{
+					{
+						Protocol: TCPProtocol,
+						Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 8081},
 					},
-					Ports: []networkingv1.NetworkPolicyPort{
-						{
-							Protocol: TCPProtocol,
-							Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 8084},
-						},
+				},
+			},
+			{
+				From: []networkingv1.NetworkPolicyPeer{
+					{
+						NamespaceSelector: &metav1.LabelSelector{},
+					},
+				},
+				Ports: []networkingv1.NetworkPolicyPort{
+					{
+						Protocol: TCPProtocol,
+						Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 8084},
 					},
 				},
 			},
@@ -1020,8 +1005,8 @@ func (r *ReconcileArgoCD) ReconcileArgoCDRepoServerNetworkPolicy(cr *argoproj.Ar
 		if modified {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			if err := r.Update(context.TODO(), existing); err != nil {
-				log.Error(err, "Failed to update repo server network policy")
-				return fmt.Errorf("failed to update repo server network policy. error: %w", err)
+				log.Error(err, "Failed to update %s network policy in namespace %s", existing.Name, cr.Namespace)
+				return fmt.Errorf("failed to update %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 			}
 		}
 		return nil
@@ -1034,9 +1019,19 @@ func (r *ReconcileArgoCD) ReconcileArgoCDRepoServerNetworkPolicy(cr *argoproj.Ar
 
 	argoutil.LogResourceCreation(log, desired)
 	if err := r.Create(context.TODO(), desired); err != nil {
-		log.Error(err, "Failed to create repo server network policy")
-		return fmt.Errorf("failed to create repo server network policy. error: %w", err)
+		log.Error(err, "Failed to create %s network policy in namespace %s", existing.Name, cr.Namespace)
+		return fmt.Errorf("failed to create %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 	}
 
 	return nil
+}
+
+func returnNetworkPolicyHeaders(cr *argoproj.ArgoCD, NetworkPolicyName string, name string) *networkingv1.NetworkPolicy {
+	return &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", cr.Name, NetworkPolicyName),
+			Namespace: cr.Namespace,
+			Labels:    argoutil.LabelsForCluster(cr),
+		},
+	}
 }
