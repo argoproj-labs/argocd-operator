@@ -13,7 +13,7 @@ Instance workload monitoring can be enabled by setting `.spec.monitoring.enabled
 For example:
 
 ```
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd
@@ -63,7 +63,7 @@ Instance workload monitoring can be disabled by setting `.spec.monitoring.enable
 For example:
 
 ```
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd
