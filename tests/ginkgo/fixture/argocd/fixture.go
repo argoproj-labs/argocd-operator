@@ -15,10 +15,8 @@ import (
 	k8sFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/k8s"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 
-	//lint:ignore ST1001 "This is a common practice in Gomega tests for readability."
-	. "github.com/onsi/ginkgo/v2" //nolint:all
-	//lint:ignore ST1001 "This is a common practice in Gomega tests for readability."
-	. "github.com/onsi/gomega" //nolint:all
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 
 	argocdclient "github.com/argoproj/argo-cd/v3/pkg/apiclient"
 	sessionpkg "github.com/argoproj/argo-cd/v3/pkg/apiclient/session"

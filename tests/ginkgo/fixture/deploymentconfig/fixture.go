@@ -3,11 +3,9 @@ package deploymentconfig
 import (
 	"context"
 
-	//lint:ignore ST1001 "This is a common practice in Gomega tests for readability."
-	. "github.com/onsi/ginkgo/v2" //nolint:all
+	. "github.com/onsi/ginkgo/v2"
 
-	//lint:ignore ST1001 "This is a common practice in Gomega tests for readability."
-	. "github.com/onsi/gomega" //nolint:all
+	. "github.com/onsi/gomega"
 
 	matcher "github.com/onsi/gomega/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
