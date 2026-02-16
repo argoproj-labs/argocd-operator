@@ -760,9 +760,14 @@ func (r *ReconcileArgoCD) reconcileRedisInitialPasswordSecret(cr *argoproj.ArgoC
 		return err
 	}
 
+	pw := strings.TrimRight(string(redisInitialPassword), "\n")
+	usersACL := fmt.Sprintf(`user default on >%s ~* +@all`, pw)
+
 	secret.Data = map[string][]byte{
 		"immutable":                   []byte("true"),
 		common.ArgoCDKeyAdminPassword: redisInitialPassword,
+		// Provide ACL file content so redis-server can use file-based ACLs
+		"users.acl": []byte(usersACL),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, secret, r.Scheme); err != nil {
