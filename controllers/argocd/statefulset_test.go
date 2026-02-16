@@ -97,6 +97,10 @@ func controllerDefaultVolumes() []corev1.Volume {
 							Key:  "admin.password",
 							Path: "auth",
 						},
+						{
+							Key:  "users.acl",
+							Path: "users.acl",
+						},
 					},
 				},
 			},

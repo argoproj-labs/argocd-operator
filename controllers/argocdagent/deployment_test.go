@@ -430,9 +430,11 @@ func TestReconcilePrincipalDeployment_VerifyDeploymentSpec(t *testing.T) {
 	assert.NotNil(t, redisAuthVolume.Secret)
 	assert.Equal(t, "argocd-redis-initial-password", redisAuthVolume.Secret.SecretName)
 	assert.NotEqual(t, ptr.To(true), redisAuthVolume.Secret.Optional)
-	assert.Len(t, redisAuthVolume.Secret.Items, 1)
+	assert.Len(t, redisAuthVolume.Secret.Items, 2)
 	assert.Equal(t, "admin.password", redisAuthVolume.VolumeSource.Secret.Items[0].Key)
 	assert.Equal(t, "auth", redisAuthVolume.VolumeSource.Secret.Items[0].Path)
+	assert.Equal(t, "users.acl", redisAuthVolume.VolumeSource.Secret.Items[1].Key)
+	assert.Equal(t, "users.acl", redisAuthVolume.VolumeSource.Secret.Items[1].Path)
 }
 
 func TestReconcilePrincipalDeployment_CustomImage(t *testing.T) {

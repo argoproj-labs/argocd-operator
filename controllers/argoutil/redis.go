@@ -24,12 +24,17 @@ func MountRedisAuthToArgo(cr *argoproj.ArgoCD) (volume corev1.Volume, mount core
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
 				SecretName: GetSecretNameWithSuffix(cr, "redis-initial-password"),
-				// Mapping the legacy key-name, the operator customers can depend on, to the expected file name for argo-cd
-				// Ref.: https://argo-cd.readthedocs.io/en/latest/faq/#using-file-based-redis-credentials-via-redis_creds_dir_path
 				Items: []corev1.KeyToPath{
 					{
+						// Mapping the legacy key-name, the operator customers can depend on, to the expected file name for argo-cd
+						// Ref.: https://argo-cd.readthedocs.io/en/latest/faq/#using-file-based-redis-credentials-via-redis_creds_dir_path
 						Key:  "admin.password",
 						Path: "auth",
+					},
+					{
+						// ACL file used by redis-server
+						Key:  "users.acl",
+						Path: "users.acl",
 					},
 				},
 			},

@@ -1999,6 +1999,7 @@ func TestReconcileArgoCD_reconcileRedisDeploymentWithoutTLS(t *testing.T) {
 		"--save",
 		"",
 		"--appendonly", "no",
+		"--aclfile", "/app/config/redis-auth/users.acl",
 	}
 
 	assert.NoError(t, r.reconcileRedisDeployment(cr, false))
@@ -2023,6 +2024,7 @@ func TestReconcileArgoCD_reconcileRedisDeploymentWithTLS(t *testing.T) {
 	want := []string{
 		"--save", "",
 		"--appendonly", "no",
+		"--aclfile", "/app/config/redis-auth/users.acl",
 		"--tls-port", "6379",
 		"--port", "0",
 		"--tls-cert-file", "/app/config/redis/tls/tls.crt",
@@ -2377,6 +2379,10 @@ func repoServerDefaultVolumes() []corev1.Volume {
 							Key:  "admin.password",
 							Path: "auth",
 						},
+						{
+							Key:  "users.acl",
+							Path: "users.acl",
+						},
 					},
 				},
 			},
@@ -2485,6 +2491,10 @@ func serverDefaultVolumes() []corev1.Volume {
 						{
 							Key:  "admin.password",
 							Path: "auth",
+						},
+						{
+							Key:  "users.acl",
+							Path: "users.acl",
 						},
 					},
 				},
