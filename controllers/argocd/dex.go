@@ -120,9 +120,7 @@ func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *ar
 		if err != nil {
 			return err
 		}
-		if cfg != "" {
-			desired = cfg
-		}
+		desired = cfg
 	}
 
 	if actual != desired {
