@@ -417,8 +417,7 @@ func getArgoControllerParellismLimit(cr *argoproj.ArgoCD) int32 {
 // The CR name is truncated first, then the full suffix is appended to preserve suffix readability.
 // Example: Given a long ArgoCD name, this ensures suffixes like "redis-initial-password" remain intact.
 func nameWithSuffix(suffix string, cr *argoproj.ArgoCD) string {
-	truncatedCRName := argoutil.GetTruncatedCRName(cr)
-	return fmt.Sprintf("%s-%s", truncatedCRName, suffix)
+	return argoutil.NameWithSuffix(cr.ObjectMeta, suffix)
 }
 
 // InspectCluster will verify the availability of extra features available to the cluster, such as Prometheus and

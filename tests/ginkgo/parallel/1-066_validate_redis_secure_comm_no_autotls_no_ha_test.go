@@ -21,9 +21,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 
@@ -206,7 +207,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				)
 				Expect(err).ToNot(HaveOccurred(), "Output: "+logOutput)
 				Expect(logOutput).To(ContainSubstring(expectedMsg))
-				// Some logs how redis disconnect manifests
+				// This is how redis disconnect manifests
 				Expect(logOutput).ToNot(ContainSubstring("manifest cache error"))
 				Expect(logOutput).ToNot(ContainSubstring("WRONGPASS"))
 			}
