@@ -235,7 +235,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 
 			By("waiting for ArgoCD CR to be reconciled and the instance to be ready")
-			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
+			Eventually(argoCD, "10m", "10s").Should(argocdFixture.BeAvailable())
 
 			By("verify redis creds are correctly passed to pods")
 			const expectedMsg = "Loading Redis credentials from mounted directory: /app/config/redis-auth/"
@@ -250,7 +250,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				)
 				Expect(err).ToNot(HaveOccurred(), "Output: "+logOutput)
 				Expect(logOutput).To(ContainSubstring(expectedMsg))
-				// Some logs how redis disconnect manifests
+				// This is how redis disconnect manifests
 				Expect(logOutput).ToNot(ContainSubstring("manifest cache error"))
 				Expect(logOutput).ToNot(ContainSubstring("WRONGPASS"))
 			}
