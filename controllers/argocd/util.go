@@ -1704,7 +1704,6 @@ func insertOrUpdateConditionsInSlice(newCondition metav1.Condition, existingCond
 	}
 
 	now := metav1.Now()
-
 	changed := false
 
 	if index == -1 {
@@ -1722,13 +1721,35 @@ func insertOrUpdateConditionsInSlice(newCondition metav1.Condition, existingCond
 	}
 
 	return changed, existingConditions
+}
 
+func removeCondition(conditions *[]metav1.Condition, conditionType string) {
+	if conditions == nil {
+		return
+	}
+
+	newConditions := (*conditions)[:0]
+	for _, c := range *conditions {
+		if c.Type != conditionType {
+			newConditions = append(newConditions, c)
+		}
+	}
+
+	*conditions = newConditions
 }
 
 // createCondition returns Condition based on input provided.
 // 1. Returns Success condition if no error message is provided, all fields are default.
 // 2. If Message is provided, it returns Failed condition having all default fields except Message.
 func createCondition(message string) metav1.Condition {
+	if message == argoproj.OpenShiftOAuthErrorMessage {
+		return metav1.Condition{
+			Type:    argoproj.ArgoCDConditionConfigurationError,
+			Reason:  argoproj.ArgoCDConditionReasonSSOError,
+			Message: message,
+			Status:  metav1.ConditionTrue,
+		}
+	}
 	if message == "" {
 		return metav1.Condition{
 			Type:    argoproj.ArgoCDConditionType,
@@ -1737,7 +1758,6 @@ func createCondition(message string) metav1.Condition {
 			Status:  metav1.ConditionTrue,
 		}
 	}
-
 	return metav1.Condition{
 		Type:    argoproj.ArgoCDConditionType,
 		Reason:  argoproj.ArgoCDConditionReasonErrorOccurred,

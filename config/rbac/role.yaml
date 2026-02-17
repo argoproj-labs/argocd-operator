@@ -108,6 +108,7 @@ rules:
 - apiGroups:
   - config.openshift.io
   resources:
+  - authentications
   - clusterversions
   verbs:
   - get
