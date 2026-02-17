@@ -23,7 +23,7 @@ import (
 
 const (
 	DefaultImageUpdaterImage      = "quay.io/argoprojlabs/argocd-image-updater"
-	DefaultImageUpdaterTag        = "latest"
+	DefaultImageUpdaterTag        = "v1.0.3"
 	ArgocdImageUpdaterConfigCM    = "argocd-image-updater-config"
 	ArgocdImageUpdaterSSHConfigCM = "argocd-image-updater-ssh-config"
 	ArgocdImageUpdaterSecret      = "argocd-image-updater-secret" // #nosec G101
