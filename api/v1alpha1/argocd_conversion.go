@@ -177,7 +177,6 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.AggregatedClusterRoles = src.Spec.AggregatedClusterRoles
 	dst.Spec.ArgoCDAgent = ConvertBetaToAlphaArgoCDAgent(src.Spec.ArgoCDAgent)
 	dst.Spec.NamespaceManagement = ConvertBetaToAlphaNamespaceManagement(src.Spec.NamespaceManagement)
-	dst.Spec.NetworkPolicy = ArgoCDNetworkPolicySpec(src.Spec.NetworkPolicy)
 
 	// Status conversion
 	dst.Status = ArgoCDStatus(src.Status)
