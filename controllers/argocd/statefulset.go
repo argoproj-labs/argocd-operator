@@ -461,11 +461,11 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				changed = true
 			}
 			if existing.Spec.Template.Spec.Containers[i].ImagePullPolicy != ss.Spec.Template.Spec.Containers[i].ImagePullPolicy {
-				existing.Spec.Template.Spec.Containers[0].ImagePullPolicy = ss.Spec.Template.Spec.Containers[i].ImagePullPolicy
+				existing.Spec.Template.Spec.Containers[i].ImagePullPolicy = ss.Spec.Template.Spec.Containers[i].ImagePullPolicy
 				if changed {
 					explanation += ", "
 				}
-				explanation += "image pull policy"
+				explanation += fmt.Sprintf("container '%s' ImagePullPolicy", container.Name)
 				changed = true
 			}
 
