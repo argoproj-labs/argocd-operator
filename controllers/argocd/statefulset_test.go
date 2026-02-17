@@ -1047,7 +1047,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_ModifyContainerSpec(t *testin
 	}
 	assert.False(t, envVarFound, "NEW_ENV_VAR should not be present")
 
-	// Modify the container  volume and volume mount
+	// Modify the container volume and volume mount
 	s.Spec.Template.Spec.Containers[0].VolumeMounts = append(s.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
 		Name:      "new-volume",
 		MountPath: "/new/path",
@@ -1080,6 +1080,18 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_ModifyContainerSpec(t *testin
 		}
 	}
 	assert.False(t, volumeFound, "new-volume should not be present in volumes")
+
+	// Modify the container imagePullPolicy
+	s.Spec.Template.Spec.Containers[0].ImagePullPolicy = corev1.PullNever
+	s.Spec.Template.Spec.Containers[1].ImagePullPolicy = corev1.PullAlways
+
+	assert.NoError(t, r.Update(context.TODO(), s))
+	// Reconcile again and check
+	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
+
+	assert.Equal(t, corev1.PullIfNotPresent, s.Spec.Template.Spec.Containers[0].ImagePullPolicy)
+	assert.Equal(t, corev1.PullIfNotPresent, s.Spec.Template.Spec.Containers[1].ImagePullPolicy)
 }
 
 func TestStatefulSetWithLongName(t *testing.T) {
