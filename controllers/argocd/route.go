@@ -116,7 +116,9 @@ func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 	return nil
 }
 
-// reconcilePrometheusRoute will ensure that the ArgoCD Prometheus Route is present.
+// reconcilePrometheusRoute will ensure that the Prometheus Route is deleted.
+// The Prometheus Route is deprecated and no longer created by the operator.
+// If it exists, it will be deleted.
 func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoproj.ArgoCD) error {
 	route := newRouteWithSuffix("prometheus", cr)
 	rExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
@@ -124,68 +126,12 @@ func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoproj.ArgoCD) error {
 		return err
 	}
 	if rExists {
-		if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Route.Enabled {
-			// Route exists but enabled flag has been set to false, delete the Route
-			var explanation string
-			if !cr.Spec.Prometheus.Enabled {
-				explanation = "prometheus is disabled"
-			} else {
-				explanation = "prometheus route is disabled"
-			}
-			argoutil.LogResourceDeletion(log, route, explanation)
-			return r.Delete(context.TODO(), route)
-		}
-		return nil // Route found, do nothing
+		// Prometheus Route is deprecated, delete it if it exists
+		argoutil.LogResourceDeletion(log, route, "prometheus route is deprecated and no longer supported")
+		return r.Delete(context.TODO(), route)
 	}
 
-	if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Route.Enabled {
-		return nil // Prometheus itself or Route not enabled, do nothing.
-	}
-
-	// Allow override of the Annotations for the Route.
-	if len(cr.Spec.Prometheus.Route.Annotations) > 0 {
-		route.Annotations = cr.Spec.Prometheus.Route.Annotations
-	}
-
-	// Allow override of the Labels for the Route.
-	if len(cr.Spec.Prometheus.Route.Labels) > 0 {
-		labels := route.Labels
-		for key, val := range cr.Spec.Prometheus.Route.Labels {
-			labels[key] = val
-		}
-		route.Labels = labels
-	}
-
-	// Allow override of the Host for the Route.
-	if len(cr.Spec.Prometheus.Host) > 0 {
-		route.Spec.Host = cr.Spec.Prometheus.Host // TODO: What additional role needed for this?
-	}
-
-	route.Spec.Port = &routev1.RoutePort{
-		TargetPort: intstr.FromString("web"),
-	}
-
-	// Allow override of TLS options for the Route
-	if cr.Spec.Prometheus.Route.TLS != nil {
-		err := r.overrideRouteTLS(cr.Spec.Prometheus.Route.TLS, route, cr)
-		if err != nil {
-			return err
-		}
-	}
-
-	route.Spec.To.Kind = "Service"
-	route.Spec.To.Name = "prometheus-operated"
-
-	// Allow override of the WildcardPolicy for the Route
-	if cr.Spec.Prometheus.Route.WildcardPolicy != nil && len(*cr.Spec.Prometheus.Route.WildcardPolicy) > 0 {
-		route.Spec.WildcardPolicy = *cr.Spec.Prometheus.Route.WildcardPolicy
-	}
-
-	if err := controllerutil.SetControllerReference(cr, route, r.Scheme); err != nil {
-		return err
-	}
-	argoutil.LogResourceCreation(log, route)
-	return r.Create(context.TODO(), route)
+	return nil // Prometheus Route does not exist, nothing to do
 }
 
 // reconcileServerRoute will ensure that the ArgoCD Server Route is present.

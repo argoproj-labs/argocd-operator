@@ -160,6 +160,34 @@ install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~
 	## causing failures as we don't set up the webhook for local testing.
 	$(KUSTOMIZE) build config/crd | sed '/conversion:/,/- v1beta1/d' |kubectl apply --server-side=true -f -
 
+list-crds: ## List all CRDs in the cluster
+	@echo "=== Installed CRDs ==="
+	@kubectl get crds --sort-by=.metadata.name
+	@echo ""
+	@echo "=== ArgoCD Operator CRDs ==="
+	@kubectl get crds | grep argoproj.io || echo "None found"
+	@echo ""
+	@echo "=== Prometheus Operator CRDs ==="
+	@kubectl get crds | grep monitoring.coreos.com || echo "None found"
+	@echo ""
+	@echo "=== OpenShift Route CRDs ==="
+	@kubectl get crds | grep route.openshift.io || echo "None found"
+
+PROMETHEUS_OPERATOR_VERSION ?= v0.73.2
+install-prometheus-crds: ## Install Prometheus Operator CRDs if not already installed
+	@echo "Checking for Prometheus Operator CRDs..."
+	@if kubectl get crd prometheuses.monitoring.coreos.com >/dev/null 2>&1 && \
+	   kubectl get crd servicemonitors.monitoring.coreos.com >/dev/null 2>&1 && \
+	   kubectl get crd prometheusrules.monitoring.coreos.com >/dev/null 2>&1; then \
+		echo "All Prometheus Operator CRDs already installed, skipping installation"; \
+	else \
+		echo "Installing Prometheus Operator CRDs $(PROMETHEUS_OPERATOR_VERSION)..."; \
+		kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/$(PROMETHEUS_OPERATOR_VERSION)/example/prometheus-operator-crd/monitoring.coreos.com_prometheuses.yaml; \
+		kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/$(PROMETHEUS_OPERATOR_VERSION)/example/prometheus-operator-crd/monitoring.coreos.com_servicemonitors.yaml; \
+		kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/$(PROMETHEUS_OPERATOR_VERSION)/example/prometheus-operator-crd/monitoring.coreos.com_prometheusrules.yaml; \
+		echo "Prometheus Operator CRDs installed successfully"; \
+	fi
+
 uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/crd | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
@@ -176,7 +204,7 @@ e2e: ## Run operator e2e tests
 	kubectl kuttl test ./tests/k8s --config ./tests/kuttl-tests.yaml
 
 
-start-e2e:
+start-e2e: install-prometheus-crds ## Start operator for E2E tests (installs required CRDs if needed)
 	ARGOCD_CLUSTER_CONFIG_NAMESPACES="argocd-e2e-cluster-config, argocd-test-impersonation-1-046, argocd-agent-principal-1-051, argocd-agent-agent-1-052, appset-argocd, appset-old-ns, appset-new-ns, appset-argocd-clusterrole, ns-hosting-principal, ns-hosting-managed-agent, ns-hosting-autonomous-agent" make run
 
 all: test install run e2e ## UnitTest, Run the operator locally and execute e2e tests.

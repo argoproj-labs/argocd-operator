@@ -1,10 +1,10 @@
 # Insights
 
-The Argo CD Operator aggregates, visualizes and exposes the metrics exported by Argo CD using Prometheus.
+The Argo CD Operator exposes the metrics exported by Argo CD components to be consumed by Prometheus.
 
 ## Overview
 
-Argo CD exports many metrics that can be used to monitor and provide insights into the state and health of the cluster. The operator makes use of the Prometheus Operator to provision a Prometheus instance for storing the metrics from both Argo CD and the operator itself.
+Argo CD exports many metrics that can be used to monitor and provide insights into the state and health of the cluster. The operator creates ServiceMonitors and PrometheusRules to make these metrics available to Prometheus for scraping.
 
 ## Cluster
 
@@ -62,7 +62,7 @@ prometheus-operator-7f6dfb7686-wb9h2  1/1     Running   0          9m4s
 
 ## Example
 
-The following example shows how to enable Prometheus to provide operator insights. This example also enables Ingress for accessing the cluster resources.
+The following example shows how to enable metrics exposure for Argo CD components. When enabled, the operator will create ServiceMonitors and PrometheusRules that allow your Prometheus instance to scrape metrics from Argo CD.
 
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
@@ -82,25 +82,35 @@ spec:
 
 With the Prometheus Operator running in the namespace, create the Argo CD cluster using the example above and verify that the cluster is running.
 
-``` Bash
+``` bash
 kubectl get pods -n argocd
 ```
 
-Look for the Prometheus Pods.
+You should see the Argo CD component pods:
 
 ``` bash
 NAME                                                    READY   STATUS    RESTARTS   AGE
-argocd-operator-5fc46479bd-pp9b2                        1/1     Running   0          15h
 example-argocd-application-controller-6c9c8fc6c-27lvv   1/1     Running   0          15h
 example-argocd-dex-server-94477bc6f-lzn8m               1/1     Running   0          15h
 example-argocd-redis-756b6764-4r2q4                     1/1     Running   0          15h
 example-argocd-repo-server-5ddfd76c48-xmwdt             1/1     Running   0          15h
 example-argocd-server-65dbd7c68b-kbjgr                  1/1     Running   0          15h
-prometheus-example-argocd-0                             3/3     Running   1          14m
-prometheus-operator-7f6dfb7686-wb9h2                    1/1     Running   0          14m
 ```
 
-Prometheus can be accessed via Ingress resources.
+Verify that the ServiceMonitors are created for metrics collection:
+
+``` bash
+kubectl get servicemonitors -n argocd
+```
+
+``` bash
+NAME                                    AGE
+example-argocd-metrics                  15h
+example-argocd-repo-server-metrics      15h
+example-argocd-server-metrics           15h
+```
+
+If Ingress was enabled, you can access the Argo CD resources via Ingress.
 
 ``` bash
 kubectl get ing -n argocd
@@ -109,10 +119,9 @@ kubectl get ing -n argocd
 This example shows the default hostnames that are configured for the resources.
 
 ``` bash
-NAME                        CLASS    HOSTS                       ADDRESS         PORTS     AGE
-example-argocd              <none>   example-argocd              192.168.39.68   80, 443   15h
-example-argocd-grpc         <none>   example-argocd-grpc         192.168.39.68   80, 443   15h
-example-argocd-prometheus   <none>   example-argocd-prometheus   192.168.39.68   80, 443   15h
+NAME                  CLASS    HOSTS                 ADDRESS         PORTS     AGE
+example-argocd        <none>   example-argocd        192.168.39.68   80, 443   15h
+example-argocd-grpc   <none>   example-argocd-grpc   192.168.39.68   80, 443   15h
 ```
 
 For OpenShift clusters, Routes will be created when route is enabled as shown in the below example.
@@ -125,12 +134,8 @@ metadata:
   labels:
     example: insights
 spec:
-    route:
-      enabled: true
   prometheus:
     enabled: true
-    route:
-      enabled: true
   server:
     insecure: true
     route:
