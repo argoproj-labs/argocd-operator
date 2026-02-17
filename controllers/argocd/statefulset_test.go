@@ -741,23 +741,12 @@ func Test_UpdateNodePlacementStateful(t *testing.T) {
 			},
 		},
 	}
-	expectedChange := false
-	actualChange := false
-	explanation := ""
-	updateNodePlacementStateful(ss, ss, &actualChange, &explanation)
-	if actualChange != expectedChange {
-		t.Fatalf("updateNodePlacementStateful failed, value of changed: %t", actualChange)
-	}
-	if explanation != "" {
-		t.Fatalf("updateNodePlacementStateful returned unexpected explanation: '%s'", explanation)
-	}
-	updateNodePlacementStateful(ss, ss2, &actualChange, &explanation)
-	if actualChange == expectedChange {
-		t.Fatalf("updateNodePlacementStateful failed, value of changed: %t", actualChange)
-	}
-	if explanation != "node selector, tolerations" {
-		t.Fatalf("updateNodePlacementStateful returned unexpected explanation: '%s'", explanation)
-	}
+
+	actualChanges := updateNodePlacementStateful(ss, ss)
+	assert.Empty(t, actualChanges, "updateNodePlacementStateful returned unexpected changes")
+
+	actualChanges = updateNodePlacementStateful(ss, ss2)
+	assert.Equal(t, []string{"node selector", "tolerations"}, actualChanges, "updateNodePlacementStateful returned unexpected changes")
 }
 
 func Test_ContainsInvalidImage(t *testing.T) {

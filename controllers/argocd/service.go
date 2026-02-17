@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -505,8 +506,7 @@ func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
 		return err
 	}
 	if svcExists {
-		changed := false
-		explanation := ""
+		var changes []string
 		if !cr.Spec.Server.IsEnabled() {
 			argoutil.LogResourceDeletion(log, svc, "argocd server is disabled")
 			return r.Delete(context.TODO(), svc)
@@ -516,19 +516,14 @@ func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
 			return err
 		}
 		if update {
-			explanation = "auto tls annotation"
-			changed = true
+			changes = append(changes, "auto tls annotation")
 		}
 		if !reflect.DeepEqual(svc.Spec.Type, existingSVC.Spec.Type) {
 			existingSVC.Spec.Type = svc.Spec.Type
-			if changed {
-				explanation += ", "
-			}
-			explanation += "service type"
-			changed = true
+			changes = append(changes, "service type")
 		}
-		if changed {
-			argoutil.LogResourceUpdate(log, existingSVC, "updating", explanation)
+		if len(changes) > 0 {
+			argoutil.LogResourceUpdate(log, existingSVC, "updating", strings.Join(changes, ", "))
 			return r.Update(context.TODO(), existingSVC)
 		}
 		return nil

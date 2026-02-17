@@ -176,7 +176,6 @@ func TestReconcileArgoCD_reconcile_ServerDeployment_replicas(t *testing.T) {
 			}, deployment)
 			assert.NoError(t, err)
 			assert.Equal(t, test.wantFinalReplicas, deployment.Spec.Replicas)
-
 		})
 	}
 }
@@ -2255,24 +2254,12 @@ func Test_UpdateNodePlacement(t *testing.T) {
 			},
 		},
 	}
-	expectedChange := false
-	actualChange := false
-	explanation := ""
-	updateNodePlacement(deployment, deployment, &actualChange, &explanation)
-	if actualChange != expectedChange {
-		t.Fatalf("updateNodePlacement failed, value of changed: %t", actualChange)
-	}
-	if explanation != "" {
-		t.Fatalf("updateNodePlacement returned unexpected explanation: '%s'", explanation)
-	}
 
-	updateNodePlacement(deployment, deployment2, &actualChange, &explanation)
-	if actualChange == expectedChange {
-		t.Fatalf("updateNodePlacement failed, value of changed: %t", actualChange)
-	}
-	if explanation != "node selector, tolerations" {
-		t.Fatalf("updateNodePlacement returned unexpected explanation: '%s'", explanation)
-	}
+	actualChanges := updateNodePlacement(deployment, deployment)
+	assert.Empty(t, actualChanges, "updateNodePlacement returned unexpected changes")
+
+	actualChanges = updateNodePlacement(deployment, deployment2)
+	assert.Equal(t, []string{"node selector", "tolerations"}, actualChanges, "updateNodePlacement returned unexpected changes")
 }
 
 func assertDeploymentHasProxyVars(t *testing.T, c client.Client, name string) {
