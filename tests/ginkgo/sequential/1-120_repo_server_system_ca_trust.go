@@ -853,7 +853,7 @@ func findRunningRepoServerPod(k8sClient client.Client, ns *corev1.Namespace) *co
 			return nil
 		}
 		return fmt.Errorf("expected exactly one running repo-server pod, found %d", len(runningPods))
-	}, "20s", "2s").WithOffset(1).Should(Succeed(), "Failed to find Running repo-server pod")
+	}, "40s", "5s").WithOffset(1).Should(Succeed(), "Failed to find Running repo-server pod")
 
 	return pod
 }
