@@ -333,8 +333,7 @@ func (r *ReconcileArgoCD) reconcileClusterSecrets(cr *argoproj.ArgoCD) error {
 
 // reconcileExistingArgoSecret will ensure that the Argo CD Secret is up to date.
 func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secret *corev1.Secret, clusterSecret *corev1.Secret, tlsSecret *corev1.Secret) error {
-	changed := false
-	explanation := ""
+	var changes []string
 
 	if secret.Data == nil {
 		secret.Data = make(map[string][]byte)
@@ -359,19 +358,14 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secre
 
 			secret.Data[common.ArgoCDKeyAdminPassword] = []byte(hashedPassword)
 			secret.Data[common.ArgoCDKeyAdminPasswordMTime] = nowBytes()
-			explanation = "argo admin password"
-			changed = true
+			changes = append(changes, "argo admin password")
 		}
 	}
 
 	if hasArgoTLSChanged(secret, tlsSecret) {
 		secret.Data[common.ArgoCDKeyTLSCert] = tlsSecret.Data[common.ArgoCDKeyTLSCert]
 		secret.Data[common.ArgoCDKeyTLSPrivateKey] = tlsSecret.Data[common.ArgoCDKeyTLSPrivateKey]
-		if changed {
-			explanation += ", "
-		}
-		explanation += "argo tls secret"
-		changed = true
+		changes = append(changes, "argo tls secret")
 	}
 
 	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeDex {
@@ -384,17 +378,13 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secre
 			expected := *dexOIDCClientSecret
 			if actual != expected {
 				secret.Data[common.ArgoCDDexSecretKey] = []byte(*dexOIDCClientSecret)
-				if changed {
-					explanation += ", "
-				}
-				explanation += "argo dex secret"
-				changed = true
+				changes = append(changes, "argo dex secret")
 			}
 		}
 	}
 
-	if changed {
-		argoutil.LogResourceUpdate(log, secret, "updating", explanation)
+	if len(changes) > 0 {
+		argoutil.LogResourceUpdate(log, secret, "updating", strings.Join(changes, ", "))
 		if err := r.Update(context.TODO(), secret); err != nil {
 			return err
 		}
