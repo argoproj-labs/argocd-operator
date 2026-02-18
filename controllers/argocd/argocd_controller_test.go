@@ -28,7 +28,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	v1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -547,7 +546,7 @@ func Test_restoreTrackingLabelsForOrphanedNamespaces(t *testing.T) {
 	}
 
 	// RBAC rules required for orphan validation
-	appScopedRules := []rbacv1.PolicyRule{
+	appScopedRules := []v1.PolicyRule{
 		{
 			APIGroups: []string{"argoproj.io"},
 			Resources: []string{"applicationsets"},
@@ -559,7 +558,7 @@ func Test_restoreTrackingLabelsForOrphanedNamespaces(t *testing.T) {
 	appsetRoleName := getResourceNameForApplicationSetSourceNamespaces(argocd)
 
 	// AppSet role in namespace that already has the label
-	appsetRoleInLabelledNS := &rbacv1.Role{
+	appsetRoleInLabelledNS := &v1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      appsetRoleName,
 			Namespace: nsWithAppsetLabel.Name,
@@ -572,7 +571,7 @@ func Test_restoreTrackingLabelsForOrphanedNamespaces(t *testing.T) {
 	}
 
 	// AppSet role in namespace missing the label (should trigger restore)
-	appsetRoleInUnlabelledNS := &rbacv1.Role{
+	appsetRoleInUnlabelledNS := &v1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      appsetRoleName,
 			Namespace: nsWithoutAppsetLabel.Name,
@@ -585,7 +584,7 @@ func Test_restoreTrackingLabelsForOrphanedNamespaces(t *testing.T) {
 	}
 
 	// AppSet role in namespace missing the label (should trigger restore) but having resources has *
-	appSetRoleInUnlabelledNSWithWildcard := &rbacv1.Role{
+	appSetRoleInUnlabelledNSWithWildcard := &v1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      appsetRoleName,
 			Namespace: nsWithoutAppsetLabelButWildcard.Name,
@@ -594,7 +593,7 @@ func Test_restoreTrackingLabelsForOrphanedNamespaces(t *testing.T) {
 				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
 			},
 		},
-		Rules: []rbacv1.PolicyRule{
+		Rules: []v1.PolicyRule{
 			{
 				APIGroups: []string{"argoproj.io"},
 				Resources: []string{"*"},
@@ -604,7 +603,7 @@ func Test_restoreTrackingLabelsForOrphanedNamespaces(t *testing.T) {
 	}
 
 	// Same role name but in ArgoCD namespace (must be ignored)
-	roleInArgoCDNS := &rbacv1.Role{
+	roleInArgoCDNS := &v1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      appsetRoleName,
 			Namespace: argocd.Namespace,
@@ -617,7 +616,7 @@ func Test_restoreTrackingLabelsForOrphanedNamespaces(t *testing.T) {
 	}
 
 	// Completely unrelated role (no rules, should be ignored)
-	randomRole := &rbacv1.Role{
+	randomRole := &v1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "random-role",
 			Namespace: nsRandom.Name,
