@@ -355,7 +355,7 @@ func TestApplicationSetControllerNetworkPolicy(t *testing.T) {
 	assert.NoError(t, err)
 
 	// podSelector: argocd-applicationset-controller
-	assert.Equal(t, nameWithSuffix("applicationset-controller", a), np.Spec.PodSelector.MatchLabels["app.kubernetes.io/name"])
+	assert.Equal(t, "argocd-applicationset-controller", np.Spec.PodSelector.MatchLabels["app.kubernetes.io/name"])
 	assert.Equal(t, networkingv1.PolicyTypeIngress, np.Spec.PolicyTypes[0])
 
 	// ingress: from any namespace on 7000 and 8080

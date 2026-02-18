@@ -254,7 +254,7 @@ func (r *ReconcileArgoCD) ReconcileApplicationSetControllerNetworkPolicy(cr *arg
 	desired.Spec = networkingv1.NetworkPolicySpec{
 		PodSelector: metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				"app.kubernetes.io/name": nameWithSuffix("applicationset-controller", cr),
+				"app.kubernetes.io/name": "argocd-applicationset-controller",
 			},
 		},
 		PolicyTypes: []networkingv1.PolicyType{

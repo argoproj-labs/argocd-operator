@@ -22,8 +22,10 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -83,11 +85,19 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 						Enabled: true,
 					},
 					ApplicationSet: &argov1beta1api.ArgoCDApplicationSet{
-						Enabled: func() *bool { v := true; return &v }(),
+						Enabled: ptr.To(true),
 					},
 					SSO: &argov1beta1api.ArgoCDSSOSpec{
 						Provider: argov1beta1api.SSOProviderTypeDex,
-						Dex:      &argov1beta1api.ArgoCDDexSpec{},
+						Dex: &argov1beta1api.ArgoCDDexSpec{
+							Config: "test-config",
+							Volumes: []corev1.Volume{
+								{Name: "empty-dir-volume", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{Name: "empty-dir-volume", MountPath: "/etc/test"},
+							},
+						},
 					},
 				},
 			}
@@ -197,11 +207,12 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("verifying applicationset-controller NetworkPolicy ports")
 			appSetNP := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: "example-argocd-applicationset-controller-network-policy", Namespace: nsObj.Name}}
+			expectedAppSetSelectorLabel := "argocd-applicationset-controller"
 			Eventually(func() bool {
 				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(appSetNP), appSetNP); err != nil {
 					return false
 				}
-				if appSetNP.Spec.PodSelector.MatchLabels[common.ArgoCDKeyName] != "argocd-applicationset-controller" {
+				if appSetNP.Spec.PodSelector.MatchLabels[common.ArgoCDKeyName] != expectedAppSetSelectorLabel {
 					return false
 				}
 				if len(appSetNP.Spec.Ingress) != 1 {
