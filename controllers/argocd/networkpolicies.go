@@ -128,7 +128,7 @@ func (r *ReconcileArgoCD) deleteArgoCDNetworkPolicies(cr *argoproj.ArgoCD) error
 // Referenced from https://github.com/argoproj/argo-cd/blob/master/manifests/base/dex/argocd-dex-server-network-policy.yaml
 func (r *ReconcileArgoCD) ReconcileDexServerNetworkPolicy(cr *argoproj.ArgoCD) error {
 
-	desired := returnNetworkPolicyHeaders(cr, ArgoCDDexServerNetworkPolicy, "dex-server")
+	desired := returnNetworkPolicyHeaders(cr, ArgoCDDexServerNetworkPolicy)
 	desired.Spec = networkingv1.NetworkPolicySpec{
 		PodSelector: metav1.LabelSelector{
 			MatchLabels: map[string]string{
@@ -250,7 +250,7 @@ func (r *ReconcileArgoCD) ReconcileDexServerNetworkPolicy(cr *argoproj.ArgoCD) e
 // Referenced from https://github.com/argoproj/argo-cd/blob/master/manifests/base/applicationset-controller/argocd-applicationset-controller-network-policy.yaml
 func (r *ReconcileArgoCD) ReconcileApplicationSetControllerNetworkPolicy(cr *argoproj.ArgoCD) error {
 
-	desired := returnNetworkPolicyHeaders(cr, ArgoCDApplicationSetControllerNetworkPolicy, "applicationset-controller")
+	desired := returnNetworkPolicyHeaders(cr, ArgoCDApplicationSetControllerNetworkPolicy)
 	desired.Spec = networkingv1.NetworkPolicySpec{
 		PodSelector: metav1.LabelSelector{
 			MatchLabels: map[string]string{
@@ -622,7 +622,7 @@ func (r *ReconcileArgoCD) ReconcileRedisHANetworkPolicy(cr *argoproj.ArgoCD) err
 // Referenced from https://github.com/argoproj/argo-cd/blob/master/manifests/base/notifications-controller/argocd-notifications-controller-network-policy.yaml
 func (r *ReconcileArgoCD) ReconcileNotificationsControllerNetworkPolicy(cr *argoproj.ArgoCD) error {
 
-	desired := returnNetworkPolicyHeaders(cr, ArgoCDNotificationsControllerNetworkPolicy, "notifications-controller")
+	desired := returnNetworkPolicyHeaders(cr, ArgoCDNotificationsControllerNetworkPolicy)
 	desired.Spec = networkingv1.NetworkPolicySpec{
 		PodSelector: metav1.LabelSelector{
 			MatchLabels: map[string]string{
@@ -722,7 +722,7 @@ func (r *ReconcileArgoCD) ReconcileNotificationsControllerNetworkPolicy(cr *argo
 // This network policy allows ingress traffic to the server from the application controller, repo server, notifications controller, applicationset controller, and any namespace.
 // Referenced from https://github.com/argoproj/argo-cd/blob/master/manifests/base/server/argocd-server-network-policy.yaml
 func (r *ReconcileArgoCD) ReconcileArgoCDServerNetworkPolicy(cr *argoproj.ArgoCD) error {
-	desired := returnNetworkPolicyHeaders(cr, ArgoCDServerNetworkPolicy, "server")
+	desired := returnNetworkPolicyHeaders(cr, ArgoCDServerNetworkPolicy)
 	desired.Spec = networkingv1.NetworkPolicySpec{
 		PodSelector: metav1.LabelSelector{
 			MatchLabels: map[string]string{
@@ -802,7 +802,7 @@ func (r *ReconcileArgoCD) ReconcileArgoCDServerNetworkPolicy(cr *argoproj.ArgoCD
 // This network policy allows ingress traffic to the application controller from any namespace.
 // Referenced from https://github.com/argoproj/argo-cd/blob/master/manifests/base/application-controller/argocd-application-controller-network-policy.yaml
 func (r *ReconcileArgoCD) ReconcileArgoCDApplicationControllerNetworkPolicy(cr *argoproj.ArgoCD) error {
-	desired := returnNetworkPolicyHeaders(cr, ArgoCDApplicationControllerNetworkPolicy, "application-controller")
+	desired := returnNetworkPolicyHeaders(cr, ArgoCDApplicationControllerNetworkPolicy)
 
 	desired.Spec = networkingv1.NetworkPolicySpec{
 		PodSelector: metav1.LabelSelector{
@@ -898,7 +898,7 @@ func (r *ReconcileArgoCD) ReconcileArgoCDApplicationControllerNetworkPolicy(cr *
 // Referenced from https://github.com/argoproj/argo-cd/blob/master/manifests/base/repo-server/argocd-repo-server-network-policy.yaml
 func (r *ReconcileArgoCD) ReconcileArgoCDRepoServerNetworkPolicy(cr *argoproj.ArgoCD) error {
 
-	desired := returnNetworkPolicyHeaders(cr, ArgoCDRepoServerNetworkPolicy, "repo-server")
+	desired := returnNetworkPolicyHeaders(cr, ArgoCDRepoServerNetworkPolicy)
 	desired.Spec = networkingv1.NetworkPolicySpec{
 		PodSelector: metav1.LabelSelector{
 			MatchLabels: map[string]string{
@@ -1035,7 +1035,7 @@ func (r *ReconcileArgoCD) ReconcileArgoCDRepoServerNetworkPolicy(cr *argoproj.Ar
 	return nil
 }
 
-func returnNetworkPolicyHeaders(cr *argoproj.ArgoCD, NetworkPolicyName string, name string) *networkingv1.NetworkPolicy {
+func returnNetworkPolicyHeaders(cr *argoproj.ArgoCD, NetworkPolicyName string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-%s", cr.Name, NetworkPolicyName),
