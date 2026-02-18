@@ -780,44 +780,27 @@ spec:
 
 ## Prometheus Options
 
-The following properties are available for configuring the Prometheus component.
+The following properties are available for configuring Prometheus metrics exposure for Argo CD.
 
 Name | Default | Description
 --- | --- | ---
-Enabled | false | Toggle Prometheus support globally for ArgoCD.
-Host | `example-argocd-prometheus` | The hostname to use for Ingress/Route resources.
-Ingress | `false` | Toggles Ingress for Prometheus.
-[Route](#prometheus-route-options) | [Object] | Route configuration options.
-Size | 1 | The replica count for the Prometheus StatefulSet.
+Enabled | false | When set to `true`, creates ServiceMonitors and PrometheusRules for scraping Argo CD metrics.
+Host | `example-argocd-prometheus` | **Deprecated**: This field is no longer used and will be ignored.
+Ingress | `false` | **Deprecated**: This field is no longer used and will be ignored.
+Route | [Object] | **Deprecated**: This field is no longer used and will be ignored.
+Size | 1 | **Deprecated**: This field is no longer used and will be ignored.
 
-### Prometheus Ingress Options
-
-The following properties are available for configuring the Prometheus Ingress.
-
-Name | Default | Description
---- | --- | ---
-Annotations | [Empty] | The map of annotations to use for the Ingress resource.
-Enabled | `false` | Toggle creation of an Ingress resource.
-IngressClassName | [Empty] | IngressClass to use for the Ingress resource.
-Path | `/` | Path to use for Ingress resources.
-TLS | [Empty] | TLS configuration for the Ingress.
-
-### Prometheus Route Options
-
-The following properties are available to configure the Route for the Prometheus component.
-
-Name | Default | Description
---- | --- | ---
-Annotations | [Empty] | The map of annotations to add to the Route.
-Enabled | `false` | Toggles the creation of a Route for the Prometheus component.
-Labels | [Empty] | The map of labels to add to the Route.
-Path | `/` | The path for the Route.
-TLS | [Object] | The TLSConfig for the Route.
-WildcardPolicy| `None` | The wildcard policy for the Route. Can be one of `Subdomain` or `None`.
+!!! note "Important Changes"
+    Starting with this version, the operator no longer creates Prometheus CR, Service, Route, or Ingress resources. When `.spec.prometheus.enabled` is set to `true`, the operator creates:
+    
+    - **ServiceMonitors**: For scraping metrics from Argo CD components (application-controller, repo-server, server)
+    - **PrometheusRules**: For alerting based on Argo CD workload status (when `.spec.monitoring.enabled` is also `true`)
+    
+    The `Host`, `Ingress`, `Route`, and `Size` fields are deprecated and no longer have any effect.
 
 ### Prometheus Example
 
-The following example shows all properties set to the default values.
+The following example shows how to enable metrics exposure:
 
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
@@ -825,16 +808,13 @@ kind: ArgoCD
 metadata:
   name: example-argocd
   labels:
-    example: insights
+    example: metrics
 spec:
   prometheus:
-    enabled: false
-    host: example-argocd-prometheus
-    ingress:
-      enabled: false
-    route: false
-    size: 1
+    enabled: true
 ```
+
+This will create ServiceMonitor resources that allow your existing Prometheus instance to discover and scrape metrics from Argo CD components.
 
 ## RBAC Options
 

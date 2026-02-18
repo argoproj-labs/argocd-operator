@@ -2233,15 +2233,20 @@ spec:
                   ArgoCD.
                 properties:
                   enabled:
-                    description: Enabled will toggle Prometheus support globally for
-                      ArgoCD.
+                    description: |-
+                      Enabled will toggle Prometheus support globally for ArgoCD.
+                      When set to true, ServiceMonitors and PrometheusRules will be created for Argo CD metrics.
+                      The Prometheus CR, Route, and Ingress are deprecated and will no longer be created.
                     type: boolean
                   host:
-                    description: Host is the hostname to use for Ingress/Route resources.
+                    description: |-
+                      Host is the hostname to use for Ingress/Route resources.
+                      Deprecated: This field is no longer used and will be ignored.
                     type: string
                   ingress:
-                    description: Ingress defines the desired state for an Ingress
-                      for the Prometheus component.
+                    description: |-
+                      Ingress defines the desired state for an Ingress for the Prometheus component.
+                      Deprecated: This field is no longer used and will be ignored.
                     properties:
                       annotations:
                         additionalProperties:
@@ -2293,8 +2298,9 @@ spec:
                     - enabled
                     type: object
                   route:
-                    description: Route defines the desired state for an OpenShift
-                      Route for the Prometheus component.
+                    description: |-
+                      Route defines the desired state for an OpenShift Route for the Prometheus component.
+                      Deprecated: This field is no longer used and will be ignored.
                     properties:
                       annotations:
                         additionalProperties:
@@ -2400,7 +2406,9 @@ spec:
                     - enabled
                     type: object
                   size:
-                    description: Size is the replica count for the Prometheus StatefulSet.
+                    description: |-
+                      Size is the replica count for the Prometheus StatefulSet.
+                      Deprecated: This field is no longer used and will be ignored.
                     format: int32
                     type: integer
                 required:
@@ -18326,15 +18334,20 @@ spec:
                   ArgoCD.
                 properties:
                   enabled:
-                    description: Enabled will toggle Prometheus support globally for
-                      ArgoCD.
+                    description: |-
+                      Enabled will toggle Prometheus support globally for ArgoCD.
+                      When set to true, ServiceMonitors and PrometheusRules will be created for Argo CD metrics.
+                      The Prometheus CR, Route, and Ingress are deprecated and will no longer be created.
                     type: boolean
                   host:
-                    description: Host is the hostname to use for Ingress/Route resources.
+                    description: |-
+                      Host is the hostname to use for Ingress/Route resources.
+                      Deprecated: This field is no longer used and will be ignored.
                     type: string
                   ingress:
-                    description: Ingress defines the desired state for an Ingress
-                      for the Prometheus component.
+                    description: |-
+                      Ingress defines the desired state for an Ingress for the Prometheus component.
+                      Deprecated: This field is no longer used and will be ignored.
                     properties:
                       annotations:
                         additionalProperties:
@@ -18386,8 +18399,9 @@ spec:
                     - enabled
                     type: object
                   route:
-                    description: Route defines the desired state for an OpenShift
-                      Route for the Prometheus component.
+                    description: |-
+                      Route defines the desired state for an OpenShift Route for the Prometheus component.
+                      Deprecated: This field is no longer used and will be ignored.
                     properties:
                       annotations:
                         additionalProperties:
@@ -18493,7 +18507,9 @@ spec:
                     - enabled
                     type: object
                   size:
-                    description: Size is the replica count for the Prometheus StatefulSet.
+                    description: |-
+                      Size is the replica count for the Prometheus StatefulSet.
+                      Deprecated: This field is no longer used and will be ignored.
                     format: int32
                     type: integer
                 required:
