@@ -935,6 +935,15 @@ func (r *ReconcileArgoCD) ReconcileArgoCDRepoServerNetworkPolicy(cr *argoproj.Ar
 					{
 						PodSelector: &metav1.LabelSelector{
 							MatchLabels: map[string]string{
+								// ApplicationSet controller uses a fixed label value (see setAppSetLabels)
+								"app.kubernetes.io/name": "argocd-applicationset-controller",
+							},
+						},
+					},
+					{
+						PodSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								// Backwards/forwards compatibility if label is changed to be instance-scoped
 								"app.kubernetes.io/name": nameWithSuffix("applicationset-controller", cr),
 							},
 						},

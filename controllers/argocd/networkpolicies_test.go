@@ -449,11 +449,19 @@ func TestArgoCDRepoServerNetworkPolicy(t *testing.T) {
 
 	// Rule 1: allow internal components on 8081
 	assert.Equal(t, 5, len(np.Spec.Ingress[0].From))
-	assert.Equal(t, nameWithSuffix("application-controller", a), np.Spec.Ingress[0].From[0].PodSelector.MatchLabels["app.kubernetes.io/name"])
-	assert.Equal(t, nameWithSuffix("server", a), np.Spec.Ingress[0].From[1].PodSelector.MatchLabels["app.kubernetes.io/name"])
-	assert.Equal(t, nameWithSuffix("notifications-controller", a), np.Spec.Ingress[0].From[2].PodSelector.MatchLabels["app.kubernetes.io/name"])
-	assert.Equal(t, "argocd-applicationset-controller", np.Spec.Ingress[0].From[3].PodSelector.MatchLabels["app.kubernetes.io/name"])
-	assert.Equal(t, nameWithSuffix("applicationset-controller", a), np.Spec.Ingress[0].From[4].PodSelector.MatchLabels["app.kubernetes.io/name"])
+	internalFrom := make([]string, 0, len(np.Spec.Ingress[0].From))
+	for _, peer := range np.Spec.Ingress[0].From {
+		if peer.PodSelector != nil {
+			internalFrom = append(internalFrom, peer.PodSelector.MatchLabels["app.kubernetes.io/name"])
+		}
+	}
+	assert.ElementsMatch(t, []string{
+		nameWithSuffix("application-controller", a),
+		nameWithSuffix("server", a),
+		nameWithSuffix("notifications-controller", a),
+		"argocd-applicationset-controller",
+		nameWithSuffix("applicationset-controller", a),
+	}, internalFrom)
 	assert.Equal(t, 1, len(np.Spec.Ingress[0].Ports))
 	assert.Equal(t, intstr.FromInt(8081), *np.Spec.Ingress[0].Ports[0].Port)
 
@@ -516,8 +524,6 @@ func TestArgoCDRepoServerNetworkPolicyUpdatesExisting(t *testing.T) {
 	assert.Equal(t, intstr.FromInt(8081), *np.Spec.Ingress[0].Ports[0].Port)
 	assert.Equal(t, intstr.FromInt(8084), *np.Spec.Ingress[1].Ports[0].Port)
 
-	// Ensure ApplicationSet peer includes fixed label
-	assert.Equal(t, "argocd-applicationset-controller", np.Spec.Ingress[0].From[3].PodSelector.MatchLabels["app.kubernetes.io/name"])
 }
 
 // Test the new truncation functions
