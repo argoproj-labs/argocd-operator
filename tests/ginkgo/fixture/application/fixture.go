@@ -4,18 +4,17 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
-	//lint:ignore ST1001 "This is a common practice in Gomega tests for readability."
-	. "github.com/onsi/gomega" //nolint:all
+	. "github.com/onsi/gomega"
 	"k8s.io/client-go/util/retry"
+
+	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 
 	appv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
 	"github.com/argoproj/gitops-engine/pkg/health"
 	"github.com/argoproj/gitops-engine/pkg/sync/common"
 	matcher "github.com/onsi/gomega/types"
 
-	//lint:ignore ST1001 "This is a common practice in Gomega tests for readability."
-	. "github.com/onsi/ginkgo/v2" //nolint:all
+	. "github.com/onsi/ginkgo/v2"
 
 	"context"
 

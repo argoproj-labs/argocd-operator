@@ -5,10 +5,8 @@ import (
 	"reflect"
 	"strings"
 
-	//lint:ignore ST1001 "This is a common practice in Gomega tests for readability."
-	. "github.com/onsi/ginkgo/v2" //nolint:all
-	//lint:ignore ST1001 "This is a common practice in Gomega tests for readability."
-	. "github.com/onsi/gomega" //nolint:all
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 
 	matcher "github.com/onsi/gomega/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"

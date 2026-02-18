@@ -19,10 +19,8 @@ package controllers
 import (
 	"path/filepath"
 
-	//lint:ignore ST1001 "This is a common practice in Gomega tests for readability."
-	. "github.com/onsi/ginkgo" //nolint:all
-	//lint:ignore ST1001 "This is a common practice in Gomega tests for readability."
-	. "github.com/onsi/gomega" //nolint:all
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
