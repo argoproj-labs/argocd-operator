@@ -4,7 +4,7 @@ go 1.25.5
 
 require (
 	github.com/argoproj/argo-cd/v3 v3.3.0
-	github.com/argoproj/gitops-engine v0.7.1-0.20251217140045-5baed5604d2d
+	github.com/argoproj/gitops-engine v0.7.3
 	github.com/cert-manager/cert-manager v1.15.4
 	github.com/go-logr/logr v1.4.3
 	github.com/google/go-cmp v0.7.0
@@ -34,6 +34,7 @@ require (
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/chainguard-dev/git-urls v1.0.2 // indirect
 	github.com/coreos/go-oidc/v3 v3.14.1 // indirect
+	github.com/evanphx/json-patch v5.9.11+incompatible // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
