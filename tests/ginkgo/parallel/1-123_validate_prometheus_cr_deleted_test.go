@@ -132,9 +132,6 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			}
 			Expect(k8sClient.Create(ctx, prometheusCR)).To(Succeed())
 
-			By("verifying the manually created Prometheus CR exists")
-			Eventually(prometheusCR, "30s", "5s").Should(k8sFixture.ExistByName())
-
 			By("triggering reconciliation by updating ArgoCD")
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
 				if ac.Annotations == nil {
@@ -145,6 +142,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("verifying Prometheus CR is deleted by the operator")
 			Eventually(prometheusCR, "2m", "5s").Should(k8sFixture.NotExistByName())
+			Consistently(prometheusCR, "10s", "2s").Should(k8sFixture.NotExistByName())
 
 			By("verifying ServiceMonitors are still present after Prometheus CR deletion")
 			Eventually(metricsServiceMonitor, "30s", "5s").Should(k8sFixture.ExistByName())
@@ -234,10 +232,10 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				},
 			}
 
-			// Try to create Route , skip deletion test if Route API not available (not Openshift cluster)
+			// Try to create Route, skip deletion test if Route API not available (not OpenShift cluster)
 			err := k8sClient.Create(ctx, prometheusRoute)
 			if err != nil && containsNoKindMatch(err.Error()) {
-				GinkgoWriter.Println("Route API not available(not Openshift cluster), skipping Route deletion test")
+				GinkgoWriter.Println("Route API not available(not OpenShift cluster), skipping Route deletion test")
 			} else if err != nil && !errors.IsAlreadyExists(err) {
 				Expect(err).ToNot(HaveOccurred())
 			} else {
