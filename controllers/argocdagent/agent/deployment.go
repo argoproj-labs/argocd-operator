@@ -97,6 +97,7 @@ func buildDeployment(compName string, cr *argoproj.ArgoCD) *appsv1.Deployment {
 }
 
 func buildAgentSpec(compName, saName string, cr *argoproj.ArgoCD) appsv1.DeploymentSpec {
+	redisAuthVolume, redisAuthMount := argoutil.MountRedisAuthToArgo(cr)
 	return appsv1.DeploymentSpec{
 		Selector: buildSelector(compName, cr),
 		Template: corev1.PodTemplateSpec{
@@ -113,11 +114,11 @@ func buildAgentSpec(compName, saName string, cr *argoproj.ArgoCD) appsv1.Deploym
 						Args:            buildArgs(compName),
 						SecurityContext: buildSecurityContext(),
 						Ports:           buildPorts(),
-						VolumeMounts:    buildVolumeMounts(),
+						VolumeMounts:    append(buildVolumeMounts(), redisAuthMount),
 					},
 				},
 				ServiceAccountName: saName,
-				Volumes:            buildVolumes(),
+				Volumes:            append(buildVolumes(), redisAuthVolume),
 			},
 		},
 	}
@@ -328,14 +329,14 @@ func buildAgentContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
 		{
 			Name:  EnvArgoCDAgentEnableResourceProxy,
 			Value: "true",
-		},
-		{
-			Name: EnvRedisPassword,
+		}, {
+			// TODO: Convert to volume mount once possible: https://issues.redhat.com/browse/GITOPS-9070
+			Name: "REDIS_PASSWORD",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
-					Key: AgentRedisPasswordKey,
+					Key: "admin.password",
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: fmt.Sprintf("%s-%s", cr.Name, AgentRedisSecretnameSuffix),
+						Name: fmt.Sprintf("%s-%s", cr.Name, "redis-initial-password"),
 					},
 					Optional: ptr.To(true),
 				},
@@ -370,9 +371,6 @@ const (
 	EnvArgoCDAgentEnableResourceProxy = "ARGOCD_AGENT_ENABLE_RESOURCE_PROXY"
 	EnvArgoCDAgentImage               = "ARGOCD_AGENT_IMAGE"
 	EnvArgoCDAgentRedisAddress        = "REDIS_ADDR"
-	EnvRedisPassword                  = "REDIS_PASSWORD"
-	AgentRedisPasswordKey             = "admin.password"
-	AgentRedisSecretnameSuffix        = "redis-initial-password" // #nosec G101
 )
 
 // Logging Configuration
