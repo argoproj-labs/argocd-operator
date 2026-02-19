@@ -164,7 +164,6 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 					Namespace: ns.Name,
 				},
 				Spec: imageUpdaterApi.ImageUpdaterSpec{
-					Namespace: ns.Name,
 					ApplicationRefs: []imageUpdaterApi.ApplicationRef{
 						{
 							NamePattern:    "app*",
