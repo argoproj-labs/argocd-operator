@@ -18,11 +18,13 @@ import (
 	"context"
 	"testing"
 
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -281,7 +283,7 @@ func TestReconcileAgentClusterRoles_ClusterRoleDoesNotExist_AgentEnabled(t *test
 	assert.Equal(t, buildLabelsForAgent(cr.Name, testAgentCompName), retrievedClusterRole.Labels)
 
 	// Verify ClusterRole has expected rules
-	expectedRules := buildPolicyRuleForClusterRole()
+	expectedRules := buildPolicyRuleForClusterRole(cr)
 	assert.Equal(t, expectedRules, retrievedClusterRole.Rules)
 
 	// Verify no owner reference is set for ClusterRole (as expected from the code)
@@ -300,7 +302,7 @@ func TestReconcileAgentClusterRoles_ClusterRoleExists_AgentDisabled(t *testing.T
 			Name:   generateAgentResourceName(cr.Name+"-"+cr.Namespace, testAgentCompName),
 			Labels: buildLabelsForAgent(cr.Name, testAgentCompName),
 		},
-		Rules: buildPolicyRuleForClusterRole(),
+		Rules: buildPolicyRuleForClusterRole(cr),
 	}
 
 	resObjs := []client.Object{cr, existingClusterRole}
@@ -326,7 +328,7 @@ func TestReconcileAgentClusterRoles_ClusterRoleExists_AgentEnabled_SameRules(t *
 	cr := makeTestArgoCD(withAgentEnabled(true))
 	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", cr.Namespace)
 
-	expectedRules := buildPolicyRuleForClusterRole()
+	expectedRules := buildPolicyRuleForClusterRole(cr)
 	existingClusterRole := &v1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   generateAgentResourceName(cr.Name+"-"+cr.Namespace, testAgentCompName),
@@ -389,7 +391,7 @@ func TestReconcileAgentClusterRoles_ClusterRoleExists_AgentEnabled_DifferentRule
 	}, retrievedClusterRole)
 	assert.NoError(t, err)
 
-	expectedRules := buildPolicyRuleForClusterRole()
+	expectedRules := buildPolicyRuleForClusterRole(cr)
 	assert.Equal(t, expectedRules, retrievedClusterRole.Rules)
 }
 
@@ -405,7 +407,7 @@ func TestReconcileAgentClusterRoles_ClusterRoleExists_AgentNotSet(t *testing.T) 
 			Name:   generateAgentResourceName(cr.Name+"-"+cr.Namespace, testAgentCompName),
 			Labels: buildLabelsForAgent(cr.Name, testAgentCompName),
 		},
-		Rules: buildPolicyRuleForClusterRole(),
+		Rules: buildPolicyRuleForClusterRole(cr),
 	}
 
 	resObjs := []client.Object{cr, existingClusterRole}
@@ -422,4 +424,92 @@ func TestReconcileAgentClusterRoles_ClusterRoleExists_AgentNotSet(t *testing.T) 
 		Name: generateAgentResourceName(cr.Name+"-"+cr.Namespace, testAgentCompName),
 	}, retrievedClusterRole)
 	assert.True(t, errors.IsNotFound(err))
+}
+
+// withAgentDestinationMapping configures DestinationBasedMapping on the Agent spec
+func withAgentDestinationMapping(enabled, createNS bool) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		if a.Spec.ArgoCDAgent == nil {
+			a.Spec.ArgoCDAgent = &argoproj.ArgoCDAgentSpec{}
+		}
+		if a.Spec.ArgoCDAgent.Agent == nil {
+			a.Spec.ArgoCDAgent.Agent = &argoproj.AgentSpec{}
+		}
+		a.Spec.ArgoCDAgent.Agent.DestinationBasedMapping = &argoproj.DestinationBasedMappingSpec{
+			Enabled:         ptr.To(enabled),
+			CreateNamespace: ptr.To(createNS),
+		}
+	}
+}
+
+func TestBuildPolicyRuleForClusterRole_Table(t *testing.T) {
+	tests := []struct {
+		name            string
+		dmEnabled       bool
+		createNamespace bool
+	}{
+		{
+			name:            "namespace based mapping",
+			dmEnabled:       false,
+			createNamespace: false,
+		},
+		{
+			name:            "destination based mapping without creating namespace",
+			dmEnabled:       true,
+			createNamespace: false,
+		},
+		{
+			name:            "destination based mapping with creating namespace",
+			dmEnabled:       true,
+			createNamespace: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Build CR for this case
+			cr := makeTestArgoCD(withAgentEnabled(true))
+			if tt.dmEnabled {
+				cr = makeTestArgoCD(withAgentEnabled(true), withAgentDestinationMapping(true, tt.createNamespace))
+			}
+
+			rules := buildPolicyRuleForClusterRole(cr)
+
+			defaultRules := []v1.PolicyRule{
+				{
+					APIGroups: []string{""},
+					Resources: []string{"namespaces"},
+					Verbs:     []string{"list", "watch"},
+				},
+			}
+
+			if !tt.dmEnabled {
+				assert.Len(t, rules, 1)
+				assert.ElementsMatch(t, defaultRules, rules)
+				return
+			}
+
+			appRules := v1.PolicyRule{
+				APIGroups: []string{"argoproj.io"},
+				Resources: []string{"applications"},
+				Verbs: []string{
+					"create",
+					"get",
+					"list",
+					"watch",
+					"update",
+					"delete",
+					"patch",
+				},
+			}
+
+			assert.Len(t, rules, 2)
+			assert.Equal(t, appRules, rules[1])
+
+			if tt.createNamespace {
+				defaultRules[0].Verbs = append(defaultRules[0].Verbs, "create", "get")
+			}
+			assert.Equal(t, defaultRules[0], rules[0])
+		})
+	}
 }

@@ -371,6 +371,9 @@ func buildPrincipalContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
 			Name:  EnvArgoCDPrincipalJwtSecretName,
 			Value: getPrincipalJWTSecretName(cr),
 		}, {
+			Name:  EnvArgoCDPrincipalDestinationBasedMapping,
+			Value: getPrincipalDestinationBasedMapping(cr),
+		}, {
 			Name: EnvRedisPassword,
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
@@ -416,6 +419,7 @@ const (
 	EnvArgoCDPrincipalResourceProxyCaSecretName = "ARGOCD_PRINCIPAL_RESOURCE_PROXY_CA_SECRET_NAME"
 	EnvArgoCDPrincipalJwtSecretName             = "ARGOCD_PRINCIPAL_JWT_SECRET_NAME"
 	EnvArgoCDPrincipalImage                     = "ARGOCD_PRINCIPAL_IMAGE"
+	EnvArgoCDPrincipalDestinationBasedMapping   = "ARGOCD_PRINCIPAL_DESTINATION_BASED_MAPPING"
 	EnvRedisPassword                            = "REDIS_PASSWORD"
 	PrincipalRedisPasswordKey                   = "admin.password"
 	PrincipalRedisSecretnameSuffix              = "redis-initial-password" // #nosec G101
@@ -434,6 +438,13 @@ func getPrincipalLogFormat(cr *argoproj.ArgoCD) string {
 		return cr.Spec.ArgoCDAgent.Principal.LogFormat
 	}
 	return "text"
+}
+
+func getPrincipalDestinationBasedMapping(cr *argoproj.ArgoCD) string {
+	if hasPrincipal(cr) && cr.Spec.ArgoCDAgent.Principal.DestinationBasedMapping {
+		return "true"
+	}
+	return "false"
 }
 
 func getPrincipalAllowedNamespaces(cr *argoproj.ArgoCD) string {

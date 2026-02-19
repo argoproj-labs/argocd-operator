@@ -532,3 +532,179 @@ func TestBuildAgentImage(t *testing.T) {
 		})
 	}
 }
+
+// withAgentAllowedNamespaces configures AllowedNamespaces on the Agent spec
+func withAgentAllowedNamespaces(namespaces []string) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		if a.Spec.ArgoCDAgent == nil {
+			a.Spec.ArgoCDAgent = &argoproj.ArgoCDAgentSpec{}
+		}
+		if a.Spec.ArgoCDAgent.Agent == nil {
+			a.Spec.ArgoCDAgent.Agent = &argoproj.AgentSpec{}
+		}
+		a.Spec.ArgoCDAgent.Agent.AllowedNamespaces = namespaces
+	}
+}
+
+func TestGetAgentDestinationBasedMapping(t *testing.T) {
+	tests := []struct {
+		name     string
+		cr       *argoproj.ArgoCD
+		expected string
+	}{
+		{
+			name:     "agent not configured",
+			cr:       makeTestArgoCD(),
+			expected: "false",
+		},
+		{
+			name:     "agent enabled without DBM",
+			cr:       makeTestArgoCD(withAgentEnabled(true)),
+			expected: "false",
+		},
+		{
+			name:     "DBM explicitly disabled",
+			cr:       makeTestArgoCD(withAgentEnabled(true), withAgentDestinationMapping(false, false)),
+			expected: "false",
+		},
+		{
+			name:     "DBM enabled",
+			cr:       makeTestArgoCD(withAgentEnabled(true), withAgentDestinationMapping(true, false)),
+			expected: "true",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, getAgentDestinationBasedMapping(tt.cr))
+		})
+	}
+}
+
+func TestGetAgentCreateNamespace(t *testing.T) {
+	tests := []struct {
+		name     string
+		cr       *argoproj.ArgoCD
+		expected string
+	}{
+		{
+			name:     "agent not configured",
+			cr:       makeTestArgoCD(),
+			expected: "false",
+		},
+		{
+			name:     "agent enabled without DBM",
+			cr:       makeTestArgoCD(withAgentEnabled(true)),
+			expected: "false",
+		},
+		{
+			name:     "DBM enabled without createNamespace",
+			cr:       makeTestArgoCD(withAgentEnabled(true), withAgentDestinationMapping(true, false)),
+			expected: "false",
+		},
+		{
+			name:     "DBM disabled with createNamespace true",
+			cr:       makeTestArgoCD(withAgentEnabled(true), withAgentDestinationMapping(false, true)),
+			expected: "false",
+		},
+		{
+			name:     "DBM enabled with createNamespace",
+			cr:       makeTestArgoCD(withAgentEnabled(true), withAgentDestinationMapping(true, true)),
+			expected: "true",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, getAgentCreateNamespace(tt.cr))
+		})
+	}
+}
+
+func TestGetAgentAllowedNamespaces(t *testing.T) {
+	tests := []struct {
+		name     string
+		cr       *argoproj.ArgoCD
+		expected string
+	}{
+		{
+			name:     "agent not configured",
+			cr:       makeTestArgoCD(),
+			expected: "",
+		},
+		{
+			name:     "agent enabled without allowed namespaces",
+			cr:       makeTestArgoCD(withAgentEnabled(true)),
+			expected: "",
+		},
+		{
+			name:     "single namespace",
+			cr:       makeTestArgoCD(withAgentEnabled(true), withAgentAllowedNamespaces([]string{"ns1"})),
+			expected: "ns1",
+		},
+		{
+			name:     "multiple namespaces",
+			cr:       makeTestArgoCD(withAgentEnabled(true), withAgentAllowedNamespaces([]string{"ns1", "ns2", "ns3"})),
+			expected: "ns1,ns2,ns3",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, getAgentAllowedNamespaces(tt.cr))
+		})
+	}
+}
+
+func TestBuildAgentContainerEnv_DestinationBasedMappingVars(t *testing.T) {
+	tests := []struct {
+		name              string
+		cr                *argoproj.ArgoCD
+		wantDBMValue      string
+		wantCreateNSValue string
+		wantAllowedNS     string
+	}{
+		{
+			name:              "defaults without DBM",
+			cr:                makeTestArgoCD(withAgentEnabled(true)),
+			wantDBMValue:      "false",
+			wantCreateNSValue: "false",
+			wantAllowedNS:     "",
+		},
+		{
+			name:              "DBM enabled",
+			cr:                makeTestArgoCD(withAgentEnabled(true), withAgentDestinationMapping(true, false)),
+			wantDBMValue:      "true",
+			wantCreateNSValue: "false",
+			wantAllowedNS:     "",
+		},
+		{
+			name: "DBM enabled with createNamespace and allowedNamespaces",
+			cr: makeTestArgoCD(
+				withAgentEnabled(true),
+				withAgentDestinationMapping(true, true),
+				withAgentAllowedNamespaces([]string{"ns1", "ns2"}),
+			),
+			wantDBMValue:      "true",
+			wantCreateNSValue: "true",
+			wantAllowedNS:     "ns1,ns2",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			envVars := buildAgentContainerEnv(tt.cr)
+			envMap := make(map[string]string)
+			for _, e := range envVars {
+				envMap[e.Name] = e.Value
+			}
+
+			assert.Equal(t, tt.wantDBMValue, envMap[EnvArgoCDAgentDestinationBasedMap],
+				"ARGOCD_AGENT_DESTINATION_BASED_MAPPING mismatch")
+			assert.Equal(t, tt.wantCreateNSValue, envMap[EnvArgoCDAgentCreateNamespace],
+				"ARGOCD_AGENT_CREATE_NAMESPACE mismatch")
+			assert.Equal(t, tt.wantAllowedNS, envMap[EnvArgoCDAgentAllowedNamespaces],
+				"ARGOCD_AGENT_ALLOWED_NAMESPACES mismatch")
+		})
+	}
+}
