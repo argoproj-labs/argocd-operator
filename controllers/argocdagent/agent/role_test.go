@@ -18,7 +18,6 @@ import (
 	"context"
 	"testing"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -26,6 +25,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 // TestReconcileAgentRole tests
