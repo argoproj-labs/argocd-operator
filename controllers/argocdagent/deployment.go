@@ -441,8 +441,8 @@ func getPrincipalLogFormat(cr *argoproj.ArgoCD) string {
 }
 
 func getPrincipalDestinationBasedMapping(cr *argoproj.ArgoCD) string {
-	if hasPrincipal(cr) && cr.Spec.ArgoCDAgent.Principal.DestinationBasedMapping {
-		return "true"
+	if hasPrincipal(cr) && cr.Spec.ArgoCDAgent.Principal.DestinationBasedMapping != nil {
+		return strconv.FormatBool(*cr.Spec.ArgoCDAgent.Principal.DestinationBasedMapping)
 	}
 	return "false"
 }

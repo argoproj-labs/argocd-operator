@@ -1288,7 +1288,7 @@ type PrincipalSpec struct {
 	JWT *PrincipalJWTSpec `json:"jwt,omitempty"`
 
 	// DestinationBasedMapping is the flag to enable destination based mapping for the Principal component.
-	DestinationBasedMapping bool `json:"destinationBasedMapping,omitempty"`
+	DestinationBasedMapping *bool `json:"destinationBasedMapping,omitempty"`
 }
 
 type PrincipalServerSpec struct {
@@ -1426,14 +1426,17 @@ type DestinationBasedMappingSpec struct {
 }
 
 func (d *DestinationBasedMappingSpec) IsEnabled() bool {
+	if d == nil {
+		return false
+	}
 	return d.Enabled != nil && *d.Enabled
 }
 
 func (d *DestinationBasedMappingSpec) IsCreateNamespaceEnabled() bool {
-	if !d.IsEnabled() || d.CreateNamespace == nil {
+	if d == nil || !d.IsEnabled() || d.CreateNamespace == nil {
 		return false
 	}
-	return d.CreateNamespace != nil && *d.CreateNamespace
+	return *d.CreateNamespace
 }
 
 type AgentClientSpec struct {
