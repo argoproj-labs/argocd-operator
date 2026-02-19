@@ -20,6 +20,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -330,6 +331,18 @@ func buildAgentContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
 			Value: "true",
 		},
 		{
+			Name:  EnvArgoCDAgentDestinationBasedMap,
+			Value: getAgentDestinationBasedMapping(cr),
+		},
+		{
+			Name:  EnvArgoCDAgentCreateNamespace,
+			Value: getAgentCreateNamespace(cr),
+		},
+		{
+			Name:  EnvArgoCDAgentAllowedNamespaces,
+			Value: getAgentAllowedNamespaces(cr),
+		},
+		{
 			Name: EnvRedisPassword,
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
@@ -373,6 +386,9 @@ const (
 	EnvRedisPassword                  = "REDIS_PASSWORD"
 	AgentRedisPasswordKey             = "admin.password"
 	AgentRedisSecretnameSuffix        = "redis-initial-password" // #nosec G101
+	EnvArgoCDAgentDestinationBasedMap = "ARGOCD_AGENT_DESTINATION_BASED_MAPPING"
+	EnvArgoCDAgentCreateNamespace     = "ARGOCD_AGENT_CREATE_NAMESPACE"
+	EnvArgoCDAgentAllowedNamespaces   = "ARGOCD_AGENT_ALLOWED_NAMESPACES"
 )
 
 // Logging Configuration
@@ -381,6 +397,33 @@ func getAgentLogLevel(cr *argoproj.ArgoCD) string {
 		return cr.Spec.ArgoCDAgent.Agent.LogLevel
 	}
 	return "info"
+}
+
+func getAgentDestinationBasedMapping(cr *argoproj.ArgoCD) string {
+	if hasAgent(cr) {
+		dm := cr.Spec.ArgoCDAgent.Agent.DestinationBasedMapping
+		if dm != nil && dm.IsEnabled() {
+			return "true"
+		}
+	}
+	return "false"
+}
+
+func getAgentCreateNamespace(cr *argoproj.ArgoCD) string {
+	if hasAgent(cr) {
+		dm := cr.Spec.ArgoCDAgent.Agent.DestinationBasedMapping
+		if dm != nil && dm.IsCreateNamespaceEnabled() {
+			return "true"
+		}
+	}
+	return "false"
+}
+
+func getAgentAllowedNamespaces(cr *argoproj.ArgoCD) string {
+	if hasAgent(cr) && len(cr.Spec.ArgoCDAgent.Agent.AllowedNamespaces) > 0 {
+		return strings.Join(cr.Spec.ArgoCDAgent.Agent.AllowedNamespaces, ",")
+	}
+	return ""
 }
 
 func getAgentLogFormat(cr *argoproj.ArgoCD) string {
