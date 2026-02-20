@@ -53,7 +53,7 @@ require (
 )
 
 require (
-	github.com/argoproj-labs/argocd-image-updater v1.1.0
+	github.com/argoproj-labs/argocd-image-updater v1.1.1
 	github.com/google/go-github/v75 v75.0.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
