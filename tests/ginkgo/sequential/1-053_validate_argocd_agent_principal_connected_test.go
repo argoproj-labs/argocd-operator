@@ -19,8 +19,12 @@ package sequential
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
+	"net/url"
 	"os/exec"
 	"strings"
 	"time"
@@ -42,11 +46,14 @@ import (
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
 	agentFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/agent"
 	appFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/application"
 	argocdFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/argocd"
 	deploymentFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/deployment"
+	k8sFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/k8s"
 	fixtureUtils "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 )
 
@@ -249,6 +256,30 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Eventually(application, "180s", "5s").Should(appFixture.HaveHealthStatusCode(health.HealthStatusHealthy), "Application should be healthy")
 		}
 
+		runResourceProxyTest := func(argoEndpoint string, password string, app argocdv1alpha1.Application, agentK8sClient client.Client, agentInstallNamespace string) {
+
+			// This test is based on test/e2e/rp_test.go from argocd-agent repo
+
+			cleanupFunc := createRBACForResourceProxyTest(agentK8sClient, agentInstallNamespace)
+			defer cleanupFunc()
+
+			// Getting an existing resource belonging to the synced app through Argo's
+			// API must result in success.
+			resource, err := getResourceForResourceProxyTest(argoEndpoint, password, &app,
+				"apps", "v1", "Deployment", app.Spec.Destination.Namespace, "guestbook-ui")
+			Expect(err).ToNot(HaveOccurred())
+			napp := &argocdv1alpha1.Application{}
+			err = json.Unmarshal([]byte(resource), napp)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(napp.Kind).To(Equal("Deployment"))
+			Expect(napp.Name).To(Equal("guestbook-ui"))
+
+			// Getting a non-existing resource must result in failure
+			_, err = getResourceForResourceProxyTest(argoEndpoint, password, &app,
+				"apps", "v1", "Deployment", app.Spec.Destination.Namespace, "guestbook-backend")
+			Expect(err).To(HaveOccurred())
+		}
+
 		// runRedisTest is based on redis_proxy_test.go E2E test in argocd-agent
 		// - This test will verify argo cd resourcetree API shows child resources (e.g. pods), which is only possible if redis proxy is working as expected.
 		runRedisTest := func(argoEndpoint string, password string, managedAgent bool, appOnPrincipal argocdv1alpha1.Application, agentK8sClient client.Client) {
@@ -440,6 +471,14 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			principalArgocdPassword := argocdFixture.GetInitialAdminSecretPassword(argoCDAgentInstanceNamePrincipal, namespaceAgentPrincipal, k8sClient)
 
+			By("Running resource proxy test for managed")
+			// The principal's application is very similar to 'applicationOfManagedAgent' but in a different namespace, and with a different appproject.
+			// - Since the resource proxy interfaces with principal, we need to give it an Application that matches the principal-side Application
+			appOnPrincipal := applicationOfManagedAgent.DeepCopy()
+			appOnPrincipal.Namespace = managedAgentClusterName
+			appOnPrincipal.Spec.Project = "agent-app-project"
+			runResourceProxyTest("127.0.0.1:8443", principalArgocdPassword, *appOnPrincipal, k8sClient, namespaceManagedAgent)
+
 			By("Running redis test for managed")
 			runRedisTest("127.0.0.1:8443", principalArgocdPassword, true, *applicationOfManagedAgent, k8sClient)
 
@@ -449,12 +488,22 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			By("Deploy application for autonomous mode")
 			deployAndValidateApplication(applicationOfAutonomousAgent)
 
+			By("Running resource proxy test for autonomous")
+			// The principal's application is very similar to 'applicationOfManagedAgent' but in a different namespace, and with a different appproject.
+			// - Since the resource proxy interfaces with principal, we need to give it an Application that matches the principal-side Application
+			appOnPrincipal = applicationOfAutonomousAgent.DeepCopy()
+			appOnPrincipal.Namespace = autonomousAgentClusterName
+			appOnPrincipal.Spec.Project = "autonomous-cluster-in-hub-agent-app-project" // "agent-app-project"
+			runResourceProxyTest("127.0.0.1:8443", principalArgocdPassword, *appOnPrincipal, k8sClient, namespaceAutonomousAgent)
+
+			By("Running redis test for autonomous")
+
 			// The principal's application is the same as 'applicationOfAutonomousAgent', but in a different namespace. (The spec isn't needed)
-			appOnPrincipal := applicationOfAutonomousAgent.DeepCopy()
+			// - Since the redis proxy interfaces with principal, we need to give it an Application that matches the principal-side Application
+			appOnPrincipal = applicationOfAutonomousAgent.DeepCopy()
 			appOnPrincipal.Namespace = "autonomous-cluster-in-hub"
 			appOnPrincipal.Spec = argocdv1alpha1.ApplicationSpec{}
 
-			By("Running redis test for autonomous")
 			runRedisTest("127.0.0.1:8443", principalArgocdPassword, false, *appOnPrincipal, k8sClient)
 
 		})
@@ -877,4 +926,129 @@ func portForward(namespace string, subject string, port string) func() {
 		}
 	}
 
+}
+
+func createRBACForResourceProxyTest(agentK8sClient client.Client, agentInstallNamespace string) func() {
+	ctx := context.Background()
+	resourceProxyClusterRole := &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "resource-proxy-e2e-test-cluster-role",
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{"apps"},
+				Resources: []string{"deployments"},
+				Verbs:     []string{"get", "list", "watch"},
+			},
+		},
+	}
+	resourceProxyClusterRoleGet := resourceProxyClusterRole.DeepCopy()
+	if err := agentK8sClient.Get(ctx, client.ObjectKeyFromObject(resourceProxyClusterRoleGet), resourceProxyClusterRoleGet); err == nil {
+		Expect(agentK8sClient.Delete(ctx, resourceProxyClusterRoleGet)).To(Succeed())
+	} else if !apierrors.IsNotFound(err) {
+		Expect(err).ToNot(HaveOccurred())
+	}
+	Expect(agentK8sClient.Create(ctx, resourceProxyClusterRole)).To(Succeed())
+
+	resourceProxyClusterRoleBinding := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "resource-proxy-e2e-test-cluster-role-binding",
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      "argocd-agent-agent",
+				Namespace: agentInstallNamespace,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "ClusterRole",
+			Name:     resourceProxyClusterRole.Name,
+		},
+	}
+	resourceProxyClusterRoleBindingGet := resourceProxyClusterRoleBinding.DeepCopy()
+	if err := agentK8sClient.Get(ctx, client.ObjectKeyFromObject(resourceProxyClusterRoleBindingGet), resourceProxyClusterRoleBindingGet); err == nil {
+		Expect(agentK8sClient.Delete(ctx, resourceProxyClusterRoleBindingGet)).To(Succeed())
+	} else if !apierrors.IsNotFound(err) {
+		Expect(err).ToNot(HaveOccurred())
+	}
+	Expect(agentK8sClient.Create(ctx, resourceProxyClusterRoleBinding)).To(Succeed())
+
+	return func() {
+		Expect(agentK8sClient.Delete(ctx, resourceProxyClusterRole)).To(Succeed())
+		Eventually(resourceProxyClusterRole).Should(k8sFixture.NotExistByName())
+
+		Expect(agentK8sClient.Delete(ctx, resourceProxyClusterRoleBinding)).To(Succeed())
+		Eventually(resourceProxyClusterRoleBinding).Should(k8sFixture.NotExistByName())
+
+	}
+}
+
+func getResourceForResourceProxyTest(endpointURL string, password string, app *argocdv1alpha1.Application, group, version, kind, namespace, name string) (string, error) {
+
+	_, sessionToken, closer, err := argocdFixture.CreateArgoCDAPIClient(context.Background(), endpointURL, password)
+	Expect(err).ToNot(HaveOccurred())
+	defer closer.Close()
+
+	c := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
+	}
+
+	reqURL := constructURLForResourceProxyTest(endpointURL,
+		"appNamespace", app.Namespace,
+		"project", app.Spec.Project,
+		"namespace", namespace,
+		"resourceName", name,
+		"group", group,
+		"version", version,
+		"kind", kind,
+	)
+	reqURL.Path = fmt.Sprintf("/api/v1/applications/%s/resource", app.Name)
+
+	fmt.Println(*reqURL)
+
+	req := http.Request{Method: http.MethodGet, URL: reqURL, Header: make(http.Header)}
+
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", sessionToken))
+
+	resp, err := c.Do(&req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("expected HTTP 200, got %d", resp.StatusCode)
+	}
+	type manifestResponse struct {
+		Manifest string `json:"manifest"`
+	}
+	manifest := &manifestResponse{}
+	jsonData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	err = json.Unmarshal(jsonData, manifest)
+	if err != nil {
+		return "", err
+	}
+	return manifest.Manifest, nil
+}
+
+func constructURLForResourceProxyTest(endpoint string, params ...string) *url.URL {
+	u := &url.URL{Scheme: "https", Host: endpoint}
+	if len(params)%2 == 0 {
+		q := make(url.Values)
+		for i := 0; i < len(params)-1; i += 2 {
+			q.Add(params[i], params[i+1])
+		}
+		u.RawQuery = q.Encode()
+	} else if len(params) != 0 {
+		panic("params must be given in pairs")
+	}
+	return u
 }
