@@ -79,7 +79,7 @@ Create an ArgoCD resource that enables ingress. Note that in this case we run th
 terminate TLS at the Ingress controller. See `examples/argocd-ingress.yaml` for this example.
 
 ```yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd

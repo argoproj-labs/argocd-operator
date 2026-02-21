@@ -8,7 +8,7 @@ metadata:
   name: argocd
 status:
   conditions:
-  - message: 'keycloak is set as SSO provider, but keycloak support has been deprecated and is no longer available'
+  - message: 'illegal SSO configuration: cannot supply dex configuration when requested SSO provider is keycloak'
     reason: ErrorOccurred
     status: "False"
     type: Reconciled

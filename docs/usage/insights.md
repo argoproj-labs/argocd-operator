@@ -65,7 +65,7 @@ prometheus-operator-7f6dfb7686-wb9h2  1/1     Running   0          9m4s
 The following example shows how to enable metrics exposure for Argo CD components. When enabled, the operator will create ServiceMonitors and PrometheusRules that allow your Prometheus instance to scrape metrics from Argo CD.
 
 ``` yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd
@@ -127,7 +127,7 @@ example-argocd-grpc   <none>   example-argocd-grpc   192.168.39.68   80, 443   1
 For OpenShift clusters, Routes will be created when route is enabled as shown in the below example.
 
 ``` yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd

@@ -1,0 +1,5 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - script: sleep 50
+  - script: kubectl get pods -n test-1-042-restricted-pss-compliant | grep 'keycloak'

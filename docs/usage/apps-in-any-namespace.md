@@ -25,7 +25,7 @@ The operator resolves these patterns to actual namespaces at reconcile time and 
 
 ## Enable application creation in a specific namespace
 ```yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd
@@ -40,7 +40,7 @@ In this example:
 ## Enable application creation in namespaces matching a glob pattern
 
 ```yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd-wildcard-pattern
@@ -70,7 +70,7 @@ In these examples, permissions are granted only to namespaces that match the pro
 ## Enable application creation in all namespaces
 
 ```yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd-all-namespaces
