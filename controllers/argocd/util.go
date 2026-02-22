@@ -1931,6 +1931,13 @@ func (r *ReconcileArgoCD) reconcileArgoCDAgent(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
+	if cr.Spec.NetworkPolicy.IsEnabled() {
+		log.Info("reconciling ArgoCD Agent's Principal network policy")
+		if err := argocdagent.ReconcilePrincipalNetworkPolicy(r.Client, compName, cr, r.Scheme); err != nil {
+			return err
+		}
+	}
+
 	log.Info("reconciling ArgoCD Agent's Principal route")
 	if err := argocdagent.ReconcilePrincipalRoute(r.Client, compName, cr, r.Scheme); err != nil {
 		return err
