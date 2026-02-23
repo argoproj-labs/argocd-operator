@@ -519,8 +519,7 @@ func matchAggregatedClusterRoleFields(expectedClusterRole *v1.ClusterRole, exist
 
 	// if ClusterRole is for View permissions then compare Labels
 	if name == common.ArgoCDApplicationControllerComponentView {
-		if !reflect.DeepEqual(existingClusterRole.Labels, expectedClusterRole.Labels) {
-			existingClusterRole.Labels = expectedClusterRole.Labels
+		if UpdateMapValues(&existingClusterRole.Labels, expectedClusterRole.Labels) {
 			if changed {
 				explanation += ", "
 			}
@@ -540,8 +539,7 @@ func matchAggregatedClusterRoleFields(expectedClusterRole *v1.ClusterRole, exist
 			changed = true
 		}
 
-		if !reflect.DeepEqual(existingClusterRole.Labels, expectedClusterRole.Labels) {
-			existingClusterRole.Labels = expectedClusterRole.Labels
+		if UpdateMapValues(&existingClusterRole.Labels, expectedClusterRole.Labels) {
 			if changed {
 				explanation += ", "
 			}
