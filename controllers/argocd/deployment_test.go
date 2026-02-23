@@ -2361,16 +2361,6 @@ func repoServerDefaultVolumes() []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: "argocd-redis-initial-password",
-					Items: []corev1.KeyToPath{
-						{
-							Key:  "admin.password",
-							Path: "auth",
-						},
-						{
-							Key:  "users.acl",
-							Path: "users.acl",
-						},
-					},
 				},
 			},
 		},
@@ -2474,16 +2464,6 @@ func serverDefaultVolumes() []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: "argocd-redis-initial-password",
-					Items: []corev1.KeyToPath{
-						{
-							Key:  "admin.password",
-							Path: "auth",
-						},
-						{
-							Key:  "users.acl",
-							Path: "users.acl",
-						},
-					},
 				},
 			},
 		},
