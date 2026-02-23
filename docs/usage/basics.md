@@ -89,7 +89,7 @@ secret/example-argocd-cluster                      Opaque                       
 secret/example-argocd-tls                          kubernetes.io/tls                     2      33s
 ```
 
-The cluster Secret contains the admin password for authenticating with Argo CD.
+The cluster Secret contains the admin password for authenticating with Argo CD. 
 
 ```bash
 apiVersion: v1
@@ -106,8 +106,8 @@ metadata:
 type: Opaque
 ```
 
-The operator will watch for changes to the `admin.password` value. When a change is made the password is synchronized to
-Argo CD automatically.
+NOTE: The operator strictly uses this secret for setting the initial password for the admin user, making any change to this secret doesn't effect or update the password for the admin user.
+To update password use [argocd-cli](https://argo-cd.readthedocs.io/en/stable/user-guide/commands/argocd_account_update-password/) or [upstream-documentation](https://argo-cd.readthedocs.io/en/release-2.2/faq/#i-forgot-the-admin-password-how-do-i-reset-it).
 
 Fetch the admin password from the cluster Secret.
 
