@@ -408,6 +408,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Eventually(func() bool {
 				for {
 					// drain channel looking for name of new pod
+					GinkgoWriter.Println("Awaiting message")
 					select {
 					case msg := <-msgChan:
 						GinkgoWriter.Println("Processing message:", msg)
