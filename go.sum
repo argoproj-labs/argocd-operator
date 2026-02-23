@@ -35,8 +35,8 @@ github.com/alicebob/miniredis/v2 v2.35.0/go.mod h1:TcL7YfarKPGDAthEtl5NBeHZfeUQj
 github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be h1:9AeTilPcZAjCFIImctFaOjnTIavg87rW78vTPkQqLI8=
 github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be/go.mod h1:ySMOLuWl6zY27l47sB3qLNK6tF2fkHG55UZxx8oIVo4=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
-github.com/argoproj-labs/argocd-image-updater v1.1.0 h1:XR+xZf8bDFBaTpVdVpe06t/DPmrIG4BG3HukUXul6X0=
-github.com/argoproj-labs/argocd-image-updater v1.1.0/go.mod h1:RbPRnEqWBPq1OP29vlZjmfL+/NfonpoagH8SInP/YHc=
+github.com/argoproj-labs/argocd-image-updater v1.1.1 h1:7YDaR3WX2NMsDKp0wN7TRaRRHaVHQ94tSybi2P99MGk=
+github.com/argoproj-labs/argocd-image-updater v1.1.1/go.mod h1:gMHiNrGNwNSt4ljf0ykcnmNvXBk/NJ+Z17AnZVe7V7I=
 github.com/argoproj/argo-cd/v3 v3.3.0 h1:9UlruTd5cC/MyvorTXgAIblfZTy63MF5FYvvoAaUvwU=
 github.com/argoproj/argo-cd/v3 v3.3.0/go.mod h1:5VAfe0s/a4VY5GmAIFK76FtW6xn7zAcLmaw25bOL/2g=
 github.com/argoproj/gitops-engine v0.7.1-0.20251217140045-5baed5604d2d h1:iUJYrbSvpV9n8vyl1sBt1GceM60HhHfnHxuzcm5apDg=
