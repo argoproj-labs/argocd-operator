@@ -499,11 +499,9 @@ func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
 	if len(cr.Spec.Server.Service.Annotations) > 0 {
 		if svc.Annotations == nil {
 			svc.Annotations = make(map[string]string)
-			svc.Annotations = cr.Spec.Server.Service.Annotations
-		} else {
-			for k, v := range cr.Spec.Server.Service.Annotations {
-				svc.Annotations[k] = v
-			}
+		}
+		for k, v := range cr.Spec.Server.Service.Annotations {
+			svc.Annotations[k] = v
 		}
 	}
 
