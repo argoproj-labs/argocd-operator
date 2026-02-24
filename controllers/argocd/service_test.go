@@ -144,7 +144,7 @@ func TestReconcileServerService(t *testing.T) {
 	})
 
 	t.Run("Server Service annotations update", func(t *testing.T) {
-		// Reconcile with previous existing Server Service with a different Annotations
+		// Reconcile with previous existing Server Service with different Annotations
 		argoutil.SetRouteAPIFound(false)
 		a.Spec.Server.Service.Annotations = map[string]string{"test.kubernetes.io/test": "test"}
 		assert.NotEqual(t, a.Spec.Server.Service.Annotations, serverService.Annotations)
@@ -161,8 +161,8 @@ func TestReconcileServerService(t *testing.T) {
 		assert.Equal(t, a.Spec.Server.Service.Annotations, serverService.Annotations)
 	})
 	t.Run("Server Service annotations update with Openshift auto TLS annotation", func(t *testing.T) {
+		// Reconcile with previous existing Server Service with different Annotations and the AutoTLSAnnotation
 		argoutil.SetRouteAPIFound(true)
-
 		testAnnotationKey := "test.kubernetes.io/test"
 		testAnnotationVal := "test"
 		a.Spec.Server.Service.Annotations = map[string]string{testAnnotationKey: testAnnotationVal}
@@ -170,7 +170,7 @@ func TestReconcileServerService(t *testing.T) {
 		err := r.reconcileServerService(a)
 		assert.NoError(t, err)
 
-		// Existing Server is found and has the argoCD new Server Service Type
+		// Existing Server is found and has the argoCD new Server Service Annotations and the AutoTLSAnnotation
 		err = r.Get(context.TODO(), types.NamespacedName{
 			Name:      "argocd-server",
 			Namespace: testNamespace,
