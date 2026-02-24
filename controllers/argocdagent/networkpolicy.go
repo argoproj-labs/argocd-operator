@@ -76,7 +76,7 @@ func ReconcilePrincipalNetworkPolicy(c client.Client, compName string, cr *argop
 		return nil
 	}
 
-	if !enabled {
+	if !enabled || !cr.Spec.NetworkPolicy.IsEnabled() {
 		return nil
 	}
 
