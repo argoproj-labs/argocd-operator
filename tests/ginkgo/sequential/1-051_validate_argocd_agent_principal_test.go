@@ -232,6 +232,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				ClusterRoleBinding:       clusterRoleBinding,
 				PrincipalDeployment:      principalDeployment,
 				PrincipalRoute:           principalRoute,
+				PrincipalNetworkPolicy:   principalNetworkPolicy,
 				ServicesToDelete: []string{
 					argoCDAgentPrincipalName,
 					fmt.Sprintf(principalMetricsServiceFmt, argoCDName),
