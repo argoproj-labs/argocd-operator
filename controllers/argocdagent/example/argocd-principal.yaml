@@ -20,7 +20,7 @@ spec:
       # Log format (text or json)
       logFormat: "text"
       # Container image for the ArgoCD Agent
-      image: "quay.io/argoprojlabs/argocd-agent:v0.6.0"
+      image: "quay.io/argoprojlabs/argocd-agent:v0.7.0"
       # Environment variables for the Principal component
       env:
         - name: GRPC_GO_LOG_VERBOSITY_LEVEL
