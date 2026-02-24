@@ -180,19 +180,24 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			}
 
 			By("extracting the contents of /data/conf/sentinel.conf and checking it contains expected values")
-			sentinelConf, err := osFixture.ExecCommandWithOutputParam(false, true, "kubectl", "exec", "-i", "pod/argocd-redis-ha-server-0", "-n", ns.Name, "-c", "redis", "--", "cat", "/data/conf/sentinel.conf")
+			sentinelConf, err := osFixture.ExecCommandWithOutputParam(
+				false, true,
+				"kubectl", "exec", "-i", "pod/argocd-redis-ha-server-0", "-n", ns.Name, "-c", "redis",
+				"--", "cat", "/data/conf/sentinel.conf",
+			)
 			Expect(err).ToNot(HaveOccurred())
 			expectedSentinelConfig := []string{
 				"port 0",
 				"tls-port 26379",
-				"tls-cert-file /app/config/redis/tls/tls.crt",
-				"tls-ca-cert-file /app/config/redis/tls/tls.crt",
-				"tls-key-file /app/config/redis/tls/tls.key",
+				// Dynamic changes to the config file can result in doublequptes added unpredictably
+				`tls-cert-file "?/app/config/redis/tls/tls.crt"?`,
+				`tls-ca-cert-file "?/app/config/redis/tls/tls.crt"?`,
+				`tls-key-file "?/app/config/redis/tls/tls.key"?`,
 				"tls-replication yes",
 				"tls-auth-clients no",
 			}
 			for _, line := range expectedSentinelConfig {
-				Expect(sentinelConf).To(ContainSubstring(line))
+				Expect(sentinelConf).To(MatchRegexp(line))
 			}
 
 			repoServerDepl := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "argocd-repo-server", Namespace: ns.Name}}
