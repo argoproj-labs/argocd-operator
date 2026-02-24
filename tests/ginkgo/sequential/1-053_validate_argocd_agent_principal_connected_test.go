@@ -269,13 +269,13 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				// API must result in success.
 				resource, err := getResourceForResourceProxyTest(argoEndpoint, password, &app,
 					"apps", "v1", "Deployment", app.Spec.Destination.Namespace, "guestbook-ui")
-				if err == nil {
-					GinkgoWriter.Println(err)
+				if err != nil {
+					GinkgoWriter.Println("error from getResourceForResourceProxyTest", err)
 					return false
 				}
 				napp := &appsv1.Deployment{}
 				if err := json.Unmarshal([]byte(resource), napp); err != nil {
-					GinkgoWriter.Println(err)
+					GinkgoWriter.Println("unable to unmarshal resource", err)
 					return false
 				}
 				return napp.Kind == "Deployment" && napp.Name == "guestbook-ui"
@@ -964,7 +964,7 @@ func createRBACForResourceProxyTest(agentK8sClient client.Client, agentInstallNa
 		Subjects: []rbacv1.Subject{
 			{
 				Kind:      "ServiceAccount",
-				Name:      "argocd-agent-agent",
+				Name:      "argocd-spoke-agent-agent",
 				Namespace: agentInstallNamespace,
 			},
 		},
