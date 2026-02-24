@@ -142,6 +142,49 @@ func TestReconcileServerService(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, a.Spec.Server.Service.Type, serverService.Spec.Type)
 	})
+
+	t.Run("Server Service annotations update", func(t *testing.T) {
+		// Reconcile with previous existing Server Service with a different Annotations
+		argoutil.SetRouteAPIFound(false)
+		a.Spec.Server.Service.Annotations = map[string]string{"test.kubernetes.io/test": "test"}
+		assert.NotEqual(t, a.Spec.Server.Service.Annotations, serverService.Annotations)
+
+		err := r.reconcileServerService(a)
+		assert.NoError(t, err)
+
+		// Existing Server is found and has the argoCD new Server Service Annotations
+		err = r.Get(context.TODO(), types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: testNamespace,
+		}, serverService)
+		assert.NoError(t, err)
+		assert.Equal(t, a.Spec.Server.Service.Annotations, serverService.Annotations)
+	})
+	t.Run("Server Service annotations update with Openshift auto TLS annotation", func(t *testing.T) {
+		argoutil.SetRouteAPIFound(true)
+
+		testAnnotationKey := "test.kubernetes.io/test"
+		testAnnotationVal := "test"
+		a.Spec.Server.Service.Annotations = map[string]string{testAnnotationKey: testAnnotationVal}
+
+		err := r.reconcileServerService(a)
+		assert.NoError(t, err)
+
+		// Existing Server is found and has the argoCD new Server Service Type
+		err = r.Get(context.TODO(), types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: testNamespace,
+		}, serverService)
+		assert.NoError(t, err)
+
+		val, ok := serverService.Annotations[common.AnnotationOpenShiftServiceCA]
+		assert.Equal(t, ok, true)
+		assert.Equal(t, val, common.ArgoCDServerTLSSecretName)
+
+		val, ok = serverService.Annotations[testAnnotationKey]
+		assert.Equal(t, ok, true)
+		assert.Equal(t, val, testAnnotationVal)
+	})
 }
 
 // If `remote` field is used in CR, then the component resources should not be created

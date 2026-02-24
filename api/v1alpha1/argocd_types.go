@@ -589,6 +589,9 @@ type ArgoCDServerServiceSpec struct {
 	// Type is the ServiceType to use for the Service resource.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Service Type",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server","urn:alm:descriptor:com.tectonic.ui:text"}
 	Type corev1.ServiceType `json:"type"`
+
+	// Annotations is the map of annotations to apply to the Server Service.
+	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
 // Resource Customization for custom health check
