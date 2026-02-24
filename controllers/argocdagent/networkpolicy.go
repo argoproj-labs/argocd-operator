@@ -58,7 +58,7 @@ func ReconcilePrincipalNetworkPolicy(c client.Client, compName string, cr *argop
 	enabled := hasPrincipal(cr) && cr.Spec.ArgoCDAgent.Principal.IsEnabled()
 
 	if exists {
-		if !enabled || !cr.Spec.NetworkPolicy.IsEnabled() {
+		if !cr.Spec.NetworkPolicy.IsEnabled() || !enabled {
 			argoutil.LogResourceDeletion(log, existing, "principal network policy is being deleted as principal is disabled or network policy is disabled")
 			if err := c.Delete(context.TODO(), existing); err != nil {
 				return fmt.Errorf("failed to delete principal network policy %s: %v", existing.Name, err)
