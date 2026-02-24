@@ -263,19 +263,26 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			cleanupFunc := createRBACForResourceProxyTest(agentK8sClient, agentInstallNamespace)
 			defer cleanupFunc()
 
-			// Getting an existing resource belonging to the synced app through Argo's
-			// API must result in success.
-			resource, err := getResourceForResourceProxyTest(argoEndpoint, password, &app,
-				"apps", "v1", "Deployment", app.Spec.Destination.Namespace, "guestbook-ui")
-			Expect(err).ToNot(HaveOccurred())
-			napp := &argocdv1alpha1.Application{}
-			err = json.Unmarshal([]byte(resource), napp)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(napp.Kind).To(Equal("Deployment"))
-			Expect(napp.Name).To(Equal("guestbook-ui"))
+			Eventually(func() bool {
+
+				// Getting an existing resource belonging to the synced app through Argo's
+				// API must result in success.
+				resource, err := getResourceForResourceProxyTest(argoEndpoint, password, &app,
+					"apps", "v1", "Deployment", app.Spec.Destination.Namespace, "guestbook-ui")
+				if err == nil {
+					GinkgoWriter.Println(err)
+					return false
+				}
+				napp := &appsv1.Deployment{}
+				if err := json.Unmarshal([]byte(resource), napp); err != nil {
+					GinkgoWriter.Println(err)
+					return false
+				}
+				return napp.Kind == "Deployment" && napp.Name == "guestbook-ui"
+			}, "2m", "5s").Should(BeTrue())
 
 			// Getting a non-existing resource must result in failure
-			_, err = getResourceForResourceProxyTest(argoEndpoint, password, &app,
+			_, err := getResourceForResourceProxyTest(argoEndpoint, password, &app,
 				"apps", "v1", "Deployment", app.Spec.Destination.Namespace, "guestbook-backend")
 			Expect(err).To(HaveOccurred())
 		}
@@ -988,7 +995,9 @@ func createRBACForResourceProxyTest(agentK8sClient client.Client, agentInstallNa
 func getResourceForResourceProxyTest(endpointURL string, password string, app *argocdv1alpha1.Application, group, version, kind, namespace, name string) (string, error) {
 
 	_, sessionToken, closer, err := argocdFixture.CreateArgoCDAPIClient(context.Background(), endpointURL, password)
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return "", fmt.Errorf("unable to create argocd api client: %v", err)
+	}
 	defer closer.Close()
 
 	c := &http.Client{
@@ -1010,7 +1019,7 @@ func getResourceForResourceProxyTest(endpointURL string, password string, app *a
 	)
 	reqURL.Path = fmt.Sprintf("/api/v1/applications/%s/resource", app.Name)
 
-	fmt.Println(*reqURL)
+	GinkgoWriter.Println("resourceProxyURL:", *reqURL)
 
 	req := http.Request{Method: http.MethodGet, URL: reqURL, Header: make(http.Header)}
 
