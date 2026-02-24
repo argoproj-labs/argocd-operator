@@ -58,8 +58,8 @@ func ReconcilePrincipalNetworkPolicy(c client.Client, compName string, cr *argop
 	enabled := hasPrincipal(cr) && cr.Spec.ArgoCDAgent.Principal.IsEnabled()
 
 	if exists {
-		if !enabled {
-			argoutil.LogResourceDeletion(log, existing, "principal network policy is being deleted as principal is disabled")
+		if !enabled || !cr.Spec.NetworkPolicy.IsEnabled() {
+			argoutil.LogResourceDeletion(log, existing, "principal network policy is being deleted as principal is disabled or network policy is disabled")
 			if err := c.Delete(context.TODO(), existing); err != nil {
 				return fmt.Errorf("failed to delete principal network policy %s: %v", existing.Name, err)
 			}
@@ -104,7 +104,7 @@ func buildPrincipalNetworkPolicy(compName string, cr *argoproj.ArgoCD) *networki
 
 func buildPrincipalNetworkPolicySpec(compName string, cr *argoproj.ArgoCD) networkingv1.NetworkPolicySpec {
 	tcp := corev1.ProtocolTCP
-	targetPorts := []int{
+	targetPorts := []int32{
 		PrincipalServiceTargetPort,
 		PrincipalMetricsServiceTargetPort,
 		PrincipalRedisProxyServiceTargetPort,
@@ -116,7 +116,7 @@ func buildPrincipalNetworkPolicySpec(compName string, cr *argoproj.ArgoCD) netwo
 	for _, p := range targetPorts {
 		ports = append(ports, networkingv1.NetworkPolicyPort{
 			Protocol: &tcp,
-			Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: int32(p)},
+			Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: p},
 		})
 	}
 
