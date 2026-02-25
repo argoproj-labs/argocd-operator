@@ -335,7 +335,7 @@ func buildAgentContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
 			Name: "REDIS_PASSWORD",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
-					Key: "admin.password",
+					Key: "auth",
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: fmt.Sprintf("%s-%s", cr.Name, "redis-initial-password"),
 					},

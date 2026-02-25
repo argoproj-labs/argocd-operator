@@ -267,7 +267,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				Namespace: ns.Name,
 			}
 			Expect(k8sClient.Get(ctx, redisPwdSecretKey, redisInitialSecret)).Should(Succeed())
-			expectedRedisPwd := string(redisInitialSecret.Data["admin.password"])
+			expectedRedisPwd := string(redisInitialSecret.Data["auth"])
 			Expect(expectedRedisPwd).ShouldNot(Equal(""))
 
 			redisPingOut, err := osFixture.ExecCommandWithOutputParam(false, false,
