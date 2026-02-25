@@ -147,7 +147,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("expecting redis-server to have desired container process command/arguments")
 
-			expectedString := "--save \"\" --appendonly no --tls-port 6379 --port 0 --tls-cert-file /app/config/redis/tls/tls.crt --tls-key-file /app/config/redis/tls/tls.key --tls-auth-clients no"
+			expectedString := "--save \"\" --appendonly no --aclfile /app/config/redis-auth/users.acl --tls-port 6379 --port 0 --tls-cert-file /app/config/redis/tls/tls.crt --tls-key-file /app/config/redis/tls/tls.key --tls-auth-clients no"
 
 			if !fixture.IsUpstreamOperatorTests() {
 				// Downstream operator adds these arguments
@@ -219,7 +219,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				Namespace: ns.Name,
 			}
 			Expect(k8sClient.Get(ctx, redisPwdSecretKey, redisInitialSecret)).Should(Succeed())
-			expectedRedisPwd := string(redisInitialSecret.Data["admin.password"])
+			expectedRedisPwd := string(redisInitialSecret.Data["auth"])
 			Expect(expectedRedisPwd).ShouldNot(Equal(""))
 
 			redisPingOut, err := osFixture.ExecCommandWithOutputParam(false, false,
