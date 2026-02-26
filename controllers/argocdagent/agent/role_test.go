@@ -445,29 +445,59 @@ func withAgentDestinationMapping(enabled, createNS bool) argoCDOpt {
 
 func TestBuildPolicyRuleForClusterRole_Table(t *testing.T) {
 	tests := []struct {
-		name            string
-		dmEnabled       bool
-		createNamespace bool
+		name                    string
+		dmEnabled               bool
+		createNamespace         bool
+		clusterConfigNamespaces string // value for ARGOCD_CLUSTER_CONFIG_NAMESPACES
+		wantExpandedRules       bool   // true if we expect cluster-wide app permissions
 	}{
 		{
-			name:            "namespace based mapping",
-			dmEnabled:       false,
-			createNamespace: false,
+			name:              "namespace based mapping",
+			dmEnabled:         false,
+			createNamespace:   false,
+			wantExpandedRules: false,
 		},
 		{
-			name:            "destination based mapping without creating namespace",
-			dmEnabled:       true,
-			createNamespace: false,
+			name:                    "destination based mapping in non-cluster-scoped namespace",
+			dmEnabled:               true,
+			createNamespace:         false,
+			clusterConfigNamespaces: "other-namespace",
+			wantExpandedRules:       false,
 		},
 		{
-			name:            "destination based mapping with creating namespace",
-			dmEnabled:       true,
-			createNamespace: true,
+			name:                    "destination based mapping without cluster config namespaces set",
+			dmEnabled:               true,
+			createNamespace:         false,
+			clusterConfigNamespaces: "",
+			wantExpandedRules:       false,
+		},
+		{
+			name:                    "destination based mapping in cluster-scoped namespace without creating namespace",
+			dmEnabled:               true,
+			createNamespace:         false,
+			clusterConfigNamespaces: testNamespace,
+			wantExpandedRules:       true,
+		},
+		{
+			name:                    "destination based mapping in cluster-scoped namespace with creating namespace",
+			dmEnabled:               true,
+			createNamespace:         true,
+			clusterConfigNamespaces: testNamespace,
+			wantExpandedRules:       true,
+		},
+		{
+			name:                    "destination based mapping with wildcard cluster config",
+			dmEnabled:               true,
+			createNamespace:         false,
+			clusterConfigNamespaces: "*",
+			wantExpandedRules:       true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", tt.clusterConfigNamespaces)
+
 			// Build CR for this case
 			cr := makeTestArgoCD(withAgentEnabled(true))
 			if tt.dmEnabled {
@@ -484,7 +514,7 @@ func TestBuildPolicyRuleForClusterRole_Table(t *testing.T) {
 				},
 			}
 
-			if !tt.dmEnabled {
+			if !tt.wantExpandedRules {
 				assert.Len(t, rules, 1)
 				assert.ElementsMatch(t, defaultRules, rules)
 				return

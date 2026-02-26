@@ -223,7 +223,7 @@ func buildPolicyRuleForClusterRole(cr *argoproj.ArgoCD) []v1.PolicyRule {
 	}
 
 	// Return default policy rule if destination-based mapping is not enabled
-	if dm == nil || !dm.IsEnabled() {
+	if dm == nil || !dm.IsEnabled() || !argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace) {
 		return []v1.PolicyRule{
 			{
 				APIGroups: []string{""},
