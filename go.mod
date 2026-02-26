@@ -210,6 +210,7 @@ replace (
 	// Avoid CVE-2022-28948
 	gopkg.in/yaml.v3 => gopkg.in/yaml.v3 v3.0.1
 
+	// This replace block is from Argo CD v3.3.0 go.mod
 	k8s.io/api => k8s.io/api v0.34.0
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.34.0
 	k8s.io/apimachinery => k8s.io/apimachinery v0.34.0
@@ -241,5 +242,5 @@ replace (
 	k8s.io/pod-security-admission => k8s.io/pod-security-admission v0.34.0
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.34.0
 	k8s.io/sample-cli-plugin => k8s.io/sample-cli-plugin v0.34.0
-	k8s.io/sample-controller => k8s.io/sample-controller v0.33.1
+	k8s.io/sample-controller => k8s.io/sample-controller v0.34.0
 )
