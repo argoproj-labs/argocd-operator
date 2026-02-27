@@ -382,10 +382,10 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				Expect(container.Env).To(ContainElement(corev1.EnvVar{Name: key, Value: value}), "Environment variable %s should be set to %s", key, value)
 			}
 
-			Expect(container.Env).To(ContainElement(And(
-				HaveField("Name", argocdagent.EnvRedisPassword),
-				HaveField("ValueFrom.SecretKeyRef", Not(BeNil())),
-			)), "REDIS_PASSWORD should be set with valueFrom.secretKeyRef")
+			// TODO: Convert to volume mount once possible: https://issues.redhat.com/browse/GITOPS-9070
+			//Expect(container.Env).NotTo(ContainElement(
+			//	HaveField("Name", "REDIS_PASSWORD"),
+			//), "REDIS_PASSWORD should not be set")
 
 			By("Disable principal")
 

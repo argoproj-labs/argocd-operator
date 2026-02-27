@@ -130,10 +130,6 @@ func TestReconcilePrincipalDeployment_DeploymentDoesNotExist_PrincipalEnabled(t 
 	assert.Equal(t, buildPrincipalContainerEnv(cr), container.Env)
 	assert.Equal(t, buildSecurityContext(), container.SecurityContext)
 	assert.Equal(t, buildPorts(testCompName), container.Ports)
-	assert.Equal(t, buildVolumeMounts(), container.VolumeMounts)
-
-	// Verify pod volumes configuration
-	assert.Equal(t, buildVolumes(), deployment.Spec.Template.Spec.Volumes)
 
 	// Verify owner reference is set
 	assert.Len(t, deployment.OwnerReferences, 1)
@@ -387,34 +383,34 @@ func TestReconcilePrincipalDeployment_VerifyDeploymentSpec(t *testing.T) {
 	// Verify some expected environment variables are present
 	envNames := make(map[string]bool)
 	for _, env := range container.Env {
-		envNames[env.Name] = true
-		// Most environment variables should have direct values, except for secrets like Redis password
+		// TODO: Convert to volume mount once possible: https://issues.redhat.com/browse/GITOPS-9070
 		if env.Name == "REDIS_PASSWORD" {
-			assert.NotNil(t, env.ValueFrom, "REDIS_PASSWORD should reference a secret")
-			assert.NotNil(t, env.ValueFrom.SecretKeyRef, "REDIS_PASSWORD should reference a secret key")
-
-			assert.Equal(t, "argocd-redis-initial-password", env.ValueFrom.SecretKeyRef.Name)
-			assert.Equal(t, "admin.password", env.ValueFrom.SecretKeyRef.Key)
-		} else {
-			// All other environment variables should have direct values, not references
-			assert.Nil(t, env.ValueFrom, "Environment variable %s should have direct value, not reference", env.Name)
+			continue
 		}
+
+		envNames[env.Name] = true
+		// All environment variables should have direct values, not references
+		assert.Nil(t, env.ValueFrom, "Environment variable %s should have direct value, not reference", env.Name)
 	}
 	// Check for some environment variables
 	assert.True(t, envNames["ARGOCD_PRINCIPAL_NAMESPACE"], "ARGOCD_PRINCIPAL_NAMESPACE should be set")
-	assert.True(t, envNames["REDIS_PASSWORD"], "REDIS_PASSWORD should be set")
+	// TODO: Convert to volume mount once possible: https://issues.redhat.com/browse/GITOPS-9070
+	assert.False(t, envNames["REDIS_PASSWORD"], "REDIS_PASSWORD should not be set")
 
 	// Verify volume mounts
-	assert.Len(t, container.VolumeMounts, 2)
+	assert.Len(t, container.VolumeMounts, 3)
 	jwtVolumeMount := container.VolumeMounts[0]
 	assert.Equal(t, "jwt-secret", jwtVolumeMount.Name)
 	assert.Equal(t, "/app/config/jwt", jwtVolumeMount.MountPath)
 	userpassVolumeMount := container.VolumeMounts[1]
 	assert.Equal(t, "userpass-passwd", userpassVolumeMount.Name)
 	assert.Equal(t, "/app/config/userpass", userpassVolumeMount.MountPath)
+	redisAuthVolumeMount := container.VolumeMounts[2]
+	assert.Equal(t, "redis-initial-pass", redisAuthVolumeMount.Name)
+	assert.Equal(t, "/app/config/redis-auth/", redisAuthVolumeMount.MountPath)
 
 	// Verify pod volumes
-	assert.Len(t, deployment.Spec.Template.Spec.Volumes, 2)
+	assert.Len(t, deployment.Spec.Template.Spec.Volumes, 3)
 	jwtVolume := deployment.Spec.Template.Spec.Volumes[0]
 	assert.Equal(t, "jwt-secret", jwtVolume.Name)
 	assert.NotNil(t, jwtVolume.Secret)
@@ -432,6 +428,13 @@ func TestReconcilePrincipalDeployment_VerifyDeploymentSpec(t *testing.T) {
 	assert.Len(t, userpassVolume.Secret.Items, 1)
 	assert.Equal(t, "passwd", userpassVolume.VolumeSource.Secret.Items[0].Key)
 	assert.Equal(t, "passwd", userpassVolume.VolumeSource.Secret.Items[0].Path)
+
+	redisAuthVolume := deployment.Spec.Template.Spec.Volumes[2]
+	assert.Equal(t, "redis-initial-pass", redisAuthVolume.Name)
+	assert.NotNil(t, redisAuthVolume.Secret)
+	assert.Equal(t, "argocd-redis-initial-password", redisAuthVolume.Secret.SecretName)
+	assert.NotEqual(t, ptr.To(true), redisAuthVolume.Secret.Optional)
+	assert.Len(t, redisAuthVolume.Secret.Items, 0)
 }
 
 func TestReconcilePrincipalDeployment_CustomImage(t *testing.T) {
@@ -507,13 +510,9 @@ func TestReconcilePrincipalDeployment_VolumeMountsAndVolumes(t *testing.T) {
 
 	// Verify volume mounts
 	container := deployment.Spec.Template.Spec.Containers[0]
-	assert.Equal(t, buildVolumeMounts(), container.VolumeMounts)
-
-	// Verify volumes
-	assert.Equal(t, buildVolumes(), deployment.Spec.Template.Spec.Volumes)
 
 	// Verify specific volume mount details
-	assert.Len(t, container.VolumeMounts, 2)
+	assert.Len(t, container.VolumeMounts, 3)
 	jwtMount := container.VolumeMounts[0]
 	assert.Equal(t, "jwt-secret", jwtMount.Name)
 	assert.Equal(t, "/app/config/jwt", jwtMount.MountPath)
@@ -522,8 +521,11 @@ func TestReconcilePrincipalDeployment_VolumeMountsAndVolumes(t *testing.T) {
 	assert.Equal(t, "userpass-passwd", userpassMount.Name)
 	assert.Equal(t, "/app/config/userpass", userpassMount.MountPath)
 
+	redisAuthMount := container.VolumeMounts[2]
+	assert.Equal(t, "redis-initial-pass", redisAuthMount.Name)
+
 	// Verify specific volume details
-	assert.Len(t, deployment.Spec.Template.Spec.Volumes, 2)
+	assert.Len(t, deployment.Spec.Template.Spec.Volumes, 3)
 	jwtVolume := deployment.Spec.Template.Spec.Volumes[0]
 	assert.Equal(t, "jwt-secret", jwtVolume.Name)
 	assert.Equal(t, "argocd-agent-jwt", jwtVolume.Secret.SecretName)
@@ -533,6 +535,9 @@ func TestReconcilePrincipalDeployment_VolumeMountsAndVolumes(t *testing.T) {
 	assert.Equal(t, "userpass-passwd", userpassVolume.Name)
 	assert.Equal(t, "argocd-agent-principal-userpass", userpassVolume.Secret.SecretName)
 	assert.Equal(t, ptr.To(true), userpassVolume.Secret.Optional)
+
+	redisAuthVolume := deployment.Spec.Template.Spec.Volumes[2]
+	assert.Equal(t, "redis-initial-pass", redisAuthVolume.Name)
 }
 
 func TestBuildPrincipalImage(t *testing.T) {

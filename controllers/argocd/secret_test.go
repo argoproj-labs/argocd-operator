@@ -10,10 +10,10 @@ import (
 	"testing"
 
 	argopass "github.com/argoproj/argo-cd/v3/util/password"
-
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	corev1 "k8s.io/api/core/v1"
 	testclient "k8s.io/client-go/kubernetes/fake"
@@ -360,6 +360,77 @@ func Test_ReconcileArgoCD_ReconcileShouldNotChangeWhenUpdatedAdminPass(t *testin
 		t.Errorf("Expected data for data.server.secretKey but got nothing")
 	}
 	assert.True(t, argoutil.IsTrackedByOperator(testSecret.Labels))
+}
+
+func Test_ReconcileArgoCD_ReconcileRedisInitialPasswordSecret(t *testing.T) {
+	const suffix = "redis-initial-password"
+	argocd := &argoproj.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd",
+			Namespace: "argocd-operator",
+		},
+	}
+	secretName := argoutil.NewSecretWithSuffix(argocd, suffix).Name
+	secretNN := types.NamespacedName{Name: secretName, Namespace: "argocd-operator"}
+
+	resObjs := []client.Object{argocd}
+	subresObjs := []client.Object{argocd}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	var actual corev1.Secret
+	fetchSecret := func() error {
+		return r.Get(t.Context(), secretNN, &actual)
+	}
+	assertSecretValid := func() string {
+		assert.Equal(t, "true", string(actual.Data["immutable"]))
+		assert.Equal(t, "default", string(actual.Data["auth_username"]))
+		assert.Contains(t, string(actual.Data["users.acl"]), "user default on >")
+		assert.Contains(t, string(actual.Data["users.acl"]), " allchannels allkeys allcommands")
+		actualPwd := string(actual.Data["auth"])
+		assert.NotEqual(t, "", actualPwd)
+		assert.Contains(t, string(actual.Data["users.acl"]), actualPwd, "Password is mentioned in the ACL file")
+		return actualPwd
+	}
+
+	t.Run("Create when does not exist", func(t *testing.T) {
+		require.ErrorContains(t, fetchSecret(), fmt.Sprintf(`secrets "%s" not found`, secretName))
+
+		require.NoError(t, r.reconcileRedisInitialPasswordSecret(argocd))
+
+		require.NoError(t, fetchSecret())
+		assertSecretValid()
+	})
+
+	t.Run("Update keys and regenerate on operator upgrade", func(t *testing.T) {
+		const oldPwd = "asdfghjkl"
+		secret := argoutil.NewSecretWithSuffix(argocd, suffix)
+		secret.Data = map[string][]byte{
+			"immutable":                   []byte("true"),
+			common.ArgoCDKeyAdminPassword: []byte(oldPwd),
+		}
+		require.NoError(t, r.Update(t.Context(), secret))
+
+		require.NoError(t, r.reconcileRedisInitialPasswordSecret(argocd))
+
+		require.NoError(t, fetchSecret())
+		actualPwd := assertSecretValid()
+		assert.NotEqual(t, oldPwd, actualPwd)
+	})
+
+	t.Run("Keep untouched if healthy", func(t *testing.T) {
+		require.NoError(t, fetchSecret())
+		assertSecretValid()
+		oldVersion := actual.ResourceVersion
+
+		require.NoError(t, r.reconcileRedisInitialPasswordSecret(argocd))
+
+		require.NoError(t, fetchSecret())
+		assertSecretValid()
+		assert.Equal(t, oldVersion, actual.ResourceVersion, "Resource version should not change")
+	})
 }
 
 func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {

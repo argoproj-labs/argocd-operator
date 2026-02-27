@@ -132,10 +132,11 @@ setup_defaults() {
 
 redis_ping() {
 set +e
+    AUTH="$(cat /app/config/redis-auth/auth)"
     if [ "$REDIS_PORT" -eq 0 ]; then
-        redis-cli -h "${MASTER}" -a "${AUTH}" --no-auth-warning -p "${REDIS_TLS_PORT}"  --tls --cacert /app/config/redis/tls/tls.crt ping
+        env REDISCLI_AUTH="${AUTH}" redis-cli -h "${MASTER}" -p "${REDIS_TLS_PORT}" --tls --cacert /app/config/redis/tls/tls.crt ping
     else
-        redis-cli -h "${MASTER}"  -a "${AUTH}" --no-auth-warning -p "${REDIS_PORT}" ping
+        env REDISCLI_AUTH="${AUTH}" redis-cli -h "${MASTER}" -p "${REDIS_PORT}" ping
     fi
 set -e
 }
@@ -170,7 +171,7 @@ find_master() {
         if [ "$SENTINEL_PORT" -eq 0 ]; then
             echo "  on sentinel (${SERVICE}:${SENTINEL_TLS_PORT}), sentinel grp (${MASTER_GROUP})"
             echo "  $(date).."
-            if redis-cli -h "${SERVICE}" -p "${SENTINEL_TLS_PORT}"   --tls --cacert /app/config/redis/tls/tls.crt sentinel failover "${MASTER_GROUP}" | grep -q 'NOGOODSLAVE' ; then
+            if redis-cli -h "${SERVICE}" -p "${SENTINEL_TLS_PORT}" --tls --cacert /app/config/redis/tls/tls.crt sentinel failover "${MASTER_GROUP}" | grep -q 'NOGOODSLAVE' ; then
                 echo "  $(date) Failover returned with 'NOGOODSLAVE'"
                 echo "Setting defaults for this pod.."
                 setup_defaults
@@ -179,7 +180,7 @@ find_master() {
         else
             echo "  on sentinel (${SERVICE}:${SENTINEL_PORT}), sentinel grp (${MASTER_GROUP})"
             echo "  $(date).."
-            if redis-cli -h "${SERVICE}" -p "${SENTINEL_PORT}"  sentinel failover "${MASTER_GROUP}" | grep -q 'NOGOODSLAVE' ; then
+            if redis-cli -h "${SERVICE}" -p "${SENTINEL_PORT}" sentinel failover "${MASTER_GROUP}" | grep -q 'NOGOODSLAVE'; then
                 echo "  $(date) Failover returned with 'NOGOODSLAVE'"
                 echo "Setting defaults for this pod.."
                 setup_defaults
@@ -252,16 +253,19 @@ else
     setup_defaults
 fi
 
-if [ "${AUTH:-}" ]; then
-    echo "Setting redis auth values.."
-    ESCAPED_AUTH=$(echo "${AUTH}" | sed -e 's/[\/&]/\\&/g');
-    sed -i "s/replace-default-auth/${ESCAPED_AUTH}/" "${REDIS_CONF}" "${SENTINEL_CONF}"
+AUTH="$(cat /app/config/redis-auth/auth)"
+if [ -z "${AUTH}" ]; then
+    echo "Error: Redis password not mounted correctly"
+    exit 1
 fi
+echo "Setting redis auth values.."
+ESCAPED_AUTH=$(echo "${AUTH}" | sed -e 's/[\/&]/\\&/g');
+sed -i "s/__REPLACE_DEFAULT_AUTH__/${ESCAPED_AUTH}/" "${REDIS_CONF}" "${SENTINEL_CONF}"
 
 if [ "${SENTINELAUTH:-}" ]; then
     echo "Setting sentinel auth values"
     ESCAPED_AUTH_SENTINEL=$(echo "$SENTINELAUTH" | sed -e 's/[\/&]/\\&/g');
-    sed -i "s/replace-default-sentinel-auth/${ESCAPED_AUTH_SENTINEL}/" "$SENTINEL_CONF"
+    sed -i "s/__REPLACE_DEFAULT_SENTINEL_AUTH__/${ESCAPED_AUTH_SENTINEL}/" "$SENTINEL_CONF"
 fi
 
 echo "$(date) Ready..."

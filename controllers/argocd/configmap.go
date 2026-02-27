@@ -722,9 +722,9 @@ func (r *ReconcileArgoCD) reconcileRedisHAHealthConfigMap(cr *argoproj.ArgoCD, u
 	ctx := context.TODO()
 	cm := newConfigMapWithName(common.ArgoCDRedisHAHealthConfigMapName, cr)
 	cm.Data = map[string]string{
-		"redis_liveness.sh":    getRedisLivenessScript(useTLSForRedis),
-		"redis_readiness.sh":   getRedisReadinessScript(useTLSForRedis),
-		"sentinel_liveness.sh": getSentinelLivenessScript(useTLSForRedis),
+		"redis_liveness.sh":    argoutil.GetRedisLivenessScript(useTLSForRedis),
+		"redis_readiness.sh":   argoutil.GetRedisReadinessScript(useTLSForRedis),
+		"sentinel_liveness.sh": argoutil.GetSentinelLivenessScript(useTLSForRedis),
 	}
 	existingCM := &corev1.ConfigMap{}
 	exists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM)
@@ -777,11 +777,11 @@ func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSF
 	ctx := context.TODO()
 	desired := newConfigMapWithName(common.ArgoCDRedisHAConfigMapName, cr)
 	desired.Data = map[string]string{
-		"haproxy.cfg":     getRedisHAProxyConfig(cr, useTLSForRedis),
-		"haproxy_init.sh": getRedisHAProxyScript(cr),
-		"init.sh":         getRedisInitScript(cr, useTLSForRedis),
-		"redis.conf":      getRedisConf(useTLSForRedis),
-		"sentinel.conf":   getRedisSentinelConf(useTLSForRedis),
+		"haproxy.cfg":     argoutil.GetRedisHAProxyConfig(cr, useTLSForRedis),
+		"haproxy_init.sh": argoutil.GetRedisHAProxyScript(cr),
+		"init.sh":         argoutil.GetRedisInitScript(cr, useTLSForRedis),
+		"redis.conf":      argoutil.GetRedisConf(useTLSForRedis),
+		"sentinel.conf":   argoutil.GetRedisSentinelConf(useTLSForRedis),
 	}
 	existing := &corev1.ConfigMap{}
 	exists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, desired.Name, existing)
