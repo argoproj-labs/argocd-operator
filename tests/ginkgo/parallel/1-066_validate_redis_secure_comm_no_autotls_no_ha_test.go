@@ -145,7 +145,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("expecting redis-server to have desired container process command/arguments")
 
-			expectedString := "--save \"\" --appendonly no --requirepass " + "$(REDIS_PASSWORD)" + " --tls-port 6379 --port 0 --tls-cert-file /app/config/redis/tls/tls.crt --tls-key-file /app/config/redis/tls/tls.key --tls-auth-clients no"
+			expectedString := "--save \"\" --appendonly no --tls-port 6379 --port 0 --tls-cert-file /app/config/redis/tls/tls.crt --tls-key-file /app/config/redis/tls/tls.key --tls-auth-clients no"
 
 			if !fixture.IsUpstreamOperatorTests() {
 				// Downstream operator adds these arguments
