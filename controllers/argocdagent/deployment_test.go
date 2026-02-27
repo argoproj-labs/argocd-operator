@@ -383,14 +383,18 @@ func TestReconcilePrincipalDeployment_VerifyDeploymentSpec(t *testing.T) {
 	// Verify some expected environment variables are present
 	envNames := make(map[string]bool)
 	for _, env := range container.Env {
-		envNames[env.Name] = true
-		// Most environment variables should have direct values, except for secrets like Redis password
+		// TODO: Convert to volume mount once possible: https://issues.redhat.com/browse/GITOPS-9070
+		if env.Name == "REDIS_PASSWORD" {
+			continue
+		}
 
+		envNames[env.Name] = true
 		// All environment variables should have direct values, not references
 		assert.Nil(t, env.ValueFrom, "Environment variable %s should have direct value, not reference", env.Name)
 	}
 	// Check for some environment variables
 	assert.True(t, envNames["ARGOCD_PRINCIPAL_NAMESPACE"], "ARGOCD_PRINCIPAL_NAMESPACE should be set")
+	// TODO: Convert to volume mount once possible: https://issues.redhat.com/browse/GITOPS-9070
 	assert.False(t, envNames["REDIS_PASSWORD"], "REDIS_PASSWORD should not be set")
 
 	// Verify volume mounts

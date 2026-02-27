@@ -374,6 +374,18 @@ func buildPrincipalContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
 		}, {
 			Name:  EnvArgoCDPrincipalDestinationBasedMapping,
 			Value: getPrincipalDestinationBasedMapping(cr),
+		}, {
+			// TODO: Convert to volume mount once possible: https://issues.redhat.com/browse/GITOPS-9070
+			Name: "REDIS_PASSWORD",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					Key: "admin.password",
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: fmt.Sprintf("%s-%s", cr.Name, "redis-initial-password"),
+					},
+					Optional: ptr.To(true),
+				},
+			},
 		},
 	}
 
