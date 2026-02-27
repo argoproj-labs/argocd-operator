@@ -88,7 +88,7 @@ func ReconcileAgentRole(client client.Client, compName string, cr *argoproj.Argo
 // This function creates, updates, or deletes the ClusterRole based on the agent's enabled status.
 func ReconcileAgentClusterRoles(client client.Client, compName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme) (*v1.ClusterRole, error) {
 	clusterRole := buildClusterRole(compName, cr)
-	expectedPolicyRule := buildPolicyRuleForClusterRole()
+	expectedPolicyRule := buildPolicyRuleForClusterRole(cr)
 
 	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
 
@@ -216,19 +216,51 @@ func buildPolicyRuleForRole() []v1.PolicyRule {
 // buildPolicyRuleForClusterRole defines the cluster-scoped permissions for the ArgoCD agent.
 // Grants access to:
 // - namespaces: list and watch permissions for discovering and monitoring cluster namespaces
-func buildPolicyRuleForClusterRole() []v1.PolicyRule {
-	return []v1.PolicyRule{
+func buildPolicyRuleForClusterRole(cr *argoproj.ArgoCD) []v1.PolicyRule {
+	var dm *argoproj.DestinationBasedMappingSpec
+	if hasAgent(cr) && cr.Spec.ArgoCDAgent.Agent.DestinationBasedMapping != nil {
+		dm = cr.Spec.ArgoCDAgent.Agent.DestinationBasedMapping
+	}
+
+	// Return default policy rule if destination-based mapping is not enabled
+	if dm == nil || !dm.IsEnabled() || !argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace) {
+		return []v1.PolicyRule{
+			{
+				APIGroups: []string{""},
+				Resources: []string{"namespaces"},
+				Verbs:     []string{"list", "watch"},
+			},
+		}
+	}
+
+	// When destination-based mapping is enabled, the agent needs to:
+	// - manage applications cluster-wide
+	// - create namespaces when permitted
+	rules := []v1.PolicyRule{
 		{
-			APIGroups: []string{
-				"",
-			},
-			Resources: []string{
-				"namespaces",
-			},
+			APIGroups: []string{""},
+			Resources: []string{"namespaces"},
+			Verbs:     []string{"list", "watch"},
+		},
+		{
+			APIGroups: []string{"argoproj.io"},
+			Resources: []string{"applications"},
 			Verbs: []string{
+				"create",
+				"get",
 				"list",
 				"watch",
+				"update",
+				"delete",
+				"patch",
 			},
 		},
 	}
+
+	// Conditionally allow namespace create/get only if requested
+	if dm.IsCreateNamespaceEnabled() {
+		rules[0].Verbs = append(rules[0].Verbs, "create", "get")
+	}
+
+	return rules
 }

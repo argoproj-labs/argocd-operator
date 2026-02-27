@@ -11347,6 +11347,13 @@ spec:
                     description: Agent defines configurations for the Agent component
                       of Argo CD Agent.
                     properties:
+                      allowedNamespaces:
+                        description: |-
+                          AllowedNamespaces is a list of additional namespaces the agent is allowed to
+                          manage applications in. Supports glob patterns.
+                        items:
+                          type: string
+                        type: array
                       client:
                         description: Client defines the client options for the Agent
                           component.
@@ -11381,6 +11388,20 @@ spec:
                         description: Creds is the credential identifier for the agent
                           authentication
                         type: string
+                      destinationBasedMapping:
+                        description: DestinationBasedMapping defines the options for
+                          destination based mapping for the Agent component.
+                        properties:
+                          createNamespace:
+                            description: |-
+                              CreateNamespace enables automatic creation of target namespaces on the managed cluster
+                              when destination-based mapping is enabled.
+                            type: boolean
+                          enabled:
+                            description: Enabled is the flag to enable destination
+                              based mapping for the Agent component.
+                            type: boolean
+                        type: object
                       enabled:
                         description: Enabled is the flag to enable the Agent component
                           during Argo CD installation. (optional, default `false`)
@@ -11589,6 +11610,10 @@ spec:
                         description: Auth is the authentication method for the Principal
                           component.
                         type: string
+                      destinationBasedMapping:
+                        description: DestinationBasedMapping is the flag to enable
+                          destination based mapping for the Principal component.
+                        type: boolean
                       enabled:
                         description: Enabled is the flag to enable the Principal component
                           during Argo CD installation. (optional, default `false`)

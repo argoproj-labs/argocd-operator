@@ -1286,6 +1286,9 @@ type PrincipalSpec struct {
 
 	// JWT defines the JWT options for the Principal component.
 	JWT *PrincipalJWTSpec `json:"jwt,omitempty"`
+
+	// DestinationBasedMapping is the flag to enable destination based mapping for the Principal component.
+	DestinationBasedMapping *bool `json:"destinationBasedMapping,omitempty"`
 }
 
 type PrincipalServerSpec struct {
@@ -1381,6 +1384,10 @@ type AgentSpec struct {
 	// Enabled is the flag to enable the Agent component during Argo CD installation. (optional, default `false`)
 	Enabled *bool `json:"enabled,omitempty"`
 
+	// AllowedNamespaces is a list of additional namespaces the agent is allowed to
+	// manage applications in. Supports glob patterns.
+	AllowedNamespaces []string `json:"allowedNamespaces,omitempty"`
+
 	// Creds is the credential identifier for the agent authentication
 	Creds string `json:"creds,omitempty"`
 
@@ -1404,6 +1411,32 @@ type AgentSpec struct {
 
 	// TLS defines the TLS options for the Agent component.
 	TLS *AgentTLSSpec `json:"tls,omitempty"`
+
+	// DestinationBasedMapping defines the options for destination based mapping for the Agent component.
+	DestinationBasedMapping *DestinationBasedMappingSpec `json:"destinationBasedMapping,omitempty"`
+}
+
+type DestinationBasedMappingSpec struct {
+	// Enabled is the flag to enable destination based mapping for the Agent component.
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// CreateNamespace enables automatic creation of target namespaces on the managed cluster
+	// when destination-based mapping is enabled.
+	CreateNamespace *bool `json:"createNamespace,omitempty"`
+}
+
+func (d *DestinationBasedMappingSpec) IsEnabled() bool {
+	if d == nil {
+		return false
+	}
+	return d.Enabled != nil && *d.Enabled
+}
+
+func (d *DestinationBasedMappingSpec) IsCreateNamespaceEnabled() bool {
+	if d == nil || !d.IsEnabled() || d.CreateNamespace == nil {
+		return false
+	}
+	return *d.CreateNamespace
 }
 
 type AgentClientSpec struct {
