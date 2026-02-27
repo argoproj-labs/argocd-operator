@@ -974,7 +974,7 @@ func TestReconcileArgoCD_sidecarcontainer(t *testing.T) {
 	assert.Equal(t, 1, len(ss.Spec.Template.Spec.Containers))
 }
 
-func TestReconcileArgoCD_reconcileRedisStatefulSet_ModifyContainerSpec(t *testing.T) {
+func TestReconcileArgoCD_reconcileRedisStatefulSet_RevertDrift(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	a := makeTestArgoCD()
@@ -1086,7 +1086,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_ModifyContainerSpec(t *testin
 	s.Spec.Template.Spec.Containers[1].ImagePullPolicy = corev1.PullAlways
 
 	assert.NoError(t, r.Update(context.TODO(), s))
-	// Reconcile again and check
+	// Reconcile again and check that ImagePullPolicy is reverted
 	assert.NoError(t, r.reconcileRedisStatefulSet(a))
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
 
