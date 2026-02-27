@@ -778,7 +778,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSF
 	desired := newConfigMapWithName(common.ArgoCDRedisHAConfigMapName, cr)
 	desired.Data = map[string]string{
 		"haproxy.cfg":     getRedisHAProxyConfig(cr, useTLSForRedis),
-		"haproxy_init.sh": getRedisHAProxyScript(cr),
+		"haproxy_init.sh": getRedisHAProxyScript(),
 		"init.sh":         getRedisInitScript(),
 		"redis.conf":      getRedisConf(useTLSForRedis),
 		"sentinel.conf":   getRedisSentinelConf(useTLSForRedis),
@@ -841,7 +841,7 @@ func (r *ReconcileArgoCD) recreateRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSFo
 	return r.reconcileRedisHAConfigMap(cr, useTLSForRedis)
 }
 
-func (r *ReconcileArgoCD) recreateRedisHAHealthConfigMap(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
+func (r *ReconcileArgoCD) recreateRedisHAHealthConfigMap(cr *argoproj.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDRedisHAHealthConfigMapName, cr)
 
 	exists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm)
