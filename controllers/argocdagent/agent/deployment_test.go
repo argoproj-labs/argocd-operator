@@ -346,6 +346,11 @@ func TestReconcileAgentDeployment_VerifyDeploymentSpec(t *testing.T) {
 	// Verify some expected environment variables are present
 	envNames := make(map[string]bool)
 	for _, env := range container.Env {
+		// TODO: Convert to volume mount once possible: https://issues.redhat.com/browse/GITOPS-9070
+		if env.Name == "REDIS_PASSWORD" {
+			continue
+		}
+
 		envNames[env.Name] = true
 		// All environment variables should have direct values, not references
 		assert.Nil(t, env.ValueFrom, "Environment variable %s should have direct value, not reference", env.Name)
