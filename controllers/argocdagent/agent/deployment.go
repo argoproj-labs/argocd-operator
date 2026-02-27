@@ -98,6 +98,7 @@ func buildDeployment(compName string, cr *argoproj.ArgoCD) *appsv1.Deployment {
 }
 
 func buildAgentSpec(compName, saName string, cr *argoproj.ArgoCD) appsv1.DeploymentSpec {
+	redisAuthVolume, redisAuthMount := argoutil.MountRedisAuthToArgo(cr)
 	return appsv1.DeploymentSpec{
 		Selector: buildSelector(compName, cr),
 		Template: corev1.PodTemplateSpec{
@@ -114,11 +115,11 @@ func buildAgentSpec(compName, saName string, cr *argoproj.ArgoCD) appsv1.Deploym
 						Args:            buildArgs(compName),
 						SecurityContext: buildSecurityContext(),
 						Ports:           buildPorts(),
-						VolumeMounts:    buildVolumeMounts(),
+						VolumeMounts:    append(buildVolumeMounts(), redisAuthMount),
 					},
 				},
 				ServiceAccountName: saName,
-				Volumes:            buildVolumes(),
+				Volumes:            append(buildVolumes(), redisAuthVolume),
 			},
 		},
 	}
@@ -342,18 +343,6 @@ func buildAgentContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
 			Name:  EnvArgoCDAgentAllowedNamespaces,
 			Value: getAgentAllowedNamespaces(cr),
 		},
-		{
-			Name: EnvRedisPassword,
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					Key: AgentRedisPasswordKey,
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: fmt.Sprintf("%s-%s", cr.Name, AgentRedisSecretnameSuffix),
-					},
-					Optional: ptr.To(true),
-				},
-			},
-		},
 	}
 
 	// Add custom environment variables if specified in the CR
@@ -383,9 +372,6 @@ const (
 	EnvArgoCDAgentEnableResourceProxy = "ARGOCD_AGENT_ENABLE_RESOURCE_PROXY"
 	EnvArgoCDAgentImage               = "ARGOCD_AGENT_IMAGE"
 	EnvArgoCDAgentRedisAddress        = "REDIS_ADDR"
-	EnvRedisPassword                  = "REDIS_PASSWORD"
-	AgentRedisPasswordKey             = "admin.password"
-	AgentRedisSecretnameSuffix        = "redis-initial-password" // #nosec G101
 	EnvArgoCDAgentDestinationBasedMap = "ARGOCD_AGENT_DESTINATION_BASED_MAPPING"
 	EnvArgoCDAgentCreateNamespace     = "ARGOCD_AGENT_CREATE_NAMESPACE"
 	EnvArgoCDAgentAllowedNamespaces   = "ARGOCD_AGENT_ALLOWED_NAMESPACES"

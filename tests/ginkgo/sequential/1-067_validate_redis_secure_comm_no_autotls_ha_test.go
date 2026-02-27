@@ -23,6 +23,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
 	argocdFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/argocd"
@@ -213,8 +215,63 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			Expect(applicationControllerSS).To(statefulsetFixture.HaveContainerCommandSubstring("argocd-application-controller --operation-processors 10 --redis argocd-redis-ha-haproxy."+ns.Name+".svc.cluster.local:6379 --redis-use-tls --redis-ca-certificate /app/config/controller/tls/redis/tls.crt --repo-server argocd-repo-server."+ns.Name+".svc.cluster.local:8081 --status-processors 20 --kubectl-parallelism-limit 10 --loglevel info --logformat text", 0),
 				"TLS .spec.template.spec.containers.command for argocd-application-controller statefulsets is wrong")
-
 		})
 
+		It("verify redis credential distribution", func() {
+			By("verifying we are running on a cluster with at least 3 nodes. This is required for Redis HA")
+			nodeFixture.ExpectHasAtLeastXNodes(3)
+
+			By("creating simple Argo CD instance")
+			ns, cleanupFunc = fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
+
+			argoCD := &argov1beta1api.ArgoCD{
+				ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: ns.Name},
+				Spec: argov1beta1api.ArgoCDSpec{
+					HA: argov1beta1api.ArgoCDHASpec{
+						Enabled: true,
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+
+			By("waiting for ArgoCD CR to be reconciled and the instance to be ready")
+			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
+
+			By("verify redis creds are correctly passed to pods")
+			const expectedMsg = "Loading Redis credentials from mounted directory: /app/config/redis-auth/"
+			expectedComponents := []string{
+				"statefulset/" + argoCD.Name + "-" + "application-controller",
+				"deployment/" + argoCD.Name + "-" + "repo-server",
+				"deployment/" + argoCD.Name + "-" + "server",
+			}
+			for _, component := range expectedComponents {
+				logOutput, err := osFixture.ExecCommandWithOutputParam(false, true,
+					"kubectl", "logs", component, "-n", ns.Name,
+				)
+				Expect(err).ToNot(HaveOccurred(), "Output: "+logOutput)
+				Expect(logOutput).To(ContainSubstring(expectedMsg))
+				// Some logs how redis disconnect manifests
+				Expect(logOutput).ToNot(ContainSubstring("manifest cache error"))
+				Expect(logOutput).ToNot(ContainSubstring("WRONGPASS"))
+			}
+
+			By("verifying redis password is correct")
+			redisInitialSecret := &corev1.Secret{}
+			redisPwdSecretKey := client.ObjectKey{
+				Name:      argoutil.GetSecretNameWithSuffix(argoCD, "redis-initial-password"),
+				Namespace: ns.Name,
+			}
+			Expect(k8sClient.Get(ctx, redisPwdSecretKey, redisInitialSecret)).Should(Succeed())
+			expectedRedisPwd := string(redisInitialSecret.Data["admin.password"])
+			Expect(expectedRedisPwd).ShouldNot(Equal(""))
+
+			redisPingOut, err := osFixture.ExecCommandWithOutputParam(false, false,
+				"kubectl", "exec", "-n", ns.Name, "-c", "redis", "pod/argocd-redis-ha-server-0", "--",
+				"redis-cli", "-a", expectedRedisPwd, "--no-auth-warning", "ping",
+			)
+
+			Expect(err).ToNot(HaveOccurred(), "Output: "+redisPingOut)
+			Expect(redisPingOut).To(ContainSubstring("PONG"))
+		})
 	})
 })

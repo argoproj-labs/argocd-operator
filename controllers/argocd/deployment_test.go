@@ -40,18 +40,6 @@ var (
 		"argocd-dex-server",
 		"argocd-redis",
 		"argocd-server"}
-
-	// TODO: Delete after replaced by volume mounted secret
-	redisPasswordEnvRef = corev1.EnvVar{Name: "REDIS_PASSWORD", Value: "",
-		ValueFrom: &corev1.EnvVarSource{
-			SecretKeyRef: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: "argocd-redis-initial-password",
-				},
-				Key: "admin.password",
-			},
-		},
-	}
 )
 
 type MockTrueFipsChecker struct{}
@@ -338,7 +326,6 @@ func TestReconcileArgoCD_reconcile_ServerDeployment_env(t *testing.T) {
 		}, deployment)
 		assert.NoError(t, err)
 
-		// Check that the env vars are set, Count is 3 because of the default REDIS_PASSWORD env var
 		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 3)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "FOO", Value: "BAR"})
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "BAR", Value: "FOO"})
@@ -379,7 +366,6 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		}, deployment)
 		assert.NoError(t, err)
 
-		// Check that the env vars are set, Count is 4 because of the default REDIS_PASSWORD env var
 		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 4)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "FOO", Value: "BAR"})
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "BAR", Value: "FOO"})
@@ -408,7 +394,6 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		}, deployment)
 		assert.NoError(t, err)
 
-		// Check that the env vars are set, Count is 2 because of the default REDIS_PASSWORD env var
 		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 2)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600s"})
 	})
@@ -441,7 +426,6 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		}, deployment)
 		assert.NoError(t, err)
 
-		// Check that the env vars are set, Count is 2 because of the default REDIS_PASSWORD env var
 		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 2)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600s"})
 	})
@@ -1175,8 +1159,8 @@ func TestReconcileArgoCD_reconcileRepoDeployment_updatesVolumeMounts(t *testing.
 	}, deployment)
 	assert.NoError(t, err)
 
-	assert.Len(t, deployment.Spec.Template.Spec.Volumes, 9)
-	assert.Len(t, deployment.Spec.Template.Spec.Containers[0].VolumeMounts, 8)
+	assert.Len(t, deployment.Spec.Template.Spec.Volumes, 10)
+	assert.Len(t, deployment.Spec.Template.Spec.Containers[0].VolumeMounts, 9)
 }
 
 func Test_proxyEnvVars(t *testing.T) {
@@ -1388,7 +1372,7 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 					"--logformat",
 					"text",
 				},
-				Env: []corev1.EnvVar{redisPasswordEnvRef},
+				Env: argoutil.GetRedisAuthEnv(),
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},
 					{ContainerPort: 8083},
@@ -1879,7 +1863,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 					"--logformat",
 					"text",
 				},
-				Env: []corev1.EnvVar{redisPasswordEnvRef},
+				Env: argoutil.GetRedisAuthEnv(),
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},
 					{ContainerPort: 8083},
@@ -1964,7 +1948,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 					"--logformat",
 					"text",
 				},
-				Env: []corev1.EnvVar{redisPasswordEnvRef},
+				Env: argoutil.GetRedisAuthEnv(),
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},
 					{ContainerPort: 8083},
@@ -2015,7 +1999,6 @@ func TestReconcileArgoCD_reconcileRedisDeploymentWithoutTLS(t *testing.T) {
 		"--save",
 		"",
 		"--appendonly", "no",
-		"--requirepass $(REDIS_PASSWORD)",
 	}
 
 	assert.NoError(t, r.reconcileRedisDeployment(cr, false))
@@ -2040,7 +2023,6 @@ func TestReconcileArgoCD_reconcileRedisDeploymentWithTLS(t *testing.T) {
 	want := []string{
 		"--save", "",
 		"--appendonly", "no",
-		"--requirepass $(REDIS_PASSWORD)",
 		"--tls-port", "6379",
 		"--port", "0",
 		"--tls-cert-file", "/app/config/redis/tls/tls.crt",
@@ -2386,6 +2368,20 @@ func repoServerDefaultVolumes() []corev1.Volume {
 			},
 		},
 		{
+			Name: "redis-initial-pass",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: "argocd-redis-initial-password",
+					Items: []corev1.KeyToPath{
+						{
+							Key:  "admin.password",
+							Path: "auth",
+						},
+					},
+				},
+			},
+		},
+		{
 			Name: "tmp",
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
@@ -2405,6 +2401,7 @@ func repoServerDefaultVolumeMounts() []corev1.VolumeMount {
 		{Name: "argocd-repo-server-tls", MountPath: "/app/config/reposerver/tls"},
 		{Name: common.ArgoCDRedisServerTLSSecretName, MountPath: "/app/config/reposerver/tls/redis"},
 		{Name: "plugins", MountPath: "/home/argocd/cmp-server/plugins"},
+		{Name: argoutil.RedisAuthVolumeName, MountPath: argoutil.RedisAuthMountPath},
 		{Name: "tmp", MountPath: "/tmp"},
 	}
 	return mounts
@@ -2479,6 +2476,20 @@ func serverDefaultVolumes() []corev1.Volume {
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
+		{
+			Name: argoutil.RedisAuthVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: "argocd-redis-initial-password",
+					Items: []corev1.KeyToPath{
+						{
+							Key:  "admin.password",
+							Path: "auth",
+						},
+					},
+				},
+			},
+		},
 	}
 	return volumes
 }
@@ -2509,6 +2520,10 @@ func serverDefaultVolumeMounts() []corev1.VolumeMount {
 		{
 			Name:      "tmp",
 			MountPath: "/tmp",
+		},
+		{
+			Name:      argoutil.RedisAuthVolumeName,
+			MountPath: argoutil.RedisAuthMountPath,
 		},
 	}
 	return mounts
@@ -2931,7 +2946,6 @@ func TestSetReplicasAndEnvVar_WhenServerReplicasIsDefined(t *testing.T) {
 		}, deployment)
 		assert.NoError(t, err)
 
-		// Check that the env vars are set, Count is 2 because of the default REDIS_PASSWORD env var
 		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 2)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_API_SERVER_REPLICAS", Value: "2"})
 	})

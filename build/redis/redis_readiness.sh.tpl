@@ -1,4 +1,4 @@
-redis_pwd="$(cat /redis-initial-pass/admin.password)"
+redis_pwd="$(cat /app/config/redis-auth/auth)"
 response=$(
   env REDISCLI_AUTH="${redis_pwd}" redis-cli \
     -h localhost \
