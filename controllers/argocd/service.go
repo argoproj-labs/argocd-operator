@@ -495,6 +495,16 @@ func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
 
 	svc.Spec.Type = getArgoServerServiceType(cr)
 
+	// Add annotations if specified without deleteing annotations from `ensureAutoTLSAnnotation()`
+	if len(cr.Spec.Server.Service.Annotations) > 0 {
+		if svc.Annotations == nil {
+			svc.Annotations = make(map[string]string)
+		}
+		for k, v := range cr.Spec.Server.Service.Annotations {
+			svc.Annotations[k] = v
+		}
+	}
+
 	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
 		return err
 	}
@@ -525,6 +535,14 @@ func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
 				explanation += ", "
 			}
 			explanation += "service type"
+			changed = true
+		}
+		if !reflect.DeepEqual(svc.Annotations, existingSVC.Annotations) {
+			existingSVC.Annotations = svc.Annotations
+			if changed {
+				explanation += ", "
+			}
+			explanation += "service annotations"
 			changed = true
 		}
 		if changed {
