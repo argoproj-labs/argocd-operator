@@ -106,8 +106,8 @@ metadata:
 type: Opaque
 ```
 
-NOTE: The operator strictly uses this secret for setting the initial password for the admin user, making any change to this secret doesn't effect or update the password for the admin user.
-To update password use [argocd-cli](https://argo-cd.readthedocs.io/en/stable/user-guide/commands/argocd_account_update-password/) or [upstream-documentation](https://argo-cd.readthedocs.io/en/stable/faq/#i-forgot-the-admin-password-how-do-i-reset-it).
+NOTE: The operator uses this secret only for setting the initial admin password. Subsequent changes to this secret do not affect or update the admin user's password.
+To update admin password use [argocd-cli](https://argo-cd.readthedocs.io/en/stable/user-guide/commands/argocd_account_update-password/) or [upstream-documentation](https://argo-cd.readthedocs.io/en/stable/faq/#i-forgot-the-admin-password-how-do-i-reset-it).
 
 Fetch the admin password from the cluster Secret.
 
@@ -115,14 +115,6 @@ Fetch the admin password from the cluster Secret.
 kubectl -n argocd get secret example-argocd-cluster -o jsonpath='{.data.admin\.password}' | base64 -d
 ```
 
-To change the admin password you'll need to modify the cluster secret like this:
-
-```shell
-$ kubectl -n argocd patch secret example-argocd-cluster \
-  -p '{"stringData": {
-    "admin.password": "newpassword2021"
-  }}'
-```
 
 ### Deployments
 
