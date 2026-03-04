@@ -17,7 +17,6 @@ package argocd
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"testing"
 	"time"
 
@@ -668,14 +667,6 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersTurnOffAutoRenew(t *testing.T) {
 	expect.NotEmpty(userSecret.Data["apiToken"])
 	expect.Equal(apiToken, string(userSecret.Data["apiToken"]))
 
-}
-
-func TestReconcileArgoCD_reconcileArgoLocalUsersTurnOnAutoRenew_reproduce(t *testing.T) {
-	for i := 0; i < 100; i++ {
-		t.Run(fmt.Sprintf("Attempt %d", i), func(t *testing.T) {
-			TestReconcileArgoCD_reconcileArgoLocalUsersTurnOnAutoRenew(t)
-		})
-	}
 }
 
 func TestReconcileArgoCD_reconcileArgoLocalUsersTurnOnAutoRenew(t *testing.T) {
