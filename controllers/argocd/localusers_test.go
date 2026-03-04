@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -669,6 +670,14 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersTurnOffAutoRenew(t *testing.T) {
 
 }
 
+func TestReconcileArgoCD_reconcileArgoLocalUsersTurnOnAutoRenew_reproduce(t *testing.T) {
+	for i := 0; i < 100; i++ {
+		t.Run(fmt.Sprintf("Attempt %d", i), func(t *testing.T) {
+			TestReconcileArgoCD_reconcileArgoLocalUsersTurnOnAutoRenew(t)
+		})
+	}
+}
+
 func TestReconcileArgoCD_reconcileArgoLocalUsersTurnOnAutoRenew(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
@@ -770,8 +779,7 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersTurnOnAutoRenew(t *testing.T) {
 	expect.Equal(userTokens[0].ExpiresAt, userTokens1[0].ExpiresAt)
 
 	// Wait for the timer to expire and check that it updated the secrets
-
-	time.Sleep(3 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	userSecret = corev1.Secret{}
 	err = r.Get(context.TODO(), types.NamespacedName{Name: "alice-local-user", Namespace: cr.Namespace}, &userSecret)
