@@ -107,7 +107,7 @@ type: Opaque
 ```
 
 NOTE: The operator strictly uses this secret for setting the initial password for the admin user, making any change to this secret doesn't effect or update the password for the admin user.
-To update password use [argocd-cli](https://argo-cd.readthedocs.io/en/stable/user-guide/commands/argocd_account_update-password/) or [upstream-documentation](https://argo-cd.readthedocs.io/en/release-2.2/faq/#i-forgot-the-admin-password-how-do-i-reset-it).
+To update password use [argocd-cli](https://argo-cd.readthedocs.io/en/stable/user-guide/commands/argocd_account_update-password/) or [upstream-documentation](https://argo-cd.readthedocs.io/en/stable/faq/#i-forgot-the-admin-password-how-do-i-reset-it).
 
 Fetch the admin password from the cluster Secret.
 
