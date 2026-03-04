@@ -349,7 +349,7 @@ type ArgoCDNotifications struct {
 
 	// LogFormat refers to the log format used by the argocd-notifications. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
 	// +kubebuilder:validation:Enum=text;json
-	LogFormat string `json:"logformat,omitempty"`
+	LogFormat string `json:"logFormat,omitempty"`
 }
 
 // ArgoCDPrometheusSpec defines the desired state for the Prometheus component.
