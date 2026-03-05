@@ -22,6 +22,37 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+func TestGenerateAgentPrincipalRedisProxyServiceName(t *testing.T) {
+	tests := []struct {
+		name     string
+		crName   string
+		expected string
+	}{
+		{
+			name:     "short CR name - no truncation",
+			crName:   "short-name",
+			expected: "short-name-agent-principal-redisproxy",
+		},
+		{
+			name: "long CR name - uses truncated name",
+			// Input matches the test case from TestTruncateCRName
+			crName: "this-is-a-very-long-argocd-instance-name-that-exceeds-37-characters",
+			// Base name is truncated to 36 chars to accommodate the 27 char suffix
+			expected: "this-is-a-very-long-argocd-i-657aacd-agent-principal-redisproxy",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := GenerateAgentPrincipalRedisProxyServiceName(tt.crName)
+			assert.Equal(t, tt.expected, result)
+
+			// Enforce K8s 63-character service name limit
+			assert.LessOrEqual(t, len(result), 63)
+		})
+	}
+}
+
 func TestTruncateWithHash(t *testing.T) {
 	tests := []struct {
 		name        string

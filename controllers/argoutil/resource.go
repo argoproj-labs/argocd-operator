@@ -202,7 +202,8 @@ func LogResourceAction(log logr.Logger, action string, object metav1.Object, exp
 }
 
 func GenerateAgentPrincipalRedisProxyServiceName(crName string) string {
-	return fmt.Sprintf("%s-agent-%s", crName, "principal-redisproxy")
+	truncatedCRName := TruncateWithHash(crName, 36)
+	return fmt.Sprintf("%s-agent-%s", truncatedCRName, "principal-redisproxy")
 }
 
 // AddTrackedByOperatorLabel adds the ArgoCDTrackedByOperator label to the resource
