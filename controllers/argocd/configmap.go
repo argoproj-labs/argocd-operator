@@ -477,7 +477,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	}
 
 	// Find all users explicitly defined via extraConfig
-	legacyUsers := localUsersInExtraConfig(cr)
+	legacyUsers := localUsersInExtraConfig(*cr)
 
 	// Create local users
 	for _, user := range cr.Spec.LocalUsers {
