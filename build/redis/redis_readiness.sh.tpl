@@ -1,6 +1,10 @@
+redis_pwd="$(cat /app/config/redis-auth/auth)"
+if [ -z "$redis_pwd" ]; then
+    echo "Error: Redis password not mounted correctly"
+    exit 1
+fi
 response=$(
-  redis-cli \
-    -a "${AUTH}" --no-auth-warning \
+  env REDISCLI_AUTH="${redis_pwd}" redis-cli \
     -h localhost \
     -p 6379 \
 {{- if eq .UseTLS "true"}}
@@ -9,7 +13,7 @@ response=$(
 {{- end}}
     ping
 )
-if [ "$response" != "PONG" ] ; then
+if [ "$response" != "PONG" ]; then
   echo "$response"
   exit 1
 fi

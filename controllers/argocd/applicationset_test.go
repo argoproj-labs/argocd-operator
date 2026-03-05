@@ -46,6 +46,7 @@ func applicationSetDefaultVolumes() []v1.Volume {
 		"plugins":                             true,
 		"argocd-repo-server-tls":              true,
 		common.ArgoCDRedisServerTLSSecretName: true,
+		argoutil.RedisAuthVolumeName:          true,
 	}
 	volumes := make([]v1.Volume, len(repoVolumes)-len(ignoredVolumes))
 	j := 0
