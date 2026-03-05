@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -2058,6 +2059,36 @@ func TestReconcileArgoCD_reconcileRedisDeployment(t *testing.T) {
 	d := &appsv1.Deployment{}
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, d))
 	assert.Equal(t, int32(3), *d.Spec.Replicas)
+}
+
+func TestReconcileArgoCD_reconcileRedisDeployment_volumeUpdate(t *testing.T) {
+	// tests reconciler hook for redis deployment
+	cr := makeTestArgoCD()
+	redisSecret := types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}
+
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{cr}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	defer resetHooks()()
+	Register(testDeploymentHook)
+
+	require.NoError(t, r.reconcileRedisDeployment(cr, false))
+	d := &appsv1.Deployment{}
+	require.NoError(t, r.Get(context.TODO(), redisSecret, d))
+
+	// Erase volumes
+	d.Spec.Template.Spec.Volumes = []corev1.Volume{}
+	require.NoError(t, r.Update(t.Context(), d))
+	require.NoError(t, r.reconcileRedisDeployment(cr, false))
+
+	// Volumes are readded
+	newRedis := &appsv1.Deployment{}
+	require.NoError(t, r.Get(context.TODO(), redisSecret, newRedis))
+	assert.Len(t, newRedis.Spec.Template.Spec.Volumes, 2)
 }
 
 func TestReconcileArgoCD_reconcileRedisDeployment_testImageUpgrade(t *testing.T) {
