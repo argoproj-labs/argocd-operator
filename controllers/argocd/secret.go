@@ -746,12 +746,15 @@ func (r *ReconcileArgoCD) getClusterSecrets(cr *argoproj.ArgoCD) (*corev1.Secret
 // reconcileRedisInitialPasswordSecret will ensure that the redis Secret is present for the cluster.
 func (r *ReconcileArgoCD) reconcileRedisInitialPasswordSecret(cr *argoproj.ArgoCD) error {
 	secret := argoutil.NewSecretWithSuffix(cr, "redis-initial-password")
-	existed := false
 
+	existed := true
 	// Recreate if the secret or some of its keys are missing
 	err := argoutil.FetchObject(r.Client, cr.Namespace, secret.Name, secret)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return err
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+		existed = false
 	}
 	if secret.Data != nil {
 		_, hasPwd := secret.Data[common.ArgoCDKeyAdminPassword]
@@ -761,9 +764,11 @@ func (r *ReconcileArgoCD) reconcileRedisInitialPasswordSecret(cr *argoproj.ArgoC
 		if hasPwd && hasAuth && hasUsername && hasAcl {
 			return nil // Healthy - keep it
 		}
-		// Drop unsettable fields from FetchObject
+	}
+
+	if existed {
+		// Drop unsettable fields created by FetchObject
 		secret = argoutil.NewSecretWithSuffix(cr, "redis-initial-password")
-		existed = true
 	}
 
 	redisInitialPassword, err := generateRedisAdminPassword()
