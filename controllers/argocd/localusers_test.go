@@ -770,8 +770,7 @@ func TestReconcileArgoCD_reconcileArgoLocalUsersTurnOnAutoRenew(t *testing.T) {
 	expect.Equal(userTokens[0].ExpiresAt, userTokens1[0].ExpiresAt)
 
 	// Wait for the timer to expire and check that it updated the secrets
-
-	time.Sleep(3 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	userSecret = corev1.Secret{}
 	err = r.Get(context.TODO(), types.NamespacedName{Name: "alice-local-user", Namespace: cr.Namespace}, &userSecret)
