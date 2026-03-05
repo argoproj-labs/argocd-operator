@@ -131,7 +131,7 @@ func TestReconcileArgoCD_reconcileRedisHAHealthConfigMap(t *testing.T) {
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	// Perform initial reconciliation
-	assert.NoError(t, r.reconcileRedisHAHealthConfigMap(cr, false))
+	assert.NoError(t, r.reconcileRedisHAHealthConfigMap(cr))
 
 	// Modify ConfigMap data to simulate external changes
 	existingCM := &corev1.ConfigMap{}
@@ -143,16 +143,16 @@ func TestReconcileArgoCD_reconcileRedisHAHealthConfigMap(t *testing.T) {
 	assert.NoError(t, cl.Update(context.TODO(), existingCM))
 
 	// Reconcile again and verify changes are reverted
-	assert.NoError(t, r.reconcileRedisHAHealthConfigMap(cr, false))
+	assert.NoError(t, r.reconcileRedisHAHealthConfigMap(cr))
 	existingCMAfter := &corev1.ConfigMap{}
 	exists, err = argoutil.IsObjectFound(cl, cr.Namespace, common.ArgoCDRedisHAHealthConfigMapName, existingCMAfter)
 	assert.True(t, exists)
 	assert.Nil(t, err)
-	assert.Equal(t, getRedisLivenessScript(false), existingCMAfter.Data["redis_liveness.sh"])
+	assert.Equal(t, getRedisLivenessScript(), existingCMAfter.Data["redis_liveness.sh"])
 
 	// Disable HA and ensure ConfigMap is deleted
 	cr.Spec.HA.Enabled = false
-	assert.NoError(t, r.reconcileRedisHAHealthConfigMap(cr, false))
+	assert.NoError(t, r.reconcileRedisHAHealthConfigMap(cr))
 	exists, err = argoutil.IsObjectFound(cl, cr.Namespace, common.ArgoCDRedisHAHealthConfigMapName, existingCM)
 	assert.Nil(t, err)
 	assert.False(t, exists)

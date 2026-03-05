@@ -131,7 +131,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_disabled(t *testing.T) {
 
 	s := newStatefulSetWithSuffix("redis-ha-server", "redis", a)
 
-	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+	assert.NoError(t, r.reconcileRedisStatefulSet(a, false))
 	// resource Creation should fail as HA was disabled
 	assert.Errorf(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s), "not found")
 }
@@ -152,7 +152,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_enabled(t *testing.T) {
 
 	a.Spec.HA.Enabled = true
 	// test resource is Created when HA is enabled
-	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+	assert.NoError(t, r.reconcileRedisStatefulSet(a, false))
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
 
 	// test resource is Updated on reconciliation
@@ -169,7 +169,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_enabled(t *testing.T) {
 		},
 	}
 	a.Spec.HA.Resources = &newResources
-	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+	assert.NoError(t, r.reconcileRedisStatefulSet(a, false))
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
 	for _, container := range s.Spec.Template.Spec.Containers {
 		assert.Equal(t, container.Image, fmt.Sprintf("%s:%s", testRedisImage, testRedisImageVersion))
@@ -179,7 +179,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_enabled(t *testing.T) {
 
 	// test resource is Deleted, when HA is disabled
 	a.Spec.HA.Enabled = false
-	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+	assert.NoError(t, r.reconcileRedisStatefulSet(a, false))
 	assert.Errorf(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s), "not found")
 }
 
@@ -988,7 +988,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_ModifyContainerSpec(t *testin
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	// Initial reconciliation to create the StatefulSet
-	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+	assert.NoError(t, r.reconcileRedisStatefulSet(a, false))
 
 	s := newStatefulSetWithSuffix("redis-ha-server", "redis", a)
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
@@ -1001,7 +1001,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_ModifyContainerSpec(t *testin
 	assert.NoError(t, r.Update(context.TODO(), s))
 
 	// Reconcile again and check if the environment variable is reverted
-	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+	assert.NoError(t, r.reconcileRedisStatefulSet(a, false))
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
 
 	envVarFound := false
@@ -1023,7 +1023,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_ModifyContainerSpec(t *testin
 	s.Spec.Template.Spec.SecurityContext = newSecurityContext
 	assert.NoError(t, r.Update(context.TODO(), s))
 	// Reconcile again and check if the SecurityContext is reverted
-	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+	assert.NoError(t, r.reconcileRedisStatefulSet(a, false))
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
 	assert.Equal(t, true, reflect.DeepEqual(expectedSecurityContext, s.Spec.Template.Spec.SecurityContext))
 
@@ -1035,7 +1035,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_ModifyContainerSpec(t *testin
 	assert.NoError(t, r.Update(context.TODO(), s))
 
 	// Reconcile again and check if the environment variable is reverted
-	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+	assert.NoError(t, r.reconcileRedisStatefulSet(a, false))
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
 
 	envVarFound = false
@@ -1060,7 +1060,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_ModifyContainerSpec(t *testin
 	})
 	assert.NoError(t, r.Update(context.TODO(), s))
 	// Reconcile again and check if the volume mount is reverted
-	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+	assert.NoError(t, r.reconcileRedisStatefulSet(a, false))
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
 
 	volumeMountFound := false
@@ -1105,7 +1105,7 @@ func TestStatefulSetWithLongName(t *testing.T) {
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	// Test Redis HA StatefulSet
-	err := r.reconcileRedisStatefulSet(a)
+	err := r.reconcileRedisStatefulSet(a, false)
 	assert.NoError(t, err)
 
 	// Get all statefulsets and find the Redis HA statefulset

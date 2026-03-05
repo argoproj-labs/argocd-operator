@@ -1,23 +1,29 @@
 echo "$(date) Start..."
+
+: "${ARGOCD_REDIS_USE_TLS:?Variable ARGOCD_REDIS_USE_TLS is required}"
+: "${ARGOCD_REDIS_SERVICE_NAME:?Variable ARGOCD_REDIS_SERVICE_NAME is required}"
+
 HOSTNAME="$(cat /proc/sys/kernel/hostname)"
 INDEX="${HOSTNAME##*-}"
-SENTINEL_PORT={{- if eq .UseTLS "false" -}}26379{{- else -}}0{{- end }}
 MASTER=''
 MASTER_GROUP="argocd"
 QUORUM="2"
 REDIS_CONF=/data/conf/redis.conf
-{{- if eq .UseTLS "false"}}
-REDIS_PORT=6379
-REDIS_TLS_PORT=
-{{- else}}
-REDIS_PORT=0
-REDIS_TLS_PORT=6379
-{{- end}}
+if [ "$ARGOCD_REDIS_USE_TLS" = "false" ]; then
+    REDIS_PORT=6379
+    REDIS_TLS_PORT=
+    SENTINEL_PORT=26379
+    SENTINEL_TLS_PORT=
+else
+    REDIS_PORT=0
+    REDIS_TLS_PORT=6379
+    SENTINEL_PORT=0
+    SENTINEL_TLS_PORT=26379
+fi
 SENTINEL_CONF=/data/conf/sentinel.conf
-SENTINEL_TLS_PORT={{- if eq .UseTLS "true" -}}26379{{- end }}
-SERVICE={{.ServiceName}}
-SENTINEL_TLS_REPLICATION_ENABLED={{.UseTLS}}
-REDIS_TLS_REPLICATION_ENABLED={{.UseTLS}}
+SERVICE=$ARGOCD_REDIS_SERVICE_NAME
+SENTINEL_TLS_REPLICATION_ENABLED=$ARGOCD_REDIS_USE_TLS
+REDIS_TLS_REPLICATION_ENABLED=$ARGOCD_REDIS_USE_TLS
 set -eu
 
 sentinel_get_master() {
@@ -48,7 +54,7 @@ sentinel_get_master_retry() {
 
 identify_master() {
     echo "Identifying redis master (get-master-addr-by-name).."
-    echo "  using sentinel ({{.ServiceName}}), sentinel group name (argocd)"
+    echo "  using sentinel (${ARGOCD_REDIS_SERVICE_NAME}), sentinel group name (argocd)"
     echo "  $(date).."
     MASTER="$(sentinel_get_master_retry 3)"
     if [ -n "${MASTER}" ]; then

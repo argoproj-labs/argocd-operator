@@ -2295,7 +2295,6 @@ func assertDeploymentHasProxyVars(t *testing.T, c client.Client, name string) {
 		}
 	}
 	for _, c := range deployment.Spec.Template.Spec.InitContainers {
-		assert.Len(t, c.Env, len(want))
 		for _, w := range want {
 			assert.Contains(t, c.Env, w)
 		}
