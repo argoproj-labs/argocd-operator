@@ -8455,6 +8455,12 @@ spec:
                     description: Service defines the options for the Service backing
                       the ArgoCD Server component.
                     properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations is the map of annotations to apply
+                          to the Server Service.
+                        type: object
                       type:
                         description: Type is the ServiceType to use for the Service
                           resource.
@@ -26380,6 +26386,12 @@ spec:
                     description: Service defines the options for the Service backing
                       the ArgoCD Server component.
                     properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations is the map of annotations to apply
+                          to the Server Service.
+                        type: object
                       type:
                         description: Type is the ServiceType to use for the Service
                           resource.
