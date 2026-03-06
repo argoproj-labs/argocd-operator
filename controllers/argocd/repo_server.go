@@ -62,7 +62,7 @@ func getArgoRepoCommand(cr *argocdoperatorv1beta1.ArgoCD, useTLSForRedis bool) [
 	cmd = append(cmd, "argocd-repo-server")
 
 	if cr.Spec.Redis.IsEnabled() {
-		cmd = append(cmd, "--redis", getRedisServerAddress(cr))
+		cmd = append(cmd, "--redis", argoutil.GetRedisServerAddress(cr))
 	} else {
 		log.Info("Redis is Disabled. Skipping adding Redis configuration to Repo Server.")
 	}
@@ -94,7 +94,7 @@ func getRepoServerAddress(cr *argocdoperatorv1beta1.ArgoCD) string {
 	if cr.Spec.Repo.IsRemote() {
 		return *cr.Spec.Repo.Remote
 	}
-	return fqdnServiceRef("repo-server", common.ArgoCDDefaultRepoServerPort, cr)
+	return argoutil.FqdnServiceRef("repo-server", common.ArgoCDDefaultRepoServerPort, cr)
 }
 
 // reconcileRepoDeployment will ensure the Deployment resource is present for the ArgoCD Repo component.
@@ -113,19 +113,10 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 
 	// Global proxy env vars go first
 	repoEnv := cr.Spec.Repo.Env
-	repoEnv = append(repoEnv, corev1.EnvVar{
-		Name: "REDIS_PASSWORD",
-		ValueFrom: &corev1.EnvVarSource{
-			SecretKeyRef: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: fmt.Sprintf("%s-%s", cr.Name, "redis-initial-password"),
-				},
-				Key: "admin.password",
-			},
-		},
-	})
+
 	// Environment specified in the CR take precedence over everything else
 	repoEnv = argoutil.EnvMerge(repoEnv, proxyEnvVars(), false)
+	repoEnv = argoutil.EnvMerge(repoEnv, argoutil.GetRedisAuthEnv(), false)
 	if cr.Spec.Repo.ExecTimeout != nil {
 		repoEnv = argoutil.EnvMerge(repoEnv, []corev1.EnvVar{{Name: "ARGOCD_EXEC_TIMEOUT", Value: fmt.Sprintf("%ds", *cr.Spec.Repo.ExecTimeout)}}, true)
 	}
@@ -176,6 +167,8 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 		}
 	}
 
+	redisAuthVolume, redisAuthMount := argoutil.MountRedisAuthToArgo(cr)
+
 	repoServerVolumeMounts := []corev1.VolumeMount{
 		{
 			Name:      "ssh-known-hosts",
@@ -205,6 +198,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 			Name:      "plugins",
 			MountPath: "/home/argocd/cmp-server/plugins",
 		},
+		redisAuthMount,
 	}
 
 	if !volumeMountOverridesTmpVolume {
@@ -343,6 +337,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
+		redisAuthVolume,
 	}
 
 	// If the user is not used a custom /tmp mount, then just use the default
