@@ -846,6 +846,7 @@ func (r *ReconcileArgoCD) getNotificationsCommand(cr *argoproj.ArgoCD) []string 
 
 	logFormat := cr.Spec.Notifications.LogFormat
 	if logFormat == "" {
+		//nolint:staticcheck // fallback to deprecated field for backward compatibility
 		logFormat = cr.Spec.Notifications.Logformat
 	}
 

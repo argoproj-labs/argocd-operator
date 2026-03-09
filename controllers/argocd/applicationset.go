@@ -64,6 +64,7 @@ func (r *ReconcileArgoCD) getArgoApplicationSetCommand(cr *argoproj.ArgoCD) []st
 	// Higher Preference to the new logFormat field. Fall back to the deprecated logformat field for backward compatibility.
 	logFormat := cr.Spec.ApplicationSet.LogFormat
 	if logFormat == "" {
+		//nolint:staticcheck // fallback to deprecated field for backward compatibility
 		logFormat = cr.Spec.ApplicationSet.Logformat
 	}
 
