@@ -217,11 +217,11 @@ type ArgoCDApplicationSet struct {
 	// VolumeMounts adds volumeMounts to the Argo CD ApplicationSet Controller container.
 	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
 
-	// LogFormat refers to the log format used by the ApplicationSet component. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
-	// +kubebuilder:validation:Enum=text;json
 	// Deprecated: use LogFormat instead.
 	Logformat string `json:"logformat,omitempty"`
 
+	// LogFormat refers to the log format used by the ApplicationSet component. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
+	// +kubebuilder:validation:Enum=text;json
 	LogFormat string `json:"logFormat,omitempty"`
 }
 
@@ -432,11 +432,11 @@ type ArgoCDNotifications struct {
 	// LogLevel describes the log level that should be used by the argocd-notifications. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug,info, error, and warn.
 	LogLevel string `json:"logLevel,omitempty"`
 
-	// LogFormat refers to the log format used by the argocd-notifications. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
-	// +kubebuilder:validation:Enum=text;json
 	// Deprecated: use LogFormat instead.
 	Logformat string `json:"logformat,omitempty"`
 
+	// LogFormat refers to the log format used by the argocd-notifications. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
+	// +kubebuilder:validation:Enum=text;json
 	LogFormat string `json:"logFormat,omitempty"`
 }
 

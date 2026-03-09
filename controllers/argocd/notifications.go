@@ -844,8 +844,13 @@ func (r *ReconcileArgoCD) getNotificationsCommand(cr *argoproj.ArgoCD) []string 
 	cmd = append(cmd, "--loglevel")
 	cmd = append(cmd, getLogLevel(cr.Spec.Notifications.LogLevel))
 
+	logFormat := cr.Spec.Notifications.LogFormat
+	if logFormat == "" {
+		logFormat = cr.Spec.Notifications.Logformat
+	}
+
 	cmd = append(cmd, "--logformat")
-	cmd = append(cmd, getLogFormat(cr.Spec.Notifications.LogFormat))
+	cmd = append(cmd, getLogFormat(logFormat))
 
 	if cr.Spec.Repo.IsEnabled() {
 		cmd = append(cmd, "--argocd-repo-server", getRepoServerAddress(cr))

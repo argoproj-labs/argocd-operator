@@ -2123,6 +2123,12 @@ spec:
                     description: Image is the Argo CD Notifications image (optional)
                     type: string
                   logFormat:
+                    description: LogFormat refers to the log format used by the argocd-notifications.
+                      Defaults to ArgoCDDefaultLogFormat if not configured. Valid
+                      options are text or json.
+                    enum:
+                    - text
+                    - json
                     type: string
                   logLevel:
                     description: LogLevel describes the log level that should be used
@@ -2130,12 +2136,7 @@ spec:
                       if not set.  Valid options are debug,info, error, and warn.
                     type: string
                   logformat:
-                    description: |-
-                      LogFormat refers to the log format used by the argocd-notifications. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
-                      Deprecated: use LogFormat instead.
-                    enum:
-                    - text
-                    - json
+                    description: 'Deprecated: use LogFormat instead.'
                     type: string
                   replicas:
                     description: Replicas defines the number of replicas to run for
@@ -9121,6 +9122,12 @@ spec:
                     description: Custom labels to pods deployed by the operator
                     type: object
                   logFormat:
+                    description: LogFormat refers to the log format used by the ApplicationSet
+                      component. Defaults to ArgoCDDefaultLogFormat if not configured.
+                      Valid options are text or json.
+                    enum:
+                    - text
+                    - json
                     type: string
                   logLevel:
                     description: LogLevel describes the log level that should be used
@@ -9128,12 +9135,7 @@ spec:
                       if not set.  Valid options are debug,info, error, and warn.
                     type: string
                   logformat:
-                    description: |-
-                      LogFormat refers to the log format used by the ApplicationSet component. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
-                      Deprecated: use LogFormat instead.
-                    enum:
-                    - text
-                    - json
+                    description: 'Deprecated: use LogFormat instead.'
                     type: string
                   resources:
                     description: Resources defines the Compute Resources required
@@ -18253,6 +18255,12 @@ spec:
                     description: Image is the Argo CD Notifications image (optional)
                     type: string
                   logFormat:
+                    description: LogFormat refers to the log format used by the argocd-notifications.
+                      Defaults to ArgoCDDefaultLogFormat if not configured. Valid
+                      options are text or json.
+                    enum:
+                    - text
+                    - json
                     type: string
                   logLevel:
                     description: LogLevel describes the log level that should be used
@@ -18260,12 +18268,7 @@ spec:
                       if not set.  Valid options are debug,info, error, and warn.
                     type: string
                   logformat:
-                    description: |-
-                      LogFormat refers to the log format used by the argocd-notifications. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
-                      Deprecated: use LogFormat instead.
-                    enum:
-                    - text
-                    - json
+                    description: 'Deprecated: use LogFormat instead.'
                     type: string
                   replicas:
                     description: Replicas defines the number of replicas to run for
