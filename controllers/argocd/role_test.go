@@ -100,6 +100,37 @@ func TestReconcileArgoCD_reconcileRole_for_new_namespace(t *testing.T) {
 	assert.Equal(t, expectedRoleNamespace, redisRoles[0].Namespace)
 }
 
+func TestReconcileRole_AddsManagedByLabelForManagedNamespace(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+
+	tenantNS := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "tenant-ns",
+			Labels: map[string]string{"keep": "me"},
+		},
+	}
+	resObjs := []client.Object{a, tenantNS}
+	subresObjs := []client.Object{a, tenantNS}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	// Add tenant namespace to ManagedNamespaces it exists without managed-by label
+	r.ManagedNamespaces.Items = append(r.ManagedNamespaces.Items, corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "tenant-ns"}})
+
+	_, err := r.reconcileRole(common.ArgoCDApplicationControllerComponent, policyRuleForApplicationController(), a)
+	assert.NoError(t, err)
+
+	gotNS := &corev1.Namespace{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: "tenant-ns"}, gotNS))
+	assert.Equal(t, a.Namespace, gotNS.Labels[common.ArgoCDManagedByLabel],
+		"tenant namespace should have argocd.argoproj.io/managed-by set to Argo CD instance namespace")
+	assert.Equal(t, "me", gotNS.Labels["keep"], "existing labels should be preserved")
+}
+
 func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCDInNamespace("argocd-cluster-role-test")
