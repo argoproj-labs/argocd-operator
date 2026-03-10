@@ -63,8 +63,7 @@ func TestKustomizeConfig_NoKubeRBACProxyReferences(t *testing.T) {
 		fullPath := filepath.Join(repoRoot, relPath)
 		data, err := os.ReadFile(fullPath)
 		if err != nil {
-			t.Logf("skipping %s: %v", relPath, err)
-			continue
+			t.Fatalf("failed to read %s: %v", relPath, err)
 		}
 		for i, line := range strings.Split(string(data), "\n") {
 			trimmed := strings.TrimSpace(line)
@@ -97,6 +96,43 @@ func TestKustomizeConfig_PatchConfiguresSecureMetrics(t *testing.T) {
 		if !strings.Contains(content, needle) {
 			t.Errorf("%s (missing %q)", msg, needle)
 		}
+	}
+}
+
+func TestKustomizeConfig_PatchAlsoConfiguresMetricsServiceHTTPSPort(t *testing.T) {
+	repoRoot := findRepoRoot(t)
+	patchPath := filepath.Join(repoRoot, "config/default/manager_auth_proxy_patch.yaml")
+
+	data, err := os.ReadFile(patchPath)
+	if err != nil {
+		t.Fatalf("failed to read patch file: %v", err)
+	}
+	content := string(data)
+
+	checks := map[string]string{
+		"kind: Service": "patch must include a Service patch",
+		"name: controller-manager-metrics-service": "patch must target controller manager metrics service",
+		"targetPort: https":                        "patch must switch metrics service to target the https named port",
+	}
+	for needle, msg := range checks {
+		if !strings.Contains(content, needle) {
+			t.Errorf("%s (missing %q)", msg, needle)
+		}
+	}
+}
+
+func TestKustomizeConfig_BaseMetricsServiceTargets8080(t *testing.T) {
+	repoRoot := findRepoRoot(t)
+	servicePath := filepath.Join(repoRoot, "config/rbac/auth_proxy_service.yaml")
+
+	data, err := os.ReadFile(servicePath)
+	if err != nil {
+		t.Fatalf("failed to read auth proxy service file: %v", err)
+	}
+	content := string(data)
+
+	if !strings.Contains(content, "targetPort: 8080") {
+		t.Error("base auth proxy service must target port 8080 so manager_auth_proxy_patch.yaml can act as a consolidated toggle")
 	}
 }
 
