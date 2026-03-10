@@ -115,6 +115,23 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 			continue
 		}
 
+		// For managed namespaces ensure the managed-by label is set so Argo CD discovers Applications.
+		if cr.Namespace != namespace.Name && name == common.ArgoCDApplicationControllerComponent {
+			ns := &corev1.Namespace{}
+			if err := r.Get(context.TODO(), types.NamespacedName{Name: namespace.Name}, ns); err != nil {
+				log.Error(err, "failed to get namespace for managed-by label", "namespace", namespace.Name)
+			} else if ns.Labels[common.ArgoCDManagedByLabel] != cr.Namespace {
+				if ns.Labels == nil {
+					ns.Labels = make(map[string]string)
+				}
+				ns.Labels[common.ArgoCDManagedByLabel] = cr.Namespace
+				argoutil.LogResourceUpdate(log, ns, fmt.Sprintf("adding label '%s=%s'", common.ArgoCDManagedByLabel, cr.Namespace))
+				if err := r.Update(context.TODO(), ns); err != nil {
+					log.Error(err, fmt.Sprintf("failed to add label to namespace [%s]", namespace.Name))
+				}
+			}
+		}
+
 		// Look for ArgoCD CRs in the managed namespace
 		list := &argoproj.ArgoCDList{}
 		listOption := &client.ListOptions{Namespace: namespace.Name}

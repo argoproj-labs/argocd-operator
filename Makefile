@@ -205,6 +205,7 @@ e2e: ## Run operator e2e tests
 
 
 start-e2e: install-prometheus-crds ## Start operator for E2E tests (installs required CRDs if needed)
+	ALLOW_NAMESPACE_MANAGEMENT_IN_NAMESPACE_SCOPED_INSTANCES=true \
 	ARGOCD_CLUSTER_CONFIG_NAMESPACES="argocd-e2e-cluster-config, argocd-test-impersonation-1-046, argocd-agent-principal-1-051, argocd-agent-agent-1-052, appset-argocd, appset-old-ns, appset-new-ns, appset-argocd-clusterrole, ns-hosting-principal, ns-hosting-managed-agent, ns-hosting-autonomous-agent" make run
 
 all: test install run e2e ## UnitTest, Run the operator locally and execute e2e tests.
