@@ -24,14 +24,13 @@ resources:
 # [PROMETHEUS] To enable prometheus monitor, uncomment all sections with 'PROMETHEUS'.
 # - ../prometheus
 
-patchesStrategicMerge:
-# Protect the /metrics endpoint by putting it behind auth.
-# This is a consolidated toggle: it configures both secure manager metrics
-# and config/rbac/auth_proxy_service.yaml to target the named port "https".
-# If you want to expose /metrics without authn/z, comment the following line.
-- manager_auth_proxy_patch.yaml
-
 patches:
+# Protect the /metrics endpoint by putting it behind auth.
+# This is a consolidated toggle. Uncomment both patches below to configure
+# secure manager metrics and make config/rbac/auth_proxy_service.yaml target
+# the named port "https".
+#- path: manager_auth_proxy_patch.yaml
+#- path: manager_auth_proxy_service_patch.yaml
 
 # Mount the controller config file for loading manager configurations
 # through a ComponentConfig type

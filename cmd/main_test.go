@@ -55,6 +55,7 @@ func TestKustomizeConfig_NoKubeRBACProxyReferences(t *testing.T) {
 	repoRoot := findRepoRoot(t)
 	filesToCheck := []string{
 		"config/default/manager_auth_proxy_patch.yaml",
+		"config/default/manager_auth_proxy_service_patch.yaml",
 		"config/default/kustomization.yaml",
 		"config/manager/manager.yaml",
 	}
@@ -99,9 +100,9 @@ func TestKustomizeConfig_PatchConfiguresSecureMetrics(t *testing.T) {
 	}
 }
 
-func TestKustomizeConfig_PatchAlsoConfiguresMetricsServiceHTTPSPort(t *testing.T) {
+func TestKustomizeConfig_ServicePatchConfiguresMetricsServiceHTTPSPort(t *testing.T) {
 	repoRoot := findRepoRoot(t)
-	patchPath := filepath.Join(repoRoot, "config/default/manager_auth_proxy_patch.yaml")
+	patchPath := filepath.Join(repoRoot, "config/default/manager_auth_proxy_service_patch.yaml")
 
 	data, err := os.ReadFile(patchPath)
 	if err != nil {
@@ -110,7 +111,6 @@ func TestKustomizeConfig_PatchAlsoConfiguresMetricsServiceHTTPSPort(t *testing.T
 	content := string(data)
 
 	checks := map[string]string{
-		"kind: Service": "patch must include a Service patch",
 		"name: controller-manager-metrics-service": "patch must target controller manager metrics service",
 		"targetPort: https":                        "patch must switch metrics service to target the https named port",
 	}
@@ -132,11 +132,11 @@ func TestKustomizeConfig_BaseMetricsServiceTargets8080(t *testing.T) {
 	content := string(data)
 
 	if !strings.Contains(content, "targetPort: 8080") {
-		t.Error("base auth proxy service must target port 8080 so manager_auth_proxy_patch.yaml can act as a consolidated toggle")
+		t.Error("base auth proxy service must target port 8080 so the default patches can act as a consolidated toggle")
 	}
 }
 
-func TestKustomizeConfig_PatchIsEnabled(t *testing.T) {
+func TestKustomizeConfig_PatchesAreDisabledByDefault(t *testing.T) {
 	repoRoot := findRepoRoot(t)
 	kustomizePath := filepath.Join(repoRoot, "config/default/kustomization.yaml")
 
@@ -146,16 +146,23 @@ func TestKustomizeConfig_PatchIsEnabled(t *testing.T) {
 	}
 
 	lines := strings.Split(string(data), "\n")
+	assertPatchDisabledByDefault(t, lines, "manager_auth_proxy_patch.yaml")
+	assertPatchDisabledByDefault(t, lines, "manager_auth_proxy_service_patch.yaml")
+}
+
+func assertPatchDisabledByDefault(t *testing.T, lines []string, patchName string) {
+	t.Helper()
+
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		if strings.Contains(trimmed, "manager_auth_proxy_patch.yaml") {
-			if strings.HasPrefix(trimmed, "#") {
-				t.Error("manager_auth_proxy_patch.yaml is commented out in kustomization.yaml; it must be enabled")
+		if strings.Contains(trimmed, patchName) {
+			if !strings.HasPrefix(trimmed, "#") {
+				t.Errorf("%s must be commented out in kustomization.yaml by default", patchName)
 			}
 			return
 		}
 	}
-	t.Error("manager_auth_proxy_patch.yaml not found in kustomization.yaml")
+	t.Errorf("%s not found in kustomization.yaml", patchName)
 }
 
 func findRepoRoot(t *testing.T) string {
