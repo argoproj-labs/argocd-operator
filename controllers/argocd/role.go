@@ -121,6 +121,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 			ns := &corev1.Namespace{}
 			if err := r.Get(context.TODO(), types.NamespacedName{Name: namespace.Name}, ns); err != nil {
 				log.Error(err, "failed to get namespace for managed-by label", "namespace", namespace.Name)
+				// Continue - namespace might be terminating or temporarily unavailable
 			} else if ns.Labels[common.ArgoCDManagedByLabel] != cr.Namespace {
 				if ns.Labels == nil {
 					ns.Labels = make(map[string]string)
@@ -128,7 +129,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 				ns.Labels[common.ArgoCDManagedByLabel] = cr.Namespace
 				argoutil.LogResourceUpdate(log, ns, fmt.Sprintf("adding label '%s=%s'", common.ArgoCDManagedByLabel, cr.Namespace))
 				if err := r.Update(context.TODO(), ns); err != nil {
-					log.Error(err, fmt.Sprintf("failed to add label to namespace [%s]", namespace.Name))
+					return nil, fmt.Errorf("failed to add managed-by label to namespace [%s]: %w", namespace.Name, err)
 				}
 			}
 		}
