@@ -77,6 +77,35 @@ To run the unit tests, invoke the following make target:
 make test
 ```
 
+#### Metrics endpoint authentication and scraping
+
+The operator's metrics endpoint is protected using controller-runtime authentication and authorization.
+This uses Kubernetes `TokenReview` and `SubjectAccessReview` APIs, so the controller needs RBAC rules to create:
+
+* `tokenreviews.authentication.k8s.io`
+* `subjectaccessreviews.authorization.k8s.io`
+
+These permissions are already included in the default RBAC manifests (`config/rbac/auth_proxy_role.yaml` and `config/rbac/auth_proxy_role_binding.yaml`).
+
+For metrics scraping clients (for example Prometheus), grant access to `GET /metrics` by binding the provided `metrics-reader` `ClusterRole` (`config/rbac/auth_proxy_client_clusterrole.yaml`) to the scraper's ServiceAccount.
+
+Example:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-metrics-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: metrics-reader
+subjects:
+  - kind: ServiceAccount
+    name: prometheus-k8s
+    namespace: monitoring
+```
+
 Run the e2e tests.
 
 Refer E2E test [guide](../e2e-test-guide.md) for the setup and execution.

@@ -40,6 +40,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdexport"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
+	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	notificationsConfig "github.com/argoproj-labs/argocd-operator/controllers/notificationsconfiguration"
@@ -143,11 +144,7 @@ func main() {
 	}
 	webhookServer := webhook.NewServer(webhookServerOptions)
 
-	metricsServerOptions := metricsserver.Options{
-		SecureServing: secureMetrics,
-		BindAddress:   metricsAddr,
-		TLSOpts:       []func(*tls.Config){disableHTTP2},
-	}
+	metricsServerOptions := buildMetricsServerOptions(metricsAddr, secureMetrics, []func(*tls.Config){disableHTTP2})
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
@@ -371,4 +368,18 @@ func initK8sClient() (*kubernetes.Clientset, error) {
 	}
 
 	return k8sClient, nil
+}
+
+func buildMetricsServerOptions(metricsAddr string, secureMetrics bool, tlsOpts []func(*tls.Config)) metricsserver.Options {
+	opts := metricsserver.Options{
+		SecureServing: secureMetrics,
+		BindAddress:   metricsAddr,
+		TLSOpts:       tlsOpts,
+	}
+
+	if secureMetrics {
+		opts.FilterProvider = filters.WithAuthenticationAndAuthorization
+	}
+
+	return opts
 }
