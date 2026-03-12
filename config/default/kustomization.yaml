@@ -26,11 +26,9 @@ resources:
 
 patches:
 # Protect the /metrics endpoint by putting it behind auth.
-# This is a consolidated toggle. Uncomment both patches below to configure
-# secure manager metrics and make config/rbac/auth_proxy_service.yaml target
-# the named port "https".
+# If you want your controller-manager to expose the /metrics
+# endpoint w/o any authn/z, please comment the following line.
 #- path: manager_auth_proxy_patch.yaml
-#- path: manager_auth_proxy_service_patch.yaml
 
 # Mount the controller config file for loading manager configurations
 # through a ComponentConfig type
