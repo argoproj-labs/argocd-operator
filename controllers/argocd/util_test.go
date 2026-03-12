@@ -147,12 +147,12 @@ var imageTests = []struct {
 	},
 	{
 		name:      "redis default configuration",
-		imageFunc: getRedisContainerImage,
+		imageFunc: argoutil.GetRedisContainerImage,
 		want:      argoutil.CombineImageTag(common.ArgoCDDefaultRedisImage, common.ArgoCDDefaultRedisVersion),
 	},
 	{
 		name:      "redis spec configuration",
-		imageFunc: getRedisContainerImage,
+		imageFunc: argoutil.GetRedisContainerImage,
 		want:      redisTestImage,
 		opts: []argoCDOpt{func(a *argoproj.ArgoCD) {
 			a.Spec.Redis.Image = "testing/redis"
@@ -161,7 +161,7 @@ var imageTests = []struct {
 	},
 	{
 		name:      "redis env configuration",
-		imageFunc: getRedisContainerImage,
+		imageFunc: argoutil.GetRedisContainerImage,
 		want:      redisTestImage,
 		pre: func(t *testing.T) {
 			t.Setenv(common.ArgoCDRedisImageEnvName, redisTestImage)
@@ -169,14 +169,14 @@ var imageTests = []struct {
 	},
 	{
 		name:      "redis ha default configuration",
-		imageFunc: getRedisHAContainerImage,
+		imageFunc: argoutil.GetRedisHAContainerImage,
 		want: argoutil.CombineImageTag(
 			common.ArgoCDDefaultRedisImage,
 			common.ArgoCDDefaultRedisVersionHA),
 	},
 	{
 		name:      "redis ha spec configuration",
-		imageFunc: getRedisHAContainerImage,
+		imageFunc: argoutil.GetRedisHAContainerImage,
 		want:      redisHATestImage,
 		opts: []argoCDOpt{func(a *argoproj.ArgoCD) {
 			a.Spec.Redis.Image = "testing/redis"
@@ -185,7 +185,7 @@ var imageTests = []struct {
 	},
 	{
 		name:      "redis ha env configuration",
-		imageFunc: getRedisHAContainerImage,
+		imageFunc: argoutil.GetRedisHAContainerImage,
 		want:      redisHATestImage,
 		pre: func(t *testing.T) {
 			t.Setenv(common.ArgoCDRedisHAImageEnvName, redisHATestImage)
@@ -193,14 +193,14 @@ var imageTests = []struct {
 	},
 	{
 		name:      "redis ha proxy default configuration",
-		imageFunc: getRedisHAProxyContainerImage,
+		imageFunc: argoutil.GetRedisHAProxyContainerImage,
 		want: argoutil.CombineImageTag(
 			common.ArgoCDDefaultRedisHAProxyImage,
 			common.ArgoCDDefaultRedisHAProxyVersion),
 	},
 	{
 		name:      "redis ha proxy spec configuration",
-		imageFunc: getRedisHAProxyContainerImage,
+		imageFunc: argoutil.GetRedisHAProxyContainerImage,
 		want:      redisHAProxyTestImage,
 		opts: []argoCDOpt{func(a *argoproj.ArgoCD) {
 			a.Spec.HA.RedisProxyImage = "testing/redis-ha-haproxy"
@@ -209,7 +209,7 @@ var imageTests = []struct {
 	},
 	{
 		name:      "redis ha proxy env configuration",
-		imageFunc: getRedisHAProxyContainerImage,
+		imageFunc: argoutil.GetRedisHAProxyContainerImage,
 		want:      redisHAProxyTestImage,
 		pre: func(t *testing.T) {
 			t.Setenv(common.ArgoCDRedisHAProxyImageEnvName, redisHAProxyTestImage)
@@ -636,15 +636,6 @@ func TestGetArgoApplicationContainerEnv(t *testing.T) {
 
 	sync60s := []corev1.EnvVar{
 		{Name: "HOME", Value: "/home/argocd", ValueFrom: (*corev1.EnvVarSource)(nil)},
-		{Name: "REDIS_PASSWORD", Value: "",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "argocd-redis-initial-password",
-					},
-					Key: "admin.password",
-				},
-			}},
 		{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "60s", ValueFrom: (*corev1.EnvVarSource)(nil)},
 		{Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST", ValueFrom: &corev1.EnvVarSource{
 			ConfigMapKeyRef: &corev1.ConfigMapKeySelector{

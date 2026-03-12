@@ -746,13 +746,24 @@ func (r *ReconcileArgoCD) getClusterSecrets(cr *argoproj.ArgoCD) (*corev1.Secret
 // reconcileRedisInitialPasswordSecret will ensure that the redis Secret is present for the cluster.
 func (r *ReconcileArgoCD) reconcileRedisInitialPasswordSecret(cr *argoproj.ArgoCD) error {
 	secret := argoutil.NewSecretWithSuffix(cr, "redis-initial-password")
+	existed := false
 
-	secretExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret)
-	if err != nil {
+	// Recreate if the secret or some of its keys are missing
+	err := argoutil.FetchObject(r.Client, cr.Namespace, secret.Name, secret)
+	if err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
-	if secretExists {
-		return nil // Secret found, do nothing
+	if secret.Data != nil {
+		_, hasPwd := secret.Data[common.ArgoCDKeyAdminPassword]
+		_, hasAuth := secret.Data["auth"]
+		_, hasUsername := secret.Data["auth_username"]
+		_, hasAcl := secret.Data["users.acl"]
+		if hasPwd && hasAuth && hasUsername && hasAcl {
+			return nil // Healthy - keep it
+		}
+		// Drop unsettable fields from FetchObject
+		secret = argoutil.NewSecretWithSuffix(cr, "redis-initial-password")
+		existed = true
 	}
 
 	redisInitialPassword, err := generateRedisAdminPassword()
@@ -760,13 +771,26 @@ func (r *ReconcileArgoCD) reconcileRedisInitialPasswordSecret(cr *argoproj.ArgoC
 		return err
 	}
 
+	pw := strings.TrimRight(string(redisInitialPassword), "\n")
+	usersACL := fmt.Sprintf("user default on >%s allchannels allkeys allcommands\n", pw)
+
 	secret.Data = map[string][]byte{
-		"immutable":                   []byte("true"),
+		"immutable": []byte("true"),
+		// Mapping the legacy key-name, the operator customers can depend on.
 		common.ArgoCDKeyAdminPassword: redisInitialPassword,
+		// Provide ACL file content so redis-server can use file-based ACLs
+		"auth":          redisInitialPassword,
+		"auth_username": []byte("default"),
+		"users.acl":     []byte(usersACL),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, secret, r.Scheme); err != nil {
 		return err
+	}
+
+	if existed {
+		argoutil.LogResourceUpdate(log, secret)
+		return r.Update(context.TODO(), secret)
 	}
 	argoutil.LogResourceCreation(log, secret)
 	return r.Create(context.TODO(), secret)

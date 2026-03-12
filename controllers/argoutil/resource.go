@@ -126,10 +126,17 @@ func IsObjectFound(client client.Client, namespace string, name string, obj clie
 	return true, nil
 }
 
-// NameWithSuffix will return a string using the Name from the given ObjectMeta with the provded suffix appended.
-// Example: If ObjectMeta.Name is "test" and suffix is "object", the value of "test-object" will be returned.
+// NameWithSuffix will return a name based on the given resource using the better truncation approach.
+// The object name is truncated first, then the full suffix is appended to preserve suffix readability.
+// Example: Given a long resource name, this ensures suffixes like "redis-initial-password" remain intact.
 func NameWithSuffix(meta metav1.ObjectMeta, suffix string) string {
-	return fmt.Sprintf("%s-%s", meta.Name, suffix)
+	return fmt.Sprintf("%s-%s", TruncateCRName(meta.Name), suffix)
+}
+
+// FqdnServiceRef will return the FQDN referencing a specific service name, as set up by the operator, with the
+// given port.
+func FqdnServiceRef(service string, port int, cr *argoproj.ArgoCD) string {
+	return fmt.Sprintf("%s.%s.svc.cluster.local:%d", NameWithSuffix(cr.ObjectMeta, service), cr.Namespace, port)
 }
 
 func newEvent(meta metav1.ObjectMeta) *corev1.Event {
@@ -199,10 +206,6 @@ func LogResourceAction(log logr.Logger, action string, object metav1.Object, exp
 	}
 
 	log.Info(msg)
-}
-
-func GenerateAgentPrincipalRedisProxyServiceName(crName string) string {
-	return fmt.Sprintf("%s-agent-%s", crName, "principal-redisproxy")
 }
 
 // AddTrackedByOperatorLabel adds the ArgoCDTrackedByOperator label to the resource
