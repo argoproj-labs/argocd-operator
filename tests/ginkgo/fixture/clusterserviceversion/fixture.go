@@ -3,11 +3,12 @@ package clusterserviceversion
 import (
 	"context"
 
-	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 	. "github.com/onsi/gomega"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 )
 
 // Update will update a ClusterServiceVersion CR. Update will keep trying to update object until it succeeds, or times out.
