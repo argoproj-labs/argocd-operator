@@ -252,12 +252,12 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 		"kustomize.buildOptions":             "",
 		"oidc.config":                        "",
 		"resource.inclusions":                "",
-    "resource.exclusions":                string(defaultExclusions),
-    "server.rbac.disableApplicationFineGrainedRBACInheritance": "false",
-		"statusbadge.enabled":                "false",
-		"url":                                "https://argocd-server",
-		"users.anonymous.enabled":            "false",
-		"exec.enabled":                       "false",
+		"resource.exclusions":                string(defaultExclusions),
+		"server.rbac.disableApplicationFineGrainedRBACInheritance": "false",
+		"statusbadge.enabled":     "false",
+		"url":                     "https://argocd-server",
+		"users.anonymous.enabled": "false",
+		"exec.enabled":            "false",
 	}
 
 	cmdTests := []struct {
