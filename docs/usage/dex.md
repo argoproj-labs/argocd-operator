@@ -83,7 +83,7 @@ The below section describes how to configure Argo CD SSO using GitHub (OAuth2) a
 
 2. Update the Argo CD CR.
 
-In the `sso.dex.config` key, add the github connector to the connectors sub field. See the Dex [GitHub connector documentation](https://github.com/dexidp/website/blob/main/content/docs/connectors/github.md) for explanation of the fields. A minimal config should populate the clientID, clientSecret generated in Step 1.
+In the `sso.dex.config` key, add the github connector to the connectors sub field. See the Dex [GitHub connector documentation](https://github.com/dexidp/website/blob/main/content/docs/connectors/github.md) for explanation of the fields. A minimal config should populate the `clientID`, `clientSecret` generated in Step 1.
 You will very likely want to restrict logins to one or more GitHub organization. In the
 `connectors.config.orgs` list, add one or more GitHub organizations. Any member of the org will then be able to login to Argo CD to perform management tasks.
 
@@ -148,6 +148,32 @@ spec:
               name: argo-workflows-sso
               key: client-secret
 ```
+
+## Additional Volume Mounts for Dex Container
+
+You can optionally inject additional volumes and volume mounts into the Dex container managed by the Argo CD Operator. This allows for advanced configurations such as providing custom certificates, identity provider connectors, or other external resources required by Dex.
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+spec:
+  sso:
+    provider: dex
+    dex: 
+      volumeMounts:
+        - name: custom-cert
+          mountPath: /etc/dex/ssl
+          readOnly: true
+      volumes:
+        - name: custom-cert
+          secret:
+            secretName: dex-tls-secret
+```
+
+- `spec.sso.dex.volumeMounts` and `spec.sso.dex.volumes` follow the standard Kubernetes `volumeMounts` and `volumes` schema.
+- Ensure the volume name matches between the `volumes` and `volumeMounts` sections.
 
 ## Uninstalling Dex
 

@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+spec:
+  controller:
+    enabled: false
+  argoCDAgent:
+    principal:
+      enabled: true
+      auth: "mtls:CN=([^,]+)"
+      logLevel: "info"
+      image: "quay.io/argoprojlabs/argocd-agent:v0.5.0"  # specify a custom image
+      server:
+        keepAliveMinInterval: 30s
+      namespace:
+        allowedNamespaces:
+          - "*"  
+      tls:
+        insecureGenerate: false
+      jwt:
+        insecureGenerate: false
+  sourceNamespaces:
+    - "agent-managed"
+    - "agent-autonomous"

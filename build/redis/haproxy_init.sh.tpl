@@ -11,11 +11,6 @@ if [ -z "$ANNOUNCE_IP0" ]; then
 fi
 sed -i "s/REPLACE_ANNOUNCE0/$ANNOUNCE_IP0/" "$HAPROXY_CONF"
 
-if [ "${AUTH:-}" ]; then
-    echo "Setting auth values"
-    ESCAPED_AUTH=$(echo "$AUTH" | sed -e 's/[\/&]/\\&/g');
-    sed -i "s/REPLACE_AUTH_SECRET/${ESCAPED_AUTH}/" "$HAPROXY_CONF"
-fi
 for loop in $(seq 1 10); do
     getent hosts {{.ServiceName}}-announce-1 && break
     echo "Waiting for service {{.ServiceName}}-announce-1 to be ready ($loop) ..." && sleep 1
@@ -27,11 +22,6 @@ if [ -z "$ANNOUNCE_IP1" ]; then
 fi
 sed -i "s/REPLACE_ANNOUNCE1/$ANNOUNCE_IP1/" "$HAPROXY_CONF"
 
-if [ "${AUTH:-}" ]; then
-    echo "Setting auth values"
-    ESCAPED_AUTH=$(echo "$AUTH" | sed -e 's/[\/&]/\\&/g');
-    sed -i "s/REPLACE_AUTH_SECRET/${ESCAPED_AUTH}/" "$HAPROXY_CONF"
-fi
 for loop in $(seq 1 10); do
     getent hosts {{.ServiceName}}-announce-2 && break
     echo "Waiting for service {{.ServiceName}}-announce-2 to be ready ($loop) ..." && sleep 1
@@ -43,8 +33,6 @@ if [ -z "$ANNOUNCE_IP2" ]; then
 fi
 sed -i "s/REPLACE_ANNOUNCE2/$ANNOUNCE_IP2/" "$HAPROXY_CONF"
 
-if [ "${AUTH:-}" ]; then
-    echo "Setting auth values"
-    ESCAPED_AUTH=$(echo "$AUTH" | sed -e 's/[\/&]/\\&/g');
-    sed -i "s/REPLACE_AUTH_SECRET/${ESCAPED_AUTH}/" "$HAPROXY_CONF"
-fi
+auth=$(cat /redis-initial-pass/admin.password)
+sed -i "s/replace-with-redis-auth/$auth/" "$HAPROXY_CONF"
+

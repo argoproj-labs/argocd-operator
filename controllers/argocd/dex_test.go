@@ -4,19 +4,25 @@ import (
 	"context"
 	"testing"
 
+	configv1 "github.com/openshift/api/config/v1"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	testclient "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
 func TestReconcileArgoCD_reconcileDexDeployment_with_dex_disabled(t *testing.T) {
@@ -34,15 +40,6 @@ func TestReconcileArgoCD_reconcileDexDeployment_with_dex_disabled(t *testing.T) 
 				cr.Spec.SSO = nil
 			}),
 		},
-		{
-			name:       "dex disabled by specifying different provider",
-			setEnvFunc: nil,
-			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Provider: argoproj.SSOProviderTypeKeycloak,
-				}
-			}),
-		},
 	}
 
 	for _, test := range tests {
@@ -53,7 +50,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_with_dex_disabled(t *testing.T) 
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 			if test.setEnvFunc != nil {
 				test.setEnvFunc(t, "true")
@@ -62,7 +59,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_with_dex_disabled(t *testing.T) 
 			assert.NoError(t, r.reconcileDexDeployment(test.argoCD))
 
 			deployment := &appsv1.Deployment{}
-			err := r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-dex-server", Namespace: test.argoCD.Namespace}, deployment)
+			err := r.Get(context.TODO(), types.NamespacedName{Name: "argocd-dex-server", Namespace: test.argoCD.Namespace}, deployment)
 			assert.True(t, apierrors.IsNotFound(err))
 		})
 	}
@@ -96,24 +93,6 @@ func TestReconcileArgoCD_reconcileDexDeployment_removes_dex_when_disabled(t *tes
 			}),
 			wantDeploymentDeleted: true,
 		},
-		{
-			name:       "dex disabled by switching provider",
-			setEnvFunc: nil,
-			updateCrFunc: func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Provider: argoproj.SSOProviderTypeKeycloak,
-				}
-			},
-			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Provider: argoproj.SSOProviderTypeDex,
-					Dex: &argoproj.ArgoCDDexSpec{
-						OpenShiftOAuth: true,
-					},
-				}
-			}),
-			wantDeploymentDeleted: true,
-		},
 	}
 
 	for _, test := range tests {
@@ -124,7 +103,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_removes_dex_when_disabled(t *tes
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 			if test.setEnvFunc != nil {
 				test.setEnvFunc(t, "false")
@@ -134,7 +113,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_removes_dex_when_disabled(t *tes
 
 			// ensure deployment was created correctly
 			deployment := &appsv1.Deployment{}
-			err := r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-dex-server", Namespace: test.argoCD.Namespace}, deployment)
+			err := r.Get(context.TODO(), types.NamespacedName{Name: "argocd-dex-server", Namespace: test.argoCD.Namespace}, deployment)
 			assert.NoError(t, err)
 
 			if test.updateEnvFunc != nil {
@@ -146,7 +125,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_removes_dex_when_disabled(t *tes
 
 			assert.NoError(t, r.reconcileDexDeployment(test.argoCD))
 			deployment = &appsv1.Deployment{}
-			err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-dex-server", Namespace: test.argoCD.Namespace}, deployment)
+			err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-dex-server", Namespace: test.argoCD.Namespace}, deployment)
 
 			if test.wantDeploymentDeleted {
 				assertNotFound(t, err)
@@ -196,7 +175,7 @@ func TestReconcileArgoCD_reconcileDeployments_Dex_with_resources(t *testing.T) {
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 			if test.setEnvFunc != nil {
 				test.setEnvFunc(t, "false")
@@ -205,7 +184,7 @@ func TestReconcileArgoCD_reconcileDeployments_Dex_with_resources(t *testing.T) {
 			assert.NoError(t, r.reconcileDexDeployment(test.argoCD))
 
 			deployment := &appsv1.Deployment{}
-			assert.NoError(t, r.Client.Get(
+			assert.NoError(t, r.Get(
 				context.TODO(),
 				types.NamespacedName{
 					Name:      test.argoCD.Name + "-dex-server",
@@ -229,6 +208,93 @@ func TestReconcileArgoCD_reconcileDeployments_Dex_with_resources(t *testing.T) {
 	}
 }
 
+func TestReconcileArgoCD_reconcileDeployments_Dex_with_volumes(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		name       string
+		setEnvFunc func(*testing.T, string)
+		argoCD     *argoproj.ArgoCD
+	}{
+		{
+			name:       "dex with volumes - .spec.sso.provider=dex",
+			setEnvFunc: nil,
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
+						Volumes: []corev1.Volume{
+							{Name: "custom-config", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+						},
+						VolumeMounts: []corev1.VolumeMount{
+							{Name: "custom-config", MountPath: "/etc/custom-config"},
+						},
+					},
+				}
+			}),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			resObjs := []client.Object{test.argoCD}
+			subresObjs := []client.Object{test.argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			if test.setEnvFunc != nil {
+				test.setEnvFunc(t, "false")
+			}
+
+			assert.NoError(t, r.reconcileDexDeployment(test.argoCD))
+
+			deployment := &appsv1.Deployment{}
+			assert.NoError(t, r.Get(
+				context.TODO(),
+				types.NamespacedName{
+					Name:      test.argoCD.Name + "-dex-server",
+					Namespace: test.argoCD.Namespace,
+				},
+				deployment))
+
+			testVolumes := []corev1.Volume{
+				{
+					Name: "static-files",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+				{
+					Name: "dexconfig",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+				{
+					Name: "custom-config",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+			}
+
+			testVolumeMounts := []corev1.VolumeMount{
+				{Name: "static-files", MountPath: "/shared"},
+				{Name: "dexconfig", MountPath: "/tmp"},
+				{Name: "custom-config", MountPath: "/etc/custom-config"},
+			}
+
+			assert.Equal(t, deployment.Spec.Template.Spec.Volumes, testVolumes)
+
+			assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].VolumeMounts, testVolumeMounts)
+			assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].VolumeMounts, testVolumeMounts)
+		})
+	}
+}
+
 func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
@@ -241,12 +307,12 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	assert.NoError(t, r.reconcileDexDeployment(a))
 
 	deployment := &appsv1.Deployment{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-dex-server",
@@ -257,6 +323,12 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 		Volumes: []corev1.Volume{
 			{
 				Name: "static-files",
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			},
+			{
+				Name: "dexconfig",
 				VolumeSource: corev1.VolumeSource{
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				},
@@ -272,22 +344,18 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 					"/usr/local/bin/argocd",
 					"/shared/argocd-dex",
 				},
-				SecurityContext: &corev1.SecurityContext{
-					AllowPrivilegeEscalation: boolPtr(false),
-					Capabilities: &corev1.Capabilities{
-						Drop: []corev1.Capability{
-							"ALL",
-						},
-					},
-					RunAsNonRoot: boolPtr(true),
-				},
+				SecurityContext: argoutil.DefaultSecurityContext(),
 				VolumeMounts: []corev1.VolumeMount{
 					{
 						Name:      "static-files",
 						MountPath: "/shared",
 					},
+					{
+						Name:      "dexconfig",
+						MountPath: "/tmp",
+					},
 				},
-				ImagePullPolicy: corev1.PullAlways,
+				ImagePullPolicy: corev1.PullIfNotPresent,
 			},
 		},
 		Containers: []corev1.Container{
@@ -322,17 +390,11 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 						ContainerPort: 5558,
 					},
 				},
-				SecurityContext: &corev1.SecurityContext{
-					AllowPrivilegeEscalation: boolPtr(false),
-					Capabilities: &corev1.Capabilities{
-						Drop: []corev1.Capability{
-							"ALL",
-						},
-					},
-					RunAsNonRoot: boolPtr(true),
-				},
+				ImagePullPolicy: corev1.PullIfNotPresent,
+				SecurityContext: argoutil.DefaultSecurityContext(),
 				VolumeMounts: []corev1.VolumeMount{
 					{Name: "static-files", MountPath: "/shared"},
+					{Name: "dexconfig", MountPath: "/tmp"},
 				},
 			},
 		},
@@ -382,6 +444,12 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
 					},
+					{
+						Name: "dexconfig",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
 				},
 				InitContainers: []corev1.Container{
 					{
@@ -393,22 +461,18 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 							"/usr/local/bin/argocd",
 							"/shared/argocd-dex",
 						},
-						SecurityContext: &corev1.SecurityContext{
-							AllowPrivilegeEscalation: boolPtr(false),
-							Capabilities: &corev1.Capabilities{
-								Drop: []corev1.Capability{
-									"ALL",
-								},
-							},
-							RunAsNonRoot: boolPtr(true),
-						},
+						SecurityContext: argoutil.DefaultSecurityContext(),
 						VolumeMounts: []corev1.VolumeMount{
 							{
 								Name:      "static-files",
 								MountPath: "/shared",
 							},
+							{
+								Name:      "dexconfig",
+								MountPath: "/tmp",
+							},
 						},
-						ImagePullPolicy: corev1.PullAlways,
+						ImagePullPolicy: corev1.PullIfNotPresent,
 					},
 				},
 				Containers: []corev1.Container{
@@ -443,17 +507,11 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 								ContainerPort: 5558,
 							},
 						},
-						SecurityContext: &corev1.SecurityContext{
-							AllowPrivilegeEscalation: boolPtr(false),
-							Capabilities: &corev1.Capabilities{
-								Drop: []corev1.Capability{
-									"ALL",
-								},
-							},
-							RunAsNonRoot: boolPtr(true),
-						},
+						ImagePullPolicy: corev1.PullIfNotPresent,
+						SecurityContext: argoutil.DefaultSecurityContext(),
 						VolumeMounts: []corev1.VolumeMount{
 							{Name: "static-files", MountPath: "/shared"},
+							{Name: "dexconfig", MountPath: "/tmp"},
 						},
 					},
 				},
@@ -495,6 +553,12 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
 					},
+					{
+						Name: "dexconfig",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
 				},
 				InitContainers: []corev1.Container{
 					{
@@ -506,28 +570,24 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 							"/usr/local/bin/argocd",
 							"/shared/argocd-dex",
 						},
-						SecurityContext: &corev1.SecurityContext{
-							AllowPrivilegeEscalation: boolPtr(false),
-							Capabilities: &corev1.Capabilities{
-								Drop: []corev1.Capability{
-									"ALL",
-								},
-							},
-							RunAsNonRoot: boolPtr(true),
-						},
+						SecurityContext: argoutil.DefaultSecurityContext(),
 						VolumeMounts: []corev1.VolumeMount{
 							{
 								Name:      "static-files",
 								MountPath: "/shared",
 							},
+							{
+								Name:      "dexconfig",
+								MountPath: "/tmp",
+							},
 						},
-						ImagePullPolicy: corev1.PullAlways,
+						ImagePullPolicy: corev1.PullIfNotPresent,
 					},
 				},
 				Containers: []corev1.Container{
 					{
 						Name:  "dex",
-						Image: "ghcr.io/dexidp/dex@sha256:d5f887574312f606c61e7e188cfb11ddb33ff3bf4bd9f06e6b1458efca75f604",
+						Image: "ghcr.io/dexidp/dex@sha256:b08a58c9731c693b8db02154d7afda798e1888dc76db30d34c4a0d0b8a26d913", // (v2.43.0) NOTE: this value is modified by dependency update script
 						Command: []string{
 							"/shared/argocd-dex",
 							"rundex",
@@ -569,17 +629,11 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 								},
 							},
 						},
-						SecurityContext: &corev1.SecurityContext{
-							AllowPrivilegeEscalation: boolPtr(false),
-							Capabilities: &corev1.Capabilities{
-								Drop: []corev1.Capability{
-									"ALL",
-								},
-							},
-							RunAsNonRoot: boolPtr(true),
-						},
+						ImagePullPolicy: corev1.PullIfNotPresent,
+						SecurityContext: argoutil.DefaultSecurityContext(),
 						VolumeMounts: []corev1.VolumeMount{
 							{Name: "static-files", MountPath: "/shared"},
+							{Name: "dexconfig", MountPath: "/tmp"},
 						},
 					},
 				},
@@ -597,7 +651,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 			if test.setEnvFunc != nil {
 				test.setEnvFunc(t, "false")
@@ -613,7 +667,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 
 			// ensure deployment was created correctly
 			deployment := &appsv1.Deployment{}
-			assert.NoError(t, r.Client.Get(
+			assert.NoError(t, r.Get(
 				context.TODO(),
 				types.NamespacedName{
 					Name:      "argocd-dex-server",
@@ -654,24 +708,6 @@ func TestReconcileArgoCD_reconcileDexService_removes_dex_when_disabled(t *testin
 			}),
 			wantServiceDeleted: true,
 		},
-		{
-			name:       "dex disabled by switching provider",
-			setEnvFunc: nil,
-			updateCrFunc: func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Provider: argoproj.SSOProviderTypeKeycloak,
-				}
-			},
-			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Provider: argoproj.SSOProviderTypeDex,
-					Dex: &argoproj.ArgoCDDexSpec{
-						OpenShiftOAuth: true,
-					},
-				}
-			}),
-			wantServiceDeleted: true,
-		},
 	}
 
 	for _, test := range tests {
@@ -682,7 +718,7 @@ func TestReconcileArgoCD_reconcileDexService_removes_dex_when_disabled(t *testin
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 			if test.setEnvFunc != nil {
 				test.setEnvFunc(t, "false")
@@ -692,7 +728,7 @@ func TestReconcileArgoCD_reconcileDexService_removes_dex_when_disabled(t *testin
 
 			// ensure service was created correctly
 			service := &corev1.Service{}
-			err := r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-dex-server", Namespace: test.argoCD.Namespace}, service)
+			err := r.Get(context.TODO(), types.NamespacedName{Name: "argocd-dex-server", Namespace: test.argoCD.Namespace}, service)
 			assert.NoError(t, err)
 
 			if test.updateEnvFunc != nil {
@@ -704,7 +740,7 @@ func TestReconcileArgoCD_reconcileDexService_removes_dex_when_disabled(t *testin
 
 			assert.NoError(t, r.reconcileDexService(test.argoCD))
 			service = &corev1.Service{}
-			err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-dex-server", Namespace: test.argoCD.Namespace}, service)
+			err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-dex-server", Namespace: test.argoCD.Namespace}, service)
 
 			if test.wantServiceDeleted {
 				assertNotFound(t, err)
@@ -743,24 +779,6 @@ func TestReconcileArgoCD_reconcileDexServiceAccount_removes_dex_when_disabled(t 
 			}),
 			wantServiceAccountDeleted: true,
 		},
-		{
-			name:       "dex disabled by switching provider",
-			setEnvFunc: nil,
-			updateCrFunc: func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Provider: argoproj.SSOProviderTypeKeycloak,
-				}
-			},
-			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Provider: argoproj.SSOProviderTypeDex,
-					Dex: &argoproj.ArgoCDDexSpec{
-						OpenShiftOAuth: true,
-					},
-				}
-			}),
-			wantServiceAccountDeleted: true,
-		},
 	}
 
 	for _, test := range tests {
@@ -771,7 +789,7 @@ func TestReconcileArgoCD_reconcileDexServiceAccount_removes_dex_when_disabled(t 
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 			if test.setEnvFunc != nil {
 				test.setEnvFunc(t, "false")
@@ -781,7 +799,7 @@ func TestReconcileArgoCD_reconcileDexServiceAccount_removes_dex_when_disabled(t 
 			assert.NoError(t, err)
 
 			// ensure serviceaccount was created correctly
-			err = r.Client.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: test.argoCD.Namespace}, sa)
+			err = r.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: test.argoCD.Namespace}, sa)
 			assert.NoError(t, err)
 
 			if test.updateEnvFunc != nil {
@@ -794,7 +812,7 @@ func TestReconcileArgoCD_reconcileDexServiceAccount_removes_dex_when_disabled(t 
 			_, err = r.reconcileServiceAccount(common.ArgoCDDexServerComponent, test.argoCD)
 			assert.NoError(t, err)
 
-			err = r.Client.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: test.argoCD.Namespace}, sa)
+			err = r.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: test.argoCD.Namespace}, sa)
 
 			if test.wantServiceAccountDeleted {
 				assertNotFound(t, err)
@@ -833,24 +851,6 @@ func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
 			}),
 			wantRoleDeleted: true,
 		},
-		{
-			name:       "dex disabled by switching provider",
-			setEnvFunc: nil,
-			updateCrFunc: func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Provider: argoproj.SSOProviderTypeKeycloak,
-				}
-			},
-			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Provider: argoproj.SSOProviderTypeDex,
-					Dex: &argoproj.ArgoCDDexSpec{
-						OpenShiftOAuth: true,
-					},
-				}
-			}),
-			wantRoleDeleted: true,
-		},
 	}
 
 	for _, test := range tests {
@@ -861,7 +861,7 @@ func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
 
@@ -876,7 +876,7 @@ func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
 			assert.NoError(t, err)
 
 			// ensure role was created correctly
-			err = r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: test.argoCD.Namespace}, role)
+			err = r.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: test.argoCD.Namespace}, role)
 			assert.NoError(t, err)
 
 			if test.updateEnvFunc != nil {
@@ -889,7 +889,7 @@ func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
 			_, err = r.reconcileRole(common.ArgoCDDexServerComponent, rules, test.argoCD)
 			assert.NoError(t, err)
 
-			err = r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: test.argoCD.Namespace}, role)
+			err = r.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: test.argoCD.Namespace}, role)
 
 			if test.wantRoleDeleted {
 				assertNotFound(t, err)
@@ -928,24 +928,6 @@ func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
 			}),
 			wantRoleBindingDeleted: true,
 		},
-		{
-			name:       "dex disabled by switching provider",
-			setEnvFunc: nil,
-			updateCrFunc: func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Provider: argoproj.SSOProviderTypeKeycloak,
-				}
-			},
-			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Provider: argoproj.SSOProviderTypeDex,
-					Dex: &argoproj.ArgoCDDexSpec{
-						OpenShiftOAuth: true,
-					},
-				}
-			}),
-			wantRoleBindingDeleted: true,
-		},
 	}
 
 	for _, test := range tests {
@@ -956,7 +938,7 @@ func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
 
@@ -968,10 +950,10 @@ func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
 			}
 
 			assert.NoError(t, r.reconcileRoleBinding(common.ArgoCDDexServerComponent, rules, test.argoCD))
-			assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: test.argoCD.Namespace}, roleBinding))
+			assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: test.argoCD.Namespace}, roleBinding))
 
 			// ensure roleBinding was created correctly
-			err := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: test.argoCD.Namespace}, roleBinding)
+			err := r.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: test.argoCD.Namespace}, roleBinding)
 			assert.NoError(t, err)
 
 			if test.updateEnvFunc != nil {
@@ -984,7 +966,7 @@ func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
 			err = r.reconcileRoleBinding(common.ArgoCDDexServerComponent, rules, test.argoCD)
 			assert.NoError(t, err)
 
-			err = r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: test.argoCD.Namespace}, roleBinding)
+			err = r.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: test.argoCD.Namespace}, roleBinding)
 
 			if test.wantRoleBindingDeleted {
 				assertNotFound(t, err)
@@ -993,4 +975,123 @@ func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestIsExternalAuthenticationEnabledOnCluster(t *testing.T) {
+	tests := []struct {
+		name     string
+		authType string
+		expected bool
+	}{
+		{
+			name:     "OIDC enabled",
+			authType: "OIDC",
+			expected: true,
+		},
+		{
+			name:     "Non OIDC type",
+			authType: "SSO",
+			expected: false,
+		},
+		{
+			name:     "Empty type",
+			authType: "",
+			expected: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			auth := &configv1.Authentication{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "cluster",
+				},
+				Spec: configv1.AuthenticationSpec{
+					Type: configv1.AuthenticationType(tt.authType),
+				},
+			}
+			sch := makeTestReconcilerScheme(configv1.AddToScheme)
+			cl := makeTestReconcilerClient(sch, []client.Object{auth}, []client.Object{auth}, nil)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+			result := IsExternalAuthenticationEnabledOnCluster(context.TODO(), r.Client)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func newTestScheme(t *testing.T) *runtime.Scheme {
+	scheme := runtime.NewScheme()
+	require.NoError(t, configv1.AddToScheme(scheme))
+	require.NoError(t, argoproj.AddToScheme(scheme))
+	return scheme
+}
+
+func newTestClient(scheme *runtime.Scheme, objs ...client.Object) client.Client {
+	return fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&argoproj.ArgoCD{}).WithObjects(objs...).Build()
+}
+
+// OIDC enabled on cluster. openshift cluster, status condition gets populated on argocd status
+func TestGetOpenShiftDexConfig_StatusUpdateSuccess(t *testing.T) {
+	original := versionAPIFound
+	versionAPIFound = true
+	defer func() { versionAPIFound = original }()
+	scheme := newTestScheme(t)
+	auth := &configv1.Authentication{
+		ObjectMeta: metav1.ObjectMeta{Name: "cluster"},
+		Spec: configv1.AuthenticationSpec{
+			Type: configv1.AuthenticationType("OIDC"),
+		},
+	}
+	cr := &argoproj.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "example",
+			Namespace: "default",
+		},
+	}
+	cl := newTestClient(scheme, auth, cr)
+	r := &ReconcileArgoCD{Client: cl}
+	result, err := r.getOpenShiftDexConfig(cr)
+	assert.NoError(t, err)
+	assert.Empty(t, result)
+	// Fetch updated CR
+	updated := &argoproj.ArgoCD{}
+	require.NoError(t, cl.Get(context.TODO(), types.NamespacedName{Name: "example", Namespace: "default"}, updated))
+	require.NotEmpty(t, updated.Status.Conditions)
+	found := false
+	for _, cond := range updated.Status.Conditions {
+		if cond.Type == argoproj.ArgoCDConditionConfigurationError {
+			found = true
+			assert.Equal(t, metav1.ConditionTrue, cond.Status)
+			assert.Equal(t, argoproj.ArgoCDConditionReasonSSOError, cond.Reason)
+			assert.Equal(t, argoproj.OpenShiftOAuthErrorMessage, cond.Message)
+		}
+	}
+	assert.True(t, found, "expected configuration error condition")
+}
+
+// OIDC Disabled testcase
+func TestGetOpenShiftDexConfig_OIDCDisabled(t *testing.T) {
+	original := versionAPIFound
+	versionAPIFound = true
+	defer func() { versionAPIFound = original }()
+	scheme := newTestScheme(t)
+	auth := &configv1.Authentication{
+		ObjectMeta: metav1.ObjectMeta{Name: "cluster"},
+		Spec: configv1.AuthenticationSpec{
+			Type: configv1.AuthenticationType("SSO"),
+		},
+	}
+	cr := &argoproj.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "example",
+			Namespace: "default",
+		},
+	}
+	cl := newTestClient(scheme, auth, cr)
+	r := &ReconcileArgoCD{Client: cl}
+	result, err := r.getOpenShiftDexConfig(cr)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, result)
+	updated := &argoproj.ArgoCD{}
+	require.NoError(t, cl.Get(context.TODO(), types.NamespacedName{Name: "example", Namespace: "default"}, updated))
+	assert.Empty(t, updated.Status.Conditions)
 }

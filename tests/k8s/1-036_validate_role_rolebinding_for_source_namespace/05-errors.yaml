@@ -5,22 +5,22 @@ metadata:
     app.kubernetes.io/managed-by: example-argocd
     app.kubernetes.io/name: example-argocd
     app.kubernetes.io/part-of: argocd
-  name: example-argocd_ other-ns
-  namespace:  other-ns
+  name: example-argocd_other-ns-thirtysix
+  namespace: other-ns-thirtysix
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: example-argocd_ other-ns
-  namespace: other-ns
+  namespace: other-ns-thirtysix
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: example-argocd_ other-ns
+  name: example-argocd_other-ns-thirtysix
 subjects:
 - kind: ServiceAccount
   name: example-argocd-argocd-server
-  namespace: default
+  namespace: default-thirtysix
 - kind: ServiceAccount
   name: example-argocd-argocd-application-controller
-  namespace: default
+  namespace: default-thirtysix

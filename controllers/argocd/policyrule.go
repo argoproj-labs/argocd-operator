@@ -26,15 +26,70 @@ func policyRuleForApplicationController() []v1.PolicyRule {
 				"*",
 			},
 		},
+		{
+			APIGroups: []string{
+				"",
+			},
+			Resources: []string{
+				"serviceaccounts",
+			},
+			Verbs: []string{
+				"impersonate",
+			},
+		},
 	}
 }
 
-func policyRuleForRedis(client client.Client) []v1.PolicyRule {
-	rules := []v1.PolicyRule{}
+func policyRuleForApplicationControllerView() []v1.PolicyRule {
 
-	// Need additional policy rules if we are running on openshift, else the stateful set won't have the right
-	// permissions to start
-	rules = appendOpenShiftNonRootSCC(rules, client)
+	return []v1.PolicyRule{
+		{
+			APIGroups: []string{
+				"*",
+			},
+			Resources: []string{
+				"*",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
+		}, {
+			NonResourceURLs: []string{
+				"*",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+			},
+		},
+	}
+}
+
+func policyRuleForApplicationControllerAdmin() []v1.PolicyRule {
+	return []v1.PolicyRule{}
+}
+
+func policyRuleForRedis(client client.Client) []v1.PolicyRule {
+	rules := []v1.PolicyRule{
+		{
+			APIGroups: []string{
+				"",
+			},
+			Resources: []string{
+				"secrets",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
+		},
+	}
+
+	// In OpenShift, we need to ensure that the Pods are running with the least privilege allowed.
+	rules = appendOpenShiftRestrictedSCC(rules, client)
 
 	return rules
 }
@@ -53,11 +108,23 @@ func policyRuleForRedisHa(client client.Client) []v1.PolicyRule {
 				"get",
 			},
 		},
+		{
+			APIGroups: []string{
+				"",
+			},
+			Resources: []string{
+				"secrets",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
+		},
 	}
 
-	// Need additional policy rules if we are running on openshift, else the stateful set won't have the right
-	// permissions to start
-	rules = appendOpenShiftNonRootSCC(rules, client)
+	// In OpenShift, we need to ensure that the Pods are running with the least privilege allowed.
+	rules = appendOpenShiftRestrictedSCC(rules, client)
 
 	return rules
 }
@@ -241,6 +308,36 @@ func policyRuleForNotificationsController() []v1.PolicyRule {
 	}
 }
 
+func policyRuleForNotificationsControllerClusterRole() []v1.PolicyRule {
+	return []v1.PolicyRule{
+		{
+			APIGroups: []string{
+				"argoproj.io",
+			},
+			Resources: []string{
+				"applications",
+			},
+			Verbs: []string{
+				"list",
+				"watch",
+			},
+		},
+		{
+			APIGroups: []string{
+				"",
+			},
+			Resources: []string{
+				"configmaps",
+				"secrets",
+			},
+			Verbs: []string{
+				"list",
+				"watch",
+			},
+		},
+	}
+}
+
 func policyRuleForServerApplicationSourceNamespaces() []v1.PolicyRule {
 	return []v1.PolicyRule{
 		{
@@ -258,20 +355,6 @@ func policyRuleForServerApplicationSourceNamespaces() []v1.PolicyRule {
 				"update",
 				"watch",
 				"delete",
-			},
-		},
-		{
-			APIGroups: []string{
-				"batch",
-			},
-			Resources: []string{
-				"jobs",
-				"cronjobs",
-				"cronjobs/finalizers",
-			},
-			Verbs: []string{
-				"create",
-				"update",
 			},
 		},
 	}
@@ -374,20 +457,26 @@ func getPolicyRuleClusterRoleList() []struct {
 		}, {
 			name:       common.ArgoCDServerComponent,
 			policyRule: policyRuleForServerClusterRole(),
+		}, {
+			name:       common.ArgoCDApplicationControllerComponentView,
+			policyRule: policyRuleForApplicationControllerView(),
+		}, {
+			name:       common.ArgoCDApplicationControllerComponentAdmin,
+			policyRule: policyRuleForApplicationControllerAdmin(),
 		},
 	}
 }
 
-func appendOpenShiftNonRootSCC(rules []v1.PolicyRule, client client.Client) []v1.PolicyRule {
+func appendOpenShiftRestrictedSCC(rules []v1.PolicyRule, client client.Client) []v1.PolicyRule {
 	if IsVersionAPIAvailable() {
-		// Starting with OpenShift 4.11, we need to use the resource name "nonroot-v2" instead of "nonroot"
-		resourceName := "nonroot"
+		// Starting with OpenShift 4.11, we need to use the resource name "restricted-v2" instead of "restricted"
+		resourceName := "restricted"
 		version, err := getClusterVersion(client)
 		if err != nil {
 			log.Error(err, "couldn't get OpenShift version")
 		}
 		if version == "" || semver.Compare(fmt.Sprintf("v%s", version), "v4.10.999") > 0 {
-			resourceName = "nonroot-v2"
+			resourceName = "restricted-v2"
 		}
 		orules := v1.PolicyRule{
 			APIGroups: []string{
@@ -448,6 +537,8 @@ func policyRuleForApplicationSetController() []v1.PolicyRule {
 			},
 			Verbs: []string{
 				"get",
+				"list",
+				"watch",
 			},
 		},
 
@@ -545,6 +636,168 @@ func policyRuleForServerApplicationSetSourceNamespaces() []v1.PolicyRule {
 				"update",
 				"watch",
 				"delete",
+			},
+		},
+	}
+}
+
+func policyRuleForRoleForImageUpdaterController() []v1.PolicyRule {
+	return []v1.PolicyRule{
+		// ConfigMaps and Secrets
+		{
+			APIGroups: []string{
+				"",
+			},
+			Resources: []string{
+				"configmaps",
+				"secrets",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
+		},
+		{
+			APIGroups: []string{
+				"",
+			},
+			ResourceNames: []string{
+				ArgocdImageUpdaterConfigCM,
+			},
+			Resources: []string{
+				"configmaps",
+			},
+			Verbs: []string{
+				"get",
+			},
+		},
+		{
+			APIGroups: []string{
+				"",
+			},
+			ResourceNames: []string{
+				ArgocdImageUpdaterSSHConfigCM,
+			},
+			Resources: []string{
+				"configmaps",
+			},
+			Verbs: []string{
+				"get",
+			},
+		},
+		{
+			APIGroups: []string{
+				"",
+			},
+			ResourceNames: []string{
+				ArgocdImageUpdaterSecret,
+			},
+			Resources: []string{
+				"secrets",
+			},
+			Verbs: []string{
+				"get",
+			},
+		},
+
+		// leases
+		{
+			APIGroups: []string{"coordination.k8s.io"},
+			Resources: []string{
+				"leases",
+			},
+			Verbs: []string{
+				"create",
+				"delete",
+				"get",
+				"list",
+				"patch",
+				"update",
+				"watch",
+			},
+		},
+		{
+			APIGroups: []string{""},
+			Resources: []string{
+				"events",
+			},
+			Verbs: []string{
+				"create",
+				"patch",
+			},
+		},
+	}
+}
+
+func policyRuleForClusterRoleForImageUpdaterController() []v1.PolicyRule {
+	return []v1.PolicyRule{
+		{
+			APIGroups: []string{
+				"",
+			},
+			Resources: []string{
+				"events",
+			},
+			Verbs: []string{
+				"create",
+				"patch",
+			},
+		},
+		{
+			APIGroups: []string{
+				"argocd-image-updater.argoproj.io",
+			},
+			Resources: []string{
+				"imageupdaters",
+			},
+			Verbs: []string{
+				"create",
+				"delete",
+				"get",
+				"list",
+				"patch",
+				"update",
+				"watch",
+			},
+		},
+		{
+			APIGroups: []string{
+				"argocd-image-updater.argoproj.io",
+			},
+			Resources: []string{
+				"imageupdaters/finalizers",
+			},
+			Verbs: []string{
+				"update",
+			},
+		},
+		{
+			APIGroups: []string{
+				"argocd-image-updater.argoproj.io",
+			},
+			Resources: []string{
+				"imageupdaters/status",
+			},
+			Verbs: []string{
+				"get",
+				"patch",
+				"update",
+			},
+		},
+		{
+			APIGroups: []string{
+				"argoproj.io",
+			},
+			Resources: []string{
+				"applications",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+				"patch",
+				"update",
+				"watch",
 			},
 		},
 	}

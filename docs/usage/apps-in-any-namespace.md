@@ -11,7 +11,17 @@ Argo CD administrators can define a certain set of namespaces where Application 
 
 ## Using application-namespaces
 
-In order to enable this feature, specify the namespaces where Argo CD should manage applications in the ArgoCD YAML with `spec.sourceNamespaces`. This field also supports wildcards, allowing flexible and dynamic namespace configurations. For example:
+In order to enable this feature, specify the namespaces where Argo CD should manage applications in the ArgoCD YAML with `spec.sourceNamespaces`. 
+This field supports both:
+ - Glob-style wildcards (e.g., `team-*`, `team-frontend`, `app-??`)
+ - Regular expressions (wrapped in forward slashes, e.g., `/^team-(frontend|backend)$/`, `/^team-.*$/`)
+
+The operator resolves these patterns to actual namespaces at reconcile time and passes the expanded, concrete list to the Application controller.
+
+!!! note
+    Regular expression patterns must be wrapped in forward slashes (`/pattern/`) to be treated as regex. Patterns without slashes are treated as glob patterns. For example:
+    - `team-*` - glob pattern (matches team-1, team-2, etc.)
+    - `/^team-[0-9]+$/` - regex pattern (matches team-1, team-2, but not team-frontend)
 
 ## Enable application creation in a specific namespace
 ```yaml
@@ -41,6 +51,21 @@ spec:
 In this example:
 
 - Permissions are granted to namespaces matching the pattern `app-team-*`, such as `app-team-1`, `app-team-2`, etc.
+
+## Enable application creation in namespaces matching regular expressions
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd-regex
+spec:
+  sourceNamespaces:
+    - /^app-team-(frontend|backend)$/   # only frontend or backend
+    - /^app-team-[0-9]+$/               # numeric suffix (app-team-1, app-team-2)
+```
+
+In these examples, permissions are granted only to namespaces that match the provided regex patterns.
 
 ## Enable application creation in all namespaces
 

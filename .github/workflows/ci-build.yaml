@@ -2,38 +2,38 @@ name: Build and test the operator
 on:
   push:
     branches:
-      - 'master'
-      - 'release-*'
-      - 'rhos-*'
+      - "master"
+      - "release-*"
+      - "rhos-*"
   pull_request:
+    paths-ignore:
+      - "docs/**"
     branches:
-      - 'master'
-      - 'release-*'
-      - 'rhos-*'
+      - "master"
+      - "release-*"
+      - "rhos-*"
 
 jobs:
-
   build-operator:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Create checkout directory
         run: mkdir -p ~/go/src/github.com/argoproj-labs
 
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
 
       - name: Create symlink in GOPATH
         run: ln -s $(pwd) ~/go/src/github.com/argoproj-labs
 
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.21'
+          go-version-file: "go.mod"
 
       - name: Restore go build cache
-        uses: actions/cache@v1
+        uses: actions/cache@v5
         with:
           path: ~/.cache/go-build
           key: ${{ runner.os }}-go-build-v1-${{ github.run_id }}
@@ -46,14 +46,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        k3s-version: [ v1.27.1 ]
-        # k3s-version: [v1.20.2, v1.19.2, v1.18.9, v1.17.11, v1.16.15]
+        k3s-version:
+          - v1.27.1-k3s1
+          - v1.33.5-k3s1
     steps:
       - name: Download kuttl plugin
         env:
-          KUTTL_VERSION: '0.10.0'
-          KUTTL_PLUGIN_SUM: 'ad21c0d2be495a8f6cfc0821e592ae61afd191ebd453156d9b204e2524fceaf2'
-          KUTTL_PLUGIN_FILENAME: 'kubectl-kuttl_0.10.0_linux_x86_64'
+          KUTTL_VERSION: "0.10.0"
+          KUTTL_PLUGIN_SUM: "ad21c0d2be495a8f6cfc0821e592ae61afd191ebd453156d9b204e2524fceaf2"
+          KUTTL_PLUGIN_FILENAME: "kubectl-kuttl_0.10.0_linux_x86_64"
         run: |
           set -x
           echo ${KUTTL_PLUGIN_FILENAME}
@@ -67,20 +68,37 @@ jobs:
           set -x
           curl -s https://raw.githubusercontent.com/rancher/k3d/main/install.sh | bash
           sudo mkdir -p $HOME/.kube && sudo chown -R runner $HOME/.kube
-          k3d cluster create --servers 3 --image rancher/k3s:${{ matrix.k3s-version }}-k3s1
+
+          feature_flags=()
+          case "${{ matrix.k3s-version }}" in
+          v1.3[3456789]*)
+              # Enable ClusterTrustBundle and ClusterTrustBundleProjection until it is enabled by default in kubernetes
+              feature_flags+=(
+                  "--k3s-arg" "--kube-apiserver-arg=feature-gates=ClusterTrustBundle=true,ClusterTrustBundleProjection=true@server:*"
+                  "--k3s-arg" "--kube-apiserver-arg=runtime-config=certificates.k8s.io/v1beta1/clustertrustbundles=true@server:*"
+                  "--k3s-arg" "--kubelet-arg=feature-gates=ClusterTrustBundle=true,ClusterTrustBundleProjection=true@agent:*"
+              )
+          ;;
+          esac
+
+          # preserved for future use:
+          # - limit logs to 4Mi, to avoid overwhelming GitHub's small runner storage (14Gi)
+          # - k3d cluster create --servers 3 --image "rancher/k3s:${{ matrix.k3s-version }}" --k3s-arg '--kubelet-arg=container-log-max-files=2@server:*' --k3s-arg '--kubelet-arg=container-log-max-size=2Mi@server:*'
+          # - I tried this, to reduce the the amount of GitHub Runner disk space used by k3d. These params did not appear to affect disk space usage.
+          k3d cluster create --servers 3 --image "rancher/k3s:${{ matrix.k3s-version }}" "${feature_flags[@]}"
           kubectl version
           k3d version
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
       - name: Setup Golang
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.21'
+          go-version-file: "go.mod"
       - name: GH actions workaround - Kill XSP4 process
         run: |
           sudo pkill mono || true
       - name: Restore go build cache
-        uses: actions/cache@v1
+        uses: actions/cache@v5
         with:
           path: ~/.cache/go-build
           key: ${{ runner.os }}-go-build-v1-${{ github.run_id }}
@@ -92,28 +110,32 @@ jobs:
           go mod download
       - name: Run the operator locally
         env:
-          ARGOCD_CLUSTER_CONFIG_NAMESPACES: argocd-e2e-cluster-config
+          ARGOCD_CLUSTER_CONFIG_NAMESPACES: argocd-e2e-cluster-config, argocd-test-impersonation
         run: |
           set -o pipefail
           make install generate fmt vet
           # Use tee to flush output to the log.  Other solutions like stdbuf don't work, not sure why.
-          REDIS_CONFIG_PATH="build/redis" go run ./main.go 2>&1 | tee /tmp/e2e-operator-run.log &
-      - name: Run tests
+          make start-e2e 2>&1 | tee /tmp/e2e-operator-run.log &
+
+      - name: Run ginkgo tests
         run: |
           set -o pipefail
-          bash hack/test.sh 2>&1 | tee /tmp/e2e-test.log
+          LOCAL_RUN=true make e2e-tests-sequential-ginkgo  e2e-tests-parallel-ginkgo 2>&1 | tee /tmp/e2e-test-ginkgo.log
+
       - name: Upload operator logs
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-operator-run-${{ matrix.k3s-version }}.log
           path: /tmp/e2e-operator-run.log
         if: ${{ failure() }}
-      - name: Upload test logs
-        uses: actions/upload-artifact@v2
+
+      - name: Upload ginkgo test logs
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-test-${{ matrix.k3s-version }}.log
-          path: /tmp/e2e-test.log
+          path: /tmp/e2e-test-ginkgo.log
         if: ${{ failure() }}
+
       - name: Save application controller and server logs
         if: ${{ failure() }}
         run: |
@@ -131,19 +153,19 @@ jobs:
             kubectl describe -n argocd-e2e-cluster-config $(kubectl get po -n argocd-e2e-cluster-config -o=name | grep example-argocd-server) >> /tmp/e2e-server.log
           fi
       - name: Upload application controller logs
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-application-controller-${{ matrix.k3s-version }}.log
           path: /tmp/e2e-application-controller.log
         if: ${{ failure() }}
       - name: Upload server logs
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-server-${{ matrix.k3s-version }}.log
           path: /tmp/e2e-server.log
         if: ${{ failure() }}
       - name: Upload pod descriptions
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-pods-${{ matrix.k3s-version }}.log
           path: /tmp/pods.log

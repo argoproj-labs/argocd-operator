@@ -1,9 +1,7 @@
-
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
   name: manager-role
 rules:
 - apiGroups:
@@ -11,22 +9,14 @@ rules:
   resources:
   - configmaps
   verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
+  - '*'
 - apiGroups:
   - ""
   resources:
-  - configmaps
   - endpoints
   - events
   - namespaces
   - persistentvolumeclaims
-  - pods
   - secrets
   - serviceaccounts
   - services
@@ -37,9 +27,21 @@ rules:
   - ""
   resources:
   - pods
+  verbs:
+  - '*'
+- apiGroups:
+  - ""
+  resources:
   - pods/log
   verbs:
   - get
+- apiGroups:
+  - apiregistration.k8s.io
+  resources:
+  - apiservices
+  verbs:
+  - get
+  - list
 - apiGroups:
   - apps
   resources:
@@ -58,9 +60,10 @@ rules:
   verbs:
   - update
 - apiGroups:
-  - apps.openshift.io
+  - argocd-image-updater.argoproj.io
   resources:
-  - deploymentconfigs
+  - imageupdaters
+  - imageupdaters/finalizers
   verbs:
   - '*'
 - apiGroups:
@@ -68,27 +71,15 @@ rules:
   resources:
   - applications
   - appprojects
-  verbs:
-  - '*'
-- apiGroups:
-  - argoproj.io
-  resources:
   - argocdexports
   - argocdexports/finalizers
   - argocdexports/status
-  verbs:
-  - '*'
-- apiGroups:
-  - argoproj.io
-  resources:
   - argocds
   - argocds/finalizers
   - argocds/status
-  verbs:
-  - '*'
-- apiGroups:
-  - argoproj.io
-  resources:
+  - namespacemanagements
+  - namespacemanagements/finalizers
+  - namespacemanagements/status
   - notificationsconfigurations
   - notificationsconfigurations/finalizers
   verbs:
@@ -107,8 +98,17 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+  - certificates.k8s.io
+  resources:
+  - clustertrustbundles
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - config.openshift.io
   resources:
+  - authentications
   - clusterversions
   verbs:
   - get
@@ -129,6 +129,18 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+  - networking.k8s.io
+  resources:
+  - networkpolicies
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - oauth.openshift.io
   resources:
   - oauthclients
@@ -144,11 +156,6 @@ rules:
   - rbac.authorization.k8s.io
   resources:
   - '*'
-  verbs:
-  - '*'
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resources:
   - clusterrolebindings
   - clusterroles
   verbs:

@@ -16,7 +16,10 @@ package argoutil
 
 import (
 	"context"
+	"crypto/sha1" // #nosec G505 - SHA1 used for non-cryptographic name hashing only
 	"fmt"
+	"os"
+	"reflect"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -25,9 +28,22 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/go-logr/logr"
+
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+)
+
+const (
+	hashLabelLength = 7
+	// maxLabelLength is the maximum length for Kubernetes labels and names
+	maxLabelLength = 63
+	// Maximum suffix length is "applicationset-controller" = 25 characters
+	// So CR name should be limited to 63 - 25 - 1 (hyphen) = 37 characters
+	maxSuffixLength = 25
+	// maxCRNameLength is the maximum length for ArgoCD CR names to accommodate longest suffix
+	maxCRNameLength = maxLabelLength - maxSuffixLength - 1 // -1 for hyphen separator
 )
 
 // AppendStringMap will append the map `add` to the given map `src` and return the result.
@@ -70,6 +86,9 @@ func CreateEvent(client client.Client, eventType, action, message, reason string
 	event.CreationTimestamp = metav1.Now()
 	event.FirstTimestamp = event.CreationTimestamp
 	event.LastTimestamp = event.CreationTimestamp
+
+	explanation := fmt.Sprintf("involved object: '%s %s/%s', action: '%s', reason: '%s'", typeMeta.Kind, objectMeta.Namespace, objectMeta.Name, action, reason)
+	LogResourceCreation(log, event, explanation)
 	return client.Create(context.TODO(), event)
 }
 
@@ -90,8 +109,21 @@ func FetchStorageSecretName(export *argoprojv1alpha1.ArgoCDExport) string {
 
 // IsObjectFound will perform a basic check that the given object exists via the Kubernetes API.
 // If an error occurs as part of the check, the function will return false.
-func IsObjectFound(client client.Client, namespace string, name string, obj client.Object) bool {
-	return !apierrors.IsNotFound(FetchObject(client, namespace, name, obj))
+func IsObjectFound(client client.Client, namespace string, name string, obj client.Object) (bool, error) {
+
+	if err := FetchObject(client, namespace, name, obj); err != nil {
+
+		if apierrors.IsNotFound(err) {
+			// Object was not found
+			return false, nil
+		}
+
+		// Another error occurred besides the object not being found
+		return false, err
+	}
+
+	// Object was found
+	return true, nil
 }
 
 // NameWithSuffix will return a string using the Name from the given ObjectMeta with the provded suffix appended.
@@ -102,9 +134,9 @@ func NameWithSuffix(meta metav1.ObjectMeta, suffix string) string {
 
 func newEvent(meta metav1.ObjectMeta) *corev1.Event {
 	event := &corev1.Event{}
-	event.ObjectMeta.GenerateName = fmt.Sprintf("%s-", meta.Name)
-	event.ObjectMeta.Labels = meta.Labels
-	event.ObjectMeta.Namespace = meta.Namespace
+	event.GenerateName = fmt.Sprintf("%s-", meta.Name)
+	event.Labels = meta.Labels
+	event.Namespace = meta.Namespace
 	return event
 }
 
@@ -117,8 +149,140 @@ func LabelsForCluster(cr *argoproj.ArgoCD) map[string]string {
 // annotationsForCluster returns the annotations for all cluster resources.
 func AnnotationsForCluster(cr *argoproj.ArgoCD) map[string]string {
 	annotations := common.DefaultAnnotations(cr.Name, cr.Namespace)
-	for key, val := range cr.ObjectMeta.Annotations {
+	for key, val := range cr.Annotations {
 		annotations[key] = val
 	}
 	return annotations
+}
+
+func LogResourceCreation(log logr.Logger, object metav1.Object, explanations ...string) {
+	LogResourceAction(log, "Creating", object, explanations...)
+}
+
+func LogResourceUpdate(log logr.Logger, object metav1.Object, explanations ...string) {
+	LogResourceAction(log, "Updating", object, explanations...)
+}
+
+func LogResourceDeletion(log logr.Logger, object metav1.Object, explanations ...string) {
+	LogResourceAction(log, "Deleting", object, explanations...)
+}
+
+func LogResourceAction(log logr.Logger, action string, object metav1.Object, explanations ...string) {
+	if object == nil {
+		log.Error(nil, "missing object in LogResourceAction")
+		return
+	}
+
+	typeName := reflect.TypeOf(object).String()
+	pos := strings.LastIndex(typeName, ".")
+	if pos >= 0 {
+		typeName = typeName[pos+1:]
+	}
+
+	objectName := object.GetName()
+	if len(objectName) == 0 {
+		objectName = object.GetGenerateName() + "<to-be-generated>"
+	}
+
+	var msg string
+	if len(object.GetNamespace()) == 0 {
+		msg = fmt.Sprintf("%s %s '%s'", action, typeName, objectName)
+	} else {
+		msg = fmt.Sprintf("%s %s '%s/%s'", action, typeName, object.GetNamespace(), objectName)
+	}
+
+	if len(explanations) > 0 {
+		msg += " -"
+		for s := range explanations {
+			msg += " " + explanations[s]
+		}
+	}
+
+	log.Info(msg)
+}
+
+func GenerateAgentPrincipalRedisProxyServiceName(crName string) string {
+	return fmt.Sprintf("%s-agent-%s", crName, "principal-redisproxy")
+}
+
+// AddTrackedByOperatorLabel adds the ArgoCDTrackedByOperator label to the resource
+func AddTrackedByOperatorLabel(meta *metav1.ObjectMeta) {
+	if meta.Labels == nil {
+		meta.Labels = make(map[string]string)
+	}
+	meta.Labels[common.ArgoCDTrackedByOperatorLabel] = common.ArgoCDAppName
+}
+
+// IsTrackedByOperator checks if the resource is tracked by the operator
+func IsTrackedByOperator(labels map[string]string) bool {
+	value, exists := labels[common.ArgoCDTrackedByOperatorLabel]
+	return exists && value == common.ArgoCDAppName
+}
+
+// GetMaxLabelLength returns the maximum length for Kubernetes labels and names
+// This is exposed for testing purposes
+func GetMaxLabelLength() int {
+	return maxLabelLength
+}
+
+// GetMaxCRNameLength returns the maximum length for ArgoCD CR names to accommodate longest suffix
+// This is exposed for external packages that need to check CR name length
+func GetMaxCRNameLength() int {
+	return maxCRNameLength
+}
+
+// TruncateWithHash truncates a string to a maximum length and adds a hash suffix to ensure uniqueness
+func TruncateWithHash(input string, maxLength int) string {
+	if len(input) <= maxLength {
+		return input
+	}
+
+	// Calculate hash of the original string
+	hash := sha1.Sum([]byte(input)) // #nosec G401 - SHA1 used for non-cryptographic name hashing only
+	// Take 4 bytes to get 8 hex chars, then truncate to 7 hex chars + hyphen
+	hashSuffix := fmt.Sprintf("-%x", hash[:4])[:hashLabelLength+1] // +1 for the hyphen
+
+	// Calculate how much we can truncate
+	maxBaseLength := maxLength - len(hashSuffix)
+
+	// Truncate and add hash
+	return input[:maxBaseLength] + hashSuffix
+}
+
+// TruncateCRName truncates an ArgoCD CR name to allow for the longest possible suffix
+// This ensures that when suffixes like "redis-initial-password" are appended,
+// the total length stays within Kubernetes 63-character limit
+func TruncateCRName(crName string) string {
+	return TruncateWithHash(crName, maxCRNameLength)
+}
+
+// GetTruncatedCRName returns the truncated CR name using the deterministic truncate function
+func GetTruncatedCRName(cr *argoproj.ArgoCD) string {
+	// Always use the deterministic truncate function as source of truth
+	return TruncateCRName(cr.Name)
+}
+
+// GetImagePullPolicy returns the effective image pull policy for Argo CD components.
+// It follows this precedence:
+// 1. Instance specific policy defined in the ArgoCD CR
+// 2. Global policy defined via the IMAGE_PULL_POLICY environment variable
+// 3. Default policy (IfNotPresent)
+func GetImagePullPolicy(policy corev1.PullPolicy) corev1.PullPolicy {
+	if policy != "" {
+		return policy
+	}
+
+	envValue := os.Getenv(common.ArgoCDImagePullPolicyEnvName)
+
+	switch envValue {
+	case "Always":
+		return corev1.PullAlways
+	case "IfNotPresent":
+		return corev1.PullIfNotPresent
+	case "Never":
+		return corev1.PullNever
+	default:
+		return corev1.PullPolicy("IfNotPresent")
+
+	}
 }

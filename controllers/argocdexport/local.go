@@ -16,7 +16,6 @@ package argocdexport
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -47,7 +46,11 @@ func (r *ReconcileArgoCDExport) reconcilePVC(cr *argoproj.ArgoCDExport) error {
 	}
 
 	pvc := argoutil.NewPersistentVolumeClaim(cr.ObjectMeta)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, pvc.Name, pvc) {
+	pvcExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, pvc.Name, pvc)
+	if err != nil {
+		return err
+	}
+	if pvcExists {
 		return nil // PVC exists, move along...
 	}
 
@@ -64,12 +67,11 @@ func (r *ReconcileArgoCDExport) reconcilePVC(cr *argoproj.ArgoCDExport) error {
 	}
 
 	// Create PVC
-	log.Info(fmt.Sprintf("creating new pvc: %s", pvc.Name))
+	argoutil.LogResourceCreation(log, pvc)
 	if err := r.Client.Create(context.TODO(), pvc); err != nil {
 		return err
 	}
 
 	// Create event
-	log.Info("creating new event")
 	return argoutil.CreateEvent(r.Client, "Normal", "Exporting", "Created claim for export process.", "PersistentVolumeClaimCreated", cr.ObjectMeta, cr.TypeMeta)
 }

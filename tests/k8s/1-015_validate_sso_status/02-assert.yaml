@@ -3,5 +3,5 @@ kind: ArgoCD
 metadata:
   name: argocd
 status:
-  phase: Available
+  phase: Pending
   sso: Failed

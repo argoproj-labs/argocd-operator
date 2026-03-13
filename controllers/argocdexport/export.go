@@ -66,7 +66,11 @@ func (r *ReconcileArgoCDExport) reconcileExportSecret(cr *argoprojv1alpha1.ArgoC
 	a := &argoproj.ArgoCD{}
 	a.ObjectMeta = cr.ObjectMeta
 	secret := argoutil.NewSecretWithName(a, name)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, name, secret) {
+	secretExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, name, secret)
+	if err != nil {
+		return err
+	}
+	if secretExists {
 		backupKey := secret.Data[common.ArgoCDKeyBackupKey]
 		if len(backupKey) <= 0 {
 			backupKey, err := generateBackupKey()
@@ -74,6 +78,7 @@ func (r *ReconcileArgoCDExport) reconcileExportSecret(cr *argoprojv1alpha1.ArgoC
 				return err
 			}
 			secret.Data[common.ArgoCDKeyBackupKey] = backupKey
+			argoutil.LogResourceUpdate(log, secret, "updating the backup key")
 			return r.Client.Update(context.TODO(), secret)
 		}
 
@@ -92,6 +97,7 @@ func (r *ReconcileArgoCDExport) reconcileExportSecret(cr *argoprojv1alpha1.ArgoC
 	if err := controllerutil.SetControllerReference(cr, secret, r.Scheme); err != nil {
 		return err
 	}
+	argoutil.LogResourceCreation(log, secret)
 	return r.Client.Create(context.TODO(), secret)
 }
 

@@ -36,17 +36,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-// getArgoCDRepoServerReplicas will return the size value for the argocd-repo-server replica count if it
-// has been set in argocd CR. Otherwise, nil is returned if the replicas is not set in the argocd CR or
-// replicas value is < 0.
-func getArgoCDRepoServerReplicas(cr *argoproj.ArgoCD) *int32 {
-	if cr.Spec.Repo.Replicas != nil && *cr.Spec.Repo.Replicas >= 0 {
-		return cr.Spec.Repo.Replicas
-	}
-
-	return nil
-}
-
 // getArgoCDServerReplicas will return the size value for the argocd-server replica count if it
 // has been set in argocd CR. Otherwise, nil is returned if the replicas is not set in the argocd CR or
 // replicas value is < 0. If Autoscale is enabled, the value for replicas in the argocd CR will be ignored.
@@ -57,21 +46,25 @@ func getArgoCDServerReplicas(cr *argoproj.ArgoCD) *int32 {
 	return nil
 }
 
-func (r *ReconcileArgoCD) getArgoCDExport(cr *argoproj.ArgoCD) *argoprojv1alpha1.ArgoCDExport {
+func (r *ReconcileArgoCD) getArgoCDExport(cr *argoproj.ArgoCD) (*argoprojv1alpha1.ArgoCDExport, error) {
 	if cr.Spec.Import == nil {
-		return nil
+		return nil, nil
 	}
 
-	namespace := cr.ObjectMeta.Namespace
+	namespace := cr.Namespace
 	if cr.Spec.Import.Namespace != nil && len(*cr.Spec.Import.Namespace) > 0 {
 		namespace = *cr.Spec.Import.Namespace
 	}
 
 	export := &argoprojv1alpha1.ArgoCDExport{}
-	if argoutil.IsObjectFound(r.Client, namespace, cr.Spec.Import.Name, export) {
-		return export
+	exists, err := argoutil.IsObjectFound(r.Client, namespace, cr.Spec.Import.Name, export)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	if exists {
+		return export, nil
+	}
+	return nil, nil
 }
 
 func getArgoExportSecretName(export *argoprojv1alpha1.ArgoCDExport) string {
@@ -82,30 +75,40 @@ func getArgoExportSecretName(export *argoprojv1alpha1.ArgoCDExport) string {
 	return name
 }
 
-func getArgoImportBackend(client client.Client, cr *argoproj.ArgoCD) string {
+func getArgoImportBackend(client client.Client, cr *argoproj.ArgoCD) (string, error) {
 	backend := common.ArgoCDExportStorageBackendLocal
-	namespace := cr.ObjectMeta.Namespace
+	namespace := cr.Namespace
 	if cr.Spec.Import != nil && cr.Spec.Import.Namespace != nil && len(*cr.Spec.Import.Namespace) > 0 {
 		namespace = *cr.Spec.Import.Namespace
 	}
 
 	export := &argoprojv1alpha1.ArgoCDExport{}
-	if argoutil.IsObjectFound(client, namespace, cr.Spec.Import.Name, export) {
+	exists, err := argoutil.IsObjectFound(client, namespace, cr.Spec.Import.Name, export)
+	if err != nil {
+		return "", err
+	}
+	if exists {
 		if export.Spec.Storage != nil && len(export.Spec.Storage.Backend) > 0 {
 			backend = export.Spec.Storage.Backend
 		}
 	}
-	return backend
+	return backend, nil
 }
 
 // getArgoImportCommand will return the command for the ArgoCD import process.
-func getArgoImportCommand(client client.Client, cr *argoproj.ArgoCD) []string {
+func getArgoImportCommand(client client.Client, cr *argoproj.ArgoCD) ([]string, error) {
 	cmd := make([]string, 0)
 	cmd = append(cmd, "uid_entrypoint.sh")
 	cmd = append(cmd, "argocd-operator-util")
 	cmd = append(cmd, "import")
-	cmd = append(cmd, getArgoImportBackend(client, cr))
-	return cmd
+
+	args, err := getArgoImportBackend(client, cr)
+	if err != nil {
+		return nil, err
+	}
+
+	cmd = append(cmd, args)
+	return cmd, nil
 }
 
 func getArgoImportContainerEnv(cr *argoprojv1alpha1.ArgoCDExport) []corev1.EnvVar {
@@ -169,6 +172,10 @@ func getArgoImportVolumeMounts() []corev1.VolumeMount {
 		Name:      "secret-storage",
 		MountPath: "/secrets",
 	})
+	mounts = append(mounts, corev1.VolumeMount{
+		Name:      "tmp",
+		MountPath: "/tmp",
+	})
 
 	return mounts
 }
@@ -204,6 +211,12 @@ func getArgoImportVolumes(cr *argoprojv1alpha1.ArgoCDExport) []corev1.Volume {
 		},
 	})
 
+	volumes = append(volumes, corev1.Volume{
+		Name: "tmp",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	})
 	return volumes
 }
 
@@ -212,6 +225,7 @@ func getArgoRedisArgs(useTLS bool) []string {
 
 	args = append(args, "--save", "")
 	args = append(args, "--appendonly", "no")
+	args = append(args, "--requirepass $(REDIS_PASSWORD)")
 
 	if useTLS {
 		args = append(args, "--tls-port", "6379")
@@ -225,57 +239,21 @@ func getArgoRedisArgs(useTLS bool) []string {
 	return args
 }
 
-// getArgoRepoCommand will return the command for the ArgoCD Repo component.
-func getArgoRepoCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
-	cmd := make([]string, 0)
-
-	cmd = append(cmd, "uid_entrypoint.sh")
-	cmd = append(cmd, "argocd-repo-server")
-
-	if cr.Spec.Redis.IsEnabled() {
-		cmd = append(cmd, "--redis", getRedisServerAddress(cr))
-	} else {
-		log.Info("Redis is Disabled. Skipping adding Redis configuration to Repo Server.")
-	}
-	if useTLSForRedis {
-		cmd = append(cmd, "--redis-use-tls")
-		if isRedisTLSVerificationDisabled(cr) {
-			cmd = append(cmd, "--redis-insecure-skip-tls-verify")
-		} else {
-			cmd = append(cmd, "--redis-ca-certificate", "/app/config/reposerver/tls/redis/tls.crt")
-		}
-	}
-
-	cmd = append(cmd, "--loglevel")
-	cmd = append(cmd, getLogLevel(cr.Spec.Repo.LogLevel))
-
-	cmd = append(cmd, "--logformat")
-	cmd = append(cmd, getLogFormat(cr.Spec.Repo.LogFormat))
-
-	// *** NOTE ***
-	// Do Not add any new default command line arguments below this.
-	extraArgs := cr.Spec.Repo.ExtraRepoCommandArgs
-	err := isMergable(extraArgs, cmd)
-	if err != nil {
-		return cmd
-	}
-
-	cmd = append(cmd, extraArgs...)
-	return cmd
-}
-
 // getArgoCmpServerInitCommand will return the command for the ArgoCD CMP Server init container
 func getArgoCmpServerInitCommand() []string {
 	cmd := make([]string, 0)
 	cmd = append(cmd, "cp")
 	cmd = append(cmd, "-n")
-	cmd = append(cmd, "/usr/local/bin/argocd")
+	cmd = append(cmd, "/usr/local/bin/argocd-cmp-server")
 	cmd = append(cmd, "/var/run/argocd/argocd-cmp-server")
 	return cmd
 }
 
 // getArgoServerCommand will return the command for the ArgoCD server component.
 func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
+
+	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
+
 	cmd := make([]string, 0)
 	cmd = append(cmd, "argocd-server")
 
@@ -287,11 +265,9 @@ func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 		cmd = append(cmd, "--repo-server-strict-tls")
 	}
 
-	cmd = append(cmd, "--staticassets")
-	cmd = append(cmd, "/shared/app")
+	cmd = append(cmd, "--staticassets", "/shared/app")
 
-	cmd = append(cmd, "--dex-server")
-	cmd = append(cmd, getDexServerAddress(cr))
+	cmd = append(cmd, "--dex-server", getDexServerAddress(cr))
 
 	if cr.Spec.Repo.IsEnabled() {
 		cmd = append(cmd, "--repo-server", getRepoServerAddress(cr))
@@ -314,22 +290,17 @@ func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 		}
 	}
 
-	cmd = append(cmd, "--loglevel")
-	cmd = append(cmd, getLogLevel(cr.Spec.Server.LogLevel))
+	cmd = append(cmd, "--loglevel", getLogLevel(cr.Spec.Server.LogLevel))
+	cmd = append(cmd, "--logformat", getLogFormat(cr.Spec.Server.LogFormat))
 
-	cmd = append(cmd, "--logformat")
-	cmd = append(cmd, getLogFormat(cr.Spec.Server.LogFormat))
-
+	// Merge extraArgs while ignoring duplicates
 	extraArgs := cr.Spec.Server.ExtraCommandArgs
-	err := isMergable(extraArgs, cmd)
-	if err != nil {
-		return cmd
-	}
-	if cr.Spec.SourceNamespaces != nil && len(cr.Spec.SourceNamespaces) > 0 {
+	cmd = appendUniqueArgs(cmd, extraArgs)
+
+	if len(cr.Spec.SourceNamespaces) > 0 && allowed {
 		cmd = append(cmd, "--application-namespaces", fmt.Sprint(strings.Join(cr.Spec.SourceNamespaces, ",")))
 	}
 
-	cmd = append(cmd, extraArgs...)
 	return cmd
 }
 
@@ -354,14 +325,6 @@ func getDexServerAddress(cr *argoproj.ArgoCD) string {
 	return fmt.Sprintf("https://%s", fqdnServiceRef("dex-server", common.ArgoCDDefaultDexHTTPPort, cr))
 }
 
-// getRepoServerAddress will return the Argo CD repo server address.
-func getRepoServerAddress(cr *argoproj.ArgoCD) string {
-	if cr.Spec.Repo.Remote != nil && *cr.Spec.Repo.Remote != "" {
-		return *cr.Spec.Repo.Remote
-	}
-	return fqdnServiceRef("repo-server", common.ArgoCDDefaultRepoServerPort, cr)
-}
-
 // newDeployment returns a new Deployment instance for the given ArgoCD.
 func newDeployment(cr *argoproj.ArgoCD) *appsv1.Deployment {
 	return &appsv1.Deployment{
@@ -376,12 +339,14 @@ func newDeployment(cr *argoproj.ArgoCD) *appsv1.Deployment {
 // newDeploymentWithName returns a new Deployment instance for the given ArgoCD using the given name.
 func newDeploymentWithName(name string, component string, cr *argoproj.ArgoCD) *appsv1.Deployment {
 	deploy := newDeployment(cr)
-	deploy.ObjectMeta.Name = name
 
-	lbls := deploy.ObjectMeta.Labels
+	// The name is already truncated by nameWithSuffix, so use it directly
+	deploy.Name = name
+
+	lbls := deploy.Labels
 	lbls[common.ArgoCDKeyName] = name
 	lbls[common.ArgoCDKeyComponent] = component
-	deploy.ObjectMeta.Labels = lbls
+	deploy.Labels = lbls
 
 	deploy.Spec = appsv1.DeploymentSpec{
 		Selector: &metav1.LabelSelector{
@@ -394,6 +359,7 @@ func newDeploymentWithName(name string, component string, cr *argoproj.ArgoCD) *
 				Labels: map[string]string{
 					common.ArgoCDKeyName: name,
 				},
+				Annotations: make(map[string]string),
 			},
 			Spec: corev1.PodSpec{
 				NodeSelector: common.DefaultNodeSelector(),
@@ -410,7 +376,7 @@ func newDeploymentWithName(name string, component string, cr *argoproj.ArgoCD) *
 
 // newDeploymentWithSuffix returns a new Deployment instance for the given ArgoCD using the given suffix.
 func newDeploymentWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) *appsv1.Deployment {
-	return newDeploymentWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
+	return newDeploymentWithName(nameWithSuffix(suffix, cr), component, cr)
 }
 
 // reconcileDeployments will ensure that all Deployment resources are present for the given ArgoCD.
@@ -450,7 +416,9 @@ func (r *ReconcileArgoCD) reconcileDeployments(cr *argoproj.ArgoCD, useTLSForRed
 
 // reconcileGrafanaDeployment will ensure the Deployment resource is present for the ArgoCD Grafana component.
 func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error {
-	if !cr.Spec.Grafana.Enabled {
+
+	//lint:ignore SA1019 known to be deprecated
+	if !cr.Spec.Grafana.Enabled { //nolint:staticcheck // SA1019: We must test deprecated fields.
 		return nil // Grafana not enabled, do nothing.
 	}
 	log.Info(grafanaDeprecatedWarning)
@@ -461,30 +429,39 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error 
 func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS bool) error {
 	deploy := newDeploymentWithSuffix("redis", "redis", cr)
 
+	env := append(proxyEnvVars(), corev1.EnvVar{
+		Name: "REDIS_PASSWORD",
+		ValueFrom: &corev1.EnvVarSource{
+			SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
+				},
+				Key: "admin.password",
+			},
+		},
+	})
+
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
+
+	if !IsOpenShiftCluster() {
+		deploy.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
+			RunAsUser: int64Ptr(1000),
+		}
+	}
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Args:            getArgoRedisArgs(useTLS),
 		Image:           getRedisContainerImage(cr),
-		ImagePullPolicy: corev1.PullAlways,
+		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            "redis",
 		Ports: []corev1.ContainerPort{
 			{
 				ContainerPort: common.ArgoCDDefaultRedisPort,
 			},
 		},
-		Resources: getRedisResources(cr),
-		Env:       proxyEnvVars(),
-		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{
-					"ALL",
-				},
-			},
-			RunAsNonRoot: boolPtr(true),
-			RunAsUser:    int64Ptr(999),
-		},
+		Resources:       getRedisResources(cr),
+		Env:             env,
+		SecurityContext: argoutil.DefaultSecurityContext(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      common.ArgoCDRedisServerTLSSecretName,
@@ -511,46 +488,111 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 	}
 
 	existing := newDeploymentWithSuffix("redis", "redis", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+	deplFound, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
+	if err != nil {
+		return err
+	}
+	if deplFound {
 		if !cr.Spec.Redis.IsEnabled() {
 			// Deployment exists but component enabled flag has been set to false, delete the Deployment
-			log.Info("Redis exists but should be disabled. Deleting existing redis.")
-			return r.Client.Delete(context.TODO(), deploy)
+			argoutil.LogResourceDeletion(log, deploy, "redis is disabled but deployment exists")
+			return r.Delete(context.TODO(), deploy)
+		} else if cr.Spec.Redis.IsRemote() {
+			argoutil.LogResourceDeletion(log, deploy, "remote redis is configured")
+			return r.Delete(context.TODO(), deploy)
 		}
 		if cr.Spec.HA.Enabled {
 			// Deployment exists but HA enabled flag has been set to true, delete the Deployment
-			return r.Client.Delete(context.TODO(), deploy)
+			argoutil.LogResourceDeletion(log, deploy, "redis ha is enabled but non-ha deployment exists")
+			return r.Delete(context.TODO(), deploy)
 		}
 		changed := false
+		explanation := ""
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getRedisContainerImage(cr)
+		actualImagePullPolicy := existing.Spec.Template.Spec.Containers[0].ImagePullPolicy
+		desiredImagePullPolicy := argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy)
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			explanation = "container image"
 			changed = true
 		}
-		updateNodePlacement(existing, deploy, &changed)
+		if actualImagePullPolicy != desiredImagePullPolicy {
+			existing.Spec.Template.Spec.Containers[0].ImagePullPolicy = desiredImagePullPolicy
+			if changed {
+				explanation += ", "
+			}
+			explanation += "image pull policy"
+			changed = true
+		}
+		updateNodePlacement(existing, deploy, &changed, &explanation)
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Args, existing.Spec.Template.Spec.Containers[0].Args) {
 			existing.Spec.Template.Spec.Containers[0].Args = deploy.Spec.Template.Spec.Containers[0].Args
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container args"
 			changed = true
 		}
 
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
 			deploy.Spec.Template.Spec.Containers[0].Env) {
 			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container env"
 			changed = true
 		}
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Resources, existing.Spec.Template.Spec.Containers[0].Resources) {
 			existing.Spec.Template.Spec.Containers[0].Resources = deploy.Spec.Template.Spec.Containers[0].Resources
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container resources"
+			changed = true
+		}
+
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].SecurityContext, existing.Spec.Template.Spec.Containers[0].SecurityContext) {
+			existing.Spec.Template.Spec.Containers[0].SecurityContext = deploy.Spec.Template.Spec.Containers[0].SecurityContext
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container security context"
+			changed = true
+		}
+
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.SecurityContext, existing.Spec.Template.Spec.SecurityContext) {
+			existing.Spec.Template.Spec.SecurityContext = deploy.Spec.Template.Spec.SecurityContext
+			if changed {
+				explanation += ", "
+			}
+			explanation += "pod security context"
+			changed = true
+		}
+
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.ServiceAccountName, existing.Spec.Template.Spec.ServiceAccountName) {
+			existing.Spec.Template.Spec.ServiceAccountName = deploy.Spec.Template.Spec.ServiceAccountName
+			if changed {
+				explanation += ", "
+			}
+			explanation += "serviceAccountName"
 			changed = true
 		}
 
 		if changed {
-			return r.Client.Update(context.TODO(), existing)
+			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
+			return r.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
+	}
+
+	if cr.Spec.Redis.IsEnabled() && cr.Spec.Redis.IsRemote() {
+		log.Info("Custom Redis Endpoint. Skipping starting redis.")
+		return nil
 	}
 
 	if !cr.Spec.Redis.IsEnabled() {
@@ -564,12 +606,32 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
 		return err
 	}
-	return r.Client.Create(context.TODO(), deploy)
+	argoutil.LogResourceCreation(log, deploy)
+	return r.Create(context.TODO(), deploy)
 }
 
 // reconcileRedisHAProxyDeployment will ensure the Deployment resource is present for the Redis HA Proxy component.
 func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("redis-ha-haproxy", "redis", cr)
+	deploy.Spec.Strategy = appsv1.DeploymentStrategy{
+		Type: appsv1.RollingUpdateDeploymentStrategyType,
+		RollingUpdate: &appsv1.RollingUpdateDeployment{
+			MaxSurge: &intstr.IntOrString{IntVal: 0},
+		},
+	}
+	var redisEnv = append(proxyEnvVars(), corev1.EnvVar{
+		Name: "AUTH",
+		ValueFrom: &corev1.EnvVarSource{
+			SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
+				},
+				Key: "admin.password",
+			},
+		},
+	})
+
+	deploy.Spec.Replicas = getRedisHAReplicas()
 
 	deploy.Spec.Template.Spec.Affinity = &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
@@ -601,9 +663,9 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Image:           getRedisHAProxyContainerImage(cr),
-		ImagePullPolicy: corev1.PullIfNotPresent,
+		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            "haproxy",
-		Env:             proxyEnvVars(),
+		Env:             redisEnv,
 		LivenessProbe: &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
@@ -620,16 +682,8 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 				Name:          "redis",
 			},
 		},
-		Resources: getRedisHAResources(cr),
-		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{
-					"ALL",
-				},
-			},
-			RunAsNonRoot: boolPtr(true),
-		},
+		Resources:       getRedisHAResources(cr),
+		SecurityContext: argoutil.DefaultSecurityContext(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "data",
@@ -654,18 +708,11 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 			"sh",
 		},
 		Image:           getRedisHAProxyContainerImage(cr),
-		ImagePullPolicy: corev1.PullIfNotPresent,
+		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            "config-init",
 		Env:             proxyEnvVars(),
 		Resources:       getRedisHAResources(cr),
-		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{
-					"ALL",
-				},
-			},
-		},
+		SecurityContext: argoutil.DefaultSecurityContext(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "config-volume",
@@ -675,6 +722,10 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 			{
 				Name:      "data",
 				MountPath: "/data",
+			},
+			{
+				Name:      "redis-initial-pass",
+				MountPath: "/redis-initial-pass",
 			},
 		},
 	}}
@@ -711,12 +762,33 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 				},
 			},
 		},
+		{
+			Name: "redis-initial-pass",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
+					Optional:   boolPtr(true),
+				},
+			},
+		},
 	}
 
-	deploy.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
-		RunAsNonRoot: boolPtr(true),
-		RunAsUser:    int64Ptr(1000),
-		FSGroup:      int64Ptr(1000),
+	if IsOpenShiftCluster() {
+		deploy.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
+			RunAsNonRoot: boolPtr(true),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: "RuntimeDefault",
+			},
+		}
+	} else {
+		deploy.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
+			RunAsNonRoot: boolPtr(true),
+			RunAsUser:    int64Ptr(1000),
+			FSGroup:      int64Ptr(1000),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: "RuntimeDefault",
+			},
+		}
 	}
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
 
@@ -731,34 +803,115 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 	}
 
 	existing := newDeploymentWithSuffix("redis-ha-haproxy", "redis", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+	deplExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
+	if err != nil {
+		return err
+	}
+	if deplExists {
 		if !cr.Spec.HA.Enabled {
 			// Deployment exists but HA enabled flag has been set to false, delete the Deployment
-			return r.Client.Delete(context.TODO(), existing)
+			argoutil.LogResourceDeletion(log, existing, "redis ha is disabled")
+			return r.Delete(context.TODO(), existing)
 		}
 		changed := false
+		explanation := ""
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getRedisHAProxyContainerImage(cr)
+		actualImagePullPolicy := existing.Spec.Template.Spec.Containers[0].ImagePullPolicy
+		desiredImagePullPolicy := argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy)
 
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			explanation = "container image"
 			changed = true
 		}
-		updateNodePlacement(existing, deploy, &changed)
-
+		if actualImagePullPolicy != desiredImagePullPolicy {
+			existing.Spec.Template.Spec.Containers[0].ImagePullPolicy = desiredImagePullPolicy
+			if changed {
+				explanation += ", "
+			}
+			explanation += "image pull policy"
+			changed = true
+		}
+		updateNodePlacement(existing, deploy, &changed, &explanation)
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
+			existing.Spec.Template.Spec.Volumes = deploy.Spec.Template.Spec.Volumes
+			if changed {
+				explanation += ", "
+			}
+			explanation += "volumes"
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].VolumeMounts,
+			existing.Spec.Template.Spec.Containers[0].VolumeMounts) {
+			existing.Spec.Template.Spec.Containers[0].VolumeMounts = deploy.Spec.Template.Spec.Containers[0].VolumeMounts
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container volume mounts"
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers, existing.Spec.Template.Spec.InitContainers) {
+			existing.Spec.Template.Spec.InitContainers = deploy.Spec.Template.Spec.InitContainers
+			if changed {
+				explanation += ", "
+			}
+			explanation += "init containers"
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Env,
+			existing.Spec.Template.Spec.Containers[0].Env) {
+			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container env"
+			changed = true
+		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Resources, existing.Spec.Template.Spec.Containers[0].Resources) {
 			existing.Spec.Template.Spec.Containers[0].Resources = deploy.Spec.Template.Spec.Containers[0].Resources
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container resources"
 			changed = true
 		}
-
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers[0].Resources, existing.Spec.Template.Spec.InitContainers[0].Resources) {
-			existing.Spec.Template.Spec.InitContainers[0].Resources = deploy.Spec.Template.Spec.InitContainers[0].Resources
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].SecurityContext, existing.Spec.Template.Spec.Containers[0].SecurityContext) {
+			existing.Spec.Template.Spec.Containers[0].SecurityContext = deploy.Spec.Template.Spec.Containers[0].SecurityContext
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container security context"
 			changed = true
 		}
-
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.SecurityContext, existing.Spec.Template.Spec.SecurityContext) {
+			existing.Spec.Template.Spec.SecurityContext = deploy.Spec.Template.Spec.SecurityContext
+			if changed {
+				explanation += ", "
+			}
+			explanation += "pod security context"
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Strategy, existing.Spec.Strategy) {
+			existing.Spec.Strategy = deploy.Spec.Strategy
+			if changed {
+				explanation += ", "
+			}
+			explanation += "deployment strategy"
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Replicas, existing.Spec.Replicas) {
+			existing.Spec.Replicas = deploy.Spec.Replicas
+			if changed {
+				explanation += ", "
+			}
+			explanation += "replicas"
+			changed = true
+		}
 		if changed {
-			return r.Client.Update(context.TODO(), existing)
+			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
+			return r.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found, do nothing
 	}
@@ -770,334 +923,70 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
 		return err
 	}
-	return r.Client.Create(context.TODO(), deploy)
-}
-
-// reconcileRepoDeployment will ensure the Deployment resource is present for the ArgoCD Repo component.
-func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
-	deploy := newDeploymentWithSuffix("repo-server", "repo-server", cr)
-	automountToken := false
-	if cr.Spec.Repo.MountSAToken {
-		automountToken = cr.Spec.Repo.MountSAToken
-	}
-
-	deploy.Spec.Template.Spec.AutomountServiceAccountToken = &automountToken
-
-	if cr.Spec.Repo.ServiceAccount != "" {
-		deploy.Spec.Template.Spec.ServiceAccountName = cr.Spec.Repo.ServiceAccount
-	}
-
-	// Global proxy env vars go first
-	repoEnv := cr.Spec.Repo.Env
-	// Environment specified in the CR take precedence over everything else
-	repoEnv = argoutil.EnvMerge(repoEnv, proxyEnvVars(), false)
-	if cr.Spec.Repo.ExecTimeout != nil {
-		repoEnv = argoutil.EnvMerge(repoEnv, []corev1.EnvVar{{Name: "ARGOCD_EXEC_TIMEOUT", Value: fmt.Sprintf("%ds", *cr.Spec.Repo.ExecTimeout)}}, true)
-	}
-
-	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
-
-	deploy.Spec.Template.Spec.InitContainers = []corev1.Container{{
-		Name:            "copyutil",
-		Image:           getArgoContainerImage(cr),
-		Command:         getArgoCmpServerInitCommand(),
-		ImagePullPolicy: corev1.PullAlways,
-		Resources:       getArgoRepoResources(cr),
-		Env:             proxyEnvVars(),
-		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{
-					"ALL",
-				},
-			},
-			RunAsNonRoot: boolPtr(true),
-		},
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "var-files",
-				MountPath: "/var/run/argocd",
-			},
-		},
-	}}
-
-	if cr.Spec.Repo.InitContainers != nil {
-		deploy.Spec.Template.Spec.InitContainers = append(deploy.Spec.Template.Spec.InitContainers, cr.Spec.Repo.InitContainers...)
-	}
-
-	repoServerVolumeMounts := []corev1.VolumeMount{
-		{
-			Name:      "ssh-known-hosts",
-			MountPath: "/app/config/ssh",
-		},
-		{
-			Name:      "tls-certs",
-			MountPath: "/app/config/tls",
-		},
-		{
-			Name:      "gpg-keys",
-			MountPath: "/app/config/gpg/source",
-		},
-		{
-			Name:      "gpg-keyring",
-			MountPath: "/app/config/gpg/keys",
-		},
-		{
-			Name:      "tmp",
-			MountPath: "/tmp",
-		},
-		{
-			Name:      "argocd-repo-server-tls",
-			MountPath: "/app/config/reposerver/tls",
-		},
-		{
-			Name:      common.ArgoCDRedisServerTLSSecretName,
-			MountPath: "/app/config/reposerver/tls/redis",
-		},
-		{
-			Name:      "plugins",
-			MountPath: "/home/argocd/cmp-server/plugins",
-		},
-	}
-
-	if cr.Spec.Repo.VolumeMounts != nil {
-		repoServerVolumeMounts = append(repoServerVolumeMounts, cr.Spec.Repo.VolumeMounts...)
-	}
-
-	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
-		Command:         getArgoRepoCommand(cr, useTLSForRedis),
-		Image:           getRepoServerContainerImage(cr),
-		ImagePullPolicy: corev1.PullAlways,
-		LivenessProbe: &corev1.Probe{
-			ProbeHandler: corev1.ProbeHandler{
-				TCPSocket: &corev1.TCPSocketAction{
-					Port: intstr.FromInt(common.ArgoCDDefaultRepoServerPort),
-				},
-			},
-			InitialDelaySeconds: 5,
-			PeriodSeconds:       10,
-		},
-		Env:  repoEnv,
-		Name: "argocd-repo-server",
-		Ports: []corev1.ContainerPort{
-			{
-				ContainerPort: common.ArgoCDDefaultRepoServerPort,
-				Name:          "server",
-			}, {
-				ContainerPort: common.ArgoCDDefaultRepoMetricsPort,
-				Name:          "metrics",
-			},
-		},
-		ReadinessProbe: &corev1.Probe{
-			ProbeHandler: corev1.ProbeHandler{
-				TCPSocket: &corev1.TCPSocketAction{
-					Port: intstr.FromInt(common.ArgoCDDefaultRepoServerPort),
-				},
-			},
-			InitialDelaySeconds: 5,
-			PeriodSeconds:       10,
-		},
-		Resources: getArgoRepoResources(cr),
-		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{
-					"ALL",
-				},
-			},
-			RunAsNonRoot: boolPtr(true),
-		},
-		VolumeMounts: repoServerVolumeMounts,
-	}}
-
-	if cr.Spec.Repo.SidecarContainers != nil {
-		deploy.Spec.Template.Spec.Containers = append(deploy.Spec.Template.Spec.Containers, cr.Spec.Repo.SidecarContainers...)
-	}
-
-	repoServerVolumes := []corev1.Volume{
-		{
-			Name: "ssh-known-hosts",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: common.ArgoCDKnownHostsConfigMapName,
-					},
-				},
-			},
-		},
-		{
-			Name: "tls-certs",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: common.ArgoCDTLSCertsConfigMapName,
-					},
-				},
-			},
-		},
-		{
-			Name: "gpg-keys",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: common.ArgoCDGPGKeysConfigMapName,
-					},
-				},
-			},
-		},
-		{
-			Name: "gpg-keyring",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		},
-		{
-			Name: "tmp",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		},
-		{
-			Name: "argocd-repo-server-tls",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: common.ArgoCDRepoServerTLSSecretName,
-					Optional:   boolPtr(true),
-				},
-			},
-		},
-		{
-			Name: common.ArgoCDRedisServerTLSSecretName,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   boolPtr(true),
-				},
-			},
-		},
-		{
-			Name: "var-files",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		},
-		{
-			Name: "plugins",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		},
-	}
-
-	if cr.Spec.Repo.Volumes != nil {
-		repoServerVolumes = append(repoServerVolumes, cr.Spec.Repo.Volumes...)
-	}
-
-	deploy.Spec.Template.Spec.Volumes = repoServerVolumes
-
-	if replicas := getArgoCDRepoServerReplicas(cr); replicas != nil {
-		deploy.Spec.Replicas = replicas
-	}
-
-	existing := newDeploymentWithSuffix("repo-server", "repo-server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
-
-		if !cr.Spec.Repo.IsEnabled() {
-			log.Info("Existing ArgoCD Repo Server found but should be disabled. Deleting Repo Server")
-			// Delete existing deployment for ArgoCD Repo Server, if any ..
-			return r.Client.Delete(context.TODO(), existing)
-		}
-
-		changed := false
-		actualImage := existing.Spec.Template.Spec.Containers[0].Image
-		desiredImage := getRepoServerContainerImage(cr)
-		if actualImage != desiredImage {
-			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
-			if existing.Spec.Template.ObjectMeta.Labels == nil {
-				existing.Spec.Template.ObjectMeta.Labels = map[string]string{
-					"image.upgraded": time.Now().UTC().Format("01022006-150406-MST"),
-				}
-			}
-			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-			changed = true
-		}
-		updateNodePlacement(existing, deploy, &changed)
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
-			existing.Spec.Template.Spec.Volumes = deploy.Spec.Template.Spec.Volumes
-			changed = true
-		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].VolumeMounts,
-			existing.Spec.Template.Spec.Containers[0].VolumeMounts) {
-			existing.Spec.Template.Spec.Containers[0].VolumeMounts = deploy.Spec.Template.Spec.Containers[0].VolumeMounts
-			changed = true
-		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Env,
-			existing.Spec.Template.Spec.Containers[0].Env) {
-			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
-			changed = true
-		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Resources, existing.Spec.Template.Spec.Containers[0].Resources) {
-			existing.Spec.Template.Spec.Containers[0].Resources = deploy.Spec.Template.Spec.Containers[0].Resources
-			changed = true
-		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Command, existing.Spec.Template.Spec.Containers[0].Command) {
-			existing.Spec.Template.Spec.Containers[0].Command = deploy.Spec.Template.Spec.Containers[0].Command
-			changed = true
-		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[1:],
-			existing.Spec.Template.Spec.Containers[1:]) {
-			existing.Spec.Template.Spec.Containers = append(existing.Spec.Template.Spec.Containers[0:1],
-				deploy.Spec.Template.Spec.Containers[1:]...)
-			changed = true
-		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers, existing.Spec.Template.Spec.InitContainers) {
-			existing.Spec.Template.Spec.InitContainers = deploy.Spec.Template.Spec.InitContainers
-			changed = true
-		}
-
-		if !reflect.DeepEqual(deploy.Spec.Replicas, existing.Spec.Replicas) {
-			existing.Spec.Replicas = deploy.Spec.Replicas
-			changed = true
-		}
-
-		if deploy.Spec.Template.Spec.AutomountServiceAccountToken != existing.Spec.Template.Spec.AutomountServiceAccountToken {
-			existing.Spec.Template.Spec.AutomountServiceAccountToken = deploy.Spec.Template.Spec.AutomountServiceAccountToken
-			changed = true
-		}
-
-		if deploy.Spec.Template.Spec.ServiceAccountName != existing.Spec.Template.Spec.ServiceAccountName {
-			existing.Spec.Template.Spec.ServiceAccountName = deploy.Spec.Template.Spec.ServiceAccountName
-			existing.Spec.Template.Spec.DeprecatedServiceAccount = deploy.Spec.Template.Spec.ServiceAccountName
-			changed = true
-		}
-
-		if changed {
-			return r.Client.Update(context.TODO(), existing)
-		}
-		return nil // Deployment found with nothing to do, move along...
-	}
-
-	if !cr.Spec.Repo.IsEnabled() {
-		log.Info("ArgoCD Repo Server disabled. Skipping starting ArgoCD Repo Server.")
-		return nil
-	}
-
-	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
-		return err
-	}
-	return r.Client.Create(context.TODO(), deploy)
+	argoutil.LogResourceCreation(log, deploy)
+	return r.Create(context.TODO(), deploy)
 }
 
 // reconcileServerDeployment will ensure the Deployment resource is present for the ArgoCD Server component.
 func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	deploy := newDeploymentWithSuffix("server", "server", cr)
 	serverEnv := cr.Spec.Server.Env
+	serverEnv = append(serverEnv, corev1.EnvVar{
+		Name: "REDIS_PASSWORD",
+		ValueFrom: &corev1.EnvVarSource{
+			SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
+				},
+				Key: "admin.password",
+			},
+		},
+	})
 	serverEnv = argoutil.EnvMerge(serverEnv, proxyEnvVars(), false)
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
+
+	if cr.Spec.Server.InitContainers != nil {
+		deploy.Spec.Template.Spec.InitContainers = append(deploy.Spec.Template.Spec.InitContainers, cr.Spec.Server.InitContainers...)
+	}
+
+	serverVolumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "ssh-known-hosts",
+			MountPath: "/app/config/ssh",
+		}, {
+			Name:      "tls-certs",
+			MountPath: "/app/config/tls",
+		},
+		{
+			Name:      "argocd-repo-server-tls",
+			MountPath: "/app/config/server/tls",
+		},
+		{
+			Name:      common.ArgoCDRedisServerTLSSecretName,
+			MountPath: "/app/config/server/tls/redis",
+		},
+		{
+			Name:      "plugins-home",
+			MountPath: "/home/argocd",
+		},
+		{
+			Name:      "argocd-cmd-params-cm",
+			MountPath: "/home/argocd/params",
+		},
+		{
+			Name:      "tmp",
+			MountPath: "/tmp",
+		},
+	}
+
+	if cr.Spec.Server.VolumeMounts != nil {
+		serverVolumeMounts = append(serverVolumeMounts, cr.Spec.Server.VolumeMounts...)
+	}
+
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command:         getArgoServerCommand(cr, useTLSForRedis),
 		Image:           getArgoContainerImage(cr),
-		ImagePullPolicy: corev1.PullAlways,
+		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Env:             serverEnv,
 		LivenessProbe: &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
@@ -1127,36 +1016,13 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			InitialDelaySeconds: 3,
 			PeriodSeconds:       30,
 		},
-		Resources: getArgoServerResources(cr),
-		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{
-					"ALL",
-				},
-			},
-			RunAsNonRoot: boolPtr(true),
-		},
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "ssh-known-hosts",
-				MountPath: "/app/config/ssh",
-			}, {
-				Name:      "tls-certs",
-				MountPath: "/app/config/tls",
-			},
-			{
-				Name:      "argocd-repo-server-tls",
-				MountPath: "/app/config/server/tls",
-			},
-			{
-				Name:      common.ArgoCDRedisServerTLSSecretName,
-				MountPath: "/app/config/server/tls/redis",
-			},
-		},
+		Resources:       getArgoServerResources(cr),
+		SecurityContext: argoutil.DefaultSecurityContext(),
+		VolumeMounts:    serverVolumeMounts,
 	}}
 	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "argocd-server")
-	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{
+
+	serverVolumes := []corev1.Volume{
 		{
 			Name: "ssh-known-hosts",
 			VolumeSource: corev1.VolumeSource{
@@ -1195,60 +1061,242 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 				},
 			},
 		},
+		{
+			Name: "plugins-home",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "argocd-cmd-params-cm",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "argocd-cmd-params-cm",
+					},
+					Optional: boolPtr(true),
+					Items: []corev1.KeyToPath{
+						{
+							Key:  "server.profile.enabled",
+							Path: "profiler.enabled",
+						},
+					},
+				},
+			},
+		},
+		{
+			Name: "tmp",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+	}
+
+	if cr.Spec.Server.Volumes != nil {
+		serverVolumes = append(serverVolumes, cr.Spec.Server.Volumes...)
+	}
+
+	deploy.Spec.Template.Spec.Volumes = serverVolumes
+
+	const rolloutsVolumeName = "rollout-extensions"
+	if cr.Spec.Server.EnableRolloutsUI {
+		deploy.Spec.Template.Spec.InitContainers = append(deploy.Spec.Template.Spec.InitContainers, getRolloutInitContainer()...)
+
+		deploy.Spec.Template.Spec.Containers[0].VolumeMounts = append(deploy.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+			Name:      rolloutsVolumeName,
+			MountPath: "/tmp/extensions/",
+		})
+
+		deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, corev1.Volume{
+			Name: rolloutsVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		})
+	} else if !cr.Spec.Server.EnableRolloutsUI {
+		deploy.Spec.Template.Spec.InitContainers = removeInitContainer(deploy.Spec.Template.Spec.InitContainers, rolloutsVolumeName)
+		deploy.Spec.Template.Spec.Volumes = removeVolume(deploy.Spec.Template.Spec.Volumes, rolloutsVolumeName)
+		deploy.Spec.Template.Spec.Containers[0].VolumeMounts = removeVolumeMount(deploy.Spec.Template.Spec.Containers[0].VolumeMounts, rolloutsVolumeName)
 	}
 
 	if replicas := getArgoCDServerReplicas(cr); replicas != nil {
 		deploy.Spec.Replicas = replicas
+
+		// Add ARGOCD_API_SERVER_REPLICAS env var to the argocd-server container
+		deploy.Spec.Template.Spec.Containers[0].Env = append(
+			deploy.Spec.Template.Spec.Containers[0].Env,
+			corev1.EnvVar{
+				Name:  "ARGOCD_API_SERVER_REPLICAS",
+				Value: fmt.Sprintf("%d", *replicas),
+			},
+		)
+	}
+
+	if cr.Spec.Server.SidecarContainers != nil {
+		deploy.Spec.Template.Spec.Containers = append(deploy.Spec.Template.Spec.Containers, cr.Spec.Server.SidecarContainers...)
+	}
+
+	if cr.Spec.Server.Annotations != nil {
+		for key, value := range cr.Spec.Server.Annotations {
+			deploy.Spec.Template.Annotations[key] = value
+		}
+	}
+
+	if cr.Spec.Server.Labels != nil {
+		for key, value := range cr.Spec.Server.Labels {
+			deploy.Spec.Template.Labels[key] = value
+		}
+	}
+	if err := applyReconcilerHook(cr, deploy, ""); err != nil {
+		return err
 	}
 
 	existing := newDeploymentWithSuffix("server", "server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+	deplExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
+	if err != nil {
+		return err
+	}
+	if deplExists {
 		if !cr.Spec.Server.IsEnabled() {
-			log.Info("Existing ArgoCD Server found but should be disabled. Deleting ArgoCD Server")
 			// Delete existing deployment for ArgoCD Server, if any ..
-			return r.Client.Delete(context.TODO(), existing)
+			argoutil.LogResourceDeletion(log, existing, "argocd server is disabled")
+			return r.Delete(context.TODO(), existing)
 		}
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getArgoContainerImage(cr)
+		actualImagePullPolicy := existing.Spec.Template.Spec.Containers[0].ImagePullPolicy
+		desiredImagePullPolicy := argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy)
 		changed := false
+		explanation := ""
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			explanation = "container image"
 			changed = true
 		}
-		updateNodePlacement(existing, deploy, &changed)
+		if actualImagePullPolicy != desiredImagePullPolicy {
+			existing.Spec.Template.Spec.Containers[0].ImagePullPolicy = desiredImagePullPolicy
+			if changed {
+				explanation += ", "
+			}
+			explanation += "image pull policy"
+			changed = true
+		}
+		updateNodePlacement(existing, deploy, &changed, &explanation)
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
 			deploy.Spec.Template.Spec.Containers[0].Env) {
 			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container env"
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers, existing.Spec.Template.Spec.InitContainers) {
+			existing.Spec.Template.Spec.InitContainers = deploy.Spec.Template.Spec.InitContainers
+			if changed {
+				explanation += ", "
+			}
+			explanation += "init containers"
 			changed = true
 		}
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Command,
 			deploy.Spec.Template.Spec.Containers[0].Command) {
 			existing.Spec.Template.Spec.Containers[0].Command = deploy.Spec.Template.Spec.Containers[0].Command
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container command"
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
 			existing.Spec.Template.Spec.Volumes = deploy.Spec.Template.Spec.Volumes
+			if changed {
+				explanation += ", "
+			}
+			explanation += "volumes"
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].VolumeMounts,
 			existing.Spec.Template.Spec.Containers[0].VolumeMounts) {
 			existing.Spec.Template.Spec.Containers[0].VolumeMounts = deploy.Spec.Template.Spec.Containers[0].VolumeMounts
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container volume mounts"
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Resources,
 			existing.Spec.Template.Spec.Containers[0].Resources) {
 			existing.Spec.Template.Spec.Containers[0].Resources = deploy.Spec.Template.Spec.Containers[0].Resources
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container resources"
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].SecurityContext,
+			existing.Spec.Template.Spec.Containers[0].SecurityContext) {
+			existing.Spec.Template.Spec.Containers[0].SecurityContext = deploy.Spec.Template.Spec.Containers[0].SecurityContext
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container security context"
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.SecurityContext, existing.Spec.Template.Spec.SecurityContext) {
+			existing.Spec.Template.Spec.SecurityContext = deploy.Spec.Template.Spec.SecurityContext
+			if changed {
+				explanation += ", "
+			}
+			explanation += "pod security context"
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[1:],
+			existing.Spec.Template.Spec.Containers[1:]) {
+			existing.Spec.Template.Spec.Containers = append(existing.Spec.Template.Spec.Containers[0:1],
+				deploy.Spec.Template.Spec.Containers[1:]...)
+			if changed {
+				explanation += ", "
+			}
+			explanation += "additional containers"
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Replicas, existing.Spec.Replicas) {
 			if !cr.Spec.Server.Autoscale.Enabled {
 				existing.Spec.Replicas = deploy.Spec.Replicas
+				if changed {
+					explanation += ", "
+				}
+				explanation += "replicas"
 				changed = true
 			}
 		}
+
+		// Add Kubernetes-specific labels/annotations from the live object in the source to preserve metadata.
+		addKubernetesData(deploy.Spec.Template.Labels, existing.Spec.Template.Labels)
+		addKubernetesData(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations)
+
+		if !reflect.DeepEqual(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
+			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
+			if changed {
+				explanation += ", "
+			}
+			explanation += "annotations"
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Labels, existing.Spec.Template.Labels) {
+			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
+			if changed {
+				explanation += ", "
+			}
+			explanation += "labels"
+			changed = true
+		}
+
 		if changed {
-			return r.Client.Update(context.TODO(), existing)
+			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
+			return r.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
 	}
@@ -1261,18 +1309,25 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
 		return err
 	}
-	return r.Client.Create(context.TODO(), deploy)
+	argoutil.LogResourceCreation(log, deploy)
+	return r.Create(context.TODO(), deploy)
 }
 
 // triggerDeploymentRollout will update the label with the given key to trigger a new rollout of the Deployment.
 func (r *ReconcileArgoCD) triggerDeploymentRollout(deployment *appsv1.Deployment, key string) error {
-	if !argoutil.IsObjectFound(r.Client, deployment.Namespace, deployment.Name, deployment) {
+
+	deplExists, err := argoutil.IsObjectFound(r.Client, deployment.Namespace, deployment.Name, deployment)
+	if err != nil {
+		return err
+	}
+	if !deplExists {
 		log.Info(fmt.Sprintf("unable to locate deployment with name: %s", deployment.Name))
 		return nil
 	}
 
-	deployment.Spec.Template.ObjectMeta.Labels[key] = nowNano()
-	return r.Client.Update(context.TODO(), deployment)
+	deployment.Spec.Template.Labels[key] = nowNano()
+	argoutil.LogResourceUpdate(log, deployment, "to trigger rollout")
+	return r.Update(context.TODO(), deployment)
 }
 
 func proxyEnvVars(vars ...corev1.EnvVar) []corev1.EnvVar {
@@ -1306,13 +1361,81 @@ func isRemoveManagedByLabelOnArgoCDDeletion() bool {
 }
 
 // to update nodeSelector and tolerations in reconciler
-func updateNodePlacement(existing *appsv1.Deployment, deploy *appsv1.Deployment, changed *bool) {
+func updateNodePlacement(existing *appsv1.Deployment, deploy *appsv1.Deployment, changed *bool, explanation *string) {
 	if !reflect.DeepEqual(existing.Spec.Template.Spec.NodeSelector, deploy.Spec.Template.Spec.NodeSelector) {
 		existing.Spec.Template.Spec.NodeSelector = deploy.Spec.Template.Spec.NodeSelector
+		if *changed {
+			*explanation += ", "
+		}
+		*explanation += "node selector"
 		*changed = true
 	}
 	if !reflect.DeepEqual(existing.Spec.Template.Spec.Tolerations, deploy.Spec.Template.Spec.Tolerations) {
 		existing.Spec.Template.Spec.Tolerations = deploy.Spec.Template.Spec.Tolerations
+		if *changed {
+			*explanation += ", "
+		}
+		*explanation += "tolerations"
 		*changed = true
 	}
+}
+
+func getRolloutInitContainer() []corev1.Container {
+	containers := []corev1.Container{
+		{
+			Name: "rollout-extension",
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "rollout-extensions",
+					MountPath: "/tmp/extensions/",
+				},
+				{
+					Name:      "tmp",
+					MountPath: "/tmp",
+				},
+			},
+			SecurityContext: argoutil.DefaultSecurityContext(),
+		},
+	}
+
+	if value, exists := os.LookupEnv(common.ArgoCDExtensionImageEnvName); exists {
+		containers[0].Image = value
+	} else {
+		containers[0].Image = common.ArgoCDExtensionInstallerImage
+		containers[0].Env = []corev1.EnvVar{
+			{
+				Name:  "EXTENSION_URL",
+				Value: common.ArgoRolloutsExtensionURL,
+			}}
+	}
+	return containers
+}
+
+func removeInitContainer(initContainers []corev1.Container, name string) []corev1.Container {
+	for i, container := range initContainers {
+		if container.Name == name {
+			// Remove the init container by slicing it out
+			return append(initContainers[:i], initContainers[i+1:]...)
+		}
+	}
+	// If the init container is not found, return the original list
+	return initContainers
+}
+
+func removeVolume(volumes []corev1.Volume, name string) []corev1.Volume {
+	for i, volume := range volumes {
+		if volume.Name == name {
+			return append(volumes[:i], volumes[i+1:]...)
+		}
+	}
+	return volumes
+}
+
+func removeVolumeMount(volumeMounts []corev1.VolumeMount, name string) []corev1.VolumeMount {
+	for i, volumeMount := range volumeMounts {
+		if volumeMount.Name == name {
+			return append(volumeMounts[:i], volumeMounts[i+1:]...)
+		}
+	}
+	return volumeMounts
 }

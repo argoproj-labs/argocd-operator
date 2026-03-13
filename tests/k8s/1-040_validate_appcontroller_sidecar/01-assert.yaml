@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: argocd-application-controller-0
+spec:
+  containers:
+  - name: argocd-application-controller
+  - name: sidecar
+    image: busybox
+    resources:
+      limits:
+        cpu: 50m
+        memory: 64Mi
+      requests:
+        cpu: 10m
+        memory: 32Mi
+

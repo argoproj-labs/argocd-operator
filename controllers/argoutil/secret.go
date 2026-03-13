@@ -15,6 +15,7 @@
 package argoutil
 
 import (
+	"context"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -43,26 +44,67 @@ func NewTLSSecret(cr *argoproj.ArgoCD, suffix string) *corev1.Secret {
 
 // NewSecret returns a new Secret based on the given metadata.
 func NewSecret(cr *argoproj.ArgoCD) *corev1.Secret {
-	return &corev1.Secret{
+	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: LabelsForCluster(cr),
 		},
 		Type: corev1.SecretTypeOpaque,
 	}
+	AddTrackedByOperatorLabel(&secret.ObjectMeta)
+	return secret
 }
 
 // NewSecretWithName returns a new Secret based on the given metadata with the provided Name.
 func NewSecretWithName(cr *argoproj.ArgoCD, name string) *corev1.Secret {
 	secret := NewSecret(cr)
 
-	secret.ObjectMeta.Name = name
-	secret.ObjectMeta.Namespace = cr.Namespace
-	secret.ObjectMeta.Labels[common.ArgoCDKeyName] = name
+	// Truncate the name to stay within 63 character limit for both name and labels
+	truncatedName := TruncateWithHash(name, GetMaxLabelLength())
+	secret.Name = truncatedName
+	secret.Namespace = cr.Namespace
+	secret.Labels[common.ArgoCDKeyName] = truncatedName
 
 	return secret
 }
 
 // NewSecretWithSuffix returns a new Secret based on the given metadata with the provided suffix on the Name.
+// This uses the better truncation approach: truncate CR name first, then append full suffix
 func NewSecretWithSuffix(cr *argoproj.ArgoCD, suffix string) *corev1.Secret {
-	return NewSecretWithName(cr, fmt.Sprintf("%s-%s", cr.Name, suffix))
+	truncatedCRName := GetTruncatedCRName(cr)
+	secretName := fmt.Sprintf("%s-%s", truncatedCRName, suffix)
+	return NewSecretWithName(cr, secretName)
+}
+
+// GetSecretNameWithSuffix returns the secret name using truncated CR name + full suffix.
+// This function should be used when referencing secret names in other resources.
+func GetSecretNameWithSuffix(cr *argoproj.ArgoCD, suffix string) string {
+	truncatedCRName := GetTruncatedCRName(cr)
+	return fmt.Sprintf("%s-%s", truncatedCRName, suffix)
+}
+
+func CreateTLSSecret(client client.Client, name string, namespace string, data map[string][]byte) error {
+	secret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Type: corev1.SecretTypeTLS,
+		Data: data,
+	}
+	AddTrackedByOperatorLabel(&secret.ObjectMeta)
+	LogResourceCreation(log, &secret)
+	return client.Create(context.TODO(), &secret)
+}
+
+func CreateSecret(client client.Client, name string, namespace string, data map[string][]byte) error {
+	secret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Data: data,
+	}
+	AddTrackedByOperatorLabel(&secret.ObjectMeta)
+	LogResourceCreation(log, &secret)
+	return client.Create(context.TODO(), &secret)
 }

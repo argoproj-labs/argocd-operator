@@ -1,0 +1,16 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 300
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: argocd
+status:
+  conditions:
+  - message: 'keycloak is set as SSO provider, but keycloak support has been deprecated and is no longer available'
+    reason: ErrorOccurred
+    status: "False"
+    type: Reconciled
+  phase: Pending
+  sso: Failed

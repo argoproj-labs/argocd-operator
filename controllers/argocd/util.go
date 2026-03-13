@@ -17,32 +17,37 @@ package argocd
 import (
 	"bytes"
 	"context"
+	"crypto"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"hash"
 	"os"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 	"text/template"
+	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
-	"gopkg.in/yaml.v2"
-
-	"github.com/argoproj/argo-cd/v2/util/glob"
+	"github.com/argoproj/argo-cd/v3/util/glob"
+	"github.com/distribution/reference"
+	"github.com/go-logr/logr"
+	certificates "k8s.io/api/certificates/v1beta1"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocdagent"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocdagent/agent"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
-	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
-	oappsv1 "github.com/openshift/api/apps/v1"
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
-	configv1client "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/sethvargo/go-password/password"
 	"golang.org/x/mod/semver"
 	appsv1 "k8s.io/api/apps/v1"
@@ -59,23 +64,36 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 const (
-	grafanaDeprecatedWarning = "Warning: grafana field is deprecated from ArgoCD: field will be ignored."
+	grafanaDeprecatedWarning     = "Warning: grafana field is deprecated from ArgoCD: field will be ignored."
+	initialRepositoriesWarning   = "Warning: Argo CD InitialRepositories field is deprecated from ArgoCD, field will be ignored."
+	repositoryCredentialsWarning = "Warning: Argo CD RepositoryCredentials field is deprecated from ArgoCD, field will be ignored." // #nosec G101
 )
 
 var (
-	versionAPIFound = false
+	versionAPIFound            = false
+	imageUpdaterAPIFound       = false
+	clusterTrustBundleAPIFound = false
 )
 
 // IsVersionAPIAvailable returns true if the version api is present
 func IsVersionAPIAvailable() bool {
 	return versionAPIFound
+}
+
+// IsImageUpdaterAPIAvailable returns true if the image updater api is present
+func IsImageUpdaterAPIAvailable() bool {
+	return imageUpdaterAPIFound
+}
+
+func IsClusterTrustBundleAPIFound() bool {
+	return clusterTrustBundleAPIFound
 }
 
 // verifyVersionAPI will verify that the template API is present.
@@ -88,12 +106,43 @@ func verifyVersionAPI() error {
 	return nil
 }
 
+// verifyImageUpdaterAPI will verify that the ImageUpdater API is present.
+func verifyImageUpdaterAPI() error {
+	found, err := argoutil.VerifyAPI("argocd-image-updater.argoproj.io", "v1alpha1")
+	if err != nil {
+		return err
+	}
+	imageUpdaterAPIFound = found
+	return nil
+}
+
+// verifyClusterTrustBundleAPI will verify that the ClusterTrustBundle API is present.
+func verifyClusterTrustBundleAPI() error {
+	found, err := argoutil.VerifyAPI(certificates.GroupName, certificates.SchemeGroupVersion.Version)
+	if err != nil {
+		return err
+	}
+	clusterTrustBundleAPIFound = found
+	return nil
+}
+
 // generateArgoAdminPassword will generate and return the admin password for Argo CD.
 func generateArgoAdminPassword() ([]byte, error) {
 	pass, err := password.Generate(
 		common.ArgoCDDefaultAdminPasswordLength,
 		common.ArgoCDDefaultAdminPasswordNumDigits,
 		common.ArgoCDDefaultAdminPasswordNumSymbols,
+		false, false)
+
+	return []byte(pass), err
+}
+
+// generateRedisAdminPassword will generate and return the admin password for Redis.
+func generateRedisAdminPassword() ([]byte, error) {
+	pass, err := password.Generate(
+		common.RedisDefaultAdminPasswordLength,
+		common.RedisDefaultAdminPasswordNumDigits,
+		common.RedisDefaultAdminPasswordNumSymbols,
 		false, false)
 
 	return []byte(pass), err
@@ -124,6 +173,9 @@ func getArgoApplicationControllerResources(cr *argoproj.ArgoCD) corev1.ResourceR
 
 // getArgoApplicationControllerCommand will return the command for the ArgoCD Application Controller component.
 func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
+
+	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
+
 	cmd := []string{
 		"argocd-application-controller",
 		"--operation-processors", fmt.Sprint(getArgoServerOperationProcessors(cr)),
@@ -153,7 +205,7 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 	cmd = append(cmd, "--status-processors", fmt.Sprint(getArgoServerStatusProcessors(cr)))
 	cmd = append(cmd, "--kubectl-parallelism-limit", fmt.Sprint(getArgoControllerParellismLimit(cr)))
 
-	if cr.Spec.SourceNamespaces != nil && len(cr.Spec.SourceNamespaces) > 0 {
+	if len(cr.Spec.SourceNamespaces) > 0 && allowed {
 		cmd = append(cmd, "--application-namespaces", fmt.Sprint(strings.Join(cr.Spec.SourceNamespaces, ",")))
 	}
 
@@ -163,79 +215,94 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 	cmd = append(cmd, "--logformat")
 	cmd = append(cmd, getLogFormat(cr.Spec.Controller.LogFormat))
 
+	persistHealth := "true" // default
+	if val, ok := cr.Spec.CmdParams["controller.resource.health.persist"]; ok {
+		persistHealth = val
+	}
+
+	// set the command only if persistHealth is true
+	if persistHealth == "true" {
+		cmd = append(cmd, "--persist-resource-health")
+	}
+
+	// check if extra args are present
+	extraArgs := cr.Spec.Controller.ExtraCommandArgs
+	cmd = appendUniqueArgs(cmd, extraArgs)
+
 	return cmd
+}
+
+// GetImageAndTag determines the image and tag for an ArgoCD component, considering container-level and common-level overrides.
+// Priority order: containerSpec > commonSpec > environment variable > defaults
+// Returns: image, tag
+func GetImageAndTag(envVar, containerSpecImage, containerSpecVersion, commonSpecImage, commonSpecVersion string) (string, string) {
+	// Start with defaults
+	image := common.ArgoCDDefaultArgoImage
+	tag := common.ArgoCDDefaultArgoVersion
+
+	// Check if environment variable is set
+	envVal := os.Getenv(envVar)
+
+	// If no spec values are provided and env var is set, use env var as-is
+	if envVal != "" && containerSpecImage == "" && commonSpecImage == "" &&
+		containerSpecVersion == "" && commonSpecVersion == "" {
+		return envVal, ""
+	}
+
+	// Parse environment variable image if it exists and we need to extract the base image name
+	if envVal != "" {
+		baseImageName, err := extractBaseImageName(envVal)
+		if err != nil {
+			log.Error(err, "Failed to parse environment variable image", "envVal", envVal)
+			return "", ""
+		}
+		if baseImageName != "" {
+			image = baseImageName
+		}
+	}
+
+	// Apply spec overrides with container spec taking precedence over common spec
+	image = getPriorityValue(containerSpecImage, commonSpecImage, image)
+	tag = getPriorityValue(containerSpecVersion, commonSpecVersion, tag)
+
+	return image, tag
+}
+
+// extractBaseImageName extracts the base image name from a full image reference (removing tag/digest)
+func extractBaseImageName(imageRef string) (string, error) {
+	// Handle digest format (image@sha256:...)
+	crypto.RegisterHash(crypto.SHA256, func() hash.Hash { return sha256.New() })
+	ref, err := reference.Parse(imageRef)
+	if err != nil {
+		return "", err
+	}
+	var name string
+	if named, ok := ref.(reference.Named); ok {
+		name = named.Name()
+	}
+	return name, nil
+}
+
+// getPriorityValue returns the highest priority value from container spec, common spec, or fallback
+func getPriorityValue(containerLevelSpec, commonLevelSpec, fallback string) string {
+	if containerLevelSpec != "" {
+		return containerLevelSpec
+	}
+	if commonLevelSpec != "" {
+		return commonLevelSpec
+	}
+	return fallback
 }
 
 // getArgoContainerImage will return the container image for ArgoCD.
 func getArgoContainerImage(cr *argoproj.ArgoCD) string {
-	defaultTag, defaultImg := false, false
-	img := cr.Spec.Image
-	if img == "" {
-		img = common.ArgoCDDefaultArgoImage
-		defaultImg = true
-	}
-
-	tag := cr.Spec.Version
-	if tag == "" {
-		tag = common.ArgoCDDefaultArgoVersion
-		defaultTag = true
-	}
-	if e := os.Getenv(common.ArgoCDImageEnvName); e != "" && (defaultTag && defaultImg) {
-		return e
-	}
-
+	img, tag := GetImageAndTag(common.ArgoCDImageEnvName, "", "", cr.Spec.Image, cr.Spec.Version)
 	return argoutil.CombineImageTag(img, tag)
-}
-
-// getRepoServerContainerImage will return the container image for the Repo server.
-//
-// There are three possible options for configuring the image, and this is the
-// order of preference.
-//
-// 1. from the Spec, the spec.repo field has an image and version to use for
-// generating an image reference.
-// 2. from the Environment, this looks for the `ARGOCD_REPOSERVER_IMAGE` field and uses
-// that if the spec is not configured.
-// 3. the default is configured in common.ArgoCDDefaultRepoServerVersion and
-// common.ArgoCDDefaultRepoServerImage.
-func getRepoServerContainerImage(cr *argoproj.ArgoCD) string {
-	defaultImg, defaultTag := false, false
-	img := cr.Spec.Repo.Image
-	if img == "" {
-		img = common.ArgoCDDefaultArgoImage
-		defaultImg = true
-	}
-
-	tag := cr.Spec.Repo.Version
-	if tag == "" {
-		tag = common.ArgoCDDefaultArgoVersion
-		defaultTag = true
-	}
-	if e := os.Getenv(common.ArgoCDImageEnvName); e != "" && (defaultTag && defaultImg) {
-		return e
-	}
-	return argoutil.CombineImageTag(img, tag)
-}
-
-// getArgoRepoResources will return the ResourceRequirements for the Argo CD Repo server container.
-func getArgoRepoResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
-	resources := corev1.ResourceRequirements{}
-
-	// Allow override of resource requirements from CR
-	if cr.Spec.Repo.Resources != nil {
-		resources = *cr.Spec.Repo.Resources
-	}
-
-	return resources
 }
 
 // getArgoServerInsecure returns the insecure value for the ArgoCD Server component.
 func getArgoServerInsecure(cr *argoproj.ArgoCD) bool {
 	return cr.Spec.Server.Insecure
-}
-
-func isRepoServerTLSVerificationRequested(cr *argoproj.ArgoCD) bool {
-	return cr.Spec.Repo.VerifyTLS
 }
 
 func isRedisTLSVerificationDisabled(cr *argoproj.ArgoCD) bool {
@@ -287,7 +354,7 @@ func getArgoServerResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
 
 // getArgoServerURI will return the URI for the ArgoCD server.
 // The hostname for argocd-server is from the route, ingress, an external hostname or service name in that order.
-func (r *ReconcileArgoCD) getArgoServerURI(cr *argoproj.ArgoCD) string {
+func (r *ReconcileArgoCD) getArgoServerURI(cr *argoproj.ArgoCD) (string, error) {
 	host := nameWithSuffix("server", cr) // Default to service name
 
 	// Use the external hostname provided by the user
@@ -298,20 +365,28 @@ func (r *ReconcileArgoCD) getArgoServerURI(cr *argoproj.ArgoCD) string {
 	// Use Ingress host if enabled
 	if cr.Spec.Server.Ingress.Enabled {
 		ing := newIngressWithSuffix("server", cr)
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, ing.Name, ing) {
+		ingressExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, ing.Name, ing)
+		if err != nil {
+			return "", err
+		}
+		if ingressExists {
 			host = ing.Spec.Rules[0].Host
 		}
 	}
 
-	// Use Route host if available, override Ingress if both exist
-	if IsRouteAPIAvailable() {
+	if cr.Spec.Server.Route.Enabled && argoutil.IsRouteAPIAvailable() {
+		// Use Route host if available, override Ingress if both exist
 		route := newRouteWithSuffix("server", cr)
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
+		routeExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
+		if err != nil {
+			return "", err
+		}
+		if routeExists {
 			host = route.Spec.Host
 		}
 	}
 
-	return fmt.Sprintf("https://%s", host) // TODO: Safe to assume HTTPS here?
+	return fmt.Sprintf("https://%s", host), nil // TODO: Safe to assume HTTPS here?
 }
 
 // getArgoServerOperationProcessors will return the numeric Operation Processors value for the ArgoCD Server.
@@ -569,9 +644,16 @@ func getRedisServerAddress(cr *argoproj.ArgoCD) string {
 	if cr.Spec.Redis.Remote != nil && *cr.Spec.Redis.Remote != "" {
 		return *cr.Spec.Redis.Remote
 	}
+
+	// If principal is enabled, then Argo CD server/repo server should be configured to use redis proxy from principal (argo cd agent)
+	if cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Principal != nil && cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
+		return argoutil.GenerateAgentPrincipalRedisProxyServiceName(cr.Name) + "." + cr.Namespace + ".svc.cluster.local:6379"
+	}
+
 	if cr.Spec.HA.Enabled {
 		return getRedisHAProxyAddress(cr)
 	}
+
 	return fqdnServiceRef(common.ArgoCDDefaultRedisSuffix, common.ArgoCDDefaultRedisPort, cr)
 }
 
@@ -580,23 +662,24 @@ func loadTemplateFile(path string, params map[string]string) (string, error) {
 	tmpl, err := template.ParseFiles(path)
 	if err != nil {
 		log.Error(err, "unable to parse template")
-		return "", err
+		return "", fmt.Errorf("unable to parse template. error: %w", err)
 	}
 
 	buf := new(bytes.Buffer)
 	err = tmpl.Execute(buf, params)
 	if err != nil {
 		log.Error(err, "unable to execute template")
-		return "", err
+		return "", fmt.Errorf("unable to execute template. error: %w", err)
 	}
 	return buf.String(), nil
 }
 
-// nameWithSuffix will return a name based on the given ArgoCD. The given suffix is appended to the generated name.
-// Example: Given an ArgoCD with the name "example-argocd", providing the suffix "foo" would result in the value of
-// "example-argocd-foo" being returned.
+// nameWithSuffix will return a name based on the given ArgoCD using the better truncation approach.
+// The CR name is truncated first, then the full suffix is appended to preserve suffix readability.
+// Example: Given a long ArgoCD name, this ensures suffixes like "redis-initial-password" remain intact.
 func nameWithSuffix(suffix string, cr *argoproj.ArgoCD) string {
-	return fmt.Sprintf("%s-%s", cr.Name, suffix)
+	truncatedCRName := argoutil.GetTruncatedCRName(cr)
+	return fmt.Sprintf("%s-%s", truncatedCRName, suffix)
 }
 
 // fqdnServiceRef will return the FQDN referencing a specific service name, as set up by the operator, with the
@@ -612,15 +695,19 @@ func InspectCluster() error {
 		return err
 	}
 
-	if err := verifyRouteAPI(); err != nil {
+	if err := argoutil.VerifyRouteAPI(); err != nil {
 		return err
 	}
 
-	if err := verifyTemplateAPI(); err != nil {
-		return err
+	if err := verifyImageUpdaterAPI(); err != nil {
+		log.Error(err, "could not verify ImageUpdater API, disabling feature")
+		imageUpdaterAPIFound = false
 	}
 
 	if err := verifyVersionAPI(); err != nil {
+		return err
+	}
+	if err := verifyClusterTrustBundleAPI(); err != nil {
 		return err
 	}
 	return nil
@@ -643,7 +730,7 @@ func (r *ReconcileArgoCD) reconcileCertificateAuthority(cr *argoproj.ArgoCD) err
 func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoproj.ArgoCD) bool {
 	var tlsSecretObj corev1.Secret
 	tlsSecretName := types.NamespacedName{Namespace: cr.Namespace, Name: common.ArgoCDRedisServerTLSSecretName}
-	err := r.Client.Get(context.TODO(), tlsSecretName, &tlsSecretObj)
+	err := r.Get(context.TODO(), tlsSecretName, &tlsSecretObj)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			log.Error(err, "error looking up redis tls secret")
@@ -662,7 +749,7 @@ func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoproj.ArgoCD) bool {
 				svc := &corev1.Service{}
 
 				// Get the owning object of the secret
-				err := r.Client.Get(context.TODO(), key, svc)
+				err := r.Get(context.TODO(), key, svc)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("could not get owner of secret %s", tlsSecretObj.GetName()))
 					return false
@@ -690,18 +777,16 @@ func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoproj.ArgoCD) bool {
 }
 
 // reconcileResources will reconcile common ArgoCD resources.
-func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus) error {
 
-	// we reconcile SSO first so that we can catch and throw errors for any illegal SSO configurations right away, and return control from here
-	// preventing dex resources from getting created anyway through the other function calls, effectively bypassing the SSO checks
-	log.Info("reconciling SSO")
-	if err := r.reconcileSSO(cr); err != nil {
-		log.Info(err.Error())
+	if err := r.ensureSourceNamespacesAllowed(cr); err != nil {
+		return err
 	}
 
-	log.Info("reconciling status")
-	if err := r.reconcileStatus(cr); err != nil {
+	log.Info("reconciling SSO")
+	if err := r.reconcileSSO(cr, argocdStatus); err != nil {
 		log.Info(err.Error())
+		return err
 	}
 
 	log.Info("reconciling roles")
@@ -739,6 +824,11 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
+	log.Info("reconciling local users")
+	if err := r.reconcileLocalUsers(cr); err != nil {
+		return err
+	}
+
 	log.Info("reconciling services")
 	if err := r.reconcileServices(cr); err != nil {
 		return err
@@ -764,7 +854,7 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
-	if IsRouteAPIAvailable() {
+	if argoutil.IsRouteAPIAvailable() {
 		log.Info("reconciling routes")
 		if err := r.reconcileRoutes(cr); err != nil {
 			return err
@@ -803,18 +893,35 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD) error {
 		}
 	}
 
-	if cr.Spec.Notifications.Enabled {
+	if !reflect.DeepEqual(cr.Spec.Notifications, argoproj.ArgoCDNotifications{}) || len(r.ManagedNotificationsSourceNamespaces) > 0 {
 		log.Info("reconciling Notifications controller")
 		if err := r.reconcileNotificationsController(cr); err != nil {
 			return err
 		}
 	}
 
-	if err := r.reconcileRepoServerTLSSecret(cr); err != nil {
+	if IsImageUpdaterAPIAvailable() {
+		log.Info("reconciling Image Updater controller")
+		if err := r.reconcileImageUpdaterController(cr); err != nil {
+			return err
+		}
+	} else {
+		log.Info("ImageUpdater CRD not found, skipping reconciliation of Image Updater controller. Please install argocd-image-updater CRD to use this feature.")
+	}
+
+	if err := r.reconcileRepoServerTLSSecret(cr, argocdStatus); err != nil {
 		return err
 	}
 
-	if err := r.reconcileRedisTLSSecret(cr, useTLSForRedis); err != nil {
+	if err := r.reconcileRedisTLSSecret(cr, useTLSForRedis, argocdStatus); err != nil {
+		return err
+	}
+
+	if err := r.ReconcileNetworkPolicies(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileArgoCDAgent(cr); err != nil {
 		return err
 	}
 
@@ -853,14 +960,14 @@ func (r *ReconcileArgoCD) removeManagedByLabelFromNamespaces(namespace string) e
 	listOption := client.MatchingLabels{
 		common.ArgoCDManagedByLabel: namespace,
 	}
-	if err := r.Client.List(context.TODO(), nsList, listOption); err != nil {
+	if err := r.List(context.TODO(), nsList, listOption); err != nil {
 		return err
 	}
 
 	nsList.Items = append(nsList.Items, corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})
 	for _, n := range nsList.Items {
 		ns := &corev1.Namespace{}
-		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: n.Name}, ns); err != nil {
+		if err := r.Get(context.TODO(), types.NamespacedName{Name: n.Name}, ns); err != nil {
 			return err
 		}
 
@@ -872,7 +979,8 @@ func (r *ReconcileArgoCD) removeManagedByLabelFromNamespaces(namespace string) e
 			continue
 		}
 		delete(ns.Labels, common.ArgoCDManagedByLabel)
-		if err := r.Client.Update(context.TODO(), ns); err != nil {
+		argoutil.LogResourceUpdate(log, ns, "removing 'managed-by' label")
+		if err := r.Update(context.TODO(), ns); err != nil {
 			log.Error(err, fmt.Sprintf("failed to remove label from namespace [%s]", ns.Name))
 		}
 	}
@@ -894,7 +1002,8 @@ func argocdInstanceSelector(name string) (labels.Selector, error) {
 
 func (r *ReconcileArgoCD) removeDeletionFinalizer(argocd *argoproj.ArgoCD) error {
 	argocd.Finalizers = removeString(argocd.GetFinalizers(), common.ArgoCDDeletionFinalizer)
-	if err := r.Client.Update(context.TODO(), argocd); err != nil {
+	argoutil.LogResourceUpdate(log, argocd, "removing deletion finalizer")
+	if err := r.Update(context.TODO(), argocd); err != nil {
 		return fmt.Errorf("failed to remove deletion finalizer from %s: %w", argocd.Name, err)
 	}
 	return nil
@@ -902,7 +1011,8 @@ func (r *ReconcileArgoCD) removeDeletionFinalizer(argocd *argoproj.ArgoCD) error
 
 func (r *ReconcileArgoCD) addDeletionFinalizer(argocd *argoproj.ArgoCD) error {
 	argocd.Finalizers = append(argocd.Finalizers, common.ArgoCDDeletionFinalizer)
-	if err := r.Client.Update(context.TODO(), argocd); err != nil {
+	argoutil.LogResourceUpdate(log, argocd, "adding deletion finalizer")
+	if err := r.Update(context.TODO(), argocd); err != nil {
 		return fmt.Errorf("failed to add deletion finalizer for %s: %w", argocd.Name, err)
 	}
 	return nil
@@ -920,71 +1030,7 @@ func removeString(slice []string, s string) []string {
 }
 
 // setResourceWatches will register Watches for each of the supported Resources.
-func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, clusterSecretResourceMapper, applicationSetGitlabSCMTLSConfigMapMapper handler.MapFunc) *builder.Builder {
-
-	deploymentConfigPred := predicate.Funcs{
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			// Ignore updates to CR status in which case metadata.Generation does not change
-			var count int32 = 1
-			newDC, ok := e.ObjectNew.(*oappsv1.DeploymentConfig)
-			if !ok {
-				return false
-			}
-			oldDC, ok := e.ObjectOld.(*oappsv1.DeploymentConfig)
-			if !ok {
-				return false
-			}
-			if newDC.Name == defaultKeycloakIdentifier {
-				if newDC.Status.AvailableReplicas == count {
-					return true
-				}
-				if newDC.Status.AvailableReplicas == int32(0) &&
-					!reflect.DeepEqual(oldDC.Status.AvailableReplicas, newDC.Status.AvailableReplicas) {
-					// Handle the deletion of keycloak pod.
-					log.Info(fmt.Sprintf("Handle the pod deletion event for keycloak deployment config %s in namespace %s",
-						newDC.Name, newDC.Namespace))
-					err := handleKeycloakPodDeletion(newDC)
-					if err != nil {
-						log.Error(err, fmt.Sprintf("Failed to update Deployment Config %s for keycloak pod deletion in namespace %s",
-							newDC.Name, newDC.Namespace))
-					}
-				}
-			}
-			return false
-		},
-	}
-
-	deleteSSOPred := predicate.Funcs{
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			newCR, ok := e.ObjectNew.(*argoproj.ArgoCD)
-			if !ok {
-				return false
-			}
-			oldCR, ok := e.ObjectOld.(*argoproj.ArgoCD)
-			if !ok {
-				return false
-			}
-
-			// Handle deletion of SSO from Argo CD custom resource
-			if !reflect.DeepEqual(oldCR.Spec.SSO, newCR.Spec.SSO) && newCR.Spec.SSO == nil {
-				err := r.deleteSSOConfiguration(newCR, oldCR)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Failed to delete SSO Configuration for ArgoCD %s in namespace %s",
-						newCR.Name, newCR.Namespace))
-				}
-			}
-
-			// Trigger reconciliation of SSO on update event
-			if !reflect.DeepEqual(oldCR.Spec.SSO, newCR.Spec.SSO) && newCR.Spec.SSO != nil && oldCR.Spec.SSO != nil {
-				err := r.reconcileSSO(newCR)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Failed to update existing SSO Configuration for ArgoCD %s in namespace %s",
-						newCR.Name, newCR.Namespace))
-				}
-			}
-			return true
-		},
-	}
+func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, clusterSecretResourceMapper, applicationSetGitlabSCMTLSConfigMapMapper, nmMapper, systemCATrustMapper handler.MapFunc) *builder.Builder {
 
 	// Add new predicate to delete Notifications Resources. The predicate watches the Argo CD CR for changes to the `.spec.Notifications.Enabled`
 	// field. When a change is detected that results in notifications being disabled, we trigger deletion of notifications resources
@@ -1010,54 +1056,47 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 	}
 
 	// Watch for changes to primary resource ArgoCD
-	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(deleteSSOPred, deleteNotificationsPred))
+	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(deleteNotificationsPred, r.argoCDNamespaceManagementFilterPredicate()))
 
-	// Watch for changes to ConfigMap sub-resources owned by ArgoCD instances.
+	// Watch for changes to sub-resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.ConfigMap{})
-
-	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.Secret{})
-
-	// Watch for changes to Service sub-resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.Service{})
-
-	// Watch for changes to Deployment sub-resources owned by ArgoCD instances.
 	bldr.Owns(&appsv1.Deployment{})
-
-	// Watch for changes to Ingress sub-resources owned by ArgoCD instances.
 	bldr.Owns(&networkingv1.Ingress{})
+	bldr.Owns(&appsv1.StatefulSet{})
+
+	// Watch for changes to NetworkPolicy sub-resources owned by ArgoCD instances.
+	// This ensures that if a NetworkPolicy is deleted, the controller reconciles and recreates it.
+	bldr.Owns(&networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{
+		Labels: map[string]string{
+			common.ArgoCDKeyPartOf: common.ArgoCDAppName,
+		},
+	}})
 
 	bldr.Owns(&v1.Role{})
-
 	bldr.Owns(&v1.RoleBinding{})
+	bldr.Owns(&v1alpha1.NotificationsConfiguration{})
+
+	bldr.Watches(&argoproj.NamespaceManagement{}, handler.EnqueueRequestsFromMapFunc(nmMapper), builder.WithPredicates(r.namespaceManagementFilterPredicate()))
 
 	clusterResourceHandler := handler.EnqueueRequestsFromMapFunc(clusterResourceMapper)
-
-	clusterSecretResourceHandler := handler.EnqueueRequestsFromMapFunc(clusterSecretResourceMapper)
-
-	appSetGitlabSCMTLSConfigMapHandler := handler.EnqueueRequestsFromMapFunc(applicationSetGitlabSCMTLSConfigMapMapper)
-
-	tlsSecretHandler := handler.EnqueueRequestsFromMapFunc(tlsSecretMapper)
-
 	bldr.Watches(&v1.ClusterRoleBinding{}, clusterResourceHandler)
-
 	bldr.Watches(&v1.ClusterRole{}, clusterResourceHandler)
 
 	bldr.Watches(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{
 		Name: common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName,
-	}}, appSetGitlabSCMTLSConfigMapHandler)
+	}}, handler.EnqueueRequestsFromMapFunc(applicationSetGitlabSCMTLSConfigMapMapper))
 
 	// Watch for secrets of type TLS that might be created by external processes
-	bldr.Watches(&corev1.Secret{Type: corev1.SecretTypeTLS}, tlsSecretHandler)
+	bldr.Watches(&corev1.Secret{Type: corev1.SecretTypeTLS}, handler.EnqueueRequestsFromMapFunc(tlsSecretMapper))
 
 	// Watch for cluster secrets added to the argocd instance
 	bldr.Watches(&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
 		Labels: map[string]string{
 			common.ArgoCDManagedByClusterArgoCDLabel: "cluster",
-		}}}, clusterSecretResourceHandler)
-
-	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
-	bldr.Owns(&appsv1.StatefulSet{})
+		},
+	}}, handler.EnqueueRequestsFromMapFunc(clusterSecretResourceMapper))
 
 	// Inspect cluster to verify availability of extra features
 	// This sets the flags that are used in subsequent checks
@@ -1065,7 +1104,7 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 		log.Info("unable to inspect cluster")
 	}
 
-	if IsRouteAPIAvailable() {
+	if argoutil.IsRouteAPIAvailable() {
 		// Watch OpenShift Route sub-resources owned by ArgoCD instances.
 		bldr.Owns(&routev1.Route{})
 	}
@@ -1078,18 +1117,21 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 		bldr.Owns(&monitoringv1.ServiceMonitor{})
 	}
 
-	if IsTemplateAPIAvailable() {
-		// Watch for the changes to Deployment Config
-		bldr.Owns(&oappsv1.DeploymentConfig{}, builder.WithPredicates(deploymentConfigPred))
-
+	systemCATrustHandler := handler.EnqueueRequestsFromMapFunc(systemCATrustMapper)
+	bldr.Watches(&corev1.Secret{}, systemCATrustHandler)
+	bldr.Watches(&corev1.ConfigMap{}, systemCATrustHandler)
+	if IsClusterTrustBundleAPIFound() {
+		bldr.Watches(&certificates.ClusterTrustBundle{}, systemCATrustHandler)
 	}
 
-	// Watch for changes to NotificationsConfiguration CR
-	bldr.Owns(&v1alpha1.NotificationsConfiguration{})
-
 	namespaceHandler := handler.EnqueueRequestsFromMapFunc(namespaceResourceMapper)
+	bldr.Watches(&corev1.Namespace{}, namespaceHandler, builder.WithPredicates(r.namespaceFilterPredicate()))
 
-	bldr.Watches(&corev1.Namespace{}, namespaceHandler, builder.WithPredicates(namespaceFilterPredicate()))
+	bldrHook := newBuilderHook(r.Client, bldr)
+	err := applyReconcilerHook(&argoproj.ArgoCD{}, bldrHook, "")
+	if err != nil {
+		log.Error(err, "failed to apply builder hook")
+	}
 
 	return bldr
 }
@@ -1116,46 +1158,13 @@ func (r *ReconcileArgoCD) triggerRollout(obj interface{}, key string) error {
 	}
 }
 
-func allowedNamespace(current string, namespaces string) bool {
-
-	clusterConfigNamespaces := splitList(namespaces)
-	if len(clusterConfigNamespaces) > 0 {
-		if clusterConfigNamespaces[0] == "*" {
-			return true
-		}
-
-		for _, n := range clusterConfigNamespaces {
-			if n == current {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func splitList(s string) []string {
-	elems := strings.Split(s, ",")
-	for i := range elems {
-		elems[i] = strings.TrimSpace(elems[i])
-	}
-	return elems
-}
-
-func containsString(arr []string, s string) bool {
-	for _, val := range arr {
-		if strings.TrimSpace(val) == s {
-			return true
-		}
-	}
-	return false
-}
-
 // DeprecationEventEmissionStatus is meant to track which deprecation events have been emitted already. This is temporary and can be removed in v0.0.6 once we have provided enough
 // deprecation notice
 type DeprecationEventEmissionStatus struct {
 	SSOSpecDeprecationWarningEmitted    bool
 	DexSpecDeprecationWarningEmitted    bool
 	DisableDexDeprecationWarningEmitted bool
+	TLSInsecureWarningEmitted           bool
 }
 
 // DeprecationEventEmissionTracker map stores the namespace containing ArgoCD instance as key and DeprecationEventEmissionStatus as value,
@@ -1163,7 +1172,7 @@ type DeprecationEventEmissionStatus struct {
 // This is temporary and can be removed in v0.0.6 when we remove the deprecated fields.
 var DeprecationEventEmissionTracker = make(map[string]DeprecationEventEmissionStatus)
 
-func namespaceFilterPredicate() predicate.Predicate {
+func (r *ReconcileArgoCD) namespaceFilterPredicate() predicate.Predicate {
 	return predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			// This checks if ArgoCDManagedByLabel exists in newMeta, if exists then -
@@ -1173,10 +1182,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 			// Event is then handled by the reconciler, which would create appropriate RBACs.
 			if valNew, ok := e.ObjectNew.GetLabels()[common.ArgoCDManagedByLabel]; ok {
 				if valOld, ok := e.ObjectOld.GetLabels()[common.ArgoCDManagedByLabel]; ok && valOld != valNew {
-					k8sClient, err := initK8sClient()
-					if err != nil {
-						return false
-					}
+					k8sClient := r.K8sClient
 					if err := deleteRBACsForNamespace(e.ObjectOld.GetName(), k8sClient); err != nil {
 						log.Error(err, fmt.Sprintf("failed to delete RBACs for namespace: %s", e.ObjectOld.GetName()))
 					} else {
@@ -1184,7 +1190,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 					}
 
 					// Delete namespace from cluster secret of previously managing argocd instance
-					if err = deleteManagedNamespaceFromClusterSecret(valOld, e.ObjectOld.GetName(), k8sClient); err != nil {
+					if err := deleteManagedNamespaceFromClusterSecret(valOld, e.ObjectOld.GetName(), k8sClient); err != nil {
 						log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", e.ObjectOld.GetName()))
 					} else {
 						log.Info(fmt.Sprintf("Successfully deleted namespace %s from cluster secret", e.ObjectOld.GetName()))
@@ -1195,10 +1201,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 			// This checks if the old meta had the label, if it did, delete the RBACs for the namespace
 			// which were created when the label was added to the namespace.
 			if ns, ok := e.ObjectOld.GetLabels()[common.ArgoCDManagedByLabel]; ok && ns != "" {
-				k8sClient, err := initK8sClient()
-				if err != nil {
-					return false
-				}
+				k8sClient := r.K8sClient
 				if err := deleteRBACsForNamespace(e.ObjectOld.GetName(), k8sClient); err != nil {
 					log.Error(err, fmt.Sprintf("failed to delete RBACs for namespace: %s", e.ObjectOld.GetName()))
 				} else {
@@ -1206,24 +1209,20 @@ func namespaceFilterPredicate() predicate.Predicate {
 				}
 
 				// Delete managed namespace from cluster secret
-				if err = deleteManagedNamespaceFromClusterSecret(ns, e.ObjectOld.GetName(), k8sClient); err != nil {
+				if err := deleteManagedNamespaceFromClusterSecret(ns, e.ObjectOld.GetName(), k8sClient); err != nil {
 					log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", e.ObjectOld.GetName()))
 				} else {
 					log.Info(fmt.Sprintf("Successfully deleted namespace %s from cluster secret", e.ObjectOld.GetName()))
 				}
 
 			}
-			return false
+			return true
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			if ns, ok := e.Object.GetLabels()[common.ArgoCDManagedByLabel]; ok && ns != "" {
-				k8sClient, err := initK8sClient()
-
-				if err != nil {
-					return false
-				}
+				k8sClient := r.K8sClient
 				// Delete managed namespace from cluster secret
-				err = deleteManagedNamespaceFromClusterSecret(ns, e.Object.GetName(), k8sClient)
+				err := deleteManagedNamespaceFromClusterSecret(ns, e.Object.GetName(), k8sClient)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", e.Object.GetName()))
 				} else {
@@ -1234,7 +1233,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 			// if a namespace is deleted, remove it from deprecationEventEmissionTracker (if exists) so that if a namespace with the same name
 			// is created in the future and contains an Argo CD instance, it will be tracked appropriately
 			delete(DeprecationEventEmissionTracker, e.Object.GetName())
-			return false
+			return true
 		},
 	}
 }
@@ -1247,12 +1246,14 @@ func deleteRBACsForNamespace(sourceNS string, k8sClient kubernetes.Interface) er
 	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{common.ArgoCDKeyPartOf: common.ArgoCDAppName}}
 	roles, err := k8sClient.RbacV1().Roles(sourceNS).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.Set(labelSelector.MatchLabels).String()})
 	if err != nil {
-		log.Error(err, fmt.Sprintf("failed to list roles for namespace: %s", sourceNS))
-		return err
+		message := fmt.Sprintf("failed to list roles for namespace: %s", sourceNS)
+		log.Error(err, message)
+		return fmt.Errorf("%s error: %w", message, err)
 	}
 
 	// Delete all the retrieved roles
 	for _, role := range roles.Items {
+		argoutil.LogResourceDeletion(log, &role)
 		err = k8sClient.RbacV1().Roles(sourceNS).Delete(context.TODO(), role.Name, metav1.DeleteOptions{})
 		if err != nil {
 			log.Error(err, fmt.Sprintf("failed to delete roles for namespace: %s", sourceNS))
@@ -1262,12 +1263,14 @@ func deleteRBACsForNamespace(sourceNS string, k8sClient kubernetes.Interface) er
 	// List all the roles bindings created for ArgoCD using the label selector
 	roleBindings, err := k8sClient.RbacV1().RoleBindings(sourceNS).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.Set(labelSelector.MatchLabels).String()})
 	if err != nil {
-		log.Error(err, fmt.Sprintf("failed to list role bindings for namespace: %s", sourceNS))
-		return err
+		message := fmt.Sprintf("failed to list role bindings for namespace: %s", sourceNS)
+		log.Error(err, message)
+		return fmt.Errorf("%s error: %w", message, err)
 	}
 
 	// Delete all the retrieved role bindings
 	for _, roleBinding := range roleBindings.Items {
+		argoutil.LogResourceDeletion(log, &roleBinding)
 		err = k8sClient.RbacV1().RoleBindings(sourceNS).Delete(context.TODO(), roleBinding.Name, metav1.DeleteOptions{})
 		if err != nil {
 			log.Error(err, fmt.Sprintf("failed to delete role binding for namespace: %s", sourceNS))
@@ -1283,50 +1286,60 @@ func deleteManagedNamespaceFromClusterSecret(ownerNS, sourceNS string, k8sClient
 	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}}
 	secrets, err := k8sClient.CoreV1().Secrets(ownerNS).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.Set(labelSelector.MatchLabels).String()})
 	if err != nil {
-		log.Error(err, fmt.Sprintf("failed to retrieve secrets for namespace: %s", ownerNS))
-		return err
+		message := fmt.Sprintf("failed to retrieve secrets for namespace: %s", ownerNS)
+		log.Error(err, message)
+		return fmt.Errorf("%s error: %w", message, err)
 	}
-	for _, secret := range secrets.Items {
-		if string(secret.Data["server"]) != common.ArgoCDDefaultServer {
+
+	// Find the cluster secret in the list that points to  common.ArgoCDDefaultServer (default server address)
+	var localClusterSecret *corev1.Secret
+	for x, clusterSecret := range secrets.Items {
+
+		// check if cluster secret with default server address exists
+		if string(clusterSecret.Data["server"]) == common.ArgoCDDefaultServer {
+			localClusterSecret = &secrets.Items[x]
+		}
+	}
+
+	if localClusterSecret == nil {
+		// The Secret doesn't exist: no more work to do.
+		return nil
+	}
+
+	// If the Secret doesn't even have a 'namespaces' field, we are done.
+	oldNamespacesFromClusterSecret, ok := localClusterSecret.Data["namespaces"]
+	if !ok {
+		return nil
+	}
+
+	oldNamespaceListFromClusterSecret := strings.Split(string(oldNamespacesFromClusterSecret), ",")
+	var newNamespaceList []string
+
+	for _, n := range oldNamespaceListFromClusterSecret {
+		// remove the namespace from the list of namespaces
+		if strings.TrimSpace(n) == sourceNS {
 			continue
 		}
-		if namespaces, ok := secret.Data["namespaces"]; ok {
-			namespaceList := strings.Split(string(namespaces), ",")
-			var result []string
+		newNamespaceList = append(newNamespaceList, strings.TrimSpace(n))
+	}
+	sort.Strings(newNamespaceList)
+	newNamespaceListString := strings.Join(newNamespaceList, ",")
 
-			for _, n := range namespaceList {
-				// remove the namespace from the list of namespaces
-				if strings.TrimSpace(n) == sourceNS {
-					continue
-				}
-				result = append(result, strings.TrimSpace(n))
-				sort.Strings(result)
-				secret.Data["namespaces"] = []byte(strings.Join(result, ","))
-			}
-			// Update the secret with the updated list of namespaces
-			if _, err = k8sClient.CoreV1().Secrets(ownerNS).Update(context.TODO(), &secret, metav1.UpdateOptions{}); err != nil {
-				log.Error(err, fmt.Sprintf("failed to update cluster permission secret for namespace: %s", ownerNS))
-				return err
-			}
+	// If the namespace list has changed, update the cluster secret
+	if string(oldNamespacesFromClusterSecret) != newNamespaceListString {
+
+		localClusterSecret.Data["namespaces"] = []byte(newNamespaceListString)
+
+		// Update the secret with the updated list of namespaces
+		argoutil.LogResourceUpdate(log, localClusterSecret, "removing managed namespace", sourceNS)
+		if _, err = k8sClient.CoreV1().Secrets(ownerNS).Update(context.TODO(), localClusterSecret, metav1.UpdateOptions{}); err != nil {
+			message := fmt.Sprintf("failed to update cluster permission secret for namespace: %s", ownerNS)
+			log.Error(err, message)
+			return fmt.Errorf("%s error: %w", message, err)
 		}
 	}
+
 	return nil
-}
-
-func initK8sClient() (*kubernetes.Clientset, error) {
-	cfg, err := config.GetConfig()
-	if err != nil {
-		log.Error(err, "unable to get k8s config")
-		return nil, err
-	}
-
-	k8sClient, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		log.Error(err, "unable to create k8s client")
-		return nil, err
-	}
-
-	return k8sClient, nil
 }
 
 // getLogLevel returns the log level for a specified component if it is set or returns the default log level if it is not set
@@ -1359,7 +1372,7 @@ func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
 	}
 
 	// get the list of namespaces managed by the Argo CD instance
-	if err := r.Client.List(context.TODO(), namespaces, listOption); err != nil {
+	if err := r.List(context.TODO(), namespaces, listOption); err != nil {
 		return err
 	}
 
@@ -1371,15 +1384,20 @@ func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
 // getSourceNamespaces retrieves a list of namespaces that match the sourceNamespaces
 // pattern specified in the given ArgoCD
 func (r *ReconcileArgoCD) getSourceNamespaces(cr *argoproj.ArgoCD) ([]string, error) {
+
+	if err := r.ensureSourceNamespacesAllowed(cr); err != nil {
+		return nil, err
+	}
+
 	sourceNamespaces := []string{}
 	namespaces := &corev1.NamespaceList{}
 
-	if err := r.Client.List(context.TODO(), namespaces, &client.ListOptions{}); err != nil {
+	if err := r.List(context.TODO(), namespaces, &client.ListOptions{}); err != nil {
 		return nil, err
 	}
 
 	for _, namespace := range namespaces.Items {
-		if glob.MatchStringInList(cr.Spec.SourceNamespaces, namespace.Name, false) {
+		if glob.MatchStringInList(cr.Spec.SourceNamespaces, namespace.Name, glob.REGEXP) {
 			sourceNamespaces = append(sourceNamespaces, namespace.Name)
 		}
 	}
@@ -1395,7 +1413,7 @@ func (r *ReconcileArgoCD) setManagedSourceNamespaces(cr *argoproj.ArgoCD) error 
 	}
 
 	// get the list of namespaces managed by the Argo CD instance
-	if err := r.Client.List(context.TODO(), namespaces, listOption); err != nil {
+	if err := r.List(context.TODO(), namespaces, listOption); err != nil {
 		return err
 	}
 
@@ -1438,7 +1456,7 @@ func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(cr *argoproj.A
 
 func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.ArgoCD, ns string) error {
 	namespace := corev1.Namespace{}
-	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: ns}, &namespace); err != nil {
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: ns}, &namespace); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return err
 		}
@@ -1446,98 +1464,77 @@ func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.
 	}
 	// Remove managed-by-cluster-argocd from the namespace
 	delete(namespace.Labels, common.ArgoCDManagedByClusterArgoCDLabel)
-	if err := r.Client.Update(context.TODO(), &namespace); err != nil {
+	argoutil.LogResourceUpdate(log, &namespace, "removing 'managed-by-cluster-argocd' label from umanaged source namespace")
+	if err := r.Update(context.TODO(), &namespace); err != nil {
 		log.Error(err, fmt.Sprintf("failed to remove label from namespace [%s]", namespace.Name))
 	}
 
 	// Delete Roles for SourceNamespaces
 	existingRole := v1.Role{}
 	roleName := getRoleNameForApplicationSourceNamespaces(namespace.Name, cr)
-	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleName, Namespace: namespace.Name}, &existingRole); err != nil {
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: roleName, Namespace: namespace.Name}, &existingRole); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to fetch the role for the service account associated with %s : %s", common.ArgoCDServerComponent, err)
 		}
 	}
 	if existingRole.Name != "" {
-		if err := r.Client.Delete(context.TODO(), &existingRole); err != nil {
+		argoutil.LogResourceDeletion(log, &existingRole, "cleaning up unmanaged source namespace")
+		if err := r.Delete(context.TODO(), &existingRole); err != nil {
 			return err
 		}
 	}
 	// Delete RoleBindings for SourceNamespaces
 	existingRoleBinding := &v1.RoleBinding{}
 	roleBindingName := getRoleBindingNameForSourceNamespaces(cr.Name, namespace.Name)
-	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBindingName, Namespace: namespace.Name}, existingRoleBinding); err != nil {
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: roleBindingName, Namespace: namespace.Name}, existingRoleBinding); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to get the rolebinding associated with %s : %s", common.ArgoCDServerComponent, err)
 		}
 	}
 	if existingRoleBinding.Name != "" {
-		if err := r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
+		argoutil.LogResourceDeletion(log, existingRoleBinding, "cleaning up unmanaged source namespace")
+		if err := r.Delete(context.TODO(), existingRoleBinding); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func isProxyCluster() bool {
-	cfg, err := config.GetConfig()
-	if err != nil {
-		log.Error(err, "failed to get k8s config")
+func (r *ReconcileArgoCD) cleanupAllSourceNamespaces(cr *argoproj.ArgoCD) {
+	if len(r.ManagedSourceNamespaces) == 0 {
+		return
 	}
 
-	// Initialize config client.
-	configClient, err := configv1client.NewForConfig(cfg)
-	if err != nil {
-		log.Error(err, "failed to initialize openshift config client")
-		return false
+	for ns := range r.ManagedSourceNamespaces {
+		if err := r.cleanupUnmanagedSourceNamespaceResources(cr, ns); err != nil {
+			log.Error(err, fmt.Sprintf("error cleaning up resources for namespace %s", ns))
+			continue
+		}
+		delete(r.ManagedSourceNamespaces, ns)
 	}
-
-	proxy, err := configClient.Proxies().Get(context.TODO(), "cluster", metav1.GetOptions{})
-	if err != nil {
-		log.Error(err, "failed to get proxy configuration")
-		return false
-	}
-
-	if proxy.Spec.HTTPSProxy != "" {
-		log.Info("proxy configuration detected")
-		return true
-	}
-
-	return false
 }
 
-func getOpenShiftAPIURL() string {
-	k8s, err := initK8sClient()
-	if err != nil {
-		log.Error(err, "failed to initialize k8s client")
+func (r *ReconcileArgoCD) ensureSourceNamespacesAllowed(cr *argoproj.ArgoCD) error {
+	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
+
+	// if sourceNamespaces is empty, cleanup all existing source namespaces
+	if len(cr.Spec.SourceNamespaces) == 0 {
+		if !allowed {
+			r.cleanupAllSourceNamespaces(cr)
+		}
+		return nil
 	}
 
-	cm, err := k8s.CoreV1().ConfigMaps("openshift-console").Get(context.TODO(), "console-config", metav1.GetOptions{})
-	if err != nil {
-		log.Error(err, "")
+	// if sourceNamespaces is not empty, and the namespace is allowed, return nil
+	if allowed {
+		return nil
 	}
 
-	var cf string
-	if v, ok := cm.Data["console-config.yaml"]; ok {
-		cf = v
-	}
+	// if sourceNamespaces is not empty, and the namespace is not allowed, skip the reconciliation
+	log.Info(fmt.Sprintf("Skipping sourceNamespaces reconciliation for namespace %s", cr.Namespace))
+	r.cleanupAllSourceNamespaces(cr)
 
-	data := make(map[string]interface{})
-	err = yaml.Unmarshal([]byte(cf), data)
-	if err != nil {
-		log.Error(err, "")
-	}
-
-	var apiURL interface{}
-	var out string
-	if c, ok := data["clusterInfo"]; ok {
-		ci, _ := c.(map[interface{}]interface{})
-
-		apiURL = ci["masterPublicURL"]
-		out = fmt.Sprintf("%v", apiURL)
-	}
-
-	return out
+	return nil
 }
 
 func AddSeccompProfileForOpenShift(client client.Client, podspec *corev1.PodSpec) {
@@ -1559,6 +1556,10 @@ func AddSeccompProfileForOpenShift(client client.Client, podspec *corev1.PodSpec
 			podspec.SecurityContext.SeccompProfile.Type = corev1.SeccompProfileTypeRuntimeDefault
 		}
 	}
+}
+
+func IsOpenShiftCluster() bool {
+	return IsVersionAPIAvailable() // This checks if the OpenShift API is available
 }
 
 // getClusterVersion returns the OpenShift Cluster version in which the operator is installed
@@ -1614,4 +1615,749 @@ func getApplicationSetHTTPServerHost(cr *argoproj.ArgoCD) (string, error) {
 		host = hostname
 	}
 	return host, nil
+}
+
+// UseApplicationController determines whether Application Controller resources should be created and configured or not
+func UseApplicationController(name string, cr *argoproj.ArgoCD) bool {
+	if name == common.ArgoCDApplicationControllerComponent && cr.Spec.Controller.Enabled != nil {
+		return *cr.Spec.Controller.Enabled
+	}
+	return true
+}
+
+// UseRedis determines whether Redis resources should be created and configured or not
+func UseRedis(name string, cr *argoproj.ArgoCD) bool {
+	if name == common.ArgoCDRedisComponent && cr.Spec.Redis.Enabled != nil {
+		return *cr.Spec.Redis.Enabled
+	}
+	return true
+}
+
+// UseServer determines whether ArgoCD Server resources should be created and configured or not
+func UseServer(name string, cr *argoproj.ArgoCD) bool {
+	if name == common.ArgoCDServerComponent && cr.Spec.Server.Enabled != nil {
+		return *cr.Spec.Server.Enabled
+	}
+	return true
+}
+
+// addKubernetesData checks for any Kubernetes-specific labels or annotations
+// in the live object and updates the source object to ensure critical metadata
+// (like scheduling, topology, or lifecycle information) is retained.
+// This helps avoid loss of important Kubernetes-managed metadata during updates.
+func addKubernetesData(source map[string]string, live map[string]string) {
+
+	// List of Kubernetes-specific substrings (wildcard match)
+	patterns := []string{
+		"*kubernetes.io*",
+		"*k8s.io*",
+		"*openshift.io*",
+	}
+
+	for key, value := range live {
+		found := glob.MatchStringInList(patterns, key, glob.GLOB)
+		if found {
+			// Don't override values already present in the source object.
+			// This allows the operator to update Kubernetes specific data when needed.
+			if _, ok := source[key]; !ok {
+				source[key] = value
+			}
+		}
+	}
+}
+
+// updateStatusAndConditionsOfArgoCD will update .status field with provided param, and upsert .status.conditions with provided condition
+func updateStatusAndConditionsOfArgoCD(ctx context.Context, condition metav1.Condition, cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus, k8sClient client.Client, log logr.Logger) error {
+	changed, newConditions := insertOrUpdateConditionsInSlice(condition, cr.Status.Conditions)
+
+	// get the latest version of argocd instance
+	if err := k8sClient.Get(ctx, types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}, cr); err != nil {
+		if apierrors.IsNotFound(err) {
+			// if ArgoCD CR no longer exists, there is no status update needed, so just return.
+			return nil
+		}
+		return err
+	}
+
+	// Determine if any of the values in the status field changed
+	crStatusClone := cr.Status.DeepCopy()
+	crStatusClone.Conditions = nil // Remove Conditions since we don't want to compare it, we only want to compare the other fields
+
+	if !reflect.DeepEqual(crStatusClone, argocdStatus) {
+		changed = true
+	}
+
+	if changed {
+		cr.Status = *argocdStatus
+		cr.Status.Conditions = newConditions
+
+		if err := k8sClient.Status().Update(ctx, cr); err != nil {
+			log.Error(err, "unable to update ArgoCD status condition")
+			return err
+		}
+	}
+	return nil
+}
+
+// insertOrUpdateConditionsInSlice is a generic function for inserting/updating metav1.Condition into a slice of []metav1.Condition
+func insertOrUpdateConditionsInSlice(newCondition metav1.Condition, existingConditions []metav1.Condition) (bool, []metav1.Condition) {
+
+	// Check if condition with same type is already set, if Yes then check if content is same,
+	// If content is not same update LastTransitionTime
+	index := -1
+	for i, Condition := range existingConditions {
+		if Condition.Type == newCondition.Type {
+			index = i
+			break
+		}
+	}
+
+	now := metav1.Now()
+	changed := false
+
+	if index == -1 {
+		newCondition.LastTransitionTime = now
+		existingConditions = append(existingConditions, newCondition)
+		changed = true
+
+	} else if existingConditions[index].Message != newCondition.Message ||
+		existingConditions[index].Reason != newCondition.Reason ||
+		existingConditions[index].Status != newCondition.Status {
+
+		newCondition.LastTransitionTime = now
+		existingConditions[index] = newCondition
+		changed = true
+	}
+
+	return changed, existingConditions
+}
+
+func removeCondition(conditions *[]metav1.Condition, conditionType string) {
+	if conditions == nil {
+		return
+	}
+
+	newConditions := (*conditions)[:0]
+	for _, c := range *conditions {
+		if c.Type != conditionType {
+			newConditions = append(newConditions, c)
+		}
+	}
+
+	*conditions = newConditions
+}
+
+// createCondition returns Condition based on input provided.
+// 1. Returns Success condition if no error message is provided, all fields are default.
+// 2. If Message is provided, it returns Failed condition having all default fields except Message.
+func createCondition(message string) metav1.Condition {
+	if message == argoproj.OpenShiftOAuthErrorMessage {
+		return metav1.Condition{
+			Type:    argoproj.ArgoCDConditionConfigurationError,
+			Reason:  argoproj.ArgoCDConditionReasonSSOError,
+			Message: message,
+			Status:  metav1.ConditionTrue,
+		}
+	}
+	if message == "" {
+		return metav1.Condition{
+			Type:    argoproj.ArgoCDConditionType,
+			Reason:  argoproj.ArgoCDConditionReasonSuccess,
+			Message: "",
+			Status:  metav1.ConditionTrue,
+		}
+	}
+	return metav1.Condition{
+		Type:    argoproj.ArgoCDConditionType,
+		Reason:  argoproj.ArgoCDConditionReasonErrorOccurred,
+		Message: message,
+		Status:  metav1.ConditionFalse,
+	}
+}
+
+// appendUniqueArgs appends extraArgs to cmd while ignoring any duplicate flags.
+func appendUniqueArgs(cmd []string, extraArgs []string) []string {
+	existing := map[string]string{}
+	repeated := map[string]map[string]bool{}
+	nonRepeatableFlags := map[string]bool{}
+	result := []string{}
+
+	// Helper to add flag+val to result
+	add := func(flag, val string) {
+		result = append(result, flag)
+		if val != "" {
+			result = append(result, val)
+		}
+	}
+
+	// Process original cmd and treat its flags as non-repeatable
+	for i := 0; i < len(cmd); i++ {
+		arg := cmd[i]
+		if strings.HasPrefix(arg, "--") {
+			val := ""
+			if i+1 < len(cmd) && !strings.HasPrefix(cmd[i+1], "--") {
+				val = cmd[i+1]
+				i++
+			}
+			if repeated[arg] == nil {
+				repeated[arg] = map[string]bool{}
+			}
+			repeated[arg][val] = true
+			existing[arg] = val
+			nonRepeatableFlags[arg] = true // flags from cmd are non-repeatable
+			add(arg, val)
+		} else {
+			result = append(result, arg)
+		}
+	}
+
+	// Process extraArgs
+	for i := 0; i < len(extraArgs); i++ {
+		arg := extraArgs[i]
+		if strings.HasPrefix(arg, "--") {
+			val := ""
+			if i+1 < len(extraArgs) && !strings.HasPrefix(extraArgs[i+1], "--") {
+				val = extraArgs[i+1]
+				i++
+			}
+
+			// Skip if this flag+val combo already exists
+			if repeated[arg] != nil && repeated[arg][val] {
+				continue
+			}
+
+			if nonRepeatableFlags[arg] {
+				// Remove the existing non-repeatable flag (and its value)
+				newResult := []string{}
+				skipNext := false
+				for j := 0; j < len(result); j++ {
+					if skipNext {
+						skipNext = false
+						continue
+					}
+					if result[j] == arg {
+						if j+1 < len(result) && !strings.HasPrefix(result[j+1], "--") {
+							skipNext = true
+						}
+						continue
+					}
+					newResult = append(newResult, result[j])
+				}
+				result = newResult
+
+				// Replace with new value
+				repeated[arg] = map[string]bool{val: true}
+				existing[arg] = val
+				add(arg, val)
+			} else {
+				// Allow repeated if not seen before
+				if repeated[arg] == nil {
+					repeated[arg] = map[string]bool{}
+				}
+				repeated[arg][val] = true
+				add(arg, val)
+			}
+		} else {
+			result = append(result, arg)
+		}
+	}
+
+	return result
+}
+
+// reconcileArgoCDAgent will reconcile all ArgoCD Agent resources.
+func (r *ReconcileArgoCD) reconcileArgoCDAgent(cr *argoproj.ArgoCD) error {
+	log.Info("reconciling ArgoCD Agent resources")
+
+	principalEnabled := cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Principal != nil && cr.Spec.ArgoCDAgent.Principal.IsEnabled()
+	agentEnabled := cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Agent != nil && cr.Spec.ArgoCDAgent.Agent.IsEnabled()
+
+	if principalEnabled && agentEnabled {
+		return fmt.Errorf("spec.argoCDAgent.principal and spec.argoCDAgent.agent cannot both be enabled")
+	}
+
+	log.Info("reconciling ArgoCD Agent's Principal resources")
+	compName := string(argoproj.AgentComponentTypePrincipal)
+	var sa *corev1.ServiceAccount
+	var err error
+
+	log.Info("reconciling ArgoCD Agent's Principal service account")
+	if sa, err = argocdagent.ReconcilePrincipalServiceAccount(r.Client, compName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Principal role")
+	if _, err := argocdagent.ReconcilePrincipalRole(r.Client, compName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Principal cluster role")
+	if _, err := argocdagent.ReconcilePrincipalClusterRoles(r.Client, compName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Principal role binding")
+	if err := argocdagent.ReconcilePrincipalRoleBinding(r.Client, compName, sa, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Principal cluster role binding")
+	if err := argocdagent.ReconcilePrincipalClusterRoleBinding(r.Client, compName, sa, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Principal service")
+	if err := argocdagent.ReconcilePrincipalService(r.Client, compName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Principal metrics service")
+	if err := argocdagent.ReconcilePrincipalMetricsService(r.Client, compName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Principal redis proxy service")
+	if err := argocdagent.ReconcilePrincipalRedisProxyService(r.Client, compName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Principal resource proxy service")
+	if err := argocdagent.ReconcilePrincipalResourceProxyService(r.Client, compName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Principal healthz service")
+	if err := argocdagent.ReconcilePrincipalHealthzService(r.Client, compName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Principal network policy")
+	if err := argocdagent.ReconcilePrincipalNetworkPolicy(r.Client, compName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Principal route")
+	if err := argocdagent.ReconcilePrincipalRoute(r.Client, compName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Principal deployment")
+	if err := argocdagent.ReconcilePrincipalDeployment(r.Client, compName, sa.Name, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Agent resources")
+	agentCompName := string(argoproj.AgentComponentTypeAgent)
+
+	log.Info("reconciling ArgoCD Agent's Agent service account")
+	var agentSa *corev1.ServiceAccount
+	if agentSa, err = agent.ReconcileAgentServiceAccount(r.Client, agentCompName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Agent role")
+	if _, err := agent.ReconcileAgentRole(r.Client, agentCompName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Agent cluster role")
+	if _, err := agent.ReconcileAgentClusterRoles(r.Client, agentCompName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Agent role binding")
+	if err := agent.ReconcileAgentRoleBinding(r.Client, agentCompName, agentSa, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Agent cluster role binding")
+	if err := agent.ReconcileAgentClusterRoleBinding(r.Client, agentCompName, agentSa, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Agent metrics service")
+	if err := agent.ReconcileAgentMetricsService(r.Client, agentCompName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Agent healthz service")
+	if err := agent.ReconcileAgentHealthzService(r.Client, agentCompName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Agent deployment")
+	if err := agent.ReconcileAgentDeployment(r.Client, agentCompName, agentSa.Name, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *ReconcileArgoCD) namespaceManagementFilterPredicate() predicate.Predicate {
+	return predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			oldNSMgmt, okOld := e.ObjectOld.(*argoproj.NamespaceManagement)
+			newNSMgmt, okNew := e.ObjectNew.(*argoproj.NamespaceManagement)
+
+			if !okOld || !okNew {
+				return false
+			}
+
+			k8sClient := r.K8sClient
+			return r.handleNamespaceManagementUpdate(oldNSMgmt, newNSMgmt, k8sClient)
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			// If namespaceManagement CR is deleted, then delete RBACs for the namespace that was present in the NamespaceManagement CR.
+			nsMgmt, ok := e.Object.(*argoproj.NamespaceManagement)
+			if !ok {
+				return false
+			}
+			k8sClient := r.K8sClient
+			return r.handleNamespaceManagementDelete(nsMgmt, k8sClient)
+		},
+	}
+}
+
+func (r *ReconcileArgoCD) argoCDNamespaceManagementFilterPredicate() predicate.Predicate {
+	return predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			valNew, ok := e.ObjectNew.(*argoproj.ArgoCD)
+			if !ok {
+				return false
+			}
+			valOld, ok := e.ObjectOld.(*argoproj.ArgoCD)
+			if !ok {
+				return false
+			}
+
+			k8sClient := r.K8sClient
+			return r.handleArgoCDNamespaceManagementUpdate(valNew, valOld, k8sClient)
+		},
+	}
+}
+
+func (r *ReconcileArgoCD) handleArgoCDNamespaceManagementUpdate(valNew, valOld *argoproj.ArgoCD, k8sClient kubernetes.Interface) bool {
+	if !reflect.DeepEqual(valOld.Spec.NamespaceManagement, valNew.Spec.NamespaceManagement) {
+		// Fetch all namespaces from the cluster
+		namespaceList := &corev1.NamespaceList{}
+		if err := r.List(context.TODO(), namespaceList); err != nil {
+			log.Error(err, "Failed to list namespaces for NamespaceManagement update")
+			// Return false as we cannot proceed without namespace info
+			return false
+		}
+
+		// Extract all namespace names into a slice
+		var allNamespaces []string
+		for _, ns := range namespaceList.Items {
+			allNamespaces = append(allNamespaces, ns.Name)
+		}
+
+		namespacesToDelete := getNamespacesToDelete(valOld.Spec.NamespaceManagement, valNew.Spec.NamespaceManagement, allNamespaces)
+
+		if len(namespacesToDelete) > 0 {
+			for _, nsEntry := range namespacesToDelete {
+				ns := &corev1.Namespace{}
+				if err := r.Get(context.TODO(), types.NamespacedName{Name: nsEntry}, ns); err != nil {
+					continue // Could not fetch namespace; skip cleanup
+				}
+
+				// Skip cleanup if managed-by label exists
+				if labelVal, labelExists := ns.Labels[common.ArgoCDManagedByLabel]; labelExists && labelVal == valOld.Namespace {
+					log.Info(fmt.Sprintf("Skipping cleanup for namespace %s because it's still labeled as managed by this ArgoCD instance", nsEntry))
+					continue
+				}
+
+				log.Info(fmt.Sprintf("Cleaning up RBACs for namespace %s", nsEntry))
+				if err := cleanupRBACsForNamespaceManagement(valOld.Namespace, nsEntry, k8sClient); err != nil {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
+func (r *ReconcileArgoCD) handleNamespaceManagementUpdate(oldNSMgmt, newNSMgmt *argoproj.NamespaceManagement, k8sClient kubernetes.Interface) bool {
+	ns := &corev1.Namespace{}
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: oldNSMgmt.Spec.ManagedBy}, ns); err != nil {
+		return false
+	}
+
+	// Skip Update if managed-by label exists and matches .spec.managedBy
+	if labelVal, labelExists := ns.Labels[common.ArgoCDManagedByLabel]; labelExists && labelVal == oldNSMgmt.Spec.ManagedBy {
+		log.Info(fmt.Sprintf("Namespace %s still managed by same ArgoCD instance via label, skipping update cleanup", oldNSMgmt.Namespace))
+		return false
+	}
+
+	// If `.spec.managedBy` changes, trigger reconciliation
+	if oldNSMgmt.Spec.ManagedBy != newNSMgmt.Spec.ManagedBy {
+		if err := cleanupRBACsForNamespaceManagement(oldNSMgmt.Spec.ManagedBy, oldNSMgmt.Namespace, k8sClient); err != nil {
+			return false
+		}
+		return true
+	}
+	return false
+}
+
+func (r *ReconcileArgoCD) handleNamespaceManagementDelete(nsMgmt *argoproj.NamespaceManagement, k8sClient kubernetes.Interface) bool {
+	ns := &corev1.Namespace{}
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: nsMgmt.Spec.ManagedBy}, ns); err != nil {
+		return false
+	}
+
+	// Skip cleanup if managed-by label exists and matches .spec.managedBy
+	if labelVal, labelExists := ns.Labels[common.ArgoCDManagedByLabel]; labelExists && labelVal == nsMgmt.Spec.ManagedBy {
+		log.Info(fmt.Sprintf("Namespace %s still managed by same ArgoCD instance via label, skipping delete cleanup", nsMgmt.Namespace))
+		return false
+	}
+
+	// Retrieve the ArgoCD instance that was managing this namespace
+	argocdNamespace := nsMgmt.Spec.ManagedBy
+	if argocdNamespace == "" {
+		// If .spec.managedBy is not set, there is no ArgoCD instance managing this namespace, so no cleanup is needed
+		log.Info("No ArgoCD CR specified in .spec.managedBy, skipping cleanup")
+		return false
+	}
+
+	if err := cleanupRBACsForNamespaceManagement(argocdNamespace, nsMgmt.Namespace, k8sClient); err != nil {
+		return false
+	}
+	return false
+}
+
+func cleanupRBACsForNamespaceManagement(argocdNamespace, nms string, k8sClient kubernetes.Interface) error {
+	if err := deleteRBACsForNamespace(nms, k8sClient); err != nil {
+		log.Error(err, fmt.Sprintf("failed to delete RBACs for namespace: %s", nms))
+		return err
+	} else {
+		log.Info(fmt.Sprintf("Successfully removed the RBACs for namespace: %s", nms))
+	}
+	if err := deleteManagedNamespaceFromClusterSecret(argocdNamespace, nms, k8sClient); err != nil {
+		log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", nms))
+		return err
+	}
+	return nil
+}
+
+// updateStatusConditionOfArgoCD calls Set Condition of NamespaceManagement status
+func updateStatusConditionOfNamespaceManagement(ctx context.Context, condition metav1.Condition, cr *argoproj.NamespaceManagement, k8sClient client.Client, log logr.Logger) error {
+	changed, newConditions := insertOrUpdateConditionsInSlice(condition, cr.Status.Conditions)
+
+	if changed {
+		// get the latest version of namespacemanagement before updating
+		if err := k8sClient.Get(ctx, types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}, cr); err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
+		cr.Status.Conditions = newConditions
+		if err := k8sClient.Status().Update(ctx, cr); err != nil {
+			log.Error(err, "unable to update NamespaceManagement status condition")
+			return err
+		}
+	}
+	return nil
+}
+
+// getNamespacesToDelete determines which namespaces were removed or had allowManagedBy changed.
+// oldList, newList contain patterns in ns.Name, but allNamespaces contains real namespace names.
+func getNamespacesToDelete(oldList, newList []argoproj.ManagedNamespaces, allNamespaces []string) []string {
+	// expandNsPatterns expands namespace patterns into actual namespaces using glob match.
+	// Example: pattern "team-*" will match ["team-123", "team-567", "team-dev", "team-prod"]
+	expandNsPatterns := func(list []argoproj.ManagedNamespaces) map[string]bool {
+		result := make(map[string]bool)
+		for _, patternEntry := range list {
+			for _, ns := range allNamespaces {
+				if glob.MatchStringInList([]string{patternEntry.Name}, ns, glob.GLOB) {
+					result[ns] = patternEntry.AllowManagedBy
+				}
+			}
+		}
+		return result
+	}
+
+	oldExpanded := expandNsPatterns(oldList)
+	newExpanded := expandNsPatterns(newList)
+
+	var namespacesToDelete []string
+	for ns, oldAllowed := range oldExpanded {
+		newAllowed, exists := newExpanded[ns]
+		if !exists || newAllowed != oldAllowed {
+			namespacesToDelete = append(namespacesToDelete, ns)
+		}
+	}
+	return namespacesToDelete
+}
+
+// reconcileDeploymentHelper is a generic helper that reconciles a Deployment resource.
+// It can be used for various components by passing in the desired deployment,
+// the component's name, and a boolean indicating if the component is enabled.
+func (r *ReconcileArgoCD) reconcileDeploymentHelper(cr *argoproj.ArgoCD, desiredDeployment *appsv1.Deployment, componentName string, enabled bool) error {
+	// fetch existing deployment by name
+	deploymentChanged := false
+	explanation := ""
+	existingDeployment := &appsv1.Deployment{}
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: desiredDeployment.Name, Namespace: cr.Namespace}, existingDeployment); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to get the deployment associated with %s : %s", desiredDeployment.Name, err)
+		}
+
+		// deployment does not exist and shouldn't, nothing to do here
+		if !enabled {
+			return nil
+		}
+
+		// deployment does not exist but should, so it should be created
+		if err := controllerutil.SetControllerReference(cr, desiredDeployment, r.Scheme); err != nil {
+			return err
+		}
+
+		argoutil.LogResourceCreation(log, desiredDeployment)
+		return r.Create(context.TODO(), desiredDeployment)
+	}
+
+	// deployment exists but shouldn't, so it should be deleted
+	if !enabled {
+		argoutil.LogResourceDeletion(log, existingDeployment, fmt.Sprintf("%s is disabled", componentName))
+		return r.Delete(context.TODO(), existingDeployment)
+	}
+
+	// deployment exists and should. Reconcile deployment if changed
+	updateNodePlacement(existingDeployment, desiredDeployment, &deploymentChanged, &explanation)
+
+	if existingDeployment.Spec.Template.Spec.Containers[0].Image != desiredDeployment.Spec.Template.Spec.Containers[0].Image {
+		existingDeployment.Spec.Template.Spec.Containers[0].Image = desiredDeployment.Spec.Template.Spec.Containers[0].Image
+		existingDeployment.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "container image"
+		deploymentChanged = true
+	}
+
+	if existingDeployment.Spec.Template.Spec.Containers[0].ImagePullPolicy != desiredDeployment.Spec.Template.Spec.Containers[0].ImagePullPolicy {
+		existingDeployment.Spec.Template.Spec.Containers[0].ImagePullPolicy = desiredDeployment.Spec.Template.Spec.Containers[0].ImagePullPolicy
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "image pull policy"
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Command, desiredDeployment.Spec.Template.Spec.Containers[0].Command) {
+		existingDeployment.Spec.Template.Spec.Containers[0].Command = desiredDeployment.Spec.Template.Spec.Containers[0].Command
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "container command"
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Env,
+		desiredDeployment.Spec.Template.Spec.Containers[0].Env) {
+		existingDeployment.Spec.Template.Spec.Containers[0].Env = desiredDeployment.Spec.Template.Spec.Containers[0].Env
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "container env"
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Volumes, desiredDeployment.Spec.Template.Spec.Volumes) {
+		existingDeployment.Spec.Template.Spec.Volumes = desiredDeployment.Spec.Template.Spec.Volumes
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "volumes"
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Replicas, desiredDeployment.Spec.Replicas) {
+		existingDeployment.Spec.Replicas = desiredDeployment.Spec.Replicas
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "replicas"
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, desiredDeployment.Spec.Template.Spec.Containers[0].VolumeMounts) {
+		existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = desiredDeployment.Spec.Template.Spec.Containers[0].VolumeMounts
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "container volume mounts"
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Resources, desiredDeployment.Spec.Template.Spec.Containers[0].Resources) {
+		existingDeployment.Spec.Template.Spec.Containers[0].Resources = desiredDeployment.Spec.Template.Spec.Containers[0].Resources
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "container resources"
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].SecurityContext, desiredDeployment.Spec.Template.Spec.Containers[0].SecurityContext) {
+		existingDeployment.Spec.Template.Spec.Containers[0].SecurityContext = desiredDeployment.Spec.Template.Spec.Containers[0].SecurityContext
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "container security context"
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.SecurityContext, desiredDeployment.Spec.Template.Spec.SecurityContext) {
+		existingDeployment.Spec.Template.Spec.SecurityContext = desiredDeployment.Spec.Template.Spec.SecurityContext
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "pod security context"
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.ServiceAccountName, desiredDeployment.Spec.Template.Spec.ServiceAccountName) {
+		existingDeployment.Spec.Template.Spec.ServiceAccountName = desiredDeployment.Spec.Template.Spec.ServiceAccountName
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "service account name"
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Labels, desiredDeployment.Labels) {
+		existingDeployment.Labels = desiredDeployment.Labels
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "labels"
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Labels, desiredDeployment.Spec.Template.Labels) {
+		existingDeployment.Spec.Template.Labels = desiredDeployment.Spec.Template.Labels
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "pod labels"
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Selector, desiredDeployment.Spec.Selector) {
+		existingDeployment.Spec.Selector = desiredDeployment.Spec.Selector
+		if deploymentChanged {
+			explanation += ", "
+		}
+		explanation += "selector"
+		deploymentChanged = true
+	}
+
+	if deploymentChanged {
+		argoutil.LogResourceUpdate(log, existingDeployment, "updating", explanation)
+		return r.Update(context.TODO(), existingDeployment)
+	}
+
+	return nil
 }

@@ -13,7 +13,6 @@ Name | Default | Description
 --- | --- | ---
 [**ApplicationInstanceLabelKey**](#application-instance-label-key) | `mycompany.com/appname` |  The metadata.label key name where Argo CD injects the app name as a tracking label.
 [**ApplicationSet**](#applicationset-controller-options) | [Object] | ApplicationSet controller configuration options.
-[**ConfigManagementPlugins**](#config-management-plugins) | [Empty] | Configuration to add a config management plugin.
 [**Controller**](#controller-options) | [Object] | Argo CD Application Controller options.
 [**DisableAdmin**](#disable-admin) | `false` | Disable the admin user.
 [**ExtraConfig**](#extra-config) | [Empty] | A catch-all mechanism to populate the argocd-cm configmap.
@@ -23,6 +22,7 @@ Name | Default | Description
 [**HelpChatURL**](#help-chat-url) | `https://mycorp.slack.com/argo-cd` | URL for getting chat help, this will typically be your Slack channel for support.
 [**HelpChatText**](#help-chat-text) | `Chat now!` | The text for getting chat help.
 [**Image**](#image) | `argoproj/argocd` | The container image for all Argo CD components. This overrides the `ARGOCD_IMAGE` environment variable.
+[**ImageUpdater**](#image-updater-controller-options) | [Object] | Image Updater controller configuration options.
 [**Import**](#import-options) | [Object] | Import configuration options.
 [**Ingress**](#ingress-options) | [Object] | Ingress configuration options.
 [**InitialRepositories**](#initial-repositories) | [Empty] | Initial git repositories to configure Argo CD to use upon creation of the cluster.
@@ -35,12 +35,13 @@ Name | Default | Description
 [**Prometheus**](#prometheus-options) | [Object] | Prometheus configuration options.
 [**RBAC**](#rbac-options) | [Object] | RBAC configuration options.
 [**Redis**](#redis-options) | [Object] | Redis configuration options.
+[**Repo**](#repo-options) | [Object] | Repo Server configuration options.
 [**ResourceHealthChecks**](#resource-customizations) | [Empty] | Customizes resource health check behavior.
 [**ResourceIgnoreDifferences**](#resource-customizations) | [Empty] | Customizes resource ignore difference behavior.
 [**ResourceActions**](#resource-customizations) | [Empty] | Customizes resource action behavior.
 [**ResourceExclusions**](#resource-exclusions) | [Empty] | The configuration to completely ignore entire classes of resource group/kinds.
 [**ResourceInclusions**](#resource-inclusions) | [Empty] | The configuration to configure which resource group/kinds are applied.
-[**ResourceTrackingMethod**](#resource-tracking-method) | `label` | The resource tracking method Argo CD should use.
+[**ResourceTrackingMethod**](#resource-tracking-method) | `annotation` | The resource tracking method Argo CD should use.
 [**Server**](#server-options) | [Object] | Argo CD Server configuration options.
 [**SSO**](#single-sign-on-options) | [Object] | Single sign-on options.
 [**StatusBadgeEnabled**](#status-badge-enabled) | `true` | Enable application status badge feature.
@@ -84,10 +85,14 @@ Resources | [Empty] | The container compute resources.
 LogLevel | info | The log level to be used by the ArgoCD Application Controller component. Valid options are debug, info, error, and warn.
 LogFormat | text | The log format to be used by the ArgoCD Application Controller component. Valid options are text or json.
 ParallelismLimit | 10 | The kubectl parallelism limit to set for the controller (`--kubectl-parallelism-limit` flag)
-SCMRootCAConfigMap (#add-tls-certificate-for-gitlab-scm-provider-to-applicationsets-controller) | [Empty] | The name of the config map that stores the Gitlab SCM Provider's TLS certificate which will be mounted on the ApplicationSet Controller at `"/app/tls/scm/cert"` path.
+SCMRootCAConfigMap (#add-tls-certificate-for-gitlab-scm-provider-to-applicationsets-controller) | [Empty] | The name of the config map that stores the Gitlab SCM Provider's TLS certificate which will be mounted on the ApplicationSet Controller at `"/app/tls/scm/"` path.
 Enabled|true|Flag to enable/disable the ApplicationSet Controller during ArgoCD installation.
 SourceNamespaces|[Empty]|List of namespaces other than control-plane namespace where appsets can be created.
 SCMProviders|[Empty]|List of allowed Source Code Manager (SCM) providers URL.
+Volumes | [Empty] | Configure addition volumes for the ArgoCD Application Controller component. This field is optional.
+VolumeMounts | [Empty] | Configure addition volume mounts for the ArgoCD Application Controller component. This field is optional.
+Annotations | [Empty] | Custom annotations to pods deployed by the operator
+Labels | [Empty] | Custom labels to pods deployed by the operator
 
 ### ApplicationSet Controller Example
 
@@ -124,7 +129,7 @@ spec:
 
 ### Add Self signed TLS Certificate for Gitlab SCM Provider to ApplicationSets Controller
 
-ApplicationSetController added a new option `--scm-root-ca-path` and expects the self-signed TLS certificate to be mounted on the path specified and to be used for Gitlab SCM Provider and Gitlab Pull Request Provider. To set this option, you can store the certificate in the config map and specify the config map name using `spec.applicationSet.SCMRootCAConfigMap` in ArgoCD CR. When the parameter `spec.applicationSet.SCMRootCAConfigMap` is set in ArgoCD CR, the operator checks for ConfigMap in the same namespace as the ArgoCD instance and mounts the Certificate stored in ConfigMap to ApplicationSet Controller pods at the path `/app/tls/scm/cert`.
+ApplicationSetController added a new option `--scm-root-ca-path` and expects the self-signed TLS certificate to be mounted on the path specified and to be used for Gitlab SCM Provider and Gitlab Pull Request Provider. To set this option, you can create a ConfigMap named - 'argocd-appset-gitlab-scm-tls-certs-cm' and store the certificate in this config map. Specify the config map name in `spec.applicationSet.scmRootCAConfigMap` in ArgoCD CR. When the parameter `spec.applicationSet.scmRootCAConfigMap` is set in ArgoCD CR, the operator checks for ConfigMap in the same namespace as the ArgoCD instance and mounts the Certificate stored in ConfigMap to ApplicationSet Controller pods at the path `/app/tls/scm/`.
 
 Below example shows how a user can add scmRootCaPath to the ApplicationSet controller.
 ```yaml
@@ -136,32 +141,25 @@ metadata:
     example: applicationset
 spec:
   applicationSet:
-    SCMRootCAConfigMap: example-gitlab-scm-tls-cert
+    scmRootCAConfigMap: argocd-appset-gitlab-scm-tls-certs-cm
 ```
+!!! important
 
-## Config Management Plugins
+Please note that the key in the ConfigMap should be named 'cert', as this is used as the filename that is mounted. Other key names will not work due to an upstream bug that will be addressed later. Additionally, ensure that the ConfigMap is named argocd-appset-gitlab-scm-tls-certs-cm. Below is a sample ConfigMap that can be used to mount your certificate.
 
-Configuration to add a config management plugin. This property maps directly to the `configManagementPlugins` field in the `argocd-cm` ConfigMap.
-
-### Config Management Plugins Example
-
-The following example sets a value in the `argocd-cm` ConfigMap using the `ConfigManagementPlugins` property on the `ArgoCD` resource.
-
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
+```yaml
+apiVersion: v1
+kind: ConfigMap
 metadata:
-  name: example-argocd
-  labels:
-    example: config-management-plugins
-spec:
-  configManagementPlugins: |
-    - name: kasane
-      init:
-        command: [kasane, update]
-      generate:
-        command: [kasane, show]
-```
+  name: argocd-appset-gitlab-scm-tls-certs-cm
+  namespace: test-1-32-appsets-scm-tls-mount
+data:
+  cert: |
+    -----BEGIN CERTIFICATE-----
+    ... (certificate contents) ...
+    -----END CERTIFICATE-----
+```    
+
 
 ## Controller Options
 
@@ -181,6 +179,13 @@ Sharding.dynamicScalingEnabled | true | Whether to enable dynamic scaling of the
 Sharding.minShards | 1 | The minimum number of replicas of the ArgoCD Application Controller component. | Must be greater than 0 |
 Sharding.maxShards | 1 | The maximum number of replicas of the ArgoCD Application Controller component. | Must be greater than `Sharding.minShards` |
 Sharding.clustersPerShard | 1 | The number of clusters that need to be handles by each shard. In case the replica count has reached the maxShards, the shards will manage more than one cluster. | Must be greater than 0 |
+ExtraCommandArgs | [Empty] | Allows users to pass command line arguments to controller workload. They get added to default command line arguments provided by the operator. |  |
+InitContainers | [Empty] | List of init containers for the ArgoCD Application Controller component. This field is optional.
+SidecarContainers | [Empty] | List of sidecar containers for the ArgoCD Application Controller component. This field is optional.
+Volumes | [Empty] | Configure addition volumes for the ArgoCD Application Controller component. This field is optional.
+VolumeMounts | [Empty] | Configure addition volume mounts for the ArgoCD Application Controller component. This field is optional.
+Annotations | [Empty] | Custom annotations to pods deployed by the operator
+Labels | [Empty] | Custom labels to pods deployed by the operator
 
 ### Controller Example
 
@@ -238,6 +243,10 @@ spec:
 !!! note
     In case the number of replicas required is less than the minShards the number of replicas will be set as minShards. Similarly, if the required number of replicas exceeds maxShards, the replica count will be set as maxShards.
 
+!!!note
+    After enabling the `dynamicScalingEnabled`, the argocd-controller instances will restart while scaling up or scaling down.
+
+
 The following example shows how to enable dynamic scaling of the ArgoCD Application Controller component.
 
 ```yaml
@@ -253,6 +262,73 @@ spec:
       enabled: true
       replicas: 5
 ```
+
+The following example shows how to configure initContainers for the ArgoCD Application Controller component.
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: controller
+spec:
+  controller:
+    initContainers:
+    - name: argocd-init
+      image: nginx:latest
+      imagePullPolicy: Always
+      resources:
+        limits:
+          cpu: 50m
+          memory: 64Mi
+        requests:
+          cpu: 10m
+          memory: 32Mi
+```
+
+The following example shows how to configure sidecarContainers for the ArgoCD Application Controller component.
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: controller
+spec:
+  controller:
+    sidecarContainers:
+    - name: sidecar
+      image: busybox
+      resources:
+        limits:
+          cpu: 50m
+          memory: 64Mi
+        requests:
+          cpu: 10m
+          memory: 32Mi
+```
+
+The following example shows how to configure extra command arguments for the ArgoCD Application Controller component.
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: controller
+spec:
+  controller:
+    extraCommandArgs:
+    - --app-hard-resync
+    - --app-resync
+```
+
+!!! note
+    ExtraCommandArgs will not be added, if one of these commands is already part of the command with same or different value.
+
 
 ## Disable Admin
 
@@ -418,6 +494,33 @@ spec:
   image: argoproj/argocd
 ```
 
+## Image Updater Controller Options
+
+The following properties are available for configuring the Image Updater controller component.
+
+Name | Default | Description
+--- | --- | ---
+Enabled | `false` | The toggle that determines whether image updater controller should be started or not.
+Env | [Empty] | Environment to set for the image updater workloads.
+Resources | [Empty] | The container compute resources.
+
+### Image Updater Controller Example
+
+The following example shows all properties set to the default values.
+
+``` yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+spec:
+  imageUpdater:
+    enabled: true
+    env:
+      - name: IMAGE_UPDATER_LOGLEVEL
+        value: trace
+```
+
 ## Import Options
 
 The `Import` property allows for the import of an existing `ArgoCDExport` resource. An ArgoCDExport object represents an Argo CD cluster at a point in time that was exported using the `argocd-util` export capability.
@@ -427,7 +530,7 @@ The following properties are available for configuring the import process.
 Name | Default | Description
 --- | --- | ---
 Name | [Empty] | The name of an ArgoCDExport from which to import data.
-Namespace | [ArgoCD Namepspace] |  The Namespace for the ArgoCDExport, defaults to the same namespace as the ArgoCD.
+Namespace | [ArgoCD Namespace] |  The Namespace for the ArgoCDExport, defaults to the same namespace as the ArgoCD.
 
 ### Import Example
 
@@ -466,50 +569,12 @@ argoproj.io/AppProject default unchanged
 argo-cd import complete
 ```
 
-## Initial Repositories
+## Initial Repositories [Deprecated]
 
 Initial git repositories to configure Argo CD to use upon creation of the cluster.
 
-This property maps directly to the `repositories` field in the `argocd-cm` ConfigMap. Updating this property after the cluster has been created has no affect and should be used only as a means to initialize the cluster with the value provided. Modifications to the `repositories` field should then be made through the Argo CD web UI or CLI.
-
-### Initial Repositories Example
-
-The following example sets a value in the `argocd-cm` ConfigMap using the `InitialRepositories` property on the `ArgoCD` resource.
-
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: example-argocd
-  labels:
-    example: initial-repositories
-spec:
-  initialRepositories: |
-    - url: https://github.com/argoproj/my-private-repository
-      passwordSecret:
-        name: my-secret
-        key: password
-      usernameSecret:
-        name: my-secret
-        key: username
-      sshPrivateKeySecret:
-        name: my-secret
-        key: sshPrivateKey
-    - type: helm
-      url: https://storage.googleapis.com/istio-prerelease/daily-build/master-latest-daily/charts
-      name: istio.io
-    - type: helm
-      url: https://my-private-chart-repo.internal
-      name: private-repo
-      usernameSecret:
-        name: my-secret
-        key: username
-      passwordSecret:
-        name: my-secret
-        key: password
-    - type: git
-      url: https://github.com/argoproj/argocd-example-apps.git
-```
+!!! warning
+    Argo CD InitialRepositories field is deprecated from ArgoCD, field will be ignored. Setting or modifications to the `repositories` field should then be made through the Argo CD web UI or CLI.
 
 ## Notifications Controller Options
 
@@ -523,6 +588,7 @@ Image | `argoproj/argocd` | The container image for all Argo CD components. This
 Version | *(recent Argo CD version)* | The tag to use with the Notifications container image.
 Resources | [Empty] | The container compute resources.
 LogLevel | info | The log level to be used by the ArgoCD Application Controller component. Valid options are debug, info, error, and warn.
+sourceNamespaces | [Empty] | List of namespaces allowed to manage their own notification configuration (ConfigMap and Secret).
 
 ### Notifications Controller Example
 
@@ -548,21 +614,26 @@ This property maps directly to the `repository.credentials` field in the `argocd
 
 The following example sets a value in the `argocd-cm` ConfigMap using the `RepositoryCredentials` property on the `ArgoCD` resource.
 
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: example-argocd
-  labels:
-    example: repository-credentials
-spec:
-  repositoryCredentials: |
-    - sshPrivateKeySecret:
-        key: sshPrivateKey
-        name: my-ssh-secret
-      type: git
-      url: ssh://git@gitlab.com/my-org/
+!!! warning
+    Argo CD RepositoryCredentials field is deprecated from ArgoCD, field will be ignored.
+
+### Removed support for legacy repo config in argocd-cm (v3.0+)
+
+Before repositories were managed as Secrets, they were configured in the `argocd-cm` ConfigMap. The `argocd-cm` option has been deprecated for some time and is no longer available in Argo CD 3.0.
+
+#### Detection
+
+To check whether you have any repositories configured in `argocd-cm`, run the following command:
+
+```bash
+kubectl get cm argocd-cm -n argocd -o=jsonpath="[{.data.repositories}, {.data['repository\.credentials']}, {.data['helm\.repositories']}]"
 ```
+
+If you have no repositories configured in `argocd-cm`, the output will be `[, , ]`, and you are not impacted by this change.
+
+#### Migration
+
+To convert your repositories to Secrets, follow the documentation for [declarative management of repositories](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#repositories).
 
 ## Initial SSH Known Hosts
 
@@ -709,44 +780,27 @@ spec:
 
 ## Prometheus Options
 
-The following properties are available for configuring the Prometheus component.
+The following properties are available for configuring Prometheus metrics exposure for Argo CD.
 
 Name | Default | Description
 --- | --- | ---
-Enabled | false | Toggle Prometheus support globally for ArgoCD.
-Host | `example-argocd-prometheus` | The hostname to use for Ingress/Route resources.
-Ingress | `false` | Toggles Ingress for Prometheus.
-[Route](#prometheus-route-options) | [Object] | Route configuration options.
-Size | 1 | The replica count for the Prometheus StatefulSet.
+Enabled | false | When set to `true`, creates ServiceMonitors and PrometheusRules for scraping Argo CD metrics.
+Host | `example-argocd-prometheus` | **Deprecated**: This field is no longer used and will be ignored.
+Ingress | `false` | **Deprecated**: This field is no longer used and will be ignored.
+Route | [Object] | **Deprecated**: This field is no longer used and will be ignored.
+Size | 1 | **Deprecated**: This field is no longer used and will be ignored.
 
-### Prometheus Ingress Options
-
-The following properties are available for configuring the Prometheus Ingress.
-
-Name | Default | Description
---- | --- | ---
-Annotations | [Empty] | The map of annotations to use for the Ingress resource.
-Enabled | `false` | Toggle creation of an Ingress resource.
-IngressClassName | [Empty] | IngressClass to use for the Ingress resource.
-Path | `/` | Path to use for Ingress resources.
-TLS | [Empty] | TLS configuration for the Ingress.
-
-### Prometheus Route Options
-
-The following properties are available to configure the Route for the Prometheus component.
-
-Name | Default | Description
---- | --- | ---
-Annotations | [Empty] | The map of annotations to add to the Route.
-Enabled | `false` | Toggles the creation of a Route for the Prometheus component.
-Labels | [Empty] | The map of labels to add to the Route.
-Path | `/` | The path for the Route.
-TLS | [Object] | The TLSConfig for the Route.
-WildcardPolicy| `None` | The wildcard policy for the Route. Can be one of `Subdomain` or `None`.
+!!! note "Important Changes"
+    Starting with this version, the operator no longer creates Prometheus CR, Service, Route, or Ingress resources. When `.spec.prometheus.enabled` is set to `true`, the operator creates:
+    
+    - **ServiceMonitors**: For scraping metrics from Argo CD components (application-controller, repo-server, server)
+    - **PrometheusRules**: For alerting based on Argo CD workload status (when `.spec.monitoring.enabled` is also `true`)
+    
+    The `Host`, `Ingress`, `Route`, and `Size` fields are deprecated and no longer have any effect.
 
 ### Prometheus Example
 
-The following example shows all properties set to the default values.
+The following example shows how to enable metrics exposure:
 
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
@@ -754,16 +808,13 @@ kind: ArgoCD
 metadata:
   name: example-argocd
   labels:
-    example: insights
+    example: metrics
 spec:
   prometheus:
-    enabled: false
-    host: example-argocd-prometheus
-    ingress:
-      enabled: false
-    route: false
-    size: 1
+    enabled: true
 ```
+
+This will create ServiceMonitor resources that allow your existing Prometheus instance to discover and scrape metrics from Argo CD components.
 
 ## RBAC Options
 
@@ -780,7 +831,7 @@ Scopes | `[groups]` | The `scopes` property in the `argocd-rbac-cm` ConfigMap.  
 
 The following example shows all properties set to the default values.
 
-``` yaml
+```yaml
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
@@ -796,6 +847,130 @@ spec:
     scopes: '[groups]'
 ```
 
+### Changes to RBAC with Dex SSO Authentication (Argo CD v3.0+)
+
+Starting with Argo CD 3.0, the RBAC subject identification mechanism for Dex SSO authentication has changed. Previously, the `sub` claim returned in the authentication was used as the subject for RBAC. However, this value depends on the Dex internal implementation and should not be considered an immutable value that represents the subject.
+
+The new behavior requests the `federated:id` scope from Dex, and the new value used as the RBAC subject will be based on the `federated_claims.user_id` claim instead of the `sub` claim.
+
+#### Understanding the Change
+
+**Before (Argo CD 2.x):**
+- RBAC subjects were based on the Dex `sub` claim
+- The `sub` claim contained encoded information including the user ID and connector ID
+- Example: `ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA`
+
+**After (Argo CD 3.0+):**
+- RBAC subjects are based on the `federated_claims.user_id` claim
+- This provides a cleaner, more predictable user identifier
+- Example: `example@argoproj.io`
+
+#### Decoding Legacy Sub Claims
+
+To identify the correct `user_id` to use in your new policies, you can decode the current `sub` claims defined in your existing policies:
+
+```bash
+echo "ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA" | base64 -d
+# Output: example@argoproj.iodex_conn_i%
+```
+
+The decoded value shows the user ID (`example@argoproj.io`) followed by connector information.
+
+#### Policy Migration Examples
+
+**Legacy policies using Dex sub claim (incorrect for Argo CD 3.0+):**
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: rbac-legacy
+spec:
+  rbac:
+    policy: |
+      g, ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA, role:example
+      p, ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA, applications, *, *, allow
+```
+
+**Updated policies using federated_claims.user_id (correct for Argo CD 3.0+):**
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: rbac-migrated
+spec:
+  rbac:
+    policy: |
+      g, example@argoproj.io, role:example
+      p, example@argoproj.io, applications, *, *, allow
+```
+
+### Fine-Grained RBAC for application update and delete sub-resources (v3.0+)
+
+The default behavior of fine-grained policies have changed so they no longer apply to sub-resources. Prior to v3, policies granting update or delete to an application also applied to any of its sub-resources.
+
+Starting with v3, the update or delete actions only apply to the application itself. New policies must be defined to allow the update/* or delete/* actions on an Application's managed resources.
+
+To preserve v2 behavior the config value server.rbac.disableApplicationFineGrainedRBACInheritance is set to false in the Argo CD ConfigMap argocd-cm.
+
+
+### Logs RBAC Enforcement (Argo CD v3.0+)
+
+Starting with Argo CD 3.0, logs RBAC enforcement is enabled by default and logs are treated as a first-class RBAC resource. This means:
+
+1. The `server.rbac.log.enforce.enable` flag has been removed
+2. Logs permissions must be explicitly granted to users/groups/roles
+3. The operator does not manage default RBAC policies - users must define their own policies
+4. Custom roles must explicitly include logs permissions
+
+#### Creating Custom Roles with Logs Access
+
+When creating custom roles, you must explicitly add logs permissions:
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: rbac-logs
+spec:
+  rbac:
+    policy: |
+      # Custom role with logs access
+      p, role:custom-role, applications, get, */*, allow
+      p, role:custom-role, logs, get, */*, allow
+      
+      # Assign role to users/groups
+      g, user1, role:custom-role
+```
+
+#### Global Log Viewer Role
+
+You can create a global log viewer role that only has access to logs:
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: rbac-log-viewer
+spec:
+  rbac:
+    policy: |
+      # Global log viewer role
+      p, role:global-log-viewer, logs, get, */*, allow
+      
+      # Assign role to users/groups
+      g, log-viewers, role:global-log-viewer
+```
+
 ## Redis Options
 
 The following properties are available for configuring the Redis component.
@@ -807,6 +982,7 @@ DisableTLSVerification | false | defines whether the redis server should be acce
 Image | `redis` | The container image for Redis. This overrides the `ARGOCD_REDIS_IMAGE` environment variable.
 Resources | [Empty] | The container compute resources.
 Version | 5.0.3 (SHA) | The tag to use with the Redis container image.
+Remote | "" | Specifies the remote URL of redis running in external clusters, also disables Redis component. This field is optional.
 
 ### Redis Example
 
@@ -840,13 +1016,22 @@ MountSAToken | false | Whether the ServiceAccount token should be mounted to the
 ServiceAccount | "" | The name of the ServiceAccount to use with the repo-server pod.
 VerifyTLS | false | Whether to enforce strict TLS checking on all components when communicating with repo server
 AutoTLS | "" | Provider to use for setting up TLS the repo-server's gRPC TLS certificate (one of: `openshift`). Currently only available for OpenShift.
-Image | `argoproj/argocd` | The container image for ArgoCD Repo Server. This overrides the `ARGOCD_REPOSERVER_IMAGE` environment variable.
-Version | same as `.spec.Version` | The tag to use with the ArgoCD Repo Server.
+Image | `argoproj/argocd` | The container image for ArgoCD Repo Server. This overrides the `ARGOCD_IMAGE` environment variable for the repo server.
+Version | same as `.spec.Version` | The tag to use with the ArgoCD Repo Server. Fallsback to `.spec.Version` and the default image version in that order if not specified. 
 LogLevel | info | The log level to be used by the ArgoCD Repo Server. Valid options are debug, info, error, and warn.
 LogFormat | text | The log format to be used by the ArgoCD Repo Server. Valid options are text or json.
 ExecTimeout | 180 | Execution timeout in seconds for rendering tools (e.g. Helm, Kustomize)
 Env | [Empty] | Environment to set for the repository server workloads
 Replicas | [Empty] | The number of replicas for the ArgoCD Repo Server. Must be greater than or equal to 0.
+Volumes | [Empty] | Configure addition volumes for the repo server deployment. This field is optional.
+VolumeMounts | [Empty] | Configure addition volume mounts for the repo server deployment. This field is optional.
+InitContainers | [Empty] | List of init containers for the repo server deployment. This field is optional.
+SidecarContainers | [Empty] | List of sidecar containers for the repo server deployment. This field is optional.
+Enabled | true | Flag to enable repo server during ArgoCD installation.
+Remote | [Empty] | Specifies the remote URL of the repo server container. By default, it points to a local instance managed by the operator. This field is optional.
+Annotations | [Empty] | Custom annotations to pods deployed by the operator
+Labels | [Empty] | Custom labels to pods deployed by the operator
+[SystemCATrust](#repo-server-tls-trust-configuration) | [Empty] | Custom certificates to inject into the repo server container and its plugins to trust source hosting sites
 
 ### Pass Command Arguments To Repo Server
 
@@ -896,6 +1081,52 @@ spec:
       - --reposerver.max.combined.directory.manifests.size
       - 10M
 ```
+
+### Repo server TLS trust configuration
+
+The operator permits injecting custom TLS certificates into the Repo Server container and Config Management Plugins (sidecar containers):
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: repo
+spec:
+  repo:
+    systemCATrust:
+      secrets:
+        - name: my-local-cert-secret
+          items:
+            - key: key-name-in-the-secret-object
+              # Must end with .crt
+              path: desired-file-name-of-the-certificate.crt
+      configMaps:
+        - name: my-local-cert-cm
+          # Map all keys in the ConfigMap to files with the same name
+          # Key names in the ConfigMap must end with .crt
+          items: {}
+      clusterTrustBundles:
+        - name: my-global-ctb
+          path: my-global-ctb.crt
+          optional: true
+```
+
+This is orthogonal to declaring per-host TLS certificate in `argocd-tls-certs-cm`, as several notable differences exist:
+
+- The certificates are not pinned for individual host, so CA/wildcard certificates can be utilized.
+- The certificates are properly configured inside the container, permitting more sophisticated (yet secure) plugin logic. For example:
+    - Kustomize can invoke Helm reaching to other hosts than the source repo
+    - Kustomize can pull resources from other repositories/sources over HTTPS
+    - In general, Config Management Plugin can invoke any TLS-enabled tool present in the image with TLS verification on.
+
+The certificates from Secrets or ConfigMaps must exist in the same namespace as the ArgoCD instance.
+Also, they can selectively pick individual keys, or map all their declared keys by omitting the `items` field.
+
+Each type of the trust source can be declared as optional---the absence of a non-optional source will cause deployment failure.
+
+Unless the `.repo.systemCATrust.dropImageCertificates` is set to true, the user-declared certificates are merged with those from the image.
 
 ## Resource Customizations
 
@@ -1173,7 +1404,7 @@ Valid values are:
 * `annotation` - Track resources using an annotation
 * `annotation+label` - Track resources using both, an annotation and a label
 
-The default is to use `label` as tracking method.
+The default is to use `annotation` as tracking method.
 
 When this value is changed, existing managed resources will re-sync to apply the new tracking method.
 
@@ -1199,6 +1430,7 @@ The following properties are available for configuring the Argo CD Server compon
 Name | Default | Description
 --- | --- | ---
 [Autoscale](#server-autoscale-options) | [Object] | Server autoscale configuration options.
+EnableRolloutsUI | [Empty] | It enables/disables the extension for Argo Rollouts UI in ArgoCD UI when set to true/false.
 [ExtraCommandArgs](#server-command-arguments) | [Empty] | List of arguments that will be added to the existing arguments set by the operator.
 [GRPC](#server-grpc-options) | [Object] | GRPC configuration options.
 Host | example-argocd | The hostname to use for Ingress/Route resources.
@@ -1210,7 +1442,14 @@ Replicas | [Empty] | The number of replicas for the ArgoCD Server. Must be great
 Service.Type | ClusterIP | The ServiceType to use for the Service resource.
 LogLevel | info | The log level to be used by the ArgoCD Server component. Valid options are debug, info, error, and warn.
 LogFormat | text | The log format to be used by the ArgoCD Server component. Valid options are text or json.
-Env | [Empty] | Environment to set for the server workloads
+Env | [Empty] | Environment to set for the server workloads.
+InitContainers | [Empty] | List of init containers for the ArgoCD Server component. This field is optional.
+SidecarContainers | [Empty] | List of sidecar containers for the ArgoCD Server component. This field is optional.
+Volumes | [Empty] | Configure addition volumes for the Argo CD server component. This field is optional.
+VolumeMounts | [Empty] | Configure addition volume mounts for the Argo CD server component. This field is optional.
+Annotations | [Empty] | Custom annotations to pods deployed by the operator
+Labels | [Empty] | Custom labels to pods deployed by the operator
+
 
 ### Server Autoscale Options
 
@@ -1344,6 +1583,53 @@ spec:
       type: ClusterIP
 ```
 
+The following example shows how to configure initContainers for the ArgoCD Server component.
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: controller
+spec:
+  server:
+    initContainers:
+    - name: argocd-init
+      image: nginx:latest
+      imagePullPolicy: Always
+      resources:
+        limits:
+          cpu: 50m
+          memory: 64Mi
+        requests:
+          cpu: 10m
+          memory: 32Mi
+```
+
+The following example shows how to configure sidecarContainers for the ArgoCD Server component.
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: controller
+spec:
+  server:
+    sidecarContainers:
+    - name: sidecar
+      image: busybox
+      resources:
+        limits:
+          cpu: 50m
+          memory: 64Mi
+        requests:
+          cpu: 10m
+          memory: 32Mi
+```
+
 ## Status Badge Enabled
 
 Enable application status badge feature. This property maps directly to the `statusbadge.enabled` field in the `argocd-cm` ConfigMap.
@@ -1369,9 +1655,8 @@ The following properties are available for configuring the Single sign-on compon
 
 Name | Default | Description
 --- | --- | ---
-[Keycloak](#keycloak-options) | [Object] | Configuration options for Keycloak SSO provider
 [Dex](#dex-options) | [Object] | Configuration options for Dex SSO provider
-Provider | [Empty] | The name of the provider used to configure Single sign-on. For now the supported options are "dex" and "keycloak".
+Provider | [Empty] | The name of the provider used to configure Single sign-on. For now the supported options is "dex".
 
 ## Dex Options
 
@@ -1386,6 +1671,8 @@ OpenShiftOAuth | false | Enable automatic configuration of OpenShift OAuth authe
 Resources | [Empty] | The container compute resources.
 Version | v2.21.0 (SHA) | The tag to use with the Dex container image.
 Env | [Empty] | Environment to set for Dex.
+Volumes | [Empty] | Configure addition volumes for the Dex component. This field is optional.
+VolumeMounts | [Empty] | Configure addition volume mounts for the Dex component. This field is optional.
 
 ### Dex Example
 
@@ -1453,39 +1740,6 @@ oc adm groups add-users cluster-admins USER
 oc adm policy add-cluster-role-to-group cluster-admin cluster-admins
 ```
 
-## Keycloak Options
-
-The following properties are available for configuring Keycloak Single sign-on provider.
-
-Name | Default | Description
---- | --- | ---
-Image | OpenShift - `registry.redhat.io/rh-sso-7/sso76-openshift-rhel8` <br/> Kuberentes - `quay.io/keycloak/keycloak` | The container image for keycloak. This overrides the `ARGOCD_KEYCLOAK_IMAGE` environment variable.
-Resources | `Requests`: CPU=500m, Mem=512Mi, `Limits`: CPU=1000m, Mem=1024Mi | The container compute resources.
-RootCA | "" | root CA certificate for communicating with the OIDC provider
-VerifyTLS | true | Whether to enforce strict TLS checking when communicating with Keycloak service.
-Version | OpenShift - `sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3` (7.5.1) <br/> Kubernetes - `sha256:64fb81886fde61dee55091e6033481fa5ccdac62ae30a4fd29b54eb5e97df6a9` (15.0.2) | The tag to use with the keycloak container image.
-
-### Keycloak Single sign-on Example
-
-!!! note
-    `.spec.sso.Image`, `.spec.sso.Version`, `.spec.sso.Resources` and `.spec.sso.verifyTLS` fields are no longer supported in Argo CD operator v0.8.0 onwards. Please use equivalent fields under `.spec.sso.keycloak` to configure your keycloak instance.
-
-The following example uses keycloak as Single sign-on option for Argo CD.
-
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: example-argocd
-  labels:
-    example: status-badge-enabled
-spec:
-  sso:
-    provider: keycloak
-```
-
-Please refer to the [keycloak user guide](../usage/keycloak/kubernetes.md) to learn more about configuring keycloak as a Single sign-on provider.
-
 ## System-Level Configuration
 
 The comparison of resources with well-known issues can be customized at a system level. Ignored differences can be configured for a specified group and kind
@@ -1548,7 +1802,7 @@ spec:
     initialCerts: []
 ```
 
-### IntialCerts Example
+### InitialCerts Example
 
 Initial set of repository certificates to be configured in Argo CD upon creation of the cluster.
 
@@ -1560,7 +1814,7 @@ kind: ArgoCD
 metadata:
   name: example-argocd
   labels:
-    example: intialCerts
+    example: initialCerts
 spec:
   tls:
     ca: {}
@@ -1618,6 +1872,8 @@ Name | Default | Description
 --- | --- | ---
 Banner.Content | [Empty] | The banner message content (required if a banner should be displayed).
 Banner.URL | [Empty] | The banner message link URL (optional).
+Banner.Permanent | [Empty] | true if the banner should be displayed permanently else false(optional).
+Banner.Position | [Empty] | The banner position (optional).
 
 ### Banner Example
 The following example enables a UI banner with message content and URL.
@@ -1633,4 +1889,75 @@ spec:
   banner:
     content: "Custom Styles - Banners"
     url: "https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners"
+    permanent: `true`
+    position: "bottom"
 ```
+#### Remediation Steps
+
+1. **Quick Remediation:**
+   - Add logs permissions to existing roles
+   - Example: `p, role:existing-role, logs, get, */*, allow`
+
+2. **Recommended Remediation:**
+   - Review existing roles and their permissions
+   - Add logs permissions only to roles that need them
+   - Consider creating a dedicated log viewer role
+   - Define your own RBAC policies as the operator does not provide defaults
+   - Remove the `server.rbac.log.enforce.enable` setting from `argocd-cm` ConfigMap if it was present before the upgrade
+
+### RBAC Management Approach (v3.0+)
+
+With Argo CD 3.0, the operator takes a hands-off approach to RBAC management, leaving it to administrators to define their own policies. This approach provides several benefits:
+
+1. **Flexibility**: Administrators have full control over RBAC policies
+2. **Security**: No default policies that might grant unintended access
+3. **Compliance**: Organizations can implement their own security policies
+4. **Customization**: Tailored roles and permissions for specific use cases
+
+#### Recommended RBAC Management Strategy
+
+1. **Define Global Roles**: Create reusable roles that can be assigned to multiple users/groups
+2. **Use Group-Based Access**: Leverage SSO groups for easier management
+3. **Implement Least Privilege**: Grant only necessary permissions
+4. **Document Policies**: Maintain clear documentation of RBAC policies
+5. **Regular Reviews**: Periodically review and update RBAC policies
+
+#### Example RBAC Policy Structure
+
+```yaml
+spec:
+  rbac:
+    policy: |
+      # Global roles
+      p, role:admin, *, *, */*, allow
+      p, role:readonly, applications, get, */*, allow
+      p, role:readonly, projects, get, */*, allow
+      p, role:readonly, logs, get, */*, allow
+      
+      # Custom roles
+      p, role:app-developer, applications, get, */*, allow
+      p, role:app-developer, applications, sync, */*, allow
+      p, role:app-developer, logs, get, */*, allow
+      
+      p, role:log-viewer, logs, get, */*, allow
+      
+      # Group assignments
+      g, cluster-admins, role:admin
+      g, developers, role:app-developer
+      g, log-viewers, role:log-viewer
+      
+      # Default policy for unauthenticated users
+      p, role:readonly, applications, get, */*, allow
+```
+
+#### Support and Documentation
+
+For support, administrators consider creating:
+
+1. **Knowledge Base Articles (KCS)**: Step-by-step guides for common RBAC scenarios
+2. **Troubleshooting Guides**: Common issues and solutions
+3. **Best Practices Documentation**: Security and management recommendations
+4. **Migration Guides**: Older version to newer version
+
+This approach ensures that RBAC management remains flexible and secure while providing the necessary tools and documentation for effective administration.
+

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/argoproj/argo-cd/v2/util/glob"
+	"github.com/argoproj/argo-cd/v3/util/glob"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -21,9 +21,10 @@ func (r *ReconcileArgoCD) clusterResourceMapper(ctx context.Context, o client.Ob
 	namespacedArgoCDObject := client.ObjectKey{}
 
 	for k, v := range crbAnnotations {
-		if k == common.AnnotationName {
+		switch k {
+		case common.AnnotationName:
 			namespacedArgoCDObject.Name = v
-		} else if k == common.AnnotationNamespace {
+		case common.AnnotationNamespace:
 			namespacedArgoCDObject.Namespace = v
 		}
 	}
@@ -65,10 +66,48 @@ func isOwnerOfInterest(owner v1.OwnerReference) bool {
 	return false
 }
 
+// isUserManagedSecret checks if the given secret is referenced in the ArgoCD CR for configuring the Argo CD instance.
+// User-managed secrets are referenced by the ArgoCD CR but are not owned by Operator itself (i.e. managed by the user).
+// Returns the namespaced name of the ArgoCD instance if found and a boolean indicating whether the secret is user-managed.
+func (r *ReconcileArgoCD) isUserManagedSecret(ctx context.Context, o client.Object) (client.ObjectKey, bool) {
+	namespacedName := client.ObjectKey{}
+	var ok bool
+
+	// List ArgoCD instances in the same namespace as the secret.
+	argocds := &argoproj.ArgoCDList{}
+	err := r.List(ctx, argocds, &client.ListOptions{Namespace: o.GetNamespace()})
+	if err != nil {
+		return namespacedName, false
+	}
+	// Return false if no ArgoCD instance or more than one is detected in the namespace.
+	if len(argocds.Items) != 1 {
+		return namespacedName, false
+	}
+	argocd := argocds.Items[0]
+	namespacedName.Name = argocd.Name
+	namespacedName.Namespace = argocd.Namespace
+
+	// Check if the secret is referenced in the ArgoCD CR.
+	if argocd.Spec.Server.Route.UseExternalCertificate() && argocd.Spec.Server.Route.TLS.ExternalCertificate.Name == o.GetName() {
+		ok = true
+	} else if argocd.Spec.Prometheus.Route.UseExternalCertificate() && argocd.Spec.Prometheus.Route.TLS.ExternalCertificate.Name == o.GetName() {
+		ok = true
+	} else if argocd.Spec.ApplicationSet != nil && argocd.Spec.ApplicationSet.WebhookServer.Route.UseExternalCertificate() && argocd.Spec.ApplicationSet.WebhookServer.Route.TLS.ExternalCertificate.Name == o.GetName() {
+		ok = true
+	}
+
+	return namespacedName, ok
+}
+
 // tlsSecretMapper maps a watch event on a secret of type TLS back to the
 // ArgoCD object that we want to reconcile.
 func (r *ReconcileArgoCD) tlsSecretMapper(ctx context.Context, o client.Object) []reconcile.Request {
 	var result = []reconcile.Request{}
+
+	// Check if secret is user-managed, meaning it is referenced in the ArgoCD CR for configuration.
+	if namespacedName, ok := r.isUserManagedSecret(ctx, o); ok {
+		return []reconcile.Request{{NamespacedName: namespacedName}}
+	}
 
 	if !isSecretOfInterest(o) {
 		return result
@@ -86,7 +125,7 @@ func (r *ReconcileArgoCD) tlsSecretMapper(ctx context.Context, o client.Object) 
 				svc := &corev1.Service{}
 
 				// Get the owning object of the secret
-				err := r.Client.Get(context.TODO(), key, svc)
+				err := r.Get(context.TODO(), key, svc)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("could not get owner of secret %s", o.GetName()))
 					return result
@@ -98,7 +137,7 @@ func (r *ReconcileArgoCD) tlsSecretMapper(ctx context.Context, o client.Object) 
 				for _, serviceOwner := range serviceOwnerRefs {
 					if serviceOwner.Kind == "ArgoCD" {
 						namespacedArgoCDObject.Name = serviceOwner.Name
-						namespacedArgoCDObject.Namespace = svc.ObjectMeta.Namespace
+						namespacedArgoCDObject.Namespace = svc.Namespace
 						result = []reconcile.Request{
 							{NamespacedName: namespacedArgoCDObject},
 						}
@@ -135,8 +174,9 @@ func (r *ReconcileArgoCD) namespaceResourceMapper(ctx context.Context, o client.
 	argocds := &argoproj.ArgoCDList{}
 	labels := o.GetLabels()
 	namespaceName := o.GetName()
+	// If the namespace is managed by an Argo CD instance in another namespace, then reconcile that instance
 	if v, ok := labels[common.ArgoCDManagedByLabel]; ok {
-		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: v}); err != nil {
+		if err := r.List(context.TODO(), argocds, &client.ListOptions{Namespace: v}); err != nil {
 			return result
 		}
 		if len(argocds.Items) != 1 {
@@ -150,16 +190,29 @@ func (r *ReconcileArgoCD) namespaceResourceMapper(ctx context.Context, o client.
 		result = []reconcile.Request{
 			{NamespacedName: namespacedName},
 		}
+
+	} else if v, ok := labels[common.ArgoCDApplicationSetManagedByClusterArgoCDLabel]; ok {
+		// If the namespace is managed by applicationsets in any namespace, by Argo CD in another namespace, then reconcile that namespace's instance
+
+		namespaceContainingArgoCD := v
+		if err := r.List(ctx, argocds, client.InNamespace(namespaceContainingArgoCD)); err != nil {
+			return result
+		}
+		for idx := range argocds.Items {
+			argocd := argocds.Items[idx]
+			result = append(result, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(&argocd)})
+		}
+
 	} else {
 		// If the namespace does not have the expected managed-by label,
 		// iterate through each ArgoCD instance to identify if the observed namespace
 		// matches any configured sourceNamespace pattern. If a match is found,
 		// generate a reconcile request for the instances.
-		if err := r.Client.List(ctx, argocds, &client.ListOptions{}); err != nil {
+		if err := r.List(ctx, argocds, &client.ListOptions{}); err != nil {
 			return result
 		}
 		for _, argocd := range argocds.Items {
-			if glob.MatchStringInList(argocd.Spec.SourceNamespaces, namespaceName, false) {
+			if glob.MatchStringInList(argocd.Spec.SourceNamespaces, namespaceName, glob.GLOB) {
 				namespacedName := client.ObjectKey{
 					Name:      argocd.Name,
 					Namespace: argocd.Namespace,
@@ -180,7 +233,7 @@ func (r *ReconcileArgoCD) clusterSecretResourceMapper(ctx context.Context, o cli
 	labels := o.GetLabels()
 	if v, ok := labels[common.ArgoCDSecretTypeLabel]; ok && v == "cluster" {
 		argocds := &argoproj.ArgoCDList{}
-		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: o.GetNamespace()}); err != nil {
+		if err := r.List(context.TODO(), argocds, &client.ListOptions{Namespace: o.GetNamespace()}); err != nil {
 			return result
 		}
 
@@ -208,7 +261,7 @@ func (r *ReconcileArgoCD) applicationSetSCMTLSConfigMapMapper(ctx context.Contex
 
 	if o.GetName() == common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName {
 		argocds := &argoproj.ArgoCDList{}
-		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: o.GetNamespace()}); err != nil {
+		if err := r.List(context.TODO(), argocds, &client.ListOptions{Namespace: o.GetNamespace()}); err != nil {
 			return result
 		}
 
@@ -224,6 +277,30 @@ func (r *ReconcileArgoCD) applicationSetSCMTLSConfigMapMapper(ctx context.Contex
 		result = []reconcile.Request{
 			{NamespacedName: namespacedName},
 		}
+	}
+
+	return result
+}
+
+// namespaceResourceMapper maps a watch event on a namespaceManagement, back to the
+// ArgoCD object that we want to reconcile.
+func (r *ReconcileArgoCD) nmMapper(ctx context.Context, o client.Object) []reconcile.Request {
+	var result []reconcile.Request
+
+	// List ALL ArgoCD CRs in the cluster
+	argocdList := &argoproj.ArgoCDList{}
+	if err := r.List(ctx, argocdList); err != nil {
+		return result
+	}
+
+	// Reconcile each ArgoCD instance
+	for _, argocd := range argocdList.Items {
+		result = append(result, reconcile.Request{
+			NamespacedName: client.ObjectKey{
+				Name:      argocd.Name,
+				Namespace: argocd.Namespace,
+			},
+		})
 	}
 
 	return result

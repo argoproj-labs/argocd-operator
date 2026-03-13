@@ -13,7 +13,7 @@ var conversionLogger = ctrl.Log.WithName("conversion-webhook")
 
 // ConvertTo converts this (v1alpha1) ArgoCD to the Hub version (v1beta1).
 func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
-	conversionLogger.Info("v1alpha1 to v1beta1 conversion requested.")
+	conversionLogger.V(1).Info("v1alpha1 to v1beta1 conversion requested.")
 	dst := dstRaw.(*v1beta1.ArgoCD)
 
 	// ObjectMeta conversion
@@ -36,6 +36,7 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 			sso.Keycloak.Version = src.Spec.SSO.Version
 			sso.Keycloak.VerifyTLS = src.Spec.SSO.VerifyTLS
 			sso.Keycloak.Resources = src.Spec.SSO.Resources
+
 		}
 	}
 
@@ -54,19 +55,22 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.ApplicationSet = ConvertAlphaToBetaApplicationSet(src.Spec.ApplicationSet)
 	dst.Spec.ExtraConfig = src.Spec.ExtraConfig
 	dst.Spec.ApplicationInstanceLabelKey = src.Spec.ApplicationInstanceLabelKey
-	dst.Spec.ConfigManagementPlugins = src.Spec.ConfigManagementPlugins
+	//lint:ignore SA1019 known to be deprecated
+	dst.Spec.ConfigManagementPlugins = src.Spec.ConfigManagementPlugins //nolint:staticcheck // SA1019: We must test deprecated fields.
 	dst.Spec.Controller = *ConvertAlphaToBetaController(&src.Spec.Controller)
 	dst.Spec.DisableAdmin = src.Spec.DisableAdmin
 	dst.Spec.ExtraConfig = src.Spec.ExtraConfig
 	dst.Spec.GATrackingID = src.Spec.GATrackingID
 	dst.Spec.GAAnonymizeUsers = src.Spec.GAAnonymizeUsers
-	dst.Spec.Grafana = *ConvertAlphaToBetaGrafana(&src.Spec.Grafana)
+	//lint:ignore SA1019 known to be deprecated
+	dst.Spec.Grafana = *ConvertAlphaToBetaGrafana(&src.Spec.Grafana) //nolint:staticcheck // SA1019: We must test deprecated fields.
 	dst.Spec.HA = *ConvertAlphaToBetaHA(&src.Spec.HA)
 	dst.Spec.HelpChatURL = src.Spec.HelpChatURL
 	dst.Spec.HelpChatText = src.Spec.HelpChatText
 	dst.Spec.Image = src.Spec.Image
 	dst.Spec.Import = (*v1beta1.ArgoCDImportSpec)(src.Spec.Import)
-	dst.Spec.InitialRepositories = src.Spec.InitialRepositories
+	//lint:ignore SA1019 known to be deprecated
+	dst.Spec.InitialRepositories = src.Spec.InitialRepositories //nolint:staticcheck // SA1019: We must test deprecated fields.
 	dst.Spec.InitialSSHKnownHosts = v1beta1.SSHHostsSpec(src.Spec.InitialSSHKnownHosts)
 	dst.Spec.KustomizeBuildOptions = src.Spec.KustomizeBuildOptions
 	dst.Spec.KustomizeVersions = ConvertAlphaToBetaKustomizeVersions(src.Spec.KustomizeVersions)
@@ -78,7 +82,8 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.RBAC = v1beta1.ArgoCDRBACSpec(src.Spec.RBAC)
 	dst.Spec.Redis = *ConvertAlphaToBetaRedis(&src.Spec.Redis)
 	dst.Spec.Repo = *ConvertAlphaToBetaRepo(&src.Spec.Repo)
-	dst.Spec.RepositoryCredentials = src.Spec.RepositoryCredentials
+	//lint:ignore SA1019 known to be deprecated
+	dst.Spec.RepositoryCredentials = src.Spec.RepositoryCredentials //nolint:staticcheck // SA1019: We must test deprecated fields.
 	dst.Spec.ResourceHealthChecks = ConvertAlphaToBetaResourceHealthChecks(src.Spec.ResourceHealthChecks)
 	dst.Spec.ResourceIgnoreDifferences = ConvertAlphaToBetaResourceIgnoreDifferences(src.Spec.ResourceIgnoreDifferences)
 	dst.Spec.ResourceActions = ConvertAlphaToBetaResourceActions(src.Spec.ResourceActions)
@@ -92,6 +97,11 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.UsersAnonymousEnabled = src.Spec.UsersAnonymousEnabled
 	dst.Spec.Version = src.Spec.Version
 	dst.Spec.Banner = (*v1beta1.Banner)(src.Spec.Banner)
+	dst.Spec.DefaultClusterScopedRoleDisabled = src.Spec.DefaultClusterScopedRoleDisabled
+	dst.Spec.AggregatedClusterRoles = src.Spec.AggregatedClusterRoles
+	dst.Spec.ArgoCDAgent = ConvertAlphaToBetaArgoCDAgent(src.Spec.ArgoCDAgent)
+	dst.Spec.NamespaceManagement = ConvertAlphaToBetaNamespaceManagement(src.Spec.NamespaceManagement)
+	dst.Spec.NetworkPolicy = v1beta1.ArgoCDNetworkPolicySpec(src.Spec.NetworkPolicy)
 
 	// Status conversion
 	dst.Status = v1beta1.ArgoCDStatus(src.Status)
@@ -101,7 +111,7 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 
 // ConvertFrom converts from the Hub version (v1beta1) to this (v1alpha1) version.
 func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
-	conversionLogger.Info("v1beta1 to v1alpha1 conversion requested.")
+	conversionLogger.V(1).Info("v1beta1 to v1alpha1 conversion requested.")
 
 	src := srcRaw.(*v1beta1.ArgoCD)
 
@@ -121,19 +131,22 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.ApplicationSet = ConvertBetaToAlphaApplicationSet(src.Spec.ApplicationSet)
 	dst.Spec.ExtraConfig = src.Spec.ExtraConfig
 	dst.Spec.ApplicationInstanceLabelKey = src.Spec.ApplicationInstanceLabelKey
-	dst.Spec.ConfigManagementPlugins = src.Spec.ConfigManagementPlugins
+	//lint:ignore SA1019 known to be deprecated
+	dst.Spec.ConfigManagementPlugins = src.Spec.ConfigManagementPlugins //nolint:staticcheck // SA1019: We must test deprecated fields.
 	dst.Spec.Controller = *ConvertBetaToAlphaController(&src.Spec.Controller)
 	dst.Spec.DisableAdmin = src.Spec.DisableAdmin
 	dst.Spec.ExtraConfig = src.Spec.ExtraConfig
 	dst.Spec.GATrackingID = src.Spec.GATrackingID
 	dst.Spec.GAAnonymizeUsers = src.Spec.GAAnonymizeUsers
-	dst.Spec.Grafana = *ConvertBetaToAlphaGrafana(&src.Spec.Grafana)
+	//lint:ignore SA1019 known to be deprecated
+	dst.Spec.Grafana = *ConvertBetaToAlphaGrafana(&src.Spec.Grafana) //nolint:staticcheck // SA1019: We must test deprecated fields.
 	dst.Spec.HA = *ConvertBetaToAlphaHA(&src.Spec.HA)
 	dst.Spec.HelpChatURL = src.Spec.HelpChatURL
 	dst.Spec.HelpChatText = src.Spec.HelpChatText
 	dst.Spec.Image = src.Spec.Image
 	dst.Spec.Import = (*ArgoCDImportSpec)(src.Spec.Import)
-	dst.Spec.InitialRepositories = src.Spec.InitialRepositories
+	//lint:ignore SA1019 known to be deprecated
+	dst.Spec.InitialRepositories = src.Spec.InitialRepositories //nolint:staticcheck // SA1019: We must test deprecated fields.
 	dst.Spec.InitialSSHKnownHosts = SSHHostsSpec(src.Spec.InitialSSHKnownHosts)
 	dst.Spec.KustomizeBuildOptions = src.Spec.KustomizeBuildOptions
 	dst.Spec.KustomizeVersions = ConvertBetaToAlphaKustomizeVersions(src.Spec.KustomizeVersions)
@@ -145,7 +158,8 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.RBAC = ArgoCDRBACSpec(src.Spec.RBAC)
 	dst.Spec.Redis = *ConvertBetaToAlphaRedis(&src.Spec.Redis)
 	dst.Spec.Repo = *ConvertBetaToAlphaRepo(&src.Spec.Repo)
-	dst.Spec.RepositoryCredentials = src.Spec.RepositoryCredentials
+	//lint:ignore SA1019 known to be deprecated
+	dst.Spec.RepositoryCredentials = src.Spec.RepositoryCredentials //nolint:staticcheck // SA1019: We must test deprecated fields.
 	dst.Spec.ResourceHealthChecks = ConvertBetaToAlphaResourceHealthChecks(src.Spec.ResourceHealthChecks)
 	dst.Spec.ResourceIgnoreDifferences = ConvertBetaToAlphaResourceIgnoreDifferences(src.Spec.ResourceIgnoreDifferences)
 	dst.Spec.ResourceActions = ConvertBetaToAlphaResourceActions(src.Spec.ResourceActions)
@@ -159,6 +173,10 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.UsersAnonymousEnabled = src.Spec.UsersAnonymousEnabled
 	dst.Spec.Version = src.Spec.Version
 	dst.Spec.Banner = (*Banner)(src.Spec.Banner)
+	dst.Spec.DefaultClusterScopedRoleDisabled = src.Spec.DefaultClusterScopedRoleDisabled
+	dst.Spec.AggregatedClusterRoles = src.Spec.AggregatedClusterRoles
+	dst.Spec.ArgoCDAgent = ConvertBetaToAlphaArgoCDAgent(src.Spec.ArgoCDAgent)
+	dst.Spec.NamespaceManagement = ConvertBetaToAlphaNamespaceManagement(src.Spec.NamespaceManagement)
 
 	// Status conversion
 	dst.Status = ArgoCDStatus(src.Status)
@@ -247,6 +265,7 @@ func ConvertAlphaToBetaApplicationSet(src *ArgoCDApplicationSet) *v1beta1.ArgoCD
 			Resources:        src.Resources,
 			LogLevel:         src.LogLevel,
 			WebhookServer:    *ConvertAlphaToBetaWebhookServer(&src.WebhookServer),
+			LogFormat:        src.LogFormat,
 		}
 	}
 	return dst
@@ -256,10 +275,14 @@ func ConvertAlphaToBetaGrafana(src *ArgoCDGrafanaSpec) *v1beta1.ArgoCDGrafanaSpe
 	var dst *v1beta1.ArgoCDGrafanaSpec
 	if src != nil {
 		dst = &v1beta1.ArgoCDGrafanaSpec{
-			Enabled: src.Enabled,
-			Host:    src.Host,
-			Image:   src.Image,
-			Ingress: v1beta1.ArgoCDIngressSpec(src.Ingress),
+			Enabled:   src.Enabled,
+			Host:      src.Host,
+			Image:     src.Image,
+			Ingress:   v1beta1.ArgoCDIngressSpec(src.Ingress),
+			Resources: src.Resources,
+			Route:     v1beta1.ArgoCDRouteSpec(src.Route),
+			Size:      src.Size,
+			Version:   src.Version,
 		}
 	}
 	return dst
@@ -467,6 +490,7 @@ func ConvertBetaToAlphaApplicationSet(src *v1beta1.ArgoCDApplicationSet) *ArgoCD
 			Resources:        src.Resources,
 			LogLevel:         src.LogLevel,
 			WebhookServer:    *ConvertBetaToAlphaWebhookServer(&src.WebhookServer),
+			LogFormat:        src.LogFormat,
 		}
 	}
 	return dst
@@ -476,10 +500,14 @@ func ConvertBetaToAlphaGrafana(src *v1beta1.ArgoCDGrafanaSpec) *ArgoCDGrafanaSpe
 	var dst *ArgoCDGrafanaSpec
 	if src != nil {
 		dst = &ArgoCDGrafanaSpec{
-			Enabled: src.Enabled,
-			Host:    src.Host,
-			Image:   src.Image,
-			Ingress: ArgoCDIngressSpec(src.Ingress),
+			Enabled:   src.Enabled,
+			Host:      src.Host,
+			Image:     src.Image,
+			Ingress:   ArgoCDIngressSpec(src.Ingress),
+			Resources: src.Resources,
+			Route:     ArgoCDRouteSpec(src.Route),
+			Size:      src.Size,
+			Version:   src.Version,
 		}
 	}
 	return dst
@@ -681,6 +709,345 @@ func ConvertBetaToAlphaRepo(src *v1beta1.ArgoCDRepoSpec) *ArgoCDRepoSpec {
 			VolumeMounts:         src.VolumeMounts,
 			Volumes:              src.Volumes,
 		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaArgoCDAgent(src *ArgoCDAgentSpec) *v1beta1.ArgoCDAgentSpec {
+	var dst *v1beta1.ArgoCDAgentSpec
+	if src != nil {
+		dst = &v1beta1.ArgoCDAgentSpec{
+			Principal: ConvertAlphaToBetaPrincipal(src.Principal),
+			Agent:     ConvertAlphaToBetaAgent(src.Agent),
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaNamespaceManagement(src []v1beta1.ManagedNamespaces) []ManagedNamespaces {
+	var dst []ManagedNamespaces
+	for _, s := range src {
+		dst = append(dst, ManagedNamespaces{
+			Name:           s.Name,
+			AllowManagedBy: s.AllowManagedBy,
+		})
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaPrincipal(src *PrincipalSpec) *v1beta1.PrincipalSpec {
+	var dst *v1beta1.PrincipalSpec
+	if src != nil {
+		dst = &v1beta1.PrincipalSpec{
+			Enabled:       src.Enabled,
+			Auth:          src.Auth,
+			LogLevel:      src.LogLevel,
+			LogFormat:     src.LogFormat,
+			Image:         src.Image,
+			Env:           src.Env,
+			Server:        ConvertAlphaToBetaPrincipalServer(src.Server),
+			Redis:         ConvertAlphaToBetaPrincipalRedis(src.Redis),
+			Namespace:     ConvertAlphaToBetaPrincipalNamespace(src.Namespace),
+			TLS:           ConvertAlphaToBetaPrincipalTLS(src.TLS),
+			ResourceProxy: ConvertAlphaToBetaPrincipalResourceProxy(src.ResourceProxy),
+			JWT:           ConvertAlphaToBetaPrincipalJWT(src.JWT),
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaArgoCDAgent(src *v1beta1.ArgoCDAgentSpec) *ArgoCDAgentSpec {
+	var dst *ArgoCDAgentSpec
+	if src != nil {
+		dst = &ArgoCDAgentSpec{
+			Principal: ConvertBetaToAlphaPrincipal(src.Principal),
+			Agent:     ConvertBetaToAlphaAgent(src.Agent),
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaPrincipal(src *v1beta1.PrincipalSpec) *PrincipalSpec {
+	var dst *PrincipalSpec
+	if src != nil {
+		dst = &PrincipalSpec{
+			Enabled:       src.Enabled,
+			Auth:          src.Auth,
+			LogLevel:      src.LogLevel,
+			LogFormat:     src.LogFormat,
+			Image:         src.Image,
+			Env:           src.Env,
+			Server:        ConvertBetaToAlphaPrincipalServer(src.Server),
+			Redis:         ConvertBetaToAlphaPrincipalRedis(src.Redis),
+			Namespace:     ConvertBetaToAlphaPrincipalNamespace(src.Namespace),
+			TLS:           ConvertBetaToAlphaPrincipalTLS(src.TLS),
+			ResourceProxy: ConvertBetaToAlphaPrincipalResourceProxy(src.ResourceProxy),
+			JWT:           ConvertBetaToAlphaPrincipalJWT(src.JWT),
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaPrincipalServer(src *PrincipalServerSpec) *v1beta1.PrincipalServerSpec {
+	var dst *v1beta1.PrincipalServerSpec
+	if src != nil {
+		dst = &v1beta1.PrincipalServerSpec{
+			EnableWebSocket:      src.EnableWebSocket,
+			KeepAliveMinInterval: src.KeepAliveMinInterval,
+			Service:              v1beta1.ArgoCDAgentPrincipalServiceSpec(src.Service),
+			Route:                v1beta1.ArgoCDAgentPrincipalRouteSpec(src.Route),
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaPrincipalServer(src *v1beta1.PrincipalServerSpec) *PrincipalServerSpec {
+	var dst *PrincipalServerSpec
+	if src != nil {
+		dst = &PrincipalServerSpec{
+			EnableWebSocket:      src.EnableWebSocket,
+			KeepAliveMinInterval: src.KeepAliveMinInterval,
+			Service:              ArgoCDAgentPrincipalServiceSpec(src.Service),
+			Route:                ArgoCDAgentPrincipalRouteSpec(src.Route),
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaPrincipalNamespace(src *PrincipalNamespaceSpec) *v1beta1.PrincipalNamespaceSpec {
+	var dst *v1beta1.PrincipalNamespaceSpec
+	if src != nil {
+		dst = &v1beta1.PrincipalNamespaceSpec{
+			AllowedNamespaces:      src.AllowedNamespaces,
+			EnableNamespaceCreate:  src.EnableNamespaceCreate,
+			NamespaceCreatePattern: src.NamespaceCreatePattern,
+			NamespaceCreateLabels:  src.NamespaceCreateLabels,
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaPrincipalNamespace(src *v1beta1.PrincipalNamespaceSpec) *PrincipalNamespaceSpec {
+	var dst *PrincipalNamespaceSpec
+	if src != nil {
+		dst = &PrincipalNamespaceSpec{
+			AllowedNamespaces:      src.AllowedNamespaces,
+			EnableNamespaceCreate:  src.EnableNamespaceCreate,
+			NamespaceCreatePattern: src.NamespaceCreatePattern,
+			NamespaceCreateLabels:  src.NamespaceCreateLabels,
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaPrincipalRedis(src *PrincipalRedisSpec) *v1beta1.PrincipalRedisSpec {
+	var dst *v1beta1.PrincipalRedisSpec
+	if src != nil {
+		dst = &v1beta1.PrincipalRedisSpec{
+			ServerAddress:   src.ServerAddress,
+			CompressionType: src.CompressionType,
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaPrincipalTLS(src *PrincipalTLSSpec) *v1beta1.PrincipalTLSSpec {
+	var dst *v1beta1.PrincipalTLSSpec
+	if src != nil {
+		dst = &v1beta1.PrincipalTLSSpec{
+			SecretName:       src.SecretName,
+			RootCASecretName: src.RootCASecretName,
+			InsecureGenerate: src.InsecureGenerate,
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaPrincipalResourceProxy(src *PrincipalResourceProxySpec) *v1beta1.PrincipalResourceProxySpec {
+	var dst *v1beta1.PrincipalResourceProxySpec
+	if src != nil {
+		dst = &v1beta1.PrincipalResourceProxySpec{
+			SecretName:   src.SecretName,
+			CASecretName: src.CASecretName,
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaPrincipalJWT(src *PrincipalJWTSpec) *v1beta1.PrincipalJWTSpec {
+	var dst *v1beta1.PrincipalJWTSpec
+	if src != nil {
+		dst = &v1beta1.PrincipalJWTSpec{
+			SecretName:       src.SecretName,
+			InsecureGenerate: src.InsecureGenerate,
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaPrincipalRedis(src *v1beta1.PrincipalRedisSpec) *PrincipalRedisSpec {
+	var dst *PrincipalRedisSpec
+	if src != nil {
+		dst = &PrincipalRedisSpec{
+			ServerAddress:   src.ServerAddress,
+			CompressionType: src.CompressionType,
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaPrincipalTLS(src *v1beta1.PrincipalTLSSpec) *PrincipalTLSSpec {
+	var dst *PrincipalTLSSpec
+	if src != nil {
+		dst = &PrincipalTLSSpec{
+			SecretName:       src.SecretName,
+			RootCASecretName: src.RootCASecretName,
+			InsecureGenerate: src.InsecureGenerate,
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaPrincipalResourceProxy(src *v1beta1.PrincipalResourceProxySpec) *PrincipalResourceProxySpec {
+	var dst *PrincipalResourceProxySpec
+	if src != nil {
+		dst = &PrincipalResourceProxySpec{
+			SecretName:   src.SecretName,
+			CASecretName: src.CASecretName,
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaPrincipalJWT(src *v1beta1.PrincipalJWTSpec) *PrincipalJWTSpec {
+	var dst *PrincipalJWTSpec
+	if src != nil {
+		dst = &PrincipalJWTSpec{
+			SecretName:       src.SecretName,
+			InsecureGenerate: src.InsecureGenerate,
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaAgent(src *AgentSpec) *v1beta1.AgentSpec {
+	var dst *v1beta1.AgentSpec
+	if src != nil {
+		dst = &v1beta1.AgentSpec{
+			Enabled:   src.Enabled,
+			Creds:     src.Creds,
+			LogLevel:  src.LogLevel,
+			LogFormat: src.LogFormat,
+			Image:     src.Image,
+			Env:       src.Env,
+			Client:    ConvertAlphaToBetaAgentClient(src.Client),
+			Redis:     ConvertAlphaToBetaAgentRedis(src.Redis),
+			TLS:       ConvertAlphaToBetaAgentTLS(src.TLS),
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaAgent(src *v1beta1.AgentSpec) *AgentSpec {
+	var dst *AgentSpec
+	if src != nil {
+		dst = &AgentSpec{
+			Enabled:   src.Enabled,
+			Creds:     src.Creds,
+			LogLevel:  src.LogLevel,
+			LogFormat: src.LogFormat,
+			Image:     src.Image,
+			Env:       src.Env,
+			Client:    ConvertBetaToAlphaAgentClient(src.Client),
+			Redis:     ConvertBetaToAlphaAgentRedis(src.Redis),
+			TLS:       ConvertBetaToAlphaAgentTLS(src.TLS),
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaAgentClient(src *AgentClientSpec) *v1beta1.AgentClientSpec {
+	var dst *v1beta1.AgentClientSpec
+	if src != nil {
+		dst = &v1beta1.AgentClientSpec{
+			PrincipalServerAddress: src.PrincipalServerAddress,
+			PrincipalServerPort:    src.PrincipalServerPort,
+			Mode:                   src.Mode,
+			EnableWebSocket:        src.EnableWebSocket,
+			EnableCompression:      src.EnableCompression,
+			KeepAliveInterval:      src.KeepAliveInterval,
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaAgentClient(src *v1beta1.AgentClientSpec) *AgentClientSpec {
+	var dst *AgentClientSpec
+	if src != nil {
+		dst = &AgentClientSpec{
+			PrincipalServerAddress: src.PrincipalServerAddress,
+			PrincipalServerPort:    src.PrincipalServerPort,
+			Mode:                   src.Mode,
+			EnableWebSocket:        src.EnableWebSocket,
+			EnableCompression:      src.EnableCompression,
+			KeepAliveInterval:      src.KeepAliveInterval,
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaAgentRedis(src *AgentRedisSpec) *v1beta1.AgentRedisSpec {
+	var dst *v1beta1.AgentRedisSpec
+	if src != nil {
+		dst = &v1beta1.AgentRedisSpec{
+			ServerAddress: src.ServerAddress,
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaAgentRedis(src *v1beta1.AgentRedisSpec) *AgentRedisSpec {
+	var dst *AgentRedisSpec
+	if src != nil {
+		dst = &AgentRedisSpec{
+			ServerAddress: src.ServerAddress,
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaAgentTLS(src *AgentTLSSpec) *v1beta1.AgentTLSSpec {
+	var dst *v1beta1.AgentTLSSpec
+	if src != nil {
+		dst = &v1beta1.AgentTLSSpec{
+			SecretName:       src.SecretName,
+			RootCASecretName: src.RootCASecretName,
+			Insecure:         src.Insecure,
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaAgentTLS(src *v1beta1.AgentTLSSpec) *AgentTLSSpec {
+	var dst *AgentTLSSpec
+	if src != nil {
+		dst = &AgentTLSSpec{
+			SecretName:       src.SecretName,
+			RootCASecretName: src.RootCASecretName,
+			Insecure:         src.Insecure,
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaNamespaceManagement(src []ManagedNamespaces) []v1beta1.ManagedNamespaces {
+	var dst []v1beta1.ManagedNamespaces
+	for _, s := range src {
+		dst = append(dst, v1beta1.ManagedNamespaces{
+			Name:           s.Name,
+			AllowManagedBy: s.AllowManagedBy,
+		},
+		)
 	}
 	return dst
 }

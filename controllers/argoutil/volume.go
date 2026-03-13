@@ -23,12 +23,12 @@ import (
 )
 
 // DefaultPVCResources will return the default PVC resources.
-func DefaultPVCResources() corev1.ResourceRequirements {
+func DefaultPVCResources() corev1.VolumeResourceRequirements {
 	capacity, err := resource.ParseQuantity(common.ArgoCDDefaultExportLocalCapicity)
 	if err != nil {
 		log.Error(err, "unable to parse quantity")
 	}
-	return corev1.ResourceRequirements{
+	return corev1.VolumeResourceRequirements{
 		Requests: corev1.ResourceList{
 			"storage": capacity,
 		},
@@ -49,7 +49,7 @@ func NewPersistentVolumeClaim(meta metav1.ObjectMeta) *corev1.PersistentVolumeCl
 // NewPersistentVolumeClaimWithName returns a new PersistentVolumeClaim instance with the given name.
 func NewPersistentVolumeClaimWithName(name string, meta metav1.ObjectMeta) *corev1.PersistentVolumeClaim {
 	pvc := NewPersistentVolumeClaim(meta)
-	pvc.ObjectMeta.Name = name
-	pvc.ObjectMeta.Labels[common.ArgoCDKeyName] = name
+	pvc.Name = name
+	pvc.Labels[common.ArgoCDKeyName] = name
 	return pvc
 }

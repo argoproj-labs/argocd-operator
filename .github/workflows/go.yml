@@ -7,6 +7,8 @@ on:
       - 'release-*'
       - 'rhos-*'
   pull_request:
+    paths-ignore:
+      - "docs/**"
     branches:
       - 'master'
       - 'release-*'
@@ -17,12 +19,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v6
 
     - name: Set up Go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v6
       with:
-        go-version: '1.21'
+        go-version-file: 'go.mod'
 
     - name: Build
       run: make build

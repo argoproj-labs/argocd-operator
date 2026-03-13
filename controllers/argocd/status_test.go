@@ -5,94 +5,18 @@ import (
 	"testing"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
-	oappsv1 "github.com/openshift/api/apps/v1"
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/assert"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	testclient "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
-
-func TestReconcileArgoCD_reconcileStatusKeycloak_K8s(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-
-	a := makeTestArgoCDForKeycloak()
-
-	resObjs := []client.Object{a}
-	subresObjs := []client.Object{a}
-	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
-
-	assert.NoError(t, createNamespace(r, a.Namespace, ""))
-
-	d := newKeycloakDeployment(a)
-
-	// keycloak not installed
-	_ = r.reconcileStatusKeycloak(a)
-	assert.Equal(t, "Unknown", a.Status.SSO)
-
-	// keycloak installation started
-	r.Client.Create(context.TODO(), d)
-
-	_ = r.reconcileStatusKeycloak(a)
-	assert.Equal(t, "Pending", a.Status.SSO)
-
-	// keycloak installation completed
-	d.Status.ReadyReplicas = *d.Spec.Replicas
-	r.Client.Status().Update(context.TODO(), d)
-
-	_ = r.reconcileStatusKeycloak(a)
-	assert.Equal(t, "Running", a.Status.SSO)
-}
-
-func TestReconcileArgoCD_reconcileStatusKeycloak_OpenShift(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-
-	a := makeTestArgoCDForKeycloak()
-
-	resObjs := []client.Object{a}
-	subresObjs := []client.Object{a}
-	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
-
-	assert.NoError(t, createNamespace(r, a.Namespace, ""))
-
-	assert.NoError(t, oappsv1.Install(r.Scheme))
-	templateAPIFound = true
-	defer removeTemplateAPI()
-
-	dc := getKeycloakDeploymentConfigTemplate(a)
-	dc.ObjectMeta.Name = defaultKeycloakIdentifier
-
-	// keycloak not installed
-	_ = r.reconcileStatusKeycloak(a)
-	assert.Equal(t, "Unknown", a.Status.SSO)
-
-	// create new client with dc object already present, but with 0 ready replicas to simulate
-	// keycloak installation started
-	resObjs = append(resObjs, dc)
-	subresObjs = append(subresObjs, dc)
-	r.Client = makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-
-	_ = r.reconcileStatusKeycloak(a)
-	assert.Equal(t, "Pending", a.Status.SSO)
-
-	// create new client with dc object already present, with 1 ready replica to simulate
-	// keycloak installation completed
-	dc.Status.ReadyReplicas = dc.Spec.Replicas
-	r.Client = makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-
-	_ = r.reconcileStatusKeycloak(a)
-	assert.Equal(t, "Running", a.Status.SSO)
-}
 
 func TestReconcileArgoCD_reconcileStatusSSO(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
@@ -107,9 +31,25 @@ func TestReconcileArgoCD_reconcileStatusSSO(t *testing.T) {
 			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
 				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 					Provider: argoproj.SSOProviderTypeKeycloak,
+					Keycloak: &argoproj.ArgoCDKeycloakSpec{
+						Host: "sso.test.example.com",
+					},
 					Dex: &argoproj.ArgoCDDexSpec{
 						OpenShiftOAuth: true,
 					},
+				}
+			}),
+			wantSSOStatus: "Failed",
+		},
+		{
+			name: "both dex and keycloak configured, and keycloak host is empty",
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeKeycloak,
+					Dex: &argoproj.ArgoCDDexSpec{
+						OpenShiftOAuth: true,
+					},
+					Keycloak: &argoproj.ArgoCDKeycloakSpec{},
 				}
 			}),
 			wantSSOStatus: "Failed",
@@ -152,15 +92,19 @@ func TestReconcileArgoCD_reconcileStatusSSO(t *testing.T) {
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			argocdStatus := argoproj.ArgoCDStatus{}
 
 			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
 
-			r.reconcileSSO(test.argoCD)
+			_ = r.reconcileSSO(test.argoCD, &argocdStatus)
 
-			r.reconcileStatusSSO(test.argoCD)
+			if argocdStatus.SSO == "" { // only call statusSSO if reconcileSSO has not already set a value
+				_ = r.reconcileStatusSSO(test.argoCD, &argocdStatus)
+			}
 
-			assert.Equal(t, test.wantSSOStatus, test.argoCD.Status.SSO)
+			assert.Equal(t, test.wantSSOStatus, argocdStatus.SSO)
 		})
 	}
 }
@@ -197,7 +141,7 @@ func TestReconcileArgoCD_reconcileStatusHost(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
-			routeAPIFound = test.testRouteAPIFound
+			argoutil.SetRouteAPIFound(test.testRouteAPIFound)
 
 			a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 				a.Spec.Server.Route.Enabled = test.routeEnabled
@@ -257,22 +201,24 @@ func TestReconcileArgoCD_reconcileStatusHost(t *testing.T) {
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 			if test.routeEnabled {
-				err := r.Client.Create(context.TODO(), route)
+				err := r.Create(context.TODO(), route)
 				assert.NoError(t, err)
 
 			} else if test.ingressEnabled {
-				err := r.Client.Create(context.TODO(), ingress)
+				err := r.Create(context.TODO(), ingress)
 				assert.NoError(t, err)
 				assert.NotEqual(t, "Pending", a.Status.Phase)
 			}
 
-			err := r.reconcileStatusHost(a)
+			argocdStatus := a.DeepCopy().Status
+
+			err := r.reconcileStatusHost(a, &argocdStatus)
 			assert.NoError(t, err)
 
-			assert.Equal(t, test.host, a.Status.Host)
+			assert.Equal(t, test.host, argocdStatus.Host)
 		})
 	}
 }
@@ -286,20 +232,22 @@ func TestReconcileArgoCD_reconcileStatusNotificationsController(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	assert.NoError(t, r.reconcileStatusNotifications(a))
-	assert.Equal(t, "", a.Status.NotificationsController)
+	argocdStatus := a.DeepCopy().Status
+
+	assert.NoError(t, r.reconcileStatusNotifications(a, &argocdStatus))
+	assert.Equal(t, "", argocdStatus.NotificationsController)
 
 	a.Spec.Notifications.Enabled = true
 	assert.NoError(t, r.reconcileNotificationsController(a))
-	assert.NoError(t, r.reconcileStatusNotifications(a))
-	assert.Equal(t, "Pending", a.Status.NotificationsController)
+	assert.NoError(t, r.reconcileStatusNotifications(a, &argocdStatus))
+	assert.Equal(t, "Pending", argocdStatus.NotificationsController)
 
 	a.Spec.Notifications.Enabled = false
 	assert.NoError(t, r.deleteNotificationsResources(a))
-	assert.NoError(t, r.reconcileStatusNotifications(a))
-	assert.Equal(t, "", a.Status.NotificationsController)
+	assert.NoError(t, r.reconcileStatusNotifications(a, &argocdStatus))
+	assert.Equal(t, "", argocdStatus.NotificationsController)
 }
 
 func TestReconcileArgoCD_reconcileStatusApplicationSetController(t *testing.T) {
@@ -311,13 +259,15 @@ func TestReconcileArgoCD_reconcileStatusApplicationSetController(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	assert.NoError(t, r.reconcileStatusApplicationSetController(a))
-	assert.Equal(t, "Unknown", a.Status.ApplicationSetController)
+	argocdStatus := a.DeepCopy().Status
+
+	assert.NoError(t, r.reconcileStatusApplicationSetController(a, &argocdStatus))
+	assert.Equal(t, "Unknown", argocdStatus.ApplicationSetController)
 
 	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{}
 	assert.NoError(t, r.reconcileApplicationSetController(a))
-	assert.NoError(t, r.reconcileStatusApplicationSetController(a))
-	assert.Equal(t, "Pending", a.Status.ApplicationSetController)
+	assert.NoError(t, r.reconcileStatusApplicationSetController(a, &argocdStatus))
+	assert.Equal(t, "Pending", argocdStatus.ApplicationSetController)
 }

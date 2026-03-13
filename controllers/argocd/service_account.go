@@ -43,11 +43,11 @@ func newServiceAccount(cr *argoproj.ArgoCD) *corev1.ServiceAccount {
 // newServiceAccountWithName creates a new ServiceAccount with the given name for the given ArgCD.
 func newServiceAccountWithName(name string, cr *argoproj.ArgoCD) *corev1.ServiceAccount {
 	sa := newServiceAccount(cr)
-	sa.ObjectMeta.Name = getServiceAccountName(cr.Name, name)
+	sa.Name = getServiceAccountName(cr.Name, name)
 
-	lbls := sa.ObjectMeta.Labels
+	lbls := sa.Labels
 	lbls[common.ArgoCDKeyName] = name
-	sa.ObjectMeta.Labels = lbls
+	sa.Labels = lbls
 
 	return sa
 }
@@ -78,6 +78,12 @@ func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileServiceAccountClusterPermissions(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) error {
+
+	if name == common.ArgoCDApplicationControllerComponentAdmin || name == common.ArgoCDApplicationControllerComponentView {
+		// Don't create ServiceAccounts
+		return nil
+	}
+
 	var role *v1.ClusterRole
 	var err error
 
@@ -100,6 +106,7 @@ func (r *ReconcileArgoCD) reconcileServiceAccountPermissions(name string, rules 
 func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoproj.ArgoCD) (*corev1.ServiceAccount, error) {
 	sa := newServiceAccountWithName(name, cr)
 
+	// Attempt to retrieve the ServiceAccount
 	exists := true
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
 		if !errors.IsNotFound(err) {
@@ -114,8 +121,8 @@ func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoproj.Argo
 	if exists {
 		if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
 			// Delete any existing Service Account created for Dex since dex is disabled
-			log.Info("deleting the existing Dex service account because dex uninstallation requested")
-			return sa, r.Client.Delete(context.TODO(), sa)
+			argoutil.LogResourceDeletion(log, sa, "dex is being uninstalled")
+			return sa, r.Delete(context.TODO(), sa)
 		}
 		return sa, nil
 	}
@@ -124,9 +131,8 @@ func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoproj.Argo
 		return nil, err
 	}
 
-	log.Info(fmt.Sprintf("creating serviceaccount %s for Argo CD instance %s in namespace %s", sa.Name, cr.Name, cr.Namespace))
-
-	err := r.Client.Create(context.TODO(), sa)
+	argoutil.LogResourceCreation(log, sa)
+	err := r.Create(context.TODO(), sa)
 	if err != nil {
 		return nil, err
 	}

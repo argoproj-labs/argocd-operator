@@ -1,0 +1,11 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: basic
+spec:
+  redis:
+    remote: https://redis.remote.host:6379
+  repo:
+    remote: https://repo-server.remote.host:8081

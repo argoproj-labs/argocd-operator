@@ -104,6 +104,11 @@ func getArgoExportVolumeMounts() []corev1.VolumeMount {
 		MountPath: "/secrets",
 	})
 
+	mounts = append(mounts, corev1.VolumeMount{
+		Name:      "tmp",
+		MountPath: "/tmp",
+	})
+
 	return mounts
 }
 
@@ -168,26 +173,14 @@ func newCronJob(cr *argoproj.ArgoCDExport) *batchv1.CronJob {
 func newExportPodSpec(cr *argoproj.ArgoCDExport, argocdName string, client client.Client) corev1.PodSpec {
 	pod := corev1.PodSpec{}
 
-	boolPtr := func(value bool) *bool {
-		return &value
-	}
-
 	pod.Containers = []corev1.Container{{
 		Command:         getArgoExportCommand(cr),
 		Env:             getArgoExportContainerEnv(cr),
 		Image:           getArgoExportContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-export",
-		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{
-					"ALL",
-				},
-			},
-			RunAsNonRoot: boolPtr(true),
-		},
-		VolumeMounts: getArgoExportVolumeMounts(),
+		SecurityContext: argoutil.DefaultSecurityContext(),
+		VolumeMounts:    getArgoExportVolumeMounts(),
 	}}
 
 	pod.RestartPolicy = corev1.RestartPolicyOnFailure
@@ -195,6 +188,7 @@ func newExportPodSpec(cr *argoproj.ArgoCDExport, argocdName string, client clien
 	pod.Volumes = []corev1.Volume{
 		getArgoStorageVolume("backup-storage", cr),
 		getArgoSecretVolume("secret-storage", cr),
+		{Name: "tmp", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
 	}
 
 	// Configure runAsUser, runAsGroup and fsGroup so that the job can write to the PV
@@ -228,9 +222,14 @@ func (r *ReconcileArgoCDExport) reconcileCronJob(cr *argoproj.ArgoCDExport) erro
 	}
 
 	cj := newCronJob(cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cj.Name, cj) {
+	cjExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, cj.Name, cj)
+	if err != nil {
+		return err
+	}
+	if cjExists {
 		if *cr.Spec.Schedule != cj.Spec.Schedule {
 			cj.Spec.Schedule = *cr.Spec.Schedule
+			argoutil.LogResourceUpdate(log, cj, "updating the schedule")
 			return r.Client.Update(context.TODO(), cj)
 		}
 		return nil
@@ -253,6 +252,7 @@ func (r *ReconcileArgoCDExport) reconcileCronJob(cr *argoproj.ArgoCDExport) erro
 	if err := controllerutil.SetControllerReference(cr, cj, r.Scheme); err != nil {
 		return err
 	}
+	argoutil.LogResourceCreation(log, cj)
 	return r.Client.Create(context.TODO(), cj)
 }
 
@@ -263,7 +263,11 @@ func (r *ReconcileArgoCDExport) reconcileJob(cr *argoproj.ArgoCDExport) error {
 	}
 
 	job := newJob(cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, job.Name, job) {
+	jobExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, job.Name, job)
+	if err != nil {
+		return err
+	}
+	if jobExists {
 		if job.Status.Succeeded > 0 && cr.Status.Phase != common.ArgoCDStatusCompleted {
 			// Mark status Phase as Complete
 			cr.Status.Phase = common.ArgoCDStatusCompleted
@@ -284,6 +288,7 @@ func (r *ReconcileArgoCDExport) reconcileJob(cr *argoproj.ArgoCDExport) error {
 	if err := controllerutil.SetControllerReference(cr, job, r.Scheme); err != nil {
 		return err
 	}
+	argoutil.LogResourceCreation(log, job)
 	return r.Client.Create(context.TODO(), job)
 }
 
@@ -293,7 +298,7 @@ func (r *ReconcileArgoCDExport) argocdName(namespace string) (string, error) {
 		return "", err
 	}
 	if len(argocds.Items) != 1 {
-		return "", fmt.Errorf("No Argo CD instance found in namespace %s", namespace)
+		return "", fmt.Errorf("no Argo CD instance found in namespace %s", namespace)
 	}
 	argocd := argocds.Items[0]
 	return argocd.Name, nil

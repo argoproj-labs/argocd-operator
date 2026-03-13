@@ -1,0 +1,16 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  namespace: test-1-38-controller-extra-command
+status:
+  phase: Available
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: example-argocd-application-controller 
+  namespace: test-1-38-controller-extra-command
+status:
+  readyReplicas: 1

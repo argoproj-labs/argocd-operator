@@ -13,6 +13,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
 
@@ -99,13 +101,14 @@ func TestReconcileNotifications_CreateConfigMap(t *testing.T) {
 
 	// Verify if the ConfigMap is created
 	testCM := &corev1.ConfigMap{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      ArgoCDNotificationsConfigMap,
 			Namespace: a.Namespace,
 		},
 		testCM))
+	assert.True(t, argoutil.IsTrackedByOperator(testCM.Labels))
 
 	// Verify that the configmap has the default template
 	assert.NotEqual(t, testCM.Data["template.app-created"], "")
@@ -150,7 +153,7 @@ func TestReconcileNotifications_UpdateConfigMap(t *testing.T) {
 
 	// Verify if the ConfigMap is created
 	testCM := &corev1.ConfigMap{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      ArgoCDNotificationsConfigMap,
@@ -165,14 +168,14 @@ func TestReconcileNotifications_UpdateConfigMap(t *testing.T) {
 	assert.NoError(t, err)
 
 	testCM = &corev1.ConfigMap{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      ArgoCDNotificationsConfigMap,
 			Namespace: a.Namespace,
 		},
 		testCM))
-
+	assert.True(t, argoutil.IsTrackedByOperator(testCM.Labels))
 	// Verify that the updated configuration
 	assert.Equal(t, testCM.Data["trigger.on-sync-status-test"],
 		"- when: app.status.sync.status == 'Unknown' \n send: [my-custom-template]")
@@ -207,22 +210,57 @@ func TestReconcileNotifications_DeleteConfigMap(t *testing.T) {
 			Namespace: a.Namespace,
 		},
 	}
-	assert.NoError(t, r.Client.Delete(
+	assert.NoError(t, r.Delete(
 		context.TODO(), testCM))
 
 	// Reconcile to check if the ConfigMap is recreated
 	err = r.reconcileNotificationsConfigmap(a)
 	assert.NoError(t, err)
 
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      ArgoCDNotificationsConfigMap,
 			Namespace: a.Namespace,
 		},
 		testCM))
-
+	assert.True(t, argoutil.IsTrackedByOperator(testCM.Labels))
 	// Verify if ConfigMap is created with required data
 	assert.Equal(t, testCM.Data["trigger.on-sync-status-test"],
 		"- when: app.status.sync.status == 'Unknown' \n send: [my-custom-template]")
+}
+
+func Test_checkIfContextEquals(t *testing.T) {
+	a := makeTestNotificationsConfiguration(func(a *v1alpha1.NotificationsConfiguration) {})
+	a.Spec = v1alpha1.NotificationsConfigurationSpec{
+		Context: map[string]string{"key1": "value1",
+			"key2": "value2",
+			"key4": "value4",
+			"key3": "value3",
+			"key6": "value6"},
+	}
+
+	var testmap = []struct {
+		testcase string
+		cm       corev1.ConfigMap
+		result   bool
+	}{
+		{"equal context",
+			corev1.ConfigMap{Data: map[string]string{"context": "key4: value4\nkey2: value2\nkey6: value6\nkey1: value1\nkey3: value3\n"}},
+			false,
+		},
+		{"context is not equal",
+			corev1.ConfigMap{Data: map[string]string{"context": "key1: value1\nkey4: value4\nkey9: value9\nkey6: value6\n"}},
+			true,
+		},
+		{"context of same length but not equal",
+			corev1.ConfigMap{Data: map[string]string{"context": "key2: value2\nkey1: value1\nkey4: value4\nkey9: value9\nkey6: value6\n"}},
+			true,
+		},
+	}
+	for _, tt := range testmap {
+		t.Run(tt.testcase, func(t *testing.T) {
+			assert.Equal(t, tt.result, checkIfContextChanged(a, &tt.cm))
+		})
+	}
 }

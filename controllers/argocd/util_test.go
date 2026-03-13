@@ -16,18 +16,19 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	testclient "k8s.io/client-go/kubernetes/fake"
 )
 
 const (
-	dexTestImage          = "testing/dex:latest"
-	argoTestImage         = "testing/argocd:latest"
-	redisTestImage        = "testing/redis:latest"
-	redisHATestImage      = "testing/redis:latest-ha"
-	redisHAProxyTestImage = "testing/redis-ha-haproxy:latest-ha"
+	dexTestImage              = "testing/dex:latest"
+	argoTestImage             = "testing/argocd:latest"
+	argoTestImageOtherVersion = "testing/argocd:test"
+	redisTestImage            = "testing/redis:latest"
+	redisHATestImage          = "testing/redis:latest-ha"
+	redisHAProxyTestImage     = "testing/redis-ha-haproxy:latest-ha"
 )
 
 func parallelismLimit(n int32) argoCDOpt {
@@ -45,6 +46,12 @@ func logFormat(f string) argoCDOpt {
 func logLevel(l string) argoCDOpt {
 	return func(a *argoproj.ArgoCD) {
 		a.Spec.Controller.LogLevel = l
+	}
+}
+
+func extraCommandArgs(l []string) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		a.Spec.Controller.ExtraCommandArgs = l
 	}
 }
 
@@ -104,6 +111,35 @@ var imageTests = []struct {
 	{
 		name:      "argo env configuration",
 		imageFunc: getArgoContainerImage,
+		want:      argoTestImage,
+		pre: func(t *testing.T) {
+			t.Setenv(common.ArgoCDImageEnvName, argoTestImage)
+		},
+	},
+	{
+		name:      "repo default configuration",
+		imageFunc: getRepoServerContainerImage,
+		want:      argoutil.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion),
+	},
+	{
+		name:      "repo spec configuration",
+		imageFunc: getRepoServerContainerImage,
+		want:      argoTestImage, opts: []argoCDOpt{func(a *argoproj.ArgoCD) {
+			a.Spec.Repo.Image = "testing/argocd"
+			a.Spec.Repo.Version = "latest"
+		}},
+	},
+	{
+		name:      "repo configuration fallback spec",
+		imageFunc: getRepoServerContainerImage,
+		want:      argoTestImageOtherVersion, opts: []argoCDOpt{func(a *argoproj.ArgoCD) {
+			a.Spec.Image = "testing/argocd"
+			a.Spec.Version = "test"
+		}},
+	},
+	{
+		name:      "argo env configuration",
+		imageFunc: getRepoServerContainerImage,
 		want:      argoTestImage,
 		pre: func(t *testing.T) {
 			t.Setenv(common.ArgoCDImageEnvName, argoTestImage)
@@ -218,11 +254,11 @@ var argoServerURITests = []struct {
 }
 
 func setRouteAPIFound(t *testing.T, routeEnabled bool) {
-	routeAPIEnabledTemp := routeAPIFound
+	routeAPIEnabledTemp := argoutil.IsRouteAPIAvailable()
 	t.Cleanup(func() {
-		routeAPIFound = routeAPIEnabledTemp
+		argoutil.SetRouteAPIFound(routeAPIEnabledTemp)
 	})
-	routeAPIFound = routeEnabled
+	argoutil.SetRouteAPIFound(routeEnabled)
 }
 
 func TestGetArgoServerURI(t *testing.T) {
@@ -231,7 +267,8 @@ func TestGetArgoServerURI(t *testing.T) {
 			cr := makeTestArgoCD(tt.opts...)
 			r := &ReconcileArgoCD{}
 			setRouteAPIFound(t, tt.routeEnabled)
-			result := r.getArgoServerURI(cr)
+			result, err := r.getArgoServerURI(cr)
+			assert.Nil(t, err)
 			if result != tt.want {
 				t.Errorf("%s test failed, got=%q want=%q", tt.name, result, tt.want)
 			}
@@ -248,7 +285,7 @@ func TestRemoveDeletionFinalizer(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		err := r.removeDeletionFinalizer(a)
 		assert.NoError(t, err)
@@ -264,7 +301,7 @@ func TestRemoveDeletionFinalizer(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		err := r.removeDeletionFinalizer(a)
 		assert.Error(t, err, `failed to remove deletion finalizer from argocd: argocds.argoproj.io "argocd" not found`)
@@ -280,7 +317,7 @@ func TestAddDeletionFinalizer(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		err := r.addDeletionFinalizer(a)
 		assert.NoError(t, err)
@@ -296,7 +333,7 @@ func TestAddDeletionFinalizer(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		err := r.addDeletionFinalizer(a)
 		assert.Error(t, err, `failed to add deletion finalizer for argocd: argocds.argoproj.io "argocd" not found`)
@@ -340,6 +377,7 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 		"info",
 		"--logformat",
 		"text",
+		"--persist-resource-health",
 	}
 
 	controllerProcesorsChangedResult := func(n string) []string {
@@ -359,6 +397,7 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 			"info",
 			"--logformat",
 			"text",
+			"--persist-resource-health",
 		}
 	}
 
@@ -379,6 +418,28 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 			"info",
 			"--logformat",
 			"text",
+			"--persist-resource-health",
+		}
+	}
+
+	operationProcesorsChangedResult2 := func(n string) []string {
+		return []string{
+			"argocd-application-controller",
+			"--redis",
+			"argocd-redis.argocd.svc.cluster.local:6379",
+			"--repo-server",
+			"argocd-repo-server.argocd.svc.cluster.local:8081",
+			"--status-processors",
+			"20",
+			"--kubectl-parallelism-limit",
+			"10",
+			"--loglevel",
+			"info",
+			"--logformat",
+			"text",
+			"--persist-resource-health",
+			"--operation-processors",
+			n,
 		}
 	}
 
@@ -399,6 +460,7 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 			"info",
 			"--logformat",
 			"text",
+			"--persist-resource-health",
 		}
 	}
 
@@ -419,6 +481,7 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 			"info",
 			"--logformat",
 			f,
+			"--persist-resource-health",
 		}
 	}
 
@@ -439,7 +502,12 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 			l,
 			"--logformat",
 			"text",
+			"--persist-resource-health",
 		}
+	}
+
+	extraCommandArgsChangedResult := func(l []string) []string {
+		return append(defaultResult, l...)
 	}
 
 	cmdTests := []struct {
@@ -532,6 +600,26 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 			[]argoCDOpt{logLevel("error")},
 			logLevelChangedResult("error"),
 		},
+		{
+			"configured extraCommandArgs",
+			[]argoCDOpt{extraCommandArgs([]string{"--hydrator-enabled"})},
+			extraCommandArgsChangedResult([]string{"--hydrator-enabled"}),
+		},
+		{
+			"overriding default argument using extraCommandArgs",
+			[]argoCDOpt{extraCommandArgs([]string{"--operation-processors", "15"})},
+			operationProcesorsChangedResult2("15"),
+		},
+		{
+			"configured empty extraCommandArgs",
+			[]argoCDOpt{extraCommandArgs([]string{})},
+			defaultResult,
+		},
+		{
+			"configured extraCommandArgs with duplicate values",
+			[]argoCDOpt{extraCommandArgs([]string{"--status-processors", "20"})},
+			defaultResult,
+		},
 	}
 
 	for _, tt := range cmdTests {
@@ -546,14 +634,29 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 
 func TestGetArgoApplicationContainerEnv(t *testing.T) {
 
-	sync60s := []v1.EnvVar{
-		v1.EnvVar{Name: "HOME", Value: "/home/argocd", ValueFrom: (*v1.EnvVarSource)(nil)},
-		v1.EnvVar{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "60s", ValueFrom: (*v1.EnvVarSource)(nil)}}
+	sync60s := []corev1.EnvVar{
+		{Name: "HOME", Value: "/home/argocd", ValueFrom: (*corev1.EnvVarSource)(nil)},
+		{Name: "REDIS_PASSWORD", Value: "",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "argocd-redis-initial-password",
+					},
+					Key: "admin.password",
+				},
+			}},
+		{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "60s", ValueFrom: (*corev1.EnvVarSource)(nil)},
+		{Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST", ValueFrom: &corev1.EnvVarSource{
+			ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
+				Key:                  "controller.resource.health.persist",
+			},
+		}}}
 
 	cmdTests := []struct {
 		name string
 		opts []argoCDOpt
-		want []v1.EnvVar
+		want []corev1.EnvVar
 	}{
 		{
 			"configured apsync to 60s",
@@ -564,7 +667,7 @@ func TestGetArgoApplicationContainerEnv(t *testing.T) {
 
 	for _, tt := range cmdTests {
 		cr := makeTestArgoCD(tt.opts...)
-		env := getArgoControllerContainerEnv(cr)
+		env := getArgoControllerContainerEnv(cr, 1)
 
 		if !reflect.DeepEqual(env, tt.want) {
 			t.Fatalf("got %#v, want %#v", env, tt.want)
@@ -656,7 +759,7 @@ func TestRemoveManagedNamespaceFromClusterSecretAfterDeletion(t *testing.T) {
 	// secret should still exists with updated list of namespaces
 	s, err := testClient.CoreV1().Secrets(a.Namespace).Get(context.TODO(), secret.Name, metav1.GetOptions{})
 	assert.NoError(t, err)
-	assert.Equal(t, string(s.Data["namespaces"]), "testNamespace2")
+	assert.Equal(t, "testNamespace2", string(s.Data["namespaces"]))
 
 }
 
@@ -668,49 +771,49 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	nsArgocd := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
+	nsArgocd := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: a.Namespace,
 	}}
-	err := r.Client.Create(context.TODO(), nsArgocd)
+	err := r.Create(context.TODO(), nsArgocd)
 	assert.NoError(t, err)
 
-	ns := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
+	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: "testNamespace",
 		Labels: map[string]string{
 			common.ArgoCDManagedByLabel: a.Namespace,
 		}},
 	}
 
-	err = r.Client.Create(context.TODO(), ns)
+	err = r.Create(context.TODO(), ns)
 	assert.NoError(t, err)
 
-	ns2 := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
+	ns2 := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: "testNamespace2",
 		Labels: map[string]string{
 			common.ArgoCDManagedByLabel: a.Namespace,
 		}},
 	}
 
-	err = r.Client.Create(context.TODO(), ns2)
+	err = r.Create(context.TODO(), ns2)
 	assert.NoError(t, err)
 
-	ns3 := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
+	ns3 := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: "testNamespace3",
 		Labels: map[string]string{
 			common.ArgoCDManagedByLabel: "newNamespace",
 		}},
 	}
 
-	err = r.Client.Create(context.TODO(), ns3)
+	err = r.Create(context.TODO(), ns3)
 	assert.NoError(t, err)
 
 	err = r.removeManagedByLabelFromNamespaces(a.Namespace)
 	assert.NoError(t, err)
 
-	nsList := &v1.NamespaceList{}
-	err = r.Client.List(context.TODO(), nsList)
+	nsList := &corev1.NamespaceList{}
+	err = r.List(context.TODO(), nsList)
 	assert.NoError(t, err)
 	for _, n := range nsList.Items {
 		if n.Name == ns3.Name {
@@ -726,7 +829,7 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 func TestSetManagedNamespaces(t *testing.T) {
 	a := makeTestArgoCD()
 
-	ns1 := v1.Namespace{
+	ns1 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-1",
 			Labels: map[string]string{
@@ -735,7 +838,7 @@ func TestSetManagedNamespaces(t *testing.T) {
 		},
 	}
 
-	ns2 := v1.Namespace{
+	ns2 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-2",
 			Labels: map[string]string{
@@ -744,7 +847,7 @@ func TestSetManagedNamespaces(t *testing.T) {
 		},
 	}
 
-	ns3 := v1.Namespace{
+	ns3 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-3",
 			Labels: map[string]string{
@@ -753,7 +856,7 @@ func TestSetManagedNamespaces(t *testing.T) {
 		},
 	}
 
-	ns4 := v1.Namespace{
+	ns4 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-4",
 		},
@@ -765,7 +868,7 @@ func TestSetManagedNamespaces(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	err := r.setManagedNamespaces(a)
 	assert.NoError(t, err)
@@ -785,7 +888,7 @@ func TestSetManagedSourceNamespaces(t *testing.T) {
 			"test-namespace-1",
 		},
 	}
-	ns1 := v1.Namespace{
+	ns1 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-1",
 			Labels: map[string]string{
@@ -799,7 +902,7 @@ func TestSetManagedSourceNamespaces(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	err := r.setManagedSourceNamespaces(a)
 	assert.NoError(t, err)
@@ -815,18 +918,18 @@ func TestGetSourceNamespacesWithWildcardPatternNamespace(t *testing.T) {
 			"test*",
 		},
 	}
-	ns1 := v1.Namespace{
+	ns1 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-1",
 		},
 	}
 
-	ns2 := v1.Namespace{
+	ns2 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-2",
 		},
 	}
-	ns3 := v1.Namespace{
+	ns3 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "other-namespace",
 		},
@@ -837,7 +940,7 @@ func TestGetSourceNamespacesWithWildcardPatternNamespace(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	sourceNamespaces, err := r.getSourceNamespaces(a)
 	assert.NoError(t, err)
@@ -854,17 +957,17 @@ func TestGetSourceNamespacesWithSpecificNamespace(t *testing.T) {
 			"test",
 		},
 	}
-	ns1 := v1.Namespace{
+	ns1 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test",
 		},
 	}
-	ns2 := v1.Namespace{
+	ns2 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-1",
 		},
 	}
-	ns3 := v1.Namespace{
+	ns3 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "other-namespace",
 		},
@@ -875,7 +978,7 @@ func TestGetSourceNamespacesWithSpecificNamespace(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	sourceNamespaces, err := r.getSourceNamespaces(a)
 	assert.NoError(t, err)
@@ -893,22 +996,22 @@ func TestGetSourceNamespacesWithMultipleSourceNamespaces(t *testing.T) {
 			"dev*",
 		},
 	}
-	ns1 := v1.Namespace{
+	ns1 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test",
 		},
 	}
-	ns2 := v1.Namespace{
+	ns2 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-1",
 		},
 	}
-	ns3 := v1.Namespace{
+	ns3 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "dev-namespace-1",
 		},
 	}
-	ns4 := v1.Namespace{
+	ns4 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "other-namespace",
 		},
@@ -919,7 +1022,7 @@ func TestGetSourceNamespacesWithMultipleSourceNamespaces(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	sourceNamespaces, err := r.getSourceNamespaces(a)
 	assert.NoError(t, err)
@@ -937,17 +1040,17 @@ func TestGetSourceNamespacesWithWildCardNamespace(t *testing.T) {
 			"*",
 		},
 	}
-	ns1 := v1.Namespace{
+	ns1 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-1",
 		},
 	}
-	ns2 := v1.Namespace{
+	ns2 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-2",
 		},
 	}
-	ns3 := v1.Namespace{
+	ns3 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "other-namespace",
 		},
@@ -958,7 +1061,7 @@ func TestGetSourceNamespacesWithWildCardNamespace(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	sourceNamespaces, err := r.getSourceNamespaces(a)
 	assert.NoError(t, err)
@@ -966,6 +1069,43 @@ func TestGetSourceNamespacesWithWildCardNamespace(t *testing.T) {
 	assert.Contains(t, sourceNamespaces, "other-namespace")
 	assert.Contains(t, sourceNamespaces, "test-namespace-1")
 	assert.Contains(t, sourceNamespaces, "test-namespace-2")
+}
+func TestGetSourceNamespacesWithRegExpNamespace(t *testing.T) {
+	a := makeTestArgoCD()
+	a.Spec = argoproj.ArgoCDSpec{
+		SourceNamespaces: []string{
+			"/^test.*test$/",
+		},
+	}
+	ns1 := corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "testtest",
+		},
+	}
+	ns2 := corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test123test",
+		},
+	}
+	ns3 := corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-abc-test",
+		},
+	}
+
+	resObjs := []client.Object{a, &ns1, &ns2, &ns3}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	sourceNamespaces, err := r.getSourceNamespaces(a)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(sourceNamespaces))
+	assert.Contains(t, sourceNamespaces, "testtest")
+	assert.Contains(t, sourceNamespaces, "test123test")
+	assert.Contains(t, sourceNamespaces, "test-abc-test")
 }
 
 func TestGenerateRandomString(t *testing.T) {
@@ -983,7 +1123,7 @@ func TestGenerateRandomString(t *testing.T) {
 	assert.Len(t, b, 20)
 }
 
-func generateEncodedPEM(t *testing.T, host string) []byte {
+func generateEncodedPEM(t *testing.T) []byte {
 	key, err := argoutil.NewPrivateKey()
 	assert.NoError(t, err)
 
@@ -1011,7 +1151,7 @@ func TestReconcileArgoCD_reconcileDexOAuthClientSecret(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	_, err := r.reconcileServiceAccount(common.ArgoCDDefaultDexServiceAccountName, a)
@@ -1027,4 +1167,534 @@ func TestReconcileArgoCD_reconcileDexOAuthClientSecret(t *testing.T) {
 		}
 	}
 	assert.True(t, tokenExists, "Dex is enabled but unable to create oauth client secret")
+}
+
+func TestRetainKubernetesData(t *testing.T) {
+	tests := []struct {
+		name     string
+		source   map[string]string
+		live     map[string]string
+		expected map[string]string
+	}{
+		{
+			name: "Add Kubernetes-specific keys not in source",
+			source: map[string]string{
+				"custom-label": "custom-value",
+			},
+			live: map[string]string{
+				"node.kubernetes.io/pod":             "true",
+				"kubectl.kubernetes.io/restartedAt":  "2024-12-05T09:46:46+05:30",
+				"openshift.openshift.io/restartedAt": "2024-12-05T09:46:46+05:30",
+			},
+			expected: map[string]string{
+				"custom-label":                       "custom-value",              // unchanged
+				"node.kubernetes.io/pod":             "true",                      // added
+				"kubectl.kubernetes.io/restartedAt":  "2024-12-05T09:46:46+05:30", // added
+				"openshift.openshift.io/restartedAt": "2024-12-05T09:46:46+05:30", // added
+			},
+		},
+		{
+			name: "Ignores non-Kubernetes-specific keys",
+			source: map[string]string{
+				"custom-label": "custom-value",
+			},
+			live: map[string]string{
+				"non-k8s-key":  "non-k8s-value",
+				"custom-label": "live-value",
+			},
+			expected: map[string]string{
+				"custom-label": "custom-value", // unchanged
+			},
+		},
+		{
+			name: "Do not override existing Kubernetes-specific keys in source",
+			source: map[string]string{
+				"node.kubernetes.io/pod": "source-true",
+			},
+			live: map[string]string{
+				"node.kubernetes.io/pod": "live-true", // should not override
+			},
+			expected: map[string]string{
+				"node.kubernetes.io/pod": "source-true", // source takes precedence
+			},
+		},
+		{
+			name: "Handles empty live map",
+			source: map[string]string{
+				"custom-label": "custom-value",
+			},
+			live: map[string]string{},
+			expected: map[string]string{
+				"custom-label": "custom-value", // unchanged
+			},
+		},
+		{
+			name:   "Handles empty source map",
+			source: map[string]string{},
+			live: map[string]string{
+				"openshift.io/resource": "value",
+			},
+			expected: map[string]string{
+				"openshift.io/resource": "value", // added from live
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			addKubernetesData(tt.source, tt.live)
+			assert.Equal(t, tt.expected, tt.source)
+		})
+	}
+}
+
+func TestUpdateStatusConditionOfArgoCD_Success(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	ctx := context.Background()
+	a := makeTestArgoCD(deletedAt(time.Now()))
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	argocd := argoproj.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-rm-1",
+			Namespace: "test-ns-1",
+		},
+	}
+
+	assert.NoError(t, createNamespace(r, argocd.Namespace, ""))
+	assert.NoError(t, r.Create(ctx, &argocd))
+
+	assert.NoError(t, updateStatusAndConditionsOfArgoCD(ctx, createCondition(""), &argocd, &argocd.Status, r.Client, log))
+
+	assert.Equal(t, argocd.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
+	assert.Equal(t, argocd.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonSuccess)
+	assert.Equal(t, argocd.Status.Conditions[0].Message, "")
+	assert.Equal(t, argocd.Status.Conditions[0].Status, metav1.ConditionTrue)
+}
+
+func TestUpdateStatusConditionOfArgoCD_Fail(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	ctx := context.Background()
+	a := makeTestArgoCD(deletedAt(time.Now()))
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	argocd := argoproj.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-rm-1",
+			Namespace: "test-ns-1",
+		},
+	}
+
+	assert.NoError(t, createNamespace(r, argocd.Namespace, ""))
+	assert.NoError(t, r.Create(ctx, &argocd))
+	assert.NoError(t, updateStatusAndConditionsOfArgoCD(ctx, createCondition("some error"), &argocd, &argocd.Status, r.Client, log))
+
+	assert.Equal(t, argocd.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
+	assert.Equal(t, argocd.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonErrorOccurred)
+	assert.Equal(t, argocd.Status.Conditions[0].Message, "some error")
+	assert.Equal(t, argocd.Status.Conditions[0].Status, metav1.ConditionFalse)
+
+	// Update error condition
+	assert.NoError(t, updateStatusAndConditionsOfArgoCD(ctx, createCondition("some other error"), &argocd, &argocd.Status, r.Client, log))
+
+	assert.Equal(t, argocd.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
+	assert.Equal(t, argocd.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonErrorOccurred)
+	assert.Equal(t, argocd.Status.Conditions[0].Message, "some other error")
+	assert.Equal(t, argocd.Status.Conditions[0].Status, metav1.ConditionFalse)
+
+	// Update success condition
+	assert.NoError(t, updateStatusAndConditionsOfArgoCD(ctx, createCondition(""), &argocd, &argocd.Status, r.Client, log))
+
+	assert.Equal(t, argocd.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
+	assert.Equal(t, argocd.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonSuccess)
+	assert.Equal(t, argocd.Status.Conditions[0].Message, "")
+	assert.Equal(t, argocd.Status.Conditions[0].Status, metav1.ConditionTrue)
+}
+
+func TestInsertOrUpdateConditionsInSlice_add_new_condition(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	existingConditions := []metav1.Condition{}
+	newCondition := metav1.Condition{
+		Type:    argoproj.ArgoCDConditionType,
+		Status:  metav1.ConditionTrue,
+		Reason:  "test reason",
+		Message: "test message",
+	}
+	changed, conditions := insertOrUpdateConditionsInSlice(newCondition, existingConditions)
+
+	assert.True(t, changed)
+	assert.Len(t, conditions, 1)
+	assert.Equal(t, conditions[0].Type, newCondition.Type)
+	assert.Equal(t, conditions[0].Status, newCondition.Status)
+	assert.Equal(t, conditions[0].Reason, newCondition.Reason)
+	assert.Equal(t, conditions[0].Message, newCondition.Message)
+}
+
+func TestInsertOrUpdateConditionsInSlice_change_existing_condition(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	existingConditions := []metav1.Condition{
+		{
+			Type:    argoproj.ArgoCDConditionType,
+			Status:  metav1.ConditionTrue,
+			Reason:  "test reason",
+			Message: "test message",
+		},
+	}
+	newCondition := metav1.Condition{
+		Type:    argoproj.ArgoCDConditionType,
+		Status:  metav1.ConditionFalse,
+		Reason:  "Updated test reason",
+		Message: "Updated test message",
+	}
+
+	changed, conditions := insertOrUpdateConditionsInSlice(newCondition, existingConditions)
+
+	assert.True(t, changed)
+	assert.Len(t, conditions, 1)
+	assert.Equal(t, conditions[0].Type, newCondition.Type)
+	assert.Equal(t, conditions[0].Status, newCondition.Status)
+	assert.Equal(t, conditions[0].Reason, newCondition.Reason)
+	assert.Equal(t, conditions[0].Message, newCondition.Message)
+}
+
+func TestInsertOrUpdateConditionsInSlice_add_another_condition(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	newCondition := metav1.Condition{
+		Type:    argoproj.ArgoCDConditionType,
+		Status:  metav1.ConditionTrue,
+		Reason:  "test reason",
+		Message: "test message",
+	}
+	unrelatedCondition := metav1.Condition{
+		Type:    "UnrelatedCondition",
+		Status:  metav1.ConditionFalse,
+		Reason:  "some reason",
+		Message: "some message",
+	}
+	existingConditions := []metav1.Condition{
+		unrelatedCondition,
+	}
+
+	changed, conditions := insertOrUpdateConditionsInSlice(newCondition, existingConditions)
+	assert.True(t, changed)
+	assert.Len(t, conditions, 2)
+
+	//Check that the unrelated condition is still present
+	assert.Equal(t, conditions[0].Type, unrelatedCondition.Type)
+	assert.Equal(t, conditions[0].Status, unrelatedCondition.Status)
+	assert.Equal(t, conditions[0].Reason, unrelatedCondition.Reason)
+	assert.Equal(t, conditions[0].Message, unrelatedCondition.Message)
+
+	//Check that the new condition was added
+	assert.Equal(t, conditions[1].Type, newCondition.Type)
+	assert.Equal(t, conditions[1].Status, newCondition.Status)
+	assert.Equal(t, conditions[1].Reason, newCondition.Reason)
+	assert.Equal(t, conditions[1].Message, newCondition.Message)
+}
+
+func TestAppendUniqueArgs(t *testing.T) {
+	tests := []struct {
+		name      string
+		cmd       []string
+		extraArgs []string
+		want      []string
+	}{
+		{
+			name:      "append new flags and values",
+			cmd:       []string{"--foo", "bar"},
+			extraArgs: []string{"--baz", "qux"},
+			want:      []string{"--foo", "bar", "--baz", "qux"},
+		},
+		{
+			name:      "override existing flag value",
+			cmd:       []string{"--foo", "bar"},
+			extraArgs: []string{"--foo", "baz"},
+			want:      []string{"--foo", "baz"},
+		},
+		{
+			name:      "add flag without value",
+			cmd:       []string{"--foo", "bar"},
+			extraArgs: []string{"--baz"},
+			want:      []string{"--foo", "bar", "--baz"},
+		},
+		{
+			name:      "override flag with no value to have a value",
+			cmd:       []string{"--foo"},
+			extraArgs: []string{"--foo", "baz"},
+			want:      []string{"--foo", "baz"},
+		},
+		{
+			name:      "append non-flag arguments",
+			cmd:       []string{"--foo", "bar"},
+			extraArgs: []string{"extra", "--baz", "qux"},
+			want:      []string{"--foo", "bar", "extra", "--baz", "qux"},
+		},
+		{
+			name:      "ignore duplicate non-flag arguments",
+			cmd:       []string{"arg1", "arg2"},
+			extraArgs: []string{"arg2", "arg3"},
+			want:      []string{"arg1", "arg2", "arg2", "arg3"},
+		},
+		{
+			name:      "add flag with two different values",
+			cmd:       []string{"arg1", "arg2"},
+			extraArgs: []string{"flag1", "value1", "flag1", "value2"},
+			want:      []string{"arg1", "arg2", "flag1", "value1", "flag1", "value2"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := appendUniqueArgs(tt.cmd, tt.extraArgs)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("appendUniqueArgs() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNamespaceManagementHandlers(t *testing.T) {
+	const testNamespace = "test-namespace"
+
+	setupRBACAndSecret := func(t *testing.T, client *testclient.Clientset, argo *argoproj.ArgoCD, namespace string) string {
+		t.Helper()
+
+		role := newRole("test-role", policyRuleForApplicationController(), argo)
+		role.Namespace = namespace
+		_, err := client.RbacV1().Roles(namespace).Create(context.TODO(), role, metav1.CreateOptions{})
+		assert.NoError(t, err)
+
+		roleBinding := newRoleBindingWithname("test-rolebinding", argo)
+		roleBinding.Namespace = namespace
+		_, err = client.RbacV1().RoleBindings(namespace).Create(context.TODO(), roleBinding, metav1.CreateOptions{})
+		assert.NoError(t, err)
+
+		secret := argoutil.NewSecretWithSuffix(argo, "test")
+		secret.Labels = map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}
+		secret.Data = map[string][]byte{
+			"server":     []byte(common.ArgoCDDefaultServer),
+			"namespaces": []byte(strings.Join([]string{namespace, "another-ns"}, ",")),
+		}
+		_, err = client.CoreV1().Secrets(argo.Namespace).Create(context.TODO(), secret, metav1.CreateOptions{})
+		assert.NoError(t, err)
+
+		return secret.Name
+	}
+
+	t.Run("HandleArgoCDNamespaceManagementUpdate test", func(t *testing.T) {
+		argoCDOld := makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+			cr.Spec.NamespaceManagement = []argoproj.ManagedNamespaces{
+				{Name: testNamespace, AllowManagedBy: true},
+				{Name: "another-ns", AllowManagedBy: true},
+			}
+		})
+
+		argoCDNew := makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+			cr.Name = "argocd-2"
+			cr.Spec.NamespaceManagement = []argoproj.ManagedNamespaces{
+				{Name: "another-ns", AllowManagedBy: true},
+			}
+		})
+
+		// Remove the ArgoCDManagedBy label to allow cleanup to proceed
+		ns := &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: testNamespace,
+			},
+		}
+
+		resObjs := []client.Object{argoCDOld, argoCDNew, ns}
+		subresObjs := []client.Object{argoCDOld, argoCDNew, ns}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		client := testclient.NewSimpleClientset()
+		secretName := setupRBACAndSecret(t, client, argoCDOld, testNamespace)
+
+		changed := r.handleArgoCDNamespaceManagementUpdate(argoCDNew, argoCDOld, client)
+		assert.True(t, changed)
+
+		// These should now be deleted, so Get should return a "not found" error
+		_, err := client.RbacV1().Roles(testNamespace).Get(context.TODO(), "test-role", metav1.GetOptions{})
+		assert.ErrorContains(t, err, "not found")
+
+		_, err = client.RbacV1().RoleBindings(testNamespace).Get(context.TODO(), "test-rolebinding", metav1.GetOptions{})
+		assert.ErrorContains(t, err, "not found")
+
+		// Secret should still be updated with the remaining namespace
+		updatedSecret, err := client.CoreV1().Secrets(argoCDOld.Namespace).Get(context.TODO(), secretName, metav1.GetOptions{})
+		assert.NoError(t, err)
+		assert.Equal(t, "another-ns", string(updatedSecret.Data["namespaces"]))
+	})
+
+	t.Run("HandleNamespaceManagementUpdate test", func(t *testing.T) {
+		argoCD := makeArgoCD()
+
+		oldNSMgmt := &argoproj.NamespaceManagement{
+			ObjectMeta: metav1.ObjectMeta{Name: "ns1", Namespace: testNamespace},
+			Spec:       argoproj.NamespaceManagementSpec{ManagedBy: "old"},
+		}
+		newNSMgmt := &argoproj.NamespaceManagement{
+			ObjectMeta: metav1.ObjectMeta{Name: "ns2", Namespace: testNamespace},
+			Spec:       argoproj.NamespaceManagementSpec{ManagedBy: "new"},
+		}
+
+		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
+			Name: "old",
+		}}
+
+		resObjs := []client.Object{argoCD, ns, oldNSMgmt, newNSMgmt}
+		subresObjs := []client.Object{argoCD, ns, oldNSMgmt, newNSMgmt}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		client := testclient.NewSimpleClientset()
+		secretName := setupRBACAndSecret(t, client, argoCD, testNamespace)
+
+		changed := r.handleNamespaceManagementUpdate(oldNSMgmt, newNSMgmt, client)
+		assert.True(t, changed)
+
+		_, err := client.RbacV1().Roles(testNamespace).Get(context.TODO(), "test-role", metav1.GetOptions{})
+		assert.ErrorContains(t, err, "not found")
+
+		_, err = client.RbacV1().RoleBindings(testNamespace).Get(context.TODO(), "test-rolebinding", metav1.GetOptions{})
+		assert.ErrorContains(t, err, "not found")
+
+		_, err = client.CoreV1().Secrets(argoCD.Namespace).Get(context.TODO(), secretName, metav1.GetOptions{})
+		assert.NoError(t, err) // Still present; may or may not be updated depending on logic
+	})
+
+	t.Run("HandleNamespaceManagementDelete test", func(t *testing.T) {
+		argoCD := makeArgoCD()
+
+		nsMgmt := &argoproj.NamespaceManagement{
+			ObjectMeta: metav1.ObjectMeta{Name: "ns", Namespace: testNamespace},
+			Spec:       argoproj.NamespaceManagementSpec{ManagedBy: "argocd"},
+		}
+
+		resObjs := []client.Object{argoCD, nsMgmt}
+		subresObjs := []client.Object{argoCD, nsMgmt}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		client := testclient.NewSimpleClientset()
+		secretName := setupRBACAndSecret(t, client, argoCD, testNamespace)
+
+		changed := r.handleNamespaceManagementDelete(nsMgmt, client)
+		assert.False(t, changed)
+
+		_, err := client.RbacV1().Roles(testNamespace).Get(context.TODO(), "test-role", metav1.GetOptions{})
+		assert.ErrorContains(t, err, "not found")
+
+		_, err = client.RbacV1().RoleBindings(testNamespace).Get(context.TODO(), "test-rolebinding", metav1.GetOptions{})
+		assert.ErrorContains(t, err, "not found")
+
+		_, err = client.CoreV1().Secrets(argoCD.Namespace).Get(context.TODO(), secretName, metav1.GetOptions{})
+		assert.NoError(t, err)
+	})
+}
+
+func TestGetNamespacesToDelete(t *testing.T) {
+	tests := []struct {
+		name           string
+		oldList        []argoproj.ManagedNamespaces
+		newList        []argoproj.ManagedNamespaces
+		allNamespaces  []string
+		expectedDelete []string
+	}{
+		{
+			name: "no change between old and new lists",
+			oldList: []argoproj.ManagedNamespaces{
+				{Name: "dev-*", AllowManagedBy: true},
+			},
+			newList: []argoproj.ManagedNamespaces{
+				{Name: "dev-*", AllowManagedBy: true},
+			},
+			allNamespaces:  []string{"dev-a", "dev-b"},
+			expectedDelete: []string{},
+		},
+		{
+			name: "namespace removed in new list",
+			oldList: []argoproj.ManagedNamespaces{
+				{Name: "team-*", AllowManagedBy: true},
+			},
+			newList:        []argoproj.ManagedNamespaces{},
+			allNamespaces:  []string{"team-alpha", "team-beta"},
+			expectedDelete: []string{"team-alpha", "team-beta"},
+		},
+		{
+			name: "AllowManagedBy changed",
+			oldList: []argoproj.ManagedNamespaces{
+				{Name: "qa-*", AllowManagedBy: true},
+			},
+			newList: []argoproj.ManagedNamespaces{
+				{Name: "qa-*", AllowManagedBy: false},
+			},
+			allNamespaces:  []string{"qa-1", "qa-2"},
+			expectedDelete: []string{"qa-1", "qa-2"},
+		},
+		{
+			name: "mixed match and change",
+			oldList: []argoproj.ManagedNamespaces{
+				{Name: "app-*", AllowManagedBy: true},
+				{Name: "sys-*", AllowManagedBy: true},
+			},
+			newList: []argoproj.ManagedNamespaces{
+				{Name: "app-*", AllowManagedBy: true},
+			},
+			allNamespaces:  []string{"app-x", "sys-y"},
+			expectedDelete: []string{"sys-y"},
+		},
+		{
+			name: "new list has new namespace pattern, should not be deleted",
+			oldList: []argoproj.ManagedNamespaces{
+				{Name: "a-*", AllowManagedBy: true},
+			},
+			newList: []argoproj.ManagedNamespaces{
+				{Name: "a-*", AllowManagedBy: true},
+				{Name: "b-*", AllowManagedBy: true},
+			},
+			allNamespaces:  []string{"a-1", "b-1"},
+			expectedDelete: []string{},
+		},
+		{
+			name: "no match in allNamespaces, nothing to delete",
+			oldList: []argoproj.ManagedNamespaces{
+				{Name: "zzz-*", AllowManagedBy: true},
+			},
+			newList:        []argoproj.ManagedNamespaces{},
+			allNamespaces:  []string{"abc", "def"},
+			expectedDelete: []string{},
+		},
+		{
+			name:           "empty old and new lists",
+			oldList:        []argoproj.ManagedNamespaces{},
+			newList:        []argoproj.ManagedNamespaces{},
+			allNamespaces:  []string{"dev1", "dev2"},
+			expectedDelete: []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := getNamespacesToDelete(tt.oldList, tt.newList, tt.allNamespaces)
+			assert.ElementsMatch(t, tt.expectedDelete, result)
+		})
+	}
 }

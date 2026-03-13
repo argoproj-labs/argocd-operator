@@ -1,0 +1,8 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+spec:
+  localUsers:
+  - name: "alice"
+    tokenLifetime: "10s"

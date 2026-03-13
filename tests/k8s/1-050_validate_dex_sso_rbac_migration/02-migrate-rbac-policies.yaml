@@ -1,0 +1,42 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+spec:
+  sso:
+    provider: dex
+    dex:
+      config: |
+        connectors:
+        - type: mock
+          id: mock
+          name: Mock
+          config:
+            users:
+            - email: test@example.com
+              name: Test User
+              groups: ["test-group"]
+        - type: mock
+          id: mock2
+          name: Mock2
+          config:
+            users:
+            - email: admin@example.com
+              name: Admin User
+              groups: ["admin-group"]
+  rbac:
+    defaultPolicy: 'role:readonly'
+    policyMatcherMode: 'glob'
+    policy: |
+      # Migrated policies using federated_claims.user_id (Argo CD 3.0+)
+      g, test@example.com, role:test-role
+      p, test@example.com, applications, get, */*, allow
+      p, test@example.com, logs, get, */*, allow
+
+      # Admin user with federated_claims.user_id
+      g, admin@example.com, role:admin
+      p, admin@example.com, *, *, */*, allow
+
+      # Group-based policies (these should work in both versions)
+      g, test-group, role:test-role
+      g, admin-group, role:admin 

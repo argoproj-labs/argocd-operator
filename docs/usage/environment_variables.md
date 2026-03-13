@@ -9,6 +9,8 @@ The following environment variables are available in `argocd-operator`:
 | `REMOVE_MANAGED_BY_LABEL_ON_ARGOCD_DELETION` | false | When an Argo CD instance is deleted, namespaces managed by that instance (via the `argocd.argoproj.io/managed-by` label ) will retain the label by default. Users can change this behavior by setting the environment variable `REMOVE_MANAGED_BY_LABEL_ON_ARGOCD_DELETION` to `true` in the Subscription. |
 | `ARGOCD_LABEL_SELECTOR` | none | The label selector can be set on argocd-opertor by exporting `ARGOCD_LABEL_SELECTOR` (eg: `export ARGOCD_LABEL_SELECTOR=foo=bar`). The labels can be added to the argocd instances using the command `kubectl label argocd test1 foo=bar -n test-argocd`. This will enable the operator instance to be tailored to oversee only the corresponding ArgoCD instances having the matching label selector. |
 | `LOG_LEVEL` | info | This sets the logging level of the manager (operator) pod. Valid values are "debug", "info", "warn", "error", "panic" and "fatal". |
+| `MEMORY_OPTIMIZATION_ENABLED` | true | When set to `false`, disables the memory optimization that strips data from Secrets and ConfigMaps that are not tracked by the operator. This optimization helps reduce memory usage. |
+
 
 Custom Environment Variables are supported in `applicationSet`, `controller`, `notifications`, `repo` and `server` components. For example:
 
@@ -29,12 +31,12 @@ spec:
 ```
 
 The following default value of images could be overridden by setting the environment variables:
-| Environment Variable | Default Value |
-| --- | --- |
-| `ARGOCD_IMAGE` | [quay.io/argoproj/argocd](quay.io/argoproj/argocd) |
-| `ARGOCD_REPOSERVER_IMAGE` | [quay.io/argoproj/argocd](quay.io/argoproj/argocd) |
-| `ARGOCD_DEX_IMAGE` | [ghcr.io/dexidp/dex](ghcr.io/dexidp/dex) |
-| `ARGOCD_KEYCLOAK_IMAGE` | [quay.io/keycloak/keycloak](quay.io/keycloak/keycloak) |
-| `ARGOCD_REDIS_IMAGE` | redis |
-| `ARGOCD_REDIS_HA_IMAGE` | redis |
-| `ARGOCD_REDIS_HA_PROXY_IMAGE` | haproxy |
+
+| Environment Variable          | Default Value                                                                          |
+|-------------------------------|----------------------------------------------------------------------------------------|
+| `ARGOCD_IMAGE`                | [quay.io/argoproj/argocd](quay.io/argoproj/argocd)                                     |
+| `ARGOCD_IMAGE_UPDATER_IMAGE`  | [quay.io/argoprojlabs/argocd-image-updater](quay.io/argoprojlabs/argocd-image-updater) |
+| `ARGOCD_DEX_IMAGE`            | [ghcr.io/dexidp/dex](ghcr.io/dexidp/dex)                                               |
+| `ARGOCD_REDIS_IMAGE`          | redis                                                                                  |
+| `ARGOCD_REDIS_HA_IMAGE`       | redis                                                                                  |
+| `ARGOCD_REDIS_HA_PROXY_IMAGE` | haproxy                                                                                |

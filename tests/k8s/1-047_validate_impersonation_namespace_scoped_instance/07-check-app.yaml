@@ -1,0 +1,12 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: |
+    error_message=$(kubectl get app guestbook-dev -n argocd-test-ns-scoped -o jsonpath='{.status.operationState.message}')
+    expected_error="failed to find a matching service account to impersonate\: no matching service account found for destination server"
+    
+    if echo "$error_message" | grep -q "$expected_error"; then
+      exit 0
+    else
+      exit 1
+    fi

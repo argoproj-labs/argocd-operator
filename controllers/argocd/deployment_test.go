@@ -2,6 +2,7 @@ package argocd
 
 import (
 	"context"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -14,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	testclient "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -39,6 +41,18 @@ var (
 		"argocd-redis",
 		"argocd-server"}
 )
+
+type MockTrueFipsChecker struct{}
+
+func (a *MockTrueFipsChecker) IsFipsEnabled() (bool, error) {
+	return true, nil
+}
+
+type MockFalseFipsChecker struct{}
+
+func (a *MockFalseFipsChecker) IsFipsEnabled() (bool, error) {
+	return false, nil
+}
 
 func TestReconcileArgoCD_reconcileRepoDeployment_replicas(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
@@ -69,13 +83,13 @@ func TestReconcileArgoCD_reconcileRepoDeployment_replicas(t *testing.T) {
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 			err := r.reconcileRepoDeployment(a, false)
 			assert.NoError(t, err)
 
 			deployment := &appsv1.Deployment{}
-			err = r.Client.Get(context.TODO(), types.NamespacedName{
+			err = r.Get(context.TODO(), types.NamespacedName{
 				Name:      "argocd-repo-server",
 				Namespace: testNamespace,
 			}, deployment)
@@ -138,13 +152,13 @@ func TestReconcileArgoCD_reconcile_ServerDeployment_replicas(t *testing.T) {
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 			err := r.reconcileServerDeployment(a, false)
 			assert.NoError(t, err)
 
 			deployment := &appsv1.Deployment{}
-			err = r.Client.Get(context.TODO(), types.NamespacedName{
+			err = r.Get(context.TODO(), types.NamespacedName{
 				Name:      "argocd-server",
 				Namespace: testNamespace,
 			}, deployment)
@@ -156,7 +170,7 @@ func TestReconcileArgoCD_reconcile_ServerDeployment_replicas(t *testing.T) {
 			assert.NoError(t, err)
 
 			deployment = &appsv1.Deployment{}
-			err = r.Client.Get(context.TODO(), types.NamespacedName{
+			err = r.Get(context.TODO(), types.NamespacedName{
 				Name:      "argocd-server",
 				Namespace: testNamespace,
 			}, deployment)
@@ -194,12 +208,12 @@ func TestReconcileArgoCD_reconcileRepoDeployment_loglevel(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		err := r.reconcileRepoDeployment(lglv, false)
 		assert.NoError(t, err)
 		deployment := &appsv1.Deployment{}
-		err = r.Client.Get(context.TODO(), types.NamespacedName{
+		err = r.Get(context.TODO(), types.NamespacedName{
 			Name:      "argocd-repo-server",
 			Namespace: testNamespace,
 		}, deployment)
@@ -234,12 +248,12 @@ func TestReconcileArgoCD_reconcileRepoDeployment_volumes(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		err := r.reconcileRepoDeployment(a, false)
 		assert.NoError(t, err)
 		deployment := &appsv1.Deployment{}
-		err = r.Client.Get(context.TODO(), types.NamespacedName{
+		err = r.Get(context.TODO(), types.NamespacedName{
 			Name:      "argocd-repo-server",
 			Namespace: testNamespace,
 		}, deployment)
@@ -265,12 +279,12 @@ func TestReconcileArgoCD_reconcileRepoDeployment_volumes(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		err := r.reconcileRepoDeployment(a, false)
 		assert.NoError(t, err)
 		deployment := &appsv1.Deployment{}
-		err = r.Client.Get(context.TODO(), types.NamespacedName{
+		err = r.Get(context.TODO(), types.NamespacedName{
 			Name:      "argocd-repo-server",
 			Namespace: testNamespace,
 		}, deployment)
@@ -301,18 +315,19 @@ func TestReconcileArgoCD_reconcile_ServerDeployment_env(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		err := r.reconcileServerDeployment(a, false)
 		assert.NoError(t, err)
 		deployment := &appsv1.Deployment{}
-		err = r.Client.Get(context.TODO(), types.NamespacedName{
+		err = r.Get(context.TODO(), types.NamespacedName{
 			Name:      "argocd-server",
 			Namespace: testNamespace,
 		}, deployment)
 		assert.NoError(t, err)
 
-		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 2)
+		// Check that the env vars are set, Count is 3 because of the default REDIS_PASSWORD env var
+		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 3)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "FOO", Value: "BAR"})
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "BAR", Value: "FOO"})
 	})
@@ -341,18 +356,19 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		err := r.reconcileRepoDeployment(a, false)
 		assert.NoError(t, err)
 		deployment := &appsv1.Deployment{}
-		err = r.Client.Get(context.TODO(), types.NamespacedName{
+		err = r.Get(context.TODO(), types.NamespacedName{
 			Name:      "argocd-repo-server",
 			Namespace: testNamespace,
 		}, deployment)
 		assert.NoError(t, err)
 
-		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 3)
+		// Check that the env vars are set, Count is 4 because of the default REDIS_PASSWORD env var
+		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 4)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "FOO", Value: "BAR"})
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "BAR", Value: "FOO"})
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600s"})
@@ -369,18 +385,19 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		err := r.reconcileRepoDeployment(a, false)
 		assert.NoError(t, err)
 		deployment := &appsv1.Deployment{}
-		err = r.Client.Get(context.TODO(), types.NamespacedName{
+		err = r.Get(context.TODO(), types.NamespacedName{
 			Name:      "argocd-repo-server",
 			Namespace: testNamespace,
 		}, deployment)
 		assert.NoError(t, err)
 
-		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 1)
+		// Check that the env vars are set, Count is 2 because of the default REDIS_PASSWORD env var
+		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 2)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600s"})
 	})
 
@@ -401,18 +418,19 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		err := r.reconcileRepoDeployment(a, false)
 		assert.NoError(t, err)
 		deployment := &appsv1.Deployment{}
-		err = r.Client.Get(context.TODO(), types.NamespacedName{
+		err = r.Get(context.TODO(), types.NamespacedName{
 			Name:      "argocd-repo-server",
 			Namespace: testNamespace,
 		}, deployment)
 		assert.NoError(t, err)
 
-		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 1)
+		// Check that the env vars are set, Count is 2 because of the default REDIS_PASSWORD env var
+		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 2)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600s"})
 	})
 	t.Run("ExecTimeout not set", func(t *testing.T) {
@@ -424,17 +442,16 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		err := r.reconcileRepoDeployment(a, false)
 		assert.NoError(t, err)
 		deployment := &appsv1.Deployment{}
-		err = r.Client.Get(context.TODO(), types.NamespacedName{
+		err = r.Get(context.TODO(), types.NamespacedName{
 			Name:      "argocd-repo-server",
 			Namespace: testNamespace,
 		}, deployment)
 		assert.NoError(t, err)
-		assert.Empty(t, deployment.Spec.Template.Spec.Containers[0].Env)
 	})
 }
 
@@ -450,13 +467,13 @@ func TestReconcileArgoCD_reconcileRepoDeployment_mounts(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		err := r.reconcileRepoDeployment(a, false)
 		assert.NoError(t, err)
 
 		deployment := &appsv1.Deployment{}
-		err = r.Client.Get(context.TODO(), types.NamespacedName{
+		err = r.Get(context.TODO(), types.NamespacedName{
 			Name:      "argocd-repo-server",
 			Namespace: testNamespace,
 		}, deployment)
@@ -480,18 +497,82 @@ func TestReconcileArgoCD_reconcileRepoDeployment_mounts(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		err := r.reconcileRepoDeployment(a, false)
 		assert.NoError(t, err)
 
 		deployment := &appsv1.Deployment{}
-		err = r.Client.Get(context.TODO(), types.NamespacedName{
+		err = r.Get(context.TODO(), types.NamespacedName{
 			Name:      "argocd-repo-server",
 			Namespace: testNamespace,
 		}, deployment)
 		assert.NoError(t, err)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].VolumeMounts, testMount)
+	})
+
+	t.Run("Add extra volume mount and volume that override default /tmp volume mount and volume", func(t *testing.T) {
+		testMount := corev1.VolumeMount{
+			Name:      "test-mount",
+			MountPath: "/tmp",
+		}
+
+		logf.SetLogger(ZapLogger(true))
+		a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+			a.Spec.Repo.VolumeMounts = []corev1.VolumeMount{testMount}
+			a.Spec.Repo.Volumes = []corev1.Volume{{Name: "test-mount"}}
+		})
+
+		resObjs := []client.Object{a}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		err := r.reconcileRepoDeployment(a, false)
+		assert.NoError(t, err)
+
+		deployment := &appsv1.Deployment{}
+		err = r.Get(context.TODO(), types.NamespacedName{
+			Name:      "argocd-repo-server",
+			Namespace: testNamespace,
+		}, deployment)
+		assert.NoError(t, err)
+
+		assert.Len(t, deployment.Spec.Template.Spec.Containers, 1)
+
+		container := deployment.Spec.Template.Spec.Containers[0]
+
+		containsTestMount := false
+		containsDefaultMount := false
+
+		for _, volumeMount := range container.VolumeMounts {
+
+			if volumeMount.Name == testMount.Name {
+				containsTestMount = true
+			} else if volumeMount.MountPath == "/tmp" {
+				containsDefaultMount = true
+			}
+		}
+
+		assert.True(t, containsTestMount, "should contain test-mount volume mount")
+		assert.False(t, containsDefaultMount, "should not contain the default mount, since this is being overriden by the test-mount")
+
+		containsTestMountVolume := false
+		containsDefaultVolume := false
+		for _, volume := range deployment.Spec.Template.Spec.Volumes {
+			if volume.Name == "test-mount" {
+				containsTestMountVolume = true
+			}
+			if volume.Name == "tmp" {
+				containsDefaultVolume = true
+			}
+		}
+
+		assert.True(t, containsTestMountVolume, "should contain test-mount molume")
+		assert.False(t, containsDefaultVolume, "should not contain default tmp volume")
+
 	})
 }
 
@@ -510,13 +591,13 @@ func TestReconcileArgoCD_reconcileRepoDeployment_initContainers(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	err := r.reconcileRepoDeployment(a, false)
 	assert.NoError(t, err)
 
 	deployment := &appsv1.Deployment{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-repo-server",
 		Namespace: testNamespace,
 	}, deployment)
@@ -552,12 +633,12 @@ func TestReconcileArgoCD_reconcileRepoDeployment_missingInitContainers(t *testin
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	err := r.reconcileRepoDeployment(a, false)
 	assert.NoError(t, err)
 	deployment := &appsv1.Deployment{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-repo-server",
 		Namespace: testNamespace,
 	}, deployment)
@@ -599,12 +680,12 @@ func TestReconcileArgoCD_reconcileRepoDeployment_unexpectedInitContainer(t *test
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	err := r.reconcileRepoDeployment(a, false)
 	assert.NoError(t, err)
 	deployment := &appsv1.Deployment{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-repo-server",
 		Namespace: testNamespace,
 	}, deployment)
@@ -622,13 +703,13 @@ func TestReconcileArgoCD_reconcileRepoDeployment_command(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	err := r.reconcileRepoDeployment(a, false)
 	assert.NoError(t, err)
 
 	deployment := &appsv1.Deployment{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-repo-server",
 		Namespace: testNamespace,
 	}, deployment)
@@ -651,7 +732,8 @@ func TestReconcileArgoCD_reconcileDeployments_proxy(t *testing.T) {
 
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
-		a.Spec.Grafana.Enabled = true
+		//lint:ignore SA1019 known to be deprecated
+		a.Spec.Grafana.Enabled = true //nolint:staticcheck // SA1019: We must test deprecated fields.
 		a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 			Provider: argoproj.SSOProviderTypeDex,
 			Dex: &argoproj.ArgoCDDexSpec{
@@ -665,7 +747,7 @@ func TestReconcileArgoCD_reconcileDeployments_proxy(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	err := r.reconcileDeployments(a, false)
 	assert.NoError(t, err)
@@ -699,7 +781,7 @@ func TestReconcileArgoCD_reconcileDeployments_proxy_update_existing(t *testing.T
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	err := r.reconcileDeployments(a, false)
 	assert.NoError(t, err)
@@ -743,7 +825,7 @@ func TestReconcileArgoCD_reconcileDeployments_HA_proxy(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	err := r.reconcileDeployments(a, false)
 	assert.NoError(t, err)
@@ -766,13 +848,13 @@ func TestReconcileArgoCD_reconcileDeployments_HA_proxy_with_resources(t *testing
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	// test resource is Created on reconciliation
 	assert.NoError(t, r.reconcileRedisHAProxyDeployment(a))
 
 	deployment := &appsv1.Deployment{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      a.Name + "-redis-ha-haproxy",
@@ -792,6 +874,7 @@ func TestReconcileArgoCD_reconcileDeployments_HA_proxy_with_resources(t *testing
 	}
 	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Resources, testResources)
 	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].Resources, testResources)
+	assert.Equal(t, deployment.Spec.Strategy.RollingUpdate.MaxSurge, &intstr.IntOrString{IntVal: 0})
 
 	// test resource is Updated on reconciliation
 	newResources := corev1.ResourceRequirements{
@@ -807,7 +890,7 @@ func TestReconcileArgoCD_reconcileDeployments_HA_proxy_with_resources(t *testing
 	a.Spec.HA.Resources = &newResources
 	assert.NoError(t, r.reconcileRedisHAProxyDeployment(a))
 
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      a.Name + "-redis-ha-haproxy",
@@ -817,6 +900,222 @@ func TestReconcileArgoCD_reconcileDeployments_HA_proxy_with_resources(t *testing
 
 	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Resources, newResources)
 	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].Resources, newResources)
+	assert.Equal(t, deployment.Spec.Strategy.RollingUpdate.MaxSurge, &intstr.IntOrString{IntVal: 0})
+
+}
+func TestReconcileArgoCD_reconcileRedisHAProxyDeployment_ModifyContainerSpec(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.HA.Enabled = true
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	assert.NoError(t, r.reconcileRedisHAProxyDeployment(a))
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-redis-ha-haproxy",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	// Modify the deployment container environment variables
+	deployment.Spec.Template.Spec.Containers[0].Env = append(deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+		Name:  "TEST_ENV",
+		Value: "test",
+	})
+
+	assert.NoError(t, r.Update(context.TODO(), deployment))
+
+	// Reconcile again
+	assert.NoError(t, r.reconcileRedisHAProxyDeployment(a))
+
+	// Check if the environment variable changes were reverted
+	assert.NoError(t, r.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-redis-ha-haproxy",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.NotContains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+		Name:  "TEST_ENV",
+		Value: "test",
+	})
+
+	// Modify the deployment initcontainer environment variables
+	deployment.Spec.Template.Spec.InitContainers[0].Env = append(deployment.Spec.Template.Spec.InitContainers[0].Env, corev1.EnvVar{
+		Name:  "TEST_ENV",
+		Value: "test",
+	})
+
+	assert.NoError(t, r.Update(context.TODO(), deployment))
+
+	// Reconcile again
+	assert.NoError(t, r.reconcileRedisHAProxyDeployment(a))
+
+	// Check if the environment variable changes were reverted
+	assert.NoError(t, r.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-redis-ha-haproxy",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.NotContains(t, deployment.Spec.Template.Spec.InitContainers[0].Env, corev1.EnvVar{
+		Name:  "TEST_ENV",
+		Value: "test",
+	})
+
+	// Modify the deployment volumes
+	deployment.Spec.Template.Spec.Volumes = append(deployment.Spec.Template.Spec.Volumes, corev1.Volume{
+		Name: "test-volume",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	})
+	deployment.Spec.Template.Spec.Containers[0].VolumeMounts = append(deployment.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+		Name:      "test-volume",
+		MountPath: "/test",
+	})
+
+	assert.NoError(t, r.Update(context.TODO(), deployment))
+
+	// Reconcile again
+	assert.NoError(t, r.reconcileRedisHAProxyDeployment(a))
+
+	// Check if the volume changes were reverted
+	assert.NoError(t, r.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-redis-ha-haproxy",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.NotContains(t, deployment.Spec.Template.Spec.Volumes, corev1.Volume{
+		Name: "test-volume",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	})
+	assert.NotContains(t, deployment.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+		Name:      "test-volume",
+		MountPath: "/test",
+	})
+}
+
+func TestReconcileArgoCD_reconcileRedisHAProxyDeployment_replicas(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	var (
+		oneReplica                 int32 = 1
+		twoReplicas                int32 = 2
+		argocdDefaultRedisReplicas       = common.ArgoCDDefaultRedisHAReplicas
+	)
+	tests := []struct {
+		name             string
+		initialReplicas  *int32
+		expectedReplicas *int32
+		description      string
+	}{
+		{
+			name:             "deployment with 1 replica should be updated to 3 replicas",
+			initialReplicas:  &oneReplica,
+			expectedReplicas: &argocdDefaultRedisReplicas,
+			description:      "simulates upgrade where deployment had 1 replica",
+		},
+		{
+			name:             "deployment with 2 replicas should be updated to 3 replicas",
+			initialReplicas:  &twoReplicas,
+			expectedReplicas: &argocdDefaultRedisReplicas,
+			description:      "simulates deployment with incorrect replica count",
+		},
+		{
+			name:             "deployment with nil replicas should be set to 3 replicas",
+			initialReplicas:  nil,
+			expectedReplicas: &argocdDefaultRedisReplicas,
+			description:      "simulates deployment with unset replica count",
+		},
+		{
+			name:             "deployment with 3 replicas should remain 3 replicas",
+			initialReplicas:  &argocdDefaultRedisReplicas,
+			expectedReplicas: &argocdDefaultRedisReplicas,
+			description:      "simulates deployment already at correct replica count",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.HA.Enabled = true
+			})
+
+			// Create an existing deployment with the initial replica count
+			existingDeployment := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      a.Name + "-redis-ha-haproxy",
+					Namespace: a.Namespace,
+					Labels: map[string]string{
+						common.ArgoCDKeyName:      a.Name + "-redis-ha-haproxy",
+						common.ArgoCDKeyComponent: "redis",
+						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+						common.ArgoCDKeyManagedBy: a.Namespace,
+					},
+				},
+				Spec: appsv1.DeploymentSpec{
+					Replicas: test.initialReplicas,
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "haproxy",
+									Image: getRedisHAProxyContainerImage(a),
+								},
+							},
+						},
+					},
+				},
+			}
+
+			resObjs := []client.Object{a, existingDeployment}
+			subresObjs := []client.Object{a, existingDeployment}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			// Reconcile the deployment
+			assert.NoError(t, r.reconcileRedisHAProxyDeployment(a))
+
+			// Verify the replica count was updated correctly
+			deployment := &appsv1.Deployment{}
+			assert.NoError(t, r.Get(
+				context.TODO(),
+				types.NamespacedName{
+					Name:      a.Name + "-redis-ha-haproxy",
+					Namespace: a.Namespace,
+				},
+				deployment))
+
+			if test.expectedReplicas == nil {
+				assert.Nil(t, deployment.Spec.Replicas, test.description)
+			} else {
+				assert.NotNil(t, deployment.Spec.Replicas, "replicas should not be nil")
+				assert.Equal(t, *test.expectedReplicas, *deployment.Spec.Replicas, test.description)
+			}
+		})
+	}
 }
 
 func TestReconcileArgoCD_reconcileRepoDeployment_updatesVolumeMounts(t *testing.T) {
@@ -852,13 +1151,13 @@ func TestReconcileArgoCD_reconcileRepoDeployment_updatesVolumeMounts(t *testing.
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	err := r.reconcileRepoDeployment(a, false)
 	assert.NoError(t, err)
 
 	deployment := &appsv1.Deployment{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-repo-server",
 		Namespace: testNamespace,
 	}, deployment)
@@ -917,12 +1216,12 @@ func TestReconcileArgoCD_reconcileDeployment_nodePlacement(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	err := r.reconcileRepoDeployment(a, false) //can use other deployments as well
 	assert.NoError(t, err)
 	deployment := &appsv1.Deployment{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-repo-server",
 		Namespace: testNamespace,
 	}, deployment)
@@ -973,12 +1272,12 @@ func TestReconcileArgocd_reconcileRepoServerRedisTLS(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		assert.NoError(t, r.reconcileRepoDeployment(a, true))
 
 		deployment := &appsv1.Deployment{}
-		assert.NoError(t, r.Client.Get(
+		assert.NoError(t, r.Get(
 			context.TODO(),
 			types.NamespacedName{
 				Name:      "argocd-repo-server",
@@ -1009,12 +1308,12 @@ func TestReconcileArgocd_reconcileRepoServerRedisTLS(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		assert.NoError(t, r.reconcileRepoDeployment(a, true))
 
 		deployment := &appsv1.Deployment{}
-		assert.NoError(t, r.Client.Get(
+		assert.NoError(t, r.Get(
 			context.TODO(),
 			types.NamespacedName{
 				Name:      "argocd-repo-server",
@@ -1044,12 +1343,12 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	assert.NoError(t, r.reconcileServerDeployment(a, false))
 
 	deployment := &appsv1.Deployment{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-server",
@@ -1061,7 +1360,7 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 			{
 				Name:            "argocd-server",
 				Image:           getArgoContainerImage(a),
-				ImagePullPolicy: corev1.PullAlways,
+				ImagePullPolicy: corev1.PullIfNotPresent,
 				Command: []string{
 					"argocd-server",
 					"--staticassets",
@@ -1076,6 +1375,18 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 					"info",
 					"--logformat",
 					"text",
+				},
+				Env: []corev1.EnvVar{
+					{Name: "REDIS_PASSWORD", Value: "",
+						ValueFrom: &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "argocd-redis-initial-password",
+								},
+								Key: "admin.password",
+							},
+						},
+					},
 				},
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},
@@ -1101,16 +1412,8 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 					InitialDelaySeconds: 3,
 					PeriodSeconds:       30,
 				},
-				SecurityContext: &corev1.SecurityContext{
-					AllowPrivilegeEscalation: boolPtr(false),
-					Capabilities: &corev1.Capabilities{
-						Drop: []corev1.Capability{
-							"ALL",
-						},
-					},
-					RunAsNonRoot: boolPtr(true),
-				},
-				VolumeMounts: serverDefaultVolumeMounts(),
+				SecurityContext: argoutil.DefaultSecurityContext(),
+				VolumeMounts:    serverDefaultVolumeMounts(),
 			},
 		},
 		Volumes:            serverDefaultVolumes(),
@@ -1122,7 +1425,7 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 
 	assert.NoError(t, r.reconcileServerDeployment(a, true))
 	deployment = &appsv1.Deployment{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-server",
@@ -1158,7 +1461,7 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	baseCommand := []string{
 		"argocd-server",
@@ -1185,7 +1488,7 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 	deployment := &appsv1.Deployment{}
 	assert.NoError(t, r.reconcileServerDeployment(a, false))
 
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-server",
@@ -1206,7 +1509,7 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 	}
 
 	assert.NoError(t, r.reconcileServerDeployment(a, false))
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-server",
@@ -1223,8 +1526,24 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 		"foo.scv.cluster.local:6379",
 	}
 
+	wantCmd := []string{
+		"argocd-server",
+		"--staticassets",
+		"/shared/app",
+		"--dex-server",
+		"https://argocd-dex-server.argocd.svc.cluster.local:5556",
+		"--repo-server",
+		"argocd-repo-server.argocd.svc.cluster.local:8081",
+		"--loglevel",
+		"info",
+		"--logformat",
+		"text",
+		"--redis",
+		"foo.scv.cluster.local:6379",
+	}
+
 	assert.NoError(t, r.reconcileServerDeployment(a, false))
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-server",
@@ -1232,13 +1551,41 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 		},
 		deployment))
 
-	assert.Equal(t, baseCommand, deployment.Spec.Template.Spec.Containers[0].Command)
+	assert.Equal(t, wantCmd, deployment.Spec.Template.Spec.Containers[0].Command)
+
+	// When ExtraCommandArgs contains a non-duplicate argument along with a duplicate
+	a.Spec.Server.ExtraCommandArgs = []string{
+		"--rootpath",
+		"/argocd",
+		"--foo",
+		"bar",
+		"test",
+		"--logformat", // Duplicate flag and value
+		"text",
+		"--newarg", // Non-duplicate argument
+		"newvalue",
+		"--newarg", // Duplicate argument passing at once
+		"newvalue",
+	}
+
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
+	assert.NoError(t, r.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	// Non-duplicate argument "--newarg" should be added, duplicate "--newarg" which is added twice is ignored
+	cmd = append(cmd, "--newarg", "newvalue")
+	assert.Equal(t, cmd, deployment.Spec.Template.Spec.Containers[0].Command)
 
 	// Remove all the command arguments that were added.
 	a.Spec.Server.ExtraCommandArgs = []string{}
 
 	assert.NoError(t, r.reconcileServerDeployment(a, false))
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-server",
@@ -1247,6 +1594,233 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 		deployment))
 
 	assert.Equal(t, baseCommand, deployment.Spec.Template.Spec.Containers[0].Command)
+}
+
+func TestReconcileServer_InitContainers(t *testing.T) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Server.InitContainers = []corev1.Container{
+			{
+				Name:  "test-init-container",
+				Image: "test-image",
+			},
+		}
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
+
+	assert.NoError(t, r.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Len(t, deployment.Spec.Template.Spec.InitContainers, 1)
+	assert.Equal(t, "test-init-container", deployment.Spec.Template.Spec.InitContainers[0].Name)
+	assert.Equal(t, "test-image", deployment.Spec.Template.Spec.InitContainers[0].Image)
+
+	// Remove the init container
+	a.Spec.Server.InitContainers = []corev1.Container{}
+
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
+	assert.NoError(t, r.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Len(t, deployment.Spec.Template.Spec.InitContainers, 0)
+	assert.Len(t, deployment.Spec.Template.Spec.Containers, 1)
+}
+
+func TestReconcile_SidecarContainers(t *testing.T) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Server.SidecarContainers = []corev1.Container{
+			{
+				Name:  "test-sidecar",
+				Image: "test-image",
+			},
+		}
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
+
+	assert.NoError(t, r.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Len(t, deployment.Spec.Template.Spec.Containers, 2)
+	assert.Equal(t, "test-sidecar", deployment.Spec.Template.Spec.Containers[1].Name)
+	assert.Equal(t, "test-image", deployment.Spec.Template.Spec.Containers[1].Image)
+
+	// Remove the sidecar container
+	a.Spec.Server.SidecarContainers = []corev1.Container{}
+
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
+	assert.NoError(t, r.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Len(t, deployment.Spec.Template.Spec.Containers, 1)
+}
+
+func TestReconcileServer_RolloutUI(t *testing.T) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Server.EnableRolloutsUI = true
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
+
+	assert.NoError(t, r.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	// Check for the init container
+	assert.Len(t, deployment.Spec.Template.Spec.InitContainers, 1)
+	assert.Equal(t, "rollout-extension", deployment.Spec.Template.Spec.InitContainers[0].Name)
+	assert.Equal(t, common.ArgoCDExtensionInstallerImage, deployment.Spec.Template.Spec.InitContainers[0].Image)
+
+	// assert that rollout-extensions volume is mounted at /tmp/extensions for both the initContainer and container
+	foundExtensionsVolumeMount := false
+	for _, volMnt := range deployment.Spec.Template.Spec.InitContainers[0].VolumeMounts {
+		if volMnt.Name == "rollout-extensions" {
+			foundExtensionsVolumeMount = true
+			assert.NotNil(t, volMnt.MountPath)
+			assert.Equal(t, "/tmp/extensions/", volMnt.MountPath)
+		}
+	}
+	assert.True(t, foundExtensionsVolumeMount, "expected volume mount 'rollout-extensions' to be present in init container")
+	foundExtensionsVolumeMount = false
+	for _, vol := range deployment.Spec.Template.Spec.Containers[0].VolumeMounts {
+		if vol.Name == "rollout-extensions" {
+			foundExtensionsVolumeMount = true
+			assert.NotNil(t, vol.MountPath)
+			assert.Equal(t, "/tmp/extensions/", vol.MountPath)
+		}
+	}
+	assert.True(t, foundExtensionsVolumeMount, "expected volume mount 'rollout-extensions' to be present in container")
+
+	// assert that tmp volume is mounted at /tmp for both the initContainer and container
+	foundTmpVolumeMount := false
+	for _, volMnt := range deployment.Spec.Template.Spec.InitContainers[0].VolumeMounts {
+		if volMnt.Name == "tmp" {
+			foundTmpVolumeMount = true
+			assert.NotNil(t, volMnt.MountPath)
+			assert.Equal(t, volMnt.MountPath, "/tmp")
+		}
+	}
+	assert.True(t, foundTmpVolumeMount, "expected volume mount 'tmp' to be present in init container")
+	foundTmpVolumeMount = false
+	for _, volMnt := range deployment.Spec.Template.Spec.Containers[0].VolumeMounts {
+		if volMnt.Name == "tmp" {
+			foundTmpVolumeMount = true
+			assert.NotNil(t, volMnt.MountPath)
+			assert.Equal(t, volMnt.MountPath, "/tmp")
+		}
+	}
+	assert.True(t, foundTmpVolumeMount, "expected volume mount 'tmp' to be present in container")
+
+	// Check for the volumes
+	foundVolume := false
+	for _, vol := range deployment.Spec.Template.Spec.Volumes {
+		if vol.Name == "rollout-extensions" {
+			foundVolume = true
+			assert.NotNil(t, vol.EmptyDir)
+		}
+	}
+	assert.True(t, foundVolume, "expected volume 'rollout-extensions' to be present")
+	foundTmpVolume := false
+	for _, vol := range deployment.Spec.Template.Spec.Volumes {
+		if vol.Name == "tmp" {
+			foundTmpVolume = true
+			assert.NotNil(t, vol.EmptyDir)
+		}
+	}
+	assert.True(t, foundTmpVolume, "expected volume 'tmp' to be present")
+
+	// Disable rollouts UI
+	a.Spec.Server.EnableRolloutsUI = false
+
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
+	assert.NoError(t, r.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Len(t, deployment.Spec.Template.Spec.InitContainers, 0)
+	assert.Len(t, deployment.Spec.Template.Spec.Containers, 1)
+
+	// Check that volume is removed
+	foundVolume = false
+	for _, vol := range deployment.Spec.Template.Spec.Volumes {
+		if vol.Name == "rollout-extensions" {
+			foundVolume = true
+		}
+	}
+	assert.False(t, foundVolume, "expected volume 'rollout-extension' to be removed")
+
+	// assert that the tmp volume is present even if rollouts UI extension is disabled.
+	foundTmpVolume = false
+	for _, vol := range deployment.Spec.Template.Spec.Volumes {
+		if vol.Name == "tmp" {
+			foundTmpVolume = true
+			assert.NotNil(t, vol.EmptyDir)
+		}
+	}
+	assert.True(t, foundTmpVolume, "expected volume 'tmp' to be present even if rollouts is disabled")
+
+	// assert that tmp volume is mounted at /tmp for the container, when rollouts UI extension is disabled.
+	foundTmpVolumeMount = false
+	for _, vol := range deployment.Spec.Template.Spec.Containers[0].VolumeMounts {
+		if vol.Name == "tmp" {
+			foundTmpVolumeMount = true
+			assert.NotNil(t, vol.MountPath)
+			assert.Equal(t, vol.MountPath, "/tmp")
+		}
+	}
+	assert.True(t, foundTmpVolumeMount, "expected volume mount 'tmp' to be present in container")
 }
 
 func TestArgoCDServerCommand_isMergable(t *testing.T) {
@@ -1270,12 +1844,12 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	assert.NoError(t, r.reconcileServerDeployment(a, false))
 
 	deployment := &appsv1.Deployment{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-server",
@@ -1287,7 +1861,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 			{
 				Name:            "argocd-server",
 				Image:           getArgoContainerImage(a),
-				ImagePullPolicy: corev1.PullAlways,
+				ImagePullPolicy: corev1.PullIfNotPresent,
 				Command: []string{
 					"argocd-server",
 					"--insecure",
@@ -1303,6 +1877,18 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 					"info",
 					"--logformat",
 					"text",
+				},
+				Env: []corev1.EnvVar{
+					{Name: "REDIS_PASSWORD", Value: "",
+						ValueFrom: &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "argocd-redis-initial-password",
+								},
+								Key: "admin.password",
+							},
+						},
+					},
 				},
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},
@@ -1328,16 +1914,8 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 					InitialDelaySeconds: 3,
 					PeriodSeconds:       30,
 				},
-				SecurityContext: &corev1.SecurityContext{
-					AllowPrivilegeEscalation: boolPtr(false),
-					Capabilities: &corev1.Capabilities{
-						Drop: []corev1.Capability{
-							"ALL",
-						},
-					},
-					RunAsNonRoot: boolPtr(true),
-				},
-				VolumeMounts: serverDefaultVolumeMounts(),
+				SecurityContext: argoutil.DefaultSecurityContext(),
+				VolumeMounts:    serverDefaultVolumeMounts(),
 			},
 		},
 		Volumes:            serverDefaultVolumes(),
@@ -1357,7 +1935,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	assert.NoError(t, r.reconcileServerDeployment(a, false))
 
@@ -1367,7 +1945,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 	assert.NoError(t, r.reconcileServerDeployment(a, false))
 
 	deployment := &appsv1.Deployment{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-server",
@@ -1379,7 +1957,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 			{
 				Name:            "argocd-server",
 				Image:           getArgoContainerImage(a),
-				ImagePullPolicy: corev1.PullAlways,
+				ImagePullPolicy: corev1.PullIfNotPresent,
 				Command: []string{
 					"argocd-server",
 					"--insecure",
@@ -1395,6 +1973,18 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 					"info",
 					"--logformat",
 					"text",
+				},
+				Env: []corev1.EnvVar{
+					{Name: "REDIS_PASSWORD", Value: "",
+						ValueFrom: &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "argocd-redis-initial-password",
+								},
+								Key: "admin.password",
+							},
+						},
+					},
 				},
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},
@@ -1420,16 +2010,8 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 					InitialDelaySeconds: 3,
 					PeriodSeconds:       30,
 				},
-				SecurityContext: &corev1.SecurityContext{
-					AllowPrivilegeEscalation: boolPtr(false),
-					Capabilities: &corev1.Capabilities{
-						Drop: []corev1.Capability{
-							"ALL",
-						},
-					},
-					RunAsNonRoot: boolPtr(true),
-				},
-				VolumeMounts: serverDefaultVolumeMounts(),
+				SecurityContext: argoutil.DefaultSecurityContext(),
+				VolumeMounts:    serverDefaultVolumeMounts(),
 			},
 		},
 		Volumes:            serverDefaultVolumes(),
@@ -1448,17 +2030,18 @@ func TestReconcileArgoCD_reconcileRedisDeploymentWithoutTLS(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	want := []string{
 		"--save",
 		"",
 		"--appendonly", "no",
+		"--requirepass $(REDIS_PASSWORD)",
 	}
 
 	assert.NoError(t, r.reconcileRedisDeployment(cr, false))
 	d := &appsv1.Deployment{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, d))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, d))
 	got := d.Spec.Template.Spec.Containers[0].Args
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
@@ -1473,11 +2056,12 @@ func TestReconcileArgoCD_reconcileRedisDeploymentWithTLS(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	want := []string{
 		"--save", "",
 		"--appendonly", "no",
+		"--requirepass $(REDIS_PASSWORD)",
 		"--tls-port", "6379",
 		"--port", "0",
 		"--tls-cert-file", "/app/config/redis/tls/tls.crt",
@@ -1487,7 +2071,7 @@ func TestReconcileArgoCD_reconcileRedisDeploymentWithTLS(t *testing.T) {
 
 	assert.NoError(t, r.reconcileRedisDeployment(cr, true))
 	d := &appsv1.Deployment{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, d))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, d))
 	got := d.Spec.Template.Spec.Containers[0].Args
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
@@ -1503,14 +2087,14 @@ func TestReconcileArgoCD_reconcileRedisDeployment(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	defer resetHooks()()
 	Register(testDeploymentHook)
 
 	assert.NoError(t, r.reconcileRedisDeployment(cr, false))
 	d := &appsv1.Deployment{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, d))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, d))
 	assert.Equal(t, int32(3), *d.Spec.Replicas)
 }
 
@@ -1523,7 +2107,7 @@ func TestReconcileArgoCD_reconcileRedisDeployment_testImageUpgrade(t *testing.T)
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	defer resetHooks()()
 	Register(testDeploymentHook)
@@ -1531,14 +2115,14 @@ func TestReconcileArgoCD_reconcileRedisDeployment_testImageUpgrade(t *testing.T)
 	// Verify redis deployment
 	assert.NoError(t, r.reconcileRedisDeployment(cr, false))
 	existing := &appsv1.Deployment{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, existing))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, existing))
 
 	// Verify Image upgrade
 	t.Setenv("ARGOCD_REDIS_IMAGE", "docker.io/redis/redis:latest")
 	assert.NoError(t, r.reconcileRedisDeployment(cr, false))
 
 	newRedis := &appsv1.Deployment{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, newRedis))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, newRedis))
 	assert.Equal(t, newRedis.Spec.Template.Spec.Containers[0].Image, "docker.io/redis/redis:latest")
 }
 
@@ -1551,12 +2135,71 @@ func TestReconcileArgoCD_reconcileRedisDeployment_with_error(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	defer resetHooks()()
 	Register(testErrorHook)
 
 	assert.Error(t, r.reconcileRedisDeployment(cr, false), "this is a test error")
+}
+
+func TestReconcileRedisDeployment_serviceAccountNameUpdate(t *testing.T) {
+	// tests SA update for redis deployment
+
+	tests := []struct {
+		name       string
+		SA         string
+		expectedSA string
+	}{
+		{
+			name:       "serviceAccountName field should reflect the original value",
+			SA:         "argocd-argocd-redis",
+			expectedSA: "argocd-argocd-redis",
+		},
+		{
+			name:       "serviceAccountName field should be reset to the original value with an existing SA modification",
+			SA:         "builder",
+			expectedSA: "argocd-argocd-redis",
+		},
+		{
+			name:       "serviceAccountName field should be reset to the original value with a non-existing SA modification",
+			SA:         "argocd-argocd-redis-new",
+			expectedSA: "argocd-argocd-redis",
+		},
+		{
+			name:       "serviceAccountName field should be reset to the original value and not left empty",
+			SA:         "",
+			expectedSA: "argocd-argocd-redis",
+		},
+	}
+
+	cr := makeTestArgoCD()
+
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{cr}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	// Verify redis deployment
+	assert.NoError(t, r.reconcileRedisDeployment(cr, false))
+
+	// Verify SA update
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			existing := &appsv1.Deployment{}
+			assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, existing))
+
+			existing.Spec.Template.Spec.ServiceAccountName = test.SA
+			assert.NoError(t, cl.Update(context.TODO(), existing))
+			assert.NoError(t, r.reconcileRedisDeployment(cr, false))
+
+			newRedis := &appsv1.Deployment{}
+			assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, newRedis))
+			assert.Equal(t, newRedis.Spec.Template.Spec.ServiceAccountName, test.expectedSA)
+		})
+	}
 }
 
 func operationProcessors(n int32) argoCDOpt {
@@ -1614,13 +2257,21 @@ func Test_UpdateNodePlacement(t *testing.T) {
 	}
 	expectedChange := false
 	actualChange := false
-	updateNodePlacement(deployment, deployment, &actualChange)
+	explanation := ""
+	updateNodePlacement(deployment, deployment, &actualChange, &explanation)
 	if actualChange != expectedChange {
 		t.Fatalf("updateNodePlacement failed, value of changed: %t", actualChange)
 	}
-	updateNodePlacement(deployment, deployment2, &actualChange)
+	if explanation != "" {
+		t.Fatalf("updateNodePlacement returned unexpected explanation: '%s'", explanation)
+	}
+
+	updateNodePlacement(deployment, deployment2, &actualChange, &explanation)
 	if actualChange == expectedChange {
 		t.Fatalf("updateNodePlacement failed, value of changed: %t", actualChange)
+	}
+	if explanation != "node selector, tolerations" {
+		t.Fatalf("updateNodePlacement returned unexpected explanation: '%s'", explanation)
 	}
 }
 
@@ -1639,7 +2290,6 @@ func assertDeploymentHasProxyVars(t *testing.T, c client.Client, name string) {
 		{Name: "no_proxy", Value: testNoProxy},
 	}
 	for _, c := range deployment.Spec.Template.Spec.Containers {
-		assert.Len(t, c.Env, len(want))
 		for _, w := range want {
 			assert.Contains(t, c.Env, w)
 		}
@@ -1727,12 +2377,6 @@ func repoServerDefaultVolumes() []corev1.Volume {
 			},
 		},
 		{
-			Name: "tmp",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		},
-		{
 			Name: "argocd-repo-server-tls",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
@@ -1762,6 +2406,12 @@ func repoServerDefaultVolumes() []corev1.Volume {
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
+		{
+			Name: "tmp",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
 	}
 	return volumes
 }
@@ -1773,10 +2423,10 @@ func repoServerDefaultVolumeMounts() []corev1.VolumeMount {
 		{Name: "tls-certs", MountPath: "/app/config/tls"},
 		{Name: "gpg-keys", MountPath: "/app/config/gpg/source"},
 		{Name: "gpg-keyring", MountPath: "/app/config/gpg/keys"},
-		{Name: "tmp", MountPath: "/tmp"},
 		{Name: "argocd-repo-server-tls", MountPath: "/app/config/reposerver/tls"},
 		{Name: common.ArgoCDRedisServerTLSSecretName, MountPath: "/app/config/reposerver/tls/redis"},
 		{Name: "plugins", MountPath: "/home/argocd/cmp-server/plugins"},
+		{Name: "tmp", MountPath: "/tmp"},
 	}
 	return mounts
 }
@@ -1821,6 +2471,35 @@ func serverDefaultVolumes() []corev1.Volume {
 				},
 			},
 		},
+		{
+			Name: "plugins-home",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "argocd-cmd-params-cm",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "argocd-cmd-params-cm",
+					},
+					Optional: boolPtr(true),
+					Items: []corev1.KeyToPath{
+						{
+							Key:  "server.profile.enabled",
+							Path: "profiler.enabled",
+						},
+					},
+				},
+			},
+		},
+		{
+			Name: "tmp",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
 	}
 	return volumes
 }
@@ -1839,6 +2518,18 @@ func serverDefaultVolumeMounts() []corev1.VolumeMount {
 		}, {
 			Name:      common.ArgoCDRedisServerTLSSecretName,
 			MountPath: "/app/config/server/tls/redis",
+		},
+		{
+			Name:      "plugins-home",
+			MountPath: "/home/argocd",
+		},
+		{
+			Name:      "argocd-cmd-params-cm",
+			MountPath: "/home/argocd/params",
+		},
+		{
+			Name:      "tmp",
+			MountPath: "/tmp",
 		},
 	}
 	return mounts
@@ -1877,7 +2568,7 @@ func TestReconcileArgoCD_reconcile_RepoServerChanges(t *testing.T) {
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 			sa := &corev1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{
@@ -1886,12 +2577,13 @@ func TestReconcileArgoCD_reconcile_RepoServerChanges(t *testing.T) {
 					Labels:    argoutil.LabelsForCluster(a),
 				},
 			}
-			r.Client.Create(context.TODO(), sa)
-			err := r.reconcileRepoDeployment(a, false)
+			err := r.Create(context.TODO(), sa)
+			assert.NoError(t, err)
+			err = r.reconcileRepoDeployment(a, false)
 			assert.NoError(t, err)
 
 			deployment := &appsv1.Deployment{}
-			err = r.Client.Get(context.TODO(), types.NamespacedName{
+			err = r.Get(context.TODO(), types.NamespacedName{
 				Name:      "argocd-repo-server",
 				Namespace: testNamespace,
 			}, deployment)
@@ -1910,7 +2602,7 @@ func TestArgoCDRepoServerDeploymentCommand(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	testRedisServerAddress := getRedisServerAddress(a)
 
@@ -1934,7 +2626,7 @@ func TestArgoCDRepoServerDeploymentCommand(t *testing.T) {
 	deployment := &appsv1.Deployment{}
 	assert.NoError(t, r.reconcileRepoDeployment(a, false))
 
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-repo-server",
@@ -1956,7 +2648,7 @@ func TestArgoCDRepoServerDeploymentCommand(t *testing.T) {
 	}
 
 	assert.NoError(t, r.reconcileRepoDeployment(a, false))
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-repo-server",
@@ -1973,8 +2665,19 @@ func TestArgoCDRepoServerDeploymentCommand(t *testing.T) {
 		"foo.scv.cluster.local:6379",
 	}
 
+	wantCmd := []string{
+		"uid_entrypoint.sh",
+		"argocd-repo-server",
+		"--loglevel",
+		"info",
+		"--logformat",
+		"text",
+		"--redis",
+		"foo.scv.cluster.local:6379",
+	}
+
 	assert.NoError(t, r.reconcileRepoDeployment(a, false))
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-repo-server",
@@ -1982,13 +2685,13 @@ func TestArgoCDRepoServerDeploymentCommand(t *testing.T) {
 		},
 		deployment))
 
-	assert.Equal(t, baseCommand, deployment.Spec.Template.Spec.Containers[0].Command)
+	assert.Equal(t, wantCmd, deployment.Spec.Template.Spec.Containers[0].Command)
 
 	// Remove all the command arguments that were added.
 	a.Spec.Repo.ExtraRepoCommandArgs = []string{}
 
 	assert.NoError(t, r.reconcileRepoDeployment(a, false))
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-repo-server",
@@ -2050,7 +2753,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_serviceAccount(t *testing.T) {
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 			err := r.reconcileRepoDeployment(a, false)
 			assert.NoError(t, err)
@@ -2061,7 +2764,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_serviceAccount(t *testing.T) {
 				Namespace: testNamespace,
 			}
 
-			err = r.Client.Get(context.TODO(), key, deployment)
+			err = r.Get(context.TODO(), key, deployment)
 
 			assert.NoError(t, err)
 			assert.Equal(t, test.expectedServiceAccountName, deployment.Spec.Template.Spec.ServiceAccountName)
@@ -2074,11 +2777,301 @@ func TestReconcileArgoCD_reconcileRepoDeployment_serviceAccount(t *testing.T) {
 				err = r.reconcileRepoDeployment(a, false)
 				assert.NoError(t, err)
 
-				err = r.Client.Get(context.TODO(), key, deployment)
+				err = r.Get(context.TODO(), key, deployment)
 
 				assert.NoError(t, err)
 				assert.Equal(t, test.newExpectedServiceAccountName, deployment.Spec.Template.Spec.ServiceAccountName)
 			}
 		})
 	}
+}
+
+func TestReconcileArgoCD_reconcileRepoDeployment_sidecarContainerImage(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Repo.SidecarContainers = []corev1.Container{
+			{
+				Name: "test-sidecar1",
+			},
+			{
+				Name: "test-sidecar2",
+			},
+			{
+				Name:  "test-sidecar3",
+				Image: "test-image",
+			},
+		}
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.reconcileRepoDeployment(a, false))
+
+	assert.NoError(t, r.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-repo-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Len(t, deployment.Spec.Template.Spec.Containers, 4)
+	assert.Equal(t, "test-sidecar1", deployment.Spec.Template.Spec.Containers[1].Name)
+	assert.Equal(t, getRepoServerContainerImage(a), deployment.Spec.Template.Spec.Containers[1].Image)
+	assert.Equal(t, "test-sidecar2", deployment.Spec.Template.Spec.Containers[2].Name)
+	assert.Equal(t, getRepoServerContainerImage(a), deployment.Spec.Template.Spec.Containers[2].Image)
+	assert.Equal(t, "test-sidecar3", deployment.Spec.Template.Spec.Containers[3].Name)
+	assert.Equal(t, "test-image", deployment.Spec.Template.Spec.Containers[3].Image)
+}
+
+// If `remote` field is used in CR, then the component resources should not be created
+func TestReconcileArgoCD_reconcileRedisWithRemote(t *testing.T) {
+	cr := makeTestArgoCD()
+
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{cr}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	redisRemote := "https://remote.redis.instance"
+
+	cr.Spec.Redis.Remote = &redisRemote
+	assert.NoError(t, r.reconcileRedisDeployment(cr, false))
+
+	d := &appsv1.Deployment{}
+
+	assert.ErrorContains(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, d),
+		"deployments.apps \""+cr.Name+"-redis\" not found")
+
+	// once remote is set to nil, reconciliation should trigger deployment resource creation
+	cr.Spec.Redis.Remote = nil
+
+	assert.NoError(t, r.reconcileRedisDeployment(cr, false))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, d))
+}
+
+func TestReconcileArgoCD_reconcileRepoServerWithRemote(t *testing.T) {
+	cr := makeTestArgoCD()
+
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{cr}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	repoServerRemote := "https://remote.repo-server.instance"
+
+	cr.Spec.Repo.Remote = &repoServerRemote
+	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
+
+	d := &appsv1.Deployment{}
+
+	assert.ErrorContains(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d),
+		"deployments.apps \""+cr.Name+"-repo-server\" not found")
+
+	// once remote is set to nil, reconciliation should trigger deployment resource creation
+	cr.Spec.Repo.Remote = nil
+
+	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d))
+}
+
+func Test_getRolloutInitContainer(t *testing.T) {
+	tests := []struct {
+		name      string
+		envSet    bool
+		wantImage string
+		wantEnv   []corev1.EnvVar
+	}{
+		{
+			name:      "when running in argocd-operator",
+			envSet:    false,
+			wantImage: "quay.io/argoprojlabs/argocd-extension-installer:v0.0.8",
+			wantEnv: []corev1.EnvVar{
+				{
+					Name:  "EXTENSION_URL",
+					Value: common.ArgoRolloutsExtensionURL,
+				},
+			},
+		},
+		{
+			name:      "when running in gitops-operator",
+			envSet:    true,
+			wantImage: "updated_container",
+			wantEnv:   nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.envSet {
+				err := os.Setenv(common.ArgoCDExtensionImageEnvName, "updated_container")
+				assert.NoError(t, err)
+			}
+
+			containers := getRolloutInitContainer()
+
+			assert.Equalf(t, tt.wantImage, containers[0].Image, "Image check")
+			assert.Equalf(t, tt.wantEnv, containers[0].Env, "Env check")
+
+		})
+	}
+}
+
+func TestSetReplicasAndEnvVar_WhenServerReplicasIsDefined(t *testing.T) {
+	t.Run("should set replicas and ARGOCD_API_SERVER_REPLICAS env var when spec.server.replicas is set", func(t *testing.T) {
+		logf.SetLogger(ZapLogger(true))
+		a := makeTestArgoCD()
+		var replicas *int32
+		v := int32(2)
+		replicas = &v
+		a.Spec.Server.Replicas = replicas
+
+		resObjs := []client.Object{a}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		err := r.reconcileServerDeployment(a, false)
+		assert.NoError(t, err)
+		deployment := &appsv1.Deployment{}
+		err = r.Get(context.TODO(), types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: testNamespace,
+		}, deployment)
+		assert.NoError(t, err)
+
+		// Check that the env vars are set, Count is 2 because of the default REDIS_PASSWORD env var
+		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 2)
+		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_API_SERVER_REPLICAS", Value: "2"})
+	})
+
+}
+
+func TestReconcileArgoCD_reconcileRepoServerWithFipsEnabled(t *testing.T) {
+	cr := makeTestArgoCD()
+
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{cr}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r.FipsConfigChecker = &MockTrueFipsChecker{}
+	repoServerRemote := "https://remote.repo-server.instance"
+
+	cr.Spec.Repo.Remote = &repoServerRemote
+	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
+
+	d := &appsv1.Deployment{}
+
+	assert.ErrorContains(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d),
+		"deployments.apps \""+cr.Name+"-repo-server\" not found")
+
+	// once remote is set to nil, reconciliation should trigger deployment resource creation
+	cr.Spec.Repo.Remote = nil
+
+	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d))
+	foundEnv := false
+	for _, env := range d.Spec.Template.Spec.Containers[0].Env {
+		if env.Name == "GODEBUG" {
+			foundEnv = true
+			assert.Equal(t, env.Value, "fips140=on", "GODEBUG environment must be set to fips140=on when fips is enabled")
+		}
+	}
+	assert.True(t, foundEnv, "environment GODEBUG must be set when FIPS is enabled")
+}
+
+func TestReconcileArgoCD_reconcileRepoServerWithFipsDisabled(t *testing.T) {
+	cr := makeTestArgoCD()
+
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{cr}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r.FipsConfigChecker = &MockFalseFipsChecker{}
+	repoServerRemote := "https://remote.repo-server.instance"
+
+	cr.Spec.Repo.Remote = &repoServerRemote
+	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
+
+	d := &appsv1.Deployment{}
+
+	assert.ErrorContains(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d),
+		"deployments.apps \""+cr.Name+"-repo-server\" not found")
+
+	// once remote is set to nil, reconciliation should trigger deployment resource creation
+	cr.Spec.Repo.Remote = nil
+
+	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d))
+	foundEnv := false
+	for _, env := range d.Spec.Template.Spec.Containers[0].Env {
+		if env.Name == "GODEBUG" {
+			foundEnv = true
+		}
+	}
+	assert.False(t, foundEnv, "environment GODEBUG must NOT be set when FIPS is disabled")
+}
+
+func TestDeploymentWithLongName(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	// Create ArgoCD with a very long name that will trigger truncation
+	longName := "this-is-a-very-long-argocd-instance-name-that-will-exceed-the-kubernetes-name-limit-and-require-truncation"
+	a := makeTestArgoCD()
+	a.Name = longName
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	// Test repo server deployment
+	err := r.reconcileRepoDeployment(a, false)
+	assert.NoError(t, err)
+
+	// Get all deployments and find the repo server deployment
+	deploymentList := &appsv1.DeploymentList{}
+	err = r.List(context.TODO(), deploymentList, client.InNamespace(a.Namespace))
+	assert.NoError(t, err)
+
+	var repoDeployment *appsv1.Deployment
+	for i := range deploymentList.Items {
+		if deploymentList.Items[i].Labels[common.ArgoCDKeyComponent] == "repo-server" {
+			repoDeployment = &deploymentList.Items[i]
+			break
+		}
+	}
+	assert.NotNil(t, repoDeployment, "Repo server deployment should exist")
+
+	// Verify that the deployment name is truncated and within limits
+	assert.LessOrEqual(t, len(repoDeployment.Name), 63)
+	assert.Contains(t, repoDeployment.Name, "repo-server")
+
+	// Verify that the labels are set correctly
+	assert.Equal(t, repoDeployment.Name, repoDeployment.Labels[common.ArgoCDKeyName])
+	assert.Equal(t, "repo-server", repoDeployment.Labels[common.ArgoCDKeyComponent])
+
+	// Verify that the selector matches the labels
+	assert.Equal(t, repoDeployment.Name, repoDeployment.Spec.Selector.MatchLabels[common.ArgoCDKeyName])
+
+	// Verify that the pod template labels match
+	assert.Equal(t, repoDeployment.Name, repoDeployment.Spec.Template.Labels[common.ArgoCDKeyName])
 }

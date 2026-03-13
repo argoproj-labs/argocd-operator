@@ -26,6 +26,12 @@ spec:
           name: argocd-repo-server-tls
         - mountPath: /app/config/server/tls/redis
           name: argocd-operator-redis-tls
+        - mountPath: /home/argocd
+          name: plugins-home
+        - mountPath: /home/argocd/params
+          name: argocd-cmd-params-cm
+        - mountPath: /tmp
+          name: tmp
       volumes:
       - configMap:
           defaultMode: 420
@@ -45,6 +51,17 @@ spec:
           defaultMode: 420
           optional: true
           secretName: argocd-operator-redis-tls
+      - name: plugins-home
+        emptyDir: {}
+      - name: argocd-cmd-params-cm
+        configMap:
+          defaultMode: 420
+          optional: true
+          items:
+          - key: server.profile.enabled
+            path: profiler.enabled
+      - name: tmp
+        emptyDir: {}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -63,14 +80,14 @@ spec:
           name: gpg-keys
         - mountPath: /app/config/gpg/keys
           name: gpg-keyring
-        - mountPath: /tmp
-          name: tmp
         - mountPath: /app/config/reposerver/tls
           name: argocd-repo-server-tls
         - mountPath: /app/config/reposerver/tls/redis
           name: argocd-operator-redis-tls
         - mountPath: /home/argocd/cmp-server/plugins
           name: plugins
+        - mountPath: /tmp
+          name: tmp
       volumes:
       - configMap:
           defaultMode: 420
@@ -86,8 +103,6 @@ spec:
         name: gpg-keys
       - emptyDir: {}
         name: gpg-keyring
-      - emptyDir: {}
-        name: tmp
       - name: argocd-repo-server-tls
         secret:
           defaultMode: 420
@@ -102,6 +117,8 @@ spec:
         name: var-files
       - emptyDir: {}
         name: plugins
+      - emptyDir: {}
+        name: tmp
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -116,6 +133,12 @@ spec:
           name: argocd-repo-server-tls
         - mountPath: /app/config/controller/tls/redis
           name: argocd-operator-redis-tls
+        - mountPath: /home/argocd
+          name: argocd-home
+        - mountPath: /home/argocd/params
+          name: argocd-cmd-params-cm
+        - mountPath: /tmp
+          name: argocd-application-controller-tmp
       volumes:
       - name: argocd-repo-server-tls
         secret:
@@ -127,3 +150,16 @@ spec:
           defaultMode: 420
           optional: true
           secretName: argocd-operator-redis-tls
+      - name: argocd-home
+        emptyDir: {}
+      - name: argocd-cmd-params-cm
+        configMap:
+          defaultMode: 420
+          optional: true
+          items:
+          - key: controller.profile.enabled
+            path: profiler.enabled
+          - key: controller.resource.health.persist
+            path: controller.resource.health.persist
+      - name: argocd-application-controller-tmp
+        emptyDir: {}

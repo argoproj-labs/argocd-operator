@@ -1,0 +1,14 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example
+spec:
+  server:
+    route:
+      enabled: true
+  applicationSet:
+    enabled: true
+    webhookServer:
+      host: example.com
+      route:
+        enabled: true

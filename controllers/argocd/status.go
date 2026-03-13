@@ -19,7 +19,6 @@ import (
 	"reflect"
 	"strings"
 
-	oappsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,54 +32,87 @@ import (
 )
 
 // reconcileStatus will ensure that all of the Status properties are updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatus(cr *argoproj.ArgoCD) error {
-	if err := r.reconcileStatusApplicationController(cr); err != nil {
-		return err
+func (r *ReconcileArgoCD) reconcileStatus(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus) error {
+
+	// Note: NONE of the functions called here should modify the actual K8s object (e.g. the object in etcd on cluster).
+	// - These functions should ONLY modify the values in 'argocdStatus' param.
+	// - Updating the actual K8s object is handled elsewhere
+
+	if argocdStatus.ApplicationController == "" { // Don't override app controller status if it was already set elsewhere
+
+		if err := r.reconcileStatusApplicationController(cr, argocdStatus); err != nil {
+			return err
+		}
 	}
 
-	if err := r.reconcileStatusSSO(cr); err != nil {
-		log.Info(err.Error())
+	if argocdStatus.SSO == "" { // Don't override SSO status if it was already set elsewhere
+		if err := r.reconcileStatusSSO(cr, argocdStatus); err != nil {
+			return err
+		}
 	}
 
-	if err := r.reconcileStatusPhase(cr); err != nil {
-		return err
+	if argocdStatus.Redis == "" {
+		if err := r.reconcileStatusRedis(cr, argocdStatus); err != nil {
+			return err
+		}
 	}
 
-	if err := r.reconcileStatusRedis(cr); err != nil {
-		return err
+	if argocdStatus.Repo == "" {
+		if err := r.reconcileStatusRepo(cr, argocdStatus); err != nil {
+			return err
+		}
 	}
 
-	if err := r.reconcileStatusRepo(cr); err != nil {
-		return err
+	if argocdStatus.Server == "" {
+		if err := r.reconcileStatusServer(cr, argocdStatus); err != nil {
+			return err
+		}
 	}
 
-	if err := r.reconcileStatusServer(cr); err != nil {
-		return err
+	if argocdStatus.Phase == "" { // We don't want to override a phase that was already set
+		if err := r.reconcileStatusHost(cr, argocdStatus); err != nil {
+			return err
+		}
 	}
 
-	if err := r.reconcileStatusHost(cr); err != nil {
-		return err
+	if argocdStatus.NotificationsController == "" {
+		if err := r.reconcileStatusNotifications(cr, argocdStatus); err != nil {
+			return err
+		}
 	}
 
-	if err := r.reconcileStatusNotifications(cr); err != nil {
-		return err
+	if argocdStatus.ApplicationSetController == "" {
+		if err := r.reconcileStatusApplicationSetController(cr, argocdStatus); err != nil {
+			return err
+		}
 	}
 
-	if err := r.reconcileStatusApplicationSetController(cr); err != nil {
-		return err
+	if argocdStatus.Phase == "" {
+		// We only want to call reconcileStatusPhase if .status.phase was NOT already set by any of the functions above.
+		// - If .status.phase value WAS set by one of the functions above, then we don't want to override that value
+
+		// Since this function reads from values that were set by the other functions above, this function must be called last.
+		if err := r.reconcileStatusPhase(cr, argocdStatus); err != nil {
+			return err
+		}
+
 	}
 
 	return nil
 }
 
 // reconcileStatusApplicationController will ensure that the ApplicationController Status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusApplicationController(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileStatusApplicationController(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus) error {
 	status := "Unknown"
 
 	ss := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, ss.Name, ss) {
+	ssExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, ss.Name, ss)
+	if err != nil {
+		argocdStatus.ApplicationController = "Failed"
+		return err
+	}
+	if ssExists {
 		status = "Pending"
-
 		if ss.Spec.Replicas != nil {
 			if ss.Status.ReadyReplicas == *ss.Spec.Replicas {
 				status = "Running"
@@ -88,19 +120,22 @@ func (r *ReconcileArgoCD) reconcileStatusApplicationController(cr *argoproj.Argo
 		}
 	}
 
-	if cr.Status.ApplicationController != status {
-		cr.Status.ApplicationController = status
-		return r.Client.Status().Update(context.TODO(), cr)
-	}
+	argocdStatus.ApplicationController = status
+
 	return nil
 }
 
-// reconcileStatusDex will ensure that the Dex status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusDex(cr *argoproj.ArgoCD) error {
+// reconcileStatusApplicationSetController will ensure that the ApplicationSet controller status is updated for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileStatusApplicationSetController(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus) error {
 	status := "Unknown"
 
-	deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
+	deploy := newDeploymentWithSuffix("applicationset-controller", "controller", cr)
+	deplExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy)
+	if err != nil {
+		argocdStatus.ApplicationSetController = "Failed"
+		return err
+	}
+	if deplExists {
 		status = "Pending"
 
 		if deploy.Spec.Replicas != nil {
@@ -118,52 +153,42 @@ func (r *ReconcileArgoCD) reconcileStatusDex(cr *argoproj.ArgoCD) error {
 		}
 	}
 
-	if cr.Status.SSO != status {
-		cr.Status.SSO = status
-		return r.Client.Status().Update(context.TODO(), cr)
-	}
-
+	argocdStatus.ApplicationSetController = status
 	return nil
 }
 
-// reconcileStatusKeycloak will ensure that the Keycloak status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusKeycloak(cr *argoproj.ArgoCD) error {
-	status := "Unknown"
+// reconcileStatusSSOConfig will ensure that the SSOConfig status is updated for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileStatusSSO(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus) error {
 
-	if IsTemplateAPIAvailable() {
-		// keycloak is installed using OpenShift templates.
-		dc := &oappsv1.DeploymentConfig{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      defaultKeycloakIdentifier,
-				Namespace: cr.Namespace,
-			},
+	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeDex {
+		// A) If Dex is enabled
+
+		if cr.Spec.SSO.Dex != nil && !cr.Spec.SSO.Dex.OpenShiftOAuth {
+			removeCondition(&cr.Status.Conditions, argoproj.ArgoCDConditionConfigurationError)
 		}
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, dc.Name, dc) {
-			status = "Pending"
 
-			if dc.Status.ReadyReplicas == dc.Spec.Replicas {
-				status = "Running"
-			} else if dc.Status.Conditions != nil {
-				for _, condition := range dc.Status.Conditions {
-					if condition.Type == oappsv1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue {
-						// Deployment has failed
-						status = "Failed"
-						break
-					}
-				}
+		for _, statusCondition := range cr.Status.Conditions {
+			if statusCondition.Type == argoproj.ArgoCDConditionConfigurationError && statusCondition.Status == metav1.ConditionTrue {
+				// SSO configuration error detected
+				argocdStatus.SSO = "Failed"
+				return nil
 			}
 		}
-
-	} else {
-		d := newDeploymentWithName(defaultKeycloakIdentifier, defaultKeycloakIdentifier, cr)
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, d.Name, d) {
+		deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
+		deplExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy)
+		if err != nil {
+			argocdStatus.SSO = "Failed"
+			return err
+		}
+		status := "Unknown"
+		if deplExists {
 			status = "Pending"
 
-			if d.Spec.Replicas != nil {
-				if d.Status.ReadyReplicas == *d.Spec.Replicas {
+			if deploy.Spec.Replicas != nil {
+				if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
 					status = "Running"
-				} else if d.Status.Conditions != nil {
-					for _, condition := range d.Status.Conditions {
+				} else if deploy.Status.Conditions != nil {
+					for _, condition := range deploy.Status.Conditions {
 						if condition.Type == appsv1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue {
 							// Deployment has failed
 							status = "Failed"
@@ -171,100 +196,69 @@ func (r *ReconcileArgoCD) reconcileStatusKeycloak(cr *argoproj.ArgoCD) error {
 						}
 					}
 				}
-
 			}
 		}
-	}
+		argocdStatus.SSO = status
 
-	if cr.Status.SSO != status {
-		cr.Status.SSO = status
-		return r.Client.Status().Update(context.TODO(), cr)
-	}
+		return nil
 
-	return nil
-}
+	} else if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeKeycloak {
 
-// reconcileStatusApplicationSetController will ensure that the ApplicationSet controller status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusApplicationSetController(cr *argoproj.ArgoCD) error {
-	status := "Unknown"
+		// B) If Keycloak is enabled
+		log.Info("Keycloak SSO provider is no longer supported. RBAC scopes configuration is ignored.")
+		// Keycloak functionality has been removed, skipping reconciliation
+		argocdStatus.SSO = "Failed"
 
-	deploy := newDeploymentWithSuffix("applicationset-controller", "controller", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
-		status = "Pending"
-
-		if deploy.Spec.Replicas != nil {
-			if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
-				status = "Running"
-			} else if deploy.Status.Conditions != nil {
-				for _, condition := range deploy.Status.Conditions {
-					if condition.Type == appsv1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue {
-						// Deployment has failed
-						status = "Failed"
-						break
-					}
-				}
-			}
-		}
-	}
-
-	if cr.Status.ApplicationSetController != status {
-		cr.Status.ApplicationSetController = status
-		return r.Client.Status().Update(context.TODO(), cr)
-	}
-	return nil
-}
-
-// reconcileStatusSSOConfig will ensure that the SSOConfig status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusSSO(cr *argoproj.ArgoCD) error {
-
-	// set status to track ssoConfigLegalStatus so it is always up to date with latest sso situation
-	status := ssoConfigLegalStatus
-
-	// perform dex/keycloak status reconciliation only if sso configurations are legal
-	if status == ssoLegalSuccess {
-		if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeDex {
-			return r.reconcileStatusDex(cr)
-		} else if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeKeycloak {
-			return r.reconcileStatusKeycloak(cr)
-		}
 	} else {
-		// illegal/unknown sso configurations
-		if cr.Status.SSO != status {
-			cr.Status.SSO = status
-			return r.Client.Status().Update(context.TODO(), cr)
-		}
+		argocdStatus.SSO = "Unknown"
+		// C) All other cases
+		removeCondition(&cr.Status.Conditions, argoproj.ArgoCDConditionConfigurationError)
 	}
 
 	return nil
 }
 
 // reconcileStatusPhase will ensure that the Status Phase is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusPhase(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileStatusPhase(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus) error {
 	var phase string
 
-	if ((!cr.Spec.Controller.IsEnabled() && cr.Status.ApplicationController == "Unknown") || cr.Status.ApplicationController == "Running") &&
-		((!cr.Spec.Redis.IsEnabled() && cr.Status.Redis == "Unknown") || cr.Status.Redis == "Running") &&
-		((!cr.Spec.Repo.IsEnabled() && cr.Status.Repo == "Unknown") || cr.Status.Repo == "Running") &&
-		((!cr.Spec.Server.IsEnabled() && cr.Status.Server == "Unknown") || cr.Status.Server == "Running") {
+	appControllerAvailable := (!cr.Spec.Controller.IsEnabled() && argocdStatus.ApplicationController == "Unknown") || argocdStatus.ApplicationController == "Running"
+
+	redisAvailable := (!cr.Spec.Redis.IsEnabled() && argocdStatus.Redis == "Unknown") || argocdStatus.Redis == "Running" || (cr.Spec.Redis.IsEnabled() && cr.Spec.Redis.Remote != nil && *cr.Spec.Redis.Remote != "")
+
+	repoServerAvailable := (!cr.Spec.Repo.IsEnabled() && argocdStatus.Repo == "Unknown") || argocdStatus.Repo == "Running"
+
+	serverAvailable := (!cr.Spec.Server.IsEnabled() && argocdStatus.Server == "Unknown") || argocdStatus.Server == "Running"
+
+	ssoAvailable := (!cr.Spec.SSO.IsEnabled() && argocdStatus.SSO == "Unknown") || argocdStatus.SSO == "Running"
+
+	if appControllerAvailable &&
+		redisAvailable &&
+		repoServerAvailable &&
+		serverAvailable &&
+		ssoAvailable {
 		phase = "Available"
 	} else {
 		phase = "Pending"
 	}
 
-	if cr.Status.Phase != phase {
-		cr.Status.Phase = phase
-		return r.Client.Status().Update(context.TODO(), cr)
-	}
+	argocdStatus.Phase = phase
+
 	return nil
 }
 
 // reconcileStatusRedis will ensure that the Redis status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusRedis(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileStatusRedis(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus) error {
 	status := "Unknown"
 
 	if !cr.Spec.HA.Enabled {
 		deploy := newDeploymentWithSuffix("redis", "redis", cr)
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
+		deplExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy)
+		if err != nil {
+			argocdStatus.Redis = "Failed"
+			return err
+		}
+		if deplExists {
 			status = "Pending"
 
 			if deploy.Spec.Replicas != nil {
@@ -283,7 +277,11 @@ func (r *ReconcileArgoCD) reconcileStatusRedis(cr *argoproj.ArgoCD) error {
 		}
 	} else {
 		ss := newStatefulSetWithSuffix("redis-ha-server", "redis-ha-server", cr)
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, ss.Name, ss) {
+		ssExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, ss.Name, ss)
+		if err != nil {
+			return err
+		}
+		if ssExists {
 			status = "Pending"
 
 			if ss.Status.ReadyReplicas == *ss.Spec.Replicas {
@@ -293,52 +291,24 @@ func (r *ReconcileArgoCD) reconcileStatusRedis(cr *argoproj.ArgoCD) error {
 		// TODO: Add check for HA proxy deployment here as well?
 	}
 
-	if cr.Status.Redis != status {
-		cr.Status.Redis = status
-		return r.Client.Status().Update(context.TODO(), cr)
-	}
-	return nil
-}
+	argocdStatus.Redis = status
 
-// reconcileStatusRepo will ensure that the Repo status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusRepo(cr *argoproj.ArgoCD) error {
-	status := "Unknown"
-
-	deploy := newDeploymentWithSuffix("repo-server", "repo-server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
-		status = "Pending"
-
-		if deploy.Spec.Replicas != nil {
-			if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
-				status = "Running"
-			} else if deploy.Status.Conditions != nil {
-				for _, condition := range deploy.Status.Conditions {
-					if condition.Type == appsv1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue {
-						// Deployment has failed
-						status = "Failed"
-						break
-					}
-				}
-			}
-		}
-	}
-
-	if cr.Status.Repo != status {
-		cr.Status.Repo = status
-		return r.Client.Status().Update(context.TODO(), cr)
-	}
 	return nil
 }
 
 // reconcileStatusServer will ensure that the Server status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusServer(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileStatusServer(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus) error {
 	status := "Unknown"
 
 	deploy := newDeploymentWithSuffix("server", "server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
+	deplExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy)
+	if err != nil {
+		argocdStatus.Server = "Failed"
+		return err
+	}
+	if deplExists {
 		status = "Pending"
 
-		// TODO: Refactor these checks.
 		if deploy.Spec.Replicas != nil {
 			if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
 				status = "Running"
@@ -354,19 +324,21 @@ func (r *ReconcileArgoCD) reconcileStatusServer(cr *argoproj.ArgoCD) error {
 		}
 	}
 
-	if cr.Status.Server != status {
-		cr.Status.Server = status
-		return r.Client.Status().Update(context.TODO(), cr)
-	}
+	argocdStatus.Server = status
 	return nil
 }
 
 // reconcileStatusNotifications will ensure that the Notifications status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusNotifications(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileStatusNotifications(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus) error {
 	status := "Unknown"
 
 	deploy := newDeploymentWithSuffix("notifications-controller", "controller", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
+	deplExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy)
+	if err != nil {
+		argocdStatus.NotificationsController = "Failed"
+		return err
+	}
+	if deplExists {
 		status = "Pending"
 
 		if deploy.Spec.Replicas != nil {
@@ -384,22 +356,20 @@ func (r *ReconcileArgoCD) reconcileStatusNotifications(cr *argoproj.ArgoCD) erro
 		}
 	}
 
-	if cr.Status.NotificationsController != status {
-		if !cr.Spec.Notifications.Enabled {
-			cr.Status.NotificationsController = ""
-		} else {
-			cr.Status.NotificationsController = status
-		}
-		return r.Client.Status().Update(context.TODO(), cr)
+	if !cr.Spec.Notifications.Enabled {
+		argocdStatus.NotificationsController = ""
+	} else {
+		argocdStatus.NotificationsController = status
 	}
+
 	return nil
 }
 
 // reconcileStatusHost will ensure that the host status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoproj.ArgoCD) error {
-	cr.Status.Host = ""
+func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus) error {
+	argocdStatus.Host = ""
 
-	if (cr.Spec.Server.Route.Enabled || cr.Spec.Server.Ingress.Enabled) && IsRouteAPIAvailable() {
+	if (cr.Spec.Server.Route.Enabled || cr.Spec.Server.Ingress.Enabled) && argoutil.IsRouteAPIAvailable() {
 		route := newRouteWithSuffix("server", cr)
 
 		// The Red Hat OpenShift ingress controller implementation is designed to watch ingress objects and create one or more routes
@@ -416,7 +386,8 @@ func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoproj.ArgoCD) error {
 			Namespace: cr.Namespace,
 		}
 
-		if err := r.Client.List(context.TODO(), routeList, opts); err != nil {
+		if err := r.List(context.TODO(), routeList, opts); err != nil {
+			argocdStatus.Phase = "Failed"
 			return err
 		}
 
@@ -427,33 +398,41 @@ func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoproj.ArgoCD) error {
 			route = &routeList.Items[0]
 			// status.ingress not available
 			if route.Status.Ingress == nil {
-				cr.Status.Host = ""
-				cr.Status.Phase = "Pending"
+				argocdStatus.Host = ""
+				argocdStatus.Phase = "Pending"
+				log.Info("Route '" + route.Name + "' has 'status.ingress' value of nil, so ArgoCD .status.phase is set to Pending")
 			} else {
 				// conditions exist and type is RouteAdmitted
 				if len(route.Status.Ingress[0].Conditions) > 0 && route.Status.Ingress[0].Conditions[0].Type == routev1.RouteAdmitted {
 					if route.Status.Ingress[0].Conditions[0].Status == corev1.ConditionTrue {
-						cr.Status.Host = route.Status.Ingress[0].Host
+						argocdStatus.Host = route.Status.Ingress[0].Host
 					} else {
-						cr.Status.Host = ""
-						cr.Status.Phase = "Pending"
+						argocdStatus.Host = ""
+						argocdStatus.Phase = "Pending"
+						log.Info("Route '" + route.Name + "' has 'status.ingress[0].conditions[RouteAdmitted]' value of false or empty, so ArgoCD .status.phase is set to Pending")
 					}
 				} else {
 					// no conditions are available
 					if route.Status.Ingress[0].Host != "" {
-						cr.Status.Host = route.Status.Ingress[0].Host
+						argocdStatus.Host = route.Status.Ingress[0].Host
 					} else {
-						cr.Status.Host = "Unavailable"
-						cr.Status.Phase = "Pending"
+						log.Info("Route '" + route.Name + "' has 'status.ingress[0].host' value of \"\", so ArgoCD .status.phase is set to Pending")
+						argocdStatus.Host = "Unavailable"
+						argocdStatus.Phase = "Pending"
 					}
 				}
 			}
 		}
 	} else if cr.Spec.Server.Ingress.Enabled {
 		ingress := newIngressWithSuffix("server", cr)
-		if !argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
+		ingressExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress)
+		if err != nil {
+			argocdStatus.Phase = "Failed"
+			return err
+		}
+		if !ingressExists {
 			log.Info("argocd-server ingress requested but not found on cluster")
-			cr.Status.Phase = "Pending"
+			argocdStatus.Phase = "Pending"
 			return nil
 		} else {
 			if !reflect.DeepEqual(ingress.Status.LoadBalancer, corev1.LoadBalancerStatus{}) && len(ingress.Status.LoadBalancer.Ingress) > 0 {
@@ -469,9 +448,10 @@ func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoproj.ArgoCD) error {
 					}
 				}
 				hosts = strings.Join(s, ", ")
-				cr.Status.Host = hosts
+				argocdStatus.Host = hosts
 			}
 		}
 	}
-	return r.Client.Status().Update(context.TODO(), cr)
+
+	return nil
 }

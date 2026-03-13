@@ -35,9 +35,9 @@ func newClusterRoleBindingWithname(name string, cr *argoproj.ArgoCD) *v1.Cluster
 	roleBinding := newClusterRoleBinding(cr)
 	roleBinding.Name = GenerateUniqueResourceName(name, cr)
 
-	labels := roleBinding.ObjectMeta.Labels
+	labels := roleBinding.Labels
 	labels[common.ArgoCDKeyName] = name
-	roleBinding.ObjectMeta.Labels = labels
+	roleBinding.Labels = labels
 
 	return roleBinding
 }
@@ -67,17 +67,21 @@ func newRoleBindingForSupportNamespaces(cr *argoproj.ArgoCD, namespace string) *
 }
 
 func getRoleBindingNameForSourceNamespaces(argocdName, targetNamespace string) string {
-	return fmt.Sprintf("%s_%s", argocdName, targetNamespace)
+	baseName := fmt.Sprintf("%s_%s", argocdName, targetNamespace)
+	return argoutil.TruncateWithHash(baseName, argoutil.GetMaxLabelLength())
 }
 
 // newRoleBindingWithname creates a new RoleBinding with the given name for the given ArgCD.
 func newRoleBindingWithname(name string, cr *argoproj.ArgoCD) *v1.RoleBinding {
 	roleBinding := newRoleBinding(cr)
-	roleBinding.ObjectMeta.Name = fmt.Sprintf("%s-%s", cr.Name, name)
 
-	labels := roleBinding.ObjectMeta.Labels
+	// Truncate the name to stay within 63 character limit
+	fullName := fmt.Sprintf("%s-%s", cr.Name, name)
+	roleBinding.Name = argoutil.TruncateWithHash(fullName, argoutil.GetMaxLabelLength())
+
+	labels := roleBinding.Labels
 	labels[common.ArgoCDKeyName] = name
-	roleBinding.ObjectMeta.Labels = labels
+	roleBinding.Labels = labels
 
 	return roleBinding
 }
@@ -115,21 +119,22 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 		if namespace.DeletionTimestamp != nil {
 			if _, ok := namespace.Labels[common.ArgoCDManagedByLabel]; ok {
 				delete(namespace.Labels, common.ArgoCDManagedByLabel)
-				_ = r.Client.Update(context.TODO(), &namespace)
+				argoutil.LogResourceUpdate(log, &namespace, "namespace is terminating, removing 'managed-by' label")
+				_ = r.Update(context.TODO(), &namespace)
 			}
 			continue
 		}
 
 		list := &argoproj.ArgoCDList{}
 		listOption := &client.ListOptions{Namespace: namespace.Name}
-		err := r.Client.List(context.TODO(), list, listOption)
+		err := r.List(context.TODO(), list, listOption)
 		if err != nil {
 			return err
 		}
 		// only skip creation of dex and redisHa rolebindings for namespaces that no argocd instance is deployed in
 		if len(list.Items) < 1 {
 			// namespace doesn't contain argocd instance, so skipe all the ArgoCD internal roles
-			if cr.ObjectMeta.Namespace != namespace.Name && (name != common.ArgoCDApplicationControllerComponent && name != common.ArgoCDServerComponent) {
+			if cr.Namespace != namespace.Name && (name != common.ArgoCDApplicationControllerComponent && name != common.ArgoCDServerComponent) {
 				continue
 			}
 		}
@@ -139,15 +144,16 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 
 		// fetch existing rolebinding by name
 		existingRoleBinding := &v1.RoleBinding{}
-		err = r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: roleBinding.Namespace}, existingRoleBinding)
+		err = r.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: roleBinding.Namespace}, existingRoleBinding)
 		roleBindingExists := true
 		if err != nil {
 			if !errors.IsNotFound(err) {
 				return fmt.Errorf("failed to get the rolebinding associated with %s : %s", name, err)
 			}
 
-			if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
-				continue // Dex installation is not requested, do nothing
+			if (name == common.ArgoCDDexServerComponent && !UseDex(cr)) ||
+				!UseApplicationController(name, cr) || !UseRedis(name, cr) || !UseServer(name, cr) {
+				continue // Component installation is not requested, do nothing
 			}
 
 			roleBindingExists = false
@@ -177,10 +183,10 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 		}
 
 		if roleBindingExists {
-			if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
+			if (name == common.ArgoCDDexServerComponent && !UseDex(cr)) || !UseApplicationController(name, cr) || !UseRedis(name, cr) || !UseServer(name, cr) {
 				// Delete any existing RoleBinding created for Dex since dex uninstallation is requested
-				log.Info("deleting the existing Dex roleBinding because dex uninstallation is requested")
-				if err = r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
+				argoutil.LogResourceDeletion(log, existingRoleBinding, "dex is being uninstalled")
+				if err = r.Delete(context.TODO(), existingRoleBinding); err != nil {
 					return err
 				}
 				continue
@@ -188,14 +194,16 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 
 			// if the RoleRef changes, delete the existing role binding and create a new one
 			if !reflect.DeepEqual(roleBinding.RoleRef, existingRoleBinding.RoleRef) {
-				if err = r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
+				argoutil.LogResourceDeletion(log, existingRoleBinding, "role ref changed, deleting role binding in order to recreate it")
+				if err = r.Delete(context.TODO(), existingRoleBinding); err != nil {
 					return err
 				}
 			} else {
 				// if the Subjects differ, update the role bindings
 				if !reflect.DeepEqual(roleBinding.Subjects, existingRoleBinding.Subjects) {
 					existingRoleBinding.Subjects = roleBinding.Subjects
-					if err = r.Client.Update(context.TODO(), existingRoleBinding); err != nil {
+					argoutil.LogResourceUpdate(log, existingRoleBinding, "updating subjects")
+					if err = r.Update(context.TODO(), existingRoleBinding); err != nil {
 						return err
 					}
 				}
@@ -210,14 +218,17 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 			}
 		}
 
-		log.Info(fmt.Sprintf("creating rolebinding %s for Argo CD instance %s in namespace %s", roleBinding.Name, cr.Name, cr.Namespace))
-		if err = r.Client.Create(context.TODO(), roleBinding); err != nil {
+		argoutil.LogResourceCreation(log, roleBinding)
+		if err = r.Create(context.TODO(), roleBinding); err != nil {
 			return err
 		}
 	}
 
 	// reconcile rolebindings only for ArgoCDServerComponent
 	if name == common.ArgoCDServerComponent {
+		if !argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace) {
+			return nil
+		}
 
 		// reconcile rolebindings for all source namespaces for argocd-server
 		sourceNamespaces, err := r.getSourceNamespaces(cr)
@@ -226,7 +237,7 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 		}
 		for _, sourceNamespace := range sourceNamespaces {
 			namespace := &corev1.Namespace{}
-			if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: sourceNamespace}, namespace); err != nil {
+			if err := r.Get(context.TODO(), types.NamespacedName{Name: sourceNamespace}, namespace); err != nil {
 				return err
 			}
 
@@ -240,7 +251,7 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 
 			list := &argoproj.ArgoCDList{}
 			listOption := &client.ListOptions{Namespace: namespace.Name}
-			err := r.Client.List(context.TODO(), list, listOption)
+			err := r.List(context.TODO(), list, listOption)
 			if err != nil {
 				log.Info(err.Error())
 				return err
@@ -258,7 +269,7 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 
 			// fetch existing rolebinding by name
 			existingRoleBinding := &v1.RoleBinding{}
-			err = r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: roleBinding.Namespace}, existingRoleBinding)
+			err = r.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: roleBinding.Namespace}, existingRoleBinding)
 			roleBindingExists := true
 			if err != nil {
 				if !errors.IsNotFound(err) {
@@ -288,14 +299,16 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 				}
 				// if the RoleRef changes, delete the existing role binding and create a new one
 				if !reflect.DeepEqual(roleBinding.RoleRef, existingRoleBinding.RoleRef) {
-					if err = r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
+					argoutil.LogResourceDeletion(log, existingRoleBinding, "role ref changed, deleting role binding in order to recreate it")
+					if err = r.Delete(context.TODO(), existingRoleBinding); err != nil {
 						return err
 					}
 				} else {
 					// if the Subjects differ, update the role bindings
 					if !reflect.DeepEqual(roleBinding.Subjects, existingRoleBinding.Subjects) {
 						existingRoleBinding.Subjects = roleBinding.Subjects
-						if err = r.Client.Update(context.TODO(), existingRoleBinding); err != nil {
+						argoutil.LogResourceUpdate(log, existingRoleBinding, "updating subjects")
+						if err = r.Update(context.TODO(), existingRoleBinding); err != nil {
 							return err
 						}
 					}
@@ -303,8 +316,8 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 				}
 			}
 
-			log.Info(fmt.Sprintf("creating rolebinding %s for Argo CD instance %s in namespace %s", roleBinding.Name, cr.Name, namespace))
-			if err = r.Client.Create(context.TODO(), roleBinding); err != nil {
+			argoutil.LogResourceCreation(log, roleBinding)
+			if err = r.Create(context.TODO(), roleBinding); err != nil {
 				return err
 			}
 		}
@@ -331,19 +344,46 @@ func getRoleNameForApplicationSourceNamespaces(targetNamespace string, cr *argop
 func newRoleBindingWithNameForApplicationSourceNamespaces(namespace string, cr *argoproj.ArgoCD) *v1.RoleBinding {
 	roleBinding := newRoleBindingForSupportNamespaces(cr, namespace)
 
-	labels := roleBinding.ObjectMeta.Labels
-	labels[common.ArgoCDKeyName] = roleBinding.ObjectMeta.Name
-	roleBinding.ObjectMeta.Labels = labels
+	labels := roleBinding.Labels
+	labels[common.ArgoCDKeyName] = cr.Name
+	roleBinding.Labels = labels
 
 	return roleBinding
 }
 
 func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.ClusterRole, cr *argoproj.ArgoCD) error {
+	if name == common.ArgoCDApplicationControllerComponentAdmin || name == common.ArgoCDApplicationControllerComponentView {
+		// Don't create ClusterRoleBinding
+		return nil
+	}
+
+	if err := verifyInstallationMode(cr, true); err != nil {
+		log.Error(err, "error occurred in reconcileClusterRoleBinding")
+		return nil
+	}
+
+	// Check if user doesn't want to use default ClusterRole, hence default ClusterRoleBinding is also not required
+	if cr.Spec.DefaultClusterScopedRoleDisabled {
+
+		// In case DefaultClusterScopedRoleDisabled was false earlier and default ClusterRoleBinding was created, then delete it.
+		existingClusterRoleBinding := &v1.ClusterRoleBinding{}
+		if err := r.Get(context.TODO(), types.NamespacedName{Name: GenerateUniqueResourceName(name, cr)}, existingClusterRoleBinding); err == nil {
+
+			// Default ClusterRoleBinding exists, now delete it
+			argoutil.LogResourceDeletion(log, existingClusterRoleBinding, "default cluster-scoped role is disabled")
+			if err := r.Delete(context.TODO(), existingClusterRoleBinding); err != nil {
+				return fmt.Errorf("failed to delete existing cluster role binding for the service account associated with %s : %s", name, err)
+			}
+		}
+
+		// Don't create a default ClusterRoleBinding
+		return nil
+	}
 
 	// get expected name
 	roleBinding := newClusterRoleBindingWithname(name, cr)
 	// fetch existing rolebinding by name
-	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name}, roleBinding)
+	err := r.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name}, roleBinding)
 	roleBindingExists := true
 	if err != nil {
 		if !errors.IsNotFound(err) {
@@ -354,7 +394,8 @@ func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.Clus
 	}
 
 	if roleBindingExists && role == nil {
-		return r.Client.Delete(context.TODO(), roleBinding)
+		argoutil.LogResourceDeletion(log, roleBinding, "role binding has no corresponding role")
+		return r.Delete(context.TODO(), roleBinding)
 	}
 
 	if !roleBindingExists && role == nil {
@@ -382,13 +423,16 @@ func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.Clus
 	}
 
 	if roleBindingExists {
-		return r.Client.Update(context.TODO(), roleBinding)
+		argoutil.LogResourceUpdate(log, roleBinding)
+		return r.Update(context.TODO(), roleBinding)
 	}
-	return r.Client.Create(context.TODO(), roleBinding)
+	argoutil.LogResourceCreation(log, roleBinding)
+	return r.Create(context.TODO(), roleBinding)
 }
 
 func deleteClusterRoleBindings(c client.Client, clusterBindingList *v1.ClusterRoleBindingList) error {
 	for _, clusterBinding := range clusterBindingList.Items {
+		argoutil.LogResourceDeletion(log, &clusterBinding, "cleaning up cluster resources")
 		if err := c.Delete(context.TODO(), &clusterBinding); err != nil {
 			return fmt.Errorf("failed to delete ClusterRoleBinding %q during cleanup: %w", clusterBinding.Name, err)
 		}

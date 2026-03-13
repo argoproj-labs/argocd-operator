@@ -1,6 +1,8 @@
-name: Integration tests
+name: Code scans
 on:
   pull_request:
+    paths-ignore:
+      - "docs/**"
     branches:
       - 'master'
       - 'release-*'
@@ -8,15 +10,21 @@ on:
 
 jobs:
   lint_code:
-    name: Run golangci-lint on PR
+    name: Run golangci-lint and gosec
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v3
+        uses: actions/checkout@v6
+      - name: Set up Go
+        uses: actions/setup-go@v6
         with:
-          version: v1.52.2
-          args: --timeout 5m --exclude SA5011
-          only-new-issues: true
-
+          go-version-file: 'go.mod'
+      - name: "Ensure code passes 'go-sec' - run 'make gosec' to identify issues"
+        run: |
+          make gosec
+      - name: "Ensure code passes 'golangci-lint' - run 'make lint' to identify issues"
+        run: |
+          make lint 
+      - name: Ensure there is no diff in code
+        run: |
+          git diff --ignore-matching-lines='.*createdAt:.*' --exit-code -- .

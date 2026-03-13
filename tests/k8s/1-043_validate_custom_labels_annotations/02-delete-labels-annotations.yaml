@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd-sample
+spec:
+  server:
+    labels: {}
+    annotations: {}
+  repo:
+    labels: {}
+    annotations: {}
+  controller:
+    labels: {}
+    annotations: {}
+  applicationSet:
+    labels: {}
+    annotations: {}
+

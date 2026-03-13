@@ -19,7 +19,17 @@ import (
 )
 
 const (
-	// ArgoCDKeyAdminEnabled is the configuration key for the admin enabled setting..
+
+	// ArgoCDKeyRespectRBAC is the configuration key for the respectRBAC setting.
+	ArgoCDKeyRespectRBAC = "resource.respectRBAC"
+
+	// ArgoCDValueRespectRBACStrict is the configuration value for the respectRBAC setting.
+	ArgoCDValueRespectRBACStrict = "strict"
+
+	// ArgoCDValueRespectRBACStrict is the configuration value for the respectRBAC setting.
+	ArgoCDValueRespectRBACNormal = "normal"
+
+	// ArgoCDKeyAdminEnabled is the configuration key for the admin enabled setting.
 	ArgoCDKeyAdminEnabled = "admin.enabled"
 
 	// ArgoCDKeyApplicationInstanceLabelKey is the configuration key for the application instance label.
@@ -33,9 +43,6 @@ const (
 
 	// ArgoCDKeyBackupKey is the "backup key" key for ConfigMaps.
 	ArgoCDKeyBackupKey = "backup.key"
-
-	// ArgoCDKeyConfigManagementPlugins is the configuration key for config management plugins.
-	ArgoCDKeyConfigManagementPlugins = "configManagementPlugins"
 
 	// ArgoCDKeyComponent is the resource component key for labels.
 	ArgoCDKeyComponent = "app.kubernetes.io/component"
@@ -74,7 +81,7 @@ const (
 	ArgoCDKeyIngressSSLRedirect = "nginx.ingress.kubernetes.io/force-ssl-redirect"
 
 	// ArgoCDKeyIngressSSLPassthrough is the ssl passthrough key for labels.
-	ArgoCDKeyIngressSSLPassthrough = "nginx.ingress.kubernetes.io/ssl-passthrough"
+	ArgoCDKeyIngressSSLPassthrough = "nginx.ingress.kubernetes.io/ssl-passthrough" // #nosec G101
 
 	// ArgoCDKeyKustomizeBuildOptions is the configuration key for the kustomize build options.
 	ArgoCDKeyKustomizeBuildOptions = "kustomize.buildOptions"
@@ -121,16 +128,6 @@ const (
 	// ArgoCDKeyResourceTrackingMethod is the configuration key for resource tracking method
 	ArgoCDKeyResourceTrackingMethod = "application.resourceTrackingMethod"
 
-	// ArgoCDRepoImageEnvName is the environment variable used to get the image
-	// to used for the Dex container.
-	ArgoCDRepoImageEnvName = "ARGOCD_REPOSERVER_IMAGE"
-
-	// ArgoCDKeyRepositories is the configuration key for repositories.
-	ArgoCDKeyRepositories = "repositories"
-
-	// ArgoCDKeyRepositoryCredentials is the configuration key for repository.credentials.
-	ArgoCDKeyRepositoryCredentials = "repository.credentials"
-
 	// ArgoCDKeyServerSecretKey is the server secret key property name for the Argo secret.
 	ArgoCDKeyServerSecretKey = "server.secretkey"
 
@@ -143,11 +140,20 @@ const (
 	// ArgoCDKeyStatusBadgeEnabled is the configuration key for enabling the status badge.
 	ArgoCDKeyStatusBadgeEnabled = "statusbadge.enabled"
 
+	// ArgoCDKeyTimeout is the configuration key for the reconciliation timeout in argocd-cm.
+	ArgoCDKeyTimeout = "timeout.reconciliation"
+
 	// ArgoCDKeyBannerContent is the configuration key for a banner message content.
 	ArgoCDKeyBannerContent = "ui.bannercontent"
 
 	// ArgoCDKeyBannerURL is the configuration key for a banner message URL.
 	ArgoCDKeyBannerURL = "ui.bannerurl"
+
+	// ArgoCDKeyBannerPermanent is the configuration key for permanent banner.
+	ArgoCDKeyBannerPermanent = "ui.bannerpermanent"
+
+	// ArgoCDKeyBannerURL is the configuration key for banner position.
+	ArgoCDKeyBannerPosition = "ui.bannerposition"
 
 	// ArgoCDKeyTLSCACert is the key for TLS CA certificates.
 	ArgoCDKeyTLSCACert = "ca.crt"
@@ -179,9 +185,9 @@ const (
 	// to used for the argocd container.
 	ArgoCDImageEnvName = "ARGOCD_IMAGE"
 
-	// ArgoCDKeycloakImageEnvName is the environment variable used to get the image
-	// to used for the Keycloak container.
-	ArgoCDKeycloakImageEnvName = "ARGOCD_KEYCLOAK_IMAGE"
+	// ArgoCDExtensionImageEnvName is the environment variable used to get the image
+	// to be used for the Argo-CD extension image
+	ArgoCDExtensionImageEnvName = "ARGOCD_EXTENSION_IMAGE"
 
 	// ArgoCDRedisHAProxyImageEnvName is the environment variable used to get the image
 	// to used for the Redis HA Proxy container.
@@ -195,6 +201,10 @@ const (
 	// to used for the Redis container.
 	ArgoCDRedisImageEnvName = "ARGOCD_REDIS_IMAGE"
 
+	// ArgoCDServerRBACDisableFineGrainedInheritance is needed to specify if it is not possible to deny
+	// fine-grained permissions for a sub-resource if the action was explicitly allowed on the application
+	ArgoCDServerRBACDisableFineGrainedInheritance = "server.rbac.disableApplicationFineGrainedRBACInheritance"
+
 	// ArgoCDDeletionFinalizer is a finalizer to implement pre-delete hooks
 	ArgoCDDeletionFinalizer = "argoproj.io/finalizer"
 
@@ -202,7 +212,7 @@ const (
 	ArgoCDDefaultServer = "https://kubernetes.default.svc"
 
 	// ArgoCDSecretTypeLabel is needed for cluster secrets
-	ArgoCDSecretTypeLabel = "argocd.argoproj.io/secret-type"
+	ArgoCDSecretTypeLabel = "argocd.argoproj.io/secret-type" // #nosec G101
 
 	// ArgoCDManagedByLabel is needed to identify namespace managed by an instance on ArgoCD
 	ArgoCDManagedByLabel = "argocd.argoproj.io/managed-by"
@@ -210,8 +220,14 @@ const (
 	// ArgoCDManagedByClusterArgoCDLabel is needed to identify namespace mentioned as sourceNamespace on ArgoCD
 	ArgoCDManagedByClusterArgoCDLabel = "argocd.argoproj.io/managed-by-cluster-argocd"
 
-	// ArgoCDManagedByClusterArgoCDLabel is needed to identify namespace mentioned as sourceNamespace on ArgoCD
+	// ArgoCDApplicationSetManagedByClusterArgoCDLabel is needed to identify namespace mentioned as applicationSet sourceNamespaces on ArgoCD
 	ArgoCDApplicationSetManagedByClusterArgoCDLabel = "argocd.argoproj.io/applicationset-managed-by-cluster-argocd"
+
+	// ArgoCDNotificationsManagedByClusterArgoCDLabel is needed to identify namespace mentioned as notifications sourceNamespaces on ArgoCD
+	ArgoCDNotificationsManagedByClusterArgoCDLabel = "argocd.argoproj.io/notifications-managed-by-cluster-argocd"
+
+	// ArgoCDCATrustChecksum is applied to repo-server Deployment to trigger reconciliation when some of the SystemCATrust sources changes
+	ArgoCDCATrustChecksum = "argocd.argoproj.io/ca-trust-checksum"
 
 	// ArgoCDControllerClusterRoleEnvName is an environment variable to specify a custom cluster role for Argo CD application controller
 	ArgoCDControllerClusterRoleEnvName = "CONTROLLER_CLUSTER_ROLE"
@@ -220,8 +236,26 @@ const (
 	ArgoCDServerClusterRoleEnvName = "SERVER_CLUSTER_ROLE"
 
 	// ArgoCDDexSecretKey is used to reference Dex secret from Argo CD secret into Argo CD configmap
-	ArgoCDDexSecretKey = "oidc.dex.clientSecret"
+	ArgoCDDexSecretKey = "oidc.dex.clientSecret" // #nosec G101
 
 	// Label Selector is an env variable for ArgoCD instance reconcilliation.
 	ArgoCDLabelSelectorKey = "ARGOCD_LABEL_SELECTOR"
+
+	// ArgoCDKeyInstallationID is the configuration key for the installation ID.
+	ArgoCDKeyInstallationID = "installationID"
+
+	// ArgoCDTrackedByOperatorLabel for resources tracked by the operator
+	ArgoCDTrackedByOperatorLabel = "operator.argoproj.io/tracked-by"
+
+	// ALLOW_NAMESPACE_MANAGEMENT_IN_NAMESPACE_SCOPED_INSTANCES is an environment variable that controls whether
+	// the Namespace Management feature is enabled.
+	EnableManagedNamespace = "ALLOW_NAMESPACE_MANAGEMENT_IN_NAMESPACE_SCOPED_INSTANCES"
+
+	// ArgoCDImageUpdaterImageEnvName is the environment variable used to get the image
+	// to used for the Image Updater container.
+	ArgoCDImageUpdaterImageEnvName = "ARGOCD_IMAGE_UPDATER_IMAGE"
+
+	// ArgoCDImagePullPolicyEnvName is the environment variable used to get the global image pull policy
+	// for all ArgoCD components managed by the operator.
+	ArgoCDImagePullPolicyEnvName = "IMAGE_PULL_POLICY"
 )

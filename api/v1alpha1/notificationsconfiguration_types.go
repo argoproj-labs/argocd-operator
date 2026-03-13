@@ -57,4 +57,6 @@ type NotificationsConfigurationSpec struct {
 	Services map[string]string `json:"services,omitempty"`
 	// Subscriptions contain centrally managed global application subscriptions
 	Subscriptions map[string]string `json:"subscriptions,omitempty"`
+	// Context is used to define some shared context between all notification templates
+	Context map[string]string `json:"context,omitempty"`
 }

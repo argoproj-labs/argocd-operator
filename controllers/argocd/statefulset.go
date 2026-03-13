@@ -33,7 +33,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
-func getRedisHAReplicas(cr *argoproj.ArgoCD) *int32 {
+func getRedisHAReplicas() *int32 {
 	replicas := common.ArgoCDDefaultRedisHAReplicas
 	// TODO: Allow override of this value through CR?
 	return &replicas
@@ -53,12 +53,14 @@ func newStatefulSet(cr *argoproj.ArgoCD) *appsv1.StatefulSet {
 // newStatefulSetWithName returns a new StatefulSet instance for the given ArgoCD using the given name.
 func newStatefulSetWithName(name string, component string, cr *argoproj.ArgoCD) *appsv1.StatefulSet {
 	ss := newStatefulSet(cr)
-	ss.ObjectMeta.Name = name
 
-	lbls := ss.ObjectMeta.Labels
+	// The name is already truncated by nameWithSuffix, so use it directly
+	ss.Name = name
+
+	lbls := ss.Labels
 	lbls[common.ArgoCDKeyName] = name
 	lbls[common.ArgoCDKeyComponent] = component
-	ss.ObjectMeta.Labels = lbls
+	ss.Labels = lbls
 
 	ss.Spec = appsv1.StatefulSetSpec{
 		Selector: &metav1.LabelSelector{
@@ -71,6 +73,7 @@ func newStatefulSetWithName(name string, component string, cr *argoproj.ArgoCD) 
 				Labels: map[string]string{
 					common.ArgoCDKeyName: name,
 				},
+				Annotations: make(map[string]string),
 			},
 			Spec: corev1.PodSpec{
 				NodeSelector: common.DefaultNodeSelector(),
@@ -88,14 +91,26 @@ func newStatefulSetWithName(name string, component string, cr *argoproj.ArgoCD) 
 
 // newStatefulSetWithSuffix returns a new StatefulSet instance for the given ArgoCD using the given suffix.
 func newStatefulSetWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) *appsv1.StatefulSet {
-	return newStatefulSetWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
+	return newStatefulSetWithName(nameWithSuffix(suffix, cr), component, cr)
 }
 
 func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 	ss := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
 
+	redisEnv := append(proxyEnvVars(), corev1.EnvVar{
+		Name: "AUTH",
+		ValueFrom: &corev1.EnvVarSource{
+			SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
+				},
+				Key: "admin.password",
+			},
+		},
+	})
+
 	ss.Spec.PodManagementPolicy = appsv1.OrderedReadyPodManagement
-	ss.Spec.Replicas = getRedisHAReplicas(cr)
+	ss.Spec.Replicas = getRedisHAReplicas()
 	ss.Spec.Selector = &metav1.LabelSelector{
 		MatchLabels: map[string]string{
 			common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
@@ -105,6 +120,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 	ss.Spec.ServiceName = nameWithSuffix("redis-ha", cr)
 
 	ss.Spec.Template.ObjectMeta = metav1.ObjectMeta{
+
 		Annotations: map[string]string{
 			"checksum/init-config": "7128bfbb51eafaffe3c33b1b463e15f0cf6514cec570f9d9c4f2396f28c724ac", // TODO: Should this be hard-coded?
 		},
@@ -137,8 +153,9 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 			Command: []string{
 				"redis-server",
 			},
+			Env:             redisEnv,
 			Image:           getRedisHAContainerImage(cr),
-			ImagePullPolicy: corev1.PullIfNotPresent,
+			ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 			LivenessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
 					Exec: &corev1.ExecAction{
@@ -176,16 +193,8 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				SuccessThreshold:    int32(1),
 				TimeoutSeconds:      int32(15),
 			},
-			Resources: getRedisHAResources(cr),
-			SecurityContext: &corev1.SecurityContext{
-				AllowPrivilegeEscalation: boolPtr(false),
-				Capabilities: &corev1.Capabilities{
-					Drop: []corev1.Capability{
-						"ALL",
-					},
-				},
-				RunAsNonRoot: boolPtr(true),
-			},
+			Resources:       getRedisHAResources(cr),
+			SecurityContext: argoutil.DefaultSecurityContext(),
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					MountPath: "/data",
@@ -208,8 +217,9 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 			Command: []string{
 				"redis-sentinel",
 			},
+			Env:             redisEnv,
 			Image:           getRedisHAContainerImage(cr),
-			ImagePullPolicy: corev1.PullIfNotPresent,
+			ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 			LivenessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
 					Exec: &corev1.ExecAction{
@@ -247,15 +257,26 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				SuccessThreshold:    int32(1),
 				TimeoutSeconds:      int32(15),
 			},
-			Resources: getRedisHAResources(cr),
-			SecurityContext: &corev1.SecurityContext{
-				AllowPrivilegeEscalation: boolPtr(false),
-				Capabilities: &corev1.Capabilities{
-					Drop: []corev1.Capability{
-						"ALL",
+			Resources:       getRedisHAResources(cr),
+			SecurityContext: argoutil.DefaultSecurityContext(),
+			Lifecycle: &corev1.Lifecycle{
+				PostStart: &corev1.LifecycleHandler{
+					Exec: &corev1.ExecAction{
+						Command: []string{
+							"/bin/sh",
+							"-c",
+							func() string {
+								// Check if TLS is enabled for Redis
+								useTLS := r.redisShouldUseTLS(cr)
+								if useTLS {
+									// Use TLS for redis-cli when connecting to sentinel
+									return "sleep 30; redis-cli -p 26379 --tls --cert /app/config/redis/tls/tls.crt --key /app/config/redis/tls/tls.key --insecure sentinel reset argocd"
+								}
+								return "sleep 30; redis-cli -p 26379 sentinel reset argocd"
+							}(),
+						},
 					},
 				},
-				RunAsNonRoot: boolPtr(true),
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				{
@@ -294,20 +315,23 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				Name:  "SENTINEL_ID_2",
 				Value: "2bbec7894d954a8af3bb54d13eaec53cb024e2ca", // TODO: Should this be hard-coded?
 			},
-		},
-		Image:           getRedisHAContainerImage(cr),
-		ImagePullPolicy: corev1.PullIfNotPresent,
-		Name:            "config-init",
-		Resources:       getRedisHAResources(cr),
-		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{
-					"ALL",
+			{
+				Name: "AUTH",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
+						},
+						Key: "admin.password",
+					},
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
 		},
+		Image:           getRedisHAContainerImage(cr),
+		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
+		Name:            "config-init",
+		Resources:       getRedisHAResources(cr),
+		SecurityContext: argoutil.DefaultSecurityContext(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				MountPath: "/readonly-config",
@@ -325,14 +349,21 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 		},
 	}}
 
-	var fsGroup int64 = 1000
-	var runAsNonRoot bool = true
-	var runAsUser int64 = 1000
+	if IsOpenShiftCluster() {
+		var runAsNonRoot = true
+		ss.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
+			RunAsNonRoot: &runAsNonRoot,
+		}
+	} else {
+		var fsGroup int64 = 1000
+		var runAsNonRoot = true
+		var runAsUser int64 = 1000
 
-	ss.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
-		FSGroup:      &fsGroup,
-		RunAsNonRoot: &runAsNonRoot,
-		RunAsUser:    &runAsUser,
+		ss.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
+			FSGroup:      &fsGroup,
+			RunAsNonRoot: &runAsNonRoot,
+			RunAsUser:    &runAsUser,
+		}
 	}
 	AddSeccompProfileForOpenShift(r.Client, &ss.Spec.Template.Spec)
 
@@ -390,38 +421,116 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 	}
 
 	existing := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
-		if !(cr.Spec.HA.Enabled && cr.Spec.Redis.IsEnabled()) {
+	ssExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
+	if err != nil {
+		return err
+	}
+	if ssExists {
+		if !cr.Spec.HA.Enabled || !cr.Spec.Redis.IsEnabled() {
 			// StatefulSet exists but either HA or component enabled flag has been set to false, delete the StatefulSet
-			return r.Client.Delete(context.TODO(), existing)
+			var explanation string
+			if !cr.Spec.HA.Enabled {
+				explanation = "ha is disabled"
+			} else {
+				explanation = "redis is disabled"
+			}
+			argoutil.LogResourceDeletion(log, existing, explanation)
+			return r.Delete(context.TODO(), existing)
 		}
 
 		desiredImage := getRedisHAContainerImage(cr)
 		changed := false
-		updateNodePlacementStateful(existing, ss, &changed)
+		explanation := ""
+		updateNodePlacementStateful(existing, ss, &changed, &explanation)
 		for i, container := range existing.Spec.Template.Spec.Containers {
 			if container.Image != desiredImage {
 				existing.Spec.Template.Spec.Containers[i].Image = getRedisHAContainerImage(cr)
-				existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+				existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+				if changed {
+					explanation += ", "
+				}
+				explanation += fmt.Sprintf("container '%s' image", container.Name)
+				changed = true
+			}
+			if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[i].VolumeMounts, existing.Spec.Template.Spec.Containers[i].VolumeMounts) {
+				existing.Spec.Template.Spec.Containers[i].VolumeMounts = ss.Spec.Template.Spec.Containers[i].VolumeMounts
+				if changed {
+					explanation += ", "
+				}
+				explanation += fmt.Sprintf("container '%s' VolumeMounts", container.Name)
+				changed = true
+			}
+			if existing.Spec.Template.Spec.Containers[i].ImagePullPolicy != ss.Spec.Template.Spec.Containers[i].ImagePullPolicy {
+				existing.Spec.Template.Spec.Containers[0].ImagePullPolicy = ss.Spec.Template.Spec.Containers[i].ImagePullPolicy
+				if changed {
+					explanation += ", "
+				}
+				explanation += "image pull policy"
 				changed = true
 			}
 
 			if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[i].Resources, existing.Spec.Template.Spec.Containers[i].Resources) {
 				existing.Spec.Template.Spec.Containers[i].Resources = ss.Spec.Template.Spec.Containers[i].Resources
+				if changed {
+					explanation += ", "
+				}
+				explanation += fmt.Sprintf("container '%s' resources", container.Name)
+				changed = true
+			}
+
+			if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[i].SecurityContext, existing.Spec.Template.Spec.Containers[i].SecurityContext) {
+				existing.Spec.Template.Spec.Containers[i].SecurityContext = ss.Spec.Template.Spec.Containers[i].SecurityContext
+				if changed {
+					explanation += ", "
+				}
+				explanation += fmt.Sprintf("container '%s' security context", container.Name)
+				changed = true
+			}
+
+			if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[i].Env, existing.Spec.Template.Spec.Containers[i].Env) {
+				existing.Spec.Template.Spec.Containers[i].Env = ss.Spec.Template.Spec.Containers[i].Env
+				if changed {
+					explanation += ", "
+				}
+				explanation += fmt.Sprintf("container '%s' env", container.Name)
 				changed = true
 			}
 		}
-
-		if !reflect.DeepEqual(ss.Spec.Template.Spec.InitContainers[0].Resources, existing.Spec.Template.Spec.InitContainers[0].Resources) {
-			existing.Spec.Template.Spec.InitContainers[0].Resources = ss.Spec.Template.Spec.InitContainers[0].Resources
+		if !reflect.DeepEqual(ss.Spec.Template.Spec.SecurityContext, existing.Spec.Template.Spec.SecurityContext) {
+			existing.Spec.Template.Spec.SecurityContext = ss.Spec.Template.Spec.SecurityContext
+			if changed {
+				explanation += ", "
+			}
+			explanation += "security context"
 			changed = true
 		}
-
+		if !reflect.DeepEqual(ss.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
+			existing.Spec.Template.Spec.Volumes = ss.Spec.Template.Spec.Volumes
+			if changed {
+				explanation += ", "
+			}
+			explanation += "volumes"
+			changed = true
+		}
+		if !reflect.DeepEqual(ss.Spec.Template.Spec.InitContainers, existing.Spec.Template.Spec.InitContainers) {
+			existing.Spec.Template.Spec.InitContainers = ss.Spec.Template.Spec.InitContainers
+			if changed {
+				explanation += ", "
+			}
+			explanation += "init containers"
+			changed = true
+		}
 		if changed {
-			return r.Client.Update(context.TODO(), existing)
+			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
+			return r.Update(context.TODO(), existing)
 		}
 
 		return nil // StatefulSet found, do nothing
+	}
+
+	if cr.Spec.Redis.IsEnabled() && cr.Spec.Redis.Remote != nil && *cr.Spec.Redis.Remote != "" {
+		log.Info("Custom Redis Endpoint. Skipping starting redis.")
+		return nil
 	}
 
 	if !cr.Spec.Redis.IsEnabled() {
@@ -436,10 +545,11 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 	if err := controllerutil.SetControllerReference(cr, ss, r.Scheme); err != nil {
 		return err
 	}
-	return r.Client.Create(context.TODO(), ss)
+	argoutil.LogResourceCreation(log, ss)
+	return r.Create(context.TODO(), ss)
 }
 
-func getArgoControllerContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
+func getArgoControllerContainerEnv(cr *argoproj.ArgoCD, replicas int32) []corev1.EnvVar {
 	env := make([]corev1.EnvVar, 0)
 
 	env = append(env, corev1.EnvVar{
@@ -447,10 +557,22 @@ func getArgoControllerContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
 		Value: "/home/argocd",
 	})
 
-	if cr.Spec.Controller.Sharding.Enabled {
+	env = append(env, corev1.EnvVar{
+		Name: "REDIS_PASSWORD",
+		ValueFrom: &corev1.EnvVarSource{
+			SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
+				},
+				Key: "admin.password",
+			},
+		},
+	})
+
+	if cr.Spec.Controller.Sharding.Enabled || (cr.Spec.Controller.Sharding.DynamicScalingEnabled != nil && *cr.Spec.Controller.Sharding.DynamicScalingEnabled) {
 		env = append(env, corev1.EnvVar{
 			Name:  "ARGOCD_CONTROLLER_REPLICAS",
-			Value: fmt.Sprint(cr.Spec.Controller.Sharding.Replicas),
+			Value: fmt.Sprint(replicas),
 		})
 	}
 
@@ -459,15 +581,42 @@ func getArgoControllerContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
 			Name:  "ARGOCD_RECONCILIATION_TIMEOUT",
 			Value: strconv.FormatInt(int64(cr.Spec.Controller.AppSync.Seconds()), 10) + "s",
 		})
+	} else {
+		// ARGOCD_RECONCILIATION_TIMEOUT is read from argocd-cm ConfigMap (timeout.reconciliation key)
+		// This aligns with upstream ArgoCD behavior where the value is sourced from argocd-cm
+		env = append(env, corev1.EnvVar{
+			Name: "ARGOCD_RECONCILIATION_TIMEOUT",
+			ValueFrom: &corev1.EnvVarSource{
+				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDConfigMapName,
+					},
+					Key:      common.ArgoCDKeyTimeout,
+					Optional: boolPtr(true),
+				},
+			},
+		})
 	}
 
+	env = append(env, corev1.EnvVar{
+		Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST",
+		ValueFrom: &corev1.EnvVarSource{
+			ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: common.ArgoCDCmdParamsConfigMapName,
+				},
+				Key: "controller.resource.health.persist",
+			},
+		},
+	},
+	)
 	return env
 }
 
 func (r *ReconcileArgoCD) getApplicationControllerReplicaCount(cr *argoproj.ArgoCD) int32 {
 	var replicas int32 = common.ArgocdApplicationControllerDefaultReplicas
-	var minShards int32 = cr.Spec.Controller.Sharding.MinShards
-	var maxShards int32 = cr.Spec.Controller.Sharding.MaxShards
+	var minShards = cr.Spec.Controller.Sharding.MinShards
+	var maxShards = cr.Spec.Controller.Sharding.MaxShards
 
 	if cr.Spec.Controller.Sharding.DynamicScalingEnabled != nil && *cr.Spec.Controller.Sharding.DynamicScalingEnabled {
 
@@ -495,7 +644,7 @@ func (r *ReconcileArgoCD) getApplicationControllerReplicaCount(cr *argoproj.Argo
 			return replicas
 		}
 
-		replicas = int32(len(clusterSecrets.Items)) / clustersPerShard
+		replicas = int32(len(clusterSecrets.Items)) / clustersPerShard // #nosec G115
 
 		if replicas < minShards {
 			replicas = minShards
@@ -522,14 +671,46 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 	ss.Spec.Replicas = &replicas
 	controllerEnv := cr.Spec.Controller.Env
 	// Sharding setting explicitly overrides a value set in the env
-	controllerEnv = argoutil.EnvMerge(controllerEnv, getArgoControllerContainerEnv(cr), true)
+	controllerEnv = argoutil.EnvMerge(controllerEnv, getArgoControllerContainerEnv(cr, replicas), true)
 	// Let user specify their own environment first
 	controllerEnv = argoutil.EnvMerge(controllerEnv, proxyEnvVars(), false)
+
+	if cr.Spec.Controller.InitContainers != nil {
+		ss.Spec.Template.Spec.InitContainers = append(ss.Spec.Template.Spec.InitContainers, cr.Spec.Controller.InitContainers...)
+	}
+
+	controllerVolumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "argocd-repo-server-tls",
+			MountPath: "/app/config/controller/tls",
+		},
+		{
+			Name:      common.ArgoCDRedisServerTLSSecretName,
+			MountPath: "/app/config/controller/tls/redis",
+		},
+		{
+			Name:      "argocd-home",
+			MountPath: "/home/argocd",
+		},
+		{
+			Name:      "argocd-cmd-params-cm",
+			MountPath: "/home/argocd/params",
+		},
+		{
+			Name:      "argocd-application-controller-tmp",
+			MountPath: "/tmp",
+		},
+	}
+
+	if cr.Spec.Controller.VolumeMounts != nil {
+		controllerVolumeMounts = append(controllerVolumeMounts, cr.Spec.Controller.VolumeMounts...)
+	}
+
 	podSpec := &ss.Spec.Template.Spec
 	podSpec.Containers = []corev1.Container{{
 		Command:         getArgoApplicationControllerCommand(cr, useTLSForRedis),
 		Image:           getArgoContainerImage(cr),
-		ImagePullPolicy: corev1.PullAlways,
+		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            "argocd-application-controller",
 		Env:             controllerEnv,
 		Ports: []corev1.ContainerPort{
@@ -547,30 +728,19 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			InitialDelaySeconds: 5,
 			PeriodSeconds:       10,
 		},
-		Resources: getArgoApplicationControllerResources(cr),
-		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{
-					"ALL",
-				},
-			},
-			RunAsNonRoot: boolPtr(true),
-		},
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "argocd-repo-server-tls",
-				MountPath: "/app/config/controller/tls",
-			},
-			{
-				Name:      common.ArgoCDRedisServerTLSSecretName,
-				MountPath: "/app/config/controller/tls/redis",
-			},
-		},
+		Resources:       getArgoApplicationControllerResources(cr),
+		SecurityContext: argoutil.DefaultSecurityContext(),
+		VolumeMounts:    controllerVolumeMounts,
 	}}
+
+	if cr.Spec.Controller.SidecarContainers != nil {
+		ss.Spec.Template.Spec.Containers = append(ss.Spec.Template.Spec.Containers, cr.Spec.Controller.SidecarContainers...)
+	}
+
 	AddSeccompProfileForOpenShift(r.Client, podSpec)
 	podSpec.ServiceAccountName = nameWithSuffix("argocd-application-controller", cr)
-	podSpec.Volumes = []corev1.Volume{
+
+	controllerVolumes := []corev1.Volume{
 		{
 			Name: "argocd-repo-server-tls",
 			VolumeSource: corev1.VolumeSource{
@@ -589,7 +759,46 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 				},
 			},
 		},
+		{
+			Name: "argocd-home",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "argocd-cmd-params-cm",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "argocd-cmd-params-cm",
+					},
+					Optional: boolPtr(true),
+					Items: []corev1.KeyToPath{
+						{
+							Key:  "controller.profile.enabled",
+							Path: "profiler.enabled",
+						},
+						{
+							Key:  "controller.resource.health.persist",
+							Path: "controller.resource.health.persist",
+						},
+					},
+				},
+			},
+		},
+		{
+			Name: "argocd-application-controller-tmp",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
 	}
+
+	if cr.Spec.Controller.Volumes != nil {
+		controllerVolumes = append(controllerVolumes, cr.Spec.Controller.Volumes...)
+	}
+
+	podSpec.Volumes = controllerVolumes
 
 	ss.Spec.Template.Spec.Affinity = &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
@@ -619,90 +828,203 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 	}
 
 	// Handle import/restore from ArgoCDExport
-	export := r.getArgoCDExport(cr)
+	export, err := r.getArgoCDExport(cr)
+	if err != nil {
+		return err
+	}
 	if export == nil {
 		log.Info("existing argocd export not found, skipping import")
 	} else {
+
+		containerCommand, err := getArgoImportCommand(r.Client, cr)
+		if err != nil {
+			return err
+		}
+
 		podSpec.InitContainers = []corev1.Container{{
-			Command:         getArgoImportCommand(r.Client, cr),
+			Command:         containerCommand,
 			Env:             proxyEnvVars(getArgoImportContainerEnv(export)...),
 			Resources:       getArgoApplicationControllerResources(cr),
 			Image:           getArgoImportContainerImage(export),
-			ImagePullPolicy: corev1.PullAlways,
+			ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 			Name:            "argocd-import",
-			SecurityContext: &corev1.SecurityContext{
-				AllowPrivilegeEscalation: boolPtr(false),
-				Capabilities: &corev1.Capabilities{
-					Drop: []corev1.Capability{
-						"ALL",
-					},
-				},
-				RunAsNonRoot: boolPtr(true),
-			},
-			VolumeMounts: getArgoImportVolumeMounts(),
+			SecurityContext: argoutil.DefaultSecurityContext(),
+			VolumeMounts:    getArgoImportVolumeMounts(),
 		}}
 
 		podSpec.Volumes = getArgoImportVolumes(export)
 	}
 
-	invalidImagePod := containsInvalidImage(cr, r)
-	if invalidImagePod {
-		if err := r.Client.Delete(context.TODO(), ss); err != nil {
+	invalidImagePod, err := containsInvalidImage(*cr, *r)
+	if err != nil {
+		return err
+	} else if invalidImagePod {
+		argoutil.LogResourceDeletion(log, ss, "one or more pods has an invalid image")
+		if err := r.Delete(context.TODO(), ss); err != nil {
 			return err
 		}
 	}
 
+	if cr.Spec.Controller.Annotations != nil {
+		for key, value := range cr.Spec.Controller.Annotations {
+			ss.Spec.Template.Annotations[key] = value
+		}
+	}
+
+	if cr.Spec.Controller.Labels != nil {
+		for key, value := range cr.Spec.Controller.Labels {
+			ss.Spec.Template.Labels[key] = value
+		}
+	}
+
 	existing := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+	ssExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
+	if err != nil {
+		return err
+	}
+	if ssExists {
 		if !cr.Spec.Controller.IsEnabled() {
-			log.Info("Existing application controller found but should be disabled. Deleting Application Controller")
 			// Delete existing deployment for Application Controller, if any ..
-			return r.Client.Delete(context.TODO(), existing)
+			argoutil.LogResourceDeletion(log, existing, "application controller is disabled")
+			return r.Delete(context.TODO(), existing)
 		}
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getArgoContainerImage(cr)
+		actualImagePullPolicy := existing.Spec.Template.Spec.Containers[0].ImagePullPolicy
+		desiredImagePullPolicy := argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy)
 		changed := false
+		explanation := ""
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			explanation = "container image"
+			changed = true
+		}
+		if actualImagePullPolicy != desiredImagePullPolicy {
+			existing.Spec.Template.Spec.Containers[0].ImagePullPolicy = desiredImagePullPolicy
+			if changed {
+				explanation += ", "
+			}
+			explanation += "image pull policy"
 			changed = true
 		}
 		desiredCommand := getArgoApplicationControllerCommand(cr, useTLSForRedis)
 		if isRepoServerTLSVerificationRequested(cr) {
 			desiredCommand = append(desiredCommand, "--repo-server-strict-tls")
 		}
-		updateNodePlacementStateful(existing, ss, &changed)
+		updateNodePlacementStateful(existing, ss, &changed, &explanation)
 		if !reflect.DeepEqual(desiredCommand, existing.Spec.Template.Spec.Containers[0].Command) {
 			existing.Spec.Template.Spec.Containers[0].Command = desiredCommand
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container command"
 			changed = true
 		}
-
+		if !reflect.DeepEqual(existing.Spec.Template.Spec.InitContainers, ss.Spec.Template.Spec.InitContainers) {
+			existing.Spec.Template.Spec.InitContainers = ss.Spec.Template.Spec.InitContainers
+			if changed {
+				explanation += ", "
+			}
+			explanation += "init containers"
+			changed = true
+		}
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
 			ss.Spec.Template.Spec.Containers[0].Env) {
 			existing.Spec.Template.Spec.Containers[0].Env = ss.Spec.Template.Spec.Containers[0].Env
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container env"
 			changed = true
 		}
 		if !reflect.DeepEqual(ss.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
 			existing.Spec.Template.Spec.Volumes = ss.Spec.Template.Spec.Volumes
+			if changed {
+				explanation += ", "
+			}
+			explanation += "volumes"
 			changed = true
 		}
 		if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[0].VolumeMounts,
 			existing.Spec.Template.Spec.Containers[0].VolumeMounts) {
 			existing.Spec.Template.Spec.Containers[0].VolumeMounts = ss.Spec.Template.Spec.Containers[0].VolumeMounts
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container volume mounts"
 			changed = true
 		}
 		if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[0].Resources, existing.Spec.Template.Spec.Containers[0].Resources) {
 			existing.Spec.Template.Spec.Containers[0].Resources = ss.Spec.Template.Spec.Containers[0].Resources
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container resources"
+			changed = true
+		}
+		if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[0].SecurityContext, existing.Spec.Template.Spec.Containers[0].SecurityContext) {
+			existing.Spec.Template.Spec.Containers[0].SecurityContext = ss.Spec.Template.Spec.Containers[0].SecurityContext
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container security context"
 			changed = true
 		}
 		if !reflect.DeepEqual(ss.Spec.Replicas, existing.Spec.Replicas) {
 			existing.Spec.Replicas = ss.Spec.Replicas
+			if changed {
+				explanation += ", "
+			}
+			explanation += "replicas"
+			changed = true
+		}
+		if !reflect.DeepEqual(ss.Spec.Template.Spec.SecurityContext, existing.Spec.Template.Spec.SecurityContext) {
+			existing.Spec.Template.Spec.SecurityContext = ss.Spec.Template.Spec.SecurityContext
+			if changed {
+				explanation += ", "
+			}
+			explanation += "security context"
 			changed = true
 		}
 
-		if changed {
-			return r.Client.Update(context.TODO(), existing)
+		if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[1:],
+			existing.Spec.Template.Spec.Containers[1:]) {
+			existing.Spec.Template.Spec.Containers = append(existing.Spec.Template.Spec.Containers[0:1],
+				ss.Spec.Template.Spec.Containers[1:]...)
+			if changed {
+				explanation += ", "
+			}
+			explanation += "additional containers"
+			changed = true
 		}
+
+		// Add Kubernetes-specific labels/annotations from the live object in the source to preserve metadata.
+		addKubernetesData(ss.Spec.Template.Labels, existing.Spec.Template.Labels)
+		addKubernetesData(ss.Spec.Template.Annotations, existing.Spec.Template.Annotations)
+
+		if !reflect.DeepEqual(ss.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
+			existing.Spec.Template.Annotations = ss.Spec.Template.Annotations
+			if changed {
+				explanation += ", "
+			}
+			explanation += "annotations"
+			changed = true
+		}
+
+		if !reflect.DeepEqual(ss.Spec.Template.Labels, existing.Spec.Template.Labels) {
+			existing.Spec.Template.Labels = ss.Spec.Template.Labels
+			if changed {
+				explanation += ", "
+			}
+			explanation += "labels"
+			changed = true
+		}
+		if changed {
+			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
+			return r.Update(context.TODO(), existing)
+		}
+
 		return nil // StatefulSet found with nothing to do, move along...
 	}
 
@@ -713,8 +1035,13 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 
 	// Delete existing deployment for Application Controller, if any ..
 	deploy := newDeploymentWithSuffix("application-controller", "application-controller", cr)
-	if argoutil.IsObjectFound(r.Client, deploy.Namespace, deploy.Name, deploy) {
-		if err := r.Client.Delete(context.TODO(), deploy); err != nil {
+	deplExists, err := argoutil.IsObjectFound(r.Client, deploy.Namespace, deploy.Name, deploy)
+	if err != nil {
+		return err
+	}
+	if deplExists {
+		argoutil.LogResourceDeletion(log, deploy, "application controller is configured using stateful set, not deployment")
+		if err := r.Delete(context.TODO(), deploy); err != nil {
 			return err
 		}
 	}
@@ -722,7 +1049,8 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 	if err := controllerutil.SetControllerReference(cr, ss, r.Scheme); err != nil {
 		return err
 	}
-	return r.Client.Create(context.TODO(), ss)
+	argoutil.LogResourceCreation(log, ss)
+	return r.Create(context.TODO(), ss)
 }
 
 // reconcileStatefulSets will ensure that all StatefulSets are present for the given ArgoCD.
@@ -738,45 +1066,88 @@ func (r *ReconcileArgoCD) reconcileStatefulSets(cr *argoproj.ArgoCD, useTLSForRe
 
 // triggerStatefulSetRollout will update the label with the given key to trigger a new rollout of the StatefulSet.
 func (r *ReconcileArgoCD) triggerStatefulSetRollout(sts *appsv1.StatefulSet, key string) error {
-	if !argoutil.IsObjectFound(r.Client, sts.Namespace, sts.Name, sts) {
+	ssExists, err := argoutil.IsObjectFound(r.Client, sts.Namespace, sts.Name, sts)
+	if err != nil {
+		return err
+	}
+	if !ssExists {
 		log.Info(fmt.Sprintf("unable to locate deployment with name: %s", sts.Name))
 		return nil
 	}
 
-	sts.Spec.Template.ObjectMeta.Labels[key] = nowNano()
-	return r.Client.Update(context.TODO(), sts)
+	sts.Spec.Template.Labels[key] = nowNano()
+	argoutil.LogResourceUpdate(log, sts, "to trigger rollout")
+	return r.Update(context.TODO(), sts)
 }
 
 // to update nodeSelector and tolerations in reconciler
-func updateNodePlacementStateful(existing *appsv1.StatefulSet, ss *appsv1.StatefulSet, changed *bool) {
+func updateNodePlacementStateful(existing *appsv1.StatefulSet, ss *appsv1.StatefulSet, changed *bool, explanation *string) {
 	if !reflect.DeepEqual(existing.Spec.Template.Spec.NodeSelector, ss.Spec.Template.Spec.NodeSelector) {
 		existing.Spec.Template.Spec.NodeSelector = ss.Spec.Template.Spec.NodeSelector
+		if *changed {
+			*explanation += ", "
+		}
+		*explanation += "node selector"
 		*changed = true
 	}
 	if !reflect.DeepEqual(existing.Spec.Template.Spec.Tolerations, ss.Spec.Template.Spec.Tolerations) {
 		existing.Spec.Template.Spec.Tolerations = ss.Spec.Template.Spec.Tolerations
+		if *changed {
+			*explanation += ", "
+		}
+		*explanation += "tolerations"
 		*changed = true
 	}
 }
 
 // Returns true if a StatefulSet has pods in ErrImagePull or ImagePullBackoff state.
 // These pods cannot be restarted automatially due to known kubernetes issue https://github.com/kubernetes/kubernetes/issues/67250
-func containsInvalidImage(cr *argoproj.ArgoCD, r *ReconcileArgoCD) bool {
+func containsInvalidImage(cr argoproj.ArgoCD, r ReconcileArgoCD) (bool, error) {
+
+	podList := &corev1.PodList{}
+	applicationControllerListOption := client.MatchingLabels{common.ArgoCDKeyName: fmt.Sprintf("%s-%s", cr.Name, "application-controller")}
+
+	if err := r.List(context.TODO(), podList, applicationControllerListOption, client.InNamespace(cr.Namespace)); err != nil {
+		log.Error(err, "Failed to list Pods")
+		return false, err
+	}
+
+	if len(podList.Items) == 0 {
+		// No pods, no work to do
+		return false, nil
+	}
+
+	if len(podList.Items) != 1 {
+		// There should only be 0 or 1. If this message is printed, it suggests a problem.
+		log.Info("Unexpected number of pods in 'containsInvalidImage' pod list", "podListItems", fmt.Sprintf("%d", len(podList.Items)), "namespace", cr.Namespace)
+		return false, nil
+	}
+
+	appControllerPod := podList.Items[0]
+
+	if len(appControllerPod.Status.ContainerStatuses) == 0 {
+		// No container statuses for application-controller, no work to do.
+		return false, nil
+	}
 
 	brokenPod := false
 
-	podList := &corev1.PodList{}
-	listOption := client.MatchingLabels{common.ArgoCDKeyName: fmt.Sprintf("%s-%s", cr.Name, "application-controller")}
+	waitingState := appControllerPod.Status.ContainerStatuses[0].State.Waiting
+	if waitingState != nil {
 
-	if err := r.Client.List(context.TODO(), podList, listOption); err != nil {
-		log.Error(err, "Failed to list Pods")
-	}
-	if len(podList.Items) > 0 {
-		if len(podList.Items[0].Status.ContainerStatuses) > 0 {
-			if podList.Items[0].Status.ContainerStatuses[0].State.Waiting != nil && (podList.Items[0].Status.ContainerStatuses[0].State.Waiting.Reason == "ImagePullBackOff" || podList.Items[0].Status.ContainerStatuses[0].State.Waiting.Reason == "ErrImagePull") {
-				brokenPod = true
+		waitingReason := waitingState.Reason
+		if waitingReason == "ImagePullBackOff" || waitingReason == "ErrImagePull" {
+
+			var containerImage string
+			if len(appControllerPod.Spec.Containers) > 0 {
+				containerImage = appControllerPod.Spec.Containers[0].Image
 			}
+
+			log.Info("A broken pod was detected", "waitingReason", waitingReason, "containerImage", containerImage)
+			brokenPod = true
 		}
+
 	}
-	return brokenPod
+
+	return brokenPod, nil
 }

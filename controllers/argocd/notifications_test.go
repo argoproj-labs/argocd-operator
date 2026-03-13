@@ -3,13 +3,15 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
-	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/google/go-cmp/cmp"
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
+	testclient "k8s.io/client-go/kubernetes/fake"
+
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -37,13 +39,13 @@ func TestReconcileNotifications_CreateRoles(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	_, err := r.reconcileNotificationsRole(a)
 	assert.NoError(t, err)
 
 	testRole := &rbacv1.Role{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
 		Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
 		Namespace: a.Namespace,
 	}, testRole))
@@ -56,7 +58,7 @@ func TestReconcileNotifications_CreateRoles(t *testing.T) {
 	_, err = r.reconcileNotificationsRole(a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
 		Namespace: a.Namespace,
 	}, testRole)
@@ -74,13 +76,13 @@ func TestReconcileNotifications_CreateServiceAccount(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	desiredSa, err := r.reconcileNotificationsServiceAccount(a)
 	assert.NoError(t, err)
 
-	testSa := &corev1.ServiceAccount{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
+	testSa := &v1.ServiceAccount{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
 		Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
 		Namespace: a.Namespace,
 	}, testSa))
@@ -91,7 +93,7 @@ func TestReconcileNotifications_CreateServiceAccount(t *testing.T) {
 	_, err = r.reconcileNotificationsServiceAccount(a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
 		Namespace: a.Namespace,
 	}, testSa)
@@ -110,16 +112,16 @@ func TestReconcileNotifications_CreateRoleBinding(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	role := &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: "role-name"}}
-	sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa-name"}}
+	sa := &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa-name"}}
 
 	err := r.reconcileNotificationsRoleBinding(a, role, sa)
 	assert.NoError(t, err)
 
 	roleBinding := &rbacv1.RoleBinding{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
@@ -134,11 +136,201 @@ func TestReconcileNotifications_CreateRoleBinding(t *testing.T) {
 	err = r.reconcileNotificationsRoleBinding(a, role, sa)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
 		Namespace: a.Namespace,
 	}, roleBinding)
 	assert.True(t, errors.IsNotFound(err))
+}
+
+func TestReconcileNotifications_CreateClusterRole(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCDInNamespace("noti-test", func(a *argoproj.ArgoCD) {
+		a.Spec.Notifications.Enabled = true
+	})
+	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	_, err := r.reconcileNotificationsClusterRole(a)
+	assert.NoError(t, err)
+
+	testClusterRole := &rbacv1.ClusterRole{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
+		Name: GenerateUniqueResourceName(common.ArgoCDNotificationsControllerComponent, a),
+	}, testClusterRole))
+
+	desiredPolicyRules := policyRuleForNotificationsControllerClusterRole()
+
+	assert.Equal(t, desiredPolicyRules, testClusterRole.Rules)
+
+	a.Spec.Notifications.Enabled = false
+	_, err = r.reconcileNotificationsClusterRole(a)
+	assert.NoError(t, err)
+
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name: GenerateUniqueResourceName(common.ArgoCDNotificationsControllerComponent, a),
+	}, testClusterRole)
+	assert.True(t, errors.IsNotFound(err))
+}
+
+func TestReconcileNotifications_CreateClusterRoleBinding(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCDInNamespace("noti-test", func(a *argoproj.ArgoCD) {
+		a.Spec.Notifications.Enabled = true
+	})
+	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	clusterRole := &rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: "cluster-role-name"}}
+	sa := &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa-name", Namespace: a.Namespace}}
+
+	err := r.reconcileNotificationsClusterRoleBinding(a, clusterRole, sa)
+	assert.NoError(t, err)
+
+	clusterRoleBinding := &rbacv1.ClusterRoleBinding{}
+	assert.NoError(t, r.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name: GenerateUniqueResourceName(common.ArgoCDNotificationsControllerComponent, a),
+		},
+		clusterRoleBinding))
+
+	assert.Equal(t, clusterRoleBinding.RoleRef.Name, clusterRole.Name)
+	assert.Equal(t, clusterRoleBinding.RoleRef.Kind, "ClusterRole")
+	assert.Equal(t, clusterRoleBinding.Subjects[0].Name, sa.Name)
+	assert.Equal(t, clusterRoleBinding.Subjects[0].Namespace, sa.Namespace)
+
+	a.Spec.Notifications.Enabled = false
+	err = r.reconcileNotificationsClusterRoleBinding(a, clusterRole, sa)
+	assert.NoError(t, err)
+
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name: GenerateUniqueResourceName(common.ArgoCDNotificationsControllerComponent, a),
+	}, clusterRoleBinding)
+	assert.True(t, errors.IsNotFound(err))
+}
+
+func TestReconcileNotifications_Deployments_Command(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		name                  string
+		argocdSpec            argoproj.ArgoCDSpec
+		expectedCmd           []string
+		notExpectedCmd        []string
+		namespaceScopedArgoCD bool
+	}{
+		{
+			name: "Notifications contained in spec.sourceNamespaces",
+
+			argocdSpec: argoproj.ArgoCDSpec{
+				Notifications: argoproj.ArgoCDNotifications{
+					Enabled:          true,
+					SourceNamespaces: []string{"foo", "bar"},
+				},
+				SourceNamespaces: []string{"foo", "bar"},
+			},
+			expectedCmd: []string{"--application-namespaces", "foo,bar", "--self-service-notification-enabled", "true"},
+		},
+		{
+			name: "Only notifications contained in spec.sourceNamespaces",
+			argocdSpec: argoproj.ArgoCDSpec{
+				Notifications: argoproj.ArgoCDNotifications{
+					Enabled:          true,
+					SourceNamespaces: []string{"foo"},
+				},
+				SourceNamespaces: []string{"foo", "bar"},
+			},
+			expectedCmd: []string{"--application-namespaces", "foo", "--self-service-notification-enabled", "true"},
+		},
+		{
+			name: "Empty spec.sourceNamespaces, no application namespaces arg",
+			argocdSpec: argoproj.ArgoCDSpec{
+				Notifications: argoproj.ArgoCDNotifications{
+					Enabled:          true,
+					SourceNamespaces: []string{"foo"},
+				},
+				SourceNamespaces: []string{},
+			},
+			expectedCmd:    []string{},
+			notExpectedCmd: []string{"--application-namespaces", "foo", "--self-service-notification-enabled", "true"},
+		},
+		{
+			name:                  "Namespace scoped Argo CD, no application namespaces arg",
+			namespaceScopedArgoCD: true,
+			argocdSpec: argoproj.ArgoCDSpec{
+				Notifications: argoproj.ArgoCDNotifications{
+					Enabled:          true,
+					SourceNamespaces: []string{"foo"},
+				},
+				SourceNamespaces: []string{"foo"},
+			},
+			expectedCmd:    []string{},
+			notExpectedCmd: []string{"--application-namespaces", "foo", "--self-service-notification-enabled", "true"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			a := makeTestArgoCD()
+			os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
+			if test.namespaceScopedArgoCD {
+				os.Unsetenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")
+			}
+			ns1 := v1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "foo",
+				},
+			}
+			ns2 := v1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "bar",
+				},
+			}
+			resObjs := []client.Object{a, &ns1, &ns2}
+			subresObjs := []client.Object{a}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+			cm := newConfigMapWithName(getCAConfigMapName(a), a)
+			err := r.Create(context.Background(), cm, &client.CreateOptions{})
+			assert.NoError(t, err)
+
+			a.Spec = test.argocdSpec
+
+			sa := v1.ServiceAccount{}
+			assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
+
+			deployment := &appsv1.Deployment{}
+			assert.NoError(t, r.Get(
+				context.TODO(),
+				types.NamespacedName{
+					Name:      "argocd-notifications-controller",
+					Namespace: a.Namespace,
+				},
+				deployment))
+
+			cmds := deployment.Spec.Template.Spec.Containers[0].Command
+			for _, c := range test.expectedCmd {
+				assert.True(t, contains(cmds, c))
+			}
+			for _, c := range test.notExpectedCmd {
+				assert.False(t, contains(cmds, c))
+			}
+		})
+	}
 }
 
 func TestReconcileNotifications_CreateDeployments(t *testing.T) {
@@ -152,13 +344,13 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
-	sa := corev1.ServiceAccount{}
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	sa := v1.ServiceAccount{}
 
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
 
 	deployment := &appsv1.Deployment{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      a.Name + "-notifications-controller",
@@ -167,22 +359,15 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 		deployment))
 
 	// Ensure the created Deployment has the expected properties
-	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.ObjectMeta.Name)
+	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.Name)
 
-	want := []corev1.Container{{
-		Command:         []string{"argocd-notifications", "--loglevel", "info", "--argocd-repo-server", "argocd-repo-server.argocd.svc.cluster.local:8081"},
+	want := []v1.Container{{
+		Command:         []string{"argocd-notifications", "--loglevel", "info", "--logformat", "text", "--argocd-repo-server", "argocd-repo-server.argocd.svc.cluster.local:8081"},
 		Image:           argoutil.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion),
-		ImagePullPolicy: corev1.PullAlways,
+		ImagePullPolicy: v1.PullIfNotPresent,
 		Name:            "argocd-notifications-controller",
-		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{
-					"ALL",
-				},
-			},
-		},
-		VolumeMounts: []corev1.VolumeMount{
+		SecurityContext: argoutil.DefaultSecurityContext(),
+		VolumeMounts: []v1.VolumeMount{
 			{
 				Name:      "tls-certs",
 				MountPath: "/app/config/tls",
@@ -192,11 +377,11 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 				MountPath: "/app/config/reposerver/tls",
 			},
 		},
-		Resources:  corev1.ResourceRequirements{},
+		Resources:  v1.ResourceRequirements{},
 		WorkingDir: "/app",
-		LivenessProbe: &corev1.Probe{
-			ProbeHandler: corev1.ProbeHandler{
-				TCPSocket: &corev1.TCPSocketAction{
+		LivenessProbe: &v1.Probe{
+			ProbeHandler: v1.ProbeHandler{
+				TCPSocket: &v1.TCPSocketAction{
 					Port: intstr.IntOrString{
 						IntVal: int32(9001),
 					},
@@ -209,12 +394,12 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 		t.Fatalf("failed to reconcile notifications-controller deployment containers:\n%s", diff)
 	}
 
-	volumes := []corev1.Volume{
+	volumes := []v1.Volume{
 		{
 			Name: "tls-certs",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
+			VolumeSource: v1.VolumeSource{
+				ConfigMap: &v1.ConfigMapVolumeSource{
+					LocalObjectReference: v1.LocalObjectReference{
 						Name: "argocd-tls-certs-cm",
 					},
 				},
@@ -222,8 +407,8 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 		},
 		{
 			Name: "argocd-repo-server-tls",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
+			VolumeSource: v1.VolumeSource{
+				Secret: &v1.SecretVolumeSource{
 					SecretName: "argocd-repo-server-tls",
 					Optional:   boolPtr(true),
 				},
@@ -249,7 +434,7 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 	err := r.reconcileNotificationsDeployment(a, &sa)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
 		Namespace: a.Namespace,
 	}, deployment)
@@ -266,7 +451,7 @@ func TestReconcileNotifications_CreateMetricsService(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	err := monitoringv1.AddToScheme(r.Scheme)
 	assert.NoError(t, err)
@@ -274,13 +459,13 @@ func TestReconcileNotifications_CreateMetricsService(t *testing.T) {
 	err = r.reconcileNotificationsMetricsService(a)
 	assert.NoError(t, err)
 
-	testService := &corev1.Service{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
+	testService := &v1.Service{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
 		Name:      fmt.Sprintf("%s-%s", a.Name, "notifications-controller-metrics"),
 		Namespace: a.Namespace,
 	}, testService))
 
-	assert.Equal(t, testService.ObjectMeta.Labels["app.kubernetes.io/name"],
+	assert.Equal(t, testService.Labels["app.kubernetes.io/name"],
 		fmt.Sprintf("%s-%s", a.Name, "notifications-controller-metrics"))
 
 	assert.Equal(t, testService.Spec.Selector["app.kubernetes.io/name"],
@@ -304,19 +489,21 @@ func TestReconcileNotifications_CreateServiceMonitor(t *testing.T) {
 	subresObjs := []client.Object{a}
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	monitoringv1.AddToScheme(sch)
-	v1alpha1.AddToScheme(sch)
+	err := monitoringv1.AddToScheme(sch)
+	assert.NoError(t, err)
+	err = v1alpha1.AddToScheme(sch)
+	assert.NoError(t, err)
 
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	// Notifications controller service monitor should not be created when Prometheus API is not found.
 	prometheusAPIFound = false
-	err := r.reconcileNotificationsController(a)
+	err = r.reconcileNotificationsController(a)
 	assert.NoError(t, err)
 
 	testServiceMonitor := &monitoringv1.ServiceMonitor{}
-	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{
+	assert.Error(t, r.Get(context.TODO(), types.NamespacedName{
 		Name:      fmt.Sprintf("%s-%s", a.Name, "notifications-controller-metrics"),
 		Namespace: a.Namespace,
 	}, testServiceMonitor))
@@ -327,16 +514,16 @@ func TestReconcileNotifications_CreateServiceMonitor(t *testing.T) {
 	assert.NoError(t, err)
 
 	testServiceMonitor = &monitoringv1.ServiceMonitor{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
 		Name:      fmt.Sprintf("%s-%s", a.Name, "notifications-controller-metrics"),
 		Namespace: a.Namespace,
 	}, testServiceMonitor))
 
-	assert.Equal(t, testServiceMonitor.ObjectMeta.Labels["release"], "prometheus-operator")
+	assert.Equal(t, testServiceMonitor.Labels["release"], "prometheus-operator")
 
 	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Port, "metrics")
 	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Scheme, "http")
-	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Interval, "30s")
+	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Interval, monitoringv1.Duration("30s"))
 	assert.Equal(t, testServiceMonitor.Spec.Selector.MatchLabels["app.kubernetes.io/name"],
 		fmt.Sprintf("%s-%s", a.Name, "notifications-controller-metrics"))
 }
@@ -352,13 +539,13 @@ func TestReconcileNotifications_CreateSecret(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	err := r.reconcileNotificationsSecret(a)
 	assert.NoError(t, err)
 
-	testSecret := &corev1.Secret{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
+	testSecret := &v1.Secret{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-notifications-secret",
 		Namespace: a.Namespace,
 	}, testSecret))
@@ -366,14 +553,14 @@ func TestReconcileNotifications_CreateSecret(t *testing.T) {
 	a.Spec.Notifications.Enabled = false
 	err = r.reconcileNotificationsSecret(a)
 	assert.NoError(t, err)
-	secret := &corev1.Secret{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-notifications-secret", Namespace: a.Namespace}, secret)
+	secret := &v1.Secret{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-notifications-secret", Namespace: a.Namespace}, secret)
 	assertNotFound(t, err)
 }
 
 func TestReconcileNotifications_testEnvVars(t *testing.T) {
 
-	envMap := []corev1.EnvVar{
+	envMap := []v1.EnvVar{
 		{
 			Name:  "foo",
 			Value: "bar",
@@ -389,13 +576,13 @@ func TestReconcileNotifications_testEnvVars(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	sa := corev1.ServiceAccount{}
+	sa := v1.ServiceAccount{}
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
 
 	deployment := &appsv1.Deployment{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      a.Name + "-notifications-controller",
@@ -408,7 +595,7 @@ func TestReconcileNotifications_testEnvVars(t *testing.T) {
 	}
 
 	// Verify any manual updates to the env vars should be overridden by the operator.
-	unwantedEnv := []corev1.EnvVar{
+	unwantedEnv := []v1.EnvVar{
 		{
 			Name:  "foo",
 			Value: "bar",
@@ -420,13 +607,13 @@ func TestReconcileNotifications_testEnvVars(t *testing.T) {
 	}
 
 	deployment.Spec.Template.Spec.Containers[0].Env = unwantedEnv
-	assert.NoError(t, r.Client.Update(context.TODO(), deployment))
+	assert.NoError(t, r.Update(context.TODO(), deployment))
 
 	// Reconcile back
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
 
 	// Get the updated deployment
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      a.Name + "-notifications-controller",
@@ -452,13 +639,13 @@ func TestReconcileNotifications_testLogLevel(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	sa := corev1.ServiceAccount{}
+	sa := v1.ServiceAccount{}
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
 
 	deployment := &appsv1.Deployment{}
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      a.Name + "-notifications-controller",
@@ -470,6 +657,8 @@ func TestReconcileNotifications_testLogLevel(t *testing.T) {
 		"argocd-notifications",
 		"--loglevel",
 		"debug",
+		"--logformat",
+		"text",
 		"--argocd-repo-server",
 		"argocd-repo-server.argocd.svc.cluster.local:8081",
 	}
@@ -486,13 +675,13 @@ func TestReconcileNotifications_testLogLevel(t *testing.T) {
 	}
 
 	deployment.Spec.Template.Spec.Containers[0].Command = unwantedCommand
-	assert.NoError(t, r.Client.Update(context.TODO(), deployment))
+	assert.NoError(t, r.Update(context.TODO(), deployment))
 
 	// Reconcile back
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
 
 	// Get the updated deployment
-	assert.NoError(t, r.Client.Get(
+	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      a.Name + "-notifications-controller",
@@ -503,4 +692,334 @@ func TestReconcileNotifications_testLogLevel(t *testing.T) {
 	if diff := cmp.Diff(expectedCMD, deployment.Spec.Template.Spec.Containers[0].Command); diff != "" {
 		t.Fatalf("operator failed to override the manual changes to notification controller:\n%s", diff)
 	}
+}
+
+func TestReconcileNotifications_testLogFormat(t *testing.T) {
+	testLogFormat := "json"
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Notifications.Enabled = true
+		a.Spec.Notifications.LogFormat = testLogFormat
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	sa := v1.ServiceAccount{}
+	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      a.Name + "-notifications-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	expectedCMD := []string{
+		"argocd-notifications",
+		"--loglevel",
+		"info",
+		"--logformat",
+		"json",
+		"--argocd-repo-server",
+		"argocd-repo-server.argocd.svc.cluster.local:8081",
+	}
+
+	if diff := cmp.Diff(expectedCMD, deployment.Spec.Template.Spec.Containers[0].Command); diff != "" {
+		t.Fatalf("failed to reconcile notifications-controller deployment logFormat:\n%s", diff)
+	}
+
+	// Verify any manual updates to the logFormat should be overridden by the operator.
+	unwantedCommand := []string{
+		"argocd-notifications",
+		"--logformat",
+		"text",
+	}
+
+	deployment.Spec.Template.Spec.Containers[0].Command = unwantedCommand
+	assert.NoError(t, r.Update(context.TODO(), deployment))
+
+	// Reconcile back
+	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
+
+	// Get the updated deployment
+	assert.NoError(t, r.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      a.Name + "-notifications-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	if diff := cmp.Diff(expectedCMD, deployment.Spec.Template.Spec.Containers[0].Command); diff != "" {
+		t.Fatalf("operator failed to override the manual changes to notification controller logFormat:\n%s", diff)
+	}
+}
+
+func TestArgoCDNotifications_getNotificationsSourceNamespaces(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		name               string
+		notificationsField argoproj.ArgoCDNotifications
+		expected           []string
+	}{
+		{
+			name:               "No Notifications configured",
+			notificationsField: argoproj.ArgoCDNotifications{},
+			expected:           []string(nil),
+		},
+		{
+			name: "Notifications enabled No notifications source namespaces",
+			notificationsField: argoproj.ArgoCDNotifications{
+				Enabled: true,
+			},
+			expected: []string(nil),
+		},
+		{
+			name: "Notifications enabled and notifications source namespaces",
+			notificationsField: argoproj.ArgoCDNotifications{
+				Enabled:          true,
+				SourceNamespaces: []string{"foo", "bar"},
+			},
+			expected: []string{"foo", "bar"},
+		},
+		{
+			name: "Notifications disabled and notifications source namespaces",
+			notificationsField: argoproj.ArgoCDNotifications{
+				Enabled:          false,
+				SourceNamespaces: []string{"foo", "bar"},
+			},
+			expected: []string(nil),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			a := makeTestArgoCD()
+			resObjs := []client.Object{a}
+			subresObjs := []client.Object{a}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+			cm := newConfigMapWithName(getCAConfigMapName(a), a)
+			err := r.Create(context.Background(), cm, &client.CreateOptions{})
+			assert.NoError(t, err)
+
+			a.Spec.Notifications = test.notificationsField
+
+			actual := r.getNotificationsSourceNamespaces(a)
+			assert.Equal(t, test.expected, actual)
+		})
+	}
+}
+
+func TestArgoCDNotifications_setManagedNotificationsSourceNamespaces(t *testing.T) {
+	a := makeTestArgoCD()
+	ns1 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-namespace-1",
+			Labels: map[string]string{
+				common.ArgoCDNotificationsManagedByClusterArgoCDLabel: testNamespace,
+			},
+		},
+	}
+	ns2 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-namespace-2",
+		},
+	}
+
+	resObjs := []client.Object{a, &ns1, &ns2}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	err := r.setManagedNotificationsSourceNamespaces(a)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, len(r.ManagedNotificationsSourceNamespaces))
+	assert.Contains(t, r.ManagedNotificationsSourceNamespaces, "test-namespace-1")
+}
+
+func TestNotifications_removeUnmanagedNotificationsSourceNamespaceResources(t *testing.T) {
+	ns1 := "foo"
+	ns2 := "bar"
+	a := makeTestArgoCD()
+	allowClusterConfigNamespaces(t, a.Namespace)
+
+	a.Spec = argoproj.ArgoCDSpec{
+		SourceNamespaces: []string{ns1, ns2},
+		Notifications: argoproj.ArgoCDNotifications{
+			Enabled:          true,
+			SourceNamespaces: []string{ns1, ns2},
+		},
+	}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	err := v1alpha1.AddToScheme(sch)
+	assert.NoError(t, err)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	err = createNamespace(r, ns1, "")
+	assert.NoError(t, err)
+	err = createNamespace(r, ns2, "")
+	assert.NoError(t, err)
+
+	// create resources
+	err = r.reconcileNotificationsSourceNamespacesResources(a)
+	assert.NoError(t, err)
+
+	// populate ManagedNotificationsSourceNamespaces to track managed namespaces
+	err = r.setManagedNotificationsSourceNamespaces(a)
+	assert.NoError(t, err)
+
+	// remove notifications ns
+	a.Spec = argoproj.ArgoCDSpec{
+		SourceNamespaces: []string{ns2},
+		Notifications: argoproj.ArgoCDNotifications{
+			Enabled:          true,
+			SourceNamespaces: []string{ns1, ns2},
+		},
+	}
+
+	// clean up unmanaged namespaces resources
+	err = r.removeUnmanagedNotificationsSourceNamespaceResources(a)
+	assert.NoError(t, err)
+
+	// resources shouldn't exist in ns1
+	resName := getResourceNameForNotificationsSourceNamespaces(a)
+
+	role := &rbacv1.Role{}
+	err = r.Get(context.TODO(), client.ObjectKey{Name: resName, Namespace: ns1}, role)
+	assert.Error(t, err)
+	assert.True(t, errors.IsNotFound(err))
+
+	roleBinding := &rbacv1.RoleBinding{}
+	err = r.Get(context.TODO(), client.ObjectKey{Name: resName, Namespace: ns1}, roleBinding)
+	assert.Error(t, err)
+	assert.True(t, errors.IsNotFound(err))
+
+	// NotificationsConfiguration CR should be deleted from ns1
+	notifCfg := &v1alpha1.NotificationsConfiguration{}
+	err = r.Get(context.TODO(), client.ObjectKey{Name: DefaultNotificationsConfigurationInstanceName, Namespace: ns1}, notifCfg)
+	assert.Error(t, err)
+	assert.True(t, errors.IsNotFound(err))
+
+	// notifications tracking label should be removed
+	namespace := &v1.Namespace{}
+	err = r.Get(context.TODO(), client.ObjectKey{Name: ns1}, namespace)
+	assert.NoError(t, err)
+	_, found := namespace.Labels[common.ArgoCDNotificationsManagedByClusterArgoCDLabel]
+	assert.False(t, found)
+
+	// resources in ns2 shouldn't be touched
+
+	role = &rbacv1.Role{}
+	err = r.Get(context.TODO(), client.ObjectKey{Name: resName, Namespace: ns2}, role)
+	assert.NoError(t, err)
+
+	roleBinding = &rbacv1.RoleBinding{}
+	err = r.Get(context.TODO(), client.ObjectKey{Name: resName, Namespace: ns2}, roleBinding)
+	assert.NoError(t, err)
+
+	// NotificationsConfiguration CR should still exist in ns2
+	notifCfg = &v1alpha1.NotificationsConfiguration{}
+	err = r.Get(context.TODO(), client.ObjectKey{Name: DefaultNotificationsConfigurationInstanceName, Namespace: ns2}, notifCfg)
+	assert.NoError(t, err)
+
+	namespace = &v1.Namespace{}
+	err = r.Get(context.TODO(), client.ObjectKey{Name: ns2}, namespace)
+	assert.NoError(t, err)
+	val, found := namespace.Labels[common.ArgoCDNotificationsManagedByClusterArgoCDLabel]
+	assert.True(t, found)
+	assert.Equal(t, a.Namespace, val)
+}
+
+func TestReconcileNotifications_NotificationsConfigurationInSourceNamespaceWhenDisabled(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	sourceNamespace := "ns1"
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Notifications.Enabled = false
+		a.Spec.Notifications.SourceNamespaces = []string{sourceNamespace}
+		a.Spec.SourceNamespaces = []string{sourceNamespace}
+	})
+	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	err := v1alpha1.AddToScheme(sch)
+	assert.NoError(t, err)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	// Create the source namespace
+	err = createNamespace(r, sourceNamespace, "")
+	assert.NoError(t, err)
+
+	// Reconcile should not create NotificationsConfiguration CR when notifications are disabled
+	err = r.reconcileSourceNamespaceNotificationsConfigurationCR(a, sourceNamespace)
+	assert.NoError(t, err)
+
+	// Verify NotificationsConfiguration CR does not exist
+	notifCfg := &v1alpha1.NotificationsConfiguration{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      DefaultNotificationsConfigurationInstanceName,
+		Namespace: sourceNamespace,
+	}, notifCfg)
+	assert.Error(t, err)
+	assert.True(t, errors.IsNotFound(err))
+}
+
+func TestReconcileNotifications_SourceNamespaceResourcesIncludeNotificationsConfiguration(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	sourceNamespace := "ns1"
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Notifications.Enabled = true
+		a.Spec.Notifications.SourceNamespaces = []string{sourceNamespace}
+		a.Spec.SourceNamespaces = []string{sourceNamespace}
+	})
+	allowClusterConfigNamespaces(t, a.Namespace)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	err := v1alpha1.AddToScheme(sch)
+	assert.NoError(t, err)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	// Create the source namespace
+	err = createNamespace(r, sourceNamespace, "")
+	assert.NoError(t, err)
+
+	// Reconcile source namespace resources (this should create NotificationsConfiguration CR)
+	err = r.reconcileNotificationsSourceNamespacesResources(a)
+	assert.NoError(t, err)
+
+	// Verify NotificationsConfiguration CR was created in source namespace
+	notifCfg := &v1alpha1.NotificationsConfiguration{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      DefaultNotificationsConfigurationInstanceName,
+		Namespace: sourceNamespace,
+	}, notifCfg)
+	assert.NoError(t, err)
+	assert.Equal(t, DefaultNotificationsConfigurationInstanceName, notifCfg.Name)
+	assert.Equal(t, sourceNamespace, notifCfg.Namespace)
 }

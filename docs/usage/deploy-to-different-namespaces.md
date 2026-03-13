@@ -4,14 +4,15 @@ To grant Argo CD the permissions to manage resources in multiple namespaces, we 
 
 For example, If Argo CD instance deployed in the namespace `foo` wants to manage resources in namespace `bar`. Update the namespace `bar` as shown below.
 
-```yml
+```yaml
 apiVersion: v1
 kind: Namespace
 metadata:
   name: bar
   labels:
-    argocd.argoproj.io/managed-by: foo // namespace of managing Argo CD instance
+    argocd.argoproj.io/managed-by: foo # namespace of managing Argo CD instance
 ```
+
 !!! note
     The above described method assumes that the user has admin privileges on their cluster, which would allow them to apply labels to namespaces. 
 
@@ -28,7 +29,7 @@ spec:
   syncPolicy:
     managedNamespaceMetadata:
       labels:
-        argocd.argoproj.io/managed-by: foo // namespace of managing Argo CD instance 
+        argocd.argoproj.io/managed-by: foo # namespace of managing Argo CD instance 
     syncOptions:
     - CreateNamespace=true
   destination:
@@ -46,7 +47,7 @@ A few points to keep in mind:
 - A destination namespace must be set in `.spec.destination.namespace` 
 - Users should have admin privileges and/or access to a cluster scoped Argo CD instance  
 
-See https://argo-cd.readthedocs.io/en/stable/user-guide/sync-options/#namespace-metadata for more information 
+See [Namespace Metadata](https://argo-cd.readthedocs.io/en/stable/user-guide/sync-options/#namespace-metadata) in Argo CD docs for more information.
 
 !!! note
-    There is a possibility that sync might fail at first try when using the above method. In such cases a follow up sync should be successful
+    There is a possibility that sync might fail at first try when using the above method. In such cases a follow up sync should be successful.

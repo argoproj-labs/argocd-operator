@@ -1,0 +1,50 @@
+# Increase the timeout for the first test because it needs to download
+# a number of container images
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 720
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+status:
+  phase: Available
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: example-argocd-application-controller
+status:
+  readyReplicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-argocd-redis
+status:
+  readyReplicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-argocd-repo-server
+status:
+  readyReplicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-argocd-server
+status:
+  readyReplicas: 1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: example-argocd-repo-server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: example-argocd-redis

@@ -33,6 +33,8 @@ import (
 // blank assignment to verify that ReconcileNotificationsConfiguration implements reconcile.Reconciler
 var _ reconcile.Reconciler = &NotificationsConfigurationReconciler{}
 
+var log = logr.Log.WithName("controller_notificationsconfiguration")
+
 // NotificationsConfigurationReconciler reconciles a NotificationsConfiguration object
 type NotificationsConfigurationReconciler struct {
 	client.Client
@@ -56,7 +58,7 @@ func (r *NotificationsConfigurationReconciler) Reconcile(ctx context.Context, re
 	reqLogger.Info("Reconciling NotificationsConfiguration")
 
 	notificationsConfig := &v1alpha1.NotificationsConfiguration{}
-	err := r.Client.Get(ctx, request.NamespacedName, notificationsConfig)
+	err := r.Get(ctx, request.NamespacedName, notificationsConfig)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.

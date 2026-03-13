@@ -18,9 +18,10 @@ import (
 	"context"
 	"fmt"
 
-	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -39,39 +40,9 @@ func getPrometheusHost(cr *argoproj.ArgoCD) string {
 	return host
 }
 
-// getPrometheusSize will return the size value for the Prometheus replica count.
-func getPrometheusReplicas(cr *argoproj.ArgoCD) *int32 {
-	replicas := common.ArgoCDDefaultPrometheusReplicas
-	if cr.Spec.Prometheus.Size != nil {
-		if *cr.Spec.Prometheus.Size >= 0 && *cr.Spec.Prometheus.Size != replicas {
-			replicas = *cr.Spec.Prometheus.Size
-		}
-	}
-	return &replicas
-}
-
 // IsPrometheusAPIAvailable returns true if the Prometheus API is present.
 func IsPrometheusAPIAvailable() bool {
 	return prometheusAPIFound
-}
-
-// hasPrometheusSpecChanged will return true if the supported properties differs in the actual versus the desired state.
-func hasPrometheusSpecChanged(actual *monitoringv1.Prometheus, desired *argoproj.ArgoCD) bool {
-	// Replica count
-	if desired.Spec.Prometheus.Size != nil && *desired.Spec.Prometheus.Size >= 0 { // Valid replica count specified in desired state
-		if actual.Spec.Replicas != nil { // Actual replicas value is set
-			if *actual.Spec.Replicas != *desired.Spec.Prometheus.Size {
-				return true
-			}
-		} else if *desired.Spec.Prometheus.Size != common.ArgoCDDefaultPrometheusReplicas { // Actual replicas value is NOT set, but desired replicas differs from the default
-			return true
-		}
-	} else { // Replica count NOT specified in desired state
-		if actual.Spec.Replicas != nil && *actual.Spec.Replicas != common.ArgoCDDefaultPrometheusReplicas {
-			return true
-		}
-	}
-	return false
 }
 
 // verifyPrometheusAPI will verify that the Prometheus API is present.
@@ -109,12 +80,12 @@ func newServiceMonitor(cr *argoproj.ArgoCD) *monitoringv1.ServiceMonitor {
 // newServiceMonitorWithName returns a new ServiceMonitor instance for the given ArgoCD using the given name.
 func newServiceMonitorWithName(name string, cr *argoproj.ArgoCD) *monitoringv1.ServiceMonitor {
 	svcmon := newServiceMonitor(cr)
-	svcmon.ObjectMeta.Name = name
+	svcmon.Name = name
 
-	lbls := svcmon.ObjectMeta.Labels
+	lbls := svcmon.Labels
 	lbls[common.ArgoCDKeyName] = name
 	lbls[common.ArgoCDKeyRelease] = "prometheus-operator"
-	svcmon.ObjectMeta.Labels = lbls
+	svcmon.Labels = lbls
 
 	return svcmon
 }
@@ -127,10 +98,15 @@ func newServiceMonitorWithSuffix(suffix string, cr *argoproj.ArgoCD) *monitoring
 // reconcileMetricsServiceMonitor will ensure that the ServiceMonitor is present for the ArgoCD metrics Service.
 func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) error {
 	sm := newServiceMonitorWithSuffix(common.ArgoCDKeyMetrics, cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
+	smExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm)
+	if err != nil {
+		return err
+	}
+	if smExists {
 		if !cr.Spec.Prometheus.Enabled {
 			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
-			return r.Client.Delete(context.TODO(), sm)
+			argoutil.LogResourceDeletion(log, sm, "prometheus is disabled")
+			return r.Delete(context.TODO(), sm)
 		}
 		return nil // ServiceMonitor found, do nothing
 	}
@@ -153,45 +129,40 @@ func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) er
 	if err := controllerutil.SetControllerReference(cr, sm, r.Scheme); err != nil {
 		return err
 	}
-	return r.Client.Create(context.TODO(), sm)
+	argoutil.LogResourceCreation(log, sm)
+	return r.Create(context.TODO(), sm)
 }
 
-// reconcilePrometheus will ensure that Prometheus is present for ArgoCD metrics.
+// reconcilePrometheus will ensure that Prometheus CR is deleted.
+// The Prometheus CR is deprecated and no longer created by the operator.
+// If it exists, it will be deleted.
 func (r *ReconcileArgoCD) reconcilePrometheus(cr *argoproj.ArgoCD) error {
 	prometheus := newPrometheus(cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, prometheus.Name, prometheus) {
-		if !cr.Spec.Prometheus.Enabled {
-			// Prometheus exists but enabled flag has been set to false, delete the Prometheus
-			return r.Client.Delete(context.TODO(), prometheus)
-		}
-		if hasPrometheusSpecChanged(prometheus, cr) {
-			prometheus.Spec.Replicas = cr.Spec.Prometheus.Size
-			return r.Client.Update(context.TODO(), prometheus)
-		}
-		return nil // Prometheus found, do nothing
-	}
-
-	if !cr.Spec.Prometheus.Enabled {
-		return nil // Prometheus not enabled, do nothing.
-	}
-
-	prometheus.Spec.Replicas = getPrometheusReplicas(cr)
-	prometheus.Spec.ServiceAccountName = "prometheus-k8s"
-	prometheus.Spec.ServiceMonitorSelector = &metav1.LabelSelector{}
-
-	if err := controllerutil.SetControllerReference(cr, prometheus, r.Scheme); err != nil {
+	prExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, prometheus.Name, prometheus)
+	if err != nil {
 		return err
 	}
-	return r.Client.Create(context.TODO(), prometheus)
+	if prExists {
+		// Prometheus CR is deprecated, delete it if it exists
+		argoutil.LogResourceDeletion(log, prometheus, "prometheus CR is deprecated and no longer supported")
+		return r.Delete(context.TODO(), prometheus)
+	}
+
+	return nil // Prometheus CR does not exist, nothing to do
 }
 
 // reconcileRepoServerServiceMonitor will ensure that the ServiceMonitor is present for the Repo Server metrics Service.
 func (r *ReconcileArgoCD) reconcileRepoServerServiceMonitor(cr *argoproj.ArgoCD) error {
 	sm := newServiceMonitorWithSuffix("repo-server-metrics", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
+	smExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm)
+	if err != nil {
+		return err
+	}
+	if smExists {
 		if !cr.Spec.Prometheus.Enabled {
 			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
-			return r.Client.Delete(context.TODO(), sm)
+			argoutil.LogResourceDeletion(log, sm, "prometheus is disabled")
+			return r.Delete(context.TODO(), sm)
 		}
 		return nil // ServiceMonitor found, do nothing
 	}
@@ -214,16 +185,22 @@ func (r *ReconcileArgoCD) reconcileRepoServerServiceMonitor(cr *argoproj.ArgoCD)
 	if err := controllerutil.SetControllerReference(cr, sm, r.Scheme); err != nil {
 		return err
 	}
-	return r.Client.Create(context.TODO(), sm)
+	argoutil.LogResourceCreation(log, sm)
+	return r.Create(context.TODO(), sm)
 }
 
 // reconcileServerMetricsServiceMonitor will ensure that the ServiceMonitor is present for the ArgoCD Server metrics Service.
 func (r *ReconcileArgoCD) reconcileServerMetricsServiceMonitor(cr *argoproj.ArgoCD) error {
 	sm := newServiceMonitorWithSuffix("server-metrics", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
+	smExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm)
+	if err != nil {
+		return err
+	}
+	if smExists {
 		if !cr.Spec.Prometheus.Enabled {
 			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
-			return r.Client.Delete(context.TODO(), sm)
+			argoutil.LogResourceDeletion(log, sm, "prometheus is disabled")
+			return r.Delete(context.TODO(), sm)
 		}
 		return nil // ServiceMonitor found, do nothing
 	}
@@ -246,7 +223,8 @@ func (r *ReconcileArgoCD) reconcileServerMetricsServiceMonitor(cr *argoproj.Argo
 	if err := controllerutil.SetControllerReference(cr, sm, r.Scheme); err != nil {
 		return err
 	}
-	return r.Client.Create(context.TODO(), sm)
+	argoutil.LogResourceCreation(log, sm)
+	return r.Create(context.TODO(), sm)
 }
 
 // reconcilePrometheusRule reconciles the PrometheusRule that triggers alerts based on workload statuses
@@ -254,12 +232,18 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoproj.ArgoCD) error {
 
 	promRule := newPrometheusRule(cr.Namespace, "argocd-component-status-alert")
 
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, promRule.Name, promRule) {
+	prExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, promRule.Name, promRule)
+	if err != nil {
+		return err
+	}
+
+	if prExists {
 
 		if !cr.Spec.Monitoring.Enabled {
 			// PrometheusRule exists but enabled flag has been set to false, delete the PrometheusRule
 			log.Info("instance monitoring disabled, deleting component status tracking prometheusRule")
-			return r.Client.Delete(context.TODO(), promRule)
+			argoutil.LogResourceDeletion(log, promRule, "instance monitoring is disabled")
+			return r.Delete(context.TODO(), promRule)
 		}
 		return nil // PrometheusRule found, do nothing
 	}
@@ -279,9 +263,9 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoproj.ArgoCD) error {
 					},
 					Expr: intstr.IntOrString{
 						Type:   intstr.String,
-						StrVal: fmt.Sprintf("kube_statefulset_status_replicas{statefulset=\"%s\", namespace=\"%s\"} != kube_statefulset_status_replicas_ready{statefulset=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-application-controller"), cr.Namespace, fmt.Sprintf(cr.Name+"-application-controller"), cr.Namespace),
+						StrVal: fmt.Sprintf("kube_statefulset_status_replicas{statefulset=\"%s\", namespace=\"%s\"} != kube_statefulset_status_replicas_ready{statefulset=\"%s\", namespace=\"%s\"} ", cr.Name+"-application-controller", cr.Namespace, cr.Name+"-application-controller", cr.Namespace),
 					},
-					For: "1m",
+					For: ptr.To((monitoringv1.Duration)("1m")),
 					Labels: map[string]string{
 						"severity": "critical",
 					},
@@ -293,9 +277,9 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoproj.ArgoCD) error {
 					},
 					Expr: intstr.IntOrString{
 						Type:   intstr.String,
-						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-server"), cr.Namespace, fmt.Sprintf(cr.Name+"-server"), cr.Namespace),
+						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", cr.Name+"-server", cr.Namespace, cr.Name+"-server", cr.Namespace),
 					},
-					For: "1m",
+					For: ptr.To((monitoringv1.Duration)("1m")),
 					Labels: map[string]string{
 						"severity": "critical",
 					},
@@ -307,9 +291,9 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoproj.ArgoCD) error {
 					},
 					Expr: intstr.IntOrString{
 						Type:   intstr.String,
-						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-repo-server"), cr.Namespace, fmt.Sprintf(cr.Name+"-repo-server"), cr.Namespace),
+						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", cr.Name+"-repo-server", cr.Namespace, cr.Name+"-repo-server", cr.Namespace),
 					},
-					For: "1m",
+					For: ptr.To((monitoringv1.Duration)("1m")),
 					Labels: map[string]string{
 						"severity": "critical",
 					},
@@ -321,9 +305,9 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoproj.ArgoCD) error {
 					},
 					Expr: intstr.IntOrString{
 						Type:   intstr.String,
-						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-applicationset-controller"), cr.Namespace, fmt.Sprintf(cr.Name+"-applicationset-controller"), cr.Namespace),
+						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", cr.Name+"-applicationset-controller", cr.Namespace, cr.Name+"-applicationset-controller", cr.Namespace),
 					},
-					For: "5m",
+					For: ptr.To((monitoringv1.Duration)("5m")),
 					Labels: map[string]string{
 						"severity": "warning",
 					},
@@ -335,9 +319,9 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoproj.ArgoCD) error {
 					},
 					Expr: intstr.IntOrString{
 						Type:   intstr.String,
-						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-dex-server"), cr.Namespace, fmt.Sprintf(cr.Name+"-dex-server"), cr.Namespace),
+						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", cr.Name+"-dex-server", cr.Namespace, cr.Name+"-dex-server", cr.Namespace),
 					},
-					For: "5m",
+					For: ptr.To((monitoringv1.Duration)("5m")),
 					Labels: map[string]string{
 						"severity": "warning",
 					},
@@ -349,9 +333,9 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoproj.ArgoCD) error {
 					},
 					Expr: intstr.IntOrString{
 						Type:   intstr.String,
-						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-notifications-controller"), cr.Namespace, fmt.Sprintf(cr.Name+"-notifications-controller"), cr.Namespace),
+						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", cr.Name+"-notifications-controller", cr.Namespace, cr.Name+"-notifications-controller", cr.Namespace),
 					},
-					For: "5m",
+					For: ptr.To((monitoringv1.Duration)("5m")),
 					Labels: map[string]string{
 						"severity": "warning",
 					},
@@ -363,9 +347,9 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoproj.ArgoCD) error {
 					},
 					Expr: intstr.IntOrString{
 						Type:   intstr.String,
-						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-redis"), cr.Namespace, fmt.Sprintf(cr.Name+"-redis"), cr.Namespace),
+						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", cr.Name+"-redis", cr.Namespace, cr.Name+"-redis", cr.Namespace),
 					},
-					For: "5m",
+					For: ptr.To((monitoringv1.Duration)("5m")),
 					Labels: map[string]string{
 						"severity": "warning",
 					},
@@ -379,8 +363,8 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
-	log.Info("instance monitoring enabled, creating component status tracking prometheusRule")
-	return r.Client.Create(context.TODO(), promRule) // Create PrometheusRule
+	argoutil.LogResourceCreation(log, promRule, "for component status tracking, since instance monitoring is enabled")
+	return r.Create(context.TODO(), promRule) // Create PrometheusRule
 }
 
 // newPrometheusRule returns an empty PrometheusRule

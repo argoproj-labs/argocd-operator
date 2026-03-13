@@ -8,5 +8,7 @@ spec:
   sso:
     provider: keycloak
     verifyTLS: false
+    keycloak:
+      host: sso.test.example.com
   extraConfig:
     oidc.tls.insecure.skip.verify: 'true' 

@@ -45,9 +45,9 @@ spec:
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app.kubernetes.io/name: example-argocd-redis-ha
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: example-argocd-redis-ha
 status:
   readyReplicas: 3
 ---
@@ -56,4 +56,4 @@ kind: Deployment
 metadata:
   name: example-argocd-redis-ha-haproxy
 status:
-  readyReplicas: 1
+  readyReplicas: 3

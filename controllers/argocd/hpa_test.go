@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	testclient "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -31,7 +32,7 @@ func TestReconcileHPA(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	existingHPA := newHorizontalPodAutoscalerWithSuffix("server", a)
 
@@ -57,7 +58,7 @@ func TestReconcileHPA(t *testing.T) {
 		},
 	}
 
-	err := r.Client.Get(context.TODO(), types.NamespacedName{
+	err := r.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-server",
 		Namespace: testNamespace,
 	}, existingHPA)
@@ -68,7 +69,7 @@ func TestReconcileHPA(t *testing.T) {
 	err = r.reconcileServerHPA(a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-server",
 		Namespace: testNamespace,
 	}, existingHPA)
@@ -80,7 +81,7 @@ func TestReconcileHPA(t *testing.T) {
 	err = r.reconcileServerHPA(a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-server",
 		Namespace: testNamespace,
 	}, existingHPA)
@@ -92,7 +93,7 @@ func TestReconcileHPA(t *testing.T) {
 	err = r.reconcileServerHPA(a)
 	assert.NoError(t, err)
 
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
+	err = r.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-server",
 		Namespace: testNamespace,
 	}, existingHPA)

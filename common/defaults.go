@@ -18,6 +18,12 @@ const (
 	// ArgoCDApplicationControllerComponent is the name of the application controller control plane component
 	ArgoCDApplicationControllerComponent = "argocd-application-controller"
 
+	// ArgoCDApplicationControllerComponentView is the name of aggregated ClusterRole to configure view permissions for the application controller control plane component
+	ArgoCDApplicationControllerComponentView = "argocd-application-controller-view"
+
+	// ArgoCDApplicationControllerComponentAdmin is the name of aggregated ClusterRole to configure admin permissions for the application controller control plane component
+	ArgoCDApplicationControllerComponentAdmin = "argocd-application-controller-admin"
+
 	// ArgoCDApplicationControllerDefaultShardReplicas is the default number of replicas that the ArgoCD Application Controller Should Use
 	ArgocdApplicationControllerDefaultReplicas = 1
 
@@ -64,7 +70,7 @@ const (
 	ArgoCDDefaultArgoImage = "quay.io/argoproj/argocd"
 
 	// ArgoCDDefaultArgoVersion is the Argo CD container image digest to use when version not specified.
-	ArgoCDDefaultArgoVersion = "sha256:5cfead7ae4c50884873c042250d51373f3a8904a210f3ab6d88fcebfcfb0c03a" // v2.10.5
+	ArgoCDDefaultArgoVersion = "sha256:ed0740273790e58154816104c1e1b41fb308a9c516ade3d0f195fa56f1840cca" // v3.3.0
 
 	// ArgoCDDefaultBackupKeyLength is the length of the generated default backup key.
 	ArgoCDDefaultBackupKeyLength = 32
@@ -74,9 +80,6 @@ const (
 
 	// ArgoCDDefaultBackupKeyNumSymbols is the number of symbols to use for the generated default backup key.
 	ArgoCDDefaultBackupKeyNumSymbols = 5
-
-	// ArgoCDDefaultConfigManagementPlugins is the default configuration value for the config management plugins.
-	ArgoCDDefaultConfigManagementPlugins = ""
 
 	// ArgoCDDefaultControllerResourceLimitCPU is the default CPU limit when not specified for the Argo CD application
 	// controller contianer.
@@ -116,13 +119,13 @@ const (
 	ArgoCDDefaultDexServiceAccountName = "argocd-dex-server"
 
 	// ArgoCDDefaultDexVersion is the Dex container image tag to use when not specified.
-	ArgoCDDefaultDexVersion = "sha256:d5f887574312f606c61e7e188cfb11ddb33ff3bf4bd9f06e6b1458efca75f604" // v2.30.3
+	ArgoCDDefaultDexVersion = "sha256:b08a58c9731c693b8db02154d7afda798e1888dc76db30d34c4a0d0b8a26d913" // v2.43.0
 
 	// ArgoCDDefaultExportJobImage is the export job container image to use when not specified.
 	ArgoCDDefaultExportJobImage = "quay.io/argoprojlabs/argocd-operator-util"
 
 	// ArgoCDDefaultExportJobVersion is the export job container image tag to use when not specified.
-	ArgoCDDefaultExportJobVersion = "sha256:6f80965a2bef1c80875be0995b18d9be5a6ad4af841cbc170ed3c60101a7deb2" // 0.5.0
+	ArgoCDDefaultExportJobVersion = "sha256:0745934cb55d95c266daa5423ece9c149bb67db99eb2b3d9215597903724c636" // 0.13.0
 
 	// ArgoCDDefaultExportLocalCapicity is the default capacity to use for local export.
 	ArgoCDDefaultExportLocalCapicity = "2Gi"
@@ -154,17 +157,6 @@ const (
 	// ArgoCDDefaultLabelSelector is the default Label Selector which will reconcile all ArgoCD instances.
 	ArgoCDDefaultLabelSelector = ""
 
-	// ArgoCDKeycloakVersion is the default Keycloak version used for the non-openshift platform when not specified.
-	// Version: 15.0.2
-	ArgoCDKeycloakVersion = "sha256:64fb81886fde61dee55091e6033481fa5ccdac62ae30a4fd29b54eb5e97df6a9"
-
-	// ArgoCDKeycloakImageForOpenShift is the default Keycloak Image used for the OpenShift platform when not specified.
-	ArgoCDKeycloakImageForOpenShift = "registry.redhat.io/rh-sso-7/sso76-openshift-rhel8"
-
-	// ArgoCDKeycloakVersionForOpenShift is the default Keycloak version used for the OpenShift platform when not specified.
-	// Version: 7.6-32
-	ArgoCDKeycloakVersionForOpenShift = "sha256:ec9f60018694dcc5d431ba47d5536b761b71cb3f66684978fe6bb74c157679ac"
-
 	// ArgoCDDefaultOIDCConfig is the default OIDC configuration.
 	ArgoCDDefaultOIDCConfig = ""
 
@@ -187,13 +179,13 @@ const (
 	ArgoCDDefaultRedisHAReplicas = int32(3)
 
 	// ArgoCDDefaultRedisHAProxyImage is the default Redis HAProxy image to use when not specified.
-	ArgoCDDefaultRedisHAProxyImage = "haproxy"
+	ArgoCDDefaultRedisHAProxyImage = "public.ecr.aws/docker/library/haproxy"
 
 	// ArgoCDDefaultRedisHAProxyVersion is the default Redis HAProxy image tag to use when not specified.
-	ArgoCDDefaultRedisHAProxyVersion = "sha256:7392fbbbb53e9e063ca94891da6656e6062f9d021c0e514888a91535b9f73231" // 2.0.25-alpine
+	ArgoCDDefaultRedisHAProxyVersion = "sha256:e11f034e651603f10a365e5ad5a0321825e18eded9620e40c4f4d6ae58419bfe" // 3.0.8-alpine
 
 	// ArgoCDDefaultRedisImage is the Redis container image to use when not specified.
-	ArgoCDDefaultRedisImage = "redis"
+	ArgoCDDefaultRedisImage = "public.ecr.aws/docker/library/redis"
 
 	// ArgoCDDefaultRedisPort is the default listen port for Redis.
 	ArgoCDDefaultRedisPort = 6379
@@ -205,10 +197,10 @@ const (
 	ArgoCDDefaultRedisSuffix = "redis"
 
 	// ArgoCDDefaultRedisVersion is the Redis container image tag to use when not specified.
-	ArgoCDDefaultRedisVersion = "sha256:8061ca607db2a0c80010aeb5fc9bed0253448bc68711eaa14253a392f6c48280" // 6.2.4-alpine
+	ArgoCDDefaultRedisVersion = "sha256:08ad0b1d280850169a790dba1393ff7a90aef951fc19632cf4d3ce4f78e679ba" // 8.2.3-alpine
 
 	// ArgoCDDefaultRedisVersionHA is the Redis container image tag to use when not specified in HA mode.
-	ArgoCDDefaultRedisVersionHA = "sha256:8061ca607db2a0c80010aeb5fc9bed0253448bc68711eaa14253a392f6c48280" // 6.2.4-alpine
+	ArgoCDDefaultRedisVersionHA = "sha256:08ad0b1d280850169a790dba1393ff7a90aef951fc19632cf4d3ce4f78e679ba" // 8.2.3-alpine
 
 	// ArgoCDDefaultRepoMetricsPort is the default listen port for the Argo CD repo server metrics.
 	ArgoCDDefaultRepoMetricsPort = 8084
@@ -227,6 +219,12 @@ const (
 
 	// ArgoCDDefaultResourceInclusions is the default resource inclusions.
 	ArgoCDDefaultResourceInclusions = ""
+
+	// ArgoCDExtensionInstallerImage is the default image for ArgoCD Extension Installer that can be used to install UI extensions like Rollouts extension.
+	ArgoCDExtensionInstallerImage = "quay.io/argoprojlabs/argocd-extension-installer:v0.0.8"
+
+	// ArgoRolloutsExtensionURL is the URL used to download the extension.js file from the latest rollout-extension tar release
+	ArgoRolloutsExtensionURL = "https://github.com/argoproj-labs/rollout-extension/releases/download/v0.3.6/extension.tar"
 
 	// ArgoCDDefaultRSAKeySize is the default RSA key size when not specified.
 	ArgoCDDefaultRSAKeySize = 2048
@@ -277,11 +275,35 @@ gitlab.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCsj2bNKTBSpIYDEGk9KxsGh3mySTRgM
 ssh.dev.azure.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7Hr1oTWqNqOlzGJOfGJ4NakVyIzf1rXYd4d7wo6jBlkLvCA4odBlL0mDUyZ0/QUfTTqeu+tm22gOsv+VrVTMk6vwRU75gY/y9ut5Mb3bR5BV58dKXyq9A9UeB5Cakehn5Zgm6x1mKoVyf+FFn26iYqXJRgzIZZcZ5V6hrE0Qg39kZm4az48o0AUbf6Sp4SLdvnuMa2sVNwHBboS7EJkm57XQPVU3/QpyNLHbWDdzwtrlS+ez30S3AdYhLKEOxAG8weOnyrtLJAUen9mTkol8oII1edf7mWWbWVf0nBmly21+nZcmCTISQBtdcyPaEno7fFQMDD26/s0lfKob4Kw8H
 vs-ssh.visualstudio.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7Hr1oTWqNqOlzGJOfGJ4NakVyIzf1rXYd4d7wo6jBlkLvCA4odBlL0mDUyZ0/QUfTTqeu+tm22gOsv+VrVTMk6vwRU75gY/y9ut5Mb3bR5BV58dKXyq9A9UeB5Cakehn5Zgm6x1mKoVyf+FFn26iYqXJRgzIZZcZ5V6hrE0Qg39kZm4az48o0AUbf6Sp4SLdvnuMa2sVNwHBboS7EJkm57XQPVU3/QpyNLHbWDdzwtrlS+ez30S3AdYhLKEOxAG8weOnyrtLJAUen9mTkol8oII1edf7mWWbWVf0nBmly21+nZcmCTISQBtdcyPaEno7fFQMDD26/s0lfKob4Kw8H
 `
+	// RedisDefaultAdminPasswordLength is the length of the generated default redis admin password.
+	RedisDefaultAdminPasswordLength = 16
+
+	// RedisDefaultAdminPasswordNumDigits is the number of digits to use for the generated default redis admin password.
+	RedisDefaultAdminPasswordNumDigits = 5
+
+	// RedisDefaultAdminPasswordNumSymbols is the number of symbols to use for the generated default redis admin password.
+	RedisDefaultAdminPasswordNumSymbols = 0
+
 	// OperatorMetricsPort is the port that is used to expose default controller-runtime metrics for the operator pod.
 	OperatorMetricsPort = 8080
 
 	// NotificationsControllerMetricsPort is the port that is used to expose notifications controller metrics.
 	NotificationsControllerMetricsPort = 9001
+
+	// ArgoCDCmdParamsConfigMapName is the upstream hard-coded ArgoCD command params ConfigMap name.
+	ArgoCDCmdParamsConfigMapName = "argocd-cmd-params-cm"
+
+	// ArgoCDAgentPrincipalDefaultImageName is the default image name for the ArgoCD agent's principal component.
+	ArgoCDAgentPrincipalDefaultImageName = "quay.io/argoprojlabs/argocd-agent:v0.7.0"
+
+	// ArgoCDAgentAgentDefaultImageName is the default image name for the ArgoCD agent's agent component.
+	ArgoCDAgentAgentDefaultImageName = "quay.io/argoprojlabs/argocd-agent:v0.7.0"
+
+	// ArgoCDImageUpdaterControllerComponent is the name of the Image Updater controller control plane component
+	ArgoCDImageUpdaterControllerComponent = "argocd-image-updater-controller"
+
+	// DefaultImagePullPolicy is the default image pull policy to use when not specified.
+	DefaultImagePullPolicy = "IfNotPresent"
 )
 
 // DefaultLabels returns the default set of labels for controllers.

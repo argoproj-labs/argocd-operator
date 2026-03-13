@@ -9,7 +9,7 @@ metadata:
   namespace: test-1-32-appsets-scm-tls-mount
 spec:
   applicationSet:
-    scmRootCAConfigMap: test-1-32-appsets-scm-tls-cm
+    scmRootCAConfigMap: argocd-appset-gitlab-scm-tls-certs-cm
 status:
   phase: Available
 ---
@@ -22,7 +22,7 @@ metadata:
     app.kubernetes.io/component: controller
     app.kubernetes.io/managed-by: argocd
     app.kubernetes.io/name: argocd-applicationset-controller
-    app.kubernetes.io/part-of: argocd-applicationset
+    app.kubernetes.io/part-of: argocd
 spec:
   selector:
     matchLabels:
@@ -37,6 +37,8 @@ spec:
           - argocd-repo-server.test-1-32-appsets-scm-tls-mount.svc.cluster.local:8081
           - --loglevel
           - info
+          - --logformat
+          - text
           - --scm-root-ca-path
           - /app/tls/scm/cert
           volumeMounts:
@@ -50,7 +52,7 @@ spec:
             name: gpg-keyring
           - mountPath: /tmp
             name: tmp
-          - mountPath: /app/tls/scm/cert
+          - mountPath: /app/tls/scm/
             name: appset-gitlab-scm-tls-cert
       volumes:
       - configMap:

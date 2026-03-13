@@ -1,0 +1,6 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - script: sleep 10
+  - script: kubectl get pods -n test-1-042-restricted-pss-compliant | grep 'argocd-redis-ha-haproxy'
+  - script: kubectl get pods -n test-1-042-restricted-pss-compliant | grep 'argocd-redis-ha-server'

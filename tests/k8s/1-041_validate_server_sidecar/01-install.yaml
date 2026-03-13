@@ -1,0 +1,16 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+spec:
+  server:
+    sidecarContainers:
+    - name: sidecar
+      image: busybox
+      resources:
+        limits:
+          cpu: 50m
+          memory: 64Mi
+        requests:
+          cpu: 10m
+          memory: 32Mi

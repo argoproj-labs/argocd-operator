@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: argocd-application-controller-0
+spec:
+  initContainers:
+  - name: argocd-init
+    image: nginx:latest
+    imagePullPolicy: Always
+    resources:
+      limits:
+        cpu: 50m
+        memory: 64Mi
+      requests:
+        cpu: 10m
+        memory: 32Mi
+  containers:
+  - name: argocd-application-controller
+

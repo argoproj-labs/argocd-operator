@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-sample-server
+spec:
+  template:
+    metadata:
+      annotations: {}
+      labels:
+        app.kubernetes.io/name: argocd-sample-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-sample-repo-server
+spec:
+  template:
+    metadata:
+      annotations: {}
+      labels:
+        app.kubernetes.io/name: argocd-sample-repo-server
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: argocd-sample-application-controller
+spec:
+  template:
+    metadata:
+      annotations: {}
+      labels:
+        app.kubernetes.io/name: argocd-sample-application-controller
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-sample-applicationset-controller
+spec:
+  template:
+    metadata:
+      annotations: {}
+      labels:
+        app.kubernetes.io/name: argocd-sample-applicationset-controller
+
