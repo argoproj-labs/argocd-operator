@@ -271,6 +271,15 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 			map[string]string{},
 		},
 		{
+			"with-web-terminal-enabled",
+			[]argoCDOpt{func(a *argoproj.ArgoCD) {
+				a.Spec.WebTerminal.Enabled = true
+			}},
+			map[string]string{
+				"exec.enabled": "true",
+			},
+		},
+		{
 			"with-banner",
 			[]argoCDOpt{func(a *argoproj.ArgoCD) {
 				a.Spec.Banner = &argoproj.Banner{
