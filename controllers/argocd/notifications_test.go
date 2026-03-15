@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	testclient "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/utils/ptr"
 
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -522,7 +523,7 @@ func TestReconcileNotifications_CreateServiceMonitor(t *testing.T) {
 	assert.Equal(t, testServiceMonitor.Labels["release"], "prometheus-operator")
 
 	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Port, "metrics")
-	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Scheme, "http")
+	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Scheme, ptr.To(monitoringv1.SchemeHTTP))
 	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Interval, monitoringv1.Duration("30s"))
 	assert.Equal(t, testServiceMonitor.Spec.Selector.MatchLabels["app.kubernetes.io/name"],
 		fmt.Sprintf("%s-%s", a.Name, "notifications-controller-metrics"))

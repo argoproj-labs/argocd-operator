@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	amerr "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -626,7 +627,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsServiceMonitor(cr *argoproj.Argo
 	serviceMonitor.Spec.Endpoints = []monitoringv1.Endpoint{
 		{
 			Port:     "metrics",
-			Scheme:   "http",
+			Scheme:   ptr.To(monitoringv1.SchemeHTTP),
 			Interval: "30s",
 		},
 	}
