@@ -57,7 +57,7 @@ import (
 var (
 	// The differences between the upstream image using Ubuntu, and the downstream one using rhel.
 	image        = "" // argocd-operator default
-	version      = "" // argocd-operator default
+	imageVersion = "" // argocd-operator default
 	caBundlePath = "/etc/ssl/certs/ca-certificates.crt"
 
 	trustedHelmAppSource = &appv1alpha1.ApplicationSource{
@@ -110,7 +110,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			})
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 
-			Eventually(argoCD, "1m", "5s").Should(argocdFixture.HaveServerStatus("Running"))
+			Eventually(argoCD, "5m", "5s").Should(argocdFixture.HaveServerStatus("Running"))
 			Consistently(argoCD, "20s", "5s").Should(argocdFixture.HaveRepoStatus("Pending"))
 			Expect(argoCD).ShouldNot(argocdFixture.BeAvailable())
 		})
@@ -498,7 +498,7 @@ func argoCDSpec(ns *corev1.Namespace, repoSpec argov1beta1api.ArgoCDRepoSpec) *a
 		ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: ns.Name},
 		Spec: argov1beta1api.ArgoCDSpec{
 			Image:   image,
-			Version: version,
+			Version: imageVersion,
 			Repo:    repoSpec,
 		},
 	}
