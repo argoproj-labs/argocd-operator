@@ -12,6 +12,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
 	github.com/openshift/api v0.0.0-20240906151052-5d963dce87aa
+	github.com/operator-framework/api v0.17.5
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.73.2
 	github.com/prometheus/client_golang v1.23.2
 	github.com/sethvargo/go-password v0.3.1
