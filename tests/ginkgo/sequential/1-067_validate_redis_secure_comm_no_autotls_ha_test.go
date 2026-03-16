@@ -258,6 +258,12 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				// This is how redis disconnect manifests
 				Expect(logOutput).ToNot(ContainSubstring("manifest cache error"))
 				Expect(logOutput).ToNot(ContainSubstring("WRONGPASS"))
+
+				mountedFiles, err := osFixture.ExecCommandWithOutputParam(false, true,
+					"kubectl", "exec", component, "-n", ns.Name, "--", "ls", "-1", argoutil.RedisAuthMountPath,
+				)
+				Expect(err).ToNot(HaveOccurred(), "Output: "+logOutput)
+				Expect(mountedFiles).ToNot(ContainSubstring("users.acl"))
 			}
 
 			By("verifying redis password is correct")

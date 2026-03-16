@@ -433,7 +433,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
 
-	redisVolume, redisMount := argoutil.MountRedisAuthToArgo(cr)
+	redisVolume, redisMount := argoutil.MountRedisAuthToRedis(cr)
 
 	if !IsOpenShiftCluster() {
 		deploy.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
@@ -636,7 +636,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 		},
 	}
 
-	redisAuthVolume, redisAuthMount := argoutil.MountRedisAuthToArgo(cr)
+	redisAuthVolume, redisAuthMount := argoutil.MountRedisAuthToRedis(cr)
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Image:           argoutil.GetRedisHAProxyContainerImage(cr),

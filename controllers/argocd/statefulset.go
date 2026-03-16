@@ -130,7 +130,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 	f := false
 	ss.Spec.Template.Spec.AutomountServiceAccountToken = &f
 
-	redisAuthVolume, redisAuthMount := argoutil.MountRedisAuthToArgo(cr)
+	redisAuthVolume, redisAuthMount := argoutil.MountRedisAuthToRedis(cr)
 
 	ss.Spec.Template.Spec.Containers = []corev1.Container{
 		{
