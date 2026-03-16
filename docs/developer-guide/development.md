@@ -5,11 +5,11 @@
 
 The requirements for building the operator are fairly minimal.
 
- * Go 1.16+
- * Operator SDK 1.11.0+
- * Bash or equivalent
- * Docker
- 
+* Go 1.16+
+* Operator SDK 1.11.0+
+* Bash or equivalent
+* Docker
+
 ### Building from Source
 
 The `Makefile` in the root directory contains several targets to build and release the operator binaries from source.
@@ -19,8 +19,8 @@ The `Makefile` in the root directory contains several targets to build and relea
 The `Makefile` defines several variables to control the names of the images to build and push.
 These variables can either be set as environment variables, or specified when invoking `make`.
 
- * `IMG` is the image URL to use all building/pushing image targets.
- * `BUNDLE_IMG` defines the image:tag used for the bundle.
+* `IMG` is the image URL to use all building/pushing image targets.
+* `BUNDLE_IMG` defines the image:tag used for the bundle.
 
 Have a look `Makefile` for all of the variables and how they are used.
 
@@ -42,11 +42,12 @@ make docker-push
 
 ### Bundle
 
-Create and push the bundle image for to use the operator in OLM as a CatalogSource. 
+Create and push the bundle image for to use the operator in OLM as a CatalogSource.
 
 ``` bash
 make bundle-build bundle-push
 ```
+
 To override the name of the bundle image, specify the `BUNDLE_IMG` tag, for example
 
 ``` bash
@@ -75,35 +76,6 @@ To run the unit tests, invoke the following make target:
 
 ``` bash
 make test
-```
-
-#### Metrics endpoint authentication and scraping
-
-The operator's metrics endpoint is protected using controller-runtime authentication and authorization.
-This uses Kubernetes `TokenReview` and `SubjectAccessReview` APIs, so the controller needs RBAC rules to create:
-
-* `tokenreviews.authentication.k8s.io`
-* `subjectaccessreviews.authorization.k8s.io`
-
-These permissions are already included in the default RBAC manifests (`config/rbac/auth_proxy_role.yaml` and `config/rbac/auth_proxy_role_binding.yaml`).
-
-For metrics scraping clients (for example Prometheus), grant access to `GET /metrics` by binding the provided `metrics-reader` `ClusterRole` (`config/rbac/auth_proxy_client_clusterrole.yaml`) to the scraper's ServiceAccount.
-
-Example:
-
-```yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: prometheus-metrics-reader
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: metrics-reader
-subjects:
-  - kind: ServiceAccount
-    name: prometheus-k8s
-    namespace: monitoring
 ```
 
 Run the e2e tests.
@@ -154,9 +126,11 @@ Specify the bundle image to include using the `BUNDLE_IMG` variable
 make catalog-build BUNDLE_IMG=quay.io/my-org/argocd-operator-bundle:latest CATALOG_IMG=quay.io/my-org/argocd-operator-index:latest
 make catalog-push CATALOG_IMG=quay.io/my-org/argocd-operator-index:latest
 ```
+
 For more infomation see [build operator images to test on a cluster.](https://argocd-operator.readthedocs.io/en/latest/developer-guide/development/#building-the-operator-images-to-test-on-a-cluster)
 
 Once the operator is installed, you would need to configure an ArgoCD instance that the operator would manage. The sample instance configuration is below:
+
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
@@ -166,11 +140,13 @@ metadata:
     example: basic
 spec: {}
 ```
+
 Store your ArgoCD configuration in a yaml file and execute below command to configure the ArgoCD instance.
 
 ``` bash
 kubectl apply -f <path_to_yaml_file>
 ```
+
 For configuring specific properties based on the use case, you can look at the entire list of the configurable properties [here.](https://argocd-operator.readthedocs.io/en/latest/reference/argocd/)
 
 ### Build and Verify Argo CD Operator Docs
@@ -212,7 +188,6 @@ The operator bundles and provides the CRDs that are used by Argo CD to ensure th
 
 Update the [CRDs][argocd_upstream_crds] from the upstream Argo CD project in the `config/crd/bases` directory to ensure they match the version of Argo CD that will be used as the default.
 
-[podman_link]:https://podman.io
 [argocd_upstream_crds]:https://github.com/argoproj/argo-cd/tree/master/manifests/crds
 
 #### Container Image

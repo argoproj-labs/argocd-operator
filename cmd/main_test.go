@@ -55,7 +55,6 @@ func TestKustomizeConfig_NoKubeRBACProxyReferences(t *testing.T) {
 	repoRoot := findRepoRoot(t)
 	filesToCheck := []string{
 		"config/default/manager_auth_proxy_patch.yaml",
-		"config/default/manager_auth_proxy_service_patch.yaml",
 		"config/default/kustomization.yaml",
 		"config/manager/manager.yaml",
 	}
@@ -90,29 +89,7 @@ func TestKustomizeConfig_PatchConfiguresSecureMetrics(t *testing.T) {
 
 	checks := map[string]string{
 		"--metrics-secure":             "patch must enable --metrics-secure",
-		"--metrics-bind-address=:8443": "patch must bind metrics to port 8443",
-		"containerPort: 8443":          "patch must expose container port 8443",
-	}
-	for needle, msg := range checks {
-		if !strings.Contains(content, needle) {
-			t.Errorf("%s (missing %q)", msg, needle)
-		}
-	}
-}
-
-func TestKustomizeConfig_ServicePatchConfiguresMetricsServiceHTTPSPort(t *testing.T) {
-	repoRoot := findRepoRoot(t)
-	patchPath := filepath.Join(repoRoot, "config/default/manager_auth_proxy_service_patch.yaml")
-
-	data, err := os.ReadFile(patchPath)
-	if err != nil {
-		t.Fatalf("failed to read patch file: %v", err)
-	}
-	content := string(data)
-
-	checks := map[string]string{
-		"name: controller-manager-metrics-service": "patch must target controller manager metrics service",
-		"targetPort: https":                        "patch must switch metrics service to target the https named port",
+		"--metrics-bind-address=:8080": "patch must keep metrics on the default port 8080",
 	}
 	for needle, msg := range checks {
 		if !strings.Contains(content, needle) {
@@ -147,7 +124,6 @@ func TestKustomizeConfig_PatchesAreDisabledByDefault(t *testing.T) {
 
 	lines := strings.Split(string(data), "\n")
 	assertPatchDisabledByDefault(t, lines, "manager_auth_proxy_patch.yaml")
-	assertPatchDisabledByDefault(t, lines, "manager_auth_proxy_service_patch.yaml")
 }
 
 func assertPatchDisabledByDefault(t *testing.T, lines []string, patchName string) {
