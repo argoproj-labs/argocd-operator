@@ -13,19 +13,6 @@ spec:
       - name: manager
         args:
         - "--health-probe-bind-address=:8081"
-        - "--metrics-bind-address=:8443"
+        - "--metrics-bind-address=:8080"
         - "--metrics-secure"
         - "--leader-elect"
-        ports:
-        - containerPort: 8443
-          protocol: TCP
-          name: https
-        securityContext:
-          capabilities:
-            drop:
-            - ALL
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
-          seccompProfile:
-            type: RuntimeDefault
