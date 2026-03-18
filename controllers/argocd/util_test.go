@@ -646,7 +646,7 @@ func TestGetArgoApplicationContainerEnv(t *testing.T) {
 				},
 			}},
 		{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "60s", ValueFrom: (*corev1.EnvVarSource)(nil)},
-		{Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST", ValueFrom: &corev1.EnvVarSource{
+		{Name: "ARGOCD_APPLICATION_CONTROLLER_PERSIST_RESOURCE_HEALTH", ValueFrom: &corev1.EnvVarSource{
 			ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
 				Key:                  "controller.resource.health.persist",
