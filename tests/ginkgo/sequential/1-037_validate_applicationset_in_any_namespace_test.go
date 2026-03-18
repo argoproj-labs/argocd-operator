@@ -690,7 +690,12 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				Skip("Operator ClusterRole has no namespaces list verb to revoke")
 			}
 			clusterroleFixture.Update(operatorClusterRole, func(cr *rbacv1.ClusterRole) { cr.Rules = modifiedRules })
-			defer clusterroleFixture.Update(operatorClusterRole, func(cr *rbacv1.ClusterRole) { cr.Rules = originalRules })
+			rbacRestored := false
+			defer func() {
+				if !rbacRestored {
+					clusterroleFixture.Update(operatorClusterRole, func(cr *rbacv1.ClusterRole) { cr.Rules = originalRules })
+				}
+			}()
 
 			By("creating Argo CD with ApplicationSet and source namespaces")
 			argocdNS, cleanupArgocd := fixture.CreateNamespaceWithCleanupFunc("appset-argocd-err")
@@ -723,6 +728,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			By("restoring operator list namespaces permission")
 			clusterroleFixture.Update(operatorClusterRole, func(cr *rbacv1.ClusterRole) { cr.Rules = originalRules })
+			rbacRestored = true
 
 			By("verifying retry creates deployment with --applicationset-namespaces")
 			Eventually(appsetDeployment, "2m", "5s").Should(k8sFixture.ExistByName())
