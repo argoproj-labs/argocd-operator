@@ -44,8 +44,15 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 	Context("1-046_validate_application_tracking", func() {
 
 		var (
-			k8sClient client.Client
-			ctx       context.Context
+			k8sClient              client.Client
+			ctx                    context.Context
+			cleanupfuncs           []func()
+			test_1_046_argocd_1_NS *corev1.Namespace
+			test_1_046_argocd_2_NS *corev1.Namespace
+			test_1_046_argocd_3_NS *corev1.Namespace
+			source_ns_1_NS         *corev1.Namespace
+			source_ns_2_NS         *corev1.Namespace
+			source_ns_3_NS         *corev1.Namespace
 		)
 
 		BeforeEach(func() {
@@ -53,29 +60,41 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			k8sClient, _ = fixtureUtils.GetE2ETestKubeClient()
 			ctx = context.Background()
+			cleanupfuncs = make([]func(), 0)
+		})
 
+		AfterEach(func() {
+			defer func() {
+				for _, cleanupfunc := range cleanupfuncs {
+					cleanupfunc()
+				}
+			}()
+
+			fixture.OutputDebugOnFail(test_1_046_argocd_1_NS, test_1_046_argocd_2_NS, test_1_046_argocd_3_NS, source_ns_1_NS, source_ns_2_NS, source_ns_3_NS)
 		})
 
 		It("verifies that when .spec.installationID is set, that value is set on Argo CD ConfigMap, and that installationID is also set on resources deployed by that Argo CD instance, and that .spec.resourceTrackingMethod is defined on that Argo CD instance", func() {
 
 			By("creating namespaces which will contain Argo CD instances and which will be deployed to by Argo CD ")
-			test_1_046_argocd_1_NS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("test-1-046-argocd-1")
-			defer cleanupFunc()
+			var cleanupFunc func()
 
-			test_1_046_argocd_2_NS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("test-1-046-argocd-2")
-			defer cleanupFunc()
+			test_1_046_argocd_1_NS, cleanupFunc = fixture.CreateNamespaceWithCleanupFunc("test-1-046-argocd-1")
+			cleanupfuncs = append(cleanupfuncs, cleanupFunc)
 
-			test_1_046_argocd_3_NS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("test-1-046-argocd-3")
-			defer cleanupFunc()
+			test_1_046_argocd_2_NS, cleanupFunc = fixture.CreateNamespaceWithCleanupFunc("test-1-046-argocd-2")
+			cleanupfuncs = append(cleanupfuncs, cleanupFunc)
 
-			source_ns_1_NS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("source-ns-1")
-			defer cleanupFunc()
+			test_1_046_argocd_3_NS, cleanupFunc = fixture.CreateNamespaceWithCleanupFunc("test-1-046-argocd-3")
+			cleanupfuncs = append(cleanupfuncs, cleanupFunc)
 
-			source_ns_2_NS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("source-ns-2")
-			defer cleanupFunc()
+			source_ns_1_NS, cleanupFunc = fixture.CreateNamespaceWithCleanupFunc("source-ns-1")
+			cleanupfuncs = append(cleanupfuncs, cleanupFunc)
 
-			source_ns_3_NS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("source-ns-3")
-			defer cleanupFunc()
+			source_ns_2_NS, cleanupFunc = fixture.CreateNamespaceWithCleanupFunc("source-ns-2")
+			cleanupfuncs = append(cleanupfuncs, cleanupFunc)
+
+			source_ns_3_NS, cleanupFunc = fixture.CreateNamespaceWithCleanupFunc("source-ns-3")
+			cleanupfuncs = append(cleanupfuncs, cleanupFunc)
 
 			By("creating first Argo CD instance, with installationID 'instance-1', and annotation+label tracking")
 			argocd_1 := &argov1beta1api.ArgoCD{
