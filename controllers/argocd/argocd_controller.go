@@ -64,7 +64,7 @@ type LocalUsersInfo struct {
 
 	// Protects access to the token renewal timers and the K8S resources that
 	// get updated as part of renewing the user tokens
-	// - Ensure this lock is acquired before accessing `tokenRenewalTimers``, or modifying local user Secret
+	// - Ensure this lock is acquired before accessing `tokenRenewalTimers`, or modifying local user Secret
 	// - In most cases, this will be be automatically acquired by 'reconcileLocalUsers'
 	lock sync.Mutex
 }

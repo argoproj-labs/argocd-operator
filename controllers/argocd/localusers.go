@@ -543,38 +543,44 @@ func (r *ReconcileArgoCD) cleanupLocalUsers(ctx context.Context, cr argoproj.Arg
 	return nil
 }
 
-// cleanupLocalUser deleted the local user secret, and removes the token from argocd-secret Secret
+// cleanupLocalUser removes the token from argocd-secret and deletes the local user secret.
+//
+// The argocd-secret token is removed first so that if it fails, the user
+// secret still exists for cleanupLocalUsers to discover on the next
+// reconciliation. The reverse order could orphan a token entry in
+// argocd-secret when the secret deletion succeeds but the update fails,
+// because cleanupLocalUsers finds users to clean up by listing their
+// secrets.
+//
 // - LocalUsers lock should be owned when calling this
 func (r *ReconcileArgoCD) cleanupLocalUser(ctx context.Context, cr argoproj.ArgoCD, userName string, localUserSecret *corev1.Secret) error {
+
+	if !strings.Contains(cr.Spec.ExtraConfig["accounts."+userName], localUserApiKey) {
+		// Remove token from Secret 'argocd-secret'
+		argoCDSecret := corev1.Secret{}
+		if err := r.Get(ctx, types.NamespacedName{Name: common.ArgoCDSecretName, Namespace: cr.Namespace}, &argoCDSecret); err != nil {
+			return err
+		}
+
+		key := fmt.Sprintf("accounts.%s.tokens", userName)
+		if _, ok := argoCDSecret.Data[key]; ok {
+			argoutil.LogResourceUpdate(log, &argoCDSecret, "deleting token for local user", userName)
+			delete(argoCDSecret.Data, key)
+			if err := r.Update(ctx, &argoCDSecret); err != nil {
+				return err
+			}
+		}
+	} else {
+		log.Info("Not removing token from argocd-secret, user is defined in extraConfig with apiKey", "localUserName", userName)
+	}
 
 	if localUserSecret != nil {
 		if err := r.Delete(ctx, localUserSecret); err != nil {
 			if !apierrors.IsNotFound(err) {
 				return err
 			}
-			// No Secret to delete, so continue...
 		} else {
 			argoutil.LogResourceDeletion(log, localUserSecret, "deleted secret for local user secret for user", userName)
-		}
-	}
-
-	// Don't delete the token from the argocd-secret if the user is in extraConfig and using an apiKey
-	if strings.Contains(cr.Spec.ExtraConfig["accounts."+userName], localUserApiKey) {
-		log.Info("Not removing token from argocd-secret, user is defined in extraConfig with apiKey", "localUserName", userName)
-		return nil
-	}
-
-	argoCDSecret := corev1.Secret{}
-	if err := r.Get(ctx, types.NamespacedName{Name: common.ArgoCDSecretName, Namespace: cr.Namespace}, &argoCDSecret); err != nil {
-		return err
-	}
-
-	key := fmt.Sprintf("accounts.%s.tokens", userName)
-	if _, ok := argoCDSecret.Data[key]; ok {
-		argoutil.LogResourceUpdate(log, &argoCDSecret, "deleting token for local user", userName)
-		delete(argoCDSecret.Data, key)
-		if err := r.Update(ctx, &argoCDSecret); err != nil {
-			return err
 		}
 	}
 
