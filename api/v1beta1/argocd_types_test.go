@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/api"
 )
 
 func Test_ArgoCD_ApplicationInstanceLabelKey(t *testing.T) {
@@ -13,7 +13,7 @@ func Test_ArgoCD_ApplicationInstanceLabelKey(t *testing.T) {
 	cr.Spec.ApplicationInstanceLabelKey = "my.corp/instance"
 	assert.Equal(t, cr.ApplicationInstanceLabelKey(), "my.corp/instance")
 	cr = &ArgoCD{}
-	assert.Equal(t, cr.ApplicationInstanceLabelKey(), common.ArgoCDDefaultApplicationInstanceLabelKey)
+	assert.Equal(t, cr.ApplicationInstanceLabelKey(), api.ArgoCDDefaultApplicationInstanceLabelKey)
 }
 
 func Test_ResourceTrackingMethodToString(t *testing.T) {

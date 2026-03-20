@@ -12,7 +12,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
 
-	v1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 type argoCDAlphaOpt func(*ArgoCD)
@@ -797,7 +797,6 @@ func TestAlphaToBetaConversion(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-
 			// Set v1beta1 object in Hub, converted values will be set in this object.
 			var hub conversion.Hub = &v1beta1.ArgoCD{}
 
@@ -1178,7 +1177,6 @@ func TestBetaToAlphaConversion(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-
 			// Add input v1beta1 object in Hub
 			var hub conversion.Hub = test.input
 
