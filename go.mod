@@ -3,7 +3,7 @@ module github.com/argoproj-labs/argocd-operator
 go 1.25.5
 
 require (
-	github.com/argoproj/argo-cd/v3 v3.3.3
+	github.com/argoproj/argo-cd/v3 v3.3.4
 	github.com/argoproj/gitops-engine v0.7.1-0.20251217140045-5baed5604d2d
 	github.com/cert-manager/cert-manager v1.20.0
 	github.com/go-logr/logr v1.4.3
@@ -199,7 +199,7 @@ require (
 )
 
 replace (
-	// This replace block is from Argo CD v3.3.0 go.mod
+	// This replace block is from Argo CD v3.3.4 go.mod
 	github.com/golang/protobuf => github.com/golang/protobuf v1.5.4
 	github.com/grpc-ecosystem/grpc-gateway => github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	golang.org/x/tools => golang.org/x/tools v0.35.0
@@ -210,7 +210,6 @@ replace (
 	// Avoid CVE-2022-28948
 	gopkg.in/yaml.v3 => gopkg.in/yaml.v3 v3.0.1
 
-	// This replace block is from Argo CD v3.3.0 go.mod
 	k8s.io/api => k8s.io/api v0.34.0
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.34.0
 	k8s.io/apimachinery => k8s.io/apimachinery v0.34.0
