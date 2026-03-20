@@ -69,5 +69,6 @@ replace (
 	// This replace block is from Argo CD v3.3.0 go.mod
 	k8s.io/api => k8s.io/api v0.34.0
 	k8s.io/apimachinery => k8s.io/apimachinery v0.34.0
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.34.0
 	k8s.io/client-go => k8s.io/client-go v0.34.0
 )

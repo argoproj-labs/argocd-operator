@@ -13,10 +13,7 @@ const (
 
 	// ArgoCDTrackedByOperatorLabel for resources tracked by the operator
 	ArgoCDTrackedByOperatorLabel = "operator.argoproj.io/tracked-by"
-
-	// ArgoCDSecretTypeLabel is needed for cluster secrets
-	ArgoCDSecretTypeLabel = "argocd.argoproj.io/secret-type"
-
+	
 	// Label Selector is an env variable for ArgoCD instance reconcilliation.
 	ArgoCDLabelSelectorKey = "ARGOCD_LABEL_SELECTOR"
 
