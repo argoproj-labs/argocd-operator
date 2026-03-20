@@ -246,4 +246,4 @@ replace (
 	k8s.io/sample-controller => k8s.io/sample-controller v0.34.0
 )
 
-replace	github.com/argoproj-labs/argocd-operator/api => ./api
+replace github.com/argoproj-labs/argocd-operator/api => ./api

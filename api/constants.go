@@ -27,10 +27,3 @@ const (
 	// ArgoCDDefaultLabelSelector is the default Label Selector which will reconcile all ArgoCD instances.
 	ArgoCDDefaultLabelSelector = ""
 )
-
-// DefaultNodeSelector returns the default nodeSelector for ArgoCD workloads
-func DefaultNodeSelector() map[string]string {
-	return map[string]string{
-		"kubernetes.io/os": "linux",
-	}
-}
