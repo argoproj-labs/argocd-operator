@@ -20,13 +20,12 @@ import (
 	"strings"
 
 	routev1 "github.com/openshift/api/route/v1"
-
-	"github.com/argoproj-labs/argocd-operator/common"
-
 	autoscaling "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/argoproj-labs/argocd-operator/api"
 )
 
 func init() {
@@ -79,7 +78,6 @@ type ArgoCDApplicationControllerProcessorsSpec struct {
 
 // ArgoCDApplicationControllerSpec defines the options for the ArgoCD Application Controller component.
 type ArgoCDApplicationControllerSpec struct {
-
 	// InitContainers defines the list of initialization containers for the Application Controller component.
 	InitContainers []corev1.Container `json:"initContainers,omitempty"`
 
@@ -145,7 +143,6 @@ func (a *ArgoCDApplicationControllerSpec) IsEnabled() bool {
 
 // ArgoCDApplicationControllerShardSpec defines the options available for enabling sharding for the Application Controller component.
 type ArgoCDApplicationControllerShardSpec struct {
-
 	// Enabled defines whether sharding should be enabled on the Application Controller component.
 	Enabled bool `json:"enabled,omitempty"`
 
@@ -169,7 +166,6 @@ type ArgoCDApplicationControllerShardSpec struct {
 
 // ArgoCDApplicationSet defines whether the Argo CD ApplicationSet controller should be installed.
 type ArgoCDApplicationSet struct {
-
 	// Env lets you specify environment for applicationSet controller pods
 	Env []corev1.EnvVar `json:"env,omitempty"`
 
@@ -404,7 +400,6 @@ type ArgoCDList struct {
 
 // ArgoCDNotifications defines whether the Argo CD Notifications controller should be installed.
 type ArgoCDNotifications struct {
-
 	// Replicas defines the number of replicas to run for notifications-controller
 	Replicas *int32 `json:"replicas,omitempty"`
 
@@ -527,7 +522,6 @@ func (a *ArgoCDRedisSpec) IsRemote() bool {
 
 // ArgoCDRepoSpec defines the desired state for the Argo CD repo server component.
 type ArgoCDRepoSpec struct {
-
 	// Extra Command arguments allows users to pass command line arguments to repo server workload. They get added to default command line arguments provided
 	// by the operator.
 	// Please note that the command line arguments provided as part of ExtraRepoCommandArgs will not overwrite the default command line arguments.
@@ -879,7 +873,6 @@ func (a *ArgoCDNetworkPolicySpec) IsEnabled() bool {
 // +k8s:openapi-gen=true
 // +kubebuilder:validation:XValidation:rule="!(has(self.sso) && has(self.oidcConfig))",message="spec.sso and spec.oidcConfig cannot both be set"
 type ArgoCDSpec struct {
-
 	// ArgoCDApplicationSet defines whether the Argo CD ApplicationSet controller should be installed.
 	ApplicationSet *ArgoCDApplicationSet `json:"applicationSet,omitempty"`
 
@@ -1206,7 +1199,6 @@ type SSHHostsSpec struct {
 
 // WebhookServerSpec defines the options for the ApplicationSet Webhook Server component.
 type WebhookServerSpec struct {
-
 	// Host is the hostname to use for Ingress/Route resources.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Host",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server","urn:alm:descriptor:com.tectonic.ui:text"}
 	Host string `json:"host,omitempty"`
@@ -1241,7 +1233,6 @@ const (
 )
 
 type ArgoCDAgentSpec struct {
-
 	// Principal defines configurations for the Principal component of Argo CD Agent.
 	Principal *PrincipalSpec `json:"principal,omitempty"`
 
@@ -1250,7 +1241,6 @@ type ArgoCDAgentSpec struct {
 }
 
 type PrincipalSpec struct {
-
 	// Enabled is the flag to enable the Principal component during Argo CD installation. (optional, default `false`)
 	Enabled *bool `json:"enabled,omitempty"`
 
@@ -1308,7 +1298,6 @@ type PrincipalServerSpec struct {
 }
 
 type PrincipalRedisSpec struct {
-
 	// ServerAddress is the address of the Redis server to be used by the Principal component.
 	ServerAddress string `json:"serverAddress,omitempty"`
 
@@ -1317,7 +1306,6 @@ type PrincipalRedisSpec struct {
 }
 
 type PrincipalJWTSpec struct {
-
 	// InsecureGenerate is the flag to allow the principal to generate its own private key for signing JWT tokens (insecure).
 	InsecureGenerate *bool `json:"insecureGenerate,omitempty"`
 
@@ -1326,7 +1314,6 @@ type PrincipalJWTSpec struct {
 }
 
 type PrincipalNamespaceSpec struct {
-
 	// AllowedNamespaces is a list of namespaces the principal shall watch and process Argo CD resources in.
 	AllowedNamespaces []string `json:"allowedNamespaces,omitempty"`
 
@@ -1341,7 +1328,6 @@ type PrincipalNamespaceSpec struct {
 }
 
 type PrincipalResourceProxySpec struct {
-
 	// SecretName is the name of the secret containing the TLS certificate and key for the resource proxy.
 	SecretName string `json:"secretName,omitempty"`
 
@@ -1350,7 +1336,6 @@ type PrincipalResourceProxySpec struct {
 }
 
 type PrincipalTLSSpec struct {
-
 	// SecretName is The name of the secret containing the TLS certificate and key.
 	SecretName string `json:"secretName,omitempty"`
 
@@ -1380,7 +1365,6 @@ func (a *PrincipalSpec) IsEnabled() bool {
 }
 
 type AgentSpec struct {
-
 	// Enabled is the flag to enable the Agent component during Argo CD installation. (optional, default `false`)
 	Enabled *bool `json:"enabled,omitempty"`
 
@@ -1440,7 +1424,6 @@ func (d *DestinationBasedMappingSpec) IsCreateNamespaceEnabled() bool {
 }
 
 type AgentClientSpec struct {
-
 	// PrincipalServerAddress is the remote address of the principal server to connect to.
 	PrincipalServerAddress string `json:"principalServerAddress,omitempty"`
 
@@ -1461,13 +1444,11 @@ type AgentClientSpec struct {
 }
 
 type AgentRedisSpec struct {
-
 	// ServerAddress is the address of the Redis server to be used by the PrincAgentipal component.
 	ServerAddress string `json:"serverAddress,omitempty"`
 }
 
 type AgentTLSSpec struct {
-
 	// SecretName is the name of the secret containing the agent client TLS certificate
 	SecretName string `json:"secretName,omitempty"`
 
@@ -1485,7 +1466,7 @@ func (a *AgentSpec) IsEnabled() bool {
 // IsDeletionFinalizerPresent checks if the instance has deletion finalizer
 func (argocd *ArgoCD) IsDeletionFinalizerPresent() bool {
 	for _, finalizer := range argocd.GetFinalizers() {
-		if finalizer == common.ArgoCDDeletionFinalizer {
+		if finalizer == api.ArgoCDDeletionFinalizer {
 			return true
 		}
 	}
@@ -1517,7 +1498,7 @@ func (a *ArgoCD) ApplicationInstanceLabelKey() string {
 	if a.Spec.ApplicationInstanceLabelKey != "" {
 		return a.Spec.ApplicationInstanceLabelKey
 	} else {
-		return common.ArgoCDDefaultApplicationInstanceLabelKey
+		return api.ArgoCDDefaultApplicationInstanceLabelKey
 	}
 }
 
