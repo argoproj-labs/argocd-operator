@@ -3,7 +3,7 @@ module github.com/argoproj-labs/argocd-operator
 go 1.25.5
 
 require (
-	github.com/argoproj-labs/argocd-operator/api v0.19.0
+	github.com/argoproj-labs/argocd-operator/api v0.1.0
 	github.com/argoproj/argo-cd/v3 v3.3.3
 	github.com/argoproj/gitops-engine v0.7.1-0.20251217140045-5baed5604d2d
 	github.com/cert-manager/cert-manager v1.20.0
