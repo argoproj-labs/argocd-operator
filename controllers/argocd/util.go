@@ -825,7 +825,7 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *
 	}
 
 	log.Info("reconciling local users")
-	if err := r.reconcileLocalUsers(cr); err != nil {
+	if err := r.reconcileLocalUsers(*cr); err != nil {
 		return err
 	}
 
