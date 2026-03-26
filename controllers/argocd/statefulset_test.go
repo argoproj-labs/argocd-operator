@@ -410,7 +410,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 			},
 			replicas: 1,
 			vars: []corev1.EnvVar{
-				{Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST", ValueFrom: &corev1.EnvVarSource{
+				{Name: "ARGOCD_APPLICATION_CONTROLLER_PERSIST_RESOURCE_HEALTH", ValueFrom: &corev1.EnvVarSource{
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
 						Key:                  "controller.resource.health.persist",
@@ -442,13 +442,13 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 			},
 			replicas: 1,
 			vars: []corev1.EnvVar{
-				{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "1"},
-				{Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST", ValueFrom: &corev1.EnvVarSource{
+				{Name: "ARGOCD_APPLICATION_CONTROLLER_PERSIST_RESOURCE_HEALTH", ValueFrom: &corev1.EnvVarSource{
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
 						Key:                  "controller.resource.health.persist",
 					},
 				}},
+				{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "1"},
 				{Name: "ARGOCD_RECONCILIATION_TIMEOUT", ValueFrom: &corev1.EnvVarSource{
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDConfigMapName},
@@ -475,13 +475,13 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 			},
 			replicas: 3,
 			vars: []corev1.EnvVar{
-				{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "3"},
-				{Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST", ValueFrom: &corev1.EnvVarSource{
+				{Name: "ARGOCD_APPLICATION_CONTROLLER_PERSIST_RESOURCE_HEALTH", ValueFrom: &corev1.EnvVarSource{
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
 						Key:                  "controller.resource.health.persist",
 					},
 				}},
+				{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "3"},
 				{Name: "ARGOCD_RECONCILIATION_TIMEOUT", ValueFrom: &corev1.EnvVarSource{
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDConfigMapName},
@@ -510,13 +510,13 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 			},
 			replicas: 2,
 			vars: []corev1.EnvVar{
-				{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "2"},
-				{Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST", ValueFrom: &corev1.EnvVarSource{
+				{Name: "ARGOCD_APPLICATION_CONTROLLER_PERSIST_RESOURCE_HEALTH", ValueFrom: &corev1.EnvVarSource{
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
 						Key:                  "controller.resource.health.persist",
 					},
 				}},
+				{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "2"},
 				{Name: "ARGOCD_RECONCILIATION_TIMEOUT", ValueFrom: &corev1.EnvVarSource{
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDConfigMapName},
@@ -581,7 +581,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 func TestReconcileArgoCD_reconcileApplicationController_withAppSync(t *testing.T) {
 
 	expectedEnv := []corev1.EnvVar{
-		{Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST", ValueFrom: &corev1.EnvVarSource{
+		{Name: "ARGOCD_APPLICATION_CONTROLLER_PERSIST_RESOURCE_HEALTH", ValueFrom: &corev1.EnvVarSource{
 			ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
 				Key:                  "controller.resource.health.persist",
@@ -634,7 +634,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withAppSync(t *testing.T
 func TestReconcileArgoCD_reconcileApplicationController_withEnv(t *testing.T) {
 
 	expectedEnv := []corev1.EnvVar{
-		{Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST", ValueFrom: &corev1.EnvVarSource{
+		{Name: "ARGOCD_APPLICATION_CONTROLLER_PERSIST_RESOURCE_HEALTH", ValueFrom: &corev1.EnvVarSource{
 			ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
 				Key:                  "controller.resource.health.persist",
