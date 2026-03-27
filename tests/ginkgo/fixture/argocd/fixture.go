@@ -27,12 +27,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// ArgoCDSession holds the authentication details for an Argo CD server.
-type ArgoCDSession struct {
-	Endpoint string
-	Token    string
-}
-
 // Update will update an ArgoCD CR. Update will keep trying to update object until it succeeds, or times out.
 func Update(obj *argov1beta1api.ArgoCD, modify func(*argov1beta1api.ArgoCD)) {
 	k8sClient, _ := utils.GetE2ETestKubeClient()
@@ -215,9 +209,12 @@ func fetchArgoCD(f func(*argov1beta1api.ArgoCD) bool) matcher.GomegaMatcher {
 
 }
 
+// RunArgoCDCLI runs the argocd CLI in core mode, which uses the kubeconfig
+// for authentication instead of connecting to the ArgoCD API server.
 func RunArgoCDCLI(args ...string) (string, error) {
 
 	cmdArgs := append([]string{"argocd"}, args...)
+	cmdArgs = append(cmdArgs, "--core")
 
 	GinkgoWriter.Println("executing command", cmdArgs)
 
@@ -228,33 +225,6 @@ func RunArgoCDCLI(args ...string) (string, error) {
 	GinkgoWriter.Println(string(output))
 
 	return string(output), err
-}
-
-// LoginToArgoCDServer authenticates to the Argo CD API server using the CLI and returns a session.
-func LoginToArgoCDServer(argoServerEndpoint string, password string) (*ArgoCDSession, error) {
-	// Use argocd CLI to login and get the token
-	output, err := RunArgoCDCLI("login", argoServerEndpoint,
-		"--username", "admin",
-		"--password", password,
-		"--insecure",
-	)
-	if err != nil {
-		return nil, fmt.Errorf("argocd login failed: %v, output: %s", err, output)
-	}
-
-	// Get the auth token from the CLI config
-	tokenOutput, err := RunArgoCDCLI("account", "generate-token",
-		"--server", argoServerEndpoint,
-		"--insecure",
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate token: %v, output: %s", err, tokenOutput)
-	}
-
-	return &ArgoCDSession{
-		Endpoint: argoServerEndpoint,
-		Token:    strings.TrimSpace(tokenOutput),
-	}, nil
 }
 
 // GetSessionToken authenticates to the Argo CD API server via HTTP and returns a session token.
