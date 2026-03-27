@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/tls"
 	"fmt"
 	"hash"
 	"reflect"
@@ -220,7 +221,12 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 		repoServerVolumeMounts = append(repoServerVolumeMounts, cr.Spec.Repo.VolumeMounts...)
 	}
 
+	arguments, error := buildTLSArgs(cr.Spec.Repo.TlsConfig)
+	if error != nil {
+		return error
+	}
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
+		Args:            arguments,
 		Command:         getArgoRepoCommand(cr, useTLSForRedis),
 		Image:           getRepoServerContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
@@ -406,6 +412,19 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 		desiredImage := getRepoServerContainerImage(cr)
 		actualImagePullPolicy := existing.Spec.Template.Spec.Containers[0].ImagePullPolicy
 		desiredImagePullPolicy := argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy)
+		actualArgs := existing.Spec.Template.Spec.Containers[0].Args
+		desiredArgs, err := buildTLSArgs(cr.Spec.Repo.TlsConfig)
+		if err != nil {
+			return err
+		}
+		if !reflect.DeepEqual(actualArgs, desiredArgs) {
+			existing.Spec.Template.Spec.Containers[0].Args = desiredArgs
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container args"
+			changed = true
+		}
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
 			if existing.Spec.Template.Labels == nil {
@@ -574,6 +593,117 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 	}
 	argoutil.LogResourceCreation(log, deploy)
 	return r.Create(context.TODO(), deploy)
+}
+
+var supportedTLSVersions = map[string]uint16{
+	"1.1": tls.VersionTLS11,
+	"1.2": tls.VersionTLS12,
+	"1.3": tls.VersionTLS13,
+}
+
+func TLSVersionName(version uint16) string {
+	for name, v := range supportedTLSVersions {
+		if v == version {
+			return name
+		}
+	}
+	return fmt.Sprintf("unknown (0x%04x)", version)
+}
+
+func ParseTLSVersion(v string) (uint16, error) {
+	if v == "" {
+		return 0, nil
+	}
+	if val, ok := supportedTLSVersions[v]; ok {
+		return val, nil
+	}
+	return 0, fmt.Errorf("unsupported TLS version: %s", v)
+}
+
+func ValidateTLSConfig(minVersion, maxVersion uint16, cipherSuites string) error {
+	if minVersion != 0 && maxVersion != 0 && minVersion > maxVersion {
+		return fmt.Errorf(
+			"minimum TLS version (%s) cannot be higher than maximum TLS version (%s)",
+			TLSVersionName(minVersion), TLSVersionName(maxVersion),
+		)
+	}
+	if cipherSuites == "" {
+		return nil
+	}
+	cipherList := strings.Split(cipherSuites, ":")
+
+	available := tls.CipherSuites()
+	cipherMap := make(map[string]*tls.CipherSuite)
+
+	for _, cs := range available {
+		cipherMap[cs.Name] = cs
+	}
+	for _, name := range cipherList {
+		name = strings.TrimSpace(name)
+		cs, ok := cipherMap[name]
+		if !ok {
+			return fmt.Errorf("unsupported cipher suite: %s", name)
+		}
+		// TLS 1.3 ciphers don’t need validation
+		if minVersion == tls.VersionTLS13 {
+			continue
+		}
+		supported := false
+		for _, v := range cs.SupportedVersions {
+			if (minVersion == 0 || v >= minVersion) &&
+				(maxVersion == 0 || v <= maxVersion) {
+				supported = true
+				break
+			}
+		}
+		if !supported {
+			return fmt.Errorf("cipher suite %s is not compatible with TLS versions [%s - %s]", name, TLSVersionName(minVersion), TLSVersionName(maxVersion))
+		}
+	}
+	return nil
+}
+
+func buildTLSArgs(tls *argocdoperatorv1beta1.ArgoCDTlsConfig) ([]string, error) {
+	const (
+		defaultMinVersion = "1.3"
+		defaultMaxVersion = "1.3"
+	)
+	if tls == nil {
+		return []string{
+			"--tlsminversion", defaultMinVersion,
+			"--tlsmaxversion", defaultMaxVersion,
+		}, nil
+	}
+	minVer, err := ParseTLSVersion(tls.MinVersion)
+	if err != nil {
+		return nil, fmt.Errorf("invalid min TLS version: %w", err)
+	}
+	maxVer, err := ParseTLSVersion(tls.MaxVersion)
+	if err != nil {
+		return nil, fmt.Errorf("invalid max TLS version: %w", err)
+	}
+	if err := ValidateTLSConfig(minVer, maxVer, tls.CipherSuites); err != nil {
+		return nil, fmt.Errorf("invalid TLS configuration: %w", err)
+	}
+	min := tls.MinVersion
+	if min == "" {
+		min = defaultMinVersion
+	}
+	max := tls.MaxVersion
+	if max == "" {
+		max = defaultMaxVersion
+	}
+	args := []string{
+		"--tlsminversion", min,
+		"--tlsmaxversion", max,
+	}
+
+	if tls.CipherSuites != "" {
+		args = append(args,
+			"--tlsciphers", tls.CipherSuites,
+		)
+	}
+	return args, nil
 }
 
 // injectCATrustToContainers Creates the init container and volumes to trust CAs specified by `spec.repo.systemCATrust`.
