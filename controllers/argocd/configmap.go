@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -606,33 +607,23 @@ func (r *ReconcileArgoCD) reconcileRBAC(cr *argoproj.ArgoCD) error {
 
 // reconcileRBACConfigMap will ensure that the RBAC ConfigMap is syncronized with the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argoproj.ArgoCD) error {
-	changed := false
-	explanation := ""
+	var changes []string
 	// Policy CSV
 	if cr.Spec.RBAC.Policy != nil && cm.Data[common.ArgoCDKeyRBACPolicyCSV] != *cr.Spec.RBAC.Policy {
 		cm.Data[common.ArgoCDKeyRBACPolicyCSV] = *cr.Spec.RBAC.Policy
-		explanation = "rbac policy"
-		changed = true
+		changes = append(changes, "rbac policy")
 	}
 
 	// Default Policy
 	if cr.Spec.RBAC.DefaultPolicy != nil && cm.Data[common.ArgoCDKeyRBACPolicyDefault] != *cr.Spec.RBAC.DefaultPolicy {
 		cm.Data[common.ArgoCDKeyRBACPolicyDefault] = *cr.Spec.RBAC.DefaultPolicy
-		if changed {
-			explanation += ", "
-		}
-		explanation += " rbac default policy"
-		changed = true
+		changes = append(changes, "rbac default policy")
 	}
 
 	// Default Policy Matcher Mode
 	if cr.Spec.RBAC.PolicyMatcherMode != nil && cm.Data[common.ArgoCDPolicyMatcherMode] != *cr.Spec.RBAC.PolicyMatcherMode {
 		cm.Data[common.ArgoCDPolicyMatcherMode] = *cr.Spec.RBAC.PolicyMatcherMode
-		if changed {
-			explanation += ", "
-		}
-		explanation += "rbac policy matcher mode"
-		changed = true
+		changes = append(changes, "rbac policy matcher mode")
 	}
 
 	// Scopes
@@ -641,11 +632,7 @@ func (r *ReconcileArgoCD) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argop
 			log.Info("Keycloak SSO provider is no longer supported. RBAC scopes configuration is ignored.")
 		} else {
 			cm.Data[common.ArgoCDKeyRBACScopes] = *cr.Spec.RBAC.Scopes
-			if changed {
-				explanation += ", "
-			}
-			explanation += "rbac scopes"
-			changed = true
+			changes = append(changes, "rbac scopes")
 		}
 	}
 
@@ -657,12 +644,11 @@ func (r *ReconcileArgoCD) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argop
 	}
 
 	if ownerRefChanged {
-		explanation += ", owner reference"
-		changed = true
+		changes = append(changes, "owner reference")
 	}
 
-	if changed {
-		argoutil.LogResourceUpdate(log, cm, "updating", explanation)
+	if len(changes) > 0 {
+		argoutil.LogResourceUpdate(log, cm, "updating", strings.Join(changes, ", "))
 		// TODO: Reload server (and dex?) if RBAC settings change?
 		return r.Update(context.TODO(), cm)
 	}

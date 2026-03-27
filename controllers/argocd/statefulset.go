@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -439,89 +440,51 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 		}
 
 		desiredImage := getRedisHAContainerImage(cr)
-		changed := false
-		explanation := ""
-		updateNodePlacementStateful(existing, ss, &changed, &explanation)
+		changes := updateNodePlacementStateful(existing, ss)
 		for i, container := range existing.Spec.Template.Spec.Containers {
 			if container.Image != desiredImage {
 				existing.Spec.Template.Spec.Containers[i].Image = getRedisHAContainerImage(cr)
 				existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-				if changed {
-					explanation += ", "
-				}
-				explanation += fmt.Sprintf("container '%s' image", container.Name)
-				changed = true
+				changes = append(changes, fmt.Sprintf("container '%s' image", container.Name))
 			}
 			if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[i].VolumeMounts, existing.Spec.Template.Spec.Containers[i].VolumeMounts) {
 				existing.Spec.Template.Spec.Containers[i].VolumeMounts = ss.Spec.Template.Spec.Containers[i].VolumeMounts
-				if changed {
-					explanation += ", "
-				}
-				explanation += fmt.Sprintf("container '%s' VolumeMounts", container.Name)
-				changed = true
+				changes = append(changes, fmt.Sprintf("container '%s' VolumeMounts", container.Name))
 			}
 			if existing.Spec.Template.Spec.Containers[i].ImagePullPolicy != ss.Spec.Template.Spec.Containers[i].ImagePullPolicy {
 				existing.Spec.Template.Spec.Containers[0].ImagePullPolicy = ss.Spec.Template.Spec.Containers[i].ImagePullPolicy
-				if changed {
-					explanation += ", "
-				}
-				explanation += "image pull policy"
-				changed = true
+				changes = append(changes, "image pull policy")
 			}
 
 			if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[i].Resources, existing.Spec.Template.Spec.Containers[i].Resources) {
 				existing.Spec.Template.Spec.Containers[i].Resources = ss.Spec.Template.Spec.Containers[i].Resources
-				if changed {
-					explanation += ", "
-				}
-				explanation += fmt.Sprintf("container '%s' resources", container.Name)
-				changed = true
+				changes = append(changes, fmt.Sprintf("container '%s' resources", container.Name))
 			}
 
 			if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[i].SecurityContext, existing.Spec.Template.Spec.Containers[i].SecurityContext) {
 				existing.Spec.Template.Spec.Containers[i].SecurityContext = ss.Spec.Template.Spec.Containers[i].SecurityContext
-				if changed {
-					explanation += ", "
-				}
-				explanation += fmt.Sprintf("container '%s' security context", container.Name)
-				changed = true
+				changes = append(changes, fmt.Sprintf("container '%s' security context", container.Name))
 			}
 
 			if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[i].Env, existing.Spec.Template.Spec.Containers[i].Env) {
 				existing.Spec.Template.Spec.Containers[i].Env = ss.Spec.Template.Spec.Containers[i].Env
-				if changed {
-					explanation += ", "
-				}
-				explanation += fmt.Sprintf("container '%s' env", container.Name)
-				changed = true
+				changes = append(changes, fmt.Sprintf("container '%s' env", container.Name))
 			}
 		}
 		if !reflect.DeepEqual(ss.Spec.Template.Spec.SecurityContext, existing.Spec.Template.Spec.SecurityContext) {
 			existing.Spec.Template.Spec.SecurityContext = ss.Spec.Template.Spec.SecurityContext
-			if changed {
-				explanation += ", "
-			}
-			explanation += "security context"
-			changed = true
+			changes = append(changes, "security context")
 		}
 		if !reflect.DeepEqual(ss.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
 			existing.Spec.Template.Spec.Volumes = ss.Spec.Template.Spec.Volumes
-			if changed {
-				explanation += ", "
-			}
-			explanation += "volumes"
-			changed = true
+			changes = append(changes, "volumes")
 		}
 		if !reflect.DeepEqual(ss.Spec.Template.Spec.InitContainers, existing.Spec.Template.Spec.InitContainers) {
 			existing.Spec.Template.Spec.InitContainers = ss.Spec.Template.Spec.InitContainers
-			if changed {
-				explanation += ", "
-			}
-			explanation += "init containers"
-			changed = true
+			changes = append(changes, "init containers")
 		}
-		if changed {
-			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
+		if len(changes) > 0 {
+			argoutil.LogResourceUpdate(log, existing, "updating", strings.Join(changes, ", "))
 			return r.Update(context.TODO(), existing)
 		}
 
@@ -892,111 +855,68 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		desiredImage := getArgoContainerImage(cr)
 		actualImagePullPolicy := existing.Spec.Template.Spec.Containers[0].ImagePullPolicy
 		desiredImagePullPolicy := argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy)
-		changed := false
-		explanation := ""
+
+		var changes []string
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
 			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-			explanation = "container image"
-			changed = true
+			changes = append(changes, "container image")
 		}
 		if actualImagePullPolicy != desiredImagePullPolicy {
 			existing.Spec.Template.Spec.Containers[0].ImagePullPolicy = desiredImagePullPolicy
-			if changed {
-				explanation += ", "
-			}
-			explanation += "image pull policy"
-			changed = true
+			changes = append(changes, "image pull policy")
 		}
 		desiredCommand := getArgoApplicationControllerCommand(cr, useTLSForRedis)
 		if isRepoServerTLSVerificationRequested(cr) {
 			desiredCommand = append(desiredCommand, "--repo-server-strict-tls")
 		}
-		updateNodePlacementStateful(existing, ss, &changed, &explanation)
+
+		changes = append(changes, updateNodePlacementStateful(existing, ss)...)
+
 		if !reflect.DeepEqual(desiredCommand, existing.Spec.Template.Spec.Containers[0].Command) {
 			existing.Spec.Template.Spec.Containers[0].Command = desiredCommand
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container command"
-			changed = true
+			changes = append(changes, "container command")
 		}
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.InitContainers, ss.Spec.Template.Spec.InitContainers) {
 			existing.Spec.Template.Spec.InitContainers = ss.Spec.Template.Spec.InitContainers
-			if changed {
-				explanation += ", "
-			}
-			explanation += "init containers"
-			changed = true
+			changes = append(changes, "init containers")
 		}
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
 			ss.Spec.Template.Spec.Containers[0].Env) {
 			existing.Spec.Template.Spec.Containers[0].Env = ss.Spec.Template.Spec.Containers[0].Env
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container env"
-			changed = true
+			changes = append(changes, "container env")
 		}
 		if !reflect.DeepEqual(ss.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
 			existing.Spec.Template.Spec.Volumes = ss.Spec.Template.Spec.Volumes
-			if changed {
-				explanation += ", "
-			}
-			explanation += "volumes"
-			changed = true
+			changes = append(changes, "volumes")
 		}
 		if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[0].VolumeMounts,
 			existing.Spec.Template.Spec.Containers[0].VolumeMounts) {
 			existing.Spec.Template.Spec.Containers[0].VolumeMounts = ss.Spec.Template.Spec.Containers[0].VolumeMounts
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container volume mounts"
-			changed = true
+			changes = append(changes, "container volume mounts")
 		}
 		if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[0].Resources, existing.Spec.Template.Spec.Containers[0].Resources) {
 			existing.Spec.Template.Spec.Containers[0].Resources = ss.Spec.Template.Spec.Containers[0].Resources
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container resources"
-			changed = true
+			changes = append(changes, "container resources")
 		}
 		if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[0].SecurityContext, existing.Spec.Template.Spec.Containers[0].SecurityContext) {
 			existing.Spec.Template.Spec.Containers[0].SecurityContext = ss.Spec.Template.Spec.Containers[0].SecurityContext
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container security context"
-			changed = true
+			changes = append(changes, "container security context")
 		}
 		if !reflect.DeepEqual(ss.Spec.Replicas, existing.Spec.Replicas) {
 			existing.Spec.Replicas = ss.Spec.Replicas
-			if changed {
-				explanation += ", "
-			}
-			explanation += "replicas"
-			changed = true
+			changes = append(changes, "replicas")
 		}
 		if !reflect.DeepEqual(ss.Spec.Template.Spec.SecurityContext, existing.Spec.Template.Spec.SecurityContext) {
 			existing.Spec.Template.Spec.SecurityContext = ss.Spec.Template.Spec.SecurityContext
-			if changed {
-				explanation += ", "
-			}
-			explanation += "security context"
-			changed = true
+			changes = append(changes, "security context")
 		}
 
 		if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[1:],
 			existing.Spec.Template.Spec.Containers[1:]) {
 			existing.Spec.Template.Spec.Containers = append(existing.Spec.Template.Spec.Containers[0:1],
 				ss.Spec.Template.Spec.Containers[1:]...)
-			if changed {
-				explanation += ", "
-			}
-			explanation += "additional containers"
-			changed = true
+			changes = append(changes, "additional containers")
 		}
 
 		// Add Kubernetes-specific labels/annotations from the live object in the source to preserve metadata.
@@ -1005,23 +925,15 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 
 		if !reflect.DeepEqual(ss.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
 			existing.Spec.Template.Annotations = ss.Spec.Template.Annotations
-			if changed {
-				explanation += ", "
-			}
-			explanation += "annotations"
-			changed = true
+			changes = append(changes, "annotations")
 		}
 
 		if !reflect.DeepEqual(ss.Spec.Template.Labels, existing.Spec.Template.Labels) {
 			existing.Spec.Template.Labels = ss.Spec.Template.Labels
-			if changed {
-				explanation += ", "
-			}
-			explanation += "labels"
-			changed = true
+			changes = append(changes, "labels")
 		}
-		if changed {
-			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
+		if len(changes) > 0 {
+			argoutil.LogResourceUpdate(log, existing, "updating", strings.Join(changes, ", "))
 			return r.Update(context.TODO(), existing)
 		}
 
@@ -1081,23 +993,16 @@ func (r *ReconcileArgoCD) triggerStatefulSetRollout(sts *appsv1.StatefulSet, key
 }
 
 // to update nodeSelector and tolerations in reconciler
-func updateNodePlacementStateful(existing *appsv1.StatefulSet, ss *appsv1.StatefulSet, changed *bool, explanation *string) {
+func updateNodePlacementStateful(existing *appsv1.StatefulSet, ss *appsv1.StatefulSet) (changes []string) {
 	if !reflect.DeepEqual(existing.Spec.Template.Spec.NodeSelector, ss.Spec.Template.Spec.NodeSelector) {
 		existing.Spec.Template.Spec.NodeSelector = ss.Spec.Template.Spec.NodeSelector
-		if *changed {
-			*explanation += ", "
-		}
-		*explanation += "node selector"
-		*changed = true
+		changes = append(changes, "node selector")
 	}
 	if !reflect.DeepEqual(existing.Spec.Template.Spec.Tolerations, ss.Spec.Template.Spec.Tolerations) {
 		existing.Spec.Template.Spec.Tolerations = ss.Spec.Template.Spec.Tolerations
-		if *changed {
-			*explanation += ", "
-		}
-		*explanation += "tolerations"
-		*changed = true
+		changes = append(changes, "tolerations")
 	}
+	return changes
 }
 
 // Returns true if a StatefulSet has pods in ErrImagePull or ImagePullBackoff state.
