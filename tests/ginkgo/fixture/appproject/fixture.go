@@ -173,20 +173,11 @@ func Ref(name, namespace string) *ProjRef {
 // --- Internal helpers ---
 
 func runArgoCDCLI(args ...string) (string, error) {
-	// In core mode, the CLI needs --server-namespace to know where the ArgoCD
-	// installation lives (e.g. argocd-cm ConfigMap). Extract it from the -n flag
-	// since tests install ArgoCD in the same namespace as the app projects.
-	for i, arg := range args {
-		if arg == "-n" && i+1 < len(args) {
-			args = append(args, "--server-namespace", args[i+1])
-			break
-		}
-	}
-
 	GinkgoWriter.Println("executing argocd", args)
 	// #nosec G204 -- test code
 	cmd := exec.Command("argocd", args...)
-	// Also set ARGOCD_NAMESPACE as a fallback in case --server-namespace is not supported.
+	// In core mode, set ARGOCD_NAMESPACE so the CLI looks for argocd-cm
+	// in the correct namespace (the test namespace, not the default "argocd").
 	for i, arg := range args {
 		if arg == "-n" && i+1 < len(args) {
 			cmd.Env = append(cmd.Environ(), "ARGOCD_NAMESPACE="+args[i+1])

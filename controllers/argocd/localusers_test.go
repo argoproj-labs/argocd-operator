@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/argoproj-labs/argocd-operator/internal/settings"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -35,6 +34,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj-labs/argocd-operator/internal/settings"
 )
 
 func createResources(cr *argoproj.ArgoCD, expect *assert.Assertions) *ReconcileArgoCD {

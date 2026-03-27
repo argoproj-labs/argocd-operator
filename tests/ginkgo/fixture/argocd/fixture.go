@@ -217,7 +217,7 @@ func fetchArgoCD(f func(*argov1beta1api.ArgoCD) bool) matcher.GomegaMatcher {
 func RunArgoCDCLI(namespace string, args ...string) (string, error) {
 
 	cmdArgs := append([]string{"argocd"}, args...)
-	cmdArgs = append(cmdArgs, "--core", "-N", namespace, "--server-namespace", namespace)
+	cmdArgs = append(cmdArgs, "--core", "-N", namespace)
 
 	GinkgoWriter.Println("executing command", cmdArgs)
 
