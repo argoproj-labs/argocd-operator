@@ -34,12 +34,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
-func getRedisHAReplicas() *int32 {
-	replicas := common.ArgoCDDefaultRedisHAReplicas
-	// TODO: Allow override of this value through CR?
-	return &replicas
-}
-
 // newStatefulSet returns a new StatefulSet instance for the given ArgoCD instance.
 func newStatefulSet(cr *argoproj.ArgoCD) *appsv1.StatefulSet {
 	return &appsv1.StatefulSet{
@@ -98,20 +92,10 @@ func newStatefulSetWithSuffix(suffix string, component string, cr *argoproj.Argo
 func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 	ss := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
 
-	redisEnv := append(proxyEnvVars(), corev1.EnvVar{
-		Name: "AUTH",
-		ValueFrom: &corev1.EnvVarSource{
-			SecretKeyRef: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
-				},
-				Key: "admin.password",
-			},
-		},
-	})
+	redisEnv := proxyEnvVars()
 
 	ss.Spec.PodManagementPolicy = appsv1.OrderedReadyPodManagement
-	ss.Spec.Replicas = getRedisHAReplicas()
+	ss.Spec.Replicas = argoutil.GetRedisHAReplicas()
 	ss.Spec.Selector = &metav1.LabelSelector{
 		MatchLabels: map[string]string{
 			common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
@@ -146,6 +130,8 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 	f := false
 	ss.Spec.Template.Spec.AutomountServiceAccountToken = &f
 
+	redisAuthVolume, redisAuthMount := argoutil.MountRedisAuthToRedis(cr)
+
 	ss.Spec.Template.Spec.Containers = []corev1.Container{
 		{
 			Args: []string{
@@ -155,7 +141,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				"redis-server",
 			},
 			Env:             redisEnv,
-			Image:           getRedisHAContainerImage(cr),
+			Image:           argoutil.GetRedisHAContainerImage(cr),
 			ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 			LivenessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
@@ -194,7 +180,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				SuccessThreshold:    int32(1),
 				TimeoutSeconds:      int32(15),
 			},
-			Resources:       getRedisHAResources(cr),
+			Resources:       argoutil.GetRedisHAResources(cr),
 			SecurityContext: argoutil.DefaultSecurityContext(),
 			VolumeMounts: []corev1.VolumeMount{
 				{
@@ -209,6 +195,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 					Name:      common.ArgoCDRedisServerTLSSecretName,
 					MountPath: "/app/config/redis/tls",
 				},
+				redisAuthMount,
 			},
 		},
 		{
@@ -219,7 +206,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				"redis-sentinel",
 			},
 			Env:             redisEnv,
-			Image:           getRedisHAContainerImage(cr),
+			Image:           argoutil.GetRedisHAContainerImage(cr),
 			ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 			LivenessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
@@ -258,7 +245,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				SuccessThreshold:    int32(1),
 				TimeoutSeconds:      int32(15),
 			},
-			Resources:       getRedisHAResources(cr),
+			Resources:       argoutil.GetRedisHAResources(cr),
 			SecurityContext: argoutil.DefaultSecurityContext(),
 			Lifecycle: &corev1.Lifecycle{
 				PostStart: &corev1.LifecycleHandler{
@@ -292,6 +279,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 					Name:      common.ArgoCDRedisServerTLSSecretName,
 					MountPath: "/app/config/redis/tls",
 				},
+				redisAuthMount,
 			},
 		},
 	}
@@ -316,22 +304,11 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				Name:  "SENTINEL_ID_2",
 				Value: "2bbec7894d954a8af3bb54d13eaec53cb024e2ca", // TODO: Should this be hard-coded?
 			},
-			{
-				Name: "AUTH",
-				ValueFrom: &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
-						},
-						Key: "admin.password",
-					},
-				},
-			},
 		},
-		Image:           getRedisHAContainerImage(cr),
+		Image:           argoutil.GetRedisHAContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            "config-init",
-		Resources:       getRedisHAResources(cr),
+		Resources:       argoutil.GetRedisHAResources(cr),
 		SecurityContext: argoutil.DefaultSecurityContext(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -347,6 +324,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				Name:      common.ArgoCDRedisServerTLSSecretName,
 				MountPath: "/app/config/redis/tls",
 			},
+			redisAuthMount,
 		},
 	}}
 
@@ -411,6 +389,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				},
 			},
 		},
+		redisAuthVolume,
 	}
 
 	ss.Spec.UpdateStrategy = appsv1.StatefulSetUpdateStrategy{
@@ -439,11 +418,11 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 			return r.Delete(context.TODO(), existing)
 		}
 
-		desiredImage := getRedisHAContainerImage(cr)
+		desiredImage := argoutil.GetRedisHAContainerImage(cr)
 		changes := updateNodePlacementStateful(existing, ss)
 		for i, container := range existing.Spec.Template.Spec.Containers {
 			if container.Image != desiredImage {
-				existing.Spec.Template.Spec.Containers[i].Image = getRedisHAContainerImage(cr)
+				existing.Spec.Template.Spec.Containers[i].Image = argoutil.GetRedisHAContainerImage(cr)
 				existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 				changes = append(changes, fmt.Sprintf("container '%s' image", container.Name))
 			}
@@ -518,18 +497,6 @@ func getArgoControllerContainerEnv(cr *argoproj.ArgoCD, replicas int32) []corev1
 	env = append(env, corev1.EnvVar{
 		Name:  "HOME",
 		Value: "/home/argocd",
-	})
-
-	env = append(env, corev1.EnvVar{
-		Name: "REDIS_PASSWORD",
-		ValueFrom: &corev1.EnvVarSource{
-			SecretKeyRef: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
-				},
-				Key: "admin.password",
-			},
-		},
 	})
 
 	if cr.Spec.Controller.Sharding.Enabled || (cr.Spec.Controller.Sharding.DynamicScalingEnabled != nil && *cr.Spec.Controller.Sharding.DynamicScalingEnabled) {
@@ -637,10 +604,13 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 	controllerEnv = argoutil.EnvMerge(controllerEnv, getArgoControllerContainerEnv(cr, replicas), true)
 	// Let user specify their own environment first
 	controllerEnv = argoutil.EnvMerge(controllerEnv, proxyEnvVars(), false)
+	controllerEnv = argoutil.EnvMerge(controllerEnv, argoutil.GetRedisAuthEnv(), false)
 
 	if cr.Spec.Controller.InitContainers != nil {
 		ss.Spec.Template.Spec.InitContainers = append(ss.Spec.Template.Spec.InitContainers, cr.Spec.Controller.InitContainers...)
 	}
+
+	redisAuthVolume, redisAuthMount := argoutil.MountRedisAuthToArgo(cr)
 
 	controllerVolumeMounts := []corev1.VolumeMount{
 		{
@@ -663,6 +633,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			Name:      "argocd-application-controller-tmp",
 			MountPath: "/tmp",
 		},
+		redisAuthMount,
 	}
 
 	if cr.Spec.Controller.VolumeMounts != nil {
@@ -755,6 +726,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
+		redisAuthVolume,
 	}
 
 	if cr.Spec.Controller.Volumes != nil {
