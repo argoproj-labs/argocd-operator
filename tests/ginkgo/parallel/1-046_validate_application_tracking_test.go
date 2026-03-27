@@ -19,8 +19,6 @@ package parallel
 import (
 	"context"
 
-	argocdv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
-	"github.com/argoproj/gitops-engine/pkg/health"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
@@ -219,84 +217,46 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Eventually(role_appController_source_ns_3).Should(k8sFixture.ExistByName())
 
 			By("by defining a simple Argo CD Application for both Argo CD instances, to deploy to source namespaces 1/2 respectively")
-			application_test_1_046_argocd_1 := &argocdv1alpha1.Application{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-app",
-					Namespace: "test-1-046-argocd-1",
-				},
-				Spec: argocdv1alpha1.ApplicationSpec{
-					Project: "default",
-					Source: &argocdv1alpha1.ApplicationSource{
-						RepoURL:        "https://github.com/redhat-developer/gitops-operator",
-						Path:           "test/examples/nginx",
-						TargetRevision: "HEAD",
-					},
-					Destination: argocdv1alpha1.ApplicationDestination{
-						Server:    "https://kubernetes.default.svc",
-						Namespace: "source-ns-1",
-					},
-					SyncPolicy: &argocdv1alpha1.SyncPolicy{
-						Automated: &argocdv1alpha1.SyncPolicyAutomated{},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, application_test_1_046_argocd_1)).To(Succeed())
+			appRef1 := application.Create("test-app", "test-1-046-argocd-1",
+				application.WithProject("default"),
+				application.WithRepo("https://github.com/redhat-developer/gitops-operator"),
+				application.WithPath("test/examples/nginx"),
+				application.WithRevision("HEAD"),
+				application.WithDestServer("https://kubernetes.default.svc"),
+				application.WithDestNamespace("source-ns-1"),
+				application.WithAutoSync(),
+			)
 
-			application_test_1_046_argocd_2 := &argocdv1alpha1.Application{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-app",
-					Namespace: "test-1-046-argocd-2",
-				},
-				Spec: argocdv1alpha1.ApplicationSpec{
-					Project: "default",
-					Source: &argocdv1alpha1.ApplicationSource{
-						RepoURL:        "https://github.com/redhat-developer/gitops-operator",
-						Path:           "test/examples/nginx",
-						TargetRevision: "HEAD",
-					},
-					Destination: argocdv1alpha1.ApplicationDestination{
-						Server:    "https://kubernetes.default.svc",
-						Namespace: "source-ns-2",
-					},
-					SyncPolicy: &argocdv1alpha1.SyncPolicy{
-						Automated: &argocdv1alpha1.SyncPolicyAutomated{},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, application_test_1_046_argocd_2)).To(Succeed())
-			application_test_1_046_argocd_3 := &argocdv1alpha1.Application{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-app",
-					Namespace: "test-1-046-argocd-3",
-				},
-				Spec: argocdv1alpha1.ApplicationSpec{
-					Project: "default",
-					Source: &argocdv1alpha1.ApplicationSource{
-						RepoURL:        "https://github.com/redhat-developer/gitops-operator",
-						Path:           "test/examples/nginx",
-						TargetRevision: "HEAD",
-					},
-					Destination: argocdv1alpha1.ApplicationDestination{
-						Server:    "https://kubernetes.default.svc",
-						Namespace: "source-ns-3",
-					},
-					SyncPolicy: &argocdv1alpha1.SyncPolicy{
-						Automated: &argocdv1alpha1.SyncPolicyAutomated{},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, application_test_1_046_argocd_3)).To(Succeed())
+			appRef2 := application.Create("test-app", "test-1-046-argocd-2",
+				application.WithProject("default"),
+				application.WithRepo("https://github.com/redhat-developer/gitops-operator"),
+				application.WithPath("test/examples/nginx"),
+				application.WithRevision("HEAD"),
+				application.WithDestServer("https://kubernetes.default.svc"),
+				application.WithDestNamespace("source-ns-2"),
+				application.WithAutoSync(),
+			)
+
+			appRef3 := application.Create("test-app", "test-1-046-argocd-3",
+				application.WithProject("default"),
+				application.WithRepo("https://github.com/redhat-developer/gitops-operator"),
+				application.WithPath("test/examples/nginx"),
+				application.WithRevision("HEAD"),
+				application.WithDestServer("https://kubernetes.default.svc"),
+				application.WithDestNamespace("source-ns-3"),
+				application.WithAutoSync(),
+			)
 
 			By("verifying that the Applications successfully deployed, and that they have the correct installation-id and tracking-id, based on which Argo CD instance deployed them")
 
-			Eventually(application_test_1_046_argocd_1, "4m", "5s").Should(application.HaveHealthStatusCode(health.HealthStatusHealthy))
-			Eventually(application_test_1_046_argocd_1, "4m", "5s").Should(application.HaveSyncStatusCode(argocdv1alpha1.SyncStatusCodeSynced))
+			Eventually(appRef1, "4m", "5s").Should(application.HaveHealthStatus("Healthy"))
+			Eventually(appRef1, "4m", "5s").Should(application.HaveSyncStatus("Synced"))
 
-			Eventually(application_test_1_046_argocd_2, "4m", "5s").Should(application.HaveHealthStatusCode(health.HealthStatusHealthy))
-			Eventually(application_test_1_046_argocd_2, "4m", "5s").Should(application.HaveSyncStatusCode(argocdv1alpha1.SyncStatusCodeSynced))
+			Eventually(appRef2, "4m", "5s").Should(application.HaveHealthStatus("Healthy"))
+			Eventually(appRef2, "4m", "5s").Should(application.HaveSyncStatus("Synced"))
 
-			Eventually(application_test_1_046_argocd_3, "4m", "5s").Should(application.HaveHealthStatusCode(health.HealthStatusHealthy))
-			Eventually(application_test_1_046_argocd_3, "4m", "5s").Should(application.HaveSyncStatusCode(argocdv1alpha1.SyncStatusCodeSynced))
+			Eventually(appRef3, "4m", "5s").Should(application.HaveHealthStatus("Healthy"))
+			Eventually(appRef3, "4m", "5s").Should(application.HaveSyncStatus("Synced"))
 
 			deployment_source_ns_1 := &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{

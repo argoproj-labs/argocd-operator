@@ -19,8 +19,6 @@ package parallel
 import (
 	"context"
 
-	appv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
-	"github.com/argoproj/gitops-engine/pkg/health"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -29,8 +27,8 @@ import (
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
-	applicationFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/application"
-	appprojectFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/appproject"
+	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/application"
+	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/appproject"
 	argocdFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/argocd"
 	configmapFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/configmap"
 	k8sFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/k8s"
@@ -118,60 +116,25 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Expect(k8sClient.Create(ctx, roleBinding)).To(Succeed())
 
 			By("creating AppProject which allows us to deploy to guestbook namespace using a specific ServiceAccount")
-			appProject := &appv1alpha1.AppProject{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "guestbook-proj",
-					Namespace: argoCD_NS.Name,
-				},
-				Spec: appv1alpha1.AppProjectSpec{
-					ClusterResourceWhitelist: []appv1alpha1.ClusterResourceRestrictionItem{{
-						Group: "*",
-						Kind:  "*",
-					}},
-					DestinationServiceAccounts: []appv1alpha1.ApplicationDestinationServiceAccount{{
-						DefaultServiceAccount: serviceAccount.Name,
-						Namespace:             guestbookNS.Name,
-						Server:                "https://kubernetes.default.svc",
-					}},
-					Destinations: []appv1alpha1.ApplicationDestination{{
-						Namespace: guestbookNS.Name,
-						Server:    "https://kubernetes.default.svc",
-					}},
-					SourceRepos: []string{"https://github.com/argoproj/argocd-example-apps.git"},
-				},
-			}
-			Expect(k8sClient.Create(ctx, appProject)).Should(Succeed())
+			projRef := appproject.Create("guestbook-proj", argoCD_NS.Name,
+				appproject.WithClusterResource("*", "*"),
+				appproject.WithDestinationServiceAccount("https://kubernetes.default.svc", guestbookNS.Name, serviceAccount.Name),
+				appproject.WithDestination("https://kubernetes.default.svc", guestbookNS.Name),
+				appproject.WithSourceRepo("https://github.com/argoproj/argocd-example-apps.git"),
+			)
 
 			By("creating an Application which deploys to guestbook namespace, which should succeed to deploy")
-			guestbookApplication := &appv1alpha1.Application{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "guestbook",
-					Namespace: argoCD.Namespace,
-				},
-				Spec: appv1alpha1.ApplicationSpec{
-					Destination: appv1alpha1.ApplicationDestination{
-						Namespace: guestbookNS.Name,
-						Server:    "https://kubernetes.default.svc",
-					},
-					Project: appProject.Name,
-					Source: &appv1alpha1.ApplicationSource{
-						Directory: &appv1alpha1.ApplicationSourceDirectory{
-							Jsonnet: appv1alpha1.ApplicationSourceJsonnet{},
-							Recurse: true,
-						},
-						Path:    "guestbook",
-						RepoURL: "https://github.com/argoproj/argocd-example-apps",
-					},
-					SyncPolicy: &appv1alpha1.SyncPolicy{
-						Automated: &appv1alpha1.SyncPolicyAutomated{},
-						SyncOptions: []string{
-							"ServerSideApply=true",
-						},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, guestbookApplication)).To(Succeed())
-			Eventually(guestbookApplication, "4m", "5s").Should(applicationFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeSynced))
+			guestbookAppRef := application.Create("guestbook", argoCD.Namespace,
+				application.WithRepo("https://github.com/argoproj/argocd-example-apps"),
+				application.WithPath("guestbook"),
+				application.WithDestServer("https://kubernetes.default.svc"),
+				application.WithDestNamespace(guestbookNS.Name),
+				application.WithProject("guestbook-proj"),
+				application.WithAutoSync(),
+				application.WithDirectoryRecurse(),
+				application.WithSyncOption("ServerSideApply=true"),
+			)
+			Eventually(guestbookAppRef, "4m", "5s").Should(application.HaveSyncStatus("Synced"))
 
 			By("creating a new namespace 'guestbook-dev' which is managed by our argo cd instance")
 			guestbookDevNS, cleanupFunc := fixture.CreateManagedNamespaceWithCleanupFunc("guestbook-dev-1-047", argoCD.Namespace)
@@ -187,45 +150,22 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Eventually(appControllerRole, "4m", "5s").Should(k8sFixture.ExistByName())
 
 			By("updating AppProject destinations to allow deployment to new namespace, but we DON'T add a new serviceaccount within that namespace, as we did previously")
-			appprojectFixture.Update(appProject, func(ap *appv1alpha1.AppProject) {
-				appProject.Spec.Destinations = append(appProject.Spec.Destinations, appv1alpha1.ApplicationDestination{
-					Namespace: guestbookDevNS.Name,
-					Server:    "https://kubernetes.default.svc",
-				})
-			})
+			appproject.AddDestination(projRef, "https://kubernetes.default.svc", guestbookDevNS.Name)
 
 			By("creating a new Application that attempts to deploy to that new namespace")
-			guestbookDevApplication := &appv1alpha1.Application{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "guestbook-dev",
-					Namespace: argoCD.Namespace,
-				},
-				Spec: appv1alpha1.ApplicationSpec{
-					Destination: appv1alpha1.ApplicationDestination{
-						Namespace: guestbookDevNS.Name,
-						Server:    "https://kubernetes.default.svc",
-					},
-					Project: appProject.Name,
-					Source: &appv1alpha1.ApplicationSource{
-						Directory: &appv1alpha1.ApplicationSourceDirectory{
-							Jsonnet: appv1alpha1.ApplicationSourceJsonnet{},
-							Recurse: true,
-						},
-						Path:    "guestbook",
-						RepoURL: "https://github.com/argoproj/argocd-example-apps",
-					},
-					SyncPolicy: &appv1alpha1.SyncPolicy{
-						Automated: &appv1alpha1.SyncPolicyAutomated{},
-						SyncOptions: []string{
-							"ServerSideApply=true",
-						},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, guestbookDevApplication)).Should(Succeed())
+			guestbookDevAppRef := application.Create("guestbook-dev", argoCD.Namespace,
+				application.WithRepo("https://github.com/argoproj/argocd-example-apps"),
+				application.WithPath("guestbook"),
+				application.WithDestServer("https://kubernetes.default.svc"),
+				application.WithDestNamespace(guestbookDevNS.Name),
+				application.WithProject("guestbook-proj"),
+				application.WithAutoSync(),
+				application.WithDirectoryRecurse(),
+				application.WithSyncOption("ServerSideApply=true"),
+			)
 
 			By("verifying Argo CD is not able to deploy to that new namespace, because impersonation prevents it, since there is no matching service account defined in AppProject for Argo CD to use")
-			Eventually(guestbookDevApplication).Should(applicationFixture.HaveHealthStatusCode(health.HealthStatusMissing))
+			Eventually(guestbookDevAppRef).Should(application.HaveHealthStatus("Missing"))
 
 			By("verifying ServiceAccount never existed in namespace")
 			guestbook_dev_ServiceAccount := &corev1.ServiceAccount{
@@ -237,13 +177,11 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Consistently(guestbook_dev_ServiceAccount).ShouldNot(k8sFixture.ExistByName())
 
 			By("verifying Application contains error message indicating that no matching service account exists in the appproject, which is required for impersonation")
-			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(guestbookDevApplication), guestbookDevApplication)).To(Succeed())
+			Eventually(guestbookDevAppRef, "4m", "5s").Should(application.HaveSyncStatus("OutOfSync"))
 
-			Eventually(guestbookDevApplication, "4m", "5s").Should(applicationFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeOutOfSync))
-
-			Expect(guestbookDevApplication.Status.OperationState).ToNot(BeNil())
-
-			Expect(guestbookDevApplication.Status.OperationState.Message).To(ContainSubstring("failed to find a matching service account to impersonate: no matching service account found for destination server"))
+			operationMessage, err := application.GetOperationMessage(guestbookDevAppRef)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(operationMessage).To(ContainSubstring("failed to find a matching service account to impersonate: no matching service account found for destination server"))
 
 		})
 	})

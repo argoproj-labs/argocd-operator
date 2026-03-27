@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,8 +19,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	argocdclient "github.com/argoproj/argo-cd/v3/pkg/apiclient"
-	sessionpkg "github.com/argoproj/argo-cd/v3/pkg/apiclient/session"
 	matcher "github.com/onsi/gomega/types"
 	corev1 "k8s.io/api/core/v1"
 	apierr "k8s.io/apimachinery/pkg/api/errors"
@@ -27,6 +26,12 @@ import (
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// ArgoCDSession holds the authentication details for an Argo CD server.
+type ArgoCDSession struct {
+	Endpoint string
+	Token    string
+}
 
 // Update will update an ArgoCD CR. Update will keep trying to update object until it succeeds, or times out.
 func Update(obj *argov1beta1api.ArgoCD, modify func(*argov1beta1api.ArgoCD)) {
@@ -225,45 +230,112 @@ func RunArgoCDCLI(args ...string) (string, error) {
 	return string(output), err
 }
 
-// CreateArgoCDAPIClient connects to given Argo CD API server endpoint and returns client object for invoking server APIs
-func CreateArgoCDAPIClient(ctx context.Context, argoServerEndpoint string, password string) (argocdclient.Client, string, io.Closer, error) {
-	var token string
-
-	clientOpts := &argocdclient.ClientOptions{
-		ServerAddr: argoServerEndpoint,
-		Insecure:   true,
-		AuthToken:  password,
-	}
-
-	client, err := argocdclient.NewClient(clientOpts)
+// LoginToArgoCDServer authenticates to the Argo CD API server using the CLI and returns a session.
+func LoginToArgoCDServer(argoServerEndpoint string, password string) (*ArgoCDSession, error) {
+	// Use argocd CLI to login and get the token
+	output, err := RunArgoCDCLI("login", argoServerEndpoint,
+		"--username", "admin",
+		"--password", password,
+		"--insecure",
+	)
 	if err != nil {
-		return nil, "", nil, fmt.Errorf("unable to create new Argo CD client: %v", err)
+		return nil, fmt.Errorf("argocd login failed: %v, output: %s", err, output)
 	}
 
-	closer, sessionClient, err := client.NewSessionClient()
+	// Get the auth token from the CLI config
+	tokenOutput, err := RunArgoCDCLI("account", "generate-token",
+		"--server", argoServerEndpoint,
+		"--insecure",
+	)
 	if err != nil {
-		return nil, "", nil, fmt.Errorf("unable to create new Argo CD session client: %v", err)
+		return nil, fmt.Errorf("failed to generate token: %v, output: %s", err, tokenOutput)
 	}
 
-	sessionResponse, err := sessionClient.Create(ctx, &sessionpkg.SessionCreateRequest{Username: "admin", Password: password})
+	return &ArgoCDSession{
+		Endpoint: argoServerEndpoint,
+		Token:    strings.TrimSpace(tokenOutput),
+	}, nil
+}
+
+// GetSessionToken authenticates to the Argo CD API server via HTTP and returns a session token.
+func GetSessionToken(argoServerEndpoint string, password string) (string, error) {
+	loginPayload := fmt.Sprintf(`{"username":"admin","password":"%s"}`, password)
+
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec G402 -- test code
+	}
+	httpClient := &http.Client{Transport: tr}
+
+	resp, err := httpClient.Post(
+		"https://"+argoServerEndpoint+"/api/v1/session",
+		"application/json",
+		strings.NewReader(loginPayload),
+	)
 	if err != nil {
-		return nil, "", nil, fmt.Errorf("unable to create invoke session client: %v", err)
+		return "", fmt.Errorf("failed to create session: %v", err)
 	}
-	token = sessionResponse.Token
+	defer resp.Body.Close()
 
-	clientOpts = &argocdclient.ClientOptions{
-		ServerAddr: argoServerEndpoint,
-		Insecure:   true,
-		AuthToken:  token,
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("session creation returned status %d: %s", resp.StatusCode, string(body))
 	}
 
-	client, err = argocdclient.NewClient(clientOpts)
+	var result struct {
+		Token string `json:"token"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("failed to decode session response: %v", err)
+	}
+
+	return result.Token, nil
+}
+
+// ResourceTreeNode represents a node in an application's resource tree.
+type ResourceTreeNode struct {
+	Group     string `json:"group"`
+	Kind      string `json:"kind"`
+	Namespace string `json:"namespace"`
+	Name      string `json:"name"`
+	UID       string `json:"uid,omitempty"`
+}
+
+// ResourceTree contains the resource tree of an application.
+type ResourceTree struct {
+	Nodes []ResourceTreeNode `json:"nodes"`
+}
+
+// GetResourceTree retrieves the resource tree for an application via the Argo CD REST API.
+func GetResourceTree(argoServerEndpoint string, token string, appName string, appNamespace string) (*ResourceTree, error) {
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec G402 -- test code
+	}
+	httpClient := &http.Client{Transport: tr}
+
+	url := fmt.Sprintf("https://%s/api/v1/applications/%s/resource-tree?appNamespace=%s", argoServerEndpoint, appName, appNamespace)
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, "", nil, fmt.Errorf("unable to create new argocd client: %v", err)
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("resource-tree returned status %d: %s", resp.StatusCode, string(body))
 	}
 
-	return client, token, closer, nil
+	var tree ResourceTree
+	if err := json.NewDecoder(resp.Body).Decode(&tree); err != nil {
+		return nil, err
+	}
 
+	return &tree, nil
 }
 
 func GetInitialAdminSecretPassword(argocdCRName string, secretNS string, k8sClient client.Client) string {
@@ -308,8 +380,8 @@ func StreamFromArgoCDEventSourceURL(ctx context.Context, eventSourceAPIURL strin
 
 		// connect to URL and read data into msgChan channel (until disconnect)
 		// - returns true if the function exited due to cancelled context.
-		connect := func(client *http.Client, req *http.Request) bool {
-			resp, err := client.Do(req)
+		connect := func(httpClient *http.Client, req *http.Request) bool {
+			resp, err := httpClient.Do(req)
 			if err != nil {
 				GinkgoWriter.Printf("Error performing request: %v", err)
 
@@ -362,9 +434,9 @@ func StreamFromArgoCDEventSourceURL(ctx context.Context, eventSourceAPIURL strin
 			tr := &http.Transport{
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec G402 -- this is test code connecting to a local test server
 			}
-			client := &http.Client{Transport: tr}
+			httpClient := &http.Client{Transport: tr}
 
-			contextCancelled := connect(client, req)
+			contextCancelled := connect(httpClient, req)
 
 			if contextCancelled {
 				GinkgoWriter.Println("context cancelled on event source stream")

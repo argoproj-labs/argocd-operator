@@ -19,8 +19,6 @@ package parallel
 import (
 	"context"
 
-	appv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
-	"github.com/argoproj/gitops-engine/pkg/health"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -120,103 +118,44 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Expect(k8sClient.Create(ctx, roleBinding)).To(Succeed())
 
 			By("creating AppProject which allows us to deploy to guestbook namespace using a specific ServiceAccount")
-			appProject := &appv1alpha1.AppProject{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "guestbook-proj",
-					Namespace: argoCD_NS.Name,
-				},
-				Spec: appv1alpha1.AppProjectSpec{
-					ClusterResourceWhitelist: []appv1alpha1.ClusterResourceRestrictionItem{{
-						Group: "*",
-						Kind:  "*",
-					}},
-					DestinationServiceAccounts: []appv1alpha1.ApplicationDestinationServiceAccount{{
-						DefaultServiceAccount: serviceAccount.Name,
-						Namespace:             guestbookNS.Name,
-						Server:                "https://kubernetes.default.svc",
-					}},
-					Destinations: []appv1alpha1.ApplicationDestination{{
-						Namespace: guestbookNS.Name,
-						Server:    "https://kubernetes.default.svc",
-					}},
-					SourceRepos: []string{"https://github.com/argoproj/argocd-example-apps.git"},
-				},
-			}
-
-			Expect(k8sClient.Create(ctx, appProject)).Should(Succeed())
+			projRef := appprojectFixture.Create("guestbook-proj", argoCD_NS.Name,
+				appprojectFixture.WithSourceRepo("https://github.com/argoproj/argocd-example-apps.git"),
+				appprojectFixture.WithDestination("https://kubernetes.default.svc", guestbookNS.Name),
+				appprojectFixture.WithClusterResource("*", "*"),
+				appprojectFixture.WithDestinationServiceAccount("https://kubernetes.default.svc", guestbookNS.Name, serviceAccount.Name),
+			)
 
 			By("creating an Application which deploys to guestbook namespace, which should succeed to deploy")
-			guestbookApplication := &appv1alpha1.Application{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "guestbook",
-					Namespace: argoCD.Namespace,
-				},
-				Spec: appv1alpha1.ApplicationSpec{
-					Destination: appv1alpha1.ApplicationDestination{
-						Namespace: guestbookNS.Name,
-						Server:    "https://kubernetes.default.svc",
-					},
-					Project: appProject.Name,
-					Source: &appv1alpha1.ApplicationSource{
-						Directory: &appv1alpha1.ApplicationSourceDirectory{
-							Jsonnet: appv1alpha1.ApplicationSourceJsonnet{},
-							Recurse: true,
-						},
-						Path:    "guestbook",
-						RepoURL: "https://github.com/argoproj/argocd-example-apps",
-					},
-					SyncPolicy: &appv1alpha1.SyncPolicy{
-						Automated: &appv1alpha1.SyncPolicyAutomated{},
-						SyncOptions: []string{
-							"ServerSideApply=true",
-							"CreateNamespace=true",
-						},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, guestbookApplication)).To(Succeed())
-			Eventually(guestbookApplication, "4m", "5s").Should(applicationFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeSynced))
+			guestbookRef := applicationFixture.Create("guestbook", argoCD.Namespace,
+				applicationFixture.WithRepo("https://github.com/argoproj/argocd-example-apps"),
+				applicationFixture.WithPath("guestbook"),
+				applicationFixture.WithDestServer("https://kubernetes.default.svc"),
+				applicationFixture.WithDestNamespace(guestbookNS.Name),
+				applicationFixture.WithProject("guestbook-proj"),
+				applicationFixture.WithAutoSync(),
+				applicationFixture.WithDirectoryRecurse(),
+				applicationFixture.WithSyncOption("ServerSideApply=true"),
+				applicationFixture.WithSyncOption("CreateNamespace=true"),
+			)
+			Eventually(guestbookRef, "4m", "5s").Should(applicationFixture.HaveSyncStatus("Synced"))
 
 			By("updating AppProject to allow deployment to a different namespace, but we DON'T add a new serviceaccount within that namespace, as we did previously")
-			appprojectFixture.Update(appProject, func(ap *appv1alpha1.AppProject) {
-				appProject.Spec.Destinations = append(appProject.Spec.Destinations, appv1alpha1.ApplicationDestination{
-					Namespace: "guestbook-dev-1-046", // yes, this is referencing a NS that doesn't exist
-					Server:    "https://kubernetes.default.svc",
-				})
-			})
+			appprojectFixture.AddDestination(projRef, "https://kubernetes.default.svc", "guestbook-dev-1-046")
 
 			By("creating a new Application that attempts to deploy to that new namespace")
-			guestbookDevApplication := &appv1alpha1.Application{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "guestbook-dev",
-					Namespace: argoCD.Namespace,
-				},
-				Spec: appv1alpha1.ApplicationSpec{
-					Destination: appv1alpha1.ApplicationDestination{
-						Namespace: "guestbook-dev-1-046", // yes, referencing a NS that doesn't exist
-						Server:    "https://kubernetes.default.svc",
-					},
-					Project: appProject.Name,
-					Source: &appv1alpha1.ApplicationSource{
-						Directory: &appv1alpha1.ApplicationSourceDirectory{
-							Jsonnet: appv1alpha1.ApplicationSourceJsonnet{},
-							Recurse: true,
-						},
-						Path:    "guestbook",
-						RepoURL: "https://github.com/argoproj/argocd-example-apps",
-					},
-					SyncPolicy: &appv1alpha1.SyncPolicy{
-						Automated: &appv1alpha1.SyncPolicyAutomated{},
-						SyncOptions: []string{
-							"ServerSideApply=true",
-						},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, guestbookDevApplication)).Should(Succeed())
+			guestbookDevRef := applicationFixture.Create("guestbook-dev", argoCD.Namespace,
+				applicationFixture.WithRepo("https://github.com/argoproj/argocd-example-apps"),
+				applicationFixture.WithPath("guestbook"),
+				applicationFixture.WithDestServer("https://kubernetes.default.svc"),
+				applicationFixture.WithDestNamespace("guestbook-dev-1-046"),
+				applicationFixture.WithProject("guestbook-proj"),
+				applicationFixture.WithAutoSync(),
+				applicationFixture.WithDirectoryRecurse(),
+				applicationFixture.WithSyncOption("ServerSideApply=true"),
+			)
 
 			By("verifying Argo CD is not able to deploy to that new namespace, because impersonation prevents it, since there is no matching service account defined in AppProject for Argo CD to use")
-			Eventually(guestbookDevApplication).Should(applicationFixture.HaveHealthStatusCode(health.HealthStatusMissing))
+			Eventually(guestbookDevRef).Should(applicationFixture.HaveHealthStatus("Missing"))
 
 			By("verifying ServiceAccount never existed in namespace (which doesnt exist)")
 			guestbook_dev_ServiceAccount := &corev1.ServiceAccount{
@@ -228,9 +167,9 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Consistently(guestbook_dev_ServiceAccount).ShouldNot(k8sFixture.ExistByName())
 
 			By("verifying Application contains error message indicating that no matching service account exists in the appproject, which is required for impersonation")
-			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(guestbookDevApplication), guestbookDevApplication)).To(Succeed())
-
-			Expect(guestbookDevApplication.Status.OperationState.Message).To(ContainSubstring("failed to find a matching service account to impersonate: no matching service account found for destination server"))
+			msg, err := applicationFixture.GetOperationMessage(guestbookDevRef)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(msg).To(ContainSubstring("failed to find a matching service account to impersonate: no matching service account found for destination server"))
 
 		})
 	})

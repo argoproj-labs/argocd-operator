@@ -94,6 +94,14 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: "go.mod"
+      - name: Install Argo CD CLI
+        env:
+          ARGOCD_CLI_VERSION: "v3.3.5"
+        run: |
+          set -x
+          curl -sSL -o /usr/local/bin/argocd "https://github.com/argoproj/argo-cd/releases/download/${ARGOCD_CLI_VERSION}/argocd-linux-amd64"
+          chmod +x /usr/local/bin/argocd
+          argocd version --client
       - name: GH actions workaround - Kill XSP4 process
         run: |
           sudo pkill mono || true

@@ -39,10 +39,6 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/argoproj/argo-cd/v3/pkg/apiclient/application"
-	argocdv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
-	"github.com/argoproj/gitops-engine/pkg/health"
-
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 
@@ -51,6 +47,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
 	agentFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/agent"
 	appFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/application"
+	appproject "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/appproject"
 	argocdFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/argocd"
 	deploymentFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/deployment"
 	k8sFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/k8s"
@@ -245,18 +242,15 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			})
 		}
 
-		// This function deploys an application and verifies it is healthy and synced.
-		deployAndValidateApplication := func(application *argocdv1alpha1.Application) {
-
-			By("Deploy application: " + application.Name + " in namespace: " + application.Namespace)
-			Expect(k8sClient.Create(ctx, application)).To(Succeed())
+		// This function validates that an application (already created) is healthy and synced.
+		deployAndValidateApplication := func(application *appFixture.AppRef) {
 
 			By("Verify application: " + application.Name + " in namespace: " + application.Namespace + " is healthy and synced")
-			Eventually(application, "180s", "5s").Should(appFixture.HaveSyncStatusCode(argocdv1alpha1.SyncStatusCodeSynced), "Application should be synced")
-			Eventually(application, "180s", "5s").Should(appFixture.HaveHealthStatusCode(health.HealthStatusHealthy), "Application should be healthy")
+			Eventually(application, "180s", "5s").Should(appFixture.HaveSyncStatus("Synced"), "Application should be synced")
+			Eventually(application, "180s", "5s").Should(appFixture.HaveHealthStatus("Healthy"), "Application should be healthy")
 		}
 
-		runResourceProxyTest := func(argoEndpoint string, password string, app argocdv1alpha1.Application, agentK8sClient client.Client, agentInstallNamespace string) {
+		runResourceProxyTest := func(argoEndpoint string, password string, appRef *appFixture.AppRef, appProject string, destNamespace string, agentK8sClient client.Client, agentInstallNamespace string) {
 
 			// This test is based on test/e2e/rp_test.go from argocd-agent repo
 
@@ -267,8 +261,8 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 				// Getting an existing resource belonging to the synced app through Argo's
 				// API must result in success.
-				resource, err := getResourceForResourceProxyTest(argoEndpoint, password, &app,
-					"apps", "v1", "Deployment", app.Spec.Destination.Namespace, "guestbook-ui")
+				resource, err := getResourceForResourceProxyTest(argoEndpoint, password, appRef, appProject,
+					"apps", "v1", "Deployment", destNamespace, "guestbook-ui")
 				if err != nil {
 					GinkgoWriter.Println("error from getResourceForResourceProxyTest", err)
 					return false
@@ -282,22 +276,17 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			}, "2m", "5s").Should(BeTrue())
 
 			// Getting a non-existing resource must result in failure
-			_, err := getResourceForResourceProxyTest(argoEndpoint, password, &app,
-				"apps", "v1", "Deployment", app.Spec.Destination.Namespace, "guestbook-backend")
+			_, err := getResourceForResourceProxyTest(argoEndpoint, password, appRef, appProject,
+				"apps", "v1", "Deployment", destNamespace, "guestbook-backend")
 			Expect(err).To(HaveOccurred())
 		}
 
 		// runRedisTest is based on redis_proxy_test.go E2E test in argocd-agent
 		// - This test will verify argo cd resourcetree API shows child resources (e.g. pods), which is only possible if redis proxy is working as expected.
-		runRedisTest := func(argoEndpoint string, password string, managedAgent bool, appOnPrincipal argocdv1alpha1.Application, agentK8sClient client.Client) {
+		runRedisTest := func(argoEndpoint string, password string, managedAgent bool, appOnPrincipal *appFixture.AppRef, agentK8sClient client.Client) {
 
-			argocdClient, sessionToken, closer, err := argocdFixture.CreateArgoCDAPIClient(context.Background(), argoEndpoint, password)
+			sessionToken, err := argocdFixture.GetSessionToken(argoEndpoint, password)
 			Expect(err).ToNot(HaveOccurred())
-			defer closer.Close()
-
-			closer, appClient, err := argocdClient.NewApplicationClient()
-			Expect(err).ToNot(HaveOccurred())
-			defer closer.Close()
 
 			cancellableContext, cancelFunc := context.WithCancel(context.Background())
 			defer cancelFunc()
@@ -356,10 +345,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			// Ensure that the pod appears in the resource tree value returned by Argo CD server (this will only be true if redis proxy is working)
 			Eventually(func() bool {
-				tree, err := appClient.ResourceTree(context.Background(), &application.ResourcesQuery{
-					ApplicationName: &appOnPrincipal.Name,
-					AppNamespace:    &appOnPrincipal.Namespace,
-				})
+				tree, err := argocdFixture.GetResourceTree(argoEndpoint, sessionToken, appOnPrincipal.Name, appOnPrincipal.Namespace)
 
 				if err != nil {
 					GinkgoWriter.Println("error on ResourceTree:", err)
@@ -422,11 +408,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			}, time.Second*30, time.Second*5).Should(BeTrue())
 
 			// Ensure that the pod appears in the new resource tree value returned by Argo CD server
-			tree, err := appClient.ResourceTree(context.Background(), &application.ResourcesQuery{
-				ApplicationName: &appOnPrincipal.Name,
-				AppNamespace:    &appOnPrincipal.Namespace,
-				Project:         &appOnPrincipal.Spec.Project,
-			})
+			tree, err := argocdFixture.GetResourceTree(argoEndpoint, sessionToken, appOnPrincipal.Name, appOnPrincipal.Namespace)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(tree).ToNot(BeNil())
 
@@ -464,10 +446,10 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			validatePrincipalAndAgentConnection()
 
 			By("Create AppProject for managed agent in " + namespaceAgentPrincipal)
-			Expect(k8sClient.Create(ctx, buildAppProjectResource(namespaceAgentPrincipal, argov1beta1api.AgentModeManaged))).To(Succeed())
+			buildAppProjectResource(namespaceAgentPrincipal, argov1beta1api.AgentModeManaged)
 
 			By("Create AppProject for autonomous agent in " + namespaceAutonomousAgent)
-			Expect(k8sClient.Create(ctx, buildAppProjectResource(namespaceAutonomousAgent, argov1beta1api.AgentModeAutonomous))).To(Succeed())
+			buildAppProjectResource(namespaceAutonomousAgent, argov1beta1api.AgentModeAutonomous)
 
 			applicationOfManagedAgent := buildApplicationResource(applicationNameManagedAgent,
 				managedAgentClusterName, managedAgentClusterName, argoCDAgentInstanceNameAgent, argov1beta1api.AgentModeManaged)
@@ -482,13 +464,11 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			By("Running resource proxy test for managed")
 			// The principal's application is very similar to 'applicationOfManagedAgent' but in a different namespace, and with a different appproject.
 			// - Since the resource proxy interfaces with principal, we need to give it an Application that matches the principal-side Application
-			appOnPrincipal := applicationOfManagedAgent.DeepCopy()
-			appOnPrincipal.Namespace = managedAgentClusterName
-			appOnPrincipal.Spec.Project = "agent-app-project"
-			runResourceProxyTest("127.0.0.1:8443", principalArgocdPassword, *appOnPrincipal, k8sClient, namespaceManagedAgent)
+			appOnPrincipalRef := appFixture.Ref(applicationNameManagedAgent, managedAgentClusterName)
+			runResourceProxyTest("127.0.0.1:8443", principalArgocdPassword, appOnPrincipalRef, "agent-app-project", managedAgentApplicationNamespace, k8sClient, namespaceManagedAgent)
 
 			By("Running redis test for managed")
-			runRedisTest("127.0.0.1:8443", principalArgocdPassword, true, *applicationOfManagedAgent, k8sClient)
+			runRedisTest("127.0.0.1:8443", principalArgocdPassword, true, applicationOfManagedAgent, k8sClient)
 
 			applicationOfAutonomousAgent := buildApplicationResource(applicationNameAutonomousAgent,
 				namespaceAutonomousAgent, autonomousAgentClusterName, argoCDAgentInstanceNameAgent, argov1beta1api.AgentModeAutonomous)
@@ -497,22 +477,18 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			deployAndValidateApplication(applicationOfAutonomousAgent)
 
 			By("Running resource proxy test for autonomous")
-			// The principal's application is very similar to 'applicationOfManagedAgent' but in a different namespace, and with a different appproject.
+			// The principal's application is very similar to 'applicationOfAutonomousAgent' but in a different namespace, and with a different appproject.
 			// - Since the resource proxy interfaces with principal, we need to give it an Application that matches the principal-side Application
-			appOnPrincipal = applicationOfAutonomousAgent.DeepCopy()
-			appOnPrincipal.Namespace = autonomousAgentClusterName
-			appOnPrincipal.Spec.Project = "autonomous-cluster-in-hub-agent-app-project" // "agent-app-project"
-			runResourceProxyTest("127.0.0.1:8443", principalArgocdPassword, *appOnPrincipal, k8sClient, namespaceAutonomousAgent)
+			appOnPrincipalRef = appFixture.Ref(applicationNameAutonomousAgent, autonomousAgentClusterName)
+			runResourceProxyTest("127.0.0.1:8443", principalArgocdPassword, appOnPrincipalRef, "autonomous-cluster-in-hub-agent-app-project", autonomousAgentApplicationNamespace, k8sClient, namespaceAutonomousAgent)
 
 			By("Running redis test for autonomous")
 
 			// The principal's application is the same as 'applicationOfAutonomousAgent', but in a different namespace. (The spec isn't needed)
 			// - Since the redis proxy interfaces with principal, we need to give it an Application that matches the principal-side Application
-			appOnPrincipal = applicationOfAutonomousAgent.DeepCopy()
-			appOnPrincipal.Namespace = "autonomous-cluster-in-hub"
-			appOnPrincipal.Spec = argocdv1alpha1.ApplicationSpec{}
+			appOnPrincipalRef = appFixture.Ref(applicationNameAutonomousAgent, "autonomous-cluster-in-hub")
 
-			runRedisTest("127.0.0.1:8443", principalArgocdPassword, false, *appOnPrincipal, k8sClient)
+			runRedisTest("127.0.0.1:8443", principalArgocdPassword, false, appOnPrincipalRef, k8sClient)
 
 		})
 
@@ -773,83 +749,56 @@ func buildArgoCDResource(argoCDName string, componentType argov1beta1api.AgentCo
 }
 
 // This function builds the AppProject resource for the managed or autonomous agent.
-func buildAppProjectResource(nsName string, agentMode argov1beta1api.AgentMode) *argocdv1alpha1.AppProject {
-	appProject := &argocdv1alpha1.AppProject{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      agentAppProjectName,
-			Namespace: nsName,
-		},
-		Spec: argocdv1alpha1.AppProjectSpec{
-			ClusterResourceWhitelist: []argocdv1alpha1.ClusterResourceRestrictionItem{{
-				Group: "*",
-				Kind:  "*",
-			}},
-			SourceRepos: []string{"*"},
-		},
+func buildAppProjectResource(nsName string, agentMode argov1beta1api.AgentMode) *appproject.ProjRef {
+	opts := []appproject.ProjOption{
+		appproject.WithSourceRepo("*"),
+		appproject.WithClusterResource("*", "*"),
 	}
 
 	if agentMode == argov1beta1api.AgentModeManaged {
-		appProject.Spec.SourceNamespaces = []string{
-			managedAgentClusterName,
-			autonomousAgentClusterName,
-		}
-		appProject.Spec.Destinations = []argocdv1alpha1.ApplicationDestination{{
-			Name:      managedAgentClusterName,
-			Namespace: managedAgentApplicationNamespace,
-			Server:    "*",
-		}}
+		opts = append(opts,
+			appproject.WithSourceNamespace(managedAgentClusterName),
+			appproject.WithSourceNamespace(autonomousAgentClusterName),
+			appproject.WithDestination("*", managedAgentApplicationNamespace),
+		)
 	} else {
-		appProject.Spec.Destinations = []argocdv1alpha1.ApplicationDestination{{
-			Namespace: autonomousAgentApplicationNamespace,
-			Server:    "*",
-		}}
+		opts = append(opts,
+			appproject.WithDestination("*", autonomousAgentApplicationNamespace),
+		)
 	}
-	return appProject
+	return appproject.Create(agentAppProjectName, nsName, opts...)
 }
 
 // This function builds the Application resource for the managed or autonomous agent.
 func buildApplicationResource(applicationName, nsName, agentName, argocdInstanceName string,
-	agentMode argov1beta1api.AgentMode) *argocdv1alpha1.Application {
+	agentMode argov1beta1api.AgentMode) *appFixture.AppRef {
 
-	application := &argocdv1alpha1.Application{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      applicationName,
-			Namespace: nsName,
-		},
-		Spec: argocdv1alpha1.ApplicationSpec{
-			Project: agentAppProjectName,
-			Source: &argocdv1alpha1.ApplicationSource{
-				RepoURL:        "https://github.com/argoproj/argocd-example-apps",
-				TargetRevision: "HEAD",
-				Path:           "guestbook",
-			},
-			SyncPolicy: &argocdv1alpha1.SyncPolicy{
-				Automated: &argocdv1alpha1.SyncPolicyAutomated{
-					Prune:    true,
-					SelfHeal: true,
-				},
-				ManagedNamespaceMetadata: &argocdv1alpha1.ManagedNamespaceMetadata{
-					Labels: map[string]string{
-						"argocd.argoproj.io/managed-by": argocdInstanceName,
-					},
-				},
-			},
-		},
+	opts := []appFixture.AppOption{
+		appFixture.WithProject(agentAppProjectName),
+		appFixture.WithRepo("https://github.com/argoproj/argocd-example-apps"),
+		appFixture.WithRevision("HEAD"),
+		appFixture.WithPath("guestbook"),
+		appFixture.WithAutoSync(),
+		appFixture.WithPrune(),
+		appFixture.WithSelfHeal(),
+		appFixture.WithManagedNSLabels(map[string]string{
+			"argocd.argoproj.io/managed-by": argocdInstanceName,
+		}),
 	}
 
 	// Set the destination based on the agent mode
 	if agentMode == argov1beta1api.AgentModeManaged {
-		application.Spec.Destination = argocdv1alpha1.ApplicationDestination{
-			Name:      agentName,
-			Namespace: managedAgentApplicationNamespace,
-		}
+		opts = append(opts,
+			appFixture.WithDestName(agentName),
+			appFixture.WithDestNamespace(managedAgentApplicationNamespace),
+		)
 	} else {
-		application.Spec.Destination = argocdv1alpha1.ApplicationDestination{
-			Server:    "https://kubernetes.default.svc",
-			Namespace: autonomousAgentApplicationNamespace,
-		}
+		opts = append(opts,
+			appFixture.WithDestServer("https://kubernetes.default.svc"),
+			appFixture.WithDestNamespace(autonomousAgentApplicationNamespace),
+		)
 	}
-	return application
+	return appFixture.Create(applicationName, nsName, opts...)
 }
 
 func portForward(namespace string, subject string, port string) func() {
@@ -993,13 +942,12 @@ func createRBACForResourceProxyTest(agentK8sClient client.Client, agentInstallNa
 	}
 }
 
-func getResourceForResourceProxyTest(endpointURL string, password string, app *argocdv1alpha1.Application, group, version, kind, namespace, name string) (string, error) {
+func getResourceForResourceProxyTest(endpointURL string, password string, appRef *appFixture.AppRef, appProject string, group, version, kind, namespace, name string) (string, error) {
 
-	_, sessionToken, closer, err := argocdFixture.CreateArgoCDAPIClient(context.Background(), endpointURL, password)
+	sessionToken, err := argocdFixture.GetSessionToken(endpointURL, password)
 	if err != nil {
-		return "", fmt.Errorf("unable to create argocd api client: %v", err)
+		return "", fmt.Errorf("unable to get session token: %v", err)
 	}
-	defer closer.Close()
 
 	c := &http.Client{
 		Transport: &http.Transport{
@@ -1010,15 +958,15 @@ func getResourceForResourceProxyTest(endpointURL string, password string, app *a
 	}
 
 	reqURL := constructURLForResourceProxyTest(endpointURL,
-		"appNamespace", app.Namespace,
-		"project", app.Spec.Project,
+		"appNamespace", appRef.Namespace,
+		"project", appProject,
 		"namespace", namespace,
 		"resourceName", name,
 		"group", group,
 		"version", version,
 		"kind", kind,
 	)
-	reqURL.Path = fmt.Sprintf("/api/v1/applications/%s/resource", app.Name)
+	reqURL.Path = fmt.Sprintf("/api/v1/applications/%s/resource", appRef.Name)
 
 	GinkgoWriter.Println("resourceProxyURL:", *reqURL)
 
