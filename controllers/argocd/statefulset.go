@@ -34,12 +34,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
-func getRedisHAReplicas() *int32 {
-	replicas := common.ArgoCDDefaultRedisHAReplicas
-	// TODO: Allow override of this value through CR?
-	return &replicas
-}
-
 // newStatefulSet returns a new StatefulSet instance for the given ArgoCD instance.
 func newStatefulSet(cr *argoproj.ArgoCD) *appsv1.StatefulSet {
 	return &appsv1.StatefulSet{
@@ -101,7 +95,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 	redisEnv := proxyEnvVars()
 
 	ss.Spec.PodManagementPolicy = appsv1.OrderedReadyPodManagement
-	ss.Spec.Replicas = getRedisHAReplicas()
+	ss.Spec.Replicas = argoutil.GetRedisHAReplicas()
 	ss.Spec.Selector = &metav1.LabelSelector{
 		MatchLabels: map[string]string{
 			common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
@@ -147,7 +141,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				"redis-server",
 			},
 			Env:             redisEnv,
-			Image:           getRedisHAContainerImage(cr),
+			Image:           argoutil.GetRedisHAContainerImage(cr),
 			ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 			LivenessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
@@ -186,7 +180,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				SuccessThreshold:    int32(1),
 				TimeoutSeconds:      int32(15),
 			},
-			Resources:       getRedisHAResources(cr),
+			Resources:       argoutil.GetRedisHAResources(cr),
 			SecurityContext: argoutil.DefaultSecurityContext(),
 			VolumeMounts: []corev1.VolumeMount{
 				{
@@ -212,7 +206,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				"redis-sentinel",
 			},
 			Env:             redisEnv,
-			Image:           getRedisHAContainerImage(cr),
+			Image:           argoutil.GetRedisHAContainerImage(cr),
 			ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 			LivenessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
@@ -251,7 +245,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				SuccessThreshold:    int32(1),
 				TimeoutSeconds:      int32(15),
 			},
-			Resources:       getRedisHAResources(cr),
+			Resources:       argoutil.GetRedisHAResources(cr),
 			SecurityContext: argoutil.DefaultSecurityContext(),
 			Lifecycle: &corev1.Lifecycle{
 				PostStart: &corev1.LifecycleHandler{
@@ -311,10 +305,10 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				Value: "2bbec7894d954a8af3bb54d13eaec53cb024e2ca", // TODO: Should this be hard-coded?
 			},
 		},
-		Image:           getRedisHAContainerImage(cr),
+		Image:           argoutil.GetRedisHAContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            "config-init",
-		Resources:       getRedisHAResources(cr),
+		Resources:       argoutil.GetRedisHAResources(cr),
 		SecurityContext: argoutil.DefaultSecurityContext(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -424,11 +418,11 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 			return r.Delete(context.TODO(), existing)
 		}
 
-		desiredImage := getRedisHAContainerImage(cr)
+		desiredImage := argoutil.GetRedisHAContainerImage(cr)
 		changes := updateNodePlacementStateful(existing, ss)
 		for i, container := range existing.Spec.Template.Spec.Containers {
 			if container.Image != desiredImage {
-				existing.Spec.Template.Spec.Containers[i].Image = getRedisHAContainerImage(cr)
+				existing.Spec.Template.Spec.Containers[i].Image = argoutil.GetRedisHAContainerImage(cr)
 				existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 				changes = append(changes, fmt.Sprintf("container '%s' image", container.Name))
 			}
