@@ -33,7 +33,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
-	"github.com/argoproj-labs/argocd-operator/pkg/glob"
+	"github.com/argoproj-labs/argocd-operator/internal/glob"
 	"github.com/distribution/reference"
 	"github.com/go-logr/logr"
 	certificates "k8s.io/api/certificates/v1beta1"

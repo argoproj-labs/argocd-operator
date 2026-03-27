@@ -25,8 +25,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/argoproj-labs/argocd-operator/pkg/glob"
-	argopass "github.com/argoproj-labs/argocd-operator/pkg/password"
+	"github.com/argoproj-labs/argocd-operator/internal/glob"
+	argopass "github.com/argoproj-labs/argocd-operator/internal/password"
 	certmanagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"

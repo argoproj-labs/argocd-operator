@@ -9,7 +9,7 @@ import (
 	"sort"
 	"testing"
 
-	argopass "github.com/argoproj-labs/argocd-operator/pkg/password"
+	argopass "github.com/argoproj-labs/argocd-operator/internal/password"
 
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"

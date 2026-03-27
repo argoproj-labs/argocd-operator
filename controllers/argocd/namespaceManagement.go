@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/argoproj-labs/argocd-operator/pkg/glob"
+	"github.com/argoproj-labs/argocd-operator/internal/glob"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"

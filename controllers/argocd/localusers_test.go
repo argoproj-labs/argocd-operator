@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/argoproj-labs/argocd-operator/pkg/settings"
+	"github.com/argoproj-labs/argocd-operator/internal/settings"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"

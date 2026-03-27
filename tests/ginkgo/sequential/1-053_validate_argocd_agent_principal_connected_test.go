@@ -446,10 +446,10 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			validatePrincipalAndAgentConnection()
 
 			By("Create AppProject for managed agent in " + namespaceAgentPrincipal)
-			buildAppProjectResource(namespaceAgentPrincipal, argov1beta1api.AgentModeManaged)
+			buildAppProjectResource(argov1beta1api.AgentModeManaged)
 
 			By("Create AppProject for autonomous agent in " + namespaceAutonomousAgent)
-			buildAppProjectResource(namespaceAutonomousAgent, argov1beta1api.AgentModeAutonomous)
+			buildAppProjectResource(argov1beta1api.AgentModeAutonomous)
 
 			applicationOfManagedAgent := buildApplicationResource(applicationNameManagedAgent,
 				managedAgentClusterName, managedAgentClusterName, argoCDAgentInstanceNameAgent, argov1beta1api.AgentModeManaged)
@@ -749,7 +749,7 @@ func buildArgoCDResource(argoCDName string, componentType argov1beta1api.AgentCo
 }
 
 // This function builds the AppProject resource for the managed or autonomous agent.
-func buildAppProjectResource(nsName string, agentMode argov1beta1api.AgentMode) *appproject.ProjRef {
+func buildAppProjectResource(agentMode argov1beta1api.AgentMode) {
 	opts := []appproject.ProjOption{
 		appproject.WithSourceRepo("*"),
 		appproject.WithClusterResource("*", "*"),
@@ -766,7 +766,6 @@ func buildAppProjectResource(nsName string, agentMode argov1beta1api.AgentMode) 
 			appproject.WithDestination("*", autonomousAgentApplicationNamespace),
 		)
 	}
-	return appproject.Create(agentAppProjectName, nsName, opts...)
 }
 
 // This function builds the Application resource for the managed or autonomous agent.

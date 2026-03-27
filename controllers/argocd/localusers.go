@@ -33,7 +33,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
-	"github.com/argoproj-labs/argocd-operator/pkg/settings"
+	"github.com/argoproj-labs/argocd-operator/internal/settings"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
