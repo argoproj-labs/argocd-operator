@@ -369,6 +369,15 @@ func buildPrincipalContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
 			Name:  EnvArgoCDPrincipalResourceProxyCaSecretName,
 			Value: getPrincipalResourceProxyCaSecretName(cr),
 		}, {
+			Name:  EnvArgoCDPrincipalTlsMinVersion,
+			Value: getPrincipalTlsMinVersion(cr),
+		}, {
+			Name:  EnvArgoCDPrincipalTlsMaxVersion,
+			Value: getPrincipalTlsMaxVersion(cr),
+		}, {
+			Name:  EnvArgoCDPrincipalCipherSuites,
+			Value: getPrincipalCipherSuites(cr),
+		}, {
 			Name:  EnvArgoCDPrincipalJwtSecretName,
 			Value: getPrincipalJWTSecretName(cr),
 		}, {
@@ -412,6 +421,9 @@ const (
 	EnvArgoCDPrincipalJwtSecretName             = "ARGOCD_PRINCIPAL_JWT_SECRET_NAME"
 	EnvArgoCDPrincipalImage                     = "ARGOCD_PRINCIPAL_IMAGE"
 	EnvArgoCDPrincipalDestinationBasedMapping   = "ARGOCD_PRINCIPAL_DESTINATION_BASED_MAPPING"
+	EnvArgoCDPrincipalTlsMinVersion             = "ARGOCD_PRINCIPAL_TLS_MIN_VERSION"
+	EnvArgoCDPrincipalTlsMaxVersion             = "ARGOCD_PRINCIPAL_TLS_MAX_VERSION"
+	EnvArgoCDPrincipalCipherSuites              = "ARGOCD_PRINCIPAL_TLS_CIPHERSUITES"
 )
 
 // Logging Configuration
@@ -532,6 +544,26 @@ func getPrincipalResourceProxyCaSecretName(cr *argoproj.ArgoCD) string {
 		return cr.Spec.ArgoCDAgent.Principal.ResourceProxy.CASecretName
 	}
 	return "argocd-agent-ca"
+}
+func getPrincipalTlsMinVersion(cr *argoproj.ArgoCD) string {
+	if hasTLS(cr) && cr.Spec.ArgoCDAgent.Principal.TLS.MinVersion != "" {
+		return cr.Spec.ArgoCDAgent.Principal.TLS.MinVersion
+	}
+	return "tls1.3"
+}
+
+func getPrincipalTlsMaxVersion(cr *argoproj.ArgoCD) string {
+	if hasTLS(cr) && cr.Spec.ArgoCDAgent.Principal.TLS.MaxVersion != "" {
+		return cr.Spec.ArgoCDAgent.Principal.TLS.MaxVersion
+	}
+	return "tls1.3"
+}
+
+func getPrincipalCipherSuites(cr *argoproj.ArgoCD) string {
+	if hasTLS(cr) && len(cr.Spec.ArgoCDAgent.Principal.TLS.CipherSuites) > 0 {
+		return strings.Join(cr.Spec.ArgoCDAgent.Principal.TLS.CipherSuites, ":")
+	}
+	return ""
 }
 
 func getPrincipalResourceProxySecretName(cr *argoproj.ArgoCD) string {

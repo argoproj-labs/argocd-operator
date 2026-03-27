@@ -220,7 +220,7 @@ func getArgoImportVolumes(cr *argoprojv1alpha1.ArgoCDExport) []corev1.Volume {
 	return volumes
 }
 
-func getArgoRedisArgs(useTLS bool) []string {
+func getArgoRedisArgs(useTLS bool, cr *argoproj.ArgoCD) []string {
 	args := make([]string, 0)
 
 	args = append(args, "--save", "")
@@ -234,6 +234,16 @@ func getArgoRedisArgs(useTLS bool) []string {
 		args = append(args, "--tls-cert-file", "/app/config/redis/tls/tls.crt")
 		args = append(args, "--tls-key-file", "/app/config/redis/tls/tls.key")
 		args = append(args, "--tls-auth-clients", "no")
+		if tlsConfig := cr.Spec.Redis.TlsConfig; tlsConfig != nil {
+			if len(tlsConfig.Protocols) > 0 {
+				args = append(args, "--tls-protocols", strings.Join(tlsConfig.Protocols, " "))
+			}
+			if len(tlsConfig.CipherSuites) > 0 {
+				args = append(args, "--tls-ciphersuites", tlsConfig.CipherSuites)
+			}
+		} else {
+			args = append(args, "--tls-protocols", "TLSv1.3")
+		}
 	}
 
 	return args
@@ -896,7 +906,12 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		serverVolumeMounts = append(serverVolumeMounts, cr.Spec.Server.VolumeMounts...)
 	}
 
+	arguments, err := buildTLSArgs(cr.Spec.Server.TlsConfig)
+	if err != nil {
+		return err
+	}
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
+		Args:            arguments,
 		Command:         getArgoServerCommand(cr, useTLSForRedis),
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
@@ -1076,6 +1091,11 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			argoutil.LogResourceDeletion(log, existing, "argocd server is disabled")
 			return r.Delete(context.TODO(), existing)
 		}
+		actualArgs := existing.Spec.Template.Spec.Containers[0].Args
+		desiredArgs, err := buildTLSArgs(cr.Spec.Server.TlsConfig)
+		if err != nil {
+			return err
+		}
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getArgoContainerImage(cr)
 		actualImagePullPolicy := existing.Spec.Template.Spec.Containers[0].ImagePullPolicy
@@ -1085,6 +1105,14 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
 			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			changes = append(changes, "container image")
+		}
+		if !reflect.DeepEqual(actualArgs, desiredArgs) {
+			existing.Spec.Template.Spec.Containers[0].Args = desiredArgs
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container args"
+			changed = true
 		}
 		if actualImagePullPolicy != desiredImagePullPolicy {
 			existing.Spec.Template.Spec.Containers[0].ImagePullPolicy = desiredImagePullPolicy
