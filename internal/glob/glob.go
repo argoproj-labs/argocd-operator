@@ -53,4 +53,3 @@ func MatchStringInList(list []string, item string, patternMatch string) bool {
 	}
 	return false
 }
-

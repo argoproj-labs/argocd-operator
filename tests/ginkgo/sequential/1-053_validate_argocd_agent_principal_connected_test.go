@@ -748,24 +748,31 @@ func buildArgoCDResource(argoCDName string, componentType argov1beta1api.AgentCo
 	return argoCD
 }
 
-// This function builds the AppProject resource for the managed or autonomous agent.
+// This function builds and creates the AppProject resource for the managed or autonomous agent.
 func buildAppProjectResource(agentMode argov1beta1api.AgentMode) {
 	opts := []appproject.ProjOption{
 		appproject.WithSourceRepo("*"),
 		appproject.WithClusterResource("*", "*"),
 	}
 
+	var projectName, projectNamespace string
+
 	if agentMode == argov1beta1api.AgentModeManaged {
+		projectName = agentAppProjectName
+		projectNamespace = namespaceAgentPrincipal
 		opts = append(opts,
 			appproject.WithSourceNamespace(managedAgentClusterName),
 			appproject.WithSourceNamespace(autonomousAgentClusterName),
 			appproject.WithDestination("*", managedAgentApplicationNamespace),
 		)
 	} else {
+		projectName = autonomousAgentClusterName + "-" + agentAppProjectName
+		projectNamespace = namespaceAutonomousAgent
 		opts = append(opts,
 			appproject.WithDestination("*", autonomousAgentApplicationNamespace),
 		)
 	}
+	appproject.Create(projectName, projectNamespace, opts...)
 }
 
 // This function builds the Application resource for the managed or autonomous agent.

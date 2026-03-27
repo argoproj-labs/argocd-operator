@@ -330,6 +330,16 @@ func runArgoCDCLI(args ...string) (string, error) {
 	GinkgoWriter.Println("executing argocd", args)
 	// #nosec G204 -- test code
 	cmd := exec.Command("argocd", args...)
+
+	// In core mode, set ARGOCD_NAMESPACE so the CLI looks for argocd-cm
+	// in the correct namespace (the test namespace, not the default "argocd").
+	for i, arg := range args {
+		if arg == "-N" && i+1 < len(args) {
+			cmd.Env = append(cmd.Environ(), "ARGOCD_NAMESPACE="+args[i+1])
+			break
+		}
+	}
+
 	output, err := cmd.CombinedOutput()
 	GinkgoWriter.Println(string(output))
 	return string(output), err

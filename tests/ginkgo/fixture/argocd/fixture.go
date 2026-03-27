@@ -211,15 +211,20 @@ func fetchArgoCD(f func(*argov1beta1api.ArgoCD) bool) matcher.GomegaMatcher {
 
 // RunArgoCDCLI runs the argocd CLI in core mode, which uses the kubeconfig
 // for authentication instead of connecting to the ArgoCD API server.
-func RunArgoCDCLI(args ...string) (string, error) {
+// The namespace parameter tells the CLI where to find the ArgoCD installation
+// (e.g. argocd-cm ConfigMap). Callers should pass the namespace where the
+// ArgoCD CR is installed.
+func RunArgoCDCLI(namespace string, args ...string) (string, error) {
 
 	cmdArgs := append([]string{"argocd"}, args...)
-	cmdArgs = append(cmdArgs, "--core")
+	cmdArgs = append(cmdArgs, "--core", "-N", namespace)
 
 	GinkgoWriter.Println("executing command", cmdArgs)
 
 	// #nosec G204
 	cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
+	// Set ARGOCD_NAMESPACE so the CLI looks for argocd-cm in the correct namespace.
+	cmd.Env = append(cmd.Environ(), "ARGOCD_NAMESPACE="+namespace)
 
 	output, err := cmd.CombinedOutput()
 	GinkgoWriter.Println(string(output))
