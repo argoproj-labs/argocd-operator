@@ -452,7 +452,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				changes = append(changes, fmt.Sprintf("container '%s' VolumeMounts", container.Name))
 			}
 			if existing.Spec.Template.Spec.Containers[i].ImagePullPolicy != ss.Spec.Template.Spec.Containers[i].ImagePullPolicy {
-				existing.Spec.Template.Spec.Containers[0].ImagePullPolicy = ss.Spec.Template.Spec.Containers[i].ImagePullPolicy
+				existing.Spec.Template.Spec.Containers[i].ImagePullPolicy = ss.Spec.Template.Spec.Containers[i].ImagePullPolicy
 				changes = append(changes, "image pull policy")
 			}
 
