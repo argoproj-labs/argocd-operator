@@ -217,13 +217,13 @@ func fetchArgoCD(f func(*argov1beta1api.ArgoCD) bool) matcher.GomegaMatcher {
 func RunArgoCDCLI(namespace string, args ...string) (string, error) {
 
 	cmdArgs := append([]string{"argocd"}, args...)
-	cmdArgs = append(cmdArgs, "--core", "-N", namespace)
+	cmdArgs = append(cmdArgs, "--core", "-N", namespace, "--server-namespace", namespace)
 
 	GinkgoWriter.Println("executing command", cmdArgs)
 
 	// #nosec G204
 	cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
-	// Set ARGOCD_NAMESPACE so the CLI looks for argocd-cm in the correct namespace.
+	// Also set ARGOCD_NAMESPACE as a fallback in case --server-namespace is not supported.
 	cmd.Env = append(cmd.Environ(), "ARGOCD_NAMESPACE="+namespace)
 
 	output, err := cmd.CombinedOutput()

@@ -173,7 +173,7 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+			r := makeTestReconciler(cl, sch, testclient.NewClientset())
 
 			err := monitoringv1.AddToScheme(r.Scheme)
 			assert.NoError(t, err)
@@ -261,7 +261,7 @@ func TestReconcilePrometheus_Deleted(t *testing.T) {
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+			r := makeTestReconciler(cl, sch, testclient.NewClientset())
 
 			err := monitoringv1.AddToScheme(r.Scheme)
 			assert.NoError(t, err)

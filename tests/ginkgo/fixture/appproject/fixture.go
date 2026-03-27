@@ -76,7 +76,7 @@ func Create(name, namespace string, opts ...ProjOption) *ProjRef {
 }
 
 func createViaCLI(name, namespace string, cfg *projConfig) {
-	args := []string{"proj", "create", name, "--core", "-N", namespace}
+	args := []string{"proj", "create", name, "--core", "-n", namespace}
 	for _, repo := range cfg.sourceRepos {
 		args = append(args, "--src", repo)
 	}
@@ -92,7 +92,7 @@ func createViaCLI(name, namespace string, cfg *projConfig) {
 
 	// Source namespaces need separate commands
 	for _, ns := range cfg.sourceNamespaces {
-		out, err := runArgoCDCLI("proj", "add-source-namespace", name, ns, "--core", "-N", namespace)
+		out, err := runArgoCDCLI("proj", "add-source-namespace", name, ns, "--core", "-n", namespace)
 		Expect(err).ToNot(HaveOccurred(), "argocd proj add-source-namespace failed: %s", out)
 	}
 }
@@ -155,13 +155,13 @@ func createViaKubectl(name, namespace string, cfg *projConfig) {
 
 // AddDestination adds a destination to an existing AppProject.
 func AddDestination(ref *ProjRef, server, namespace string) {
-	out, err := runArgoCDCLI("proj", "add-destination", ref.Name, server, namespace, "--core", "-N", ref.Namespace)
+	out, err := runArgoCDCLI("proj", "add-destination", ref.Name, server, namespace, "--core", "-n", ref.Namespace)
 	Expect(err).ToNot(HaveOccurred(), "argocd proj add-destination failed: %s", out)
 }
 
 // AddSourceNamespace adds a source namespace to an existing AppProject.
 func AddSourceNamespace(ref *ProjRef, ns string) {
-	out, err := runArgoCDCLI("proj", "add-source-namespace", ref.Name, ns, "--core", "-N", ref.Namespace)
+	out, err := runArgoCDCLI("proj", "add-source-namespace", ref.Name, ns, "--core", "-n", ref.Namespace)
 	Expect(err).ToNot(HaveOccurred(), "argocd proj add-source-namespace failed: %s", out)
 }
 
@@ -173,19 +173,26 @@ func Ref(name, namespace string) *ProjRef {
 // --- Internal helpers ---
 
 func runArgoCDCLI(args ...string) (string, error) {
-	GinkgoWriter.Println("executing argocd", args)
-	// #nosec G204 -- test code
-	cmd := exec.Command("argocd", args...)
-
-	// In core mode, set ARGOCD_NAMESPACE so the CLI looks for argocd-cm
-	// in the correct namespace (the test namespace, not the default "argocd").
+	// In core mode, the CLI needs --server-namespace to know where the ArgoCD
+	// installation lives (e.g. argocd-cm ConfigMap). Extract it from the -n flag
+	// since tests install ArgoCD in the same namespace as the app projects.
 	for i, arg := range args {
-		if arg == "-N" && i+1 < len(args) {
-			cmd.Env = append(cmd.Environ(), "ARGOCD_NAMESPACE="+args[i+1])
+		if arg == "-n" && i+1 < len(args) {
+			args = append(args, "--server-namespace", args[i+1])
 			break
 		}
 	}
 
+	GinkgoWriter.Println("executing argocd", args)
+	// #nosec G204 -- test code
+	cmd := exec.Command("argocd", args...)
+	// Also set ARGOCD_NAMESPACE as a fallback in case --server-namespace is not supported.
+	for i, arg := range args {
+		if arg == "-n" && i+1 < len(args) {
+			cmd.Env = append(cmd.Environ(), "ARGOCD_NAMESPACE="+args[i+1])
+			break
+		}
+	}
 	output, err := cmd.CombinedOutput()
 	GinkgoWriter.Println(string(output))
 	return string(output), err
