@@ -885,12 +885,10 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *
 		}
 	}
 
-	// check ManagedApplicationSetSourceNamespaces for proper cleanup
-	if cr.Spec.ApplicationSet != nil || len(r.ManagedApplicationSetSourceNamespaces) > 0 {
-		log.Info("reconciling ApplicationSet controller")
-		if err := r.reconcileApplicationSetController(cr); err != nil {
-			return err
-		}
+	// Always reconcile so omitting spec.applicationSet runs cleanup.
+	log.Info("reconciling ApplicationSet controller")
+	if err := r.reconcileApplicationSetController(cr); err != nil {
+		return err
 	}
 
 	if !reflect.DeepEqual(cr.Spec.Notifications, argoproj.ArgoCDNotifications{}) || len(r.ManagedNotificationsSourceNamespaces) > 0 {
