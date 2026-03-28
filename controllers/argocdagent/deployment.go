@@ -300,6 +300,20 @@ func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, dep
 		deployment.Spec.Template.Spec.Containers[0].Ports = buildPorts(compName)
 	}
 
+	redisAuthVolume, redisAuthMount := argoutil.MountRedisAuthToArgo(cr)
+	volumes := append(buildVolumes(), redisAuthVolume)
+	volumeMounts := append(buildVolumeMounts(), redisAuthMount)
+	if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].VolumeMounts, volumeMounts) {
+		log.Info("deployment container volume mounts are being updated")
+		changed = true
+		deployment.Spec.Template.Spec.Containers[0].VolumeMounts = volumeMounts
+	}
+	if !reflect.DeepEqual(deployment.Spec.Template.Spec.Volumes, volumes) {
+		log.Info("deployment volumes are being updated")
+		changed = true
+		deployment.Spec.Template.Spec.Volumes = volumes
+	}
+
 	if !reflect.DeepEqual(deployment.Spec.Template.Spec.ServiceAccountName, saName) {
 		log.Info("deployment service account name is being updated")
 		changed = true
