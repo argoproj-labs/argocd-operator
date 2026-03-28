@@ -599,6 +599,142 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 		})
 
+		It("verifies that ApplicationSet reconcile is blocked when namespace list fails and retry adds --applicationset-namespaces after RBAC restore", func() {
+			if fixture.EnvLocalRun() {
+				Skip("Skipping RBAC test for LOCAL_RUN - operator runs locally without cluster ClusterRole")
+			}
+
+			By("finding operator deployment")
+			operatorDeployment := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "argocd-operator-controller-manager",
+					Namespace: "argocd-operator-system",
+				},
+			}
+			if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(operatorDeployment), operatorDeployment); err != nil {
+				var nsList corev1.NamespaceList
+				Expect(k8sClient.List(ctx, &nsList)).To(Succeed())
+				found := false
+				for i := range nsList.Items {
+					dep := &appsv1.Deployment{}
+					if getErr := k8sClient.Get(ctx, client.ObjectKey{Namespace: nsList.Items[i].Name, Name: "argocd-operator-controller-manager"}, dep); getErr == nil {
+						operatorDeployment = dep
+						found = true
+						break
+					}
+				}
+				if !found {
+					Skip("Operator deployment not found - test requires operator running in cluster")
+				}
+			}
+
+			By("revoking operator list namespaces permission")
+			saName := operatorDeployment.Spec.Template.Spec.ServiceAccountName
+			if saName == "" {
+				saName = "default"
+			}
+			var crbList rbacv1.ClusterRoleBindingList
+			Expect(k8sClient.List(ctx, &crbList)).To(Succeed())
+			var operatorClusterRoleName string
+			for i := range crbList.Items {
+				for _, subj := range crbList.Items[i].Subjects {
+					if subj.Kind == "ServiceAccount" && subj.Namespace == operatorDeployment.Namespace && subj.Name == saName {
+						operatorClusterRoleName = crbList.Items[i].RoleRef.Name
+						break
+					}
+				}
+				if operatorClusterRoleName != "" {
+					break
+				}
+			}
+			if operatorClusterRoleName == "" {
+				Skip("Operator ClusterRoleBinding not found")
+			}
+			operatorClusterRole := &rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: operatorClusterRoleName}}
+			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(operatorClusterRole), operatorClusterRole)).To(Succeed())
+			originalRules := make([]rbacv1.PolicyRule, len(operatorClusterRole.Rules))
+			copy(originalRules, operatorClusterRole.Rules)
+			var modifiedRules []rbacv1.PolicyRule
+			removedListFromNamespaces := false
+			for _, r := range operatorClusterRole.Rules {
+				replaced := false
+				for _, res := range r.Resources {
+					if res == "namespaces" {
+						replaced = true
+						for _, v := range r.Verbs {
+							if v == "list" {
+								removedListFromNamespaces = true
+								break
+							}
+						}
+						var newVerbs []string
+						for _, v := range r.Verbs {
+							if v != "list" {
+								newVerbs = append(newVerbs, v)
+							}
+						}
+						if len(newVerbs) > 0 {
+							modifiedRules = append(modifiedRules, rbacv1.PolicyRule{
+								APIGroups: r.APIGroups, Resources: r.Resources, Verbs: newVerbs,
+								ResourceNames: r.ResourceNames, NonResourceURLs: r.NonResourceURLs,
+							})
+						}
+						break
+					}
+				}
+				if !replaced {
+					modifiedRules = append(modifiedRules, r)
+				}
+			}
+			if !removedListFromNamespaces {
+				Skip("Operator ClusterRole has no namespaces list verb to revoke")
+			}
+			clusterroleFixture.Update(operatorClusterRole, func(cr *rbacv1.ClusterRole) { cr.Rules = modifiedRules })
+			rbacRestored := false
+			defer func() {
+				if !rbacRestored {
+					clusterroleFixture.Update(operatorClusterRole, func(cr *rbacv1.ClusterRole) { cr.Rules = originalRules })
+				}
+			}()
+
+			By("creating Argo CD with ApplicationSet and source namespaces")
+			argocdNS, cleanupArgocd := fixture.CreateNamespaceWithCleanupFunc("appset-argocd-err")
+			cleanupFunctions = append(cleanupFunctions, cleanupArgocd)
+			targetNS, cleanupTarget := fixture.CreateNamespaceWithCleanupFunc("appset-target-err")
+			cleanupFunctions = append(cleanupFunctions, cleanupTarget)
+			argoCD := &v1beta1.ArgoCD{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "example",
+					Namespace: argocdNS.Name,
+				},
+				Spec: v1beta1.ArgoCDSpec{
+					SourceNamespaces: []string{targetNS.Name},
+					ApplicationSet: &v1beta1.ArgoCDApplicationSet{
+						SourceNamespaces: []string{targetNS.Name},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+
+			appsetDeployment := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "example-applicationset-controller",
+					Namespace: argoCD.Namespace,
+				},
+			}
+
+			By("verifying ApplicationSet deployment is not created while namespace list fails (blocked reconcile)")
+			Consistently(appsetDeployment, "30s", "2s").Should(k8sFixture.NotExistByName())
+
+			By("restoring operator list namespaces permission")
+			clusterroleFixture.Update(operatorClusterRole, func(cr *rbacv1.ClusterRole) { cr.Rules = originalRules })
+			rbacRestored = true
+
+			By("verifying retry creates deployment with --applicationset-namespaces")
+			Eventually(appsetDeployment, "2m", "5s").Should(k8sFixture.ExistByName())
+			Eventually(appsetDeployment).Should(deploymentFixture.HaveContainerCommandSubstring("--applicationset-namespaces "+targetNS.Name, 0))
+		})
+
 		It("verifies that ArgoCD sourcenamespaces resources are cleaned up automatically", func() {
 
 			By("creating Argo CD namespace and appset source namespace")
