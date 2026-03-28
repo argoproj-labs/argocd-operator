@@ -24,7 +24,6 @@ import (
 	goruntime "runtime"
 	"strings"
 
-	"github.com/argoproj/argo-cd/v3/util/env"
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -99,7 +98,11 @@ func main() {
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", fmt.Sprintf(":%d", common.OperatorMetricsPort), "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
-	flag.StringVar(&labelSelectorFlag, "label-selector", env.StringFromEnv(common.ArgoCDLabelSelectorKey, common.ArgoCDDefaultLabelSelector), "The label selector is used to map to a subset of ArgoCD instances to reconcile")
+	labelSelectorDefault := common.ArgoCDDefaultLabelSelector
+	if v := os.Getenv(common.ArgoCDLabelSelectorKey); v != "" {
+		labelSelectorDefault = v
+	}
+	flag.StringVar(&labelSelectorFlag, "label-selector", labelSelectorDefault, "The label selector is used to map to a subset of ArgoCD instances to reconcile")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")

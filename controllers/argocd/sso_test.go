@@ -137,7 +137,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme, templatev1.Install, oappsv1.Install, routev1.Install)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+			r := makeTestReconciler(cl, sch, testclient.NewClientset())
 
 			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
 

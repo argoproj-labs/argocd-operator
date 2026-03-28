@@ -49,7 +49,7 @@ func TestReconcileArgoCD_reconcile_ServerIngress_ingressClassName(t *testing.T) 
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+			r := makeTestReconciler(cl, sch, testclient.NewClientset())
 
 			err := r.reconcileArgoServerIngress(a)
 			assert.NoError(t, err)
@@ -94,7 +94,7 @@ func TestReconcileArgoCD_reconcile_ServerIngress_serverHost(t *testing.T) {
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+			r := makeTestReconciler(cl, sch, testclient.NewClientset())
 			err := r.reconcileArgoServerIngress(a)
 			assert.NoError(t, err)
 
@@ -152,7 +152,7 @@ func TestReconcileArgoCD_reconcile_ServerIngress_ingressClassName_update(t *test
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r := makeTestReconciler(cl, sch, testclient.NewClientset())
 
 	err := r.reconcileArgoServerIngress(a)
 	assert.NoError(t, err)
@@ -199,7 +199,7 @@ func TestReconcileArgoCD_reconcile_ServerGRPCIngress_ingressClassName(t *testing
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+			r := makeTestReconciler(cl, sch, testclient.NewClientset())
 
 			err := r.reconcileArgoServerGRPCIngress(a)
 			assert.NoError(t, err)
@@ -232,7 +232,7 @@ func TestReconcileApplicationSetService_Ingress(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r := makeTestReconciler(cl, sch, testclient.NewClientset())
 
 	ingress := newIngressWithSuffix(common.ApplicationSetServiceNameSuffix, a)
 	assert.NoError(t, r.reconcileApplicationSetControllerIngress(a))

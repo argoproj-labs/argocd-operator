@@ -20,7 +20,6 @@ import (
 	"context"
 	"strings"
 
-	appv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
@@ -33,6 +32,7 @@ import (
 	argov1alpha1api "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
+	applicationFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/application"
 	argocdFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/argocd"
 	configmapFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/configmap"
 	deplFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/deployment"
@@ -190,28 +190,15 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
 			By("creating Applications with notification annotation")
-			app := &appv1alpha1.Application{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "my-app-3",
-					Namespace: ns.Name,
-					Annotations: map[string]string{
-						"notifications.argoproj.io/subscribe.on-created.gmail": "jdfake@email.com",
-					},
-				},
-				Spec: appv1alpha1.ApplicationSpec{
-					Project: "default",
-					Source: &appv1alpha1.ApplicationSource{
-						RepoURL:        "https://github.com/redhat-developer/gitops-operator",
-						Path:           "test/examples/nginx",
-						TargetRevision: "HEAD",
-					},
-					Destination: appv1alpha1.ApplicationDestination{
-						Server:    "https://kubernetes.default.svc",
-						Namespace: ns.Name,
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, app)).To(Succeed())
+			applicationFixture.Create("my-app-3", ns.Name,
+				applicationFixture.WithRepo("https://github.com/redhat-developer/gitops-operator"),
+				applicationFixture.WithPath("test/examples/nginx"),
+				applicationFixture.WithRevision("HEAD"),
+				applicationFixture.WithDestServer("https://kubernetes.default.svc"),
+				applicationFixture.WithDestNamespace(ns.Name),
+				applicationFixture.WithProject("default"),
+				applicationFixture.WithAnnotation("notifications.argoproj.io/subscribe.on-created.gmail", "jdfake@email.com"),
+			)
 
 			By("waiting for Argo CD to send an email to smtp4dev Pod indicating that the Application was created")
 

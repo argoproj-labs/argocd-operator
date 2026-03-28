@@ -1,162 +1,353 @@
 package application
 
 import (
+	"encoding/json"
 	"fmt"
+	"os/exec"
 	"regexp"
 
-	. "github.com/onsi/gomega"
-	"k8s.io/client-go/util/retry"
-
-	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
-
-	appv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
-	"github.com/argoproj/gitops-engine/pkg/health"
-	"github.com/argoproj/gitops-engine/pkg/sync/common"
-	matcher "github.com/onsi/gomega/types"
-
 	. "github.com/onsi/ginkgo/v2"
-
-	"context"
-
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	. "github.com/onsi/gomega"
+	matcher "github.com/onsi/gomega/types"
 )
 
-// This is intentionally NOT exported, for now. Create another function in this file/package that calls this function, and export that.
-func expectedCondition(f func(app *appv1alpha1.Application) bool) matcher.GomegaMatcher {
+// AppRef is a lightweight reference to an Argo CD Application.
+type AppRef struct {
+	Name      string
+	Namespace string
+}
 
-	return WithTransform(func(app *appv1alpha1.Application) bool {
+// appConfig holds configuration for creating an Application via CLI.
+type appConfig struct {
+	args            []string
+	annotations     map[string]string
+	labels          map[string]string
+	managedNSLabels map[string]string
+}
 
-		k8sClient, _, err := utils.GetE2ETestKubeClientWithError()
+// AppOption configures Application creation.
+type AppOption func(*appConfig)
+
+func WithRepo(repo string) AppOption {
+	return func(c *appConfig) { c.args = append(c.args, "--repo", repo) }
+}
+
+func WithPath(path string) AppOption {
+	return func(c *appConfig) { c.args = append(c.args, "--path", path) }
+}
+
+func WithRevision(rev string) AppOption {
+	return func(c *appConfig) { c.args = append(c.args, "--revision", rev) }
+}
+
+func WithHelmChart(chart string) AppOption {
+	return func(c *appConfig) { c.args = append(c.args, "--helm-chart", chart) }
+}
+
+func WithHelmValues(values string) AppOption {
+	return func(c *appConfig) {
+		if values != "" {
+			c.args = append(c.args, "--values", values)
+		}
+	}
+}
+
+func WithDestServer(server string) AppOption {
+	return func(c *appConfig) { c.args = append(c.args, "--dest-server", server) }
+}
+
+func WithDestNamespace(ns string) AppOption {
+	return func(c *appConfig) { c.args = append(c.args, "--dest-namespace", ns) }
+}
+
+func WithDestName(name string) AppOption {
+	return func(c *appConfig) { c.args = append(c.args, "--dest-name", name) }
+}
+
+func WithProject(project string) AppOption {
+	return func(c *appConfig) { c.args = append(c.args, "--project", project) }
+}
+
+func WithAutoSync() AppOption {
+	return func(c *appConfig) { c.args = append(c.args, "--sync-policy", "automated") }
+}
+
+func WithPrune() AppOption {
+	return func(c *appConfig) { c.args = append(c.args, "--auto-prune") }
+}
+
+func WithSelfHeal() AppOption {
+	return func(c *appConfig) { c.args = append(c.args, "--self-heal") }
+}
+
+func WithRetryLimit(limit int) AppOption {
+	return func(c *appConfig) { c.args = append(c.args, "--sync-retry-limit", fmt.Sprintf("%d", limit)) }
+}
+
+func WithSyncOption(option string) AppOption {
+	return func(c *appConfig) { c.args = append(c.args, "--sync-option", option) }
+}
+
+func WithPlugin(name string) AppOption {
+	return func(c *appConfig) { c.args = append(c.args, "--config-management-plugin", name) }
+}
+
+func WithPluginEnv(key, value string) AppOption {
+	return func(c *appConfig) { c.args = append(c.args, "--plugin-env", fmt.Sprintf("%s=%s", key, value)) }
+}
+
+func WithDirectoryRecurse() AppOption {
+	return func(c *appConfig) { c.args = append(c.args, "--directory-recurse") }
+}
+
+func WithAnnotation(key, value string) AppOption {
+	return func(c *appConfig) {
+		if c.annotations == nil {
+			c.annotations = make(map[string]string)
+		}
+		c.annotations[key] = value
+	}
+}
+
+func WithLabel(key, value string) AppOption {
+	return func(c *appConfig) {
+		if c.labels == nil {
+			c.labels = make(map[string]string)
+		}
+		c.labels[key] = value
+	}
+}
+
+func WithManagedNSLabels(labels map[string]string) AppOption {
+	return func(c *appConfig) { c.managedNSLabels = labels }
+}
+
+// Create creates an Argo CD Application using the argocd CLI.
+func Create(name, namespace string, opts ...AppOption) *AppRef {
+	cfg := &appConfig{}
+	for _, o := range opts {
+		o(cfg)
+	}
+
+	args := append([]string{"app", "create", name, "--core", "-N", namespace}, cfg.args...)
+
+	output, err := runArgoCDCLI(args...)
+	Expect(err).ToNot(HaveOccurred(), "argocd app create failed: %s", output)
+
+	ref := &AppRef{Name: name, Namespace: namespace}
+
+	// Post-create: annotations via kubectl
+	for k, v := range cfg.annotations {
+		out, err := runKubectl("annotate", "application.argoproj.io", name, "-n", namespace,
+			fmt.Sprintf("%s=%s", k, v))
+		Expect(err).ToNot(HaveOccurred(), "kubectl annotate failed: %s", out)
+	}
+
+	// Post-create: labels via kubectl
+	for k, v := range cfg.labels {
+		out, err := runKubectl("label", "application.argoproj.io", name, "-n", namespace,
+			fmt.Sprintf("%s=%s", k, v))
+		Expect(err).ToNot(HaveOccurred(), "kubectl label failed: %s", out)
+	}
+
+	// Post-create: managed namespace metadata labels via kubectl patch
+	if len(cfg.managedNSLabels) > 0 {
+		patch := map[string]interface{}{
+			"spec": map[string]interface{}{
+				"syncPolicy": map[string]interface{}{
+					"managedNamespaceMetadata": map[string]interface{}{
+						"labels": cfg.managedNSLabels,
+					},
+				},
+			},
+		}
+		patchBytes, _ := json.Marshal(patch)
+		out, err := runKubectl("patch", "application.argoproj.io", name, "-n", namespace,
+			"--type=merge", "-p", string(patchBytes))
+		Expect(err).ToNot(HaveOccurred(), "kubectl patch failed: %s", out)
+	}
+
+	return ref
+}
+
+// Delete deletes an Argo CD Application.
+func Delete(ref *AppRef) {
+	output, err := runArgoCDCLI("app", "delete", ref.Name, "--core", "-N", ref.Namespace, "--yes")
+	Expect(err).ToNot(HaveOccurred(), "argocd app delete failed: %s", output)
+}
+
+// Ref creates a reference to an existing Application without creating it.
+func Ref(name, namespace string) *AppRef {
+	return &AppRef{Name: name, Namespace: namespace}
+}
+
+// --- Matchers ---
+
+// HaveHealthStatus checks that the Application has the expected health status.
+func HaveHealthStatus(expected string) matcher.GomegaMatcher {
+	return WithTransform(func(ref *AppRef) bool {
+		data, err := getAppJSON(ref)
 		if err != nil {
 			GinkgoWriter.Println(err)
 			return false
 		}
-
-		err = k8sClient.Get(context.Background(), client.ObjectKeyFromObject(app), app)
-		if err != nil {
-			GinkgoWriter.Println(err)
-			return false
-		}
-
-		return f(app)
-
+		current := jsonGetString(data, "status", "health", "status")
+		GinkgoWriter.Printf("HaveHealthStatus - current: %s / expected: %s\n", current, expected)
+		return current == expected
 	}, BeTrue())
-
 }
 
-func HaveOperationStatePhase(expectedPhase common.OperationPhase) matcher.GomegaMatcher {
-
-	return expectedCondition(func(app *appv1alpha1.Application) bool {
-
-		var currStatePhase string
-
-		if app.Status.OperationState != nil {
-			currStatePhase = string(app.Status.OperationState.Phase)
+// HaveSyncStatus checks that the Application has the expected sync status.
+func HaveSyncStatus(expected string) matcher.GomegaMatcher {
+	return WithTransform(func(ref *AppRef) bool {
+		data, err := getAppJSON(ref)
+		if err != nil {
+			GinkgoWriter.Println(err)
+			return false
 		}
-
-		GinkgoWriter.Println("HaveOperationStatePhase - current phase:", currStatePhase, " / expected phase:", expectedPhase)
-
-		return currStatePhase == string(expectedPhase)
-
-	})
-
+		current := jsonGetString(data, "status", "sync", "status")
+		GinkgoWriter.Printf("HaveSyncStatus - current: %s / expected: %s\n", current, expected)
+		return current == expected
+	}, BeTrue())
 }
 
-func HaveHealthStatusCode(expectedHealth health.HealthStatusCode) matcher.GomegaMatcher {
-
-	return expectedCondition(func(app *appv1alpha1.Application) bool {
-
-		GinkgoWriter.Println("HaveHealthStatusCode - current health:", app.Status.Health.Status, "/ expected health:", expectedHealth)
-
-		return app.Status.Health.Status == expectedHealth
-
-	})
-
+// HaveOperationPhase checks that the Application has the expected operation phase.
+func HaveOperationPhase(expected string) matcher.GomegaMatcher {
+	return WithTransform(func(ref *AppRef) bool {
+		data, err := getAppJSON(ref)
+		if err != nil {
+			GinkgoWriter.Println(err)
+			return false
+		}
+		current := jsonGetString(data, "status", "operationState", "phase")
+		GinkgoWriter.Printf("HaveOperationPhase - current: %s / expected: %s\n", current, expected)
+		return current == expected
+	}, BeTrue())
 }
 
-// HaveSyncStatusCode waits for Argo CD to have the given sync status
-func HaveSyncStatusCode(expected appv1alpha1.SyncStatusCode) matcher.GomegaMatcher {
-
-	return expectedCondition(func(app *appv1alpha1.Application) bool {
-
-		GinkgoWriter.Println("HaveSyncStatusCode - current syncStatusCode:", app.Status.Sync.Status, " / expected syncStatusCode:", expected)
-
-		return app.Status.Sync.Status == expected
-
-	})
-
-}
-
+// HaveNoConditions checks that the Application has no conditions.
 func HaveNoConditions() matcher.GomegaMatcher {
-	return expectedCondition(func(app *appv1alpha1.Application) bool {
-		count := len(app.Status.Conditions)
-		if count == 0 {
+	return WithTransform(func(ref *AppRef) bool {
+		data, err := getAppJSON(ref)
+		if err != nil {
+			GinkgoWriter.Println(err)
+			return false
+		}
+		status, ok := data["status"].(map[string]interface{})
+		if !ok {
 			return true
 		}
-
-		GinkgoWriter.Printf("HaveNoConditions - have: %+v\n", app.Status.Conditions)
+		conditions, ok := status["conditions"].([]interface{})
+		if !ok || len(conditions) == 0 {
+			return true
+		}
+		GinkgoWriter.Printf("HaveNoConditions - have: %+v\n", conditions)
 		return false
-	})
+	}, BeTrue())
 }
 
-func HaveConditionMatching(conditionType appv1alpha1.ApplicationConditionType, messagePattern string) matcher.GomegaMatcher {
+// HaveConditionMatching checks that the Application has a condition matching the type and message pattern.
+func HaveConditionMatching(conditionType string, messagePattern string) matcher.GomegaMatcher {
 	pattern := regexp.MustCompile(messagePattern)
-
-	return expectedCondition(func(app *appv1alpha1.Application) bool {
-		conditions := app.Status.Conditions
+	return WithTransform(func(ref *AppRef) bool {
+		data, err := getAppJSON(ref)
+		if err != nil {
+			GinkgoWriter.Println(err)
+			return false
+		}
+		status, ok := data["status"].(map[string]interface{})
+		if !ok {
+			return false
+		}
+		conditions, ok := status["conditions"].([]interface{})
+		if !ok {
+			return false
+		}
 		var found []string
-		for _, condition := range conditions {
-			found = append(found, fmt.Sprintf("  -  %s/%s", condition.Type, condition.Message))
-
-			if condition.Type == conditionType && pattern.MatchString(condition.Message) {
+		for _, c := range conditions {
+			cond, ok := c.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			ct, _ := cond["type"].(string)
+			msg, _ := cond["message"].(string)
+			found = append(found, fmt.Sprintf("  -  %s/%s", ct, msg))
+			if ct == conditionType && pattern.MatchString(msg) {
 				return true
 			}
 		}
-
 		GinkgoWriter.Printf("HaveConditionMatching - expected: %s/%s; current(%d):\n", conditionType, messagePattern, len(conditions))
 		for _, f := range found {
 			GinkgoWriter.Println(f)
 		}
 		return false
-	})
+	}, BeTrue())
 }
 
-// Update will keep trying to update object until it succeeds, or times out.
-func Update(obj *appv1alpha1.Application, modify func(*appv1alpha1.Application)) {
-	k8sClient, _ := utils.GetE2ETestKubeClient()
-
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		// Retrieve the latest version of the object
-		err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(obj), obj)
-		if err != nil {
-			return err
-		}
-
-		modify(obj)
-
-		// Attempt to update the object
-		return k8sClient.Update(context.Background(), obj)
-	})
-	Expect(err).ToNot(HaveOccurred())
-
+// GetOperationMessage retrieves the operation state message for an Application.
+func GetOperationMessage(ref *AppRef) (string, error) {
+	data, err := getAppJSON(ref)
+	if err != nil {
+		return "", err
+	}
+	return jsonGetString(data, "status", "operationState", "message"), nil
 }
 
-// Update will keep trying to update object until it succeeds, or times out.
-func UpdateWithError(obj *appv1alpha1.Application, modify func(*appv1alpha1.Application)) error {
-	k8sClient, _ := utils.GetE2ETestKubeClient()
+// --- Internal helpers ---
 
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		// Retrieve the latest version of the object
-		err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(obj), obj)
-		if err != nil {
-			return err
+func getAppJSON(ref *AppRef) (map[string]interface{}, error) {
+	output, err := runArgoCDCLI("app", "get", ref.Name, "--core", "-N", ref.Namespace, "-o", "json")
+	if err != nil {
+		return nil, fmt.Errorf("argocd app get failed: %v, output: %s", err, output)
+	}
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func jsonGetString(data map[string]interface{}, keys ...string) string {
+	current := interface{}(data)
+	for _, key := range keys {
+		m, ok := current.(map[string]interface{})
+		if !ok {
+			return ""
 		}
+		current, ok = m[key]
+		if !ok {
+			return ""
+		}
+	}
+	s, ok := current.(string)
+	if !ok {
+		return ""
+	}
+	return s
+}
 
-		modify(obj)
+func runArgoCDCLI(args ...string) (string, error) {
+	GinkgoWriter.Println("executing argocd", args)
+	// #nosec G204 -- test code
+	cmd := exec.Command("argocd", args...)
+	// In core mode, set ARGOCD_NAMESPACE so the CLI looks for argocd-cm
+	// in the correct namespace (the test namespace, not the default "argocd").
+	for i, arg := range args {
+		if arg == "-N" && i+1 < len(args) {
+			cmd.Env = append(cmd.Environ(), "ARGOCD_NAMESPACE="+args[i+1])
+			break
+		}
+	}
+	output, err := cmd.CombinedOutput()
+	GinkgoWriter.Println(string(output))
+	return string(output), err
+}
 
-		// Attempt to update the object
-		return k8sClient.Update(context.Background(), obj)
-	})
-
-	return err
+func runKubectl(args ...string) (string, error) {
+	GinkgoWriter.Println("executing kubectl", args)
+	// #nosec G204 -- test code
+	cmd := exec.Command("kubectl", args...)
+	output, err := cmd.CombinedOutput()
+	GinkgoWriter.Println(string(output))
+	return string(output), err
 }

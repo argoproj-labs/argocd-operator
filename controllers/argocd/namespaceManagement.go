@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/argoproj/argo-cd/v3/util/glob"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -14,6 +13,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/internal/glob"
 )
 
 // reconcileNamespaceManagement ensures that ArgoCD managed namespaces are properly tracked
