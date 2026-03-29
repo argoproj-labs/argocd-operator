@@ -1,0 +1,34 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    control-plane: argocd-operator
+  name: argocd-operator-controller-manager
+spec:
+  egress:
+  - ports:
+    - port: 443
+      protocol: TCP
+    - port: 6443
+      protocol: TCP
+  - ports:
+    - port: 53
+      protocol: UDP
+    - port: 53
+      protocol: TCP
+  ingress:
+  - ports:
+    - port: 8081
+      protocol: TCP
+    - port: 9443
+      protocol: TCP
+    - port: 8080
+      protocol: TCP
+    - port: 8443
+      protocol: TCP
+  podSelector:
+    matchLabels:
+      control-plane: argocd-operator
+  policyTypes:
+  - Ingress
+  - Egress

@@ -1,14 +1,14 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: controller-manager
-  namespace: system
+  creationTimestamp: null
   labels:
-    control-plane: argocd-operator
+    control-plane: controller-manager
+  name: argocd-operator-controller-manager
 spec:
   podSelector:
     matchLabels:
-      control-plane: argocd-operator
+      control-plane: controller-manager
   policyTypes:
     - Ingress
     - Egress
@@ -17,13 +17,13 @@ spec:
         # health probes (kubelet)
         - protocol: TCP
           port: 8081
-        # CRD conversion webhook (API server, handler registered when ENABLE_CONVERSION_WEBHOOK=true)
+        # CRD conversion webhook (API server)
         - protocol: TCP
           port: 9443
         # metrics (Prometheus)
         - protocol: TCP
           port: 8080
-        # metrics via kube-rbac-proxy (when manager_auth_proxy_patch is enabled)
+        # metrics via kube-rbac-proxy (when auth proxy is enabled)
         - protocol: TCP
           port: 8443
   egress:
