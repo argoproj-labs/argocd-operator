@@ -737,12 +737,28 @@ func (r *ReconcileArgoCD) getClusterSecrets(cr *argoproj.ArgoCD) (*corev1.Secret
 func (r *ReconcileArgoCD) reconcileRedisInitialPasswordSecret(cr *argoproj.ArgoCD) error {
 	secret := argoutil.NewSecretWithSuffix(cr, "redis-initial-password")
 
-	secretExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret)
+	existed := true
+	// Recreate if the secret or some of its keys are missing
+	err := argoutil.FetchObject(r.Client, cr.Namespace, secret.Name, secret)
 	if err != nil {
-		return err
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+		existed = false
 	}
-	if secretExists {
-		return nil // Secret found, do nothing
+	if secret.Data != nil {
+		_, hasPwd := secret.Data[common.ArgoCDKeyAdminPassword]
+		_, hasAuth := secret.Data["auth"]
+		_, hasUsername := secret.Data["auth_username"]
+		_, hasAcl := secret.Data["users.acl"]
+		if hasPwd && hasAuth && hasUsername && hasAcl {
+			return nil // Healthy - keep it
+		}
+	}
+
+	if existed {
+		// Drop unsettable fields created by FetchObject
+		secret = argoutil.NewSecretWithSuffix(cr, "redis-initial-password")
 	}
 
 	redisInitialPassword, err := generateRedisAdminPassword()
@@ -750,13 +766,15 @@ func (r *ReconcileArgoCD) reconcileRedisInitialPasswordSecret(cr *argoproj.ArgoC
 		return err
 	}
 
-	secret.Data = map[string][]byte{
-		"immutable":                   []byte("true"),
-		common.ArgoCDKeyAdminPassword: redisInitialPassword,
-	}
+	secret.Data = argoutil.GetRedisSecretData(redisInitialPassword)
 
 	if err := controllerutil.SetControllerReference(cr, secret, r.Scheme); err != nil {
 		return err
+	}
+
+	if existed {
+		argoutil.LogResourceUpdate(log, secret)
+		return r.Update(context.TODO(), secret)
 	}
 	argoutil.LogResourceCreation(log, secret)
 	return r.Create(context.TODO(), secret)
