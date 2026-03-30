@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"text/template"
 
 	corev1 "k8s.io/api/core/v1"
@@ -18,7 +19,8 @@ const (
 	RedisAuthMountPath  = "/app/config/redis-auth/"
 )
 
-func MountRedisAuthToArgo(cr *argoproj.ArgoCD) (volume corev1.Volume, mount corev1.VolumeMount) {
+// MountRedisAuthToRedis mounts entire redis secret for consumption by redis components.
+func MountRedisAuthToRedis(cr *argoproj.ArgoCD) (volume corev1.Volume, mount corev1.VolumeMount) {
 	volume = corev1.Volume{
 		Name: RedisAuthVolumeName,
 		VolumeSource: corev1.VolumeSource{
@@ -36,11 +38,39 @@ func MountRedisAuthToArgo(cr *argoproj.ArgoCD) (volume corev1.Volume, mount core
 	return
 }
 
+// MountRedisAuthToArgo mounts subset of redis secret for consumption by argocd components.
+func MountRedisAuthToArgo(cr *argoproj.ArgoCD) (volume corev1.Volume, mount corev1.VolumeMount) {
+	volume, volumeMount := MountRedisAuthToRedis(cr)
+
+	// Only the items needed
+	volume.Secret.Items = []corev1.KeyToPath{
+		{Key: "auth", Path: "auth"},
+		{Key: "auth_username", Path: "auth_username"},
+	}
+
+	return volume, volumeMount
+}
+
 func GetRedisAuthEnv() []corev1.EnvVar {
 	return []corev1.EnvVar{{
 		Name:  "REDIS_CREDS_DIR_PATH",
 		Value: RedisAuthMountPath,
 	}}
+}
+
+func GetRedisSecretData(redisInitialPassword []byte) map[string][]byte {
+	pw := strings.TrimRight(string(redisInitialPassword), "\n")
+	usersACL := fmt.Sprintf("user default on >%s allchannels allkeys allcommands\n", pw)
+
+	return map[string][]byte{
+		"immutable": []byte("true"),
+		// Mapping the legacy key-name, the operator customers can depend on.
+		common.ArgoCDKeyAdminPassword: redisInitialPassword,
+		// Provide ACL file content so redis-server can use file-based ACLs
+		"auth":          redisInitialPassword,
+		"auth_username": []byte("default"),
+		"users.acl":     []byte(usersACL),
+	}
 }
 
 func GetRedisHAReplicas() *int32 {

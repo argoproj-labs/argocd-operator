@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -246,6 +247,38 @@ func TestReconcileAgentDeployment_DeploymentExists_AgentEnabled_ServiceAccountCh
 	}, deployment)
 	assert.NoError(t, err)
 	assert.Equal(t, newSAName, deployment.Spec.Template.Spec.ServiceAccountName)
+}
+
+func TestReconcileAgentDeployment_DeploymentExists_AgentEnabled_VolumesChanged(t *testing.T) {
+	// Test case: Deployment exists, agent is enabled, but volumes have changed
+	// Expected behavior: Should update the Deployment with expected volumes
+
+	cr := makeTestArgoCD(withAgentEnabled(true))
+
+	// Create existing Deployment with old service account
+	existingDeployment := makeTestDeployment(cr)
+	//existingDeployment.Spec.Template.Spec.Volumes
+
+	resObjs := []client.Object{cr, existingDeployment}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	require.NoError(t, ReconcileAgentDeployment(cl, testAgentCompName, testAgentCompName, cr, sch))
+
+	deployment := &appsv1.Deployment{}
+	deploymentName := types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testAgentCompName),
+		Namespace: cr.Namespace,
+	}
+	require.NoError(t, cl.Get(context.TODO(), deploymentName, deployment))
+
+	deployment.Spec.Template.Spec.Volumes = []corev1.Volume{}
+	require.NoError(t, cl.Update(context.TODO(), deployment))
+
+	require.NoError(t, ReconcileAgentDeployment(cl, testAgentCompName, testAgentCompName, cr, sch))
+	require.NoError(t, cl.Get(context.TODO(), deploymentName, deployment))
+
+	assert.Len(t, deployment.Spec.Template.Spec.Volumes, 2)
 }
 
 func TestReconcileAgentDeployment_DeploymentExists_AgentNotSet(t *testing.T) {

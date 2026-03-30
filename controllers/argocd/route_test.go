@@ -881,3 +881,62 @@ func TestOverrideRouteTLSData(t *testing.T) {
 		})
 	}
 }
+
+// TestReconcileRouteServerPath tests that spec.server.route.path is properly set on the Route
+func TestReconcileRouteServerPath(t *testing.T) {
+	argoutil.SetRouteAPIFound(true)
+	ctx := context.Background()
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		name         string
+		updateArgoCD func(cr *argoproj.ArgoCD)
+		wantPath     string
+	}{
+		{
+			name: "should set path when configured",
+			updateArgoCD: func(cr *argoproj.ArgoCD) {
+				cr.Spec.Server.Route.Enabled = true
+				cr.Spec.Server.Route.Path = "/argocd"
+			},
+			wantPath: "/argocd",
+		},
+		{
+			name: "should leave path empty when not configured",
+			updateArgoCD: func(cr *argoproj.ArgoCD) {
+				cr.Spec.Server.Route.Enabled = true
+			},
+			wantPath: "",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			argoCD := makeArgoCD(test.updateArgoCD)
+
+			resObjs := []client.Object{argoCD}
+			subresObjs := []client.Object{argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
+
+			req := reconcile.Request{
+				NamespacedName: testNamespacedName(testArgoCDName),
+			}
+
+			_, err := r.Reconcile(ctx, req)
+			assert.NoError(t, err)
+
+			loaded := &routev1.Route{}
+			err = r.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
+			fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
+
+			if diff := cmp.Diff(test.wantPath, loaded.Spec.Path); diff != "" {
+				t.Fatalf("failed to reconcile route path:\n%s", diff)
+			}
+		})
+	}
+}

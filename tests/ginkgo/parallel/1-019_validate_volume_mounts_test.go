@@ -138,6 +138,10 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 						Secret: &corev1.SecretVolumeSource{
 							SecretName:  "argocd-redis-initial-password",
 							DefaultMode: ptr.To(int32(420)),
+							Items: []corev1.KeyToPath{
+								{Key: "auth", Path: "auth"},
+								{Key: "auth_username", Path: "auth_username"},
+							},
 						},
 					},
 				},
@@ -221,6 +225,10 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 						Secret: &corev1.SecretVolumeSource{
 							SecretName:  "argocd-redis-initial-password",
 							DefaultMode: ptr.To(int32(420)),
+							Items: []corev1.KeyToPath{
+								{Key: "auth", Path: "auth"},
+								{Key: "auth_username", Path: "auth_username"},
+							},
 						},
 					},
 				},
@@ -292,6 +300,10 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 						Secret: &corev1.SecretVolumeSource{
 							SecretName:  "argocd-redis-initial-password",
 							DefaultMode: ptr.To(int32(420)),
+							Items: []corev1.KeyToPath{
+								{Key: "auth", Path: "auth"},
+								{Key: "auth_username", Path: "auth_username"},
+							},
 						},
 					},
 				},

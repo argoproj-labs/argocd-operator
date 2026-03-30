@@ -428,7 +428,7 @@ func TestReconcilePrincipalDeployment_VerifyDeploymentSpec(t *testing.T) {
 	assert.NotNil(t, redisAuthVolume.Secret)
 	assert.Equal(t, "argocd-redis-initial-password", redisAuthVolume.Secret.SecretName)
 	assert.NotEqual(t, ptr.To(true), redisAuthVolume.Secret.Optional)
-	assert.Len(t, redisAuthVolume.Secret.Items, 0)
+	assert.Len(t, redisAuthVolume.Secret.Items, 2)
 }
 
 func TestReconcilePrincipalDeployment_CustomImage(t *testing.T) {

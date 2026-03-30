@@ -203,6 +203,8 @@ func CreateNamespace(name string) *corev1.Namespace {
 		Labels: NamespaceLabels,
 	}}
 
+	By("creating namespace '" + ns.Name + "'")
+
 	err := k8sClient.Create(context.Background(), ns)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -659,6 +661,17 @@ func OutputDebugOnFail(namespaceParams ...any) {
 		GinkgoWriter.Println("----------------------------------------------------------------")
 	}
 
+	kubectlOutput, err = osFixture.ExecCommandWithOutputParam(false, true, "kubectl", "get", "applications", "-A", "-o", "yaml")
+	if err != nil {
+		GinkgoWriter.Println("unable to output all argo cd statuses", err, kubectlOutput)
+	} else {
+		GinkgoWriter.Println("")
+		GinkgoWriter.Println("----------------------------------------------------------------")
+		GinkgoWriter.Println("'kubectl get applications -A -o yaml':")
+		GinkgoWriter.Println(kubectlOutput)
+		GinkgoWriter.Println("----------------------------------------------------------------")
+	}
+
 	GinkgoWriter.Println("You can skip this debug output by setting 'SKIP_DEBUG_OUTPUT=true'")
 
 }
@@ -708,7 +721,7 @@ func outputPodLog(podSubstring string) {
 		return
 	}
 
-	// Look specifically for operator pod
+	// Look specifically for pod with name
 	matchingPods := []corev1.Pod{}
 	for idx := range podList.Items {
 		pod := podList.Items[idx]
@@ -719,19 +732,19 @@ func outputPodLog(podSubstring string) {
 
 	if len(matchingPods) == 0 {
 		// This can happen when the operator is not running on the cluster
-		GinkgoWriter.Println("DebugOutputOperatorLogs was called, but no pods were found.")
+		GinkgoWriter.Println("outputPodLog was called looking for substring '" + podSubstring + "', but no pods were found.")
 		return
 	}
 
 	if len(matchingPods) != 1 {
-		GinkgoWriter.Println("unexpected number of operator pods", matchingPods)
+		GinkgoWriter.Println("unexpected number of pods", matchingPods)
 		return
 	}
 
 	// Extract operator logs
 	kubectlLogOutput, err := osFixture.ExecCommandWithOutputParam(false, true, "kubectl", "logs", "pod/"+matchingPods[0].Name, "manager", "-n", matchingPods[0].Namespace)
 	if err != nil {
-		GinkgoWriter.Println("unable to extract operator logs", err)
+		GinkgoWriter.Println("unable to extract logs for", matchingPods[0].Name, err)
 		return
 	}
 
@@ -742,7 +755,7 @@ func outputPodLog(podSubstring string) {
 
 	GinkgoWriter.Println("")
 	GinkgoWriter.Println("----------------------------------------------------------------")
-	GinkgoWriter.Println("Log output from operator pod:")
+	GinkgoWriter.Println("Log output from pod '" + matchingPods[0].Name + "' in " + matchingPods[0].Namespace + ":")
 	for _, line := range lines[startIndex:] {
 		GinkgoWriter.Println(">", line)
 	}

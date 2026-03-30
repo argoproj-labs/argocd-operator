@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -176,7 +177,6 @@ func TestReconcileArgoCD_reconcile_ServerDeployment_replicas(t *testing.T) {
 			}, deployment)
 			assert.NoError(t, err)
 			assert.Equal(t, test.wantFinalReplicas, deployment.Spec.Replicas)
-
 		})
 	}
 }
@@ -2061,6 +2061,36 @@ func TestReconcileArgoCD_reconcileRedisDeployment(t *testing.T) {
 	assert.Equal(t, int32(3), *d.Spec.Replicas)
 }
 
+func TestReconcileArgoCD_reconcileRedisDeployment_volumeUpdate(t *testing.T) {
+	// tests reconciler hook for redis deployment
+	cr := makeTestArgoCD()
+	redisSecret := types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}
+
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{cr}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	defer resetHooks()()
+	Register(testDeploymentHook)
+
+	require.NoError(t, r.reconcileRedisDeployment(cr, false))
+	d := &appsv1.Deployment{}
+	require.NoError(t, r.Get(context.TODO(), redisSecret, d))
+
+	// Erase volumes
+	d.Spec.Template.Spec.Volumes = []corev1.Volume{}
+	require.NoError(t, r.Update(t.Context(), d))
+	require.NoError(t, r.reconcileRedisDeployment(cr, false))
+
+	// Volumes are readded
+	newRedis := &appsv1.Deployment{}
+	require.NoError(t, r.Get(context.TODO(), redisSecret, newRedis))
+	assert.Len(t, newRedis.Spec.Template.Spec.Volumes, 2)
+}
+
 func TestReconcileArgoCD_reconcileRedisDeployment_testImageUpgrade(t *testing.T) {
 	// tests reconciler hook for redis deployment
 	cr := makeTestArgoCD()
@@ -2218,24 +2248,12 @@ func Test_UpdateNodePlacement(t *testing.T) {
 			},
 		},
 	}
-	expectedChange := false
-	actualChange := false
-	explanation := ""
-	updateNodePlacement(deployment, deployment, &actualChange, &explanation)
-	if actualChange != expectedChange {
-		t.Fatalf("updateNodePlacement failed, value of changed: %t", actualChange)
-	}
-	if explanation != "" {
-		t.Fatalf("updateNodePlacement returned unexpected explanation: '%s'", explanation)
-	}
 
-	updateNodePlacement(deployment, deployment2, &actualChange, &explanation)
-	if actualChange == expectedChange {
-		t.Fatalf("updateNodePlacement failed, value of changed: %t", actualChange)
-	}
-	if explanation != "node selector, tolerations" {
-		t.Fatalf("updateNodePlacement returned unexpected explanation: '%s'", explanation)
-	}
+	actualChanges := updateNodePlacement(deployment, deployment)
+	assert.Empty(t, actualChanges, "updateNodePlacement returned unexpected changes")
+
+	actualChanges = updateNodePlacement(deployment, deployment2)
+	assert.Equal(t, []string{"node selector", "tolerations"}, actualChanges, "updateNodePlacement returned unexpected changes")
 }
 
 func assertDeploymentHasProxyVars(t *testing.T, c client.Client, name string) {
@@ -2374,6 +2392,10 @@ func repoServerDefaultVolumes() []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: "argocd-redis-initial-password",
+					Items: []corev1.KeyToPath{
+						{Key: "auth", Path: "auth"},
+						{Key: "auth_username", Path: "auth_username"},
+					},
 				},
 			},
 		},
@@ -2477,6 +2499,10 @@ func serverDefaultVolumes() []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: "argocd-redis-initial-password",
+					Items: []corev1.KeyToPath{
+						{Key: "auth", Path: "auth"},
+						{Key: "auth_username", Path: "auth_username"},
+					},
 				},
 			},
 		},

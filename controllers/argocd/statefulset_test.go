@@ -92,6 +92,10 @@ func controllerDefaultVolumes() []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: "argocd-redis-initial-password",
+					Items: []corev1.KeyToPath{
+						{Key: "auth", Path: "auth"},
+						{Key: "auth_username", Path: "auth_username"},
+					},
 				},
 			},
 		},
@@ -422,7 +426,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 			},
 			replicas: 1,
 			vars: []corev1.EnvVar{
-				{Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST", ValueFrom: &corev1.EnvVarSource{
+				{Name: "ARGOCD_APPLICATION_CONTROLLER_PERSIST_RESOURCE_HEALTH", ValueFrom: &corev1.EnvVarSource{
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
 						Key:                  "controller.resource.health.persist",
@@ -446,13 +450,13 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 			},
 			replicas: 1,
 			vars: []corev1.EnvVar{
-				{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "1"},
-				{Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST", ValueFrom: &corev1.EnvVarSource{
+				{Name: "ARGOCD_APPLICATION_CONTROLLER_PERSIST_RESOURCE_HEALTH", ValueFrom: &corev1.EnvVarSource{
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
 						Key:                  "controller.resource.health.persist",
 					},
 				}},
+				{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "1"},
 				{Name: "ARGOCD_RECONCILIATION_TIMEOUT", ValueFrom: &corev1.EnvVarSource{
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDConfigMapName},
@@ -471,13 +475,13 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 			},
 			replicas: 3,
 			vars: []corev1.EnvVar{
-				{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "3"},
-				{Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST", ValueFrom: &corev1.EnvVarSource{
+				{Name: "ARGOCD_APPLICATION_CONTROLLER_PERSIST_RESOURCE_HEALTH", ValueFrom: &corev1.EnvVarSource{
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
 						Key:                  "controller.resource.health.persist",
 					},
 				}},
+				{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "3"},
 				{Name: "ARGOCD_RECONCILIATION_TIMEOUT", ValueFrom: &corev1.EnvVarSource{
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDConfigMapName},
@@ -498,13 +502,13 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 			},
 			replicas: 2,
 			vars: []corev1.EnvVar{
-				{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "2"},
-				{Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST", ValueFrom: &corev1.EnvVarSource{
+				{Name: "ARGOCD_APPLICATION_CONTROLLER_PERSIST_RESOURCE_HEALTH", ValueFrom: &corev1.EnvVarSource{
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
 						Key:                  "controller.resource.health.persist",
 					},
 				}},
+				{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "2"},
 				{Name: "ARGOCD_RECONCILIATION_TIMEOUT", ValueFrom: &corev1.EnvVarSource{
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDConfigMapName},
@@ -560,7 +564,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 func TestReconcileArgoCD_reconcileApplicationController_withAppSync(t *testing.T) {
 
 	expectedEnv := []corev1.EnvVar{
-		{Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST", ValueFrom: &corev1.EnvVarSource{
+		{Name: "ARGOCD_APPLICATION_CONTROLLER_PERSIST_RESOURCE_HEALTH", ValueFrom: &corev1.EnvVarSource{
 			ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
 				Key:                  "controller.resource.health.persist",
@@ -605,7 +609,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withAppSync(t *testing.T
 func TestReconcileArgoCD_reconcileApplicationController_withEnv(t *testing.T) {
 
 	expectedEnv := []corev1.EnvVar{
-		{Name: "ARGOCD_CONTROLLER_RESOURCE_HEALTH_PERSIST", ValueFrom: &corev1.EnvVarSource{
+		{Name: "ARGOCD_APPLICATION_CONTROLLER_PERSIST_RESOURCE_HEALTH", ValueFrom: &corev1.EnvVarSource{
 			ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
 				Key:                  "controller.resource.health.persist",
@@ -704,23 +708,12 @@ func Test_UpdateNodePlacementStateful(t *testing.T) {
 			},
 		},
 	}
-	expectedChange := false
-	actualChange := false
-	explanation := ""
-	updateNodePlacementStateful(ss, ss, &actualChange, &explanation)
-	if actualChange != expectedChange {
-		t.Fatalf("updateNodePlacementStateful failed, value of changed: %t", actualChange)
-	}
-	if explanation != "" {
-		t.Fatalf("updateNodePlacementStateful returned unexpected explanation: '%s'", explanation)
-	}
-	updateNodePlacementStateful(ss, ss2, &actualChange, &explanation)
-	if actualChange == expectedChange {
-		t.Fatalf("updateNodePlacementStateful failed, value of changed: %t", actualChange)
-	}
-	if explanation != "node selector, tolerations" {
-		t.Fatalf("updateNodePlacementStateful returned unexpected explanation: '%s'", explanation)
-	}
+
+	actualChanges := updateNodePlacementStateful(ss, ss)
+	assert.Empty(t, actualChanges, "updateNodePlacementStateful returned unexpected changes")
+
+	actualChanges = updateNodePlacementStateful(ss, ss2)
+	assert.Equal(t, []string{"node selector", "tolerations"}, actualChanges, "updateNodePlacementStateful returned unexpected changes")
 }
 
 func Test_ContainsInvalidImage(t *testing.T) {
@@ -937,7 +930,7 @@ func TestReconcileArgoCD_sidecarcontainer(t *testing.T) {
 	assert.Equal(t, 1, len(ss.Spec.Template.Spec.Containers))
 }
 
-func TestReconcileArgoCD_reconcileRedisStatefulSet_ModifyContainerSpec(t *testing.T) {
+func TestReconcileArgoCD_reconcileRedisStatefulSet_RevertDrift(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	a := makeTestArgoCD()
@@ -1010,7 +1003,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_ModifyContainerSpec(t *testin
 	}
 	assert.False(t, envVarFound, "NEW_ENV_VAR should not be present")
 
-	// Modify the container  volume and volume mount
+	// Modify the container volume and volume mount
 	s.Spec.Template.Spec.Containers[0].VolumeMounts = append(s.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
 		Name:      "new-volume",
 		MountPath: "/new/path",
@@ -1043,6 +1036,18 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_ModifyContainerSpec(t *testin
 		}
 	}
 	assert.False(t, volumeFound, "new-volume should not be present in volumes")
+
+	// Modify the container imagePullPolicy
+	s.Spec.Template.Spec.Containers[0].ImagePullPolicy = corev1.PullNever
+	s.Spec.Template.Spec.Containers[1].ImagePullPolicy = corev1.PullAlways
+
+	assert.NoError(t, r.Update(context.TODO(), s))
+	// Reconcile again and check that ImagePullPolicy is reverted
+	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
+
+	assert.Equal(t, corev1.PullIfNotPresent, s.Spec.Template.Spec.Containers[0].ImagePullPolicy)
+	assert.Equal(t, corev1.PullIfNotPresent, s.Spec.Template.Spec.Containers[1].ImagePullPolicy)
 }
 
 func TestStatefulSetWithLongName(t *testing.T) {
