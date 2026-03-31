@@ -37,7 +37,7 @@ func TestReconcileImageUpdater_CreateRoles(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r := makeTestReconciler(cl, sch, testclient.NewClientset())
 
 	_, err := r.reconcileImageUpdaterRole(a)
 	assert.NoError(t, err)
@@ -74,7 +74,7 @@ func TestReconcileImageUpdater_CreateClusterRoles(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r := makeTestReconciler(cl, sch, testclient.NewClientset())
 
 	_, err := r.reconcileImageUpdaterClusterRole(a)
 	assert.NoError(t, err)
@@ -109,7 +109,7 @@ func TestReconcileImageUpdater_CreateServiceAccount(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r := makeTestReconciler(cl, sch, testclient.NewClientset())
 
 	desiredSa, err := r.reconcileImageUpdaterServiceAccount(a)
 	assert.NoError(t, err)
@@ -145,7 +145,7 @@ func TestReconcileImageUpdater_CreateRoleBinding(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r := makeTestReconciler(cl, sch, testclient.NewClientset())
 
 	role := &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: "role-name"}}
 	sa := &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa-name"}}
@@ -187,7 +187,7 @@ func TestReconcileImageUpdater_CreateClusterRoleBinding(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r := makeTestReconciler(cl, sch, testclient.NewClientset())
 
 	role := &rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: "cluster-role-name"}}
 	sa := &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa-name"}}
@@ -227,7 +227,7 @@ func TestReconcileImageUpdater_CreateDeployments(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r := makeTestReconciler(cl, sch, testclient.NewClientset())
 	sa := v1.ServiceAccount{}
 
 	assert.NoError(t, r.reconcileImageUpdaterDeployment(a, &sa))
@@ -417,7 +417,7 @@ func TestReconcileImageUpdater_CreateSecret(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r := makeTestReconciler(cl, sch, testclient.NewClientset())
 
 	err := r.reconcileImageUpdaterSecret(a)
 	assert.NoError(t, err)
@@ -447,7 +447,7 @@ func TestReconcileImageUpdater_CreateConfigMap(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r := makeTestReconciler(cl, sch, testclient.NewClientset())
 
 	imageUpdaterConfigMaps := []*v1.ConfigMap{
 		{
@@ -493,7 +493,7 @@ func TestReconcileImageUpdater_testEnvVars(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r := makeTestReconciler(cl, sch, testclient.NewClientset())
 
 	sa := v1.ServiceAccount{}
 	assert.NoError(t, r.reconcileImageUpdaterDeployment(a, &sa))

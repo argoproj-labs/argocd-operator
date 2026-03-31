@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/argoproj/argo-cd/v3/util/glob"
+	"github.com/argoproj-labs/argocd-operator/internal/glob"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"

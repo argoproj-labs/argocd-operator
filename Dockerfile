@@ -14,6 +14,7 @@ COPY cmd/main.go cmd/main.go
 COPY api/ api/
 COPY common/ common/
 COPY controllers/ controllers/
+COPY internal/ internal/
 COPY pkg/ pkg/
 COPY version/ version/
 

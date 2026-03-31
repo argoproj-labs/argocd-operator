@@ -9,7 +9,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	argocdv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
 	osappsv1 "github.com/openshift/api/apps/v1"
 	consolev1 "github.com/openshift/api/console/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -85,10 +84,6 @@ func getKubeClient(config *rest.Config) (client.Client, *runtime.Scheme, error) 
 	}
 
 	if err := argov1beta1api.AddToScheme(scheme); err != nil {
-		return nil, nil, err
-	}
-
-	if err := argocdv1alpha1.AddToScheme(scheme); err != nil {
 		return nil, nil, err
 	}
 

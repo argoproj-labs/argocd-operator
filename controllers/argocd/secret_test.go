@@ -9,7 +9,6 @@ import (
 	"sort"
 	"testing"
 
-	argopass "github.com/argoproj/argo-cd/v3/util/password"
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/assert"
@@ -27,6 +26,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	argopass "github.com/argoproj-labs/argocd-operator/internal/password"
 )
 
 func Test_newCASecret(t *testing.T) {
@@ -126,7 +126,7 @@ func Test_ReconcileArgoCD_ReconcileRepoTLSSecret(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+		r := makeTestReconciler(cl, sch, testclient.NewClientset())
 
 		argocdStatus := argoproj.ArgoCDStatus{}
 		err := r.reconcileRepoServerTLSSecret(argocd, &argocdStatus)
@@ -259,7 +259,7 @@ func Test_ReconcileArgoCD_ReconcileExistingArgoSecret(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r := makeTestReconciler(cl, sch, testclient.NewClientset())
 
 	err := r.Create(context.TODO(), clusterSecret)
 	assert.NoError(t, err)
@@ -309,7 +309,7 @@ func Test_ReconcileArgoCD_ReconcileShouldNotChangeWhenUpdatedAdminPass(t *testin
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r := makeTestReconciler(cl, sch, testclient.NewClientset())
 
 	err := r.Create(context.TODO(), clusterSecret)
 	assert.NoError(t, err)
@@ -378,7 +378,7 @@ func Test_ReconcileArgoCD_ReconcileRedisInitialPasswordSecret(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r := makeTestReconciler(cl, sch, testclient.NewClientset())
 
 	var actual corev1.Secret
 	fetchSecret := func() error {
@@ -502,7 +502,7 @@ func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+		r := makeTestReconciler(cl, sch, testclient.NewClientset())
 
 		argocdStatus := &argoproj.ArgoCDStatus{}
 		err := r.reconcileRedisTLSSecret(argocd, true, argocdStatus)
@@ -643,7 +643,7 @@ func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r := makeTestReconciler(cl, sch, testclient.NewClientset())
 
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
@@ -704,7 +704,7 @@ func TestGenerateSortedManagedNamespaceListForArgoCDCR(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r := makeTestReconciler(cl, sch, testclient.NewClientset())
 
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
@@ -816,7 +816,7 @@ func TestCombineClusterSecretNamespacesWithManagedNamespaces(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r := makeTestReconciler(cl, sch, testclient.NewClientset())
 
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 

@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os/exec"
 	"strings"
@@ -18,8 +20,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	argocdclient "github.com/argoproj/argo-cd/v3/pkg/apiclient"
-	sessionpkg "github.com/argoproj/argo-cd/v3/pkg/apiclient/session"
 	matcher "github.com/onsi/gomega/types"
 	corev1 "k8s.io/api/core/v1"
 	apierr "k8s.io/apimachinery/pkg/api/errors"
@@ -27,6 +27,151 @@ import (
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// Session holds connection info for an authenticated ArgoCD CLI session.
+// Each Session has its own port-forward and auth token for isolation in parallel tests.
+type Session struct {
+	Server    string // "localhost:<port>"
+	AuthToken string // bearer token from REST API
+	Cleanup   func() // kills port-forward
+}
+
+// NewSession port-forwards the ArgoCD server service and obtains a session token
+// via the REST API. Returns a Session that can be passed to application/appproject fixtures.
+//
+// argocdName: the ArgoCD CR name (server service will be "<name>-server")
+// namespace:  the namespace where the ArgoCD instance lives
+// k8sClient:  for reading the admin password secret
+func NewSession(argocdName, namespace string, k8sClient client.Client) *Session {
+	GinkgoHelper()
+
+	password := GetInitialAdminSecretPassword(argocdName, namespace, k8sClient)
+
+	// Find a free port
+	port := findFreePort()
+
+	// Start port-forward to the ArgoCD server service
+	serviceName := fmt.Sprintf("service/%s-server", argocdName)
+	portMapping := fmt.Sprintf("%d:443", port)
+	pfCleanup := PortForward(namespace, serviceName, portMapping)
+
+	server := fmt.Sprintf("localhost:%d", port)
+
+	// Get session token via REST API
+	var token string
+	Eventually(func() error {
+		var err error
+		token, err = GetSessionToken(server, password)
+		return err
+	}, "30s", "2s").Should(Succeed(), "failed to get ArgoCD session token")
+
+	return &Session{
+		Server:    server,
+		AuthToken: token,
+		Cleanup:   pfCleanup,
+	}
+}
+
+// findFreePort asks the OS for a free TCP port and returns it.
+func findFreePort() int {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	Expect(err).ToNot(HaveOccurred(), "failed to find free port")
+	port := listener.Addr().(*net.TCPAddr).Port
+	listener.Close()
+	return port
+}
+
+// PortForward starts kubectl port-forward and waits for it to be ready.
+// Returns a cleanup function that kills the port-forward process.
+func PortForward(namespace string, subject string, port string) func() {
+	GinkgoHelper()
+
+	cmdArgs := []string{"kubectl", "port-forward", "-n", namespace, subject, port}
+
+	GinkgoWriter.Println("executing command:", cmdArgs)
+
+	// #nosec G204 -- test code
+	cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
+
+	// Create pipes for stdout and stderr to stream output in real-time
+	stdout, err := cmd.StdoutPipe()
+	Expect(err).ToNot(HaveOccurred())
+
+	stderr, err := cmd.StderrPipe()
+	Expect(err).ToNot(HaveOccurred())
+
+	// Channel to signal when port-forward is ready (after seeing "Forwarding from" messages)
+	ready := make(chan struct{})
+
+	// streamOutput reads from a pipe and writes to GinkgoWriter in real-time.
+	// It signals readiness when it sees the expected "Forwarding from" message.
+	streamOutput := func(pipe io.Reader, signalReady func()) {
+		defer GinkgoRecover()
+
+		scanner := bufio.NewScanner(pipe)
+		for scanner.Scan() {
+			line := scanner.Text()
+			GinkgoWriter.Println("port-forward:", line)
+
+			// Signal ready when we see the first "Forwarding from" message
+			if signalReady != nil && strings.HasPrefix(line, "Forwarding from") {
+				signalReady()
+				signalReady = nil // Only signal once
+			}
+		}
+		if scanErr := scanner.Err(); scanErr != nil {
+			GinkgoWriter.Println("port-forward scanner error:", scanErr)
+		}
+	}
+
+	// Start the command
+	err = cmd.Start()
+	Expect(err).ToNot(HaveOccurred())
+
+	// Stream stdout (with ready signaling) and stderr in separate goroutines
+	go streamOutput(stdout, func() { close(ready) })
+	go streamOutput(stderr, nil)
+
+	// Wait for the process to complete in a separate goroutine
+	go func() {
+		defer GinkgoRecover()
+
+		err := cmd.Wait()
+		if err != nil && !strings.Contains(err.Error(), "killed") && !strings.Contains(err.Error(), "signal: killed") {
+			GinkgoWriter.Println("port-forward process error:", err)
+		}
+	}()
+
+	// Wait for the port-forward to be ready before returning
+	select {
+	case <-ready:
+		GinkgoWriter.Println("port-forward is ready")
+	case <-time.After(60 * time.Second):
+		Fail("timed out waiting for port-forward to be ready")
+	}
+
+	return func() {
+		GinkgoWriter.Println("terminating port forward")
+
+		if cmd.Process != nil {
+			err := cmd.Process.Kill()
+			if err != nil && !strings.Contains(err.Error(), "process already finished") {
+				GinkgoWriter.Println("error on process kill:", err)
+			}
+		}
+	}
+}
+
+// RunArgoCDCLI runs the argocd CLI using the given session for authentication.
+func RunArgoCDCLI(session *Session, args ...string) (string, error) {
+	allArgs := append([]string{"--server", session.Server, "--auth-token", session.AuthToken, "--insecure"}, args...)
+	GinkgoWriter.Println("executing argocd", allArgs)
+	// #nosec G204 -- test code
+	cmd := exec.Command("argocd", allArgs...)
+	output, err := cmd.CombinedOutput()
+	GinkgoWriter.Println(string(output))
+	return string(output), err
+}
 
 // Update will update an ArgoCD CR. Update will keep trying to update object until it succeeds, or times out.
 func Update(obj *argov1beta1api.ArgoCD, modify func(*argov1beta1api.ArgoCD)) {
@@ -47,8 +192,6 @@ func Update(obj *argov1beta1api.ArgoCD, modify func(*argov1beta1api.ArgoCD)) {
 	Expect(err).ToNot(HaveOccurred())
 
 	// After we update ArgoCD CR, we should wait a few moments for the operator to reconcile the change.
-	// - Ideally, the ArgoCD CR would have a .status field that we could read, that would indicate which resource version/generation had been reconciled.
-	// - Sadly, this does not exist, so we instead must use time.Sleep() (for now)
 	time.Sleep(7 * time.Second)
 }
 
@@ -61,8 +204,6 @@ func BeAvailable() matcher.GomegaMatcher {
 func BeAvailableWithCustomSleepTime(sleepTime time.Duration) matcher.GomegaMatcher {
 
 	// Wait X seconds to allow operator to reconcile the ArgoCD CR, before we start checking if it's ready
-	// - We do this so that any previous calls to update the ArgoCD CR have been reconciled by the operator, before we wait to see if ArgoCD has become available.
-	// - I'm not aware of a way to do this without a sleep statement, but when we have something better we should do that instead.
 	time.Sleep(sleepTime)
 
 	return fetchArgoCD(func(argocd *argov1beta1api.ArgoCD) bool {
@@ -210,60 +351,85 @@ func fetchArgoCD(f func(*argov1beta1api.ArgoCD) bool) matcher.GomegaMatcher {
 
 }
 
-func RunArgoCDCLI(args ...string) (string, error) {
+// GetSessionToken authenticates to the Argo CD API server via HTTP and returns a session token.
+func GetSessionToken(argoServerEndpoint string, password string) (string, error) {
+	loginPayload := fmt.Sprintf(`{"username":"admin","password":"%s"}`, password)
 
-	cmdArgs := append([]string{"argocd"}, args...)
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec G402 -- test code
+	}
+	httpClient := &http.Client{Transport: tr}
 
-	GinkgoWriter.Println("executing command", cmdArgs)
+	resp, err := httpClient.Post(
+		"https://"+argoServerEndpoint+"/api/v1/session",
+		"application/json",
+		strings.NewReader(loginPayload),
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to create session: %v", err)
+	}
+	defer resp.Body.Close()
 
-	// #nosec G204
-	cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("session creation returned status %d: %s", resp.StatusCode, string(body))
+	}
 
-	output, err := cmd.CombinedOutput()
-	GinkgoWriter.Println(string(output))
+	var result struct {
+		Token string `json:"token"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("failed to decode session response: %v", err)
+	}
 
-	return string(output), err
+	return result.Token, nil
 }
 
-// CreateArgoCDAPIClient connects to given Argo CD API server endpoint and returns client object for invoking server APIs
-func CreateArgoCDAPIClient(ctx context.Context, argoServerEndpoint string, password string) (argocdclient.Client, string, io.Closer, error) {
-	var token string
+// ResourceTreeNode represents a node in an application's resource tree.
+type ResourceTreeNode struct {
+	Group     string `json:"group"`
+	Kind      string `json:"kind"`
+	Namespace string `json:"namespace"`
+	Name      string `json:"name"`
+	UID       string `json:"uid,omitempty"`
+}
 
-	clientOpts := &argocdclient.ClientOptions{
-		ServerAddr: argoServerEndpoint,
-		Insecure:   true,
-		AuthToken:  password,
+// ResourceTree contains the resource tree of an application.
+type ResourceTree struct {
+	Nodes []ResourceTreeNode `json:"nodes"`
+}
+
+// GetResourceTree retrieves the resource tree for an application via the Argo CD REST API.
+func GetResourceTree(argoServerEndpoint string, token string, appName string, appNamespace string) (*ResourceTree, error) {
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec G402 -- test code
 	}
+	httpClient := &http.Client{Transport: tr}
 
-	client, err := argocdclient.NewClient(clientOpts)
+	url := fmt.Sprintf("https://%s/api/v1/applications/%s/resource-tree?appNamespace=%s", argoServerEndpoint, appName, appNamespace)
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, "", nil, fmt.Errorf("unable to create new Argo CD client: %v", err)
+		return nil, err
 	}
+	req.Header.Set("Authorization", "Bearer "+token)
 
-	closer, sessionClient, err := client.NewSessionClient()
+	resp, err := httpClient.Do(req)
 	if err != nil {
-		return nil, "", nil, fmt.Errorf("unable to create new Argo CD session client: %v", err)
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("resource-tree returned status %d: %s", resp.StatusCode, string(body))
 	}
 
-	sessionResponse, err := sessionClient.Create(ctx, &sessionpkg.SessionCreateRequest{Username: "admin", Password: password})
-	if err != nil {
-		return nil, "", nil, fmt.Errorf("unable to create invoke session client: %v", err)
-	}
-	token = sessionResponse.Token
-
-	clientOpts = &argocdclient.ClientOptions{
-		ServerAddr: argoServerEndpoint,
-		Insecure:   true,
-		AuthToken:  token,
+	var tree ResourceTree
+	if err := json.NewDecoder(resp.Body).Decode(&tree); err != nil {
+		return nil, err
 	}
 
-	client, err = argocdclient.NewClient(clientOpts)
-	if err != nil {
-		return nil, "", nil, fmt.Errorf("unable to create new argocd client: %v", err)
-	}
-
-	return client, token, closer, nil
-
+	return &tree, nil
 }
 
 func GetInitialAdminSecretPassword(argocdCRName string, secretNS string, k8sClient client.Client) string {
@@ -308,8 +474,8 @@ func StreamFromArgoCDEventSourceURL(ctx context.Context, eventSourceAPIURL strin
 
 		// connect to URL and read data into msgChan channel (until disconnect)
 		// - returns true if the function exited due to cancelled context.
-		connect := func(client *http.Client, req *http.Request) bool {
-			resp, err := client.Do(req)
+		connect := func(httpClient *http.Client, req *http.Request) bool {
+			resp, err := httpClient.Do(req)
 			if err != nil {
 				GinkgoWriter.Printf("Error performing request: %v", err)
 
@@ -362,9 +528,9 @@ func StreamFromArgoCDEventSourceURL(ctx context.Context, eventSourceAPIURL strin
 			tr := &http.Transport{
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec G402 -- this is test code connecting to a local test server
 			}
-			client := &http.Client{Transport: tr}
+			httpClient := &http.Client{Transport: tr}
 
-			contextCancelled := connect(client, req)
+			contextCancelled := connect(httpClient, req)
 
 			if contextCancelled {
 				GinkgoWriter.Println("context cancelled on event source stream")

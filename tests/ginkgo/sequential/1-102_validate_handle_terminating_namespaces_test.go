@@ -20,7 +20,6 @@ import (
 	"context"
 	"strings"
 
-	argocdv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -152,32 +151,21 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			By("creating a test Argo CD Application targeting john NS")
 
-			app := &argocdv1alpha1.Application{
-				ObjectMeta: metav1.ObjectMeta{Name: "my-app", Namespace: ns.Name},
-				Spec: argocdv1alpha1.ApplicationSpec{
-					Source: &argocdv1alpha1.ApplicationSource{
-						Path:           "test/examples/kustomize-guestbook",
-						RepoURL:        "https://github.com/redhat-developer/gitops-operator",
-						TargetRevision: "HEAD",
-					},
-					Destination: argocdv1alpha1.ApplicationDestination{
-						Namespace: johnNs.Name,
-						Server:    "https://kubernetes.default.svc",
-					},
-					Project: "default",
-					SyncPolicy: &argocdv1alpha1.SyncPolicy{
-						Automated: &argocdv1alpha1.SyncPolicyAutomated{
-							Prune:    true,
-							SelfHeal: true,
-						},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, app)).To(Succeed())
+			app := appFixture.Create("my-app", ns.Name,
+				appFixture.WithRepo("https://github.com/redhat-developer/gitops-operator"),
+				appFixture.WithPath("test/examples/kustomize-guestbook"),
+				appFixture.WithRevision("HEAD"),
+				appFixture.WithDestServer("https://kubernetes.default.svc"),
+				appFixture.WithDestNamespace(johnNs.Name),
+				appFixture.WithProject("default"),
+				appFixture.WithAutoSync(),
+				appFixture.WithPrune(),
+				appFixture.WithSelfHeal(),
+			)
 
 			By("verifying Argo CD is successfully able to deploy to the John Namespace")
 
-			Eventually(app, "4m", "5s").Should(appFixture.HaveSyncStatusCode(argocdv1alpha1.SyncStatusCodeSynced))
+			Eventually(app, "4m", "5s").Should(appFixture.HaveSyncStatus("Synced"))
 
 		})
 

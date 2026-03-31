@@ -18,9 +18,8 @@ package parallel
 
 import (
 	"context"
+	"os/exec"
 
-	appv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
-	"github.com/argoproj/gitops-engine/pkg/health"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
@@ -112,30 +111,19 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Eventually(statefulSet, "3m", "5s").Should(ssFixture.HaveReadyReplicas(1))
 
 			By("creating Application")
-			app := &appv1alpha1.Application{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "app-01",
-					Namespace: ns.Name,
-				},
-				Spec: appv1alpha1.ApplicationSpec{
-					Project: "default",
-					Source: &appv1alpha1.ApplicationSource{
-						RepoURL:        "https://github.com/argoproj-labs/argocd-image-updater/",
-						Path:           "test/e2e/testdata/005-public-guestbook",
-						TargetRevision: "HEAD",
-					},
-					Destination: appv1alpha1.ApplicationDestination{
-						Server:    "https://kubernetes.default.svc",
-						Namespace: ns.Name,
-					},
-					SyncPolicy: &appv1alpha1.SyncPolicy{Automated: &appv1alpha1.SyncPolicyAutomated{}},
-				},
-			}
-			Expect(k8sClient.Create(ctx, app)).To(Succeed())
+			appRef := applicationFixture.Create("app-01", ns.Name,
+				applicationFixture.WithRepo("https://github.com/argoproj-labs/argocd-image-updater/"),
+				applicationFixture.WithPath("test/e2e/testdata/005-public-guestbook"),
+				applicationFixture.WithRevision("HEAD"),
+				applicationFixture.WithDestServer("https://kubernetes.default.svc"),
+				applicationFixture.WithDestNamespace(ns.Name),
+				applicationFixture.WithProject("default"),
+				applicationFixture.WithAutoSync(),
+			)
 
 			By("verifying deploying the Application succeeded")
-			Eventually(app, "4m", "5s").Should(applicationFixture.HaveHealthStatusCode(health.HealthStatusHealthy))
-			Eventually(app, "4m", "5s").Should(applicationFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeSynced))
+			Eventually(appRef, "4m", "5s").Should(applicationFixture.HaveHealthStatus("Healthy"))
+			Eventually(appRef, "4m", "5s").Should(applicationFixture.HaveSyncStatus("Synced"))
 
 			By("creating ImageUpdater CR")
 			updateStrategy := "semver"
@@ -165,20 +153,16 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("ensuring that the Application image has `29437546.0` version after update")
 			Eventually(func() string {
-				err := k8sClient.Get(ctx, client.ObjectKeyFromObject(app), app)
-
+				// Use kubectl to read the kustomize images field from the Application resource.
+				// The Kustomize block is only added by the Image Updater after its first run.
+				// #nosec G204 -- test code
+				output, err := exec.Command("kubectl", "get", "application.argoproj.io", "app-01",
+					"-n", ns.Name,
+					"-o", "jsonpath={.spec.source.kustomize.images[0]}").CombinedOutput()
 				if err != nil {
 					return "" // Let Eventually retry on error
 				}
-
-				// Nil-safe check: The Kustomize block is only added by the Image Updater after its first run.
-				// We must check that it and its Images field exist before trying to access them.
-				if app.Spec.Source.Kustomize != nil && len(app.Spec.Source.Kustomize.Images) > 0 {
-					return string(app.Spec.Source.Kustomize.Images[0])
-				}
-
-				// Return an empty string to signify the condition is not yet met.
-				return ""
+				return string(output)
 			}, "5m", "10s").Should(Equal("quay.io/dkarpele/my-guestbook:29437546.0"))
 		})
 	})
