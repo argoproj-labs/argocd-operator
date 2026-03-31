@@ -88,6 +88,47 @@ func TestReconcileApplicationSet_CreateDeployments(t *testing.T) {
 	checkExpectedDeploymentValues(t, r, deployment, &sa, nil, nil, a)
 }
 
+func TestReconcileApplicationSet_RemovesResourcesWhenSpecApplicationSetNil(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	assert.NoError(t, r.reconcileApplicationSetController(a))
+
+	deployName := nameWithSuffix("applicationset-controller", a)
+	saName := getServiceAccountName(a.Name, "applicationset-controller")
+	roleName := generateResourceName("applicationset-controller", a)
+	rb := newRoleBindingWithname("applicationset-controller", a)
+	svc := newServiceWithSuffix(common.ApplicationSetServiceNameSuffix, common.ApplicationSetServiceNameSuffix, a)
+
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: deployName, Namespace: a.Namespace}, &appsv1.Deployment{}))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: saName, Namespace: a.Namespace}, &v1.ServiceAccount{}))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: roleName, Namespace: a.Namespace}, &rbacv1.Role{}))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: rb.Name, Namespace: a.Namespace}, &rbacv1.RoleBinding{}))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: svc.Name, Namespace: a.Namespace}, &v1.Service{}))
+
+	a.Spec.ApplicationSet = nil
+	assert.NoError(t, r.reconcileApplicationSetController(a))
+
+	err := r.Get(context.TODO(), types.NamespacedName{Name: deployName, Namespace: a.Namespace}, &appsv1.Deployment{})
+	assert.True(t, apierrors.IsNotFound(err), "expected deployment deleted when spec.applicationSet is nil")
+	err = r.Get(context.TODO(), types.NamespacedName{Name: saName, Namespace: a.Namespace}, &v1.ServiceAccount{})
+	assert.True(t, apierrors.IsNotFound(err), "expected serviceaccount deleted when spec.applicationSet is nil")
+	err = r.Get(context.TODO(), types.NamespacedName{Name: roleName, Namespace: a.Namespace}, &rbacv1.Role{})
+	assert.True(t, apierrors.IsNotFound(err), "expected role deleted when spec.applicationSet is nil")
+	err = r.Get(context.TODO(), types.NamespacedName{Name: rb.Name, Namespace: a.Namespace}, &rbacv1.RoleBinding{})
+	assert.True(t, apierrors.IsNotFound(err), "expected rolebinding deleted when spec.applicationSet is nil")
+	err = r.Get(context.TODO(), types.NamespacedName{Name: svc.Name, Namespace: a.Namespace}, &v1.Service{})
+	assert.True(t, apierrors.IsNotFound(err), "expected service deleted when spec.applicationSet is nil")
+}
+
 func checkExpectedDeploymentValues(t *testing.T, r *ReconcileArgoCD, deployment *appsv1.Deployment, sa *v1.ServiceAccount, extraVolumes *[]v1.Volume, extraVolumeMounts *[]v1.VolumeMount, a *argoproj.ArgoCD) {
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.Name)
 	appsetAssertExpectedLabels(t, &deployment.ObjectMeta)
