@@ -66,7 +66,6 @@ func (r *ReconcileArgoCD) reconcileNamespaceManagement(argocd *argoproj.ArgoCD) 
 		} else {
 			message = fmt.Sprintf("Namespace %s is not permitted for management by ArgoCD instance %s based on NamespaceManagement rules", namespace, argocd.Namespace)
 			errorMessages = append(errorMessages, message)
-			statusUpdates = append(statusUpdates, nmStatus{nm: nm, message: message})
 		}
 
 		statusUpdates = append(statusUpdates, nmStatus{nm: nm, message: message})
@@ -166,8 +165,8 @@ func (r *ReconcileArgoCD) disableNamespaceManagement(argocd *argoproj.ArgoCD, k8
 				return err
 			}
 
-			// Skip RBAC deletion if the namespace has the "managed-by" label
-			if namespace.Labels[common.ArgoCDManagedByLabel] == nsName {
+			// Skip RBAC deletion if the namespace has the "managed-by" label for this Argo CD instance
+			if namespace.Labels[common.ArgoCDManagedByLabel] == argocd.Namespace {
 				log.Info(fmt.Sprintf("Skipping RBAC deletion for namespace %s due to managed-by label", nsName))
 				continue
 			}

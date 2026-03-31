@@ -200,15 +200,16 @@ func TestHandleFeatureDisable_SkipManagedByLabel(t *testing.T) {
 			Namespace: "ns-managed",
 		},
 		Spec: argoproj.NamespaceManagementSpec{
-			ManagedBy: "argocd",
+			ManagedBy: a.Namespace, // "argocd"
 		},
 	}
 
+	// Label value must be the Argo CD instance namespace (who manages this namespace)
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "ns-managed",
 			Labels: map[string]string{
-				common.ArgoCDManagedByLabel: "ns-managed",
+				common.ArgoCDManagedByLabel: a.Namespace,
 			},
 		},
 	}
@@ -415,6 +416,60 @@ func TestReconcileNamespaceManagement_ExplicitlyDisallowed(t *testing.T) {
 	err = r.reconcileNamespaceManagement(a)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Namespace deny-ns is not permitted for management by ArgoCD instance argocd based on NamespaceManagement rules")
+}
+
+func TestReconcileNamespaceManagement_AddsManagedByLabel(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.NamespaceManagement = []argoproj.ManagedNamespaces{{
+			Name:           "tenant-ns",
+			AllowManagedBy: true,
+		}}
+	})
+
+	nm := &argoproj.NamespaceManagement{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "tenant-nm",
+			Namespace: "tenant-ns",
+		},
+		Spec: argoproj.NamespaceManagementSpec{
+			ManagedBy: a.Namespace,
+		},
+	}
+
+	// Tenant namespace must exist so the role reconciler can Get/Update it for the label
+	tenantNS := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "tenant-ns",
+			Labels: map[string]string{"existing": "label"},
+		},
+	}
+
+	resObjs := []client.Object{a, tenantNS}
+	subresObjs := []client.Object{a, nm, tenantNS}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	err := r.Create(context.Background(), nm)
+	assert.NoError(t, err)
+
+	os.Setenv(common.EnableManagedNamespace, "true")
+	defer os.Unsetenv(common.EnableManagedNamespace)
+
+	err = r.reconcileNamespaceManagement(a)
+	assert.NoError(t, err)
+
+	_, err = r.reconcileRole(common.ArgoCDApplicationControllerComponent, policyRuleForApplicationController(), a)
+	assert.NoError(t, err)
+
+	gotNS := &corev1.Namespace{}
+	err = r.Get(context.Background(), types.NamespacedName{Name: "tenant-ns"}, gotNS)
+	assert.NoError(t, err)
+	assert.Equal(t, a.Namespace, gotNS.Labels[common.ArgoCDManagedByLabel],
+		"tenant namespace should have argocd.argoproj.io/managed-by set to Argo CD instance namespace")
+	assert.Equal(t, "label", gotNS.Labels["existing"], "existing labels should be preserved")
 }
 
 func TestReconcileNamespaceManagement_DeduplicateNamespaces(t *testing.T) {

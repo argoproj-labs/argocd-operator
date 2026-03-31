@@ -1543,7 +1543,7 @@ func TestNamespaceManagementHandlers(t *testing.T) {
 		}
 
 		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
-			Name: "old",
+			Name: testNamespace,
 		}}
 
 		resObjs := []client.Object{argoCD, ns, oldNSMgmt, newNSMgmt}
@@ -1577,8 +1577,11 @@ func TestNamespaceManagementHandlers(t *testing.T) {
 			Spec:       argoproj.NamespaceManagementSpec{ManagedBy: "argocd"},
 		}
 
-		resObjs := []client.Object{argoCD, nsMgmt}
-		subresObjs := []client.Object{argoCD, nsMgmt}
+		// Tenant namespace (where NM CR lives); no managed-by label so cleanup runs.
+		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace}}
+
+		resObjs := []client.Object{argoCD, ns, nsMgmt}
+		subresObjs := []client.Object{argoCD, ns, nsMgmt}
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
