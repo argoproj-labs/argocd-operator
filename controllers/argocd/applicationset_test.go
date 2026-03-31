@@ -92,7 +92,9 @@ func checkExpectedDeploymentValues(t *testing.T, r *ReconcileArgoCD, deployment 
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.Name)
 	appsetAssertExpectedLabels(t, &deployment.ObjectMeta)
 
-	want := []v1.Container{r.applicationSetContainer(a, false)}
+	containerWant, err := r.applicationSetContainer(a, false)
+	assert.NoError(t, err)
+	want := []v1.Container{containerWant}
 
 	if diff := cmp.Diff(want, deployment.Spec.Template.Spec.Containers); diff != "" {
 		t.Fatalf("failed to reconcile applicationset-controller deployment containers:\n%s", diff)
@@ -405,9 +407,11 @@ func TestReconcileApplicationSet_Deployments_resourceRequirements(t *testing.T) 
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.Name)
 	appsetAssertExpectedLabels(t, &deployment.ObjectMeta)
 
-	containerWant := []v1.Container{r.applicationSetContainer(a, false)}
+	containerWant, err := r.applicationSetContainer(a, false)
+	assert.NoError(t, err)
+	containerWantSlice := []v1.Container{containerWant}
 
-	if diff := cmp.Diff(containerWant, deployment.Spec.Template.Spec.Containers); diff != "" {
+	if diff := cmp.Diff(containerWantSlice, deployment.Spec.Template.Spec.Containers); diff != "" {
 		t.Fatalf("failed to reconcile argocd-server deployment:\n%s", diff)
 	}
 
