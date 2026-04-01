@@ -98,7 +98,7 @@ func TestReconcileApplicationSet_RemovesResourcesWhenSpecApplicationSetNil(t *te
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r := makeTestReconciler(cl, sch, testclient.NewClientset())
 
 	assert.NoError(t, r.reconcileApplicationSetController(a))
 

@@ -452,7 +452,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			buildAppProjectResource(argov1beta1api.AgentModeManaged, principalSession)
 
 			By("Create AppProject for autonomous agent in " + namespaceAutonomousAgent)
-			buildAppProjectResource(argov1beta1api.AgentModeAutonomous, principalSession)
+			buildAppProjectResource(argov1beta1api.AgentModeAutonomous, nil)
 
 			applicationOfManagedAgent := buildApplicationResource(applicationNameManagedAgent,
 				managedAgentClusterName, managedAgentClusterName, argoCDAgentInstanceNameAgent, argov1beta1api.AgentModeManaged, principalSession)
@@ -474,7 +474,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			runRedisTest("127.0.0.1:8443", principalArgocdPassword, true, applicationOfManagedAgent, k8sClient)
 
 			applicationOfAutonomousAgent := buildApplicationResource(applicationNameAutonomousAgent,
-				namespaceAutonomousAgent, autonomousAgentClusterName, argoCDAgentInstanceNameAgent, argov1beta1api.AgentModeAutonomous, principalSession)
+				namespaceAutonomousAgent, autonomousAgentClusterName, argoCDAgentInstanceNameAgent, argov1beta1api.AgentModeAutonomous, nil)
 
 			By("Deploy application for autonomous mode")
 			deployAndValidateApplication(applicationOfAutonomousAgent)
@@ -783,9 +783,14 @@ func buildAppProjectResource(agentMode argov1beta1api.AgentMode, session *argocd
 func buildApplicationResource(applicationName, nsName, agentName, argocdInstanceName string,
 	agentMode argov1beta1api.AgentMode, session *argocdFixture.Session) *appFixture.AppRef {
 
+	// Autonomous agent uses a prefixed project name (matching what buildAppProjectResource creates)
+	projectName := agentAppProjectName
+	if agentMode == argov1beta1api.AgentModeAutonomous {
+		projectName = autonomousAgentClusterName + "-" + agentAppProjectName
+	}
+
 	opts := []appFixture.AppOption{
-		appFixture.WithSession(session),
-		appFixture.WithProject(agentAppProjectName),
+		appFixture.WithProject(projectName),
 		appFixture.WithRepo("https://github.com/argoproj/argocd-example-apps"),
 		appFixture.WithRevision("HEAD"),
 		appFixture.WithPath("guestbook"),
@@ -795,6 +800,12 @@ func buildApplicationResource(applicationName, nsName, agentName, argocdInstance
 		appFixture.WithManagedNSLabels(map[string]string{
 			"argocd.argoproj.io/managed-by": argocdInstanceName,
 		}),
+	}
+
+	// Add session for CLI-based creation (managed mode via principal server).
+	// When session is nil (autonomous mode), creation falls back to k8s client.
+	if session != nil {
+		opts = append(opts, appFixture.WithSession(session))
 	}
 
 	// Set the destination based on the agent mode

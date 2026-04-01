@@ -31,32 +31,58 @@ type AppRef struct {
 	session   *argocdFixture.Session // for get/delete operations
 }
 
-// appConfig holds configuration for creating an Application via CLI.
+// appConfig holds configuration for creating an Application via CLI or k8s client.
 type appConfig struct {
 	args            []string
 	annotations     map[string]string
 	labels          map[string]string
 	managedNSLabels map[string]string
 	session         *argocdFixture.Session
+
+	// Structured fields for k8s client creation path (when session is nil)
+	project       string
+	repoURL       string
+	revision      string
+	path          string
+	destServer    string
+	destNamespace string
+	destName      string
+	autoSync      bool
+	prune         bool
+	selfHeal      bool
+	syncOptions   []string
+	helmChart     string
 }
 
 // AppOption configures Application creation.
 type AppOption func(*appConfig)
 
 func WithRepo(repo string) AppOption {
-	return func(c *appConfig) { c.args = append(c.args, "--repo", repo) }
+	return func(c *appConfig) {
+		c.args = append(c.args, "--repo", repo)
+		c.repoURL = repo
+	}
 }
 
 func WithPath(path string) AppOption {
-	return func(c *appConfig) { c.args = append(c.args, "--path", path) }
+	return func(c *appConfig) {
+		c.args = append(c.args, "--path", path)
+		c.path = path
+	}
 }
 
 func WithRevision(rev string) AppOption {
-	return func(c *appConfig) { c.args = append(c.args, "--revision", rev) }
+	return func(c *appConfig) {
+		c.args = append(c.args, "--revision", rev)
+		c.revision = rev
+	}
 }
 
 func WithHelmChart(chart string) AppOption {
-	return func(c *appConfig) { c.args = append(c.args, "--helm-chart", chart) }
+	return func(c *appConfig) {
+		c.args = append(c.args, "--helm-chart", chart)
+		c.helmChart = chart
+	}
 }
 
 func WithHelmValues(values string) AppOption {
@@ -68,31 +94,52 @@ func WithHelmValues(values string) AppOption {
 }
 
 func WithDestServer(server string) AppOption {
-	return func(c *appConfig) { c.args = append(c.args, "--dest-server", server) }
+	return func(c *appConfig) {
+		c.args = append(c.args, "--dest-server", server)
+		c.destServer = server
+	}
 }
 
 func WithDestNamespace(ns string) AppOption {
-	return func(c *appConfig) { c.args = append(c.args, "--dest-namespace", ns) }
+	return func(c *appConfig) {
+		c.args = append(c.args, "--dest-namespace", ns)
+		c.destNamespace = ns
+	}
 }
 
 func WithDestName(name string) AppOption {
-	return func(c *appConfig) { c.args = append(c.args, "--dest-name", name) }
+	return func(c *appConfig) {
+		c.args = append(c.args, "--dest-name", name)
+		c.destName = name
+	}
 }
 
 func WithProject(project string) AppOption {
-	return func(c *appConfig) { c.args = append(c.args, "--project", project) }
+	return func(c *appConfig) {
+		c.args = append(c.args, "--project", project)
+		c.project = project
+	}
 }
 
 func WithAutoSync() AppOption {
-	return func(c *appConfig) { c.args = append(c.args, "--sync-policy", "automated") }
+	return func(c *appConfig) {
+		c.args = append(c.args, "--sync-policy", "automated")
+		c.autoSync = true
+	}
 }
 
 func WithPrune() AppOption {
-	return func(c *appConfig) { c.args = append(c.args, "--auto-prune") }
+	return func(c *appConfig) {
+		c.args = append(c.args, "--auto-prune")
+		c.prune = true
+	}
 }
 
 func WithSelfHeal() AppOption {
-	return func(c *appConfig) { c.args = append(c.args, "--self-heal") }
+	return func(c *appConfig) {
+		c.args = append(c.args, "--self-heal")
+		c.selfHeal = true
+	}
 }
 
 func WithRetryLimit(limit int) AppOption {
@@ -100,7 +147,10 @@ func WithRetryLimit(limit int) AppOption {
 }
 
 func WithSyncOption(option string) AppOption {
-	return func(c *appConfig) { c.args = append(c.args, "--sync-option", option) }
+	return func(c *appConfig) {
+		c.args = append(c.args, "--sync-option", option)
+		c.syncOptions = append(c.syncOptions, option)
+	}
 }
 
 func WithPlugin(name string) AppOption {
@@ -146,24 +196,30 @@ func WithSession(s *argocdFixture.Session) AppOption {
 	return func(c *appConfig) { c.session = s }
 }
 
-// Create creates an Argo CD Application using the argocd CLI.
+// Create creates an Argo CD Application using the argocd CLI (when session is provided)
+// or directly via the k8s client (when session is nil).
 func Create(name, namespace string, opts ...AppOption) *AppRef {
 	cfg := &appConfig{}
 	for _, o := range opts {
 		o(cfg)
 	}
-	Expect(cfg.session).ToNot(BeNil(), "WithSession is required for application.Create")
-
-	args := append([]string{"app", "create", name, "--app-namespace", namespace}, cfg.args...)
-
-	output, err := runArgoCDCLI(cfg.session, args...)
-	Expect(err).ToNot(HaveOccurred(), "argocd app create failed: %s", output)
 
 	ref := &AppRef{Name: name, Namespace: namespace, session: cfg.session}
 
-	// Post-create: apply annotations, labels, and managed namespace metadata via k8s client
-	if len(cfg.annotations) > 0 || len(cfg.labels) > 0 || len(cfg.managedNSLabels) > 0 {
-		patchApp(name, namespace, cfg.annotations, cfg.labels, cfg.managedNSLabels)
+	if cfg.session != nil {
+		// Create via argocd CLI
+		args := append([]string{"app", "create", name, "--app-namespace", namespace}, cfg.args...)
+
+		output, err := runArgoCDCLI(cfg.session, args...)
+		Expect(err).ToNot(HaveOccurred(), "argocd app create failed: %s", output)
+
+		// Post-create: apply annotations, labels, and managed namespace metadata via k8s client
+		if len(cfg.annotations) > 0 || len(cfg.labels) > 0 || len(cfg.managedNSLabels) > 0 {
+			patchApp(name, namespace, cfg.annotations, cfg.labels, cfg.managedNSLabels)
+		}
+	} else {
+		// Create via k8s client (for cases where no ArgoCD server is available, e.g. autonomous agent)
+		createAppViaK8sClient(name, namespace, cfg)
 	}
 
 	return ref
@@ -201,10 +257,6 @@ func patchApp(name, namespace string, annotations, labels map[string]string, man
 	}
 
 	if len(managedNSLabels) > 0 {
-		spec, _, _ := unstructured.NestedMap(app.Object, "spec")
-		if spec == nil {
-			spec = map[string]interface{}{}
-		}
 		labelsMap := make(map[string]interface{}, len(managedNSLabels))
 		for k, v := range managedNSLabels {
 			labelsMap[k] = v
@@ -213,6 +265,92 @@ func patchApp(name, namespace string, annotations, labels map[string]string, man
 	}
 
 	Expect(k8sClient.Update(ctx, app)).To(Succeed(), "failed to update Application %s/%s", namespace, name)
+}
+
+// createAppViaK8sClient creates an Application directly using the k8s client.
+func createAppViaK8sClient(name, namespace string, cfg *appConfig) {
+	k8sClient, _ := fixtureUtils.GetE2ETestKubeClient()
+	ctx := context.Background()
+
+	app := &unstructured.Unstructured{}
+	app.SetGroupVersionKind(applicationGVR.GroupVersion().WithKind("Application"))
+	app.SetName(name)
+	app.SetNamespace(namespace)
+
+	if len(cfg.annotations) > 0 {
+		app.SetAnnotations(cfg.annotations)
+	}
+	if len(cfg.labels) > 0 {
+		app.SetLabels(cfg.labels)
+	}
+
+	source := map[string]interface{}{}
+	if cfg.repoURL != "" {
+		source["repoURL"] = cfg.repoURL
+	}
+	if cfg.path != "" {
+		source["path"] = cfg.path
+	}
+	if cfg.revision != "" {
+		source["targetRevision"] = cfg.revision
+	}
+	if cfg.helmChart != "" {
+		source["chart"] = cfg.helmChart
+	}
+
+	dest := map[string]interface{}{}
+	if cfg.destServer != "" {
+		dest["server"] = cfg.destServer
+	}
+	if cfg.destName != "" {
+		dest["name"] = cfg.destName
+	}
+	if cfg.destNamespace != "" {
+		dest["namespace"] = cfg.destNamespace
+	}
+
+	spec := map[string]interface{}{
+		"project":     cfg.project,
+		"source":      source,
+		"destination": dest,
+	}
+
+	syncPolicy := map[string]interface{}{}
+	if cfg.autoSync {
+		automated := map[string]interface{}{}
+		if cfg.prune {
+			automated["prune"] = true
+		}
+		if cfg.selfHeal {
+			automated["selfHeal"] = true
+		}
+		syncPolicy["automated"] = automated
+	}
+	if len(cfg.syncOptions) > 0 {
+		opts := make([]interface{}, len(cfg.syncOptions))
+		for i, o := range cfg.syncOptions {
+			opts[i] = o
+		}
+		syncPolicy["syncOptions"] = opts
+	}
+	if len(cfg.managedNSLabels) > 0 {
+		labelsMap := make(map[string]interface{}, len(cfg.managedNSLabels))
+		for k, v := range cfg.managedNSLabels {
+			labelsMap[k] = v
+		}
+		syncPolicy["managedNamespaceMetadata"] = map[string]interface{}{
+			"labels": labelsMap,
+		}
+	}
+	if len(syncPolicy) > 0 {
+		spec["syncPolicy"] = syncPolicy
+	}
+
+	app.Object["spec"] = spec
+
+	GinkgoWriter.Printf("creating Application %s/%s via k8s client\n", namespace, name)
+	Expect(k8sClient.Create(ctx, app)).To(Succeed(),
+		"failed to create Application %s/%s via k8s client", namespace, name)
 }
 
 // Delete deletes an Argo CD Application.
