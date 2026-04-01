@@ -79,6 +79,9 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
+			session := argocdFixture.NewSession("argocd", test1_8_customNS.Name, k8sClient)
+			defer session.Cleanup()
+
 			By("waiting for all containers to be ready in the Namespace")
 			fixture.WaitForAllDeploymentsInTheNamespaceToBeReady(test1_8_customNS.Name, k8sClient)
 			fixture.WaitForAllStatefulSetsInTheNamespaceToBeReady(test1_8_customNS.Name, k8sClient)
@@ -87,6 +90,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			By("creating a test Argo CD Application")
 
 			app := appFixture.Create("validate-custom-argocd", test1_8_customNS.Name,
+				appFixture.WithSession(session),
 				appFixture.WithRepo("https://github.com/redhat-developer/gitops-operator"),
 				appFixture.WithPath("test/examples/nginx"),
 				appFixture.WithRevision("HEAD"),

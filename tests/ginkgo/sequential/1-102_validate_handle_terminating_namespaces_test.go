@@ -94,6 +94,9 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			By("waiting for ArgoCD CR to be reconciled and the instance to be ready")
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
+			session := argocdFixture.NewSession("argocd", ns.Name, k8sClient)
+			defer session.Cleanup()
+
 			By("creating a namespace 'jane' containing a ConfigMap with a unowned finalizer")
 			janeNs, janeNsCleanupFunc = fixture.CreateManagedNamespaceWithCleanupFunc("jane", ns.Name)
 
@@ -152,6 +155,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			By("creating a test Argo CD Application targeting john NS")
 
 			app := appFixture.Create("my-app", ns.Name,
+				appFixture.WithSession(session),
 				appFixture.WithRepo("https://github.com/redhat-developer/gitops-operator"),
 				appFixture.WithPath("test/examples/kustomize-guestbook"),
 				appFixture.WithRevision("HEAD"),

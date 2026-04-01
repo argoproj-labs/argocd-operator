@@ -104,6 +104,10 @@ func WithDirectoryRecurse() AppOption {
 	return func(c *appConfig) { c.args = append(c.args, "--directory-recurse") }
 }
 
+func WithSkipValidation() AppOption {
+	return func(c *appConfig) { c.args = append(c.args, "--validate=false") }
+}
+
 func WithAnnotation(key, value string) AppOption {
 	return func(c *appConfig) {
 		if c.annotations == nil {
@@ -223,20 +227,6 @@ func HaveSyncStatus(expected string) matcher.GomegaMatcher {
 		}
 		current := jsonGetString(data, "status", "sync", "status")
 		GinkgoWriter.Printf("HaveSyncStatus - current: %s / expected: %s\n", current, expected)
-		return current == expected
-	}, BeTrue())
-}
-
-// HaveOperationPhase checks that the Application has the expected operation phase.
-func HaveOperationPhase(expected string) matcher.GomegaMatcher {
-	return WithTransform(func(ref *AppRef) bool {
-		data, err := getAppJSON(ref)
-		if err != nil {
-			GinkgoWriter.Println(err)
-			return false
-		}
-		current := jsonGetString(data, "status", "operationState", "phase")
-		GinkgoWriter.Printf("HaveOperationPhase - current: %s / expected: %s\n", current, expected)
 		return current == expected
 	}, BeTrue())
 }

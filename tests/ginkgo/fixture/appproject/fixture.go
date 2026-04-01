@@ -86,7 +86,7 @@ func Create(name, namespace string, opts ...ProjOption) *ProjRef {
 }
 
 func createViaCLI(name, namespace string, cfg *projConfig) {
-	args := []string{"proj", "create", name, "--app-namespace", namespace}
+	args := []string{"proj", "create", name, "-N", namespace}
 	for _, repo := range cfg.sourceRepos {
 		args = append(args, "--src", repo)
 	}
@@ -102,7 +102,7 @@ func createViaCLI(name, namespace string, cfg *projConfig) {
 
 	// Source namespaces need separate commands
 	for _, ns := range cfg.sourceNamespaces {
-		out, err := runArgoCDCLI(cfg.session, "proj", "add-source-namespace", name, ns)
+		out, err := runArgoCDCLI(cfg.session, "proj", "add-source-namespace", name, ns, "-N", namespace)
 		Expect(err).ToNot(HaveOccurred(), "argocd proj add-source-namespace failed: %s", out)
 	}
 }
@@ -166,20 +166,25 @@ func createViaKubectl(name, namespace string, cfg *projConfig) {
 // AddDestination adds a destination to an existing AppProject.
 func AddDestination(ref *ProjRef, server, namespace string) {
 	Expect(ref.session).ToNot(BeNil(), "session is required for AddDestination")
-	out, err := runArgoCDCLI(ref.session, "proj", "add-destination", ref.Name, server, namespace)
+	out, err := runArgoCDCLI(ref.session, "proj", "add-destination", ref.Name, server, namespace, "-N", ref.Namespace)
 	Expect(err).ToNot(HaveOccurred(), "argocd proj add-destination failed: %s", out)
 }
 
 // AddSourceNamespace adds a source namespace to an existing AppProject.
 func AddSourceNamespace(ref *ProjRef, ns string) {
 	Expect(ref.session).ToNot(BeNil(), "session is required for AddSourceNamespace")
-	out, err := runArgoCDCLI(ref.session, "proj", "add-source-namespace", ref.Name, ns)
+	out, err := runArgoCDCLI(ref.session, "proj", "add-source-namespace", ref.Name, ns, "-N", ref.Namespace)
 	Expect(err).ToNot(HaveOccurred(), "argocd proj add-source-namespace failed: %s", out)
 }
 
 // Ref creates a reference to an existing AppProject without creating it.
-func Ref(name, namespace string) *ProjRef {
-	return &ProjRef{Name: name, Namespace: namespace}
+// Session is optional — when provided, CLI operations (AddDestination, AddSourceNamespace) use it.
+func Ref(name, namespace string, sessions ...*argocdFixture.Session) *ProjRef {
+	var session *argocdFixture.Session
+	if len(sessions) > 0 {
+		session = sessions[0]
+	}
+	return &ProjRef{Name: name, Namespace: namespace, session: session}
 }
 
 // --- Internal helpers ---

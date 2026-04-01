@@ -74,6 +74,9 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
+			session := argocdFixture.NewSession("argocd", argoCD_NS.Name, k8sClient)
+			defer session.Cleanup()
+
 			By("verifying ConfigMap contains impersonation value specified in ArgoCD CR")
 			argocdCMConfigMap := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -119,6 +122,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("creating AppProject which allows us to deploy to guestbook namespace using a specific ServiceAccount")
 			projRef := appprojectFixture.Create("guestbook-proj", argoCD_NS.Name,
+				appprojectFixture.WithSession(session),
 				appprojectFixture.WithSourceRepo("https://github.com/argoproj/argocd-example-apps.git"),
 				appprojectFixture.WithDestination("https://kubernetes.default.svc", guestbookNS.Name),
 				appprojectFixture.WithClusterResource("*", "*"),
@@ -127,6 +131,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("creating an Application which deploys to guestbook namespace, which should succeed to deploy")
 			guestbookRef := applicationFixture.Create("guestbook", argoCD.Namespace,
+				applicationFixture.WithSession(session),
 				applicationFixture.WithRepo("https://github.com/argoproj/argocd-example-apps"),
 				applicationFixture.WithPath("guestbook"),
 				applicationFixture.WithDestServer("https://kubernetes.default.svc"),
@@ -144,6 +149,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("creating a new Application that attempts to deploy to that new namespace")
 			guestbookDevRef := applicationFixture.Create("guestbook-dev", argoCD.Namespace,
+				applicationFixture.WithSession(session),
 				applicationFixture.WithRepo("https://github.com/argoproj/argocd-example-apps"),
 				applicationFixture.WithPath("guestbook"),
 				applicationFixture.WithDestServer("https://kubernetes.default.svc"),

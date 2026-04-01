@@ -36,8 +36,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 		var (
 			ctx              context.Context
 			k8sClient        client.Client
-			cleanupFunctions = []func(){} // we create various namespaces in this test, these functions will clean them up when the test is done
-
+			cleanupFunctions []func()
 		)
 
 		BeforeEach(func() {
@@ -1144,6 +1143,9 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 			Eventually(argoCD).Should(argocdFixture.HaveApplicationSetControllerStatus("Running"))
 
+			session := argocdFixture.NewSession("appset-example", argoNamespace.Name, k8sClient)
+			cleanupFunctions = append(cleanupFunctions, session.Cleanup)
+
 			By("2) verifying that the appset deployment contains matching namespace in the command")
 			appsetDeployment := &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
@@ -1156,7 +1158,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			// Verify that target namespace is included
 			Eventually(appsetDeployment).Should(deploymentFixture.HaveContainerCommandSubstring("--applicationset-namespaces", 0))
 
-			defaultProjRef := appprojectFixture.Ref("default", argoCD.Namespace)
+			defaultProjRef := appprojectFixture.Ref("default", argoCD.Namespace, session)
 			appprojectFixture.AddSourceNamespace(defaultProjRef, targetNS.Name)
 
 			By("verifying ApplicationSet controller ClusterRole has expected rules")

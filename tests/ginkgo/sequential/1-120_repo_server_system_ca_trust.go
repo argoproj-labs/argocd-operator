@@ -238,7 +238,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			Expect(repoServerSystemCaTrust(ns)).Should(trustCerts(Equal(0), Not(BeEmpty())))
 
-			trustedHelmApp := createHelmApp(ns, trustedHelmAppSource, session)
+			trustedHelmApp := createHelmApp(ns, trustedHelmAppSource, session, application.WithSkipValidation())
 
 			Eventually(trustedHelmApp, "20s", "5s").Should(application.HaveConditionMatching(
 				"ComparisonError",
@@ -598,10 +598,10 @@ type helmAppSource struct {
 	HelmValues               string
 }
 
-func createHelmApp(ns *corev1.Namespace, source helmAppSource, session *argocdFixture.Session) *application.AppRef {
+func createHelmApp(ns *corev1.Namespace, source helmAppSource, session *argocdFixture.Session, extraOpts ...application.AppOption) *application.AppRef {
 	By("creating helm Application " + source.Chart)
 
-	return application.Create(source.Chart, ns.Name,
+	opts := []application.AppOption{
 		application.WithSession(session),
 		application.WithRepo(source.RepoURL),
 		application.WithHelmChart(source.Chart),
@@ -613,14 +613,16 @@ func createHelmApp(ns *corev1.Namespace, source helmAppSource, session *argocdFi
 		application.WithAutoSync(),
 		application.WithPrune(),
 		application.WithSelfHeal(),
-	)
+	}
+	opts = append(opts, extraOpts...)
+	return application.Create(source.Chart, ns.Name, opts...)
 }
 
-func createPluginApp(ns *corev1.Namespace, url string, session *argocdFixture.Session) *application.AppRef {
+func createPluginApp(ns *corev1.Namespace, url string, session *argocdFixture.Session, extraOpts ...application.AppOption) *application.AppRef {
 	name := regexp.MustCompile("[^a-z]+").ReplaceAllString(url, "-")
 	By("creating plugin Application " + name)
 
-	return application.Create(name, ns.Name,
+	opts := []application.AppOption{
 		application.WithSession(session),
 		application.WithRepo(url),
 		application.WithRevision("HEAD"),
@@ -630,7 +632,9 @@ func createPluginApp(ns *corev1.Namespace, url string, session *argocdFixture.Se
 		application.WithDestServer("https://kubernetes.default.svc"),
 		application.WithDestNamespace(ns.Name),
 		application.WithProject("default"),
-	)
+	}
+	opts = append(opts, extraOpts...)
+	return application.Create(name, ns.Name, opts...)
 }
 
 func createCtbFromCerts(bundle ...string) *certificatesv1beta1.ClusterTrustBundle {
@@ -848,10 +852,10 @@ func findRunningRepoServerPod(k8sClient client.Client, ns *corev1.Namespace) *co
 }
 
 func verifyCorrectlyConfiguredTrust(ns *corev1.Namespace, session *argocdFixture.Session) {
-	untrustedHelmApp := createHelmApp(ns, untrustedHelmAppSource, session)
+	untrustedHelmApp := createHelmApp(ns, untrustedHelmAppSource, session, application.WithSkipValidation())
 
 	// Using some host not trusted by github's intermediate cert. Gitlab-somewhat surprisingly-is.
-	untrustedPluginApp := createPluginApp(ns, "https://kernel.googlesource.com/pub/scm/docs/man-pages/website.git", session)
+	untrustedPluginApp := createPluginApp(ns, "https://kernel.googlesource.com/pub/scm/docs/man-pages/website.git", session, application.WithSkipValidation())
 
 	trustedHelmApp := createHelmApp(ns, trustedHelmAppSource, session)
 

@@ -88,6 +88,9 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			Eventually(argoCDRandomNS, "5m", "5s").Should(argocdFixture.BeAvailable())
 
+			session := argocdFixture.NewSession("argocd", randomNS.Name, k8sClient)
+			defer session.Cleanup()
+
 			By("configuring test-1-12-custom to be managed by Argo CD instance")
 
 			k8sFixture.Update(nsTest_1_12_custom, func(obj client.Object) {
@@ -125,6 +128,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("creating Argo CD Application targeting test-1-12-custom")
 			app := appFixture.Create("test-1-12-custom", argoCDRandomNS.Namespace,
+				appFixture.WithSession(session),
 				appFixture.WithRepo("https://github.com/redhat-developer/gitops-operator"),
 				appFixture.WithPath("test/examples/nginx"),
 				appFixture.WithRevision("HEAD"),
@@ -155,6 +159,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("validating Argo CD is able to deploy to second managed namespace")
 			app2 := appFixture.Create("test-1-12-custom2", argoCDRandomNS.Namespace,
+				appFixture.WithSession(session),
 				appFixture.WithRepo("https://github.com/redhat-developer/gitops-operator"),
 				appFixture.WithPath("test/examples/nginx"),
 				appFixture.WithRevision("HEAD"),
@@ -187,6 +192,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			cleanupfuncs = append(cleanupfuncs, cleanupFunc4)
 
 			app = appFixture.Create("test-1-12-custom", argoCDRandomNS.Namespace,
+				appFixture.WithSession(session),
 				appFixture.WithRepo("https://github.com/redhat-developer/gitops-operator"),
 				appFixture.WithPath("test/examples/nginx"),
 				appFixture.WithRevision("HEAD"),
@@ -197,6 +203,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				appFixture.WithRetryLimit(5),
 			)
 			app2 = appFixture.Create("test-1-12-custom2", argoCDRandomNS.Namespace,
+				appFixture.WithSession(session),
 				appFixture.WithRepo("https://github.com/redhat-developer/gitops-operator"),
 				appFixture.WithPath("test/examples/nginx"),
 				appFixture.WithRevision("HEAD"),
