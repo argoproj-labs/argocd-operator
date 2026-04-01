@@ -86,7 +86,7 @@ func Create(name, namespace string, opts ...ProjOption) *ProjRef {
 }
 
 func createViaCLI(name, namespace string, cfg *projConfig) {
-	args := []string{"proj", "create", name, "-N", namespace}
+	args := []string{"proj", "create", name}
 	for _, repo := range cfg.sourceRepos {
 		args = append(args, "--src", repo)
 	}
@@ -102,7 +102,7 @@ func createViaCLI(name, namespace string, cfg *projConfig) {
 
 	// Source namespaces need separate commands
 	for _, ns := range cfg.sourceNamespaces {
-		out, err := runArgoCDCLI(cfg.session, "proj", "add-source-namespace", name, ns, "-N", namespace)
+		out, err := runArgoCDCLI(cfg.session, "proj", "add-source-namespace", name, ns)
 		Expect(err).ToNot(HaveOccurred(), "argocd proj add-source-namespace failed: %s", out)
 	}
 }
@@ -166,14 +166,14 @@ func createViaKubectl(name, namespace string, cfg *projConfig) {
 // AddDestination adds a destination to an existing AppProject.
 func AddDestination(ref *ProjRef, server, namespace string) {
 	Expect(ref.session).ToNot(BeNil(), "session is required for AddDestination")
-	out, err := runArgoCDCLI(ref.session, "proj", "add-destination", ref.Name, server, namespace, "-N", ref.Namespace)
+	out, err := runArgoCDCLI(ref.session, "proj", "add-destination", ref.Name, server, namespace)
 	Expect(err).ToNot(HaveOccurred(), "argocd proj add-destination failed: %s", out)
 }
 
 // AddSourceNamespace adds a source namespace to an existing AppProject.
 func AddSourceNamespace(ref *ProjRef, ns string) {
 	Expect(ref.session).ToNot(BeNil(), "session is required for AddSourceNamespace")
-	out, err := runArgoCDCLI(ref.session, "proj", "add-source-namespace", ref.Name, ns, "-N", ref.Namespace)
+	out, err := runArgoCDCLI(ref.session, "proj", "add-source-namespace", ref.Name, ns)
 	Expect(err).ToNot(HaveOccurred(), "argocd proj add-source-namespace failed: %s", out)
 }
 
