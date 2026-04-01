@@ -288,10 +288,10 @@ vs-ssh.visualstudio.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7Hr1oTWqNqOlzGJOf
 	ArgoCDCmdParamsConfigMapName = "argocd-cmd-params-cm"
 
 	// ArgoCDAgentPrincipalDefaultImageName is the default image name for the ArgoCD agent's principal component.
-	ArgoCDAgentPrincipalDefaultImageName = "quay.io/ogondza/argocd-agent:840b84916eea783f3f0c9208ab31b770b55aaa84"
+	ArgoCDAgentPrincipalDefaultImageName = "quay.io/argoprojlabs/argocd-agent:v0.8.0"
 
 	// ArgoCDAgentAgentDefaultImageName is the default image name for the ArgoCD agent's agent component.
-	ArgoCDAgentAgentDefaultImageName = "quay.io/ogondza/argocd-agent:840b84916eea783f3f0c9208ab31b770b55aaa84"
+	ArgoCDAgentAgentDefaultImageName = "quay.io/argoprojlabs/argocd-agent:v0.8.0"
 
 	// ArgoCDImageUpdaterControllerComponent is the name of the Image Updater controller control plane component
 	ArgoCDImageUpdaterControllerComponent = "argocd-image-updater-controller"
