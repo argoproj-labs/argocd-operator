@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os/exec"
@@ -9,9 +10,19 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	matcher "github.com/onsi/gomega/types"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 
 	argocdFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/argocd"
+	fixtureUtils "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 )
+
+var applicationGVR = schema.GroupVersionResource{
+	Group:    "argoproj.io",
+	Version:  "v1alpha1",
+	Resource: "applications",
+}
 
 // AppRef is a lightweight reference to an Argo CD Application.
 type AppRef struct {
@@ -135,7 +146,7 @@ func WithSession(s *argocdFixture.Session) AppOption {
 	return func(c *appConfig) { c.session = s }
 }
 
-// Create creates an Argo CD Application using the argocd CLI in login mode.
+// Create creates an Argo CD Application using the argocd CLI.
 func Create(name, namespace string, opts ...AppOption) *AppRef {
 	cfg := &appConfig{}
 	for _, o := range opts {
@@ -150,38 +161,58 @@ func Create(name, namespace string, opts ...AppOption) *AppRef {
 
 	ref := &AppRef{Name: name, Namespace: namespace, session: cfg.session}
 
-	// Post-create: annotations via kubectl
-	for k, v := range cfg.annotations {
-		out, err := runKubectl("annotate", "application.argoproj.io", name, "-n", namespace,
-			fmt.Sprintf("%s=%s", k, v))
-		Expect(err).ToNot(HaveOccurred(), "kubectl annotate failed: %s", out)
-	}
-
-	// Post-create: labels via kubectl
-	for k, v := range cfg.labels {
-		out, err := runKubectl("label", "application.argoproj.io", name, "-n", namespace,
-			fmt.Sprintf("%s=%s", k, v))
-		Expect(err).ToNot(HaveOccurred(), "kubectl label failed: %s", out)
-	}
-
-	// Post-create: managed namespace metadata labels via kubectl patch
-	if len(cfg.managedNSLabels) > 0 {
-		patch := map[string]any{
-			"spec": map[string]any{
-				"syncPolicy": map[string]any{
-					"managedNamespaceMetadata": map[string]any{
-						"labels": cfg.managedNSLabels,
-					},
-				},
-			},
-		}
-		patchBytes, _ := json.Marshal(patch)
-		out, err := runKubectl("patch", "application.argoproj.io", name, "-n", namespace,
-			"--type=merge", "-p", string(patchBytes))
-		Expect(err).ToNot(HaveOccurred(), "kubectl patch failed: %s", out)
+	// Post-create: apply annotations, labels, and managed namespace metadata via k8s client
+	if len(cfg.annotations) > 0 || len(cfg.labels) > 0 || len(cfg.managedNSLabels) > 0 {
+		patchApp(name, namespace, cfg.annotations, cfg.labels, cfg.managedNSLabels)
 	}
 
 	return ref
+}
+
+// patchApp applies annotations, labels, and managed namespace metadata to an Application using the k8s client.
+func patchApp(name, namespace string, annotations, labels map[string]string, managedNSLabels map[string]string) {
+	k8sClient, _ := fixtureUtils.GetE2ETestKubeClient()
+	ctx := context.Background()
+
+	app := &unstructured.Unstructured{}
+	app.SetGroupVersionKind(applicationGVR.GroupVersion().WithKind("Application"))
+	Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, app)).To(Succeed(), "failed to get Application %s/%s", namespace, name)
+
+	if len(annotations) > 0 {
+		existing := app.GetAnnotations()
+		if existing == nil {
+			existing = make(map[string]string)
+		}
+		for k, v := range annotations {
+			existing[k] = v
+		}
+		app.SetAnnotations(existing)
+	}
+
+	if len(labels) > 0 {
+		existing := app.GetLabels()
+		if existing == nil {
+			existing = make(map[string]string)
+		}
+		for k, v := range labels {
+			existing[k] = v
+		}
+		app.SetLabels(existing)
+	}
+
+	if len(managedNSLabels) > 0 {
+		spec, _, _ := unstructured.NestedMap(app.Object, "spec")
+		if spec == nil {
+			spec = map[string]interface{}{}
+		}
+		labelsMap := make(map[string]interface{}, len(managedNSLabels))
+		for k, v := range managedNSLabels {
+			labelsMap[k] = v
+		}
+		Expect(unstructured.SetNestedField(app.Object, labelsMap, "spec", "syncPolicy", "managedNamespaceMetadata", "labels")).To(Succeed())
+	}
+
+	Expect(k8sClient.Update(ctx, app)).To(Succeed(), "failed to update Application %s/%s", namespace, name)
 }
 
 // Delete deletes an Argo CD Application.
@@ -192,7 +223,7 @@ func Delete(ref *AppRef) {
 }
 
 // Ref creates a reference to an existing Application without creating it.
-// Session is optional — when nil, kubectl is used for get operations (matchers).
+// Session is optional — when nil, argocd CLI get falls back to the k8s client.
 func Ref(name, namespace string, sessions ...*argocdFixture.Session) *AppRef {
 	var session *argocdFixture.Session
 	if len(sessions) > 0 {
@@ -311,11 +342,14 @@ func getAppJSON(ref *AppRef) (map[string]any, error) {
 			return nil, fmt.Errorf("argocd app get failed: %v, output: %s", err, output)
 		}
 	} else {
-		// No session — use kubectl directly (for Ref-only usage without CLI login)
-		output, err = runKubectl("get", "application.argoproj.io", ref.Name, "-n", ref.Namespace, "-o", "json")
-		if err != nil {
-			return nil, fmt.Errorf("kubectl get application failed: %v, output: %s", err, output)
+		// No session — use k8s client directly (for Ref-only usage without CLI login)
+		k8sClient, _ := fixtureUtils.GetE2ETestKubeClient()
+		app := &unstructured.Unstructured{}
+		app.SetGroupVersionKind(applicationGVR.GroupVersion().WithKind("Application"))
+		if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: ref.Name, Namespace: ref.Namespace}, app); err != nil {
+			return nil, fmt.Errorf("k8s client get application failed: %v", err)
 		}
+		return app.Object, nil
 	}
 
 	var result map[string]any
@@ -349,15 +383,6 @@ func runArgoCDCLI(session *argocdFixture.Session, args ...string) (string, error
 	GinkgoWriter.Println("executing argocd", allArgs)
 	// #nosec G204 -- test code
 	cmd := exec.Command("argocd", allArgs...)
-	output, err := cmd.CombinedOutput()
-	GinkgoWriter.Println(string(output))
-	return string(output), err
-}
-
-func runKubectl(args ...string) (string, error) {
-	GinkgoWriter.Println("executing kubectl", args)
-	// #nosec G204 -- test code
-	cmd := exec.Command("kubectl", args...)
 	output, err := cmd.CombinedOutput()
 	GinkgoWriter.Println(string(output))
 	return string(output), err

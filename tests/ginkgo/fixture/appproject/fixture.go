@@ -1,10 +1,8 @@
 package appproject
 
 import (
-	"encoding/json"
 	"fmt"
 	"os/exec"
-	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -65,27 +63,17 @@ func WithSession(s *argocdFixture.Session) ProjOption {
 	return func(c *projConfig) { c.session = s }
 }
 
-// Create creates an Argo CD AppProject.
-// Uses kubectl for projects with DestinationServiceAccounts (not supported by argocd CLI).
+// Create creates an Argo CD AppProject via the argocd CLI.
 func Create(name, namespace string, opts ...ProjOption) *ProjRef {
 	cfg := &projConfig{}
 	for _, o := range opts {
 		o(cfg)
 	}
 
+	Expect(cfg.session).ToNot(BeNil(), "WithSession is required for appproject.Create")
+
 	ref := &ProjRef{Name: name, Namespace: namespace, session: cfg.session}
 
-	if len(cfg.destinationServiceAccounts) > 0 {
-		createViaKubectl(name, namespace, cfg)
-	} else {
-		Expect(cfg.session).ToNot(BeNil(), "WithSession is required for appproject.Create via CLI")
-		createViaCLI(name, namespace, cfg)
-	}
-
-	return ref
-}
-
-func createViaCLI(name, namespace string, cfg *projConfig) {
 	args := []string{"proj", "create", name}
 	for _, repo := range cfg.sourceRepos {
 		args = append(args, "--src", repo)
@@ -96,6 +84,9 @@ func createViaCLI(name, namespace string, cfg *projConfig) {
 	for _, cr := range cfg.clusterResources {
 		args = append(args, "--allow-cluster-resource", fmt.Sprintf("%s/%s", cr[0], cr[1]))
 	}
+	for _, d := range cfg.destinationServiceAccounts {
+		args = append(args, "--dest-service-accounts", fmt.Sprintf("%s,%s,%s", d.Server, d.Namespace, d.Account))
+	}
 
 	output, err := runArgoCDCLI(cfg.session, args...)
 	Expect(err).ToNot(HaveOccurred(), "argocd proj create failed: %s", output)
@@ -105,62 +96,8 @@ func createViaCLI(name, namespace string, cfg *projConfig) {
 		out, err := runArgoCDCLI(cfg.session, "proj", "add-source-namespace", name, ns)
 		Expect(err).ToNot(HaveOccurred(), "argocd proj add-source-namespace failed: %s", out)
 	}
-}
 
-func createViaKubectl(name, namespace string, cfg *projConfig) {
-	spec := map[string]any{}
-
-	if len(cfg.sourceRepos) > 0 {
-		spec["sourceRepos"] = cfg.sourceRepos
-	}
-
-	if len(cfg.destinations) > 0 {
-		dests := make([]map[string]string, len(cfg.destinations))
-		for i, d := range cfg.destinations {
-			dests[i] = map[string]string{"server": d[0], "namespace": d[1]}
-		}
-		spec["destinations"] = dests
-	}
-
-	if len(cfg.clusterResources) > 0 {
-		crs := make([]map[string]string, len(cfg.clusterResources))
-		for i, cr := range cfg.clusterResources {
-			crs[i] = map[string]string{"group": cr[0], "kind": cr[1]}
-		}
-		spec["clusterResourceWhitelist"] = crs
-	}
-
-	if len(cfg.destinationServiceAccounts) > 0 {
-		dsas := make([]map[string]string, len(cfg.destinationServiceAccounts))
-		for i, d := range cfg.destinationServiceAccounts {
-			dsas[i] = map[string]string{
-				"server":                d.Server,
-				"namespace":             d.Namespace,
-				"defaultServiceAccount": d.Account,
-			}
-		}
-		spec["destinationServiceAccounts"] = dsas
-	}
-
-	if len(cfg.sourceNamespaces) > 0 {
-		spec["sourceNamespaces"] = cfg.sourceNamespaces
-	}
-
-	resource := map[string]any{
-		"apiVersion": "argoproj.io/v1alpha1",
-		"kind":       "AppProject",
-		"metadata": map[string]any{
-			"name":      name,
-			"namespace": namespace,
-		},
-		"spec": spec,
-	}
-
-	jsonBytes, err := json.Marshal(resource)
-	Expect(err).ToNot(HaveOccurred())
-
-	out, err := runKubectlWithStdin(string(jsonBytes), "apply", "-f", "-")
-	Expect(err).ToNot(HaveOccurred(), "kubectl apply failed: %s", out)
+	return ref
 }
 
 // AddDestination adds a destination to an existing AppProject.
@@ -194,16 +131,6 @@ func runArgoCDCLI(session *argocdFixture.Session, args ...string) (string, error
 	GinkgoWriter.Println("executing argocd", allArgs)
 	// #nosec G204 -- test code
 	cmd := exec.Command("argocd", allArgs...)
-	output, err := cmd.CombinedOutput()
-	GinkgoWriter.Println(string(output))
-	return string(output), err
-}
-
-func runKubectlWithStdin(stdin string, args ...string) (string, error) {
-	GinkgoWriter.Println("executing kubectl", args)
-	// #nosec G204 -- test code
-	cmd := exec.Command("kubectl", args...)
-	cmd.Stdin = strings.NewReader(stdin)
 	output, err := cmd.CombinedOutput()
 	GinkgoWriter.Println(string(output))
 	return string(output), err

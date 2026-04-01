@@ -77,7 +77,7 @@ func findFreePort() int {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	Expect(err).ToNot(HaveOccurred(), "failed to find free port")
 	port := listener.Addr().(*net.TCPAddr).Port
-	listener.Close()
+	Expect(err).ToNot(HaveOccurred(), "error listening on port %d", port)
 	return port
 }
 
