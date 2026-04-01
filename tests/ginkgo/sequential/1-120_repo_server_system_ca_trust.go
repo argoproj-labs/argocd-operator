@@ -36,7 +36,7 @@ import (
 
 	"k8s.io/utils/ptr"
 
-	appFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/application"
+	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/application"
 	osFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/os"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -45,8 +45,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	appv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
@@ -60,18 +58,17 @@ var (
 	imageVersion = "" // argocd-operator default
 	caBundlePath = "/etc/ssl/certs/ca-certificates.crt"
 
-	trustedHelmAppSource = &appv1alpha1.ApplicationSource{
-		RepoURL:        "https://stefanprodan.github.io/podinfo",
-		Chart:          "podinfo",
-		TargetRevision: "6.5.3",
-		Helm:           &appv1alpha1.ApplicationSourceHelm{Values: ""},
+	trustedHelmAppSource = helmAppSource{
+		RepoURL:  "https://stefanprodan.github.io/podinfo",
+		Chart:    "podinfo",
+		Revision: "6.5.3",
 	}
 
-	untrustedHelmAppSource = &appv1alpha1.ApplicationSource{
-		RepoURL:        "https://helm.nginx.com/stable",
-		Chart:          "nginx",
-		TargetRevision: "1.1.0",
-		Helm:           &appv1alpha1.ApplicationSourceHelm{Values: "service:\n          type: ClusterIP"},
+	untrustedHelmAppSource = helmAppSource{
+		RepoURL:    "https://helm.nginx.com/stable",
+		Chart:      "nginx",
+		Revision:   "1.1.0",
+		HelmValues: "service:\n          type: ClusterIP",
 	}
 
 	k8sClient client.Client
@@ -153,7 +150,10 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
-			verifyCorrectlyConfiguredTrust(ns)
+			session := argocdFixture.NewSession("argocd", ns.Name, k8sClient)
+			defer session.Cleanup()
+
+			verifyCorrectlyConfiguredTrust(ns, session)
 			Expect(repoServerSystemCaTrust(ns)).Should(trustCerts(Equal(2), And(
 				ContainSubstring("combined.crt"),
 				ContainSubstring("no-such-ctb.crt"),
@@ -203,10 +203,13 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
+			session := argocdFixture.NewSession("argocd", ns.Name, k8sClient)
+			defer session.Cleanup()
+
 			initContainerLog := getRepoCertGenerationLog(findRunningRepoServerPod(k8sClient, ns))
 			Expect(initContainerLog).Should(ContainSubstring("ca.secret.crt"))
 			Expect(initContainerLog).Should(ContainSubstring("ca.cm.wrong-suffix.crt"))
-			verifyCorrectlyConfiguredTrust(ns)
+			verifyCorrectlyConfiguredTrust(ns, session)
 		})
 
 		It("ensures that 0 trusted certs with DropImageCertificates trusts nothing", func() {
@@ -230,16 +233,18 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
+			session := argocdFixture.NewSession("argocd", ns.Name, k8sClient)
+			defer session.Cleanup()
+
 			Expect(repoServerSystemCaTrust(ns)).Should(trustCerts(Equal(0), Not(BeEmpty())))
 
-			trustedHelmApp := createHelmApp(ns, trustedHelmAppSource)
-			Expect(k8sClient.Create(ctx, trustedHelmApp)).To(Succeed())
+			trustedHelmApp := createHelmApp(ns, trustedHelmAppSource, session, application.WithSkipValidation())
 
-			Eventually(trustedHelmApp, "20s", "5s").Should(appFixture.HaveConditionMatching(
+			Eventually(trustedHelmApp, "20s", "5s").Should(application.HaveConditionMatching(
 				"ComparisonError",
 				".*tls: failed to verify certificate: x509: certificate signed by unknown authority.*",
 			))
-			Expect(trustedHelmApp).Should(appFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeUnknown))
+			Expect(trustedHelmApp).Should(application.HaveSyncStatus("Unknown"))
 		})
 
 		It("ensures that empty trust keeps image certs in place", func() {
@@ -588,60 +593,48 @@ spec:
 	return cm, container, volumes
 }
 
-func createHelmApp(ns *corev1.Namespace, source *appv1alpha1.ApplicationSource) *appv1alpha1.Application {
-	By("creating helm Application " + source.Chart)
-
-	return &appv1alpha1.Application{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      source.Chart,
-			Namespace: ns.Name,
-		},
-		Spec: appv1alpha1.ApplicationSpec{
-			Project: "default",
-			Source:  source,
-			Destination: appv1alpha1.ApplicationDestination{
-				Server:    "https://kubernetes.default.svc",
-				Namespace: ns.Name,
-			},
-			SyncPolicy: &appv1alpha1.SyncPolicy{
-				Automated: &appv1alpha1.SyncPolicyAutomated{
-					Prune: true, SelfHeal: true,
-				},
-			},
-		},
-	}
+type helmAppSource struct {
+	RepoURL, Chart, Revision string
+	HelmValues               string
 }
 
-func createPluginApp(ns *corev1.Namespace, url string) *appv1alpha1.Application {
+func createHelmApp(ns *corev1.Namespace, source helmAppSource, session *argocdFixture.Session, extraOpts ...application.AppOption) *application.AppRef {
+	By("creating helm Application " + source.Chart)
+
+	opts := []application.AppOption{
+		application.WithSession(session),
+		application.WithRepo(source.RepoURL),
+		application.WithHelmChart(source.Chart),
+		application.WithRevision(source.Revision),
+		application.WithHelmValues(source.HelmValues),
+		application.WithDestServer("https://kubernetes.default.svc"),
+		application.WithDestNamespace(ns.Name),
+		application.WithProject("default"),
+		application.WithAutoSync(),
+		application.WithPrune(),
+		application.WithSelfHeal(),
+	}
+	opts = append(opts, extraOpts...)
+	return application.Create(source.Chart, ns.Name, opts...)
+}
+
+func createPluginApp(ns *corev1.Namespace, url string, session *argocdFixture.Session, extraOpts ...application.AppOption) *application.AppRef {
 	name := regexp.MustCompile("[^a-z]+").ReplaceAllString(url, "-")
 	By("creating plugin Application " + name)
-	return &appv1alpha1.Application{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: ns.Name,
-		},
-		Spec: appv1alpha1.ApplicationSpec{
-			Project: "default",
-			Destination: appv1alpha1.ApplicationDestination{
-				Server:    "https://kubernetes.default.svc",
-				Namespace: ns.Name,
-			},
-			Source: &appv1alpha1.ApplicationSource{
-				RepoURL:        url,
-				TargetRevision: "HEAD",
-				Path:           ".",
-				Plugin: &appv1alpha1.ApplicationSourcePlugin{
-					Name: "git-https-v1.0",
-					Env: appv1alpha1.Env{
-						&appv1alpha1.EnvEntry{
-							Name:  "ARGOCD_APP_SOURCE_REPO_URL",
-							Value: url,
-						},
-					},
-				},
-			},
-		},
+
+	opts := []application.AppOption{
+		application.WithSession(session),
+		application.WithRepo(url),
+		application.WithRevision("HEAD"),
+		application.WithPath("."),
+		application.WithPlugin("git-https-v1.0"),
+		application.WithPluginEnv("ARGOCD_APP_SOURCE_REPO_URL", url),
+		application.WithDestServer("https://kubernetes.default.svc"),
+		application.WithDestNamespace(ns.Name),
+		application.WithProject("default"),
 	}
+	opts = append(opts, extraOpts...)
+	return application.Create(name, ns.Name, opts...)
 }
 
 func createCtbFromCerts(bundle ...string) *certificatesv1beta1.ClusterTrustBundle {
@@ -858,36 +851,32 @@ func findRunningRepoServerPod(k8sClient client.Client, ns *corev1.Namespace) *co
 	return pod
 }
 
-func verifyCorrectlyConfiguredTrust(ns *corev1.Namespace) {
-	untrustedHelmApp := createHelmApp(ns, untrustedHelmAppSource)
-	Expect(k8sClient.Create(ctx, untrustedHelmApp)).To(Succeed())
+func verifyCorrectlyConfiguredTrust(ns *corev1.Namespace, session *argocdFixture.Session) {
+	untrustedHelmApp := createHelmApp(ns, untrustedHelmAppSource, session, application.WithSkipValidation())
 
 	// Using some host not trusted by github's intermediate cert. Gitlab-somewhat surprisingly-is.
-	untrustedPluginApp := createPluginApp(ns, "https://kernel.googlesource.com/pub/scm/docs/man-pages/website.git")
-	Expect(k8sClient.Create(ctx, untrustedPluginApp)).To(Succeed())
+	untrustedPluginApp := createPluginApp(ns, "https://kernel.googlesource.com/pub/scm/docs/man-pages/website.git", session, application.WithSkipValidation())
 
-	trustedHelmApp := createHelmApp(ns, trustedHelmAppSource)
-	Expect(k8sClient.Create(ctx, trustedHelmApp)).To(Succeed())
+	trustedHelmApp := createHelmApp(ns, trustedHelmAppSource, session)
 
-	trustedPluginApp := createPluginApp(ns, "https://github.com/argoproj-labs/argocd-operator.git")
-	Expect(k8sClient.Create(ctx, trustedPluginApp)).To(Succeed())
+	trustedPluginApp := createPluginApp(ns, "https://github.com/argoproj-labs/argocd-operator.git", session)
 
 	Eventually(func(g Gomega) {
 		g.Expect(untrustedHelmApp).Should(
-			appFixture.HaveConditionMatching("ComparisonError", ".*failed to fetch chart.*"),
+			application.HaveConditionMatching("ComparisonError", ".*failed to fetch chart.*"),
 		)
-		g.Expect(untrustedHelmApp).Should(appFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeUnknown))
+		g.Expect(untrustedHelmApp).Should(application.HaveSyncStatus("Unknown"))
 
 		g.Expect(untrustedPluginApp).Should(
-			appFixture.HaveConditionMatching("ComparisonError", ".*certificate signed by unknown authority.*"),
+			application.HaveConditionMatching("ComparisonError", ".*certificate signed by unknown authority.*"),
 		)
-		g.Expect(untrustedPluginApp).Should(appFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeUnknown))
+		g.Expect(untrustedPluginApp).Should(application.HaveSyncStatus("Unknown"))
 
-		g.Expect(trustedHelmApp).Should(appFixture.HaveNoConditions())
-		g.Expect(trustedHelmApp).Should(appFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeSynced))
+		g.Expect(trustedHelmApp).Should(application.HaveNoConditions())
+		g.Expect(trustedHelmApp).Should(application.HaveSyncStatus("Synced"))
 
-		g.Expect(trustedPluginApp).Should(appFixture.HaveNoConditions())
-		g.Expect(trustedPluginApp).Should(appFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeSynced))
+		g.Expect(trustedPluginApp).Should(application.HaveNoConditions())
+		g.Expect(trustedPluginApp).Should(application.HaveSyncStatus("Synced"))
 	}, "20s", "5s").Should(Succeed())
 }
 

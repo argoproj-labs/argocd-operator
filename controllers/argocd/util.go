@@ -30,7 +30,6 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
-	"github.com/argoproj/argo-cd/v3/util/glob"
 	"github.com/distribution/reference"
 	"github.com/go-logr/logr"
 	certificates "k8s.io/api/certificates/v1beta1"
@@ -41,6 +40,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdagent"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdagent/agent"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj-labs/argocd-operator/internal/glob"
 
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"

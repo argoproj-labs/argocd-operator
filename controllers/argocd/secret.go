@@ -25,13 +25,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/argoproj/argo-cd/v3/util/glob"
-	argopass "github.com/argoproj/argo-cd/v3/util/password"
 	certmanagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj-labs/argocd-operator/internal/glob"
+	argopass "github.com/argoproj-labs/argocd-operator/internal/password"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"

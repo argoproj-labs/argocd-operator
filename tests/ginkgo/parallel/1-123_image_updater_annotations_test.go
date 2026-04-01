@@ -18,9 +18,10 @@ package parallel
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"os/exec"
 
-	appv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
-	"github.com/argoproj/gitops-engine/pkg/health"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
@@ -124,37 +125,22 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Eventually(statefulSet, "3m", "3s").Should(ssFixture.HaveReadyReplicas(1))
 
 			By("creating Application")
-			app := &appv1alpha1.Application{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "app-01",
-					Namespace: ns.Name,
-					Annotations: map[string]string{
-						"argocd-image-updater.argoproj.io/image-list":      "guestbook=quay.io/dkarpele/my-guestbook:~29437546.0",
-						"argocd-image-updater.argoproj.io/update-strategy": "semver",
-					},
-					Labels: map[string]string{
-						"env": "prod",
-					},
-				},
-				Spec: appv1alpha1.ApplicationSpec{
-					Project: "default",
-					Source: &appv1alpha1.ApplicationSource{
-						RepoURL:        "https://github.com/argoproj-labs/argocd-image-updater/",
-						Path:           "test/e2e/testdata/005-public-guestbook",
-						TargetRevision: "HEAD",
-					},
-					Destination: appv1alpha1.ApplicationDestination{
-						Server:    "https://kubernetes.default.svc",
-						Namespace: ns.Name,
-					},
-					SyncPolicy: &appv1alpha1.SyncPolicy{Automated: &appv1alpha1.SyncPolicyAutomated{}},
-				},
-			}
-			Expect(k8sClient.Create(ctx, app)).To(Succeed())
+			app := applicationFixture.Create("app-01", ns.Name,
+				applicationFixture.WithRepo("https://github.com/argoproj-labs/argocd-image-updater/"),
+				applicationFixture.WithPath("test/e2e/testdata/005-public-guestbook"),
+				applicationFixture.WithRevision("HEAD"),
+				applicationFixture.WithDestServer("https://kubernetes.default.svc"),
+				applicationFixture.WithDestNamespace(ns.Name),
+				applicationFixture.WithProject("default"),
+				applicationFixture.WithAutoSync(),
+				applicationFixture.WithAnnotation("argocd-image-updater.argoproj.io/image-list", "guestbook=quay.io/dkarpele/my-guestbook:~29437546.0"),
+				applicationFixture.WithAnnotation("argocd-image-updater.argoproj.io/update-strategy", "semver"),
+				applicationFixture.WithLabel("env", "prod"),
+			)
 
 			By("verifying deploying the Application succeeded")
-			Eventually(app, "4m", "3s").Should(applicationFixture.HaveHealthStatusCode(health.HealthStatusHealthy))
-			Eventually(app, "4m", "3s").Should(applicationFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeSynced))
+			Eventually(app, "4m", "3s").Should(applicationFixture.HaveHealthStatus("Healthy"))
+			Eventually(app, "4m", "3s").Should(applicationFixture.HaveSyncStatus("Synced"))
 
 			By("creating ImageUpdater CR")
 			useAnnotations := true
@@ -179,20 +165,40 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("ensuring that the Application image has `29437546.0` version after update")
 			Eventually(func() string {
-				err := k8sClient.Get(ctx, client.ObjectKeyFromObject(app), app)
-
+				// Use kubectl to get the Application JSON and extract the kustomize image
+				// #nosec G204 -- test code
+				cmd := exec.Command("kubectl", "get", "application.argoproj.io", app.Name,
+					"-n", app.Namespace, "-o", "json")
+				output, err := cmd.CombinedOutput()
 				if err != nil {
+					GinkgoWriter.Println(fmt.Sprintf("kubectl get application failed: %s", string(output)))
 					return "" // Let Eventually retry on error
 				}
 
-				// Nil-safe check: The Kustomize block is only added by the Image Updater after its first run.
-				// We must check that it and its Images field exist before trying to access them.
-				if app.Spec.Source.Kustomize != nil && len(app.Spec.Source.Kustomize.Images) > 0 {
-					return string(app.Spec.Source.Kustomize.Images[0])
+				var appData map[string]interface{}
+				if err := json.Unmarshal(output, &appData); err != nil {
+					return ""
 				}
 
-				// Return an empty string to signify the condition is not yet met.
-				return ""
+				// Nil-safe traversal: spec.source.kustomize.images[0]
+				spec, _ := appData["spec"].(map[string]interface{})
+				if spec == nil {
+					return ""
+				}
+				source, _ := spec["source"].(map[string]interface{})
+				if source == nil {
+					return ""
+				}
+				kustomize, _ := source["kustomize"].(map[string]interface{})
+				if kustomize == nil {
+					return ""
+				}
+				images, _ := kustomize["images"].([]interface{})
+				if len(images) == 0 {
+					return ""
+				}
+				img, _ := images[0].(string)
+				return img
 			}, "5m", "10s").Should(Equal("quay.io/dkarpele/my-guestbook:29437546.0"))
 		})
 	})

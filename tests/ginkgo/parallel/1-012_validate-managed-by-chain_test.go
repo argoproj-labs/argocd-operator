@@ -19,8 +19,6 @@ package parallel
 import (
 	"context"
 
-	argocdv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
-	"github.com/argoproj/gitops-engine/pkg/health"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -90,6 +88,9 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			Eventually(argoCDRandomNS, "5m", "5s").Should(argocdFixture.BeAvailable())
 
+			session := argocdFixture.NewSession("argocd", randomNS.Name, k8sClient)
+			defer session.Cleanup()
+
 			By("configuring test-1-12-custom to be managed by Argo CD instance")
 
 			k8sFixture.Update(nsTest_1_12_custom, func(obj client.Object) {
@@ -126,30 +127,21 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				argoCDRandomNS.Namespace+","+nsTest_1_12_custom.Name))
 
 			By("creating Argo CD Application targeting test-1-12-custom")
-			app := &argocdv1alpha1.Application{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-1-12-custom", Namespace: argoCDRandomNS.Namespace},
-				Spec: argocdv1alpha1.ApplicationSpec{
-					Source: &argocdv1alpha1.ApplicationSource{
-						Path:           "test/examples/nginx",
-						RepoURL:        "https://github.com/redhat-developer/gitops-operator",
-						TargetRevision: "HEAD",
-					},
-					Destination: argocdv1alpha1.ApplicationDestination{
-						Namespace: nsTest_1_12_custom.Name,
-						Server:    "https://kubernetes.default.svc",
-					},
-					Project: "default",
-					SyncPolicy: &argocdv1alpha1.SyncPolicy{
-						Automated: &argocdv1alpha1.SyncPolicyAutomated{},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, app)).To(Succeed())
+			app := appFixture.Create("test-1-12-custom", argoCDRandomNS.Namespace,
+				appFixture.WithSession(session),
+				appFixture.WithRepo("https://github.com/redhat-developer/gitops-operator"),
+				appFixture.WithPath("test/examples/nginx"),
+				appFixture.WithRevision("HEAD"),
+				appFixture.WithDestNamespace(nsTest_1_12_custom.Name),
+				appFixture.WithDestServer("https://kubernetes.default.svc"),
+				appFixture.WithProject("default"),
+				appFixture.WithAutoSync(),
+			)
 
 			By("verifying Argo CD is successfully able to reconcile and deploy the resources of the test Argo CD Application, into test-1-12-custom")
 
-			Eventually(app, "4m", "5s").Should(appFixture.HaveHealthStatusCode(health.HealthStatusHealthy))
-			Eventually(app, "4m", "5s").Should(appFixture.HaveSyncStatusCode(argocdv1alpha1.SyncStatusCodeSynced))
+			Eventually(app, "4m", "5s").Should(appFixture.HaveHealthStatus("Healthy"))
+			Eventually(app, "4m", "5s").Should(appFixture.HaveSyncStatus("Synced"))
 
 			By("setting test-1-12-custom2 to be managed by Argo CD instance")
 			k8sFixture.Update(nsTest_1_12_custom2, func(obj client.Object) {
@@ -166,33 +158,24 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			expectRoleAndRoleBindingAreValidForManagedNamespace(nsTest_1_12_custom2.Name)
 
 			By("validating Argo CD is able to deploy to second managed namespace")
-			app2 := &argocdv1alpha1.Application{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-1-12-custom2", Namespace: argoCDRandomNS.Namespace},
-				Spec: argocdv1alpha1.ApplicationSpec{
-					Source: &argocdv1alpha1.ApplicationSource{
-						Path:           "test/examples/nginx",
-						RepoURL:        "https://github.com/redhat-developer/gitops-operator",
-						TargetRevision: "HEAD",
-					},
-					Destination: argocdv1alpha1.ApplicationDestination{
-						Namespace: nsTest_1_12_custom2.Name,
-						Server:    "https://kubernetes.default.svc",
-					},
-					Project: "default",
-					SyncPolicy: &argocdv1alpha1.SyncPolicy{
-						Automated: &argocdv1alpha1.SyncPolicyAutomated{},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, app2)).To(Succeed())
+			app2 := appFixture.Create("test-1-12-custom2", argoCDRandomNS.Namespace,
+				appFixture.WithSession(session),
+				appFixture.WithRepo("https://github.com/redhat-developer/gitops-operator"),
+				appFixture.WithPath("test/examples/nginx"),
+				appFixture.WithRevision("HEAD"),
+				appFixture.WithDestNamespace(nsTest_1_12_custom2.Name),
+				appFixture.WithDestServer("https://kubernetes.default.svc"),
+				appFixture.WithProject("default"),
+				appFixture.WithAutoSync(),
+			)
 
-			Eventually(app2, "4m", "1s").Should(appFixture.HaveHealthStatusCode(health.HealthStatusHealthy))
-			Eventually(app2, "4m", "1s").Should(appFixture.HaveSyncStatusCode(argocdv1alpha1.SyncStatusCodeSynced))
+			Eventually(app2, "4m", "1s").Should(appFixture.HaveHealthStatus("Healthy"))
+			Eventually(app2, "4m", "1s").Should(appFixture.HaveSyncStatus("Synced"))
 
 			By("deleting all Argo CD applications and first managed namespace")
 
-			Expect(k8sClient.Delete(ctx, app)).To(Succeed())
-			Expect(k8sClient.Delete(ctx, app2)).To(Succeed())
+			appFixture.Delete(app)
+			appFixture.Delete(app2)
 
 			Expect(k8sClient.Delete(ctx, nsTest_1_12_custom)).To(Succeed())
 
@@ -208,58 +191,36 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			nsTest_1_12_custom, cleanupFunc4 = fixture.CreateNamespaceWithCleanupFunc("test-1-12-custom")
 			cleanupfuncs = append(cleanupfuncs, cleanupFunc4)
 
-			app = &argocdv1alpha1.Application{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-1-12-custom", Namespace: argoCDRandomNS.Namespace},
-				Spec: argocdv1alpha1.ApplicationSpec{
-					Source: &argocdv1alpha1.ApplicationSource{
-						Path:           "test/examples/nginx",
-						RepoURL:        "https://github.com/redhat-developer/gitops-operator",
-						TargetRevision: "HEAD",
-					},
-					Destination: argocdv1alpha1.ApplicationDestination{
-						Namespace: nsTest_1_12_custom.Name,
-						Server:    "https://kubernetes.default.svc",
-					},
-					Project: "default",
-					SyncPolicy: &argocdv1alpha1.SyncPolicy{
-						Automated: &argocdv1alpha1.SyncPolicyAutomated{},
-						Retry: &argocdv1alpha1.RetryStrategy{
-							Limit: 5,
-						},
-					},
-				},
-			}
-			app2 = &argocdv1alpha1.Application{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-1-12-custom2", Namespace: argoCDRandomNS.Namespace},
-				Spec: argocdv1alpha1.ApplicationSpec{
-					Source: &argocdv1alpha1.ApplicationSource{
-						Path:           "test/examples/nginx",
-						RepoURL:        "https://github.com/redhat-developer/gitops-operator",
-						TargetRevision: "HEAD",
-					},
-					Destination: argocdv1alpha1.ApplicationDestination{
-						Namespace: nsTest_1_12_custom2.Name,
-						Server:    "https://kubernetes.default.svc",
-					},
-					Project: "default",
-					SyncPolicy: &argocdv1alpha1.SyncPolicy{
-						Automated: &argocdv1alpha1.SyncPolicyAutomated{},
-						Retry: &argocdv1alpha1.RetryStrategy{
-							Limit: 5,
-						},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, app)).To(Succeed())
-			Expect(k8sClient.Create(ctx, app2)).To(Succeed())
+			app = appFixture.Create("test-1-12-custom", argoCDRandomNS.Namespace,
+				appFixture.WithSession(session),
+				appFixture.WithRepo("https://github.com/redhat-developer/gitops-operator"),
+				appFixture.WithPath("test/examples/nginx"),
+				appFixture.WithRevision("HEAD"),
+				appFixture.WithDestNamespace(nsTest_1_12_custom.Name),
+				appFixture.WithDestServer("https://kubernetes.default.svc"),
+				appFixture.WithProject("default"),
+				appFixture.WithAutoSync(),
+				appFixture.WithRetryLimit(5),
+			)
+			app2 = appFixture.Create("test-1-12-custom2", argoCDRandomNS.Namespace,
+				appFixture.WithSession(session),
+				appFixture.WithRepo("https://github.com/redhat-developer/gitops-operator"),
+				appFixture.WithPath("test/examples/nginx"),
+				appFixture.WithRevision("HEAD"),
+				appFixture.WithDestNamespace(nsTest_1_12_custom2.Name),
+				appFixture.WithDestServer("https://kubernetes.default.svc"),
+				appFixture.WithProject("default"),
+				appFixture.WithAutoSync(),
+				appFixture.WithRetryLimit(5),
+			)
 
 			By("verifying Argo CD can deploy to managed NS 2, but can no longer deploy to managed NS 1")
 
-			Eventually(app, "1m", "1s").Should(appFixture.HaveHealthStatusCode(health.HealthStatusMissing))
-			Eventually(app, "1m", "1s").Should(appFixture.HaveSyncStatusCode(argocdv1alpha1.SyncStatusCodeUnknown))
+			Eventually(app, "1m", "1s").Should(appFixture.HaveHealthStatus("Missing"))
+			Eventually(app, "1m", "1s").Should(appFixture.HaveSyncStatus("Unknown"))
 
-			Eventually(app2, "4m", "1s").Should(appFixture.HaveHealthStatusCode(health.HealthStatusHealthy))
-			Eventually(app2, "4m", "1s").Should(appFixture.HaveSyncStatusCode(argocdv1alpha1.SyncStatusCodeSynced))
+			Eventually(app2, "4m", "1s").Should(appFixture.HaveHealthStatus("Healthy"))
+			Eventually(app2, "4m", "1s").Should(appFixture.HaveSyncStatus("Synced"))
 
 		})
 

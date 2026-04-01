@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	appv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
-	"github.com/argoproj/gitops-engine/pkg/health"
-
 	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
@@ -39,8 +36,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 		var (
 			ctx              context.Context
 			k8sClient        client.Client
-			cleanupFunctions = []func(){} // we create various namespaces in this test, these functions will clean them up when the test is done
-
+			cleanupFunctions []func()
 		)
 
 		BeforeEach(func() {
@@ -1147,6 +1143,9 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 			Eventually(argoCD).Should(argocdFixture.HaveApplicationSetControllerStatus("Running"))
 
+			session := argocdFixture.NewSession("appset-example", argoNamespace.Name, k8sClient)
+			cleanupFunctions = append(cleanupFunctions, session.Cleanup)
+
 			By("2) verifying that the appset deployment contains matching namespace in the command")
 			appsetDeployment := &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
@@ -1159,16 +1158,8 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			// Verify that target namespace is included
 			Eventually(appsetDeployment).Should(deploymentFixture.HaveContainerCommandSubstring("--applicationset-namespaces", 0))
 
-			appProject := &appv1alpha1.AppProject{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "default",
-					Namespace: argoCD.Namespace,
-				},
-			}
-			Eventually(appProject).Should(k8sFixture.ExistByName())
-			appprojectFixture.Update(appProject, func(appProject *appv1alpha1.AppProject) {
-				appProject.Spec.SourceNamespaces = append(appProject.Spec.SourceNamespaces, targetNS.Name)
-			})
+			defaultProjRef := appprojectFixture.Ref("default", argoCD.Namespace, session)
+			appprojectFixture.AddSourceNamespace(defaultProjRef, targetNS.Name)
 
 			By("verifying ApplicationSet controller ClusterRole has expected rules")
 			appsetClusterRole := &rbacv1.ClusterRole{
@@ -1312,15 +1303,9 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Eventually(appset).Should(k8sFixture.ExistByName())
 
 			By("verifying ApplicationSet generates Application in target namespace")
-			generatedApp := &appv1alpha1.Application{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "guestbook",
-					Namespace: targetNS.Name,
-				},
-			}
-			Eventually(generatedApp, "5m", "10s").Should(k8sFixture.ExistByName())
-			Eventually(generatedApp, "5m", "10s").Should(applicationFixture.HaveHealthStatusCode(health.HealthStatusMissing))
-			Eventually(generatedApp, "5m", "10s").Should(applicationFixture.HaveSyncStatusCode(appv1alpha1.SyncStatusCodeOutOfSync))
+			generatedApp := applicationFixture.Ref("guestbook", targetNS.Name)
+			Eventually(generatedApp, "5m", "10s").Should(applicationFixture.HaveHealthStatus("Missing"))
+			Eventually(generatedApp, "5m", "10s").Should(applicationFixture.HaveSyncStatus("OutOfSync"))
 			By("Cleaning up the ApplicationSet")
 			Expect(k8sClient.Delete(ctx, appset)).To(Succeed())
 			Eventually(appset).Should(k8sFixture.NotExistByName())

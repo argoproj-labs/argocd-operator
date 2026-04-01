@@ -19,8 +19,6 @@ package parallel
 import (
 	"context"
 
-	argocdv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
-	"github.com/argoproj/gitops-engine/pkg/health"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -81,6 +79,9 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
+			session := argocdFixture.NewSession("argocd", test1_8_customNS.Name, k8sClient)
+			defer session.Cleanup()
+
 			By("waiting for all containers to be ready in the Namespace")
 			fixture.WaitForAllDeploymentsInTheNamespaceToBeReady(test1_8_customNS.Name, k8sClient)
 			fixture.WaitForAllStatefulSetsInTheNamespaceToBeReady(test1_8_customNS.Name, k8sClient)
@@ -88,30 +89,21 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("creating a test Argo CD Application")
 
-			app := &argocdv1alpha1.Application{
-				ObjectMeta: metav1.ObjectMeta{Name: "validate-custom-argocd", Namespace: test1_8_customNS.Name},
-				Spec: argocdv1alpha1.ApplicationSpec{
-					Source: &argocdv1alpha1.ApplicationSource{
-						Path:           "test/examples/nginx",
-						RepoURL:        "https://github.com/redhat-developer/gitops-operator",
-						TargetRevision: "HEAD",
-					},
-					Destination: argocdv1alpha1.ApplicationDestination{
-						Namespace: test1_8_customNS.Name,
-						Server:    "https://kubernetes.default.svc",
-					},
-					Project: "default",
-					SyncPolicy: &argocdv1alpha1.SyncPolicy{
-						Automated: &argocdv1alpha1.SyncPolicyAutomated{},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, app)).To(Succeed())
+			app := appFixture.Create("validate-custom-argocd", test1_8_customNS.Name,
+				appFixture.WithSession(session),
+				appFixture.WithRepo("https://github.com/redhat-developer/gitops-operator"),
+				appFixture.WithPath("test/examples/nginx"),
+				appFixture.WithRevision("HEAD"),
+				appFixture.WithDestServer("https://kubernetes.default.svc"),
+				appFixture.WithDestNamespace(test1_8_customNS.Name),
+				appFixture.WithProject("default"),
+				appFixture.WithAutoSync(),
+			)
 
 			By("verifying Argo CD is successfully able to reconcile and deploy the resources of the test Argo CD Application")
 
-			Eventually(app, "4m", "5s").Should(appFixture.HaveHealthStatusCode(health.HealthStatusHealthy))
-			Eventually(app, "4m", "5s").Should(appFixture.HaveSyncStatusCode(argocdv1alpha1.SyncStatusCodeSynced))
+			Eventually(app, "4m", "5s").Should(appFixture.HaveHealthStatus("Healthy"))
+			Eventually(app, "4m", "5s").Should(appFixture.HaveSyncStatus("Synced"))
 
 		})
 
