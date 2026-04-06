@@ -62,8 +62,15 @@ func (r *ReconcileArgoCD) getArgoApplicationSetCommand(cr *argoproj.ArgoCD) ([]s
 	cmd = append(cmd, "--loglevel")
 	cmd = append(cmd, getLogLevel(cr.Spec.ApplicationSet.LogLevel))
 
+	// Higher Preference to the new logFormat field. Fall back to the deprecated logformat field for backward compatibility.
+	logFormat := cr.Spec.ApplicationSet.LogFormat
+	if logFormat == "" {
+		//nolint:staticcheck // fallback to deprecated field for backward compatibility
+		logFormat = cr.Spec.ApplicationSet.Logformat
+	}
+
 	cmd = append(cmd, "--logformat")
-	cmd = append(cmd, getLogFormat(cr.Spec.ApplicationSet.LogFormat))
+	cmd = append(cmd, getLogFormat(logFormat))
 
 	if cr.Spec.ApplicationSet.SCMRootCAConfigMap != "" {
 		cmd = append(cmd, "--scm-root-ca-path")
