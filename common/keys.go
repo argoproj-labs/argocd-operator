@@ -132,7 +132,7 @@ const (
 	ArgoCDKeyServerSecretKey = "server.secretkey"
 
 	// ArgoCDKeyGitHubWebhookSecret is the key in argocd-secret for the GitHub webhook shared secret (see Argo CD settings).
-	ArgoCDKeyGitHubWebhookSecret = "webhook.github.secret"
+	ArgoCDKeyGitHubWebhookSecret = "webhook.github.secret" // #nosec G101
 
 	// ArgoCDKeyServerURL is the key for server url.
 	ArgoCDKeyServerURL = "url"
