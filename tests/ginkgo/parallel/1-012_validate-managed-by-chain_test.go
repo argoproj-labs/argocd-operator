@@ -48,6 +48,10 @@ const (
 )
 
 func ensureNamespaceManagementEnabledForTest(ctx context.Context, k8sClient client.Client) (cleanup func()) {
+	if fixture.EnvLocalRun() {
+		Skip("Skipping NamespaceManagement deployment patch test for LOCAL_RUN - operator runs locally without an in-cluster Deployment to mutate")
+		return func() {}
+	}
 	operatorDeployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      controllerManagerName,
@@ -55,7 +59,8 @@ func ensureNamespaceManagementEnabledForTest(ctx context.Context, k8sClient clie
 		},
 	}
 	if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(operatorDeployment), operatorDeployment); err != nil {
-		By("operator not deployed in cluster ALLOW_NAMESPACE_MANAGEMENT_IN_NAMESPACE_SCOPED_INSTANCES set via start-e2e")
+		Skip("Operator deployment " + controllerManagerNamespace + "/" + controllerManagerName +
+			" not found - test requires in-cluster operator (e.g. make start-e2e) to patch " + common.EnableManagedNamespace + ". Error: " + err.Error())
 		return func() {}
 	}
 	By("enabling NamespaceManagement feature")

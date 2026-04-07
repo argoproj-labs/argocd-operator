@@ -167,7 +167,8 @@ func (r *ReconcileArgoCD) disableNamespaceManagement(argocd *argoproj.ArgoCD, k8
 
 			// Skip RBAC deletion if the namespace has the "managed-by" label for this Argo CD instance
 			if namespace.Labels[common.ArgoCDManagedByLabel] == argocd.Namespace {
-				log.Info(fmt.Sprintf("Skipping RBAC deletion for namespace %s due to managed-by label", nsName))
+				log.Info(fmt.Sprintf("Skipping RBAC deletion for tenant namespace %s: %s=%s matches this Argo CD instance",
+					nsName, common.ArgoCDManagedByLabel, argocd.Namespace))
 				continue
 			}
 
