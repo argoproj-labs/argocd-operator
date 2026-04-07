@@ -8744,6 +8744,35 @@ spec:
                 description: Version is the tag to use with the ArgoCD container image
                   for all ArgoCD components.
                 type: string
+              webhookSecrets:
+                description: |-
+                  WebhookSecrets references Kubernetes Secrets that supply webhook credentials per provider.
+                  The operator syncs values into argocd-secret under the keys Argo CD expects.
+                properties:
+                  github:
+                    description: GitHub references the Secret key for the GitHub webhook
+                      HMAC secret (Phase 1).
+                    properties:
+                      secretRef:
+                        description: SecretRef points to the key holding the webhook
+                          secret value.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                          namespace:
+                            description: Namespace of the Secret. When unset, the
+                              ArgoCD CR namespace is used.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                type: object
             type: object
           status:
             description: ArgoCDStatus defines the observed state of ArgoCD
@@ -32213,6 +32242,35 @@ spec:
                 description: Version is the tag to use with the ArgoCD container image
                   for all ArgoCD components.
                 type: string
+              webhookSecrets:
+                description: |-
+                  WebhookSecrets references Kubernetes Secrets that supply webhook credentials per provider.
+                  The operator syncs values into argocd-secret under the keys Argo CD expects.
+                properties:
+                  github:
+                    description: GitHub references the Secret key for the GitHub webhook
+                      HMAC secret (Phase 1).
+                    properties:
+                      secretRef:
+                        description: SecretRef points to the key holding the webhook
+                          secret value.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                          namespace:
+                            description: Namespace of the Secret. When unset, the
+                              ArgoCD CR namespace is used.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                type: object
             type: object
             x-kubernetes-validations:
             - message: spec.sso and spec.oidcConfig cannot both be set
