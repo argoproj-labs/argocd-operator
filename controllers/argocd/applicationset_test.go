@@ -1597,6 +1597,97 @@ func TestReconcileApplicationSetSourceNamespacesResources_NonClusterConfigNamesp
 	}
 }
 
+func TestReconcileApplicationSet_LogFormatFallback(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		name string
+		// logFormat has priority over logformat
+		logFormat  string
+		logformat  string
+		wantFormat string
+	}{
+		{
+			// Production code path: logFormat != "" so the if-fallback is never triggered
+			name:       "new LogFormat field is used when set",
+			logFormat:  "json",
+			logformat:  "",
+			wantFormat: "json",
+		},
+		{
+			// Backward compatibility path: logFormat == "" so code enters the if block and reads the deprecated logformat field instead
+			name:       "deprecated logformat field used as fallback when LogFormat is empty",
+			logFormat:  "",
+			logformat:  "json",
+			wantFormat: "json",
+		},
+		{
+			// Priority check - both fields contain some value
+			name:       "new LogFormat takes precedence when both fields are set",
+			logFormat:  "json",
+			logformat:  "text",
+			wantFormat: "json",
+		},
+		{
+			// Both fields are empty
+			name:       "default format text is used when neither field is set",
+			logFormat:  "",
+			logformat:  "",
+			wantFormat: common.ArgoCDDefaultLogFormat,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Provides base ArgoCD CR with namespace "argocd"
+			a := makeTestArgoCD()
+
+			// cr.Spec.ApplicationSet.LogFormat.
+			spec := argoproj.ArgoCDApplicationSet{
+				LogFormat: tt.logFormat,
+			}
+			//nolint:staticcheck // intentionally setting deprecated field to exercise the backward-compatibility fallback
+			spec.Logformat = tt.logformat
+			a.Spec.ApplicationSet = &spec
+
+			// Seed fake client with ArgoCD CR so that reconciler can read & write K8s objects without a real cluster
+			resObjs := []client.Object{a}
+			subresObjs := []client.Object{a}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			assert.NoError(t, r.reconcileApplicationSetController(a))
+
+			deployment := &appsv1.Deployment{}
+			assert.NoError(t, r.Get(
+				context.TODO(),
+				types.NamespacedName{
+					Name:      "argocd-applicationset-controller",
+					Namespace: a.Namespace,
+				},
+				deployment))
+
+			cmd := deployment.Spec.Template.Spec.Containers[0].Command
+			logFormatIdx := -1
+			for i, arg := range cmd {
+				if arg == "--logformat" {
+					logFormatIdx = i
+					break
+				}
+			}
+
+			if assert.NotEqual(t, -1, logFormatIdx,
+				"--logFormat flag must be present in the applicationset-controller command") {
+				assert.Equal(t, tt.wantFormat, cmd[logFormatIdx+1],
+					"wrong value after --logformat flag (logFormat=%q logformat=%q)",
+					tt.logFormat, tt.logformat)
+			}
+		})
+	}
+}
+
 func TestGetApplicationSetContainerImage(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 

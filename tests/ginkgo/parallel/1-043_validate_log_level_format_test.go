@@ -130,5 +130,63 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			}).Should(BeTrue())
 
 		})
+		It("verifies that the deprecated spec.logformat field is honoured for applicationSet and notifications", func() {
+			By("creating a fresh test namespace")
+			ns, cleanupFunc = fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
+
+			By("creating ArgoCD CR using the deprecated lowercase logformat field on applicationSet and notifications")
+
+			argoCD := &argov1beta1api.ArgoCD{
+				ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: ns.Name},
+				Spec: argov1beta1api.ArgoCDSpec{
+					Server: argov1beta1api.ArgoCDServerSpec{
+						Route: argov1beta1api.ArgoCDRouteSpec{Enabled: true},
+					},
+					ApplicationSet: &argov1beta1api.ArgoCDApplicationSet{
+						//nolint:staticcheck // intentionally using deprecated field to verify backward compatibility in e2e
+						Logformat: "json",
+					},
+					Notifications: argov1beta1api.ArgoCDNotifications{
+						Enabled: true,
+						//nolint:staticcheck // intentionally using deprecated field to verify backward compatibility in e2e
+						Logformat: "json",
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+
+			By("waiting for the ArgoCD instance to become fully available")
+
+			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
+
+			deploymentCommandContains := func(deplName, flag, value string) bool {
+				depl := &appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{Name: deplName, Namespace: ns.Name},
+				}
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(depl), depl); err != nil {
+					GinkgoWriter.Println("error fetching deployment", deplName, ":", err)
+					return false
+				}
+				if len(depl.Spec.Template.Spec.Containers) == 0 {
+					GinkgoWriter.Println("deployment", deplName, "has no containers yet")
+					return false
+				}
+				cmdStr := strings.Join(depl.Spec.Template.Spec.Containers[0].Command, " ")
+				GinkgoWriter.Println(deplName, "command:", cmdStr)
+
+				return strings.Contains(cmdStr, flag+" "+value)
+			}
+			By("verifying argocd-applicationset-controller Deployment has --logformat json from deprecated field")
+
+			Eventually(func() bool {
+				return deploymentCommandContains("argocd-applicationset-controller", "--logformat", "json")
+			}, "2m", "5s").Should(BeTrue())
+			By("verifying argocd-notifications-controller Deployment has --logformat json from deprecated field")
+
+			Eventually(func() bool {
+				return deploymentCommandContains("argocd-notifications-controller", "--logformat", "json")
+			}, "2m", "5s").Should(BeTrue())
+
+		})
 	})
 })
