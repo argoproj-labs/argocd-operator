@@ -8750,8 +8750,8 @@ spec:
                   The operator syncs values into argocd-secret under the keys Argo CD expects.
                 properties:
                   github:
-                    description: GitHub references the Secret key for the GitHub webhook
-                      HMAC secret (Phase 1).
+                    description: 'GitHub: Secret key reference for the webhook secret
+                      used to verify incoming webhook requests.'
                     properties:
                       secretRef:
                         description: SecretRef points to the key holding the webhook
@@ -32248,8 +32248,8 @@ spec:
                   The operator syncs values into argocd-secret under the keys Argo CD expects.
                 properties:
                   github:
-                    description: GitHub references the Secret key for the GitHub webhook
-                      HMAC secret (Phase 1).
+                    description: 'GitHub: Secret key reference for the webhook secret
+                      used to verify incoming webhook requests.'
                     properties:
                       secretRef:
                         description: SecretRef points to the key holding the webhook
