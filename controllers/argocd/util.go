@@ -15,7 +15,6 @@
 package argocd
 
 import (
-	"bytes"
 	"context"
 	"crypto"
 	"crypto/rand"
@@ -24,12 +23,9 @@ import (
 	"fmt"
 	"hash"
 	"os"
-	"path/filepath"
 	"reflect"
 	"sort"
-	"strconv"
 	"strings"
-	"text/template"
 	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -183,7 +179,7 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 	}
 
 	if cr.Spec.Redis.IsEnabled() {
-		cmd = append(cmd, "--redis", getRedisServerAddress(cr))
+		cmd = append(cmd, "--redis", argoutil.GetRedisServerAddress(cr))
 	} else {
 		log.Info("Redis is Disabled. Skipping adding Redis configuration to Application Controller.")
 	}
@@ -417,243 +413,11 @@ func getArgoControllerParellismLimit(cr *argoproj.ArgoCD) int32 {
 	return pl
 }
 
-// getRedisConfigPath will return the path for the Redis configuration templates.
-func getRedisConfigPath() string {
-	path := os.Getenv("REDIS_CONFIG_PATH")
-	if len(path) > 0 {
-		return path
-	}
-	return common.ArgoCDDefaultRedisConfigPath
-}
-
-func getRedisConfigContent(segment string) string {
-	base := getRedisConfigPath()
-	fp := filepath.Clean(filepath.Join(base, segment))
-	if !strings.HasPrefix(fp, base) {
-		panic(fmt.Errorf("unsafe path for %s + %s", base, segment))
-	}
-
-	data, err := os.ReadFile(fp)
-	if err != nil {
-		log.Error(err, "unable to load redis "+segment)
-		return ""
-	}
-	return string(data)
-}
-
-// getRedisInitScript will load the redis configuration from a template on disk for the given ArgoCD.
-// If an error occurs, an empty string value will be returned.
-func getRedisConf(useTLSForRedis bool) string {
-	path := fmt.Sprintf("%s/redis.conf.tpl", getRedisConfigPath())
-	params := map[string]string{
-		"UseTLS": strconv.FormatBool(useTLSForRedis),
-	}
-	conf, err := loadTemplateFile(path, params)
-	if err != nil {
-		log.Error(err, "unable to load redis configuration")
-		return ""
-	}
-	return conf
-}
-
-// getRedisContainerImage will return the container image for the Redis server.
-func getRedisContainerImage(cr *argoproj.ArgoCD) string {
-	defaultImg, defaultTag := false, false
-	img := cr.Spec.Redis.Image
-	if img == "" {
-		img = common.ArgoCDDefaultRedisImage
-		defaultImg = true
-	}
-	tag := cr.Spec.Redis.Version
-	if tag == "" {
-		tag = common.ArgoCDDefaultRedisVersion
-		defaultTag = true
-	}
-	if e := os.Getenv(common.ArgoCDRedisImageEnvName); e != "" && (defaultTag && defaultImg) {
-		return e
-	}
-	return argoutil.CombineImageTag(img, tag)
-}
-
-// getRedisHAContainerImage will return the container image for the Redis server in HA mode.
-func getRedisHAContainerImage(cr *argoproj.ArgoCD) string {
-	defaultImg, defaultTag := false, false
-	img := cr.Spec.Redis.Image
-	if img == "" {
-		img = common.ArgoCDDefaultRedisImage
-		defaultImg = true
-	}
-	tag := cr.Spec.Redis.Version
-	if tag == "" {
-		tag = common.ArgoCDDefaultRedisVersionHA
-		defaultTag = true
-	}
-	if e := os.Getenv(common.ArgoCDRedisHAImageEnvName); e != "" && (defaultTag && defaultImg) {
-		return e
-	}
-	return argoutil.CombineImageTag(img, tag)
-}
-
-// getRedisHAProxyAddress will return the Redis HA Proxy service address for the given ArgoCD.
-func getRedisHAProxyAddress(cr *argoproj.ArgoCD) string {
-	return fqdnServiceRef("redis-ha-haproxy", common.ArgoCDDefaultRedisPort, cr)
-}
-
-// getRedisHAProxyContainerImage will return the container image for the Redis HA Proxy.
-func getRedisHAProxyContainerImage(cr *argoproj.ArgoCD) string {
-	defaultImg, defaultTag := false, false
-	img := cr.Spec.HA.RedisProxyImage
-	if len(img) <= 0 {
-		img = common.ArgoCDDefaultRedisHAProxyImage
-		defaultImg = true
-	}
-
-	tag := cr.Spec.HA.RedisProxyVersion
-	if len(tag) <= 0 {
-		tag = common.ArgoCDDefaultRedisHAProxyVersion
-		defaultTag = true
-	}
-
-	if e := os.Getenv(common.ArgoCDRedisHAProxyImageEnvName); e != "" && (defaultTag && defaultImg) {
-		return e
-	}
-
-	return argoutil.CombineImageTag(img, tag)
-}
-
-// getRedisInitScript will load the redis init script
-// If an error occurs, an empty string value will be returned.
-func getRedisInitScript() string {
-	return getRedisConfigContent("init.sh")
-}
-
-// getRedisHAProxySConfig will load the Redis HA Proxy configuration from a template on disk for the given ArgoCD.
-// If an error occurs, an empty string value will be returned.
-func getRedisHAProxyConfig(cr *argoproj.ArgoCD, useTLSForRedis bool) string {
-	path := fmt.Sprintf("%s/haproxy.cfg.tpl", getRedisConfigPath())
-	vars := map[string]string{
-		"ServiceName": nameWithSuffix("redis-ha", cr),
-		"UseTLS":      strconv.FormatBool(useTLSForRedis),
-	}
-
-	script, err := loadTemplateFile(path, vars)
-	if err != nil {
-		log.Error(err, "unable to load redis haproxy configuration")
-		return ""
-	}
-	return script
-}
-
-// getRedisHAProxyScript will load the Redis HA Proxy init script
-// If an error occurs, an empty string value will be returned.
-func getRedisHAProxyScript() string {
-	return getRedisConfigContent("haproxy_init.sh")
-}
-
-// getRedisResources will return the ResourceRequirements for the Redis container.
-func getRedisResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
-	resources := corev1.ResourceRequirements{}
-
-	// Allow override of resource requirements from CR
-	if cr.Spec.Redis.Resources != nil {
-		resources = *cr.Spec.Redis.Resources
-	}
-
-	return resources
-}
-
-// getRedisHAResources will return the ResourceRequirements for the Redis HA.
-func getRedisHAResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
-	resources := corev1.ResourceRequirements{}
-
-	// Allow override of resource requirements from CR
-	if cr.Spec.HA.Resources != nil {
-		resources = *cr.Spec.HA.Resources
-	}
-
-	return resources
-}
-
-// getRedisSentinelConf will load the redis sentinel configuration from a template on disk for the given ArgoCD.
-// If an error occurs, an empty string value will be returned.
-func getRedisSentinelConf(useTLSForRedis bool) string {
-	path := fmt.Sprintf("%s/sentinel.conf.tpl", getRedisConfigPath())
-	params := map[string]string{
-		"UseTLS": strconv.FormatBool(useTLSForRedis),
-	}
-	conf, err := loadTemplateFile(path, params)
-	if err != nil {
-		log.Error(err, "unable to load redis sentinel configuration")
-		return ""
-	}
-	return conf
-}
-
-// getRedisLivenessScript will load the redis liveness script
-// If an error occurs, an empty string value will be returned.
-func getRedisLivenessScript() string {
-	return getRedisConfigContent("redis_liveness.sh")
-}
-
-// getRedisReadinessScript will load the redis readiness script
-// If an error occurs, an empty string value will be returned.
-func getRedisReadinessScript() string {
-	return getRedisConfigContent("redis_readiness.sh")
-}
-
-// getSentinelLivenessScript will load the redis liveness script
-// If an error occurs, an empty string value will be returned.
-func getSentinelLivenessScript() string {
-	return getRedisConfigContent("sentinel_liveness.sh")
-}
-
-// getRedisServerAddress will return the Redis service address for the given ArgoCD.
-func getRedisServerAddress(cr *argoproj.ArgoCD) string {
-	if cr.Spec.Redis.Remote != nil && *cr.Spec.Redis.Remote != "" {
-		return *cr.Spec.Redis.Remote
-	}
-
-	// If principal is enabled, then Argo CD server/repo server should be configured to use redis proxy from principal (argo cd agent)
-	if cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Principal != nil && cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
-		return argoutil.GenerateAgentPrincipalRedisProxyServiceName(cr.Name) + "." + cr.Namespace + ".svc.cluster.local:6379"
-	}
-
-	if cr.Spec.HA.Enabled {
-		return getRedisHAProxyAddress(cr)
-	}
-
-	return fqdnServiceRef(common.ArgoCDDefaultRedisSuffix, common.ArgoCDDefaultRedisPort, cr)
-}
-
-// loadTemplateFile will parse a template with the given path and execute it with the given params.
-func loadTemplateFile(path string, params map[string]string) (string, error) {
-	tmpl, err := template.ParseFiles(path)
-	if err != nil {
-		log.Error(err, "unable to parse template")
-		return "", fmt.Errorf("unable to parse template. error: %w", err)
-	}
-
-	buf := new(bytes.Buffer)
-	err = tmpl.Execute(buf, params)
-	if err != nil {
-		log.Error(err, "unable to execute template")
-		return "", fmt.Errorf("unable to execute template. error: %w", err)
-	}
-	return buf.String(), nil
-}
-
 // nameWithSuffix will return a name based on the given ArgoCD using the better truncation approach.
 // The CR name is truncated first, then the full suffix is appended to preserve suffix readability.
 // Example: Given a long ArgoCD name, this ensures suffixes like "redis-initial-password" remain intact.
 func nameWithSuffix(suffix string, cr *argoproj.ArgoCD) string {
-	truncatedCRName := argoutil.GetTruncatedCRName(cr)
-	return fmt.Sprintf("%s-%s", truncatedCRName, suffix)
-}
-
-// fqdnServiceRef will return the FQDN referencing a specific service name, as set up by the operator, with the
-// given port.
-func fqdnServiceRef(service string, port int, cr *argoproj.ArgoCD) string {
-	return fmt.Sprintf("%s.%s.svc.cluster.local:%d", nameWithSuffix(service, cr), cr.Namespace, port)
+	return argoutil.NameWithSuffix(cr.ObjectMeta, suffix)
 }
 
 // InspectCluster will verify the availability of extra features available to the cluster, such as Prometheus and
@@ -793,7 +557,7 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *
 	}
 
 	log.Info("reconciling local users")
-	if err := r.reconcileLocalUsers(cr); err != nil {
+	if err := r.reconcileLocalUsers(*cr); err != nil {
 		return err
 	}
 
@@ -853,12 +617,10 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *
 		}
 	}
 
-	// check ManagedApplicationSetSourceNamespaces for proper cleanup
-	if cr.Spec.ApplicationSet != nil || len(r.ManagedApplicationSetSourceNamespaces) > 0 {
-		log.Info("reconciling ApplicationSet controller")
-		if err := r.reconcileApplicationSetController(cr); err != nil {
-			return err
-		}
+	// Always reconcile so omitting spec.applicationSet runs cleanup.
+	log.Info("reconciling ApplicationSet controller")
+	if err := r.reconcileApplicationSetController(cr); err != nil {
+		return err
 	}
 
 	if !reflect.DeepEqual(cr.Spec.Notifications, argoproj.ArgoCDNotifications{}) || len(r.ManagedNotificationsSourceNamespaces) > 0 {
@@ -2163,8 +1925,6 @@ func getNamespacesToDelete(oldList, newList []argoproj.ManagedNamespaces, allNam
 // the component's name, and a boolean indicating if the component is enabled.
 func (r *ReconcileArgoCD) reconcileDeploymentHelper(cr *argoproj.ArgoCD, desiredDeployment *appsv1.Deployment, componentName string, enabled bool) error {
 	// fetch existing deployment by name
-	deploymentChanged := false
-	explanation := ""
 	existingDeployment := &appsv1.Deployment{}
 	if err := r.Get(context.TODO(), types.NamespacedName{Name: desiredDeployment.Name, Namespace: cr.Namespace}, existingDeployment); err != nil {
 		if !apierrors.IsNotFound(err) {
@@ -2192,138 +1952,82 @@ func (r *ReconcileArgoCD) reconcileDeploymentHelper(cr *argoproj.ArgoCD, desired
 	}
 
 	// deployment exists and should. Reconcile deployment if changed
-	updateNodePlacement(existingDeployment, desiredDeployment, &deploymentChanged, &explanation)
+	changes := updateNodePlacement(existingDeployment, desiredDeployment)
 
 	if existingDeployment.Spec.Template.Spec.Containers[0].Image != desiredDeployment.Spec.Template.Spec.Containers[0].Image {
 		existingDeployment.Spec.Template.Spec.Containers[0].Image = desiredDeployment.Spec.Template.Spec.Containers[0].Image
 		existingDeployment.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "container image"
-		deploymentChanged = true
+		changes = append(changes, "container image")
 	}
 
 	if existingDeployment.Spec.Template.Spec.Containers[0].ImagePullPolicy != desiredDeployment.Spec.Template.Spec.Containers[0].ImagePullPolicy {
 		existingDeployment.Spec.Template.Spec.Containers[0].ImagePullPolicy = desiredDeployment.Spec.Template.Spec.Containers[0].ImagePullPolicy
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "image pull policy"
-		deploymentChanged = true
+		changes = append(changes, "image pull policy")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Command, desiredDeployment.Spec.Template.Spec.Containers[0].Command) {
 		existingDeployment.Spec.Template.Spec.Containers[0].Command = desiredDeployment.Spec.Template.Spec.Containers[0].Command
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "container command"
-		deploymentChanged = true
+		changes = append(changes, "container command")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Env,
 		desiredDeployment.Spec.Template.Spec.Containers[0].Env) {
 		existingDeployment.Spec.Template.Spec.Containers[0].Env = desiredDeployment.Spec.Template.Spec.Containers[0].Env
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "container env"
-		deploymentChanged = true
+		changes = append(changes, "container env")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Volumes, desiredDeployment.Spec.Template.Spec.Volumes) {
 		existingDeployment.Spec.Template.Spec.Volumes = desiredDeployment.Spec.Template.Spec.Volumes
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "volumes"
-		deploymentChanged = true
+		changes = append(changes, "volumes")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Replicas, desiredDeployment.Spec.Replicas) {
 		existingDeployment.Spec.Replicas = desiredDeployment.Spec.Replicas
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "replicas"
-		deploymentChanged = true
+		changes = append(changes, "replicas")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, desiredDeployment.Spec.Template.Spec.Containers[0].VolumeMounts) {
 		existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = desiredDeployment.Spec.Template.Spec.Containers[0].VolumeMounts
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "container volume mounts"
-		deploymentChanged = true
+		changes = append(changes, "container volume mounts")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Resources, desiredDeployment.Spec.Template.Spec.Containers[0].Resources) {
 		existingDeployment.Spec.Template.Spec.Containers[0].Resources = desiredDeployment.Spec.Template.Spec.Containers[0].Resources
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "container resources"
-		deploymentChanged = true
+		changes = append(changes, "container resources")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].SecurityContext, desiredDeployment.Spec.Template.Spec.Containers[0].SecurityContext) {
 		existingDeployment.Spec.Template.Spec.Containers[0].SecurityContext = desiredDeployment.Spec.Template.Spec.Containers[0].SecurityContext
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "container security context"
-		deploymentChanged = true
+		changes = append(changes, "container security context")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.SecurityContext, desiredDeployment.Spec.Template.Spec.SecurityContext) {
 		existingDeployment.Spec.Template.Spec.SecurityContext = desiredDeployment.Spec.Template.Spec.SecurityContext
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "pod security context"
-		deploymentChanged = true
+		changes = append(changes, "pod security context")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.ServiceAccountName, desiredDeployment.Spec.Template.Spec.ServiceAccountName) {
 		existingDeployment.Spec.Template.Spec.ServiceAccountName = desiredDeployment.Spec.Template.Spec.ServiceAccountName
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "service account name"
-		deploymentChanged = true
+		changes = append(changes, "service account name")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Labels, desiredDeployment.Labels) {
 		existingDeployment.Labels = desiredDeployment.Labels
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "labels"
-		deploymentChanged = true
+		changes = append(changes, "labels")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Labels, desiredDeployment.Spec.Template.Labels) {
 		existingDeployment.Spec.Template.Labels = desiredDeployment.Spec.Template.Labels
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "pod labels"
-		deploymentChanged = true
+		changes = append(changes, "pod labels")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Selector, desiredDeployment.Spec.Selector) {
 		existingDeployment.Spec.Selector = desiredDeployment.Spec.Selector
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "selector"
-		deploymentChanged = true
+		changes = append(changes, "selector")
 	}
 
-	if deploymentChanged {
-		argoutil.LogResourceUpdate(log, existingDeployment, "updating", explanation)
+	if len(changes) > 0 {
+		argoutil.LogResourceUpdate(log, existingDeployment, "updating", strings.Join(changes, ", "))
 		return r.Update(context.TODO(), existingDeployment)
 	}
 

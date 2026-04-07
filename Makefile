@@ -3,7 +3,14 @@
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
-VERSION ?= 0.18.0
+VERSION ?= 0.19.0
+
+# ARGO_CD_TARGET_VERSION is the target version that argocd-operator will install.
+# Update this when you upgrade the Argo CD dependencies of the project.
+# After updating, call 'make update-dependencies'.
+# Notes:
+# - String should NOT begin with 'v' prefix, e.g. 'v3.1.1'
+ARGO_CD_TARGET_VERSION ?= 3.3.4
 
 # Try to detect Docker or Podman
 CONTAINER_RUNTIME := $(shell command -v docker 2> /dev/null || command -v podman 2> /dev/null)
@@ -371,23 +378,12 @@ e2e-tests-parallel-ginkgo: ginkgo
 
 
 GINKGO_CLI = $(shell pwd)/bin/ginkgo
+GINKGO_MOD_VERSION = $(shell go list -m -f '{{.Version}}' github.com/onsi/ginkgo/v2)
 .PHONY: ginkgo
 ginkgo: ## Download ginkgo locally if necessary.
-	$(call go-get-tool,$(GINKGO_CLI),github.com/onsi/ginkgo/v2/ginkgo@v2.22.2)
+	$(call go-install-tool,$(GINKGO_CLI),github.com/onsi/ginkgo/v2/ginkgo@$(GINKGO_MOD_VERSION))
 
-
-# go-get-tool will 'go install' any package $2 and install it to $1.
-PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
-define go-get-tool
-@[ -f $(1) ] || { \
-set -e ;\
-TMP_DIR=$$(mktemp -d) ;\
-cd $$TMP_DIR ;\
-go mod init tmp ;\
-echo "Downloading $(2)" ;\
-currentver=$$(go version | { read _ _ v _; echo $$v; } | sed  's/go//g') ;\
-requiredver="1.19" ;\
-if [ $$(printf '%s\n' $$requiredver $$currentver | sort -V | head -n1) = $$requiredver ]; then export GOFLAGS=""; GOBIN=$(PROJECT_DIR)/bin go install $(2);  else  GOBIN=$(PROJECT_DIR)/bin go get $(2); fi;\
-rm -rf $$TMP_DIR ;\
-}
-endef
+# Updates upstream dependencies throughout the repository
+.PHONY: update-dependencies
+update-dependencies:
+	hack/update-dependencies-script/run.sh

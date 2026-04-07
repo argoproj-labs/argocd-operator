@@ -269,13 +269,11 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&argocd.ReconcileArgoCD{
-		Client:        client,
-		Scheme:        mgr.GetScheme(),
-		LabelSelector: labelSelectorFlag,
-		K8sClient:     k8sClient,
-		LocalUsers: &argocd.LocalUsersInfo{
-			TokenRenewalTimers: map[string]*argocd.TokenRenewalTimer{},
-		},
+		Client:            client,
+		Scheme:            mgr.GetScheme(),
+		LabelSelector:     labelSelectorFlag,
+		K8sClient:         k8sClient,
+		LocalUsers:        argocd.NewLocalUsersInfo(),
 		FipsConfigChecker: argoutil.NewLinuxFipsConfigChecker(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ArgoCD")

@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -477,7 +478,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	}
 
 	// Find all users explicitly defined via extraConfig
-	legacyUsers := localUsersInExtraConfig(cr)
+	legacyUsers := localUsersInExtraConfig(*cr)
 
 	// Create local users
 	for _, user := range cr.Spec.LocalUsers {
@@ -606,33 +607,23 @@ func (r *ReconcileArgoCD) reconcileRBAC(cr *argoproj.ArgoCD) error {
 
 // reconcileRBACConfigMap will ensure that the RBAC ConfigMap is syncronized with the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argoproj.ArgoCD) error {
-	changed := false
-	explanation := ""
+	var changes []string
 	// Policy CSV
 	if cr.Spec.RBAC.Policy != nil && cm.Data[common.ArgoCDKeyRBACPolicyCSV] != *cr.Spec.RBAC.Policy {
 		cm.Data[common.ArgoCDKeyRBACPolicyCSV] = *cr.Spec.RBAC.Policy
-		explanation = "rbac policy"
-		changed = true
+		changes = append(changes, "rbac policy")
 	}
 
 	// Default Policy
 	if cr.Spec.RBAC.DefaultPolicy != nil && cm.Data[common.ArgoCDKeyRBACPolicyDefault] != *cr.Spec.RBAC.DefaultPolicy {
 		cm.Data[common.ArgoCDKeyRBACPolicyDefault] = *cr.Spec.RBAC.DefaultPolicy
-		if changed {
-			explanation += ", "
-		}
-		explanation += " rbac default policy"
-		changed = true
+		changes = append(changes, "rbac default policy")
 	}
 
 	// Default Policy Matcher Mode
 	if cr.Spec.RBAC.PolicyMatcherMode != nil && cm.Data[common.ArgoCDPolicyMatcherMode] != *cr.Spec.RBAC.PolicyMatcherMode {
 		cm.Data[common.ArgoCDPolicyMatcherMode] = *cr.Spec.RBAC.PolicyMatcherMode
-		if changed {
-			explanation += ", "
-		}
-		explanation += "rbac policy matcher mode"
-		changed = true
+		changes = append(changes, "rbac policy matcher mode")
 	}
 
 	// Scopes
@@ -641,11 +632,7 @@ func (r *ReconcileArgoCD) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argop
 			log.Info("Keycloak SSO provider is no longer supported. RBAC scopes configuration is ignored.")
 		} else {
 			cm.Data[common.ArgoCDKeyRBACScopes] = *cr.Spec.RBAC.Scopes
-			if changed {
-				explanation += ", "
-			}
-			explanation += "rbac scopes"
-			changed = true
+			changes = append(changes, "rbac scopes")
 		}
 	}
 
@@ -657,12 +644,11 @@ func (r *ReconcileArgoCD) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argop
 	}
 
 	if ownerRefChanged {
-		explanation += ", owner reference"
-		changed = true
+		changes = append(changes, "owner reference")
 	}
 
-	if changed {
-		argoutil.LogResourceUpdate(log, cm, "updating", explanation)
+	if len(changes) > 0 {
+		argoutil.LogResourceUpdate(log, cm, "updating", strings.Join(changes, ", "))
 		// TODO: Reload server (and dex?) if RBAC settings change?
 		return r.Update(context.TODO(), cm)
 	}
@@ -722,9 +708,9 @@ func (r *ReconcileArgoCD) reconcileRedisHAHealthConfigMap(cr *argoproj.ArgoCD) e
 	ctx := context.TODO()
 	cm := newConfigMapWithName(common.ArgoCDRedisHAHealthConfigMapName, cr)
 	cm.Data = map[string]string{
-		"redis_liveness.sh":    getRedisLivenessScript(),
-		"redis_readiness.sh":   getRedisReadinessScript(),
-		"sentinel_liveness.sh": getSentinelLivenessScript(),
+		"redis_liveness.sh":    argoutil.GetRedisLivenessScript(),
+		"redis_readiness.sh":   argoutil.GetRedisReadinessScript(),
+		"sentinel_liveness.sh": argoutil.GetSentinelLivenessScript(),
 	}
 	existingCM := &corev1.ConfigMap{}
 	exists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM)
@@ -777,11 +763,11 @@ func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSF
 	ctx := context.TODO()
 	desired := newConfigMapWithName(common.ArgoCDRedisHAConfigMapName, cr)
 	desired.Data = map[string]string{
-		"haproxy.cfg":     getRedisHAProxyConfig(cr, useTLSForRedis),
-		"haproxy_init.sh": getRedisHAProxyScript(),
-		"init.sh":         getRedisInitScript(),
-		"redis.conf":      getRedisConf(useTLSForRedis),
-		"sentinel.conf":   getRedisSentinelConf(useTLSForRedis),
+		"haproxy.cfg":     argoutil.GetRedisHAProxyConfig(cr, useTLSForRedis),
+		"haproxy_init.sh": argoutil.GetRedisHAProxyScript(),
+		"init.sh":         argoutil.GetRedisInitScript(),
+		"redis.conf":      argoutil.GetRedisConf(useTLSForRedis),
+		"sentinel.conf":   argoutil.GetRedisSentinelConf(useTLSForRedis),
 	}
 	existing := &corev1.ConfigMap{}
 	exists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, desired.Name, existing)
@@ -953,6 +939,7 @@ func (r *ReconcileArgoCD) reconcileGPGKeysConfigMap(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileArgoCmdParamsConfigMap will ensure that the ConfigMap containing command line parameters for ArgoCD is present.
+// - NOTE: When updating this function (for example, adding a new supported field), update the method comment in argocd_types.go for the 'CmdParams' field of ArgoCDSpec.
 func (r *ReconcileArgoCD) reconcileArgoCmdParamsConfigMap(cr *argoproj.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDCmdParamsConfigMapName, cr)
 	cm.Data = make(map[string]string)

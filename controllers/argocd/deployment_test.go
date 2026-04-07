@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -176,7 +177,6 @@ func TestReconcileArgoCD_reconcile_ServerDeployment_replicas(t *testing.T) {
 			}, deployment)
 			assert.NoError(t, err)
 			assert.Equal(t, test.wantFinalReplicas, deployment.Spec.Replicas)
-
 		})
 	}
 }
@@ -326,7 +326,6 @@ func TestReconcileArgoCD_reconcile_ServerDeployment_env(t *testing.T) {
 		}, deployment)
 		assert.NoError(t, err)
 
-		// Check that the env vars are set, Count is 3 because of the default REDIS_PASSWORD env var
 		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 3)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "FOO", Value: "BAR"})
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "BAR", Value: "FOO"})
@@ -367,7 +366,6 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		}, deployment)
 		assert.NoError(t, err)
 
-		// Check that the env vars are set, Count is 4 because of the default REDIS_PASSWORD env var
 		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 4)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "FOO", Value: "BAR"})
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "BAR", Value: "FOO"})
@@ -396,7 +394,6 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		}, deployment)
 		assert.NoError(t, err)
 
-		// Check that the env vars are set, Count is 2 because of the default REDIS_PASSWORD env var
 		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 2)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600s"})
 	})
@@ -429,7 +426,6 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		}, deployment)
 		assert.NoError(t, err)
 
-		// Check that the env vars are set, Count is 2 because of the default REDIS_PASSWORD env var
 		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 2)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600s"})
 	})
@@ -1080,7 +1076,7 @@ func TestReconcileArgoCD_reconcileRedisHAProxyDeployment_replicas(t *testing.T) 
 							Containers: []corev1.Container{
 								{
 									Name:  "haproxy",
-									Image: getRedisHAProxyContainerImage(a),
+									Image: argoutil.GetRedisHAProxyContainerImage(a),
 								},
 							},
 						},
@@ -1163,8 +1159,8 @@ func TestReconcileArgoCD_reconcileRepoDeployment_updatesVolumeMounts(t *testing.
 	}, deployment)
 	assert.NoError(t, err)
 
-	assert.Len(t, deployment.Spec.Template.Spec.Volumes, 9)
-	assert.Len(t, deployment.Spec.Template.Spec.Containers[0].VolumeMounts, 8)
+	assert.Len(t, deployment.Spec.Template.Spec.Volumes, 10)
+	assert.Len(t, deployment.Spec.Template.Spec.Containers[0].VolumeMounts, 9)
 }
 
 func Test_proxyEnvVars(t *testing.T) {
@@ -1376,18 +1372,7 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 					"--logformat",
 					"text",
 				},
-				Env: []corev1.EnvVar{
-					{Name: "REDIS_PASSWORD", Value: "",
-						ValueFrom: &corev1.EnvVarSource{
-							SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "argocd-redis-initial-password",
-								},
-								Key: "admin.password",
-							},
-						},
-					},
-				},
+				Env: argoutil.GetRedisAuthEnv(),
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},
 					{ContainerPort: 8083},
@@ -1878,18 +1863,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 					"--logformat",
 					"text",
 				},
-				Env: []corev1.EnvVar{
-					{Name: "REDIS_PASSWORD", Value: "",
-						ValueFrom: &corev1.EnvVarSource{
-							SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "argocd-redis-initial-password",
-								},
-								Key: "admin.password",
-							},
-						},
-					},
-				},
+				Env: argoutil.GetRedisAuthEnv(),
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},
 					{ContainerPort: 8083},
@@ -1974,18 +1948,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 					"--logformat",
 					"text",
 				},
-				Env: []corev1.EnvVar{
-					{Name: "REDIS_PASSWORD", Value: "",
-						ValueFrom: &corev1.EnvVarSource{
-							SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "argocd-redis-initial-password",
-								},
-								Key: "admin.password",
-							},
-						},
-					},
-				},
+				Env: argoutil.GetRedisAuthEnv(),
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},
 					{ContainerPort: 8083},
@@ -2036,7 +1999,7 @@ func TestReconcileArgoCD_reconcileRedisDeploymentWithoutTLS(t *testing.T) {
 		"--save",
 		"",
 		"--appendonly", "no",
-		"--requirepass $(REDIS_PASSWORD)",
+		"--aclfile", "/app/config/redis-auth/users.acl",
 	}
 
 	assert.NoError(t, r.reconcileRedisDeployment(cr, false))
@@ -2061,7 +2024,7 @@ func TestReconcileArgoCD_reconcileRedisDeploymentWithTLS(t *testing.T) {
 	want := []string{
 		"--save", "",
 		"--appendonly", "no",
-		"--requirepass $(REDIS_PASSWORD)",
+		"--aclfile", "/app/config/redis-auth/users.acl",
 		"--tls-port", "6379",
 		"--port", "0",
 		"--tls-cert-file", "/app/config/redis/tls/tls.crt",
@@ -2096,6 +2059,36 @@ func TestReconcileArgoCD_reconcileRedisDeployment(t *testing.T) {
 	d := &appsv1.Deployment{}
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, d))
 	assert.Equal(t, int32(3), *d.Spec.Replicas)
+}
+
+func TestReconcileArgoCD_reconcileRedisDeployment_volumeUpdate(t *testing.T) {
+	// tests reconciler hook for redis deployment
+	cr := makeTestArgoCD()
+	redisSecret := types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}
+
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{cr}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	defer resetHooks()()
+	Register(testDeploymentHook)
+
+	require.NoError(t, r.reconcileRedisDeployment(cr, false))
+	d := &appsv1.Deployment{}
+	require.NoError(t, r.Get(context.TODO(), redisSecret, d))
+
+	// Erase volumes
+	d.Spec.Template.Spec.Volumes = []corev1.Volume{}
+	require.NoError(t, r.Update(t.Context(), d))
+	require.NoError(t, r.reconcileRedisDeployment(cr, false))
+
+	// Volumes are readded
+	newRedis := &appsv1.Deployment{}
+	require.NoError(t, r.Get(context.TODO(), redisSecret, newRedis))
+	assert.Len(t, newRedis.Spec.Template.Spec.Volumes, 2)
 }
 
 func TestReconcileArgoCD_reconcileRedisDeployment_testImageUpgrade(t *testing.T) {
@@ -2255,24 +2248,12 @@ func Test_UpdateNodePlacement(t *testing.T) {
 			},
 		},
 	}
-	expectedChange := false
-	actualChange := false
-	explanation := ""
-	updateNodePlacement(deployment, deployment, &actualChange, &explanation)
-	if actualChange != expectedChange {
-		t.Fatalf("updateNodePlacement failed, value of changed: %t", actualChange)
-	}
-	if explanation != "" {
-		t.Fatalf("updateNodePlacement returned unexpected explanation: '%s'", explanation)
-	}
 
-	updateNodePlacement(deployment, deployment2, &actualChange, &explanation)
-	if actualChange == expectedChange {
-		t.Fatalf("updateNodePlacement failed, value of changed: %t", actualChange)
-	}
-	if explanation != "node selector, tolerations" {
-		t.Fatalf("updateNodePlacement returned unexpected explanation: '%s'", explanation)
-	}
+	actualChanges := updateNodePlacement(deployment, deployment)
+	assert.Empty(t, actualChanges, "updateNodePlacement returned unexpected changes")
+
+	actualChanges = updateNodePlacement(deployment, deployment2)
+	assert.Equal(t, []string{"node selector", "tolerations"}, actualChanges, "updateNodePlacement returned unexpected changes")
 }
 
 func assertDeploymentHasProxyVars(t *testing.T, c client.Client, name string) {
@@ -2406,6 +2387,18 @@ func repoServerDefaultVolumes() []corev1.Volume {
 			},
 		},
 		{
+			Name: "redis-initial-pass",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: "argocd-redis-initial-password",
+					Items: []corev1.KeyToPath{
+						{Key: "auth", Path: "auth"},
+						{Key: "auth_username", Path: "auth_username"},
+					},
+				},
+			},
+		},
+		{
 			Name: "tmp",
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
@@ -2425,6 +2418,7 @@ func repoServerDefaultVolumeMounts() []corev1.VolumeMount {
 		{Name: "argocd-repo-server-tls", MountPath: "/app/config/reposerver/tls"},
 		{Name: common.ArgoCDRedisServerTLSSecretName, MountPath: "/app/config/reposerver/tls/redis"},
 		{Name: "plugins", MountPath: "/home/argocd/cmp-server/plugins"},
+		{Name: argoutil.RedisAuthVolumeName, MountPath: argoutil.RedisAuthMountPath},
 		{Name: "tmp", MountPath: "/tmp"},
 	}
 	return mounts
@@ -2499,6 +2493,18 @@ func serverDefaultVolumes() []corev1.Volume {
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
+		{
+			Name: argoutil.RedisAuthVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: "argocd-redis-initial-password",
+					Items: []corev1.KeyToPath{
+						{Key: "auth", Path: "auth"},
+						{Key: "auth_username", Path: "auth_username"},
+					},
+				},
+			},
+		},
 	}
 	return volumes
 }
@@ -2529,6 +2535,10 @@ func serverDefaultVolumeMounts() []corev1.VolumeMount {
 		{
 			Name:      "tmp",
 			MountPath: "/tmp",
+		},
+		{
+			Name:      argoutil.RedisAuthVolumeName,
+			MountPath: argoutil.RedisAuthMountPath,
 		},
 	}
 	return mounts
@@ -2603,7 +2613,7 @@ func TestArgoCDRepoServerDeploymentCommand(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	testRedisServerAddress := getRedisServerAddress(a)
+	testRedisServerAddress := argoutil.GetRedisServerAddress(a)
 
 	baseCommand := []string{
 		"uid_entrypoint.sh",
@@ -2951,7 +2961,6 @@ func TestSetReplicasAndEnvVar_WhenServerReplicasIsDefined(t *testing.T) {
 		}, deployment)
 		assert.NoError(t, err)
 
-		// Check that the env vars are set, Count is 2 because of the default REDIS_PASSWORD env var
 		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 2)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_API_SERVER_REPLICAS", Value: "2"})
 	})

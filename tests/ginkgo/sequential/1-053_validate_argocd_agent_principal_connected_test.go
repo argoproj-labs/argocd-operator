@@ -408,6 +408,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Eventually(func() bool {
 				for {
 					// drain channel looking for name of new pod
+					GinkgoWriter.Println("Awaiting message")
 					select {
 					case msg := <-msgChan:
 						GinkgoWriter.Println("Processing message:", msg)
@@ -447,6 +448,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 		// 2. Each agent successfully connects to the principal.
 		// 3. Applications can be deployed in both modes, and are verified to be healthy and in sync.
 		// 4. Redis proxy can be accessed, and it contains data from child resources (e.g. pod), for both managed, and autonomous.
+		// 5. Resource proxy can be accessed, and it contains data from agent resources.
 		// This validates the core connectivity and basic workflow of agent-principal architecture, including RBAC, connection, and application propagation.
 		It("Should deploy ArgoCD principal and agent instances in both modes and verify they are working as expected", func() {
 

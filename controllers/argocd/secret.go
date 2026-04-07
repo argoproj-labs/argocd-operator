@@ -333,8 +333,7 @@ func (r *ReconcileArgoCD) reconcileClusterSecrets(cr *argoproj.ArgoCD) error {
 
 // reconcileExistingArgoSecret will ensure that the Argo CD Secret is up to date.
 func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secret *corev1.Secret, clusterSecret *corev1.Secret, tlsSecret *corev1.Secret) error {
-	changed := false
-	explanation := ""
+	var changes []string
 
 	if secret.Data == nil {
 		secret.Data = make(map[string][]byte)
@@ -359,19 +358,14 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secre
 
 			secret.Data[common.ArgoCDKeyAdminPassword] = []byte(hashedPassword)
 			secret.Data[common.ArgoCDKeyAdminPasswordMTime] = nowBytes()
-			explanation = "argo admin password"
-			changed = true
+			changes = append(changes, "argo admin password")
 		}
 	}
 
 	if hasArgoTLSChanged(secret, tlsSecret) {
 		secret.Data[common.ArgoCDKeyTLSCert] = tlsSecret.Data[common.ArgoCDKeyTLSCert]
 		secret.Data[common.ArgoCDKeyTLSPrivateKey] = tlsSecret.Data[common.ArgoCDKeyTLSPrivateKey]
-		if changed {
-			explanation += ", "
-		}
-		explanation += "argo tls secret"
-		changed = true
+		changes = append(changes, "argo tls secret")
 	}
 
 	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeDex {
@@ -384,17 +378,13 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secre
 			expected := *dexOIDCClientSecret
 			if actual != expected {
 				secret.Data[common.ArgoCDDexSecretKey] = []byte(*dexOIDCClientSecret)
-				if changed {
-					explanation += ", "
-				}
-				explanation += "argo dex secret"
-				changed = true
+				changes = append(changes, "argo dex secret")
 			}
 		}
 	}
 
-	if changed {
-		argoutil.LogResourceUpdate(log, secret, "updating", explanation)
+	if len(changes) > 0 {
+		argoutil.LogResourceUpdate(log, secret, "updating", strings.Join(changes, ", "))
 		if err := r.Update(context.TODO(), secret); err != nil {
 			return err
 		}
@@ -747,12 +737,28 @@ func (r *ReconcileArgoCD) getClusterSecrets(cr *argoproj.ArgoCD) (*corev1.Secret
 func (r *ReconcileArgoCD) reconcileRedisInitialPasswordSecret(cr *argoproj.ArgoCD) error {
 	secret := argoutil.NewSecretWithSuffix(cr, "redis-initial-password")
 
-	secretExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret)
+	existed := true
+	// Recreate if the secret or some of its keys are missing
+	err := argoutil.FetchObject(r.Client, cr.Namespace, secret.Name, secret)
 	if err != nil {
-		return err
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+		existed = false
 	}
-	if secretExists {
-		return nil // Secret found, do nothing
+	if secret.Data != nil {
+		_, hasPwd := secret.Data[common.ArgoCDKeyAdminPassword]
+		_, hasAuth := secret.Data["auth"]
+		_, hasUsername := secret.Data["auth_username"]
+		_, hasAcl := secret.Data["users.acl"]
+		if hasPwd && hasAuth && hasUsername && hasAcl {
+			return nil // Healthy - keep it
+		}
+	}
+
+	if existed {
+		// Drop unsettable fields created by FetchObject
+		secret = argoutil.NewSecretWithSuffix(cr, "redis-initial-password")
 	}
 
 	redisInitialPassword, err := generateRedisAdminPassword()
@@ -760,13 +766,15 @@ func (r *ReconcileArgoCD) reconcileRedisInitialPasswordSecret(cr *argoproj.ArgoC
 		return err
 	}
 
-	secret.Data = map[string][]byte{
-		"immutable":                   []byte("true"),
-		common.ArgoCDKeyAdminPassword: redisInitialPassword,
-	}
+	secret.Data = argoutil.GetRedisSecretData(redisInitialPassword)
 
 	if err := controllerutil.SetControllerReference(cr, secret, r.Scheme); err != nil {
 		return err
+	}
+
+	if existed {
+		argoutil.LogResourceUpdate(log, secret)
+		return r.Update(context.TODO(), secret)
 	}
 	argoutil.LogResourceCreation(log, secret)
 	return r.Create(context.TODO(), secret)

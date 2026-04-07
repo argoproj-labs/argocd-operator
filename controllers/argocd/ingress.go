@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -164,40 +165,26 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error 
 		ingress.Spec.TLS = cr.Spec.Server.Ingress.TLS
 	}
 	if objectFound {
-		changed := false
-		explanation := ""
+		var changes []string
 		// If Ingress found and enabled, make sure the ingressClassName is up-to-date
 		if existingIngress.Spec.IngressClassName != cr.Spec.Server.Ingress.IngressClassName {
 			existingIngress.Spec.IngressClassName = cr.Spec.Server.Ingress.IngressClassName
-			explanation = "ingress class name"
-			changed = true
+			changes = append(changes, "ingress class name")
 		}
 		if !reflect.DeepEqual(cr.Spec.Server.Ingress.Annotations, existingIngress.Annotations) {
 			existingIngress.Annotations = cr.Spec.Server.Ingress.Annotations
-			if changed {
-				explanation += ", "
-			}
-			explanation += "annotations"
-			changed = true
+			changes = append(changes, "annotations")
 		}
 		if !reflect.DeepEqual(ingress.Spec.Rules, existingIngress.Spec.Rules) {
 			existingIngress.Spec.Rules = ingress.Spec.Rules
-			if changed {
-				explanation += ", "
-			}
-			explanation += "ingress rules"
-			changed = true
+			changes = append(changes, "ingress rules")
 		}
 		if !reflect.DeepEqual(ingress.Spec.TLS, existingIngress.Spec.TLS) {
 			existingIngress.Spec.TLS = ingress.Spec.TLS
-			if changed {
-				explanation += ", "
-			}
-			explanation += "ingress tls"
-			changed = true
+			changes = append(changes, "ingress tls")
 		}
-		if changed {
-			argoutil.LogResourceUpdate(log, existingIngress, "updating", explanation)
+		if len(changes) > 0 {
+			argoutil.LogResourceUpdate(log, existingIngress, "updating", strings.Join(changes, ", "))
 			return r.Update(context.TODO(), existingIngress)
 		}
 		return nil // Ingress with no changes to apply, do nothing
