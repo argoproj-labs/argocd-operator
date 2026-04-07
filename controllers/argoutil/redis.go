@@ -88,7 +88,7 @@ func getRedisConfigPath() string {
 	return common.ArgoCDDefaultRedisConfigPath
 }
 
-// GetRedisInitScript will load the redis configuration from a template on disk for the given ArgoCD.
+// GetRedisConf will load the redis configuration from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
 func GetRedisConf(useTLSForRedis bool) string {
 	path := fmt.Sprintf("%s/redis.conf.tpl", getRedisConfigPath())
@@ -185,7 +185,7 @@ func GetRedisInitScript(cr *argoproj.ArgoCD, useTLSForRedis bool) string {
 	return script
 }
 
-// getRedisHAProxySConfig will load the Redis HA Proxy configuration from a template on disk for the given ArgoCD.
+// GetRedisHAProxyConfig will load the Redis HA Proxy configuration from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
 func GetRedisHAProxyConfig(cr *argoproj.ArgoCD, useTLSForRedis bool) string {
 	path := fmt.Sprintf("%s/haproxy.cfg.tpl", getRedisConfigPath())
