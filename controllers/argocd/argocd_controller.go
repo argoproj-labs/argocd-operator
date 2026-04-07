@@ -332,20 +332,6 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 				continue
 			}
 
-			// Check if the namespace has a "managed-by" label
-			namespace := &corev1.Namespace{}
-			if err := r.Get(ctx, types.NamespacedName{Name: nsMgmt.Namespace}, namespace); err != nil {
-				log.Error(err, fmt.Sprintf("unable to fetch namespace %s", nsMgmt.Namespace))
-				return reconcile.Result{}, argocd, argoCDStatus, err
-			}
-
-			// Skip RBAC deletion if the namespace has the "managed-by" label for this Argo CD instance
-			if namespace.Labels[common.ArgoCDManagedByLabel] == argocd.Namespace {
-				log.Info(fmt.Sprintf("Skipping RBAC deletion for tenant namespace %s: %s=%s matches this Argo CD instance",
-					nsMgmt.Namespace, common.ArgoCDManagedByLabel, argocd.Namespace))
-				continue
-			}
-
 			// Remove roles and rolebindings
 			if err := deleteRBACsForNamespace(nsMgmt.Namespace, k8sClient); err != nil {
 				log.Error(err, fmt.Sprintf("Failed to delete RBACs for namespace: %s", nsMgmt.Namespace))

@@ -1813,10 +1813,13 @@ func (r *ReconcileArgoCD) handleNamespaceManagementUpdate(oldNSMgmt, newNSMgmt *
 		return false
 	}
 
-	// Skip Update if managed-by label exists on tenant namespace and matches .spec.managedBy
-	if labelVal, labelExists := ns.Labels[common.ArgoCDManagedByLabel]; labelExists && labelVal == oldNSMgmt.Spec.ManagedBy {
-		log.Info(fmt.Sprintf("Namespace %s still managed by same ArgoCD instance via label, skipping update cleanup", oldNSMgmt.Namespace))
-		return false
+	// Skip only when there is no managedBy transition between oldNSMgmt and newNSMgmt
+	if oldNSMgmt.Spec.ManagedBy == newNSMgmt.Spec.ManagedBy {
+		// Skip Update if managed-by label exists on tenant namespace and matches .spec.managedBy
+		if labelVal, labelExists := ns.Labels[common.ArgoCDManagedByLabel]; labelExists && labelVal == oldNSMgmt.Spec.ManagedBy {
+			log.Info(fmt.Sprintf("Namespace %s still managed by same ArgoCD instance via label, skipping update cleanup", oldNSMgmt.Namespace))
+			return false
+		}
 	}
 
 	// If `.spec.managedBy` changes, trigger reconciliation
@@ -1830,17 +1833,6 @@ func (r *ReconcileArgoCD) handleNamespaceManagementUpdate(oldNSMgmt, newNSMgmt *
 }
 
 func (r *ReconcileArgoCD) handleNamespaceManagementDelete(nsMgmt *argoproj.NamespaceManagement, k8sClient kubernetes.Interface) bool {
-	ns := &corev1.Namespace{}
-	if err := r.Get(context.TODO(), types.NamespacedName{Name: nsMgmt.Namespace}, ns); err != nil {
-		return false
-	}
-
-	// Skip cleanup if managed-by label exists on tenant namespace and matches .spec.managedBy
-	if labelVal, labelExists := ns.Labels[common.ArgoCDManagedByLabel]; labelExists && labelVal == nsMgmt.Spec.ManagedBy {
-		log.Info(fmt.Sprintf("Namespace %s still managed by same ArgoCD instance via label, skipping delete cleanup", nsMgmt.Namespace))
-		return false
-	}
-
 	// Retrieve the ArgoCD instance that was managing this namespace
 	argocdNamespace := nsMgmt.Spec.ManagedBy
 	if argocdNamespace == "" {

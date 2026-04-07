@@ -185,7 +185,7 @@ func TestHandleFeatureDisable_NamespaceMatchesPattern_RBACDeleted(t *testing.T) 
 	assert.NoError(t, err)
 }
 
-func TestHandleFeatureDisable_SkipManagedByLabel(t *testing.T) {
+func TestHandleFeatureDisable_DeletesRBACWhenTenantHasManagedByLabel(t *testing.T) {
 	a := makeTestArgoCD()
 	a.Spec.NamespaceManagement = []argoproj.ManagedNamespaces{
 		{
@@ -200,7 +200,7 @@ func TestHandleFeatureDisable_SkipManagedByLabel(t *testing.T) {
 			Namespace: "ns-managed",
 		},
 		Spec: argoproj.NamespaceManagementSpec{
-			ManagedBy: a.Namespace, // "argocd"
+			ManagedBy: a.Namespace,
 		},
 	}
 

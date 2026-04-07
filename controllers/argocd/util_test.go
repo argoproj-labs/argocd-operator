@@ -1578,7 +1578,7 @@ func TestNamespaceManagementHandlers(t *testing.T) {
 			Spec:       argoproj.NamespaceManagementSpec{ManagedBy: "argocd"},
 		}
 
-		// Tenant namespace (where NM CR lives); no managed-by label so cleanup runs.
+		// Tenant namespace (where NM CR lives); NamespaceManagement delete runs cleanup regardless of managed-by label.
 		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace}}
 
 		resObjs := []client.Object{argoCD, ns, nsMgmt}

@@ -120,9 +120,15 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 		if cr.Namespace != namespace.Name && name == common.ArgoCDApplicationControllerComponent {
 			ns := &corev1.Namespace{}
 			if err := r.Get(context.TODO(), types.NamespacedName{Name: namespace.Name}, ns); err != nil {
-				log.Error(err, "failed to get namespace for managed-by label", "namespace", namespace.Name)
-				// Continue - namespace might be terminating or temporarily unavailable
-			} else if ns.Labels[common.ArgoCDManagedByLabel] != cr.Namespace {
+				if errors.IsNotFound(err) {
+					continue
+				}
+				return nil, fmt.Errorf("failed to get namespace for managed-by label [%s]: %w", namespace.Name, err)
+			}
+			if ns.DeletionTimestamp != nil {
+				continue
+			}
+			if ns.Labels[common.ArgoCDManagedByLabel] != cr.Namespace {
 				if ns.Labels == nil {
 					ns.Labels = make(map[string]string)
 				}
