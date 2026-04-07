@@ -939,6 +939,7 @@ func (r *ReconcileArgoCD) reconcileGPGKeysConfigMap(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileArgoCmdParamsConfigMap will ensure that the ConfigMap containing command line parameters for ArgoCD is present.
+// - NOTE: When updating this function (for example, adding a new supported field), update the method comment in argocd_types.go for the 'CmdParams' field of ArgoCDSpec.
 func (r *ReconcileArgoCD) reconcileArgoCmdParamsConfigMap(cr *argoproj.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDCmdParamsConfigMapName, cr)
 	cm.Data = make(map[string]string)

@@ -11948,8 +11948,10 @@ spec:
               cmdParams:
                 additionalProperties:
                   type: string
-                description: CmdParams specifies command-line parameters for the Argo
-                  CD components.
+                description: |-
+                  CmdParams specifies command-line parameters for the Argo CD components.
+                  The only keys currently supported for this parameter are:
+                  - controller.resource.health.persist
                 type: object
               configManagementPlugins:
                 description: 'Deprecated: ConfigManagementPlugins field is no longer
