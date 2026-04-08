@@ -387,3 +387,7 @@ ginkgo: ## Download ginkgo locally if necessary.
 .PHONY: update-dependencies
 update-dependencies:
 	hack/update-dependencies-script/run.sh
+
+.PHONY: serve-docs
+serve-docs: ## Serve documentation locally using mkdocs in a container
+	$(CONTAINER_RUNTIME) run --rm -it -p 8000:8000 -v $(PWD):/argocd-operator -w /argocd-operator --name argocd-operator-mkdocs registry.access.redhat.com/ubi9/python-311:latest /bin/bash -c "pip install -r docs/requirements.txt && mkdocs serve -a 0.0.0.0:8000"
