@@ -165,7 +165,7 @@ func updateBuildUtilDockerfile(argocdOperatorRoot string, argocdContainerImage *
 		// Replace the argocd image references in the Dockerfile with new version
 		if strings.HasPrefix(lines[idx], "# Argo CD v") && strings.HasPrefix(lines[idx+1], "FROM quay.io/argoproj/argocd@sha256") {
 			newContent += "# Argo CD " + argocdContainerImage.version + "\n"
-			newContent += "FROM quay.io/argoproj/argocd@" + argocdContainerImage.sha256Digest + " as argocd\n"
+			newContent += "FROM quay.io/argoproj/argocd@" + argocdContainerImage.sha256Digest + " AS argocd\n"
 			idx++ // Skip to the line after these 2
 			match = true
 		} else {
