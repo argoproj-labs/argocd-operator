@@ -13,11 +13,8 @@ updates:
         update-types:
           - "version-update:semver-major"
           - "version-update:semver-minor"
-      # Only suggest patch updates. Rest is manually controlled.
+      # Ignore argo-cd altogether. Needs `make update-dependencies` to be done correctly.
       - dependency-name: "github.com/argoproj/argo-cd/v3"
-        update-types:
-          - "version-update:semver-major"
-          - "version-update:semver-minor"
 
   - package-ecosystem: "github-actions"
     directory: "/"
