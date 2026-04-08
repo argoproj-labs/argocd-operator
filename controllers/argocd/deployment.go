@@ -235,11 +235,32 @@ func getArgoRedisArgs(useTLS bool, cr *argoproj.ArgoCD) []string {
 		args = append(args, "--tls-key-file", "/app/config/redis/tls/tls.key")
 		args = append(args, "--tls-auth-clients", "no")
 		if tlsConfig := cr.Spec.Redis.TlsConfig; tlsConfig != nil {
-			if len(tlsConfig.Protocols) > 0 {
-				args = append(args, "--tls-protocols", strings.Join(tlsConfig.Protocols, " "))
+			protocolSet := make(map[string]struct{})
+			normalize := func(v string) string {
+				switch v {
+				case "1.2", "TLSv1.2":
+					return "TLSv1.2"
+				case "1.3", "TLSv1.3":
+					return "TLSv1.3"
+				default:
+					return ""
+				}
+			}
+			if v := normalize(tlsConfig.MinVersion); v != "" {
+				protocolSet[v] = struct{}{}
+			}
+			if v := normalize(tlsConfig.MaxVersion); v != "" {
+				protocolSet[v] = struct{}{}
+			}
+			var protocols []string
+			for p := range protocolSet {
+				protocols = append(protocols, p)
+			}
+			if len(protocols) > 0 {
+				args = append(args, "--tls-protocols", strings.Join(protocols, " "))
 			}
 			if len(tlsConfig.CipherSuites) > 0 {
-				args = append(args, "--tls-ciphersuites", tlsConfig.CipherSuites)
+				args = append(args, "--tls-ciphersuites", strings.Join(tlsConfig.CipherSuites, ":"))
 			}
 		} else {
 			args = append(args, "--tls-protocols", "TLSv1.3")
