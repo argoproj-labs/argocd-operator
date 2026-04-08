@@ -10,7 +10,7 @@ VERSION ?= 0.19.0
 # After updating, call 'make update-dependencies'.
 # Notes:
 # - String should NOT begin with 'v' prefix, e.g. 'v3.1.1'
-ARGO_CD_TARGET_VERSION ?= 3.3.4
+ARGO_CD_TARGET_VERSION ?= 3.3.6
 
 # Try to detect Docker or Podman
 CONTAINER_RUNTIME := $(shell command -v docker 2> /dev/null || command -v podman 2> /dev/null)
@@ -387,3 +387,7 @@ ginkgo: ## Download ginkgo locally if necessary.
 .PHONY: update-dependencies
 update-dependencies:
 	hack/update-dependencies-script/run.sh
+
+.PHONY: serve-docs
+serve-docs: ## Serve documentation locally using mkdocs in a container
+	$(CONTAINER_RUNTIME) run --rm -it -p 8000:8000 -v $(PWD):/argocd-operator -w /argocd-operator --name argocd-operator-mkdocs registry.access.redhat.com/ubi9/python-311:latest /bin/bash -c "pip install -r docs/requirements.txt && mkdocs serve -a 0.0.0.0:8000"
