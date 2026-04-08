@@ -9,17 +9,17 @@ resources:
 - role_binding.yaml
 - leader_election_role.yaml
 - leader_election_role_binding.yaml
-# The following RBAC resources are required for the controller-runtime
-# built-in authn/authz to protect the /metrics endpoint.
-# Comment these lines if you want to disable metrics auth.
-- auth_proxy_service.yaml
-- auth_proxy_role.yaml
-- auth_proxy_role_binding.yaml
-- auth_proxy_client_clusterrole.yaml
+# These resources expose /metrics over HTTPS on port 8443 and grant the
+# controller-runtime authn/authz permissions required by manager_metrics_patch.yaml.
+# Comment these lines together with manager_metrics_patch.yaml if you want to
+# disable secure metrics for the controller-manager.
+- metrics_service.yaml
+- metrics_role.yaml
+- metrics_role_binding.yaml
+- metrics_reader_clusterrole.yaml
 # For each CRD, "Editor" and "Viewer" roles are scaffolded by
 # default, aiding admins in cluster management. Those roles are
 # not used by the Project itself. You can comment the following lines
 # if you do not want those helpers be installed with your Project.
 - namespacemanagement_editor_role.yaml
 - namespacemanagement_viewer_role.yaml
-

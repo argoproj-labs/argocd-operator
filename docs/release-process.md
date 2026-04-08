@@ -88,7 +88,7 @@ spec:
   ports:
   - name: https
     port: 8443
-    targetPort: 8080
+    targetPort: 8443
   selector:
     control-plane: controller-manager
 ```
