@@ -517,14 +517,7 @@ type ArgoCDRedisSpec struct {
 	Remote *string `json:"remote,omitempty"`
 
 	// TlsConfig defines the TLS configuration for the Redis server
-	TlsConfig *ArgoCDRedisTLSConfig `json:"tlsConfig,omitempty"`
-}
-
-type ArgoCDRedisTLSConfig struct {
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Items:Enum=TLSv1.2;TLSv1.3
-	Protocols    []string `json:"protocols,omitempty"`
-	CipherSuites string   `json:"cipherSuites,omitempty"`
+	TlsConfig *ArgoCDTlsConfig `json:"tlsConfig,omitempty"`
 }
 
 func (a *ArgoCDRedisSpec) IsEnabled() bool {
@@ -618,11 +611,10 @@ type ArgoCDTlsConfig struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Enum="1.2";"1.3"
 	MinVersion string `json:"minVersion,omitempty"`
-
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Enum="1.2";"1.3"
-	MaxVersion   string `json:"maxVersion,omitempty"`
-	CipherSuites string `json:"cipherSuites,omitempty"`
+	MaxVersion   string   `json:"maxVersion,omitempty"`
+	CipherSuites []string `json:"cipherSuites,omitempty"`
 }
 
 func (a *ArgoCDRepoSpec) IsEnabled() bool {

@@ -413,11 +413,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 		}
 		if !reflect.DeepEqual(actualArgs, desiredArgs) {
 			existing.Spec.Template.Spec.Containers[0].Args = desiredArgs
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container args"
-			changed = true
+			changes = append(changes, "container args")
 		}
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
@@ -555,25 +551,19 @@ func ParseTLSVersion(v string) (uint16, error) {
 	return 0, fmt.Errorf("unsupported TLS version: %s", v)
 }
 
-func ValidateTLSConfig(minVersion, maxVersion uint16, cipherSuites string) error {
+func ValidateTLSConfig(minVersion, maxVersion uint16, cipherSuites []string) error {
 	if minVersion != 0 && maxVersion != 0 && minVersion > maxVersion {
-		return fmt.Errorf(
-			"minimum TLS version (%s) cannot be higher than maximum TLS version (%s)",
-			TLSVersionName(minVersion), TLSVersionName(maxVersion),
-		)
+		return fmt.Errorf("minimum TLS version (%s) cannot be higher than maximum TLS version (%s)", TLSVersionName(minVersion), TLSVersionName(maxVersion))
 	}
-	if cipherSuites == "" {
+	if len(cipherSuites) == 0 {
 		return nil
 	}
-	cipherList := strings.Split(cipherSuites, ":")
-
 	available := tls.CipherSuites()
-	cipherMap := make(map[string]*tls.CipherSuite)
-
+	cipherMap := make(map[string]*tls.CipherSuite, len(available))
 	for _, cs := range available {
 		cipherMap[cs.Name] = cs
 	}
-	for _, name := range cipherList {
+	for _, name := range cipherSuites {
 		name = strings.TrimSpace(name)
 		cs, ok := cipherMap[name]
 		if !ok {
@@ -632,11 +622,8 @@ func buildTLSArgs(tls *argocdoperatorv1beta1.ArgoCDTlsConfig) ([]string, error) 
 		"--tlsminversion", min,
 		"--tlsmaxversion", max,
 	}
-
-	if tls.CipherSuites != "" {
-		args = append(args,
-			"--tlsciphers", tls.CipherSuites,
-		)
+	if len(tls.CipherSuites) > 0 {
+		args = append(args, "--tlsciphers", strings.Join(tls.CipherSuites, ":"))
 	}
 	return args, nil
 }

@@ -18664,11 +18664,19 @@ spec:
                       server
                     properties:
                       cipherSuites:
-                        type: string
-                      protocols:
                         items:
                           type: string
                         type: array
+                      maxVersion:
+                        enum:
+                        - "1.2"
+                        - "1.3"
+                        type: string
+                      minVersion:
+                        enum:
+                        - "1.2"
+                        - "1.3"
+                        type: string
                     type: object
                   version:
                     description: Version is the Redis container image tag.
@@ -22258,7 +22266,9 @@ spec:
                     description: TLS configuration for the repo server
                     properties:
                       cipherSuites:
-                        type: string
+                        items:
+                          type: string
+                        type: array
                       maxVersion:
                         enum:
                         - "1.2"
@@ -27954,7 +27964,9 @@ spec:
                     description: TLS configuration for the Argo CD Server component
                     properties:
                       cipherSuites:
-                        type: string
+                        items:
+                          type: string
+                        type: array
                       maxVersion:
                         enum:
                         - "1.2"
