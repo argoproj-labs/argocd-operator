@@ -609,10 +609,10 @@ type ArgoCDRepoSpec struct {
 
 type ArgoCDTlsConfig struct {
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Enum="1.2";"1.3"
+	// +kubebuilder:validation:Enum="1.1";"1.2";"1.3";"tls1.1";"tls1.2";"tls1.3";"TLSv1.1";"TLSv1.2";"TLSv1.3"
 	MinVersion string `json:"minVersion,omitempty"`
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Enum="1.2";"1.3"
+	// +kubebuilder:validation:Enum="1.1";"1.2";"1.3";"TLSv1.1";"TLSv1.2";"TLSv1.3";"tls1.1";"tls1.2";"tls1.3"
 	MaxVersion   string   `json:"maxVersion,omitempty"`
 	CipherSuites []string `json:"cipherSuites,omitempty"`
 }
@@ -1378,12 +1378,8 @@ type PrincipalTLSSpec struct {
 
 	// InsecureGenerate is the flag to allow the principal to generate its own set of TLS cert and key on startup when none are configured
 	InsecureGenerate *bool `json:"insecureGenerate,omitempty"`
-	// MinVersion is the minimum TLS version supported by the principal.
-	MinVersion string `json:"minVersion,omitempty"`
-	// MaxVersion is the maximum TLS version supported by the principal.
-	MaxVersion string `json:"maxVersion,omitempty"`
-	// CipherSuites is a list of supported cipher suites for the principal.
-	CipherSuites []string `json:"cipherSuites,omitempty"`
+	// TLS configuration for the repo server
+	TlsConfig *ArgoCDTlsConfig `json:"tlsConfig,omitempty"`
 }
 
 // ArgoCDAgentPrincipalServiceSpec defines the options for the Service backing the ArgoCD Agent Principalcomponent.

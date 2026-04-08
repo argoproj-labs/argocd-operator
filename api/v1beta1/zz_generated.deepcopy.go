@@ -1806,10 +1806,10 @@ func (in *PrincipalTLSSpec) DeepCopyInto(out *PrincipalTLSSpec) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.CipherSuites != nil {
-		in, out := &in.CipherSuites, &out.CipherSuites
-		*out = make([]string, len(*in))
-		copy(*out, *in)
+	if in.TlsConfig != nil {
+		in, out := &in.TlsConfig, &out.TlsConfig
+		*out = new(ArgoCDTlsConfig)
+		(*in).DeepCopyInto(*out)
 	}
 }
 

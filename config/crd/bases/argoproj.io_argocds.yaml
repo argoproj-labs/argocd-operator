@@ -11896,25 +11896,11 @@ spec:
                         description: TLS defines the TLS options for the Principal
                           component.
                         properties:
-                          cipherSuites:
-                            description: CipherSuites is a list of supported cipher
-                              suites for the principal.
-                            items:
-                              type: string
-                            type: array
                           insecureGenerate:
                             description: InsecureGenerate is the flag to allow the
                               principal to generate its own set of TLS cert and key
                               on startup when none are configured
                             type: boolean
-                          maxVersion:
-                            description: MaxVersion is the maximum TLS version supported
-                              by the principal.
-                            type: string
-                          minVersion:
-                            description: MinVersion is the minimum TLS version supported
-                              by the principal.
-                            type: string
                           rootCASecretName:
                             description: RootCASecretName is the name of the secret
                               containing the root CA TLS certificate
@@ -11923,6 +11909,38 @@ spec:
                             description: SecretName is The name of the secret containing
                               the TLS certificate and key.
                             type: string
+                          tlsConfig:
+                            description: TLS configuration for the repo server
+                            properties:
+                              cipherSuites:
+                                items:
+                                  type: string
+                                type: array
+                              maxVersion:
+                                enum:
+                                - "1.1"
+                                - "1.2"
+                                - "1.3"
+                                - TLSv1.1
+                                - TLSv1.2
+                                - TLSv1.3
+                                - tls1.1
+                                - tls1.2
+                                - tls1.3
+                                type: string
+                              minVersion:
+                                enum:
+                                - "1.1"
+                                - "1.2"
+                                - "1.3"
+                                - tls1.1
+                                - tls1.2
+                                - tls1.3
+                                - TLSv1.1
+                                - TLSv1.2
+                                - TLSv1.3
+                                type: string
+                            type: object
                         type: object
                     type: object
                 type: object
@@ -18669,13 +18687,27 @@ spec:
                         type: array
                       maxVersion:
                         enum:
+                        - "1.1"
                         - "1.2"
                         - "1.3"
+                        - TLSv1.1
+                        - TLSv1.2
+                        - TLSv1.3
+                        - tls1.1
+                        - tls1.2
+                        - tls1.3
                         type: string
                       minVersion:
                         enum:
+                        - "1.1"
                         - "1.2"
                         - "1.3"
+                        - tls1.1
+                        - tls1.2
+                        - tls1.3
+                        - TLSv1.1
+                        - TLSv1.2
+                        - TLSv1.3
                         type: string
                     type: object
                   version:
@@ -22271,13 +22303,27 @@ spec:
                         type: array
                       maxVersion:
                         enum:
+                        - "1.1"
                         - "1.2"
                         - "1.3"
+                        - TLSv1.1
+                        - TLSv1.2
+                        - TLSv1.3
+                        - tls1.1
+                        - tls1.2
+                        - tls1.3
                         type: string
                       minVersion:
                         enum:
+                        - "1.1"
                         - "1.2"
                         - "1.3"
+                        - tls1.1
+                        - tls1.2
+                        - tls1.3
+                        - TLSv1.1
+                        - TLSv1.2
+                        - TLSv1.3
                         type: string
                     type: object
                   verifytls:
@@ -27969,13 +28015,27 @@ spec:
                         type: array
                       maxVersion:
                         enum:
+                        - "1.1"
                         - "1.2"
                         - "1.3"
+                        - TLSv1.1
+                        - TLSv1.2
+                        - TLSv1.3
+                        - tls1.1
+                        - tls1.2
+                        - tls1.3
                         type: string
                       minVersion:
                         enum:
+                        - "1.1"
                         - "1.2"
                         - "1.3"
+                        - tls1.1
+                        - tls1.2
+                        - tls1.3
+                        - TLSv1.1
+                        - TLSv1.2
+                        - TLSv1.3
                         type: string
                     type: object
                   volumeMounts:
