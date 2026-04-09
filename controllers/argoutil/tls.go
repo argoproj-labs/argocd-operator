@@ -304,24 +304,24 @@ func buildRedisProtocols(min, max string) []string {
 	return result
 }
 
-func validateAndParseTLS(tlsCfg *argoproj.ArgoCDTlsConfig) (string, string, uint16, uint16, error) {
+func validateAndParseTLS(tlsCfg *argoproj.ArgoCDTlsConfig) (string, string, error) {
 	if tlsCfg == nil {
-		return "", "", 0, 0, nil
+		return "", "", nil
 	}
 	minStr := normalizeTLSVersionForParsing(tlsCfg.MinVersion)
 	maxStr := normalizeTLSVersionForParsing(tlsCfg.MaxVersion)
 	minVer, err := ParseTLSVersion(minStr)
 	if err != nil {
-		return "", "", 0, 0, fmt.Errorf("invalid min TLS version: %w", err)
+		return "", "", fmt.Errorf("invalid min TLS version: %w", err)
 	}
 	maxVer, err := ParseTLSVersion(maxStr)
 	if err != nil {
-		return "", "", 0, 0, fmt.Errorf("invalid max TLS version: %w", err)
+		return "", "", fmt.Errorf("invalid max TLS version: %w", err)
 	}
 	if err := ValidateTLSConfig(minVer, maxVer, tlsCfg.CipherSuites); err != nil {
-		return "", "", 0, 0, fmt.Errorf("invalid TLS configuration: %w", err)
+		return "", "", fmt.Errorf("invalid TLS configuration: %w", err)
 	}
-	return minStr, maxStr, minVer, maxVer, nil
+	return minStr, maxStr, nil
 }
 
 func BuildArgoCDAgentTLSArgs(tls *argoproj.ArgoCDTlsConfig, args map[string]string) (map[string]string, error) {
@@ -331,7 +331,7 @@ func BuildArgoCDAgentTLSArgs(tls *argoproj.ArgoCDTlsConfig, args map[string]stri
 		args["--tlsciphers"] = ""
 		return args, nil
 	}
-	minStr, maxStr, _, _, err := validateAndParseTLS(tls)
+	minStr, maxStr, err := validateAndParseTLS(tls)
 	if err != nil {
 		return nil, err
 	}
@@ -351,7 +351,7 @@ func BuildTLSArgs(tls *argoproj.ArgoCDTlsConfig) ([]string, error) {
 			"--tlsmaxversion", defaultTLSMax,
 		}, nil
 	}
-	minStr, maxStr, _, _, err := validateAndParseTLS(tls)
+	minStr, maxStr, err := validateAndParseTLS(tls)
 	if err != nil {
 		return nil, err
 	}
@@ -370,7 +370,7 @@ func BuildRedisArgs(tls *argoproj.ArgoCDTlsConfig) ([]string, error) {
 	if tls == nil {
 		return []string{"--tls-protocols", defaultRedisTLSProtocol}, nil
 	}
-	minStr, maxStr, _, _, err := validateAndParseTLS(tls)
+	minStr, maxStr, err := validateAndParseTLS(tls)
 	if err != nil {
 		return nil, err
 	}
