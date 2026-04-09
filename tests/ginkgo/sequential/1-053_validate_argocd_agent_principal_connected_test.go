@@ -721,7 +721,7 @@ func buildArgoCDResource(argoCDName string, componentType argov1beta1api.AgentCo
 				Principal: &argov1beta1api.PrincipalSpec{
 					Enabled:  ptr.To(true),
 					Auth:     "mtls:CN=([^,]+)",
-					LogLevel: "info",
+					LogLevel: "debug",
 					Image:    common.ArgoCDAgentPrincipalDefaultImageName,
 					Namespace: &argov1beta1api.PrincipalNamespaceSpec{
 						AllowedNamespaces: []string{

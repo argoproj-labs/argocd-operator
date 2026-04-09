@@ -32,7 +32,6 @@ nav:
 - Overview: index.md
 - Release Process: release-process.md
 - Security: SECURITY.md
-- E2E Testing: e2e-test-guide.md
 - Install:
   - Getting Started: install/start.md
   - OpenShift: install/openshift.md
@@ -72,6 +71,7 @@ nav:
   - Contributing: developer-guide/contributing.md
   - Development:
     - Setup: developer-guide/development.md
+    - E2E Testing: developer-guide/e2e-test-guide.md
     - OLM Environment: developer-guide/olm-env.md
     - OpenAPI: developer-guide/openapi.md
 - Releases ⧉: https://github.com/argoproj-labs/argocd-operator/releases
