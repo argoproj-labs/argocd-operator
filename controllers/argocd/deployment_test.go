@@ -1357,6 +1357,7 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 				Name:            "argocd-server",
 				Image:           getArgoContainerImage(a),
 				ImagePullPolicy: corev1.PullIfNotPresent,
+				Args:            []string{"--tlsminversion", "1.3", "--tlsmaxversion", "1.3"},
 				Command: []string{
 					"argocd-server",
 					"--staticassets",
@@ -1847,6 +1848,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 				Name:            "argocd-server",
 				Image:           getArgoContainerImage(a),
 				ImagePullPolicy: corev1.PullIfNotPresent,
+				Args:            []string{"--tlsminversion", "1.3", "--tlsmaxversion", "1.3"},
 				Command: []string{
 					"argocd-server",
 					"--insecure",
@@ -1932,6 +1934,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 				Name:            "argocd-server",
 				Image:           getArgoContainerImage(a),
 				ImagePullPolicy: corev1.PullIfNotPresent,
+				Args:            []string{"--tlsminversion", "1.3", "--tlsmaxversion", "1.3"},
 				Command: []string{
 					"argocd-server",
 					"--insecure",
@@ -2025,6 +2028,7 @@ func TestReconcileArgoCD_reconcileRedisDeploymentWithTLS(t *testing.T) {
 		"--save", "",
 		"--appendonly", "no",
 		"--aclfile", "/app/config/redis-auth/users.acl",
+		"--tls-protocols", "TLSv1.3",
 		"--tls-port", "6379",
 		"--port", "0",
 		"--tls-cert-file", "/app/config/redis/tls/tls.crt",
