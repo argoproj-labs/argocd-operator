@@ -215,6 +215,7 @@ func ValidateTLSConfig(minVersion, maxVersion uint16, cipherSuites []string) err
 		}
 		// TLS 1.3 ciphers don't need compatibility validation
 		if minVersion == tls.VersionTLS13 {
+			continue
 		}
 		if !isCipherCompatible(cs, minVersion, maxVersion) {
 			return fmt.Errorf("cipher suite %s is not compatible with TLS versions [%s - %s]", name, TLSVersionName(minVersion), TLSVersionName(maxVersion))
