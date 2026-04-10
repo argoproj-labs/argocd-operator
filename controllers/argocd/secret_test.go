@@ -3,6 +3,7 @@ package argocd
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -894,7 +895,8 @@ func Test_applyGitHubWebhookSecretFromRef(t *testing.T) {
 		}
 		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(src).Build()
 		argocd := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "argocd-secret", Namespace: "ns-a"}, Data: map[string][]byte{}}
-		changed := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
+		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
+		require.NoError(t, err)
 		assert.True(t, changed)
 		assert.Equal(t, []byte("supersecret"), argocd.Data[common.ArgoCDKeyGitHubWebhookSecret])
 	})
@@ -912,7 +914,8 @@ func Test_applyGitHubWebhookSecretFromRef(t *testing.T) {
 				common.ArgoCDKeyGitHubWebhookSecret: []byte("same"),
 			},
 		}
-		changed := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
+		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
+		require.NoError(t, err)
 		assert.False(t, changed)
 	})
 
@@ -920,7 +923,8 @@ func Test_applyGitHubWebhookSecretFromRef(t *testing.T) {
 		cr := baseCR()
 		cl := fake.NewClientBuilder().WithScheme(scheme).Build()
 		argocd := &corev1.Secret{Data: map[string][]byte{}}
-		changed := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
+		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
+		require.NoError(t, err)
 		assert.False(t, changed)
 		assert.Empty(t, argocd.Data[common.ArgoCDKeyGitHubWebhookSecret])
 	})
@@ -933,15 +937,38 @@ func Test_applyGitHubWebhookSecretFromRef(t *testing.T) {
 		}
 		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(src).Build()
 		argocd := &corev1.Secret{Data: map[string][]byte{}}
-		changed := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
+		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
+		require.NoError(t, err)
 		assert.False(t, changed)
 		assert.Empty(t, argocd.Data[common.ArgoCDKeyGitHubWebhookSecret])
+	})
+
+	t.Run("get returns non-NotFound error", func(t *testing.T) {
+		cr := baseCR()
+		want := errors.New("simulated API failure")
+		cl := &getAlwaysErrClient{Client: fake.NewClientBuilder().WithScheme(scheme).Build(), getErr: want}
+		argocd := &corev1.Secret{Data: map[string][]byte{}}
+		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
+		assert.ErrorIs(t, err, want)
+		assert.False(t, changed)
 	})
 
 	t.Run("no webhook spec", func(t *testing.T) {
 		cr := &argoproj.ArgoCD{ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: "ns-a"}}
 		cl := fake.NewClientBuilder().WithScheme(scheme).Build()
 		argocd := &corev1.Secret{Data: map[string][]byte{}}
-		assert.False(t, applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd))
+		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
+		require.NoError(t, err)
+		assert.False(t, changed)
 	})
+}
+
+// getAlwaysErrClient wraps a client.Client and always returns getErr from Get (for testing Secret read failures).
+type getAlwaysErrClient struct {
+	client.Client
+	getErr error
+}
+
+func (c *getAlwaysErrClient) Get(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
+	return c.getErr
 }

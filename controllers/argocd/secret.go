@@ -384,7 +384,11 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secre
 		}
 	}
 
-	if applyGitHubWebhookSecretFromRef(context.TODO(), r.Client, cr, secret) {
+	changed, err := applyGitHubWebhookSecretFromRef(context.TODO(), r.Client, cr, secret)
+	if err != nil {
+		return err
+	}
+	if changed {
 		changes = append(changes, "github webhook secret")
 	}
 
@@ -399,15 +403,16 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secre
 }
 
 // applyGitHubWebhookSecretFromRef copies spec.webhookSecrets.github.secretRef into argocdSecret.Data[webhook.github.secret].
-// Returns true if argocdSecret was modified. Missing referenced Secret or key logs a warning and returns false without error.
-func applyGitHubWebhookSecretFromRef(ctx context.Context, c client.Client, cr *argoproj.ArgoCD, argocdSecret *corev1.Secret) bool {
+// Returns true if argocdSecret was modified. Missing referenced Secret (NotFound) or missing key logs a warning and returns (false, nil).
+// Other Secret read errors are returned so the reconciler can retry.
+func applyGitHubWebhookSecretFromRef(ctx context.Context, c client.Client, cr *argoproj.ArgoCD, argocdSecret *corev1.Secret) (bool, error) {
 	if cr.Spec.WebhookSecrets == nil || cr.Spec.WebhookSecrets.GitHub == nil || cr.Spec.WebhookSecrets.GitHub.SecretRef == nil {
-		return false
+		return false, nil
 	}
 	ref := cr.Spec.WebhookSecrets.GitHub.SecretRef
 	if ref.Name == "" {
 		log.Info("skipping GitHub webhook secret sync: secretRef.name is empty")
-		return false
+		return false, nil
 	}
 	ns := cr.Namespace
 	src := &corev1.Secret{}
@@ -415,15 +420,14 @@ func applyGitHubWebhookSecretFromRef(ctx context.Context, c client.Client, cr *a
 	if err := c.Get(ctx, key, src); err != nil {
 		if apierrors.IsNotFound(err) {
 			log.Info(fmt.Sprintf("warning: GitHub webhook secret reference not found (Secret %s/%s), skipping sync", ns, ref.Name))
-		} else {
-			log.Info(fmt.Sprintf("warning: could not read GitHub webhook secret reference %s/%s: %v, skipping sync", ns, ref.Name, err))
+			return false, nil
 		}
-		return false
+		return false, err
 	}
 	raw, ok := src.Data[ref.Key]
 	if !ok || len(raw) == 0 {
 		log.Info(fmt.Sprintf("warning: key %q missing or empty in Secret %s/%s, skipping GitHub webhook secret sync", ref.Key, ns, ref.Name))
-		return false
+		return false, nil
 	}
 	val := make([]byte, len(raw))
 	copy(val, raw)
@@ -432,10 +436,10 @@ func applyGitHubWebhookSecretFromRef(ctx context.Context, c client.Client, cr *a
 		argocdSecret.Data = make(map[string][]byte)
 	}
 	if existing, ok := argocdSecret.Data[common.ArgoCDKeyGitHubWebhookSecret]; ok && bytes.Equal(existing, val) {
-		return false
+		return false, nil
 	}
 	argocdSecret.Data[common.ArgoCDKeyGitHubWebhookSecret] = val
-	return true
+	return true, nil
 }
 
 // reconcileGrafanaSecret will ensure that the Grafana Secret is present.
