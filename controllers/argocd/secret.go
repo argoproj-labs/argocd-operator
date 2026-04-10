@@ -122,7 +122,7 @@ func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.Pr
 	dnsNames := []string{
 		cr.Name,
 		nameWithSuffix("grpc", cr),
-		fmt.Sprintf("%s.%s.svc.%s", cr.Name, cr.Namespace, getClusterDomain(cr)),
+		fmt.Sprintf("%s.%s.svc.%s", cr.Name, cr.Namespace, argoutil.GetClusterDomain(cr)),
 	}
 
 	//lint:ignore SA1019 known to be deprecated

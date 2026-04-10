@@ -1719,7 +1719,7 @@ func TestGetClusterDomain(t *testing.T) {
 			a := makeTestArgoCD()
 			a.Spec.ClusterDomain = tt.clusterDomain
 
-			result := getClusterDomain(a)
+			result := argoutil.GetClusterDomain(a)
 			assert.Equal(t, tt.expectedDomain, result)
 		})
 	}
@@ -1761,7 +1761,7 @@ func TestFqdnServiceRefWithCustomDomain(t *testing.T) {
 			a := makeTestArgoCD()
 			a.Spec.ClusterDomain = tt.clusterDomain
 
-			result := fqdnServiceRef(tt.service, tt.port, a)
+			result := argoutil.FqdnServiceRef(tt.service, tt.port, a)
 			assert.Equal(t, tt.expectedFQDN, result)
 		})
 	}
@@ -1807,7 +1807,7 @@ func TestGetRedisServerAddressWithCustomDomain(t *testing.T) {
 			a.Spec.HA.Enabled = tt.haEnabled
 			a.Spec.Redis.Remote = tt.remoteRedis
 
-			result := getRedisServerAddress(a)
+			result := argoutil.GetRedisServerAddress(a)
 			assert.Equal(t, tt.expectedAddr, result)
 		})
 	}
