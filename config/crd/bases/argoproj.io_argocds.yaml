@@ -8763,10 +8763,6 @@ spec:
                           name:
                             description: Name of the Secret.
                             type: string
-                          namespace:
-                            description: Namespace of the Secret. When unset, the
-                              ArgoCD CR namespace is used.
-                            type: string
                         required:
                         - key
                         - name
@@ -32260,10 +32256,6 @@ spec:
                             type: string
                           name:
                             description: Name of the Secret.
-                            type: string
-                          namespace:
-                            description: Namespace of the Secret. When unset, the
-                              ArgoCD CR namespace is used.
                             type: string
                         required:
                         - key

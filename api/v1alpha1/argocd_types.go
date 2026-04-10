@@ -916,14 +916,12 @@ type ArgoCDWebhookSecretsGitHub struct {
 	SecretRef *WebhookSecretKeySelector `json:"secretRef,omitempty"`
 }
 
-// WebhookSecretKeySelector references one key within a Secret (mirrors SecretKeySelector-style semantics).
+// WebhookSecretKeySelector references one key within a Secret.
 // +k8s:openapi-gen=true
 type WebhookSecretKeySelector struct {
 	// Name of the Secret.
 	// +kubebuilder:validation:Required
 	Name string `json:"name"`
-	// Namespace of the Secret. When unset, the ArgoCD CR namespace is used.
-	Namespace string `json:"namespace,omitempty"`
 	// Key in the Secret whose value should be used.
 	// +kubebuilder:validation:Required
 	Key string `json:"key"`

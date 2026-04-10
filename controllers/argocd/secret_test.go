@@ -938,20 +938,6 @@ func Test_applyGitHubWebhookSecretFromRef(t *testing.T) {
 		assert.Empty(t, argocd.Data[common.ArgoCDKeyGitHubWebhookSecret])
 	})
 
-	t.Run("cross-namespace ref", func(t *testing.T) {
-		cr := baseCR()
-		cr.Spec.WebhookSecrets.GitHub.SecretRef.Namespace = "ns-b"
-		src := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "src", Namespace: "ns-b"},
-			Data:       map[string][]byte{"token": []byte("cross")},
-		}
-		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(src).Build()
-		argocd := &corev1.Secret{Data: map[string][]byte{}}
-		changed := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
-		assert.True(t, changed)
-		assert.Equal(t, []byte("cross"), argocd.Data[common.ArgoCDKeyGitHubWebhookSecret])
-	})
-
 	t.Run("no webhook spec", func(t *testing.T) {
 		cr := &argoproj.ArgoCD{ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: "ns-a"}}
 		cl := fake.NewClientBuilder().WithScheme(scheme).Build()

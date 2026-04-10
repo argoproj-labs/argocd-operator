@@ -409,10 +409,7 @@ func applyGitHubWebhookSecretFromRef(ctx context.Context, c client.Client, cr *a
 		log.Info("skipping GitHub webhook secret sync: secretRef.name is empty")
 		return false
 	}
-	ns := ref.Namespace
-	if ns == "" {
-		ns = cr.Namespace
-	}
+	ns := cr.Namespace
 	src := &corev1.Secret{}
 	key := types.NamespacedName{Name: ref.Name, Namespace: ns}
 	if err := c.Get(ctx, key, src); err != nil {

@@ -1052,9 +1052,8 @@ func ConvertAlphaToBetaWebhookSecrets(src *ArgoCDWebhookSecretsSpec) *v1beta1.Ar
 		dst.GitHub = &v1beta1.ArgoCDWebhookSecretsGitHub{}
 		if src.GitHub.SecretRef != nil {
 			dst.GitHub.SecretRef = &v1beta1.WebhookSecretKeySelector{
-				Name:      src.GitHub.SecretRef.Name,
-				Namespace: src.GitHub.SecretRef.Namespace,
-				Key:       src.GitHub.SecretRef.Key,
+				Name: src.GitHub.SecretRef.Name,
+				Key:  src.GitHub.SecretRef.Key,
 			}
 		}
 	}
@@ -1071,9 +1070,8 @@ func ConvertBetaToAlphaWebhookSecrets(src *v1beta1.ArgoCDWebhookSecretsSpec) *Ar
 		dst.GitHub = &ArgoCDWebhookSecretsGitHub{}
 		if src.GitHub.SecretRef != nil {
 			dst.GitHub.SecretRef = &WebhookSecretKeySelector{
-				Name:      src.GitHub.SecretRef.Name,
-				Namespace: src.GitHub.SecretRef.Namespace,
-				Key:       src.GitHub.SecretRef.Key,
+				Name: src.GitHub.SecretRef.Name,
+				Key:  src.GitHub.SecretRef.Key,
 			}
 		}
 	}
