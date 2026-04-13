@@ -291,16 +291,19 @@ func formatTLSVersionForRedis(v string) string {
 }
 
 func buildRedisProtocols(min, max string) []string {
-	set := make(map[string]struct{})
-	if min != "" {
-		set[min] = struct{}{}
-	}
-	if max != "" {
-		set[max] = struct{}{}
-	}
+	order := []string{"TLSv1.1", "TLSv1.2", "TLSv1.3"}
 	var result []string
-	for k := range set {
-		result = append(result, k)
+	start := false
+	for _, v := range order {
+		if v == min {
+			start = true
+		}
+		if start {
+			result = append(result, v)
+		}
+		if v == max {
+			break
+		}
 	}
 	return result
 }
@@ -383,8 +386,25 @@ func BuildRedisArgs(tls *argoproj.ArgoCDTlsConfig) ([]string, error) {
 	if len(protocols) > 0 {
 		args = append(args, "--tls-protocols", strings.Join(protocols, " "))
 	}
+	// Determine enabled TLS versions
+	hasTLS12OrBelow := false
+	hasTLS13 := false
+	for _, p := range protocols {
+		switch p {
+		case "TLSv1.1", "TLSv1.2":
+			hasTLS12OrBelow = true
+		case "TLSv1.3":
+			hasTLS13 = true
+		}
+	}
+
 	if ciphers := joinCiphers(tls.CipherSuites); ciphers != "" {
-		args = append(args, "--tls-ciphersuites", ciphers)
+		if hasTLS12OrBelow {
+			args = append(args, "--tls-ciphers", ciphers)
+		}
+		if hasTLS13 {
+			args = append(args, "--tls-ciphersuites", ciphers)
+		}
 	}
 	return args, nil
 }
