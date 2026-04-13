@@ -1378,7 +1378,7 @@ type PrincipalTLSSpec struct {
 
 	// InsecureGenerate is the flag to allow the principal to generate its own set of TLS cert and key on startup when none are configured
 	InsecureGenerate *bool `json:"insecureGenerate,omitempty"`
-	// TLS configuration for the repo server
+	// TLS configuration for the Principal component.
 	TlsConfig *ArgoCDTlsConfig `json:"tlsConfig,omitempty"`
 }
 

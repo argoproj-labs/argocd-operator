@@ -11921,7 +11921,7 @@ spec:
                               the TLS certificate and key.
                             type: string
                           tlsConfig:
-                            description: TLS configuration for the repo server
+                            description: TLS configuration for the Principal component.
                             properties:
                               cipherSuites:
                                 items:

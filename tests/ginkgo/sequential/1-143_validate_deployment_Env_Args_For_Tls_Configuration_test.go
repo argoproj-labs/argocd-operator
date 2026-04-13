@@ -154,6 +154,9 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 				By("cleaning up resources")
 				_ = c.Delete(ctx, argo)
 				_ = c.Delete(ctx, ns)
+				os.Remove(redis_crt_File.Name())
+				os.Remove(redis_key_File.Name())
+				os.Remove(openssl_test_File.Name())
 			}()
 			coreDeployments := []string{
 				"example-argocd-server",
@@ -195,6 +198,9 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 			Eventually(func() bool {
 				deployment := &appsv1.Deployment{}
 				if err := c.Get(ctx, types.NamespacedName{Name: "example-argocd-redis", Namespace: argocdNamespace}, deployment); err != nil {
+					return false
+				}
+				if len(deployment.Spec.Template.Spec.Containers) == 0 {
 					return false
 				}
 				args := deployment.Spec.Template.Spec.Containers[0].Args
@@ -291,6 +297,9 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 				if err := c.Get(ctx, types.NamespacedName{Name: "example-argocd-redis", Namespace: argocdNamespace}, deployment); err != nil {
 					return false
 				}
+				if len(deployment.Spec.Template.Spec.Containers) == 0 {
+					return false
+				}
 				args := deployment.Spec.Template.Spec.Containers[0].Args
 				var tlsProtocols string
 				var tlsCipherSuites string
@@ -378,6 +387,9 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 			Eventually(func() bool {
 				deployment := &appsv1.Deployment{}
 				if err := c.Get(ctx, types.NamespacedName{Name: "example-argocd-redis", Namespace: argocdNamespace}, deployment); err != nil {
+					return false
+				}
+				if len(deployment.Spec.Template.Spec.Containers) == 0 {
 					return false
 				}
 				args := deployment.Spec.Template.Spec.Containers[0].Args
@@ -477,6 +489,9 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 				if err := c.Get(ctx, types.NamespacedName{Name: "example-argocd-redis", Namespace: argocdNamespace}, deployment); err != nil {
 					return false
 				}
+				if len(deployment.Spec.Template.Spec.Containers) == 0 {
+					return false
+				}
 				args := deployment.Spec.Template.Spec.Containers[0].Args
 				var tlsProtocols string
 				var tlsCipherSuites string
@@ -563,6 +578,9 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 				if err := c.Get(ctx, types.NamespacedName{Name: "example-argocd-redis", Namespace: argocdNamespace}, deployment); err != nil {
 					return false
 				}
+				if len(deployment.Spec.Template.Spec.Containers) == 0 {
+					return false
+				}
 				args := deployment.Spec.Template.Spec.Containers[0].Args
 				var tlsProtocols string
 				var tlsCipherSuites string
@@ -607,14 +625,19 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 			argo.Spec.Server.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
 			argo.Spec.Redis.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
 			Expect(c.Update(ctx, argo)).To(Succeed())
-
 			time.Sleep(5 * time.Second)
-
-			Expect(c.Get(ctx, types.NamespacedName{Name: argocdInstanceName, Namespace: argocdNamespace}, argo)).To(Succeed())
-			Expect(argo.Status.Conditions).ToNot(BeEmpty(), "No status conditions found")
-			cond := argo.Status.Conditions[0]
-			Expect(cond.Message).To(Equal("invalid TLS configuration: unsupported cipher suite: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"))
-			Expect(cond.Reason).To(Equal("ErrorOccurred"))
+			Eventually(func() *metav1.Condition {
+				err := c.Get(ctx, types.NamespacedName{Name: argocdInstanceName, Namespace: argocdNamespace}, argo)
+				if err != nil {
+					return nil
+				}
+				for _, cond := range argo.Status.Conditions {
+					if cond.Reason == "ErrorOccurred" && cond.Message == "invalid TLS configuration: unsupported cipher suite: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256" {
+						return &cond
+					}
+				}
+				return nil
+			}, 30*time.Second, 1*time.Second).ShouldNot(BeNil(), "Expected TLS validation error condition not found")
 
 			// --- Validate updated TLS values ---
 			By("validating updated TLS invalid double CipherSuites For RepoServer, Server and Redis")
@@ -654,6 +677,9 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 			Eventually(func() bool {
 				deployment := &appsv1.Deployment{}
 				if err := c.Get(ctx, types.NamespacedName{Name: "example-argocd-redis", Namespace: argocdNamespace}, deployment); err != nil {
+					return false
+				}
+				if len(deployment.Spec.Template.Spec.Containers) == 0 {
 					return false
 				}
 				args := deployment.Spec.Template.Spec.Containers[0].Args
