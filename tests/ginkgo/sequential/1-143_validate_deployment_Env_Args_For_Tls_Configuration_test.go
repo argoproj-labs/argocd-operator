@@ -11,9 +11,10 @@ import (
 	"os"
 	"time"
 
-	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+
+	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
