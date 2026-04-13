@@ -136,7 +136,16 @@ func NameWithSuffix(meta metav1.ObjectMeta, suffix string) string {
 // FqdnServiceRef will return the FQDN referencing a specific service name, as set up by the operator, with the
 // given port.
 func FqdnServiceRef(service string, port int, cr *argoproj.ArgoCD) string {
-	return fmt.Sprintf("%s.%s.svc.cluster.local:%d", NameWithSuffix(cr.ObjectMeta, service), cr.Namespace, port)
+	return fmt.Sprintf("%s.%s.svc.%s:%d", NameWithSuffix(cr.ObjectMeta, service), cr.Namespace, GetClusterDomain(cr), port)
+}
+
+// GetClusterDomain returns the cluster domain suffix for the given ArgoCD instance.
+// If not specified in the CR, defaults to the standard cluster domain.
+func GetClusterDomain(cr *argoproj.ArgoCD) string {
+	if cr.Spec.ClusterDomain != "" {
+		return cr.Spec.ClusterDomain
+	}
+	return common.ArgoCDDefaultClusterDomain
 }
 
 func newEvent(meta metav1.ObjectMeta) *corev1.Event {

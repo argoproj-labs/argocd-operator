@@ -310,7 +310,7 @@ func GetRedisServerAddress(cr *argoproj.ArgoCD) string {
 
 	// If principal is enabled, then Argo CD server/repo server should be configured to use redis proxy from principal (argo cd agent)
 	if cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Principal != nil && cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
-		return GenerateAgentPrincipalRedisProxyServiceName(cr.Name) + "." + cr.Namespace + ".svc.cluster.local:6379"
+		return GenerateAgentPrincipalRedisProxyServiceName(cr.Name) + "." + cr.Namespace + ".svc." + GetClusterDomain(cr) + ":6379"
 	}
 
 	if cr.Spec.HA.Enabled {
