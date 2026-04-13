@@ -206,8 +206,10 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 				args := deployment.Spec.Template.Spec.Containers[0].Args
 				var tlsProtocols string
 				var tlsCipherSuites string
+				var tlsCiphers string
 				hasProtocols := false
 				hasCiphers := false
+				hasCiphersTLS2 := false
 				for i := 0; i < len(args); i++ {
 					arg := args[i]
 					// --- Handle "--tls-protocols <value>"
@@ -224,11 +226,21 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 							tlsCipherSuites = args[i+1]
 						}
 					}
+					if arg == "--tls-ciphers" {
+						hasCiphersTLS2 = true
+						if i+1 < len(args) {
+							tlsCiphers = args[i+1]
+						}
+					}
 				}
 
 				// --- Print results (always helpful in debugging)
 				if hasCiphers || tlsCipherSuites != "" {
 					GinkgoWriter.Printf("  --tls-ciphersuites=%q\n should be empty", tlsCipherSuites)
+					return false
+				}
+				if hasCiphersTLS2 || tlsCiphers != "" {
+					GinkgoWriter.Printf("  --tls-ciphers=%q\n should be empty", tlsCiphers)
 					return false
 				}
 
@@ -238,6 +250,7 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 				}
 				GinkgoWriter.Printf("%s TLS args protocol value: %s\n", deployment.Name, tlsProtocols)
 				GinkgoWriter.Printf("%s TLS args ciphersuites value: %s\n", deployment.Name, tlsCipherSuites)
+				GinkgoWriter.Printf("%s TLS args ciphers value: %s\n", deployment.Name, tlsCiphers)
 				return true
 			}, 60*time.Second, 2*time.Second).Should(BeTrue())
 
@@ -253,7 +266,7 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 				MaxVersion: "1.3",
 			}
 			argo.Spec.Redis.TlsConfig = &argov1beta1api.ArgoCDTlsConfig{
-				MinVersion: "1.2",
+				MinVersion: "1.1",
 				MaxVersion: "1.3",
 			}
 			Expect(c.Update(ctx, argo)).To(Succeed())
@@ -303,8 +316,10 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 				args := deployment.Spec.Template.Spec.Containers[0].Args
 				var tlsProtocols string
 				var tlsCipherSuites string
+				var tlsCiphers string
 				hasProtocols := false
 				hasCiphers := false
+				hasCiphersTLS2 := false
 				for i := 0; i < len(args); i++ {
 					arg := args[i]
 					// --- Handle "--tls-protocols <value>"
@@ -321,6 +336,13 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 							tlsCipherSuites = args[i+1]
 						}
 					}
+					// --- Handle "--tls-ciphers <value>"
+					if arg == "--tls-ciphers" {
+						hasCiphersTLS2 = true
+						if i+1 < len(args) {
+							tlsCiphers = args[i+1]
+						}
+					}
 				}
 
 				// --- Print results (always helpful in debugging)
@@ -328,13 +350,18 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 					GinkgoWriter.Printf("  --tls-ciphersuites=%q\n should be empty", tlsCipherSuites)
 					return false
 				}
+				if hasCiphersTLS2 || tlsCiphers != "" {
+					GinkgoWriter.Printf("  --tls-ciphers=%q\n should be empty", tlsCiphers)
+					return false
+				}
 
-				if !hasProtocols || tlsProtocols != "TLSv1.2 TLSv1.3" {
-					GinkgoWriter.Printf("%s: expected --tls-protocols=TLSv1.2 TLSv1.3, got %s\n", deployment.Name, tlsProtocols)
+				if !hasProtocols || tlsProtocols != "TLSv1.1 TLSv1.2 TLSv1.3" {
+					GinkgoWriter.Printf("%s: expected --tls-protocols=TLSv1.1 TLSv1.2 TLSv1.3, got %s\n", deployment.Name, tlsProtocols)
 					return false
 				}
 				GinkgoWriter.Printf("%s TLS args protocol value: %s\n", deployment.Name, tlsProtocols)
 				GinkgoWriter.Printf("%s TLS args ciphersuites value: %s\n", deployment.Name, tlsCipherSuites)
+				GinkgoWriter.Printf("%s TLS args ciphers value: %s\n", deployment.Name, tlsCiphers)
 				return true
 			}, 60*time.Second, 2*time.Second).Should(BeTrue())
 
@@ -342,7 +369,11 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 			Expect(c.Get(ctx, types.NamespacedName{Name: argocdInstanceName, Namespace: argocdNamespace}, argo)).To(Succeed())
 			argo.Spec.Repo.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"}
 			argo.Spec.Server.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"}
-			argo.Spec.Redis.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"}
+			argo.Spec.Redis.TlsConfig = &argov1beta1api.ArgoCDTlsConfig{
+				MinVersion:   "1.2",
+				MaxVersion:   "1.3",
+				CipherSuites: []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"},
+			}
 			Expect(c.Update(ctx, argo)).To(Succeed())
 
 			time.Sleep(5 * time.Second)
@@ -395,8 +426,10 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 				args := deployment.Spec.Template.Spec.Containers[0].Args
 				var tlsProtocols string
 				var tlsCipherSuites string
+				var tlsCiphers string
 				hasProtocols := false
 				hasCiphers := false
+				hasCiphersTLS2 := false
 				for i := 0; i < len(args); i++ {
 					arg := args[i]
 					// --- Handle "--tls-protocols <value>"
@@ -413,6 +446,14 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 							tlsCipherSuites = args[i+1]
 						}
 					}
+
+					// --- Handle "--tls-ciphers <value>"
+					if arg == "--tls-ciphers" {
+						hasCiphersTLS2 = true
+						if i+1 < len(args) {
+							tlsCiphers = args[i+1]
+						}
+					}
 				}
 
 				// --- Print results (always helpful in debugging)
@@ -420,13 +461,17 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 					GinkgoWriter.Printf("  --tls-ciphersuites=%q\n should be TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, but got %q\n", tlsCipherSuites, tlsCipherSuites)
 					return false
 				}
-
+				if hasCiphersTLS2 && tlsCiphers != "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384" {
+					GinkgoWriter.Printf("  --tls-ciphers=%q\n should be TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, but got %q\n", tlsCiphers, tlsCiphers)
+					return false
+				}
 				if !hasProtocols || tlsProtocols != "TLSv1.2 TLSv1.3" {
 					GinkgoWriter.Printf("%s: expected --tls-protocols=TLSv1.2 TLSv1.3, got %s\n", deployment.Name, tlsProtocols)
 					return false
 				}
 				GinkgoWriter.Printf("%s TLS args protocol value: %s\n", deployment.Name, tlsProtocols)
 				GinkgoWriter.Printf("%s TLS args ciphersuites value: %s\n", deployment.Name, tlsCipherSuites)
+				GinkgoWriter.Printf("%s TLS args ciphers value: %s\n", deployment.Name, tlsCiphers)
 				return true
 			}, 60*time.Second, 2*time.Second).Should(BeTrue())
 
@@ -495,8 +540,10 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 				args := deployment.Spec.Template.Spec.Containers[0].Args
 				var tlsProtocols string
 				var tlsCipherSuites string
+				var tlsCiphers string
 				hasProtocols := false
 				hasCiphers := false
+				hasCiphersTLS2 := false
 				for i := 0; i < len(args); i++ {
 					arg := args[i]
 					// --- Handle "--tls-protocols <value>"
@@ -513,6 +560,14 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 							tlsCipherSuites = args[i+1]
 						}
 					}
+
+					if arg == "--tls-ciphers" {
+						hasCiphersTLS2 = true
+						if i+1 < len(args) {
+							tlsCiphers = args[i+1]
+						}
+					}
+
 				}
 
 				// --- Print results (always helpful in debugging)
@@ -520,13 +575,17 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 					GinkgoWriter.Printf("  --tls-ciphersuites=%q\n should be empty", tlsCipherSuites)
 					return false
 				}
-
+				if hasCiphersTLS2 || tlsCiphers != "" {
+					GinkgoWriter.Printf("  --tls-ciphers=%q\n should be empty", tlsCiphers)
+					return false
+				}
 				if !hasProtocols || tlsProtocols != "TLSv1.2 TLSv1.3" {
 					GinkgoWriter.Printf("%s: expected --tls-protocols=TLSv1.2 TLSv1.3, got %s\n", deployment.Name, tlsProtocols)
 					return false
 				}
 				GinkgoWriter.Printf("%s TLS args protocol value: %s\n", deployment.Name, tlsProtocols)
 				GinkgoWriter.Printf("%s TLS args ciphersuites value: %s\n", deployment.Name, tlsCipherSuites)
+				GinkgoWriter.Printf("%s TLS args ciphers value: %s\n", deployment.Name, tlsCiphers)
 				return true
 			}, 60*time.Second, 2*time.Second).Should(BeTrue())
 
@@ -584,8 +643,10 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 				args := deployment.Spec.Template.Spec.Containers[0].Args
 				var tlsProtocols string
 				var tlsCipherSuites string
+				var tlsCiphers string
 				hasProtocols := false
 				hasCiphers := false
+				hasCiphersTLS2 := false
 				for i := 0; i < len(args); i++ {
 					arg := args[i]
 					// --- Handle "--tls-protocols <value>"
@@ -602,11 +663,23 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 							tlsCipherSuites = args[i+1]
 						}
 					}
+
+					if arg == "--tls-ciphers" {
+						hasCiphersTLS2 = true
+						if i+1 < len(args) {
+							tlsCiphers = args[i+1]
+						}
+					}
 				}
 
 				// --- Print results (always helpful in debugging)
 				if hasCiphers && tlsCipherSuites != "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256" {
 					GinkgoWriter.Printf("  --tls-ciphersuites=%q\n should be TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, but got %q\n", tlsCipherSuites, tlsCipherSuites)
+					return false
+				}
+
+				if hasCiphersTLS2 && tlsCiphers != "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256" {
+					GinkgoWriter.Printf("  --tls-ciphers=%q\n should be TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, but got %q\n", tlsCiphers, tlsCiphers)
 					return false
 				}
 
@@ -616,6 +689,7 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 				}
 				GinkgoWriter.Printf("%s TLS args protocol value: %s\n", deployment.Name, tlsProtocols)
 				GinkgoWriter.Printf("%s TLS args ciphersuites value: %s\n", deployment.Name, tlsCipherSuites)
+				GinkgoWriter.Printf("%s TLS args ciphers value: %s\n", deployment.Name, tlsCiphers)
 				return true
 			}, 60*time.Second, 2*time.Second).Should(BeTrue())
 
@@ -685,8 +759,10 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 				args := deployment.Spec.Template.Spec.Containers[0].Args
 				var tlsProtocols string
 				var tlsCipherSuites string
+				var tlsCiphers string
 				hasProtocols := false
 				hasCiphers := false
+				hasCiphersTLS2 := false
 				for i := 0; i < len(args); i++ {
 					arg := args[i]
 					// --- Handle "--tls-protocols <value>"
@@ -703,11 +779,24 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 							tlsCipherSuites = args[i+1]
 						}
 					}
+
+					if arg == "--tls-ciphers" {
+						hasCiphersTLS2 = true
+						if i+1 < len(args) {
+							tlsCiphers = args[i+1]
+						}
+					}
+
 				}
 
 				// --- Print results (always helpful in debugging)
 				if hasCiphers && tlsCipherSuites != "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256" {
 					GinkgoWriter.Printf("  --tls-ciphersuites=%q\n should be TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, but got %q\n", tlsCipherSuites, tlsCipherSuites)
+					return false
+				}
+
+				if hasCiphersTLS2 && tlsCiphers != "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256" {
+					GinkgoWriter.Printf("  --tls-ciphers=%q\n should be TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, but got %q\n", tlsCiphers, tlsCiphers)
 					return false
 				}
 
@@ -718,6 +807,7 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 				GinkgoWriter.Print("TLS Invalid  values not populated")
 				GinkgoWriter.Printf("%s TLS args protocol value: %s\n", deployment.Name, tlsProtocols)
 				GinkgoWriter.Printf("%s TLS args ciphersuites value: %s\n", deployment.Name, tlsCipherSuites)
+				GinkgoWriter.Printf("%s TLS args ciphers value: %s\n", deployment.Name, tlsCiphers)
 				return true
 			}, 60*time.Second, 2*time.Second).Should(BeTrue())
 
