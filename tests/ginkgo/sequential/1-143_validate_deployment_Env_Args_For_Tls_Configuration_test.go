@@ -611,7 +611,7 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 			time.Sleep(5 * time.Second)
 
 			Expect(c.Get(ctx, types.NamespacedName{Name: argocdInstanceName, Namespace: argocdNamespace}, argo)).To(Succeed())
-			Expect(len(argo.Status.Conditions)).To(BeNumerically(">", 0), "No status conditions found")
+			Expect(argo.Status.Conditions).ToNot(BeEmpty(), "No status conditions found")
 			cond := argo.Status.Conditions[0]
 			Expect(cond.Message).To(Equal("invalid TLS configuration: unsupported cipher suite: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"))
 			Expect(cond.Reason).To(Equal("ErrorOccurred"))
