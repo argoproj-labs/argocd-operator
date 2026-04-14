@@ -2,20 +2,19 @@ package argocd
 
 import (
 	"context"
-	e "errors"
 	"fmt"
 	"reflect"
 	"strings"
-
 	"time"
 
 	configv1 "github.com/openshift/api/config/v1"
 
 	"gopkg.in/yaml.v2"
+	authv1 "k8s.io/api/authentication/v1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -42,71 +41,157 @@ func UseDex(cr *argoproj.ArgoCD) bool {
 	return false
 }
 
-// getDexOAuthClientSecret will return the OAuth client secret for the given ArgoCD.
+// getDexServerTokenSecretName returns the name of the Secret that stores the Dex OAuth client token.
+func getDexServerTokenSecretName(cr *argoproj.ArgoCD) string {
+	return argoutil.GetSecretNameWithSuffix(cr, common.ArgoCDDefaultDexServiceAccountName+"-token")
+}
+
+// needsDexTokenRenewal returns true when the token is missing, unparseable, or within the renewal window.
+func needsDexTokenRenewal(secret *corev1.Secret) bool {
+	expiryBytes, ok := secret.Data["expiry"]
+	if !ok {
+		return true
+	}
+	expiry, err := time.Parse(time.RFC3339, string(expiryBytes))
+	if err != nil {
+		return true
+	}
+	renewThreshold := time.Duration(common.ArgoCDDexServerTokenExpirySecs/common.ArgoCDDexServerTokenRenewalThresholdFraction) * time.Second
+	return time.Until(expiry) < renewThreshold
+}
+
+// getDexOAuthClientSecret returns a time-limited Dex OAuth client token via the TokenRequest API.
 func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string, error) {
 	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr)
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
 		return nil, err
 	}
 
-	// Find the token secret
-	var tokenSecret *corev1.ObjectReference
-	for _, saSecret := range sa.Secrets {
-		if strings.Contains(saSecret.Name, "token") {
-			tokenSecret = &saSecret
-			break
+	tokenSecretName := getDexServerTokenSecretName(cr)
+	tokenSecret := &corev1.Secret{}
+	fetchErr := argoutil.FetchObject(r.Client, cr.Namespace, tokenSecretName, tokenSecret)
+	if fetchErr != nil && !apierrors.IsNotFound(fetchErr) {
+		return nil, fetchErr
+	}
+	secretExists := fetchErr == nil
+
+	// Return the cached token if it is still valid.
+	if secretExists && !needsDexTokenRenewal(tokenSecret) {
+		token := string(tokenSecret.Data["token"])
+		// Schedule the next reconcile to run just before the renewal threshold so
+		// the token is proactively renewed without waiting for an external event.
+		if expiry, parseErr := time.Parse(time.RFC3339, string(tokenSecret.Data["expiry"])); parseErr == nil {
+			renewThreshold := time.Duration(common.ArgoCDDexServerTokenExpirySecs/common.ArgoCDDexServerTokenRenewalThresholdFraction) * time.Second
+			if d := time.Until(expiry) - renewThreshold; d > 0 {
+				r.dexTokenRequeueAfter.Store(cr.Namespace, d)
+			}
 		}
+		return &token, nil
 	}
 
-	if tokenSecret == nil {
-		// This change of creating secret for dex service account,is due to
-		// change of reduction of secret-based service account tokens in k8s
-		// v1.24 so from k8s v1.24 no default secret for service account is
-		// created, but for dex to work we need to provide token of secret used
-		// by dex service account as a oauth token, this change helps to achieve
-		// it, in long run we should see do dex really requires a secret or it
-		// manages to create one using TokenRequest API or may be change how dex
-		// is used or configured by operator
-		secret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				GenerateName: "argocd-dex-server-token-",
-				Namespace:    cr.Namespace,
-				Annotations: map[string]string{
-					corev1.ServiceAccountNameKey: sa.Name,
-				},
+	// Request a new time-limited token via the TokenRequest API.
+	expirationSeconds := common.ArgoCDDexServerTokenExpirySecs
+	tokenRequest, err := r.K8sClient.CoreV1().ServiceAccounts(cr.Namespace).CreateToken(
+		context.TODO(),
+		sa.Name,
+		&authv1.TokenRequest{
+			Spec: authv1.TokenRequestSpec{
+				ExpirationSeconds: &expirationSeconds,
 			},
-			Type: corev1.SecretTypeServiceAccountToken,
-		}
-		argoutil.AddTrackedByOperatorLabel(&secret.ObjectMeta)
-		argoutil.LogResourceCreation(log, secret)
-		err := r.Create(context.TODO(), secret)
-		if err != nil {
-			return nil, e.New("unable to locate and create ServiceAccount token for OAuth client secret")
-		}
-		err = controllerutil.SetControllerReference(cr, secret, r.Scheme)
-		if err != nil {
+		},
+		metav1.CreateOptions{},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create token for dex service account %s: %w", sa.Name, err)
+	}
+
+	expiryStr := tokenRequest.Status.ExpirationTimestamp.UTC().Format(time.RFC3339)
+	tokenData := map[string][]byte{
+		"token":  []byte(tokenRequest.Status.Token),
+		"expiry": []byte(expiryStr),
+	}
+
+	if !secretExists {
+		newSecret := argoutil.NewSecretWithSuffix(cr, common.ArgoCDDefaultDexServiceAccountName+"-token")
+		newSecret.Type = corev1.SecretTypeOpaque
+		newSecret.Data = tokenData
+		argoutil.AddTrackedByOperatorLabel(&newSecret.ObjectMeta)
+		if err := controllerutil.SetControllerReference(cr, newSecret, r.Scheme); err != nil {
 			return nil, err
 		}
-		tokenSecret = &corev1.ObjectReference{
-			Name:      secret.Name,
-			Namespace: cr.Namespace,
+		argoutil.LogResourceCreation(log, newSecret)
+		if err := r.Create(context.TODO(), newSecret); err != nil {
+			return nil, err
 		}
-		sa.Secrets = append(sa.Secrets, *tokenSecret)
-		argoutil.LogResourceUpdate(log, sa, "adding ServiceAccount token for OAuth client secret")
-		err = r.Update(context.TODO(), sa)
-		if err != nil {
-			return nil, e.New("failed to add ServiceAccount token for OAuth client secret")
+	} else {
+		tokenSecret.Data = tokenData
+		argoutil.LogResourceUpdate(log, tokenSecret, "renewing dex OAuth client token")
+		if err := r.Update(context.TODO(), tokenSecret); err != nil {
+			return nil, err
 		}
 	}
 
-	// Fetch the secret to obtain the token
-	secret := argoutil.NewSecretWithName(cr, tokenSecret.Name)
-	if err := argoutil.FetchObject(r.Client, cr.Namespace, secret.Name, secret); err != nil {
-		return nil, err
+	// Schedule the next reconcile just before the renewal threshold.
+	renewThreshold := time.Duration(common.ArgoCDDexServerTokenExpirySecs/common.ArgoCDDexServerTokenRenewalThresholdFraction) * time.Second
+	if d := time.Until(tokenRequest.Status.ExpirationTimestamp.Time) - renewThreshold; d > 0 {
+		r.dexTokenRequeueAfter.Store(cr.Namespace, d)
 	}
 
-	token := string(secret.Data["token"])
+	token := tokenRequest.Status.Token
 	return &token, nil
+}
+
+// reconcileDexLegacySATokenSecrets deletes non-expiring kubernetes.io/service-account-token
+// Secrets for the Dex SA and removes their stale references from the SA.
+func (r *ReconcileArgoCD) reconcileDexLegacySATokenSecrets(cr *argoproj.ArgoCD) error {
+	dexSAName := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr).Name
+	secretList := &corev1.SecretList{}
+	if err := r.List(context.TODO(), secretList,
+		client.InNamespace(cr.Namespace),
+		client.MatchingLabels(map[string]string{
+			common.ArgoCDTrackedByOperatorLabel: common.ArgoCDAppName,
+		}),
+	); err != nil {
+		return err
+	}
+	for i := range secretList.Items {
+		s := &secretList.Items[i]
+		if s.Type != corev1.SecretTypeServiceAccountToken {
+			continue
+		}
+		if s.Annotations[corev1.ServiceAccountNameKey] != dexSAName {
+			continue
+		}
+		if !strings.HasPrefix(s.Name, "argocd-dex-server-token-") {
+			continue
+		}
+		argoutil.LogResourceDeletion(log, s, "removing legacy Dex service account token secret")
+		if err := r.Delete(context.TODO(), s); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+	}
+	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr)
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	var filtered []corev1.ObjectReference
+	for _, ref := range sa.Secrets {
+		if strings.Contains(ref.Name, "dex-server-token") {
+			continue
+		}
+		filtered = append(filtered, ref)
+	}
+	if len(filtered) != len(sa.Secrets) {
+		sa.Secrets = filtered
+		argoutil.LogResourceUpdate(log, sa, "removing legacy token secret references from Dex service account")
+		if err := r.Update(context.TODO(), sa); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // reconcileDexConfiguration will ensure that Dex is configured properly.

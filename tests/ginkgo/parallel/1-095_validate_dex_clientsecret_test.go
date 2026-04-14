@@ -19,6 +19,7 @@ package parallel
 import (
 	"context"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -30,6 +31,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
 	argocdFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/argocd"
 	k8sFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/k8s"
+	secretFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/secret"
 	fixtureUtils "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 )
 
@@ -49,7 +51,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			ctx = context.Background()
 		})
 
-		It("verifies that Dex serviceaccount token secret is not leaked, and is correctly set in Argo CD argocd-secret Secret", func() {
+		It("verifies that the Dex client secret is sourced from a short-lived TokenRequest token and is correctly set in argocd-secret", func() {
 
 			By("creating simple Argo CD instance with Dex and Openshift OAuth enabled")
 			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
@@ -76,46 +78,81 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			By("waiting for ArgoCD CR to be reconciled and the instance to be ready")
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
-			serviceAccount := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "example-argocd-argocd-dex-server", Namespace: ns.Name}}
+			dexSAName := "example-argocd-argocd-dex-server"
+			serviceAccount := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: dexSAName, Namespace: ns.Name}}
 			Eventually(serviceAccount).Should(k8sFixture.ExistByName())
 
-			argocdCM := &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{Name: "argocd-cm", Namespace: ns.Name},
-			}
-			Eventually(argocdCM).Should(k8sFixture.ExistByName())
-
-			By("verifying argocd-cm ConfigMap is not leaking oidc dex client secret")
-			dexConfig := argocdCM.Data["dex.config"]
-
-			Expect(dexConfig).To(ContainSubstring("clientSecret: $oidc.dex.clientSecret"), "'$oidc.dex.clientSecret' should be set. Any other value implies that the client secret is exposed via ConfigMap")
-
-			By("validating that the Dex Client Secret was copied from dex serviceaccount token secret in to argocd-secret, by the operator")
-
-			// To verify the behavior we should first get the token secret name of the dex service account.
-
-			var secretName string
-			for _, secretData := range serviceAccount.Secrets {
-
-				if strings.Contains(secretData.Name, "token") {
-					secretName = secretData.Name
+			By("verifying no non-expiring kubernetes.io/service-account-token Secret exists for the Dex SA")
+			secretList := &corev1.SecretList{}
+			Expect(k8sClient.List(ctx, secretList, client.InNamespace(ns.Name))).To(Succeed())
+			for _, s := range secretList.Items {
+				if s.Type == corev1.SecretTypeServiceAccountToken &&
+					strings.HasPrefix(s.Name, "argocd-dex-server-token-") &&
+					s.Annotations[corev1.ServiceAccountNameKey] == dexSAName {
+					Fail("Found a non-expiring kubernetes.io/service-account-token Secret for the Dex SA: " + s.Name)
 				}
 			}
-			Expect(secretName).ToNot(BeEmpty())
 
-			// Extract the clientSecret
-			secretReferencedFromServiceAccount := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: secretName, Namespace: ns.Name}}
-			Eventually(secretReferencedFromServiceAccount).Should(k8sFixture.ExistByName())
-			tokenFromSASecret := secretReferencedFromServiceAccount.Data["token"]
-			Expect(tokenFromSASecret).ToNot(BeEmpty())
+			By("verifying argocd-cm ConfigMap is not leaking oidc dex client secret")
+			argocdCM := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "argocd-cm", Namespace: ns.Name}}
+			Eventually(argocdCM).Should(k8sFixture.ExistByName())
 
-			// actualClientSecret is the value of the secret in argocd-secret where argocd-operator should copy the secret from
+			Eventually(func() bool {
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(argocdCM), argocdCM); err != nil {
+					return false
+				}
+				return strings.Contains(argocdCM.Data["dex.config"], "clientSecret: $oidc.dex.clientSecret")
+			}, "2m", "5s").Should(BeTrue(), "'$oidc.dex.clientSecret' should be set. Any other value implies that the client secret is exposed via ConfigMap")
+
+			By("verifying the Dex SA has no non-expiring kubernetes.io/service-account-token Secrets in its .secrets list")
+			// The operator must clean up legacy SA token Secrets and must not auto-generate new ones.
+			Eventually(func() bool {
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(serviceAccount), serviceAccount); err != nil {
+					return false
+				}
+				for _, ref := range serviceAccount.Secrets {
+					if strings.Contains(ref.Name, "dex-server-token") {
+						GinkgoWriter.Println("Dex SA still has legacy token Secret reference:", ref.Name)
+						return false
+					}
+				}
+				return true
+			}, "2m", "5s").Should(BeTrue(), "Dex SA .secrets must not reference any legacy non-expiring token Secrets")
+
+			By("verifying the dedicated short-lived Dex token Secret was created by the operator")
+			tokenSecret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "example-argocd-argocd-dex-server-token", Namespace: ns.Name}}
+			Eventually(tokenSecret, "2m", "5s").Should(k8sFixture.ExistByName())
+			Eventually(tokenSecret).Should(secretFixture.HaveNonEmptyKey("token"))
+			Eventually(tokenSecret).Should(secretFixture.HaveNonEmptyKeyValue("expiry"))
+
+			By("verifying the token expiry is a valid RFC3339 timestamp in the future")
+			Eventually(func() bool {
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(tokenSecret), tokenSecret); err != nil {
+					return false
+				}
+				expiry, err := time.Parse(time.RFC3339, string(tokenSecret.Data["expiry"]))
+				if err != nil {
+					GinkgoWriter.Println("expiry is not valid RFC3339:", string(tokenSecret.Data["expiry"]), err)
+					return false
+				}
+				GinkgoWriter.Println("token expiry:", expiry.UTC())
+				return time.Until(expiry) > 0
+			}, "2m", "5s").Should(BeTrue(), "Dex token 'expiry' must be a valid RFC3339 timestamp in the future")
+
+			By("validating that the Dex client secret in argocd-secret matches the token in the dedicated token Secret")
 			argocdSecret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "argocd-secret", Namespace: ns.Name}}
 			Eventually(argocdSecret).Should(k8sFixture.ExistByName())
+			Eventually(argocdSecret).Should(secretFixture.HaveNonEmptyKey("oidc.dex.clientSecret"))
 
-			actualClientSecret := argocdSecret.Data["oidc.dex.clientSecret"]
-
-			Expect(string(actualClientSecret)).To(Equal(string(tokenFromSASecret)), "Dex Client Secret for OIDC is not valid")
-
+			Eventually(func() bool {
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(tokenSecret), tokenSecret); err != nil {
+					return false
+				}
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(argocdSecret), argocdSecret); err != nil {
+					return false
+				}
+				return string(tokenSecret.Data["token"]) == string(argocdSecret.Data["oidc.dex.clientSecret"])
+			}, "2m", "5s").Should(BeTrue(), "Dex client secret in argocd-secret must match the token in the dedicated Dex token Secret")
 		})
 
 	})

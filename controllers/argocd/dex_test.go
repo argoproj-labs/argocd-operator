@@ -2,7 +2,9 @@ package argocd
 
 import (
 	"context"
+	"strings"
 	"testing"
+	"time"
 
 	configv1 "github.com/openshift/api/config/v1"
 	"github.com/stretchr/testify/assert"
@@ -1094,4 +1096,233 @@ func TestGetOpenShiftDexConfig_OIDCDisabled(t *testing.T) {
 	updated := &argoproj.ArgoCD{}
 	require.NoError(t, cl.Get(context.TODO(), types.NamespacedName{Name: "example", Namespace: "default"}, updated))
 	assert.Empty(t, updated.Status.Conditions)
+}
+
+func TestNeedsDexTokenRenewal(t *testing.T) {
+	renewThreshold := time.Duration(common.ArgoCDDexServerTokenExpirySecs/common.ArgoCDDexServerTokenRenewalThresholdFraction) * time.Second
+
+	tests := []struct {
+		name   string
+		secret *corev1.Secret
+		want   bool
+	}{
+		{
+			name:   "no expiry key - needs renewal",
+			secret: &corev1.Secret{Data: map[string][]byte{"token": []byte("t")}},
+			want:   true,
+		},
+		{
+			name:   "unparseable expiry - needs renewal",
+			secret: &corev1.Secret{Data: map[string][]byte{"expiry": []byte("not-a-time")}},
+			want:   true,
+		},
+		{
+			name: "expired token - needs renewal",
+			secret: &corev1.Secret{Data: map[string][]byte{
+				"expiry": []byte(time.Now().Add(-time.Minute).UTC().Format(time.RFC3339)),
+			}},
+			want: true,
+		},
+		{
+			name: "within renewal window - needs renewal",
+			secret: &corev1.Secret{Data: map[string][]byte{
+				// just inside the threshold (renewThreshold - 1s remaining)
+				"expiry": []byte(time.Now().Add(renewThreshold - time.Second).UTC().Format(time.RFC3339)),
+			}},
+			want: true,
+		},
+		{
+			name: "outside renewal window - no renewal needed",
+			secret: &corev1.Secret{Data: map[string][]byte{
+				"expiry": []byte(time.Now().Add(renewThreshold + time.Hour).UTC().Format(time.RFC3339)),
+			}},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, needsDexTokenRenewal(tt.secret))
+		})
+	}
+}
+
+func TestReconcileArgoCD_getDexOAuthClientSecret_ReturnsCachedToken(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	const firstToken = "first-token"
+	const secondToken = "second-token"
+
+	a := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+		ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+			Provider: argoproj.SSOProviderTypeDex,
+			Dex:      &argoproj.ArgoCDDexSpec{OpenShiftOAuth: true},
+		}
+	})
+
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, []client.Object{a}, []client.Object{a}, nil)
+
+	// First call uses firstToken reactor.
+	r := makeTestReconciler(cl, sch, makeTestK8sClientWithTokenReactor(firstToken))
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	_, err := r.reconcileServiceAccount(common.ArgoCDDefaultDexServiceAccountName, a)
+	assert.NoError(t, err)
+
+	token1, err := r.getDexOAuthClientSecret(a)
+	assert.NoError(t, err)
+	require.NotNil(t, token1)
+	assert.Equal(t, firstToken, *token1)
+
+	// Swap the K8sClient reactor to return a different token.
+	// The cached Secret is still valid, so the same firstToken must be returned.
+	r.K8sClient = makeTestK8sClientWithTokenReactor(secondToken)
+
+	token2, err := r.getDexOAuthClientSecret(a)
+	assert.NoError(t, err)
+	require.NotNil(t, token2)
+	assert.Equal(t, firstToken, *token2, "cached token should be returned while Secret is still valid")
+}
+
+func TestReconcileArgoCD_getDexOAuthClientSecret_RenewsExpiredToken(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	const expiredToken = "expired-token"
+	const renewedToken = "renewed-token"
+
+	a := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+		ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+			Provider: argoproj.SSOProviderTypeDex,
+			Dex:      &argoproj.ArgoCDDexSpec{OpenShiftOAuth: true},
+		}
+	})
+
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, []client.Object{a}, []client.Object{a}, nil)
+	r := makeTestReconciler(cl, sch, makeTestK8sClientWithTokenReactor(renewedToken))
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	_, err := r.reconcileServiceAccount(common.ArgoCDDefaultDexServiceAccountName, a)
+	assert.NoError(t, err)
+
+	// Create an expired token Secret.
+	expiredSecret := argoutil.NewSecretWithSuffix(a, common.ArgoCDDefaultDexServiceAccountName+"-token")
+	expiredSecret.Type = corev1.SecretTypeOpaque
+	expiredSecret.Data = map[string][]byte{
+		"token":  []byte(expiredToken),
+		"expiry": []byte(time.Now().Add(-time.Hour).UTC().Format(time.RFC3339)), // expired 1h ago
+	}
+	argoutil.AddTrackedByOperatorLabel(&expiredSecret.ObjectMeta)
+	assert.NoError(t, r.Create(context.TODO(), expiredSecret))
+
+	token, err := r.getDexOAuthClientSecret(a)
+	assert.NoError(t, err)
+	require.NotNil(t, token)
+	assert.Equal(t, renewedToken, *token, "expired token must be replaced by a fresh one")
+
+	// Verify the Secret was updated with the renewed token.
+	updated := &corev1.Secret{}
+	assert.NoError(t, r.Get(context.TODO(),
+		types.NamespacedName{Name: getDexServerTokenSecretName(a), Namespace: a.Namespace},
+		updated))
+	assert.Equal(t, renewedToken, string(updated.Data["token"]))
+}
+
+func TestReconcileArgoCD_reconcileDexLegacySATokenSecrets(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	a := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+		ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+			Provider: argoproj.SSOProviderTypeDex,
+			Dex:      &argoproj.ArgoCDDexSpec{OpenShiftOAuth: true},
+		}
+	})
+
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, []client.Object{a}, []client.Object{a}, nil)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+
+	// Create the Dex SA so the function can fetch it.
+	_, err := r.reconcileServiceAccount(common.ArgoCDDefaultDexServiceAccountName, a)
+	assert.NoError(t, err)
+
+	dexSAName := a.Name + "-" + common.ArgoCDDefaultDexServiceAccountName
+
+	// Create a legacy kubernetes.io/service-account-token Secret.
+	legacySecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd-dex-server-token-abc12",
+			Namespace: a.Namespace,
+			Labels: map[string]string{
+				common.ArgoCDTrackedByOperatorLabel: common.ArgoCDAppName,
+			},
+			Annotations: map[string]string{
+				corev1.ServiceAccountNameKey: dexSAName,
+			},
+		},
+		Type: corev1.SecretTypeServiceAccountToken,
+	}
+	assert.NoError(t, r.Create(context.TODO(), legacySecret))
+
+	// Also add a reference to that Secret in the SA.secrets list.
+	sa := &corev1.ServiceAccount{}
+	assert.NoError(t, r.Get(context.TODO(),
+		types.NamespacedName{Name: dexSAName, Namespace: a.Namespace}, sa))
+	sa.Secrets = append(sa.Secrets, corev1.ObjectReference{Name: legacySecret.Name})
+	assert.NoError(t, r.Update(context.TODO(), sa))
+
+	// Run the cleanup.
+	assert.NoError(t, r.reconcileDexLegacySATokenSecrets(a))
+
+	// Legacy Secret must be deleted.
+	deleted := &corev1.Secret{}
+	err = r.Get(context.TODO(),
+		types.NamespacedName{Name: legacySecret.Name, Namespace: a.Namespace}, deleted)
+	assert.True(t, apierrors.IsNotFound(err), "legacy SA token Secret must be deleted")
+
+	// SA.secrets must no longer reference the legacy token.
+	updatedSA := &corev1.ServiceAccount{}
+	assert.NoError(t, r.Get(context.TODO(),
+		types.NamespacedName{Name: dexSAName, Namespace: a.Namespace}, updatedSA))
+	for _, ref := range updatedSA.Secrets {
+		assert.False(t, strings.Contains(ref.Name, "dex-server-token"),
+			"SA.secrets must not contain legacy token reference %q", ref.Name)
+	}
+}
+
+func TestReconcileArgoCD_reconcileDexLegacySATokenSecrets_IgnoresUnrelatedSecrets(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	a := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+		ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+			Provider: argoproj.SSOProviderTypeDex,
+			Dex:      &argoproj.ArgoCDDexSpec{OpenShiftOAuth: true},
+		}
+	})
+
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, []client.Object{a}, []client.Object{a}, nil)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	_, err := r.reconcileServiceAccount(common.ArgoCDDefaultDexServiceAccountName, a)
+	assert.NoError(t, err)
+
+	// Opaque Secret with a similar name must not be deleted.
+	opaqueSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd-dex-server-token-opaque",
+			Namespace: a.Namespace,
+			Labels: map[string]string{
+				common.ArgoCDTrackedByOperatorLabel: common.ArgoCDAppName,
+			},
+		},
+		Type: corev1.SecretTypeOpaque,
+	}
+	assert.NoError(t, r.Create(context.TODO(), opaqueSecret))
+
+	assert.NoError(t, r.reconcileDexLegacySATokenSecrets(a))
+
+	// Opaque Secret must still exist.
+	kept := &corev1.Secret{}
+	assert.NoError(t, r.Get(context.TODO(),
+		types.NamespacedName{Name: opaqueSecret.Name, Namespace: a.Namespace}, kept),
+		"Opaque Secret must not be deleted by legacy cleanup")
 }
