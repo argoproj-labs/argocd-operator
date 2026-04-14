@@ -94,6 +94,34 @@ func TestEnsureAutoTLSAnnotation(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, needUpdate, false)
 	})
+	t.Run("Restore annotation when TLS secret exists and was created by OpenShift Service CA", func(t *testing.T) {
+		argoutil.SetRouteAPIFound(true)
+		svc := newService(a)
+		svc.Name = "argocd-server"
+		sec := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      common.ArgoCDServerTLSSecretName,
+				Namespace: svc.Namespace,
+				Annotations: map[string]string{
+					"service.beta.openshift.io/originating-service-name": svc.Name,
+				},
+				OwnerReferences: []metav1.OwnerReference{
+					{Name: svc.Name, Kind: "Service"},
+				},
+			},
+		}
+		err := fakeClient.Create(context.Background(), sec)
+		assert.NoError(t, err)
+		needUpdate, err := ensureAutoTLSAnnotation(fakeClient, svc, sec.Name, true)
+		assert.NoError(t, err)
+		assert.True(t, needUpdate)
+		atls, ok := svc.Annotations[common.AnnotationOpenShiftServiceCA]
+		assert.True(t, ok)
+		assert.Equal(t, sec.Name, atls)
+		needUpdate, err = ensureAutoTLSAnnotation(fakeClient, svc, sec.Name, true)
+		assert.NoError(t, err)
+		assert.False(t, needUpdate)
+	})
 }
 
 func TestReconcileServerService(t *testing.T) {

@@ -410,12 +410,17 @@ func ensureAutoTLSAnnotation(k8sClient client.Client, svc *corev1.Service, secre
 	if autoTLSAnnotationName != "" {
 		val, ok := svc.Annotations[autoTLSAnnotationName]
 		if enabled {
-			// Don't request a TLS certificate from the OpenShift Service CA if the secret already exists.
-			isTLSSecretFound, err := argoutil.IsObjectFound(k8sClient, svc.Namespace, secretName, &corev1.Secret{})
+			tlsSecret := &corev1.Secret{}
+			isTLSSecretFound, err := argoutil.IsObjectFound(k8sClient, svc.Namespace, secretName, tlsSecret)
 			if err != nil {
 				return false, err
 			}
 			if !ok && isTLSSecretFound {
+				if isServingCertSecretForService(tlsSecret, svc.Name) {
+					log.Info(fmt.Sprintf("restoring AutoTLS annotation on service %s for OpenShift serving cert secret %s", svc.Name, secretName))
+					svc.Annotations[autoTLSAnnotationName] = autoTLSAnnotationValue
+					return true, nil
+				}
 				log.Info(fmt.Sprintf("skipping AutoTLS on service %s since the TLS secret is already present", svc.Name))
 				return false, nil
 			}
