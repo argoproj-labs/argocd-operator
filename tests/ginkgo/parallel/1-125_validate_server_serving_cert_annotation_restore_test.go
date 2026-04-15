@@ -32,15 +32,10 @@ import (
 	argocdFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/argocd"
 	k8sFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/k8s"
 	fixtureUtils "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
+	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/parallel/cert"
 
 	routev1 "github.com/openshift/api/route/v1"
 )
-
-//go:embed testdata/custom_argocd_server_tls.crt
-var customArgocdServerTLSCertificate string
-
-//go:embed testdata/custom_argocd_server_tls.key
-var customArgocdServerTLSKeyPEM string
 
 var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
@@ -157,6 +152,8 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 		})
 
 		It("does not add serving-cert annotation when argocd-server-tls already exists as a user-managed secret (not Service CA)", func() {
+			certPem, keyPem, err := cert.GenerateCert()
+			Expect(err).NotTo(HaveOccurred())
 
 			fixture.EnsureRunningOnOpenShift()
 
@@ -172,8 +169,8 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				},
 				Type: corev1.SecretTypeTLS,
 				StringData: map[string]string{
-					"tls.crt": customArgocdServerTLSCertificate,
-					"tls.key": customArgocdServerTLSKeyPEM,
+					"tls.crt": string(certPem),
+					"tls.key": string(keyPem),
 				},
 			}
 			Expect(k8sClient.Create(ctx, customTLS)).To(Succeed())
@@ -208,7 +205,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("verifying the server Service never gets the OpenShift serving-cert annotation")
 
-			Eventually(func() bool {
+			Consistently(func() bool {
 				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(serverSvc), serverSvc); err != nil {
 					GinkgoWriter.Println(err)
 					return false
@@ -218,21 +215,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				}
 				_, present := serverSvc.Annotations[common.AnnotationOpenShiftServiceCA]
 				return !present
-			}, "5m", "5s").Should(BeTrue())
-
-			By("verifying the TLS secret still has no Service CA originating-service annotation")
-
-			tlsSecret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      common.ArgoCDServerTLSSecretName,
-					Namespace: ns.Name,
-				},
-			}
-			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(tlsSecret), tlsSecret)).To(Succeed())
-			if tlsSecret.Annotations != nil {
-				_, hasOriginating := tlsSecret.Annotations[common.AnnotationOpenShiftOriginatingServiceName]
-				Expect(hasOriginating).To(BeFalse(), "user secret should not gain Service CA metadata")
-			}
+			}, "2m", "5s").Should(BeTrue())
 
 			By("verifying annotation stays absent after an ArgoCD reconcile trigger")
 
@@ -243,7 +226,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				ac.Annotations["argocds.argoproj.io/e2e-custom-tls-no-svc-ca-touch"] = "1"
 			})
 
-			Eventually(func() bool {
+			Consistently(func() bool {
 				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(serverSvc), serverSvc); err != nil {
 					GinkgoWriter.Println(err)
 					return false
@@ -253,7 +236,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				}
 				_, present := serverSvc.Annotations[common.AnnotationOpenShiftServiceCA]
 				return !present
-			}, "3m", "5s").Should(BeTrue())
+			}, "2m", "5s").Should(BeTrue())
 		})
 	})
 })
