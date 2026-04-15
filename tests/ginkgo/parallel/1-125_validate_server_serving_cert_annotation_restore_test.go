@@ -230,7 +230,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			}
 			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(tlsSecret), tlsSecret)).To(Succeed())
 			if tlsSecret.Annotations != nil {
-				_, hasOriginating := tlsSecret.Annotations["service.beta.openshift.io/originating-service-name"]
+				_, hasOriginating := tlsSecret.Annotations[common.AnnotationOpenShiftOriginatingServiceName]
 				Expect(hasOriginating).To(BeFalse(), "user secret should not gain Service CA metadata")
 			}
 

@@ -416,7 +416,7 @@ func ensureAutoTLSAnnotation(k8sClient client.Client, svc *corev1.Service, secre
 				return false, err
 			}
 			if !ok && isTLSSecretFound {
-				if isServingCertSecretForService(tlsSecret, svc.Name) {
+				if isCreatedByServiceCA(svc.Name, *tlsSecret) {
 					log.Info(fmt.Sprintf("restoring AutoTLS annotation on service %s for OpenShift serving cert secret %s", svc.Name, secretName))
 					svc.Annotations[autoTLSAnnotationName] = autoTLSAnnotationValue
 					return true, nil

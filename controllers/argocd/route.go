@@ -203,7 +203,8 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 		// break users who have already configured a TLS secret for Passthrough.
 		// We continue with Passthrough if we find a TLS secret that was manually configured
 		// by the user and not by the OpenShift Service CA.
-		if cr.Spec.Server.Route.TLS == nil && isTLSSecretFound && !isCreatedByServiceCA(cr.Name, *tlsSecret) {
+		serverServiceName := nameWithSuffix("server", cr)
+		if cr.Spec.Server.Route.TLS == nil && isTLSSecretFound && !isCreatedByServiceCA(serverServiceName, *tlsSecret) {
 			route.Spec.TLS = &routev1.TLSConfig{
 				InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 				Termination:                   routev1.TLSTerminationPassthrough,
@@ -248,30 +249,28 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 	return r.Update(context.TODO(), route)
 }
 
-// isServingCertSecretForService reports whether secret was issued by the OpenShift
-// service certificate controller for the given Service name (originating-service-name
-// annotation plus Service ownerReference).
-func isServingCertSecretForService(secret *corev1.Secret, serviceName string) bool {
-	if secret == nil || secret.Annotations == nil {
+// isCreatedByServiceCA checks if the secret was created by the OpenShift Service CA
+// for the Argo CD server Service ({crName}-server).
+func isCreatedByServiceCA(serviceName string, secret corev1.Secret) bool {
+	serviceAnnFound := false
+	if secret.Annotations != nil {
+		value, ok := secret.Annotations[common.AnnotationOpenShiftOriginatingServiceName]
+		if ok && value == serviceName {
+			serviceAnnFound = true
+		}
+	}
+
+	if !serviceAnnFound {
 		return false
 	}
-	value, ok := secret.Annotations["service.beta.openshift.io/originating-service-name"]
-	if !ok || value != serviceName {
-		return false
-	}
+
 	for _, ref := range secret.OwnerReferences {
 		if ref.Kind == "Service" && ref.Name == serviceName {
 			return true
 		}
 	}
-	return false
-}
 
-// isCreatedByServiceCA checks if the secret was created by the OpenShift Service CA
-// for the Argo CD server Service ({crName}-server).
-func isCreatedByServiceCA(crName string, secret corev1.Secret) bool {
-	serviceName := fmt.Sprintf("%s-%s", crName, "server")
-	return isServingCertSecretForService(&secret, serviceName)
+	return false
 }
 
 // reconcileApplicationSetControllerWebhookRoute will ensure that the ArgoCD Server Route is present.

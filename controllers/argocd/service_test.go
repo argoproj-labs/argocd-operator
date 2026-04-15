@@ -103,7 +103,7 @@ func TestEnsureAutoTLSAnnotation(t *testing.T) {
 				Name:      common.ArgoCDServerTLSSecretName,
 				Namespace: svc.Namespace,
 				Annotations: map[string]string{
-					"service.beta.openshift.io/originating-service-name": svc.Name,
+					common.AnnotationOpenShiftOriginatingServiceName: svc.Name,
 				},
 				OwnerReferences: []metav1.OwnerReference{
 					{Name: svc.Name, Kind: "Service"},
