@@ -234,6 +234,9 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 		route.Spec.WildcardPolicy = *cr.Spec.Server.Route.WildcardPolicy
 	}
 
+	// Allow override of the Path for the Route
+	route.Spec.Path = cr.Spec.Server.Route.Path
+
 	if err := controllerutil.SetControllerReference(cr, route, r.Scheme); err != nil {
 		return err
 	}

@@ -39,6 +39,8 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	osFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/os"
+
 	"github.com/argoproj/argo-cd/v3/pkg/apiclient/application"
 	argocdv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
 	"github.com/argoproj/gitops-engine/pkg/health"
@@ -302,6 +304,23 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			cancellableContext, cancelFunc := context.WithCancel(context.Background())
 			defer cancelFunc()
 
+			injectedRedisPwd, err := osFixture.ExecCommandWithOutputParam(
+				false, false,
+				"kubectl", "exec", "deployment/argocd-hub-agent-principal", "-n", namespaceAgentPrincipal,
+				"--", "cat", "/app/config/redis-auth/auth",
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(strings.TrimSpace(injectedRedisPwd)).ToNot(BeEmpty())
+
+			principalEnv, err := osFixture.ExecCommandWithOutputParam(
+				false, false,
+				"kubectl", "exec", "deployment/argocd-hub-agent-principal", "-n", namespaceAgentPrincipal,
+				"--", "cat", "/proc/1/environ",
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(principalEnv).To(ContainSubstring("REDIS_CREDS_DIR_PATH=/app/config/redis-auth/"))
+			Expect(principalEnv).NotTo(ContainSubstring("REDIS_PASSWORD"))
+
 			resourceTreeURL := "https://" + argoEndpoint + "/api/v1/stream/applications/" + appOnPrincipal.Name + "/resource-tree?appNamespace=" + appOnPrincipal.Namespace
 
 			// Wait for successful connection to resource tree event source API, on principal Argo CD
@@ -408,6 +427,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Eventually(func() bool {
 				for {
 					// drain channel looking for name of new pod
+					GinkgoWriter.Println("Awaiting message")
 					select {
 					case msg := <-msgChan:
 						GinkgoWriter.Println("Processing message:", msg)
@@ -438,7 +458,6 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				}
 			}
 			Expect(matchFound).To(BeTrue())
-
 		}
 
 		// This test verifies that:
@@ -447,6 +466,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 		// 2. Each agent successfully connects to the principal.
 		// 3. Applications can be deployed in both modes, and are verified to be healthy and in sync.
 		// 4. Redis proxy can be accessed, and it contains data from child resources (e.g. pod), for both managed, and autonomous.
+		// 5. Resource proxy can be accessed, and it contains data from agent resources.
 		// This validates the core connectivity and basic workflow of agent-principal architecture, including RBAC, connection, and application propagation.
 		It("Should deploy ArgoCD principal and agent instances in both modes and verify they are working as expected", func() {
 
@@ -701,7 +721,7 @@ func buildArgoCDResource(argoCDName string, componentType argov1beta1api.AgentCo
 				Principal: &argov1beta1api.PrincipalSpec{
 					Enabled:  ptr.To(true),
 					Auth:     "mtls:CN=([^,]+)",
-					LogLevel: "info",
+					LogLevel: "debug",
 					Image:    common.ArgoCDAgentPrincipalDefaultImageName,
 					Namespace: &argov1beta1api.PrincipalNamespaceSpec{
 						AllowedNamespaces: []string{

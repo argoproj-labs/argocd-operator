@@ -98,6 +98,7 @@ func buildDeployment(compName string, cr *argoproj.ArgoCD) *appsv1.Deployment {
 }
 
 func buildPrincipalSpec(compName, saName string, cr *argoproj.ArgoCD) appsv1.DeploymentSpec {
+	redisAuthVolume, redisAuthMount := argoutil.MountRedisAuthToArgo(cr)
 	return appsv1.DeploymentSpec{
 		Selector: buildSelector(compName, cr),
 		Template: corev1.PodTemplateSpec{
@@ -114,11 +115,11 @@ func buildPrincipalSpec(compName, saName string, cr *argoproj.ArgoCD) appsv1.Dep
 						Args:            buildArgs(compName),
 						SecurityContext: buildSecurityContext(),
 						Ports:           buildPorts(compName),
-						VolumeMounts:    buildVolumeMounts(),
+						VolumeMounts:    append(buildVolumeMounts(), redisAuthMount),
 					},
 				},
 				ServiceAccountName: saName,
-				Volumes:            buildVolumes(),
+				Volumes:            append(buildVolumes(), redisAuthVolume),
 			},
 		},
 	}
@@ -373,19 +374,10 @@ func buildPrincipalContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
 		}, {
 			Name:  EnvArgoCDPrincipalDestinationBasedMapping,
 			Value: getPrincipalDestinationBasedMapping(cr),
-		}, {
-			Name: EnvRedisPassword,
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					Key: PrincipalRedisPasswordKey,
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: fmt.Sprintf("%s-%s", cr.Name, PrincipalRedisSecretnameSuffix),
-					},
-					Optional: ptr.To(true),
-				},
-			},
 		},
 	}
+
+	env = append(env, argoutil.GetRedisAuthEnv()...)
 
 	// Add custom environment variables if specified in the CR
 	if hasPrincipal(cr) && cr.Spec.ArgoCDAgent.Principal.Env != nil {
@@ -420,9 +412,6 @@ const (
 	EnvArgoCDPrincipalJwtSecretName             = "ARGOCD_PRINCIPAL_JWT_SECRET_NAME"
 	EnvArgoCDPrincipalImage                     = "ARGOCD_PRINCIPAL_IMAGE"
 	EnvArgoCDPrincipalDestinationBasedMapping   = "ARGOCD_PRINCIPAL_DESTINATION_BASED_MAPPING"
-	EnvRedisPassword                            = "REDIS_PASSWORD"
-	PrincipalRedisPasswordKey                   = "admin.password"
-	PrincipalRedisSecretnameSuffix              = "redis-initial-password" // #nosec G101
 )
 
 // Logging Configuration

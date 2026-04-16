@@ -225,7 +225,7 @@ func getArgoRedisArgs(useTLS bool) []string {
 
 	args = append(args, "--save", "")
 	args = append(args, "--appendonly", "no")
-	args = append(args, "--requirepass $(REDIS_PASSWORD)")
+	args = append(args, "--aclfile", argoutil.RedisAuthMountPath+"users.acl")
 
 	if useTLS {
 		args = append(args, "--tls-port", "6379")
@@ -276,7 +276,7 @@ func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 	}
 
 	if cr.Spec.Redis.IsEnabled() {
-		cmd = append(cmd, "--redis", getRedisServerAddress(cr))
+		cmd = append(cmd, "--redis", argoutil.GetRedisServerAddress(cr))
 	} else {
 		log.Info("Redis is Disabled. Skipping adding Redis configuration to ArgoCD Server.")
 	}
@@ -322,7 +322,7 @@ func isMergable(extraArgs []string, cmd []string) error {
 
 // getDexServerAddress will return the Dex server address.
 func getDexServerAddress(cr *argoproj.ArgoCD) string {
-	return fmt.Sprintf("https://%s", fqdnServiceRef("dex-server", common.ArgoCDDefaultDexHTTPPort, cr))
+	return fmt.Sprintf("https://%s", argoutil.FqdnServiceRef("dex-server", common.ArgoCDDefaultDexHTTPPort, cr))
 }
 
 // newDeployment returns a new Deployment instance for the given ArgoCD.
@@ -429,19 +429,11 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error 
 func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS bool) error {
 	deploy := newDeploymentWithSuffix("redis", "redis", cr)
 
-	env := append(proxyEnvVars(), corev1.EnvVar{
-		Name: "REDIS_PASSWORD",
-		ValueFrom: &corev1.EnvVarSource{
-			SecretKeyRef: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
-				},
-				Key: "admin.password",
-			},
-		},
-	})
+	env := proxyEnvVars()
 
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
+
+	redisVolume, redisMount := argoutil.MountRedisAuthToRedis(cr)
 
 	if !IsOpenShiftCluster() {
 		deploy.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
@@ -451,7 +443,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Args:            getArgoRedisArgs(useTLS),
-		Image:           getRedisContainerImage(cr),
+		Image:           argoutil.GetRedisContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            "redis",
 		Ports: []corev1.ContainerPort{
@@ -459,7 +451,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 				ContainerPort: common.ArgoCDDefaultRedisPort,
 			},
 		},
-		Resources:       getRedisResources(cr),
+		Resources:       argoutil.GetRedisResources(cr),
 		Env:             env,
 		SecurityContext: argoutil.DefaultSecurityContext(),
 		VolumeMounts: []corev1.VolumeMount{
@@ -467,6 +459,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 				Name:      common.ArgoCDRedisServerTLSSecretName,
 				MountPath: "/app/config/redis/tls",
 			},
+			redisMount,
 		},
 	}}
 
@@ -481,6 +474,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 				},
 			},
 		},
+		redisVolume,
 	}
 
 	if err := applyReconcilerHook(cr, deploy, ""); err != nil {
@@ -506,85 +500,67 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 			argoutil.LogResourceDeletion(log, deploy, "redis ha is enabled but non-ha deployment exists")
 			return r.Delete(context.TODO(), deploy)
 		}
-		changed := false
-		explanation := ""
+
+		var changes []string
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
-		desiredImage := getRedisContainerImage(cr)
+		desiredImage := argoutil.GetRedisContainerImage(cr)
 		actualImagePullPolicy := existing.Spec.Template.Spec.Containers[0].ImagePullPolicy
 		desiredImagePullPolicy := argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy)
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
 			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-			explanation = "container image"
-			changed = true
+			changes = append(changes, "container image")
 		}
 		if actualImagePullPolicy != desiredImagePullPolicy {
 			existing.Spec.Template.Spec.Containers[0].ImagePullPolicy = desiredImagePullPolicy
-			if changed {
-				explanation += ", "
-			}
-			explanation += "image pull policy"
-			changed = true
+			changes = append(changes, "image pull policy")
 		}
-		updateNodePlacement(existing, deploy, &changed, &explanation)
+
+		changes = append(changes, updateNodePlacement(existing, deploy)...)
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Args, existing.Spec.Template.Spec.Containers[0].Args) {
 			existing.Spec.Template.Spec.Containers[0].Args = deploy.Spec.Template.Spec.Containers[0].Args
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container args"
-			changed = true
+			changes = append(changes, "container args")
+		}
+
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].VolumeMounts, existing.Spec.Template.Spec.Containers[0].VolumeMounts) {
+			existing.Spec.Template.Spec.Containers[0].VolumeMounts = deploy.Spec.Template.Spec.Containers[0].VolumeMounts
+			changes = append(changes, "container volume mounts")
+		}
+
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
+			existing.Spec.Template.Spec.Volumes = deploy.Spec.Template.Spec.Volumes
+			changes = append(changes, "volumes")
 		}
 
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
 			deploy.Spec.Template.Spec.Containers[0].Env) {
 			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container env"
-			changed = true
+			changes = append(changes, "container env")
 		}
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Resources, existing.Spec.Template.Spec.Containers[0].Resources) {
 			existing.Spec.Template.Spec.Containers[0].Resources = deploy.Spec.Template.Spec.Containers[0].Resources
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container resources"
-			changed = true
+			changes = append(changes, "container resources")
 		}
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].SecurityContext, existing.Spec.Template.Spec.Containers[0].SecurityContext) {
 			existing.Spec.Template.Spec.Containers[0].SecurityContext = deploy.Spec.Template.Spec.Containers[0].SecurityContext
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container security context"
-			changed = true
+			changes = append(changes, "container security context")
 		}
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.SecurityContext, existing.Spec.Template.Spec.SecurityContext) {
 			existing.Spec.Template.Spec.SecurityContext = deploy.Spec.Template.Spec.SecurityContext
-			if changed {
-				explanation += ", "
-			}
-			explanation += "pod security context"
-			changed = true
+			changes = append(changes, "pod security context")
 		}
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.ServiceAccountName, existing.Spec.Template.Spec.ServiceAccountName) {
 			existing.Spec.Template.Spec.ServiceAccountName = deploy.Spec.Template.Spec.ServiceAccountName
-			if changed {
-				explanation += ", "
-			}
-			explanation += "serviceAccountName"
-			changed = true
+			changes = append(changes, "serviceAccountName")
 		}
 
-		if changed {
-			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
+		if len(changes) > 0 {
+			argoutil.LogResourceUpdate(log, existing, "updating", strings.Join(changes, ", "))
 			return r.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
@@ -619,19 +595,10 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 			MaxSurge: &intstr.IntOrString{IntVal: 0},
 		},
 	}
-	var redisEnv = append(proxyEnvVars(), corev1.EnvVar{
-		Name: "AUTH",
-		ValueFrom: &corev1.EnvVarSource{
-			SecretKeyRef: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
-				},
-				Key: "admin.password",
-			},
-		},
-	})
 
-	deploy.Spec.Replicas = getRedisHAReplicas()
+	var redisEnv = proxyEnvVars()
+
+	deploy.Spec.Replicas = argoutil.GetRedisHAReplicas()
 
 	deploy.Spec.Template.Spec.Affinity = &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
@@ -661,8 +628,10 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 		},
 	}
 
+	redisAuthVolume, redisAuthMount := argoutil.MountRedisAuthToRedis(cr)
+
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
-		Image:           getRedisHAProxyContainerImage(cr),
+		Image:           argoutil.GetRedisHAProxyContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            "haproxy",
 		Env:             redisEnv,
@@ -682,7 +651,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 				Name:          "redis",
 			},
 		},
-		Resources:       getRedisHAResources(cr),
+		Resources:       argoutil.GetRedisHAResources(cr),
 		SecurityContext: argoutil.DefaultSecurityContext(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -697,6 +666,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 				Name:      common.ArgoCDRedisServerTLSSecretName,
 				MountPath: "/app/config/redis/tls",
 			},
+			redisAuthMount,
 		},
 	}}
 
@@ -707,11 +677,11 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 		Command: []string{
 			"sh",
 		},
-		Image:           getRedisHAProxyContainerImage(cr),
+		Image:           argoutil.GetRedisHAProxyContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            "config-init",
 		Env:             proxyEnvVars(),
-		Resources:       getRedisHAResources(cr),
+		Resources:       argoutil.GetRedisHAResources(cr),
 		SecurityContext: argoutil.DefaultSecurityContext(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -723,10 +693,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 				Name:      "data",
 				MountPath: "/data",
 			},
-			{
-				Name:      "redis-initial-pass",
-				MountPath: "/redis-initial-pass",
-			},
+			redisAuthMount,
 		},
 	}}
 
@@ -762,15 +729,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 				},
 			},
 		},
-		{
-			Name: "redis-initial-pass",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
-					Optional:   boolPtr(true),
-				},
-			},
-		},
+		redisAuthVolume,
 	}
 
 	if IsOpenShiftCluster() {
@@ -813,104 +772,65 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 			argoutil.LogResourceDeletion(log, existing, "redis ha is disabled")
 			return r.Delete(context.TODO(), existing)
 		}
-		changed := false
-		explanation := ""
+
+		var changes []string
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
-		desiredImage := getRedisHAProxyContainerImage(cr)
+		desiredImage := argoutil.GetRedisHAProxyContainerImage(cr)
 		actualImagePullPolicy := existing.Spec.Template.Spec.Containers[0].ImagePullPolicy
 		desiredImagePullPolicy := argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy)
 
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
 			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-			explanation = "container image"
-			changed = true
+			changes = append(changes, "container image")
 		}
 		if actualImagePullPolicy != desiredImagePullPolicy {
 			existing.Spec.Template.Spec.Containers[0].ImagePullPolicy = desiredImagePullPolicy
-			if changed {
-				explanation += ", "
-			}
-			explanation += "image pull policy"
-			changed = true
+			changes = append(changes, "image pull policy")
 		}
-		updateNodePlacement(existing, deploy, &changed, &explanation)
+
+		changes = append(changes, updateNodePlacement(existing, deploy)...)
+
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
 			existing.Spec.Template.Spec.Volumes = deploy.Spec.Template.Spec.Volumes
-			if changed {
-				explanation += ", "
-			}
-			explanation += "volumes"
-			changed = true
+			changes = append(changes, "volumes")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].VolumeMounts,
 			existing.Spec.Template.Spec.Containers[0].VolumeMounts) {
 			existing.Spec.Template.Spec.Containers[0].VolumeMounts = deploy.Spec.Template.Spec.Containers[0].VolumeMounts
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container volume mounts"
-			changed = true
+			changes = append(changes, "container volume mounts")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers, existing.Spec.Template.Spec.InitContainers) {
 			existing.Spec.Template.Spec.InitContainers = deploy.Spec.Template.Spec.InitContainers
-			if changed {
-				explanation += ", "
-			}
-			explanation += "init containers"
-			changed = true
+			changes = append(changes, "init containers")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Env,
 			existing.Spec.Template.Spec.Containers[0].Env) {
 			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container env"
-			changed = true
+			changes = append(changes, "container env")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Resources, existing.Spec.Template.Spec.Containers[0].Resources) {
 			existing.Spec.Template.Spec.Containers[0].Resources = deploy.Spec.Template.Spec.Containers[0].Resources
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container resources"
-			changed = true
+			changes = append(changes, "container resources")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].SecurityContext, existing.Spec.Template.Spec.Containers[0].SecurityContext) {
 			existing.Spec.Template.Spec.Containers[0].SecurityContext = deploy.Spec.Template.Spec.Containers[0].SecurityContext
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container security context"
-			changed = true
+			changes = append(changes, "container security context")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.SecurityContext, existing.Spec.Template.Spec.SecurityContext) {
 			existing.Spec.Template.Spec.SecurityContext = deploy.Spec.Template.Spec.SecurityContext
-			if changed {
-				explanation += ", "
-			}
-			explanation += "pod security context"
-			changed = true
+			changes = append(changes, "pod security context")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Strategy, existing.Spec.Strategy) {
 			existing.Spec.Strategy = deploy.Spec.Strategy
-			if changed {
-				explanation += ", "
-			}
-			explanation += "deployment strategy"
-			changed = true
+			changes = append(changes, "deployment strategy")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Replicas, existing.Spec.Replicas) {
 			existing.Spec.Replicas = deploy.Spec.Replicas
-			if changed {
-				explanation += ", "
-			}
-			explanation += "replicas"
-			changed = true
+			changes = append(changes, "replicas")
 		}
-		if changed {
-			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
+		if len(changes) > 0 {
+			argoutil.LogResourceUpdate(log, existing, "updating", strings.Join(changes, ", "))
 			return r.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found, do nothing
@@ -931,23 +851,15 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	deploy := newDeploymentWithSuffix("server", "server", cr)
 	serverEnv := cr.Spec.Server.Env
-	serverEnv = append(serverEnv, corev1.EnvVar{
-		Name: "REDIS_PASSWORD",
-		ValueFrom: &corev1.EnvVarSource{
-			SecretKeyRef: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: argoutil.GetSecretNameWithSuffix(cr, "redis-initial-password"),
-				},
-				Key: "admin.password",
-			},
-		},
-	})
 	serverEnv = argoutil.EnvMerge(serverEnv, proxyEnvVars(), false)
+	serverEnv = argoutil.EnvMerge(serverEnv, argoutil.GetRedisAuthEnv(), false)
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
 
 	if cr.Spec.Server.InitContainers != nil {
 		deploy.Spec.Template.Spec.InitContainers = append(deploy.Spec.Template.Spec.InitContainers, cr.Spec.Server.InitContainers...)
 	}
+
+	redisAuthVolume, redisAuthMount := argoutil.MountRedisAuthToArgo(cr)
 
 	serverVolumeMounts := []corev1.VolumeMount{
 		{
@@ -977,6 +889,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			Name:      "tmp",
 			MountPath: "/tmp",
 		},
+		redisAuthMount,
 	}
 
 	if cr.Spec.Server.VolumeMounts != nil {
@@ -1090,6 +1003,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
+		redisAuthVolume,
 	}
 
 	if cr.Spec.Server.Volumes != nil {
@@ -1166,110 +1080,66 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		desiredImage := getArgoContainerImage(cr)
 		actualImagePullPolicy := existing.Spec.Template.Spec.Containers[0].ImagePullPolicy
 		desiredImagePullPolicy := argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy)
-		changed := false
-		explanation := ""
+		var changes []string
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
 			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-			explanation = "container image"
-			changed = true
+			changes = append(changes, "container image")
 		}
 		if actualImagePullPolicy != desiredImagePullPolicy {
 			existing.Spec.Template.Spec.Containers[0].ImagePullPolicy = desiredImagePullPolicy
-			if changed {
-				explanation += ", "
-			}
-			explanation += "image pull policy"
-			changed = true
+			changes = append(changes, "image pull policy")
 		}
-		updateNodePlacement(existing, deploy, &changed, &explanation)
+
+		changes = append(changes, updateNodePlacement(existing, deploy)...)
+
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
 			deploy.Spec.Template.Spec.Containers[0].Env) {
 			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container env"
-			changed = true
+			changes = append(changes, "container env")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers, existing.Spec.Template.Spec.InitContainers) {
 			existing.Spec.Template.Spec.InitContainers = deploy.Spec.Template.Spec.InitContainers
-			if changed {
-				explanation += ", "
-			}
-			explanation += "init containers"
-			changed = true
+			changes = append(changes, "init containers")
 		}
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Command,
 			deploy.Spec.Template.Spec.Containers[0].Command) {
 			existing.Spec.Template.Spec.Containers[0].Command = deploy.Spec.Template.Spec.Containers[0].Command
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container command"
-			changed = true
+			changes = append(changes, "container command")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
 			existing.Spec.Template.Spec.Volumes = deploy.Spec.Template.Spec.Volumes
-			if changed {
-				explanation += ", "
-			}
-			explanation += "volumes"
-			changed = true
+			changes = append(changes, "volumes")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].VolumeMounts,
 			existing.Spec.Template.Spec.Containers[0].VolumeMounts) {
 			existing.Spec.Template.Spec.Containers[0].VolumeMounts = deploy.Spec.Template.Spec.Containers[0].VolumeMounts
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container volume mounts"
-			changed = true
+			changes = append(changes, "container volume mounts")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Resources,
 			existing.Spec.Template.Spec.Containers[0].Resources) {
 			existing.Spec.Template.Spec.Containers[0].Resources = deploy.Spec.Template.Spec.Containers[0].Resources
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container resources"
-			changed = true
+			changes = append(changes, "container resources")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].SecurityContext,
 			existing.Spec.Template.Spec.Containers[0].SecurityContext) {
 			existing.Spec.Template.Spec.Containers[0].SecurityContext = deploy.Spec.Template.Spec.Containers[0].SecurityContext
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container security context"
-			changed = true
+			changes = append(changes, "container security context")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.SecurityContext, existing.Spec.Template.Spec.SecurityContext) {
 			existing.Spec.Template.Spec.SecurityContext = deploy.Spec.Template.Spec.SecurityContext
-			if changed {
-				explanation += ", "
-			}
-			explanation += "pod security context"
-			changed = true
+			changes = append(changes, "pod security context")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[1:],
 			existing.Spec.Template.Spec.Containers[1:]) {
 			existing.Spec.Template.Spec.Containers = append(existing.Spec.Template.Spec.Containers[0:1],
 				deploy.Spec.Template.Spec.Containers[1:]...)
-			if changed {
-				explanation += ", "
-			}
-			explanation += "additional containers"
-			changed = true
+			changes = append(changes, "additional containers")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Replicas, existing.Spec.Replicas) {
 			if !cr.Spec.Server.Autoscale.Enabled {
 				existing.Spec.Replicas = deploy.Spec.Replicas
-				if changed {
-					explanation += ", "
-				}
-				explanation += "replicas"
-				changed = true
+				changes = append(changes, "replicas")
 			}
 		}
 
@@ -1279,23 +1149,15 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
 			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
-			if changed {
-				explanation += ", "
-			}
-			explanation += "annotations"
-			changed = true
+			changes = append(changes, "annotations")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Labels, existing.Spec.Template.Labels) {
 			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
-			if changed {
-				explanation += ", "
-			}
-			explanation += "labels"
-			changed = true
+			changes = append(changes, "labels")
 		}
 
-		if changed {
-			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
+		if len(changes) > 0 {
+			argoutil.LogResourceUpdate(log, existing, "updating", strings.Join(changes, ", "))
 			return r.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
@@ -1361,23 +1223,16 @@ func isRemoveManagedByLabelOnArgoCDDeletion() bool {
 }
 
 // to update nodeSelector and tolerations in reconciler
-func updateNodePlacement(existing *appsv1.Deployment, deploy *appsv1.Deployment, changed *bool, explanation *string) {
+func updateNodePlacement(existing *appsv1.Deployment, deploy *appsv1.Deployment) (changes []string) {
 	if !reflect.DeepEqual(existing.Spec.Template.Spec.NodeSelector, deploy.Spec.Template.Spec.NodeSelector) {
 		existing.Spec.Template.Spec.NodeSelector = deploy.Spec.Template.Spec.NodeSelector
-		if *changed {
-			*explanation += ", "
-		}
-		*explanation += "node selector"
-		*changed = true
+		changes = append(changes, "node selector")
 	}
 	if !reflect.DeepEqual(existing.Spec.Template.Spec.Tolerations, deploy.Spec.Template.Spec.Tolerations) {
 		existing.Spec.Template.Spec.Tolerations = deploy.Spec.Template.Spec.Tolerations
-		if *changed {
-			*explanation += ", "
-		}
-		*explanation += "tolerations"
-		*changed = true
+		changes = append(changes, "tolerations")
 	}
+	return changes
 }
 
 func getRolloutInitContainer() []corev1.Container {

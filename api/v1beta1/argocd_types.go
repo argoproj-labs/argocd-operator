@@ -1050,6 +1050,12 @@ type ArgoCDSpec struct {
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:ArgoCD","urn:alm:descriptor:com.tectonic.ui:text"}
 	Version string `json:"version,omitempty"`
 
+	// ClusterDomain is the cluster domain suffix used for constructing service FQDNs. Defaults to "cluster.local".
+	// The full FQDN will be: <service>.<namespace>.svc.<clusterDomain>
+	// This is useful for clusters that use a different DNS suffix (e.g., "CLUSTER_ID.cluster.local", "edge.local").
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Cluster Domain",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
+	ClusterDomain string `json:"clusterDomain,omitempty"`
+
 	// Banner defines an additional banner to be displayed in Argo CD UI
 	Banner *Banner `json:"banner,omitempty"`
 
@@ -1060,6 +1066,8 @@ type ArgoCDSpec struct {
 	AggregatedClusterRoles bool `json:"aggregatedClusterRoles,omitempty"`
 
 	// CmdParams specifies command-line parameters for the Argo CD components.
+	// The only keys currently supported for this parameter are:
+	// - controller.resource.health.persist
 	CmdParams map[string]string `json:"cmdParams,omitempty"`
 
 	// ArgoCDAgent defines configurations for the ArgoCD Agent component.

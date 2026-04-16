@@ -45,28 +45,28 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-type lock struct {
-	lock sync.Mutex
-}
-
-func (l *lock) protect(code func()) {
-	l.lock.Lock()
-	defer l.lock.Unlock()
-	code()
-}
-
-type TokenRenewalTimer struct {
+type tokenRenewalTimer struct {
 	timer   *time.Timer
 	stopped bool
+}
+
+func NewLocalUsersInfo() *LocalUsersInfo {
+	return &LocalUsersInfo{
+		tokenRenewalTimers: map[string]*tokenRenewalTimer{},
+	}
 }
 
 type LocalUsersInfo struct {
 	// Stores the the timers that will auto-renew the API tokens for local users
 	// after they expire. The key format is "argocd-namespace/user-name"
-	TokenRenewalTimers map[string]*TokenRenewalTimer
+	// - Acquire 'lock' before reading/writing from this field
+	tokenRenewalTimers map[string]*tokenRenewalTimer
+
 	// Protects access to the token renewal timers and the K8S resources that
 	// get updated as part of renewing the user tokens
-	UserTokensLock lock
+	// - Ensure this lock is acquired before accessing `tokenRenewalTimers`, or modifying local user Secret
+	// - In most cases, this will be be automatically acquired by 'reconcileLocalUsers'
+	lock sync.Mutex
 }
 
 // blank assignment to verify that ReconcileArgoCD implements reconcile.Reconciler

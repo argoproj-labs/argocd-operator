@@ -46,7 +46,8 @@ const (
 )
 
 // getArgoApplicationSetCommand will return the command for the ArgoCD ApplicationSet component.
-func (r *ReconcileArgoCD) getArgoApplicationSetCommand(cr *argoproj.ArgoCD) []string {
+// It returns an error when ApplicationSet source namespaces or apps source namespaces cannot be retrieved
+func (r *ReconcileArgoCD) getArgoApplicationSetCommand(cr *argoproj.ArgoCD) ([]string, error) {
 	cmd := make([]string, 0)
 
 	cmd = append(cmd, "entrypoint.sh")
@@ -82,29 +83,29 @@ func (r *ReconcileArgoCD) getArgoApplicationSetCommand(cr *argoproj.ArgoCD) []st
 		// appset source namespaces should be subset of apps source namespaces
 		appsetsSourceNamespacesExpanded, err := r.getApplicationSetSourceNamespaces(cr)
 		if err != nil {
-			log.Error(err, "failed to getting ApplicationSet source namespaces")
-		} else {
-			appsNamespaces, err := r.getSourceNamespaces(cr)
-			if err == nil {
-				appsetsSourceNamespaces := []string{}
-				for _, ns := range appsetsSourceNamespacesExpanded {
-					if contains(appsNamespaces, ns) {
-						appsetsSourceNamespaces = append(appsetsSourceNamespaces, ns)
-					} else {
-						log.V(1).Info(fmt.Sprintf("Apps in target sourceNamespace %s is not enabled, thus skipping the namespace in deployment command.", ns))
-					}
-				}
-				if len(appsetsSourceNamespaces) > 0 {
-					cmd = append(cmd, "--applicationset-namespaces", fmt.Sprint(strings.Join(appsetsSourceNamespaces, ",")))
-				}
-
-				// appset in any ns is enabled and no scmProviders allow list is specified,
-				// disables scm & PR generators to prevent potential security issues
-				// https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/Appset-Any-Namespace/#scm-providers-secrets-consideration
-				if len(appsetsSourceNamespaces) > 0 && (len(cr.Spec.ApplicationSet.SCMProviders) <= 0) {
-					cmd = append(cmd, "--enable-scm-providers=false")
-				}
+			return nil, fmt.Errorf("failed to get ApplicationSet source namespaces: %w", err)
+		}
+		appsNamespaces, err := r.getSourceNamespaces(cr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get apps source namespaces: %w", err)
+		}
+		appsetsSourceNamespaces := []string{}
+		for _, ns := range appsetsSourceNamespacesExpanded {
+			if contains(appsNamespaces, ns) {
+				appsetsSourceNamespaces = append(appsetsSourceNamespaces, ns)
+			} else {
+				log.V(1).Info(fmt.Sprintf("Apps in target sourceNamespace %s is not enabled, thus skipping the namespace in deployment command.", ns))
 			}
+		}
+		if len(appsetsSourceNamespaces) > 0 {
+			cmd = append(cmd, "--applicationset-namespaces", fmt.Sprint(strings.Join(appsetsSourceNamespaces, ",")))
+		}
+
+		// appset in any ns is enabled and no scmProviders allow list is specified,
+		// disables scm & PR generators to prevent potential security issues
+		// https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/Appset-Any-Namespace/#scm-providers-secrets-consideration
+		if len(appsetsSourceNamespaces) > 0 && (len(cr.Spec.ApplicationSet.SCMProviders) <= 0) {
+			cmd = append(cmd, "--enable-scm-providers=false")
 		}
 	}
 
@@ -116,7 +117,7 @@ func (r *ReconcileArgoCD) getArgoApplicationSetCommand(cr *argoproj.ArgoCD) []st
 	extraArgs := cr.Spec.ApplicationSet.ExtraCommandArgs
 	cmd = appendUniqueArgs(cmd, extraArgs)
 
-	return cmd
+	return cmd, nil
 }
 
 func (r *ReconcileArgoCD) reconcileApplicationSetController(cr *argoproj.ArgoCD) error {
@@ -288,8 +289,12 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 		}
 	}
 
+	appSetContainer, err := r.applicationSetContainer(cr, addSCMGitlabVolumeMount)
+	if err != nil {
+		return err
+	}
 	podSpec.Containers = []corev1.Container{
-		r.applicationSetContainer(cr, addSCMGitlabVolumeMount),
+		appSetContainer,
 	}
 	AddSeccompProfileForOpenShift(r.Client, podSpec)
 
@@ -381,7 +386,7 @@ func identifyDeploymentDifference(x appsv1.Deployment, y appsv1.Deployment) stri
 	return ""
 }
 
-func (r *ReconcileArgoCD) applicationSetContainer(cr *argoproj.ArgoCD, addSCMGitlabVolumeMount bool) corev1.Container {
+func (r *ReconcileArgoCD) applicationSetContainer(cr *argoproj.ArgoCD, addSCMGitlabVolumeMount bool) (corev1.Container, error) {
 	// Global proxy env vars go first
 	appSetEnv := []corev1.EnvVar{{
 		Name: "NAMESPACE",
@@ -434,8 +439,13 @@ func (r *ReconcileArgoCD) applicationSetContainer(cr *argoproj.ArgoCD, addSCMGit
 		})
 	}
 
+	cmd, err := r.getArgoApplicationSetCommand(cr)
+	if err != nil {
+		return corev1.Container{}, err
+	}
+
 	container := corev1.Container{
-		Command:         r.getArgoApplicationSetCommand(cr),
+		Command:         cmd,
 		Env:             appSetEnv,
 		Image:           getApplicationSetContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
@@ -454,7 +464,7 @@ func (r *ReconcileArgoCD) applicationSetContainer(cr *argoproj.ArgoCD, addSCMGit
 		},
 		SecurityContext: argoutil.DefaultSecurityContext(),
 	}
-	return container
+	return container, nil
 }
 
 func (r *ReconcileArgoCD) reconcileApplicationSetServiceAccount(cr *argoproj.ArgoCD) (*corev1.ServiceAccount, error) {

@@ -257,7 +257,7 @@ metadata:
     capabilities: Deep Insights
     categories: Integration & Delivery
     certified: "false"
-    createdAt: "2026-03-09T15:34:42Z"
+    createdAt: "2026-04-10T16:59:38Z"
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v1.35.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
@@ -1084,6 +1084,15 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: 'ClusterDomain is the cluster domain suffix used for constructing
+          service FQDNs. Defaults to "cluster.local". The full FQDN will be: <service>.<namespace>.svc.<clusterDomain>
+          This is useful for clusters that use a different DNS suffix (e.g., "CLUSTER_ID.cluster.local",
+          "edge.local").'
+        displayName: Cluster Domain
+        path: clusterDomain
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: 'Deprecated: ConfigManagementPlugins field is no longer supported.
           Argo CD now requires plugins to be defined as sidecar containers of repo
           server component. See ''.spec.repo.sidecarContainers''. ConfigManagementPlugins
@@ -1946,6 +1955,9 @@ spec:
             spec:
               containers:
               - args:
+                - --health-probe-bind-address=:8081
+                - --metrics-bind-address=:8443
+                - --metrics-secure
                 - --leader-elect
                 command:
                 - /manager
@@ -1967,6 +1979,9 @@ spec:
                 ports:
                 - containerPort: 9443
                   name: webhook-server
+                  protocol: TCP
+                - containerPort: 8443
+                  name: https
                   protocol: TCP
                 readinessProbe:
                   httpGet:
