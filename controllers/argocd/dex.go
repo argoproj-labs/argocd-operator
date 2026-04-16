@@ -485,6 +485,22 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 			explanation += "container volume mounts"
 			changed = true
 		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers[0].VolumeMounts, existing.Spec.Template.Spec.InitContainers[0].VolumeMounts) {
+			existing.Spec.Template.Spec.InitContainers[0].VolumeMounts = deploy.Spec.Template.Spec.InitContainers[0].VolumeMounts
+			if changed {
+				explanation += ", "
+			}
+			explanation += "init container volume mounts"
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers[0].Resources, existing.Spec.Template.Spec.InitContainers[0].Resources) {
+			existing.Spec.Template.Spec.InitContainers[0].Resources = deploy.Spec.Template.Spec.InitContainers[0].Resources
+			if changed {
+				explanation += ", "
+			}
+			explanation += "init container resources"
+			changed = true
+		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
 			existing.Spec.Template.Spec.Volumes = deploy.Spec.Template.Spec.Volumes
 			if changed {
