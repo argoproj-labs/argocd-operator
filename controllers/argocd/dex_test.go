@@ -680,6 +680,149 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 	}
 }
 
+func TestReconcileArgoCD_reconcileDexDeployment_updatesInitContainerFields(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	// staleDeployment simulates a Dex Deployment created by an old operator version (e.g., v1.13)
+	// that only has the "static-files" volumeMount in the copyutil initContainer and no dexconfig volume.
+	staleDeployment := func(namespace string) *appsv1.Deployment {
+		return &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "argocd-dex-server",
+				Namespace: namespace,
+			},
+			Spec: appsv1.DeploymentSpec{
+				Selector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"app.kubernetes.io/name": "argocd-dex-server",
+					},
+				},
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: map[string]string{
+							"app.kubernetes.io/name": "argocd-dex-server",
+						},
+					},
+					Spec: corev1.PodSpec{
+						InitContainers: []corev1.Container{
+							{
+								Name: "copyutil",
+								// Old state: only static-files, dexconfig mount is absent
+								VolumeMounts: []corev1.VolumeMount{
+									{Name: "static-files", MountPath: "/shared"},
+								},
+								Resources: corev1.ResourceRequirements{
+									Limits: corev1.ResourceList{
+										corev1.ResourceMemory: resourcev1.MustParse("128Mi"),
+									},
+									Requests: corev1.ResourceList{
+										corev1.ResourceCPU:    resourcev1.MustParse("15m"),
+										corev1.ResourceMemory: resourcev1.MustParse("128Mi"),
+									},
+								},
+							},
+						},
+						Containers: []corev1.Container{
+							{Name: "dex"},
+						},
+						Volumes: []corev1.Volume{
+							{
+								Name:         "static-files",
+								VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	tests := []struct {
+		name                 string
+		argoCD               *argoproj.ArgoCD
+		wantInitVolumeMounts []corev1.VolumeMount
+		wantInitResources    corev1.ResourceRequirements
+	}{
+		{
+			name: "reconciler adds missing dexconfig volumeMount to copyutil initContainer on upgrade",
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+				}
+			}),
+			wantInitVolumeMounts: []corev1.VolumeMount{
+				{Name: "static-files", MountPath: "/shared"},
+				{Name: "dexconfig", MountPath: "/tmp"},
+			},
+			wantInitResources: corev1.ResourceRequirements{},
+		},
+		{
+			name: "reconciler updates stale resources in copyutil initContainer on upgrade",
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
+						Resources: &corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceMemory: resourcev1.MustParse("128Mi"),
+								corev1.ResourceCPU:    resourcev1.MustParse("250m"),
+							},
+							Limits: corev1.ResourceList{
+								corev1.ResourceMemory: resourcev1.MustParse("256Mi"),
+								corev1.ResourceCPU:    resourcev1.MustParse("500m"),
+							},
+						},
+					},
+				}
+			}),
+			wantInitVolumeMounts: []corev1.VolumeMount{
+				{Name: "static-files", MountPath: "/shared"},
+				{Name: "dexconfig", MountPath: "/tmp"},
+			},
+			wantInitResources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceMemory: resourcev1.MustParse("128Mi"),
+					corev1.ResourceCPU:    resourcev1.MustParse("250m"),
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceMemory: resourcev1.MustParse("256Mi"),
+					corev1.ResourceCPU:    resourcev1.MustParse("500m"),
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			existingDeploy := staleDeployment(test.argoCD.Namespace)
+			resObjs := []client.Object{test.argoCD, existingDeploy}
+			subresObjs := []client.Object{test.argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			assert.NoError(t, r.reconcileDexDeployment(test.argoCD))
+
+			deployment := &appsv1.Deployment{}
+			assert.NoError(t, r.Get(
+				context.TODO(),
+				types.NamespacedName{
+					Name:      "argocd-dex-server",
+					Namespace: test.argoCD.Namespace,
+				},
+				deployment))
+
+			assert.Equal(t, test.wantInitVolumeMounts,
+				deployment.Spec.Template.Spec.InitContainers[0].VolumeMounts,
+				"copyutil initContainer VolumeMounts should be updated by reconciler")
+			assert.Equal(t, test.wantInitResources,
+				deployment.Spec.Template.Spec.InitContainers[0].Resources,
+				"copyutil initContainer Resources should be updated by reconciler")
+		})
+	}
+}
+
 // When Dex is enabled dex service should be created, when disabled the Dex service should be removed
 func TestReconcileArgoCD_reconcileDexService_removes_dex_when_disabled(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
