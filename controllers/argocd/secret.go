@@ -436,7 +436,7 @@ func applyGitHubWebhookSecretFromRef(ctx context.Context, c client.Client, cr *a
 	if argocdSecret.Data == nil {
 		argocdSecret.Data = make(map[string][]byte)
 	}
-	if existing, ok := argocdSecret.Data[common.ArgoCDKeyGitHubWebhookSecret]; ok && bytes.Equal(existing, val) {
+	if bytes.Equal(argocdSecret.Data[common.ArgoCDKeyGitHubWebhookSecret], val) {
 		return false, nil
 	}
 	argocdSecret.Data[common.ArgoCDKeyGitHubWebhookSecret] = val
