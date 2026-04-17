@@ -1069,6 +1069,10 @@ type ArgoCDSpec struct {
 
 	// NamespaceManagement defines the list of namespaces that Argo CD is allowed to manage.
 	NamespaceManagement []ManagedNamespaces `json:"namespaceManagement,omitempty"`
+
+	// WebhookSecrets references Kubernetes Secrets that supply webhook credentials per provider.
+	// The operator syncs values into argocd-secret under the keys Argo CD expects.
+	WebhookSecrets *ArgoCDWebhookSecretsSpec `json:"webhookSecrets,omitempty"`
 }
 
 // NamespaceManagement defines the namespace management settings
@@ -1078,6 +1082,31 @@ type ManagedNamespaces struct {
 
 	// Whether the namespace can be managed by ArgoCD
 	AllowManagedBy bool `json:"allowManagedBy"`
+}
+
+// ArgoCDWebhookSecretsSpec holds declarative references to Secrets for Git provider webhook credentials.
+// +k8s:openapi-gen=true
+type ArgoCDWebhookSecretsSpec struct {
+	// GitHub: Secret key reference for the webhook secret used to verify incoming webhook requests.
+	GitHub *ArgoCDWebhookSecretsGitHub `json:"github,omitempty"`
+}
+
+// ArgoCDWebhookSecretsGitHub declares where to read the GitHub webhook secret.
+// +k8s:openapi-gen=true
+type ArgoCDWebhookSecretsGitHub struct {
+	// SecretRef points to the key holding the webhook secret value.
+	SecretRef *WebhookSecretKeySelector `json:"secretRef,omitempty"`
+}
+
+// WebhookSecretKeySelector references one key within a Secret.
+// +k8s:openapi-gen=true
+type WebhookSecretKeySelector struct {
+	// Name of the Secret.
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
+	// Key in the Secret whose value should be used.
+	// +kubebuilder:validation:Required
+	Key string `json:"key"`
 }
 
 const OpenShiftOAuthErrorMessage = "OpenShiftOAuth is not supported when external authentication is enabled on cluster, please provide OIDC config"
