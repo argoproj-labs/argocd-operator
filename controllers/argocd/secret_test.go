@@ -922,10 +922,12 @@ func Test_applyGitHubWebhookSecretFromRef(t *testing.T) {
 	t.Run("source secret missing", func(t *testing.T) {
 		cr := baseCR()
 		cl := fake.NewClientBuilder().WithScheme(scheme).Build()
-		argocd := &corev1.Secret{Data: map[string][]byte{}}
+		argocd := &corev1.Secret{Data: map[string][]byte{
+			common.ArgoCDKeyGitHubWebhookSecret: []byte("stale"),
+		}}
 		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
 		require.NoError(t, err)
-		assert.False(t, changed)
+		assert.True(t, changed)
 		assert.Empty(t, argocd.Data[common.ArgoCDKeyGitHubWebhookSecret])
 	})
 
@@ -936,10 +938,12 @@ func Test_applyGitHubWebhookSecretFromRef(t *testing.T) {
 			Data:       map[string][]byte{"other": []byte("x")},
 		}
 		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(src).Build()
-		argocd := &corev1.Secret{Data: map[string][]byte{}}
+		argocd := &corev1.Secret{Data: map[string][]byte{
+			common.ArgoCDKeyGitHubWebhookSecret: []byte("stale"),
+		}}
 		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
 		require.NoError(t, err)
-		assert.False(t, changed)
+		assert.True(t, changed)
 		assert.Empty(t, argocd.Data[common.ArgoCDKeyGitHubWebhookSecret])
 	})
 
@@ -953,13 +957,43 @@ func Test_applyGitHubWebhookSecretFromRef(t *testing.T) {
 		assert.False(t, changed)
 	})
 
+	t.Run("get returns non-NotFound error preserves stale webhook secret", func(t *testing.T) {
+		cr := baseCR()
+		want := errors.New("simulated API failure")
+		cl := &getAlwaysErrClient{Client: fake.NewClientBuilder().WithScheme(scheme).Build(), getErr: want}
+		stale := []byte("stale")
+		argocd := &corev1.Secret{Data: map[string][]byte{
+			common.ArgoCDKeyGitHubWebhookSecret: stale,
+		}}
+		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
+		assert.ErrorIs(t, err, want)
+		assert.False(t, changed)
+		assert.Equal(t, stale, argocd.Data[common.ArgoCDKeyGitHubWebhookSecret])
+	})
+
 	t.Run("no webhook spec", func(t *testing.T) {
 		cr := &argoproj.ArgoCD{ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: "ns-a"}}
 		cl := fake.NewClientBuilder().WithScheme(scheme).Build()
-		argocd := &corev1.Secret{Data: map[string][]byte{}}
+		argocd := &corev1.Secret{Data: map[string][]byte{
+			common.ArgoCDKeyGitHubWebhookSecret: []byte("stale"),
+		}}
 		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
 		require.NoError(t, err)
-		assert.False(t, changed)
+		assert.True(t, changed)
+		assert.Empty(t, argocd.Data[common.ArgoCDKeyGitHubWebhookSecret])
+	})
+
+	t.Run("empty secret ref name removes stale value", func(t *testing.T) {
+		cr := baseCR()
+		cr.Spec.WebhookSecrets.GitHub.SecretRef.Name = ""
+		cl := fake.NewClientBuilder().WithScheme(scheme).Build()
+		argocd := &corev1.Secret{Data: map[string][]byte{
+			common.ArgoCDKeyGitHubWebhookSecret: []byte("stale"),
+		}}
+		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
+		require.NoError(t, err)
+		assert.True(t, changed)
+		assert.Empty(t, argocd.Data[common.ArgoCDKeyGitHubWebhookSecret])
 	})
 }
 
