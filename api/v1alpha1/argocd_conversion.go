@@ -101,6 +101,7 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.AggregatedClusterRoles = src.Spec.AggregatedClusterRoles
 	dst.Spec.ArgoCDAgent = ConvertAlphaToBetaArgoCDAgent(src.Spec.ArgoCDAgent)
 	dst.Spec.NamespaceManagement = ConvertAlphaToBetaNamespaceManagement(src.Spec.NamespaceManagement)
+	dst.Spec.WebhookSecrets = ConvertAlphaToBetaWebhookSecrets(src.Spec.WebhookSecrets)
 	dst.Spec.NetworkPolicy = v1beta1.ArgoCDNetworkPolicySpec(src.Spec.NetworkPolicy)
 
 	// Status conversion
@@ -177,6 +178,7 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.AggregatedClusterRoles = src.Spec.AggregatedClusterRoles
 	dst.Spec.ArgoCDAgent = ConvertBetaToAlphaArgoCDAgent(src.Spec.ArgoCDAgent)
 	dst.Spec.NamespaceManagement = ConvertBetaToAlphaNamespaceManagement(src.Spec.NamespaceManagement)
+	dst.Spec.WebhookSecrets = ConvertBetaToAlphaWebhookSecrets(src.Spec.WebhookSecrets)
 
 	// Status conversion
 	dst.Status = ArgoCDStatus(src.Status)
@@ -1035,6 +1037,42 @@ func ConvertBetaToAlphaAgentTLS(src *v1beta1.AgentTLSSpec) *AgentTLSSpec {
 			SecretName:       src.SecretName,
 			RootCASecretName: src.RootCASecretName,
 			Insecure:         src.Insecure,
+		}
+	}
+	return dst
+}
+
+// ConvertAlphaToBetaWebhookSecrets converts webhook secret refs from v1alpha1 to v1beta1.
+func ConvertAlphaToBetaWebhookSecrets(src *ArgoCDWebhookSecretsSpec) *v1beta1.ArgoCDWebhookSecretsSpec {
+	if src == nil {
+		return nil
+	}
+	dst := &v1beta1.ArgoCDWebhookSecretsSpec{}
+	if src.GitHub != nil {
+		dst.GitHub = &v1beta1.ArgoCDWebhookSecretsGitHub{}
+		if src.GitHub.SecretRef != nil {
+			dst.GitHub.SecretRef = &v1beta1.WebhookSecretKeySelector{
+				Name: src.GitHub.SecretRef.Name,
+				Key:  src.GitHub.SecretRef.Key,
+			}
+		}
+	}
+	return dst
+}
+
+// ConvertBetaToAlphaWebhookSecrets converts webhook secret refs from v1beta1 to v1alpha1.
+func ConvertBetaToAlphaWebhookSecrets(src *v1beta1.ArgoCDWebhookSecretsSpec) *ArgoCDWebhookSecretsSpec {
+	if src == nil {
+		return nil
+	}
+	dst := &ArgoCDWebhookSecretsSpec{}
+	if src.GitHub != nil {
+		dst.GitHub = &ArgoCDWebhookSecretsGitHub{}
+		if src.GitHub.SecretRef != nil {
+			dst.GitHub.SecretRef = &WebhookSecretKeySelector{
+				Name: src.GitHub.SecretRef.Name,
+				Key:  src.GitHub.SecretRef.Key,
+			}
 		}
 	}
 	return dst
