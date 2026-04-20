@@ -701,7 +701,7 @@ func (r *ReconcileArgoCD) reconcileRedisTLSSecret(cr *argoproj.ArgoCD, useTLSFor
 			if err != nil {
 				return err
 			}
-			err = r.recreateRedisHAHealthConfigMap(cr, useTLSForRedis)
+			err = r.recreateRedisHAHealthConfigMap(cr)
 			if err != nil {
 				return err
 			}

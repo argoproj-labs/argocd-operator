@@ -89,7 +89,7 @@ func newStatefulSetWithSuffix(suffix string, component string, cr *argoproj.Argo
 	return newStatefulSetWithName(nameWithSuffix(suffix, cr), component, cr)
 }
 
-func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	ss := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
 
 	redisEnv := proxyEnvVars()
@@ -132,6 +132,29 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 
 	redisAuthVolume, redisAuthMount := argoutil.MountRedisAuthToRedis(cr)
 
+	// Same for liveness and readiness
+	sentinelProbeCmd := []string{
+		"/health/sentinel_liveness.sh",
+		"-h", "localhost",
+		"-p", "26379",
+	}
+	redisLivenessCmd := []string{
+		"/health/redis_liveness.sh",
+		"-h", "localhost",
+		"-p", "6379",
+	}
+	redisReadinessCmd := []string{
+		"/health/redis_readiness.sh",
+		"-h", "localhost",
+		"-p", "6379",
+	}
+	if useTLSForRedis {
+		tlsProbeOpts := []string{"--tls", "--cacert", "/app/config/redis/tls/tls.crt"}
+		sentinelProbeCmd = append(sentinelProbeCmd, tlsProbeOpts...)
+		redisLivenessCmd = append(redisLivenessCmd, tlsProbeOpts...)
+		redisReadinessCmd = append(redisReadinessCmd, tlsProbeOpts...)
+	}
+
 	ss.Spec.Template.Spec.Containers = []corev1.Container{
 		{
 			Args: []string{
@@ -146,11 +169,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 			LivenessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
 					Exec: &corev1.ExecAction{
-						Command: []string{
-							"sh",
-							"-c",
-							"/health/redis_liveness.sh",
-						},
+						Command: redisLivenessCmd,
 					},
 				},
 				FailureThreshold:    int32(5),
@@ -167,11 +186,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 			ReadinessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
 					Exec: &corev1.ExecAction{
-						Command: []string{
-							"sh",
-							"-c",
-							"/health/redis_readiness.sh",
-						},
+						Command: redisReadinessCmd,
 					},
 				},
 				FailureThreshold:    int32(5),
@@ -211,11 +226,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 			LivenessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
 					Exec: &corev1.ExecAction{
-						Command: []string{
-							"sh",
-							"-c",
-							"/health/sentinel_liveness.sh",
-						},
+						Command: sentinelProbeCmd,
 					},
 				},
 				FailureThreshold:    int32(5),
@@ -232,11 +243,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 			ReadinessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
 					Exec: &corev1.ExecAction{
-						Command: []string{
-							"sh",
-							"-c",
-							"/health/sentinel_liveness.sh",
-						},
+						Command: sentinelProbeCmd,
 					},
 				},
 				FailureThreshold:    int32(5),
@@ -303,6 +310,14 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 			{
 				Name:  "SENTINEL_ID_2",
 				Value: "2bbec7894d954a8af3bb54d13eaec53cb024e2ca", // TODO: Should this be hard-coded?
+			},
+			{
+				Name:  "ARGOCD_REDIS_SERVICE_NAME",
+				Value: nameWithSuffix("redis-ha", cr),
+			},
+			{
+				Name:  "ARGOCD_REDIS_USE_TLS",
+				Value: strconv.FormatBool(useTLSForRedis),
 			},
 		},
 		Image:           argoutil.GetRedisHAContainerImage(cr),
@@ -942,7 +957,7 @@ func (r *ReconcileArgoCD) reconcileStatefulSets(cr *argoproj.ArgoCD, useTLSForRe
 	if err := r.reconcileApplicationControllerStatefulSet(cr, useTLSForRedis); err != nil {
 		return err
 	}
-	if err := r.reconcileRedisStatefulSet(cr); err != nil {
+	if err := r.reconcileRedisStatefulSet(cr, useTLSForRedis); err != nil {
 		return err
 	}
 	return nil
