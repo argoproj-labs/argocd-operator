@@ -1099,7 +1099,7 @@ func TestGetOpenShiftDexConfig_OIDCDisabled(t *testing.T) {
 }
 
 func TestNeedsDexTokenRenewal(t *testing.T) {
-	renewThreshold := time.Duration(common.ArgoCDDexServerTokenExpirySecs/common.ArgoCDDexServerTokenRenewalThresholdFraction) * time.Second
+	renewThreshold := dexServerTokenRenewalThreshold()
 
 	tests := []struct {
 		name   string
@@ -1135,8 +1135,29 @@ func TestNeedsDexTokenRenewal(t *testing.T) {
 			name: "outside renewal window - no renewal needed",
 			secret: &corev1.Secret{Data: map[string][]byte{
 				"expiry": []byte(time.Now().Add(renewThreshold + time.Hour).UTC().Format(time.RFC3339)),
+				"token":  []byte("present"),
 			}},
 			want: false,
+		},
+		{
+			name:   "nil secret - needs renewal",
+			secret: nil,
+			want:   true,
+		},
+		{
+			name: "valid expiry but missing token key - needs renewal",
+			secret: &corev1.Secret{Data: map[string][]byte{
+				"expiry": []byte(time.Now().Add(renewThreshold + time.Hour).UTC().Format(time.RFC3339)),
+			}},
+			want: true,
+		},
+		{
+			name: "valid expiry but empty token - needs renewal",
+			secret: &corev1.Secret{Data: map[string][]byte{
+				"expiry": []byte(time.Now().Add(renewThreshold + time.Hour).UTC().Format(time.RFC3339)),
+				"token":  []byte{},
+			}},
+			want: true,
 		},
 	}
 
@@ -1249,7 +1270,7 @@ func TestReconcileArgoCD_reconcileDexLegacySATokenSecrets(t *testing.T) {
 	// Create a legacy kubernetes.io/service-account-token Secret.
 	legacySecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "argocd-dex-server-token-abc12",
+			Name:      dexSAName + "-token-abc12",
 			Namespace: a.Namespace,
 			Labels: map[string]string{
 				common.ArgoCDTrackedByOperatorLabel: common.ArgoCDAppName,
@@ -1283,7 +1304,7 @@ func TestReconcileArgoCD_reconcileDexLegacySATokenSecrets(t *testing.T) {
 	assert.NoError(t, r.Get(context.TODO(),
 		types.NamespacedName{Name: dexSAName, Namespace: a.Namespace}, updatedSA))
 	for _, ref := range updatedSA.Secrets {
-		assert.False(t, strings.Contains(ref.Name, "dex-server-token"),
+		assert.False(t, strings.HasPrefix(ref.Name, dexSAName+"-token-"),
 			"SA.secrets must not contain legacy token reference %q", ref.Name)
 	}
 }

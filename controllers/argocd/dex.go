@@ -2,6 +2,7 @@ package argocd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -46,18 +47,33 @@ func getDexServerTokenSecretName(cr *argoproj.ArgoCD) string {
 	return argoutil.GetSecretNameWithSuffix(cr, common.ArgoCDDefaultDexServiceAccountName+"-token")
 }
 
+// dexServerTokenRenewalThreshold is how much nominal lifetime may remain before we treat the Dex token
+// as due for renewal (ExpirySecs * ArgoCDDexServerTokenRenewalThresholdPercent / 100).
+func dexServerTokenRenewalThreshold() time.Duration {
+	return time.Duration(common.ArgoCDDexServerTokenExpirySecs*common.ArgoCDDexServerTokenRenewalThresholdPercent/100) * time.Second
+}
+
 // needsDexTokenRenewal returns true when the token is missing, unparseable, or within the renewal window.
 func needsDexTokenRenewal(secret *corev1.Secret) bool {
+	if secret == nil || secret.Data == nil {
+		return true
+	}
+	tokenBytes, ok := secret.Data["token"]
+	if !ok || len(tokenBytes) == 0 {
+		return true
+	}
 	expiryBytes, ok := secret.Data["expiry"]
 	if !ok {
 		return true
 	}
 	expiry, err := time.Parse(time.RFC3339, string(expiryBytes))
 	if err != nil {
+		log.Error(err, "dex token secret has unparseable expiry, renewal needed",
+			"secret", fmt.Sprintf("%s/%s", secret.Namespace, secret.Name),
+			"expiry", string(expiryBytes))
 		return true
 	}
-	renewThreshold := time.Duration(common.ArgoCDDexServerTokenExpirySecs/common.ArgoCDDexServerTokenRenewalThresholdFraction) * time.Second
-	return time.Until(expiry) < renewThreshold
+	return time.Until(expiry) < dexServerTokenRenewalThreshold()
 }
 
 // getDexOAuthClientSecret returns a time-limited Dex OAuth client token via the TokenRequest API.
@@ -80,9 +96,12 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string,
 		token := string(tokenSecret.Data["token"])
 		// Schedule the next reconcile to run just before the renewal threshold so
 		// the token is proactively renewed without waiting for an external event.
-		if expiry, parseErr := time.Parse(time.RFC3339, string(tokenSecret.Data["expiry"])); parseErr == nil {
-			renewThreshold := time.Duration(common.ArgoCDDexServerTokenExpirySecs/common.ArgoCDDexServerTokenRenewalThresholdFraction) * time.Second
-			if d := time.Until(expiry) - renewThreshold; d > 0 {
+		expiry, parseErr := time.Parse(time.RFC3339, string(tokenSecret.Data["expiry"]))
+		if parseErr != nil {
+			log.Error(parseErr, "dex token secret expiry unparseable when scheduling requeue, returning cached token",
+				"secret", fmt.Sprintf("%s/%s", tokenSecret.Namespace, tokenSecret.Name))
+		} else {
+			if d := time.Until(expiry) - dexServerTokenRenewalThreshold(); d > 0 {
 				r.dexTokenRequeueAfter.Store(cr.Namespace, d)
 			}
 		}
@@ -132,8 +151,7 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string,
 	}
 
 	// Schedule the next reconcile just before the renewal threshold.
-	renewThreshold := time.Duration(common.ArgoCDDexServerTokenExpirySecs/common.ArgoCDDexServerTokenRenewalThresholdFraction) * time.Second
-	if d := time.Until(tokenRequest.Status.ExpirationTimestamp.Time) - renewThreshold; d > 0 {
+	if d := time.Until(tokenRequest.Status.ExpirationTimestamp.Time) - dexServerTokenRenewalThreshold(); d > 0 {
 		r.dexTokenRequeueAfter.Store(cr.Namespace, d)
 	}
 
@@ -154,6 +172,7 @@ func (r *ReconcileArgoCD) reconcileDexLegacySATokenSecrets(cr *argoproj.ArgoCD) 
 	); err != nil {
 		return err
 	}
+	var deleteErrs []error
 	for i := range secretList.Items {
 		s := &secretList.Items[i]
 		if s.Type != corev1.SecretTypeServiceAccountToken {
@@ -162,24 +181,26 @@ func (r *ReconcileArgoCD) reconcileDexLegacySATokenSecrets(cr *argoproj.ArgoCD) 
 		if s.Annotations[corev1.ServiceAccountNameKey] != dexSAName {
 			continue
 		}
-		if !strings.HasPrefix(s.Name, "argocd-dex-server-token-") {
+
+		if !strings.HasPrefix(s.Name, dexSAName+"-token-") {
 			continue
 		}
 		argoutil.LogResourceDeletion(log, s, "removing legacy Dex service account token secret")
 		if err := r.Delete(context.TODO(), s); err != nil && !apierrors.IsNotFound(err) {
-			return err
+			deleteErrs = append(deleteErrs, fmt.Errorf("delete legacy dex token secret %s/%s: %w", s.Namespace, s.Name, err))
 		}
 	}
 	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr)
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
 		if apierrors.IsNotFound(err) {
-			return nil
+			return errors.Join(deleteErrs...)
 		}
-		return err
+		return errors.Join(append([]error{err}, deleteErrs...)...)
 	}
 	var filtered []corev1.ObjectReference
 	for _, ref := range sa.Secrets {
-		if strings.Contains(ref.Name, "dex-server-token") {
+		// Legacy auto token refs only (matches delete loop).
+		if strings.HasPrefix(ref.Name, dexSAName+"-token-") {
 			continue
 		}
 		filtered = append(filtered, ref)
@@ -188,10 +209,10 @@ func (r *ReconcileArgoCD) reconcileDexLegacySATokenSecrets(cr *argoproj.ArgoCD) 
 		sa.Secrets = filtered
 		argoutil.LogResourceUpdate(log, sa, "removing legacy token secret references from Dex service account")
 		if err := r.Update(context.TODO(), sa); err != nil {
-			return err
+			return errors.Join(append([]error{err}, deleteErrs...)...)
 		}
 	}
-	return nil
+	return errors.Join(deleteErrs...)
 }
 
 // reconcileDexConfiguration will ensure that Dex is configured properly.
