@@ -1,6 +1,6 @@
 ## OLM Installed Operator
 
-This folder contains tests which need operator installed via OLM
+This folder contains instructions for building and running operator installed via OLM against local k3d instance.
 
 #### Steps for local testing via OLM
 
@@ -70,7 +70,7 @@ sed "s/sourceNamespace:.*/sourceNamespace: operators/" deploy/subscription.yaml 
 # wait till argocd-operator-controller-manager pod is in running state
 kubectl -n operators get all
 
-kubectl kuttl test ./tests/olm --config ./tests/kuttl-tests.yaml
+# Run operator tests
 ```
 
 ##### Cleanup

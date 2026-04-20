@@ -207,14 +207,11 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 
 ##@ E2E
 
-e2e: ## Run operator e2e tests
-	kubectl kuttl test ./tests/k8s --config ./tests/kuttl-tests.yaml
-
 
 start-e2e: install-prometheus-crds ## Start operator for E2E tests (installs required CRDs if needed)
 	ARGOCD_CLUSTER_CONFIG_NAMESPACES="argocd-e2e-cluster-config, argocd-test-impersonation-1-046, argocd-agent-principal-1-051, argocd-agent-agent-1-052, appset-argocd, appset-old-ns, appset-new-ns, appset-argocd-clusterrole, ns-hosting-principal, ns-hosting-managed-agent, ns-hosting-autonomous-agent" make run
 
-all: test install run e2e ## UnitTest, Run the operator locally and execute e2e tests.
+all: test install run ## UnitTest, Run the operator locally
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 controller-gen: ## Download controller-gen locally if necessary.
