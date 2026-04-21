@@ -11957,24 +11957,12 @@ spec:
                                 - "1.1"
                                 - "1.2"
                                 - "1.3"
-                                - TLSv1.1
-                                - TLSv1.2
-                                - TLSv1.3
-                                - tls1.1
-                                - tls1.2
-                                - tls1.3
                                 type: string
                               minVersion:
                                 enum:
                                 - "1.1"
                                 - "1.2"
                                 - "1.3"
-                                - tls1.1
-                                - tls1.2
-                                - tls1.3
-                                - TLSv1.1
-                                - TLSv1.2
-                                - TLSv1.3
                                 type: string
                             type: object
                         type: object
@@ -18732,24 +18720,12 @@ spec:
                         - "1.1"
                         - "1.2"
                         - "1.3"
-                        - TLSv1.1
-                        - TLSv1.2
-                        - TLSv1.3
-                        - tls1.1
-                        - tls1.2
-                        - tls1.3
                         type: string
                       minVersion:
                         enum:
                         - "1.1"
                         - "1.2"
                         - "1.3"
-                        - tls1.1
-                        - tls1.2
-                        - tls1.3
-                        - TLSv1.1
-                        - TLSv1.2
-                        - TLSv1.3
                         type: string
                     type: object
                   version:
@@ -22348,24 +22324,12 @@ spec:
                         - "1.1"
                         - "1.2"
                         - "1.3"
-                        - TLSv1.1
-                        - TLSv1.2
-                        - TLSv1.3
-                        - tls1.1
-                        - tls1.2
-                        - tls1.3
                         type: string
                       minVersion:
                         enum:
                         - "1.1"
                         - "1.2"
                         - "1.3"
-                        - tls1.1
-                        - tls1.2
-                        - tls1.3
-                        - TLSv1.1
-                        - TLSv1.2
-                        - TLSv1.3
                         type: string
                     type: object
                   verifytls:
@@ -28060,24 +28024,12 @@ spec:
                         - "1.1"
                         - "1.2"
                         - "1.3"
-                        - TLSv1.1
-                        - TLSv1.2
-                        - TLSv1.3
-                        - tls1.1
-                        - tls1.2
-                        - tls1.3
                         type: string
                       minVersion:
                         enum:
                         - "1.1"
                         - "1.2"
                         - "1.3"
-                        - tls1.1
-                        - tls1.2
-                        - tls1.3
-                        - TLSv1.1
-                        - TLSv1.2
-                        - TLSv1.3
                         type: string
                     type: object
                   volumeMounts:

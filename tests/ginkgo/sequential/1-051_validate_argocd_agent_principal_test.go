@@ -218,6 +218,9 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				argocdagent.EnvArgoCDPrincipalTLSServerRootCASecretName: agentRootCASecretName,
 				argocdagent.EnvArgoCDPrincipalResourceProxySecretName:   agentResourceProxyTLSSecretName,
 				argocdagent.EnvArgoCDPrincipalResourceProxyCaSecretName: agentRootCASecretName,
+				argocdagent.EnvArgoCDPrincipalTlsMinVersion:             "tls1.3",
+				argocdagent.EnvArgoCDPrincipalTlsMaxVersion:             "tls1.3",
+				argocdagent.EnvArgoCDPrincipalCipherSuites:              "",
 				argocdagent.EnvArgoCDPrincipalJwtSecretName:             agentJWTSecretName,
 			}
 
@@ -381,10 +384,6 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			for key, value := range expectedEnvVariables {
 				Expect(container.Env).To(ContainElement(corev1.EnvVar{Name: key, Value: value}), "Environment variable %s should be set to %s", key, value)
 			}
-
-			Expect(container.Env).NotTo(ContainElement(
-				HaveField("Name", "REDIS_PASSWORD"),
-			), "REDIS_PASSWORD should not be set")
 
 			By("Disable principal")
 

@@ -245,17 +245,18 @@ func joinCiphers(cipherSuites []string) string {
 // -------------------- Canonical Normalization --------------------
 
 // Used ONLY for parsing/validation
-func normalizeTLSVersionForParsing(v string) string {
-	v = strings.TrimSpace(strings.ToLower(v))
+func normalizeTLSVersionForParsing(v string) (string, error) {
+	v = strings.TrimSpace(v)
 	switch v {
-	case "1.1", "tls1.1", "tlsv1.1":
-		return "1.1"
-	case "1.2", "tls1.2", "tlsv1.2":
-		return "1.2"
-	case "1.3", "tls1.3", "tlsv1.3":
-		return "1.3"
+	case "1.1", "1.2", "1.3":
+		return v, nil
+	case "":
+		return "", nil
 	default:
-		return ""
+		return "", fmt.Errorf(
+			"invalid TLS version %q: only supported values are 1.1, 1.2, 1.3",
+			v,
+		)
 	}
 }
 
@@ -312,8 +313,14 @@ func validateAndParseTLS(tlsCfg *argoproj.ArgoCDTlsConfig) (string, string, erro
 	if tlsCfg == nil {
 		return "", "", nil
 	}
-	minStr := normalizeTLSVersionForParsing(tlsCfg.MinVersion)
-	maxStr := normalizeTLSVersionForParsing(tlsCfg.MaxVersion)
+	minStr, err := normalizeTLSVersionForParsing(tlsCfg.MinVersion)
+	if err != nil {
+		return "", "", fmt.Errorf("invalid min TLS version: %w", err)
+	}
+	maxStr, err := normalizeTLSVersionForParsing(tlsCfg.MaxVersion)
+	if err != nil {
+		return "", "", fmt.Errorf("invalid max TLS version: %w", err)
+	}
 	minVer, err := ParseTLSVersion(minStr)
 	if err != nil {
 		return "", "", fmt.Errorf("invalid min TLS version: %w", err)
