@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -400,10 +401,32 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterDeployment(cr *argoproj.ArgoCD, s
 	if image == "" {
 		image = argoutil.CombineImageTag(DefaultImageUpdaterImage, DefaultImageUpdaterTag)
 	}
-
+	args := []string{"run"}
+	minVersion := "1.3"
+	maxVersion := "1.3"
+	ciphers := ""
+	// Override with CR values if present
+	if cr.Spec.ImageUpdater.TlsConfig != nil {
+		tls := cr.Spec.ImageUpdater.TlsConfig
+		if tls.MinVersion != "" {
+			minVersion = tls.MinVersion
+		}
+		if tls.MaxVersion != "" {
+			maxVersion = tls.MaxVersion
+		}
+		if len(tls.CipherSuites) > 0 {
+			ciphers = strings.Join(tls.CipherSuites, ":")
+		}
+	}
+	// Always pass flags
+	args = append(args, fmt.Sprintf("--tlsminversion=%s", minVersion), fmt.Sprintf("--tlsmaxversion=%s", maxVersion))
+	// Only pass ciphers flag if non-empty (important!)
+	if ciphers != "" {
+		args = append(args, fmt.Sprintf("--tlsciphers=%s", ciphers))
+	}
 	podSpec.Containers = []corev1.Container{{
 		Command:         []string{"/manager"},
-		Args:            []string{"run"},
+		Args:            args,
 		Image:           image,
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            common.ArgoCDImageUpdaterControllerComponent,

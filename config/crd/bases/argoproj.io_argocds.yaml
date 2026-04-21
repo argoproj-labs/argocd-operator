@@ -17935,6 +17935,26 @@ spec:
                           More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                         type: object
                     type: object
+                  tlsConfig:
+                    description: TLS configuration for the Argo CD Image Updater.
+                    properties:
+                      cipherSuites:
+                        items:
+                          type: string
+                        type: array
+                      maxVersion:
+                        enum:
+                        - "1.1"
+                        - "1.2"
+                        - "1.3"
+                        type: string
+                      minVersion:
+                        enum:
+                        - "1.1"
+                        - "1.2"
+                        - "1.3"
+                        type: string
+                    type: object
                 required:
                 - enabled
                 type: object

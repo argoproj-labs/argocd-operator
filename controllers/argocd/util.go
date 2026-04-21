@@ -1970,8 +1970,7 @@ func (r *ReconcileArgoCD) reconcileDeploymentHelper(cr *argoproj.ArgoCD, desired
 		changes = append(changes, "container command")
 	}
 
-	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Env,
-		desiredDeployment.Spec.Template.Spec.Containers[0].Env) {
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Env, desiredDeployment.Spec.Template.Spec.Containers[0].Env) {
 		existingDeployment.Spec.Template.Spec.Containers[0].Env = desiredDeployment.Spec.Template.Spec.Containers[0].Env
 		changes = append(changes, "container env")
 	}
@@ -2024,6 +2023,11 @@ func (r *ReconcileArgoCD) reconcileDeploymentHelper(cr *argoproj.ArgoCD, desired
 	if !reflect.DeepEqual(existingDeployment.Spec.Selector, desiredDeployment.Spec.Selector) {
 		existingDeployment.Spec.Selector = desiredDeployment.Spec.Selector
 		changes = append(changes, "selector")
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Args, desiredDeployment.Spec.Template.Spec.Containers[0].Args) {
+		existingDeployment.Spec.Template.Spec.Containers[0].Args = desiredDeployment.Spec.Template.Spec.Containers[0].Args
+		changes = append(changes, "container args")
 	}
 
 	if len(changes) > 0 {
