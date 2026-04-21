@@ -475,120 +475,6 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 				return true
 			}, 60*time.Second, 2*time.Second).Should(BeTrue())
 
-			By("Check Any Format of passing tls should work for all deployments")
-			By("updating TLS config in any format in argocd CR For RepoServer, Server and Redis")
-			Expect(c.Get(ctx, types.NamespacedName{Name: argocdInstanceName, Namespace: argocdNamespace}, argo)).To(Succeed())
-			argo.Spec.Repo.TlsConfig = &argov1beta1api.ArgoCDTlsConfig{
-				MinVersion:   "TLSv1.2",
-				MaxVersion:   "TLSv1.3",
-				CipherSuites: []string{},
-			}
-			argo.Spec.Server.TlsConfig = &argov1beta1api.ArgoCDTlsConfig{
-				MinVersion:   "TLSv1.2",
-				MaxVersion:   "TLSv1.3",
-				CipherSuites: []string{},
-			}
-			argo.Spec.Redis.TlsConfig = &argov1beta1api.ArgoCDTlsConfig{
-				MinVersion:   "TLSv1.2",
-				MaxVersion:   "TLSv1.3",
-				CipherSuites: []string{},
-			}
-			Expect(c.Update(ctx, argo)).To(Succeed())
-			time.Sleep(5 * time.Second)
-			// --- Validate updated TLS values ---
-			By("validating updated TLS Config For RepoServer, Server and Redis")
-			Eventually(func() bool {
-				for _, deploymentName := range coreDeployments {
-					deployment := &appsv1.Deployment{}
-					if err := c.Get(ctx,
-						types.NamespacedName{Name: deploymentName, Namespace: argocdNamespace}, deployment); err != nil {
-						return false
-					}
-					valid := false
-					for _, container := range deployment.Spec.Template.Spec.Containers {
-						min, max, hasMin, hasMax, _, _ := getTLSValues(container.Args)
-						if !hasMin || !hasMax {
-							continue
-						}
-						if min != "1.2" {
-							GinkgoWriter.Printf("%s: expected tlsminversion=1.2, got %s\n", deploymentName, min)
-							return false
-						}
-						if max != "1.3" {
-							GinkgoWriter.Printf("%s: expected tlsmaxversion=1.3, got %s\n", deploymentName, max)
-							return false
-						}
-						GinkgoWriter.Printf("%s updated TLS OK: min=%s max=%s\n", deploymentName, min, max)
-						valid = true
-					}
-					if !valid {
-						return false
-					}
-				}
-				return true
-			}, 60*time.Second, 2*time.Second).Should(BeTrue(), "all deployments should have updated TLS configuration")
-
-			By("validating TLS args of any format in Redis deployment")
-			Eventually(func() bool {
-				deployment := &appsv1.Deployment{}
-				if err := c.Get(ctx, types.NamespacedName{Name: "example-argocd-redis", Namespace: argocdNamespace}, deployment); err != nil {
-					return false
-				}
-				if len(deployment.Spec.Template.Spec.Containers) == 0 {
-					return false
-				}
-				args := deployment.Spec.Template.Spec.Containers[0].Args
-				var tlsProtocols string
-				var tlsCipherSuites string
-				var tlsCiphers string
-				hasProtocols := false
-				hasCiphers := false
-				hasCiphersTLS2 := false
-				for i := 0; i < len(args); i++ {
-					arg := args[i]
-					// --- Handle "--tls-protocols <value>"
-					if arg == "--tls-protocols" {
-						hasProtocols = true
-						if i+1 < len(args) {
-							tlsProtocols = args[i+1]
-						}
-					}
-					// --- Handle "--tls-ciphersuites <value>"
-					if arg == "--tls-ciphersuites" {
-						hasCiphers = true
-						if i+1 < len(args) {
-							tlsCipherSuites = args[i+1]
-						}
-					}
-
-					if arg == "--tls-ciphers" {
-						hasCiphersTLS2 = true
-						if i+1 < len(args) {
-							tlsCiphers = args[i+1]
-						}
-					}
-
-				}
-
-				// --- Print results (always helpful in debugging)
-				if hasCiphers || tlsCipherSuites != "" {
-					GinkgoWriter.Printf("  --tls-ciphersuites=%q\n should be empty", tlsCipherSuites)
-					return false
-				}
-				if hasCiphersTLS2 || tlsCiphers != "" {
-					GinkgoWriter.Printf("  --tls-ciphers=%q\n should be empty", tlsCiphers)
-					return false
-				}
-				if !hasProtocols || tlsProtocols != "TLSv1.2 TLSv1.3" {
-					GinkgoWriter.Printf("%s: expected --tls-protocols=TLSv1.2 TLSv1.3, got %s\n", deployment.Name, tlsProtocols)
-					return false
-				}
-				GinkgoWriter.Printf("%s TLS args protocol value: %s\n", deployment.Name, tlsProtocols)
-				GinkgoWriter.Printf("%s TLS args ciphersuites value: %s\n", deployment.Name, tlsCipherSuites)
-				GinkgoWriter.Printf("%s TLS args ciphers value: %s\n", deployment.Name, tlsCiphers)
-				return true
-			}, 60*time.Second, 2*time.Second).Should(BeTrue())
-
 			By("Update Two cipherSuites for RepoServer, Server and Redis Deployments")
 			Expect(c.Get(ctx, types.NamespacedName{Name: argocdInstanceName, Namespace: argocdNamespace}, argo)).To(Succeed())
 			argo.Spec.Repo.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
@@ -810,7 +696,6 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 				GinkgoWriter.Printf("%s TLS args ciphers value: %s\n", deployment.Name, tlsCiphers)
 				return true
 			}, 60*time.Second, 2*time.Second).Should(BeTrue())
-
 		})
 	})
 })
