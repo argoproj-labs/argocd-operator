@@ -142,7 +142,11 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 					Name:      argocdInstanceName,
 					Namespace: argocdNamespace,
 				},
-				Spec: argov1beta1api.ArgoCDSpec{},
+				Spec: argov1beta1api.ArgoCDSpec{
+					ImageUpdater: argov1beta1api.ArgoCDImageUpdaterSpec{
+						Enabled: true,
+					},
+				},
 			}
 			Expect(c.Create(ctx, argo)).To(Succeed())
 
@@ -161,6 +165,7 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 			coreDeployments := []string{
 				"example-argocd-server",
 				"example-argocd-repo-server",
+				"example-argocd-argocd-image-updater-controller",
 			}
 			// --- Validate default TLS values ---
 			for _, deploymentName := range coreDeployments {
@@ -176,7 +181,7 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 						return false
 					}
 					for _, container := range deployment.Spec.Template.Spec.Containers {
-						min, max, hasMin, hasMax, _, _ := getTLSValues(container.Args)
+						min, max, hasMin, hasMax, _, ciphers := getTLSValues(container.Args)
 						if !hasMin || !hasMax {
 							continue
 						}
@@ -186,6 +191,10 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 						}
 						if max != "1.3" {
 							GinkgoWriter.Printf("%s: expected tlsmaxversion=1.3, got %s\n", deploymentName, max)
+							return false
+						}
+						if ciphers != "" {
+							GinkgoWriter.Printf("%s: expected empty tlsciphers, got %s\n", deploymentName, ciphers)
 							return false
 						}
 						GinkgoWriter.Printf("%s default TLS OK: min=%s max=%s\n", deploymentName, min, max)
@@ -267,6 +276,10 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 			}
 			argo.Spec.Redis.TlsConfig = &argov1beta1api.ArgoCDTlsConfig{
 				MinVersion: "1.1",
+				MaxVersion: "1.3",
+			}
+			argo.Spec.ImageUpdater.TlsConfig = &argov1beta1api.ArgoCDTlsConfig{
+				MinVersion: "1.2",
 				MaxVersion: "1.3",
 			}
 			Expect(c.Update(ctx, argo)).To(Succeed())
@@ -369,6 +382,7 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 			Expect(c.Get(ctx, types.NamespacedName{Name: argocdInstanceName, Namespace: argocdNamespace}, argo)).To(Succeed())
 			argo.Spec.Repo.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"}
 			argo.Spec.Server.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"}
+			argo.Spec.ImageUpdater.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"}
 			argo.Spec.Redis.TlsConfig = &argov1beta1api.ArgoCDTlsConfig{
 				MinVersion:   "1.2",
 				MaxVersion:   "1.3",
@@ -480,6 +494,7 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 			argo.Spec.Repo.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
 			argo.Spec.Server.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
 			argo.Spec.Redis.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
+			argo.Spec.ImageUpdater.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
 			Expect(c.Update(ctx, argo)).To(Succeed())
 
 			time.Sleep(5 * time.Second)
@@ -584,6 +599,7 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 			argo.Spec.Repo.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
 			argo.Spec.Server.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
 			argo.Spec.Redis.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
+			argo.Spec.ImageUpdater.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
 			Expect(c.Update(ctx, argo)).To(Succeed())
 			time.Sleep(5 * time.Second)
 			Eventually(func() *metav1.Condition {
