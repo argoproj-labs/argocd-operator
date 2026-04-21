@@ -1,9 +1,0 @@
-# appset resources shouldn't exist in target ns
-apiVersion: argoproj.io/v1beta1
-kind: ArgoCD
-metadata:
-  name: example
-  namespace: appset-argocd
-status:
-  phase: Available
-  applicationSetController: Running
