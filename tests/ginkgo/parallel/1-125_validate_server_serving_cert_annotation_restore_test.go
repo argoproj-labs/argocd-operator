@@ -30,9 +30,9 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
 	argocdFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/argocd"
+	certFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/certificate"
 	k8sFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/k8s"
 	fixtureUtils "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
-	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/parallel/cert"
 
 	routev1 "github.com/openshift/api/route/v1"
 )
@@ -152,7 +152,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 		})
 
 		It("does not add serving-cert annotation when argocd-server-tls already exists as a user-managed secret (not Service CA)", func() {
-			certPem, keyPem, err := cert.GenerateCert()
+			certPem, keyPem, err := certFixture.GenerateCert()
 			Expect(err).NotTo(HaveOccurred())
 
 			fixture.EnsureRunningOnOpenShift()
