@@ -259,6 +259,7 @@ metadata:
     certified: "false"
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     createdAt: "2026-05-18T06:38:06Z"
 =======
     createdAt: "2026-04-21T07:20:50Z"
@@ -266,6 +267,9 @@ metadata:
 =======
     createdAt: "2026-04-21T11:34:56Z"
 >>>>>>> 67a0a60c ([GITOPS-9258]: Configurable TLS server settings for argocd and argocd-agent components)
+=======
+    createdAt: "2026-04-22T04:57:03Z"
+>>>>>>> e961bd77 ([GITOPS-9258]: Configurable TLS server settings for argocd and argocd-agent components)
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v1.35.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
