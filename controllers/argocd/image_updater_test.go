@@ -245,9 +245,8 @@ func TestReconcileImageUpdater_CreateDeployments(t *testing.T) {
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.Name)
 
 	want := []v1.Container{{
-		Command: []string{"/manager"},
-		Args: []string{"run", "--tlsminversion=1.3",
-			"--tlsmaxversion=1.3"},
+		Command:         []string{"/manager"},
+		Args:            []string{"run"},
 		Image:           argoutil.CombineImageTag(DefaultImageUpdaterImage, DefaultImageUpdaterTag),
 		ImagePullPolicy: v1.PullIfNotPresent,
 		Name:            common.ArgoCDImageUpdaterControllerComponent,

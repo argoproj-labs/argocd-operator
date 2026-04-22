@@ -335,8 +335,6 @@ type ArgoCDImageUpdaterSpec struct {
 
 	// Resources defines the Compute Resources required by the container for Argo CD Image Updater.
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
-	// TLS configuration for the Argo CD Image Updater.
-	TlsConfig *ArgoCDTlsConfig `json:"tlsConfig,omitempty"`
 }
 
 // ArgoCDImportSpec defines the desired state for the ArgoCD import/restore process.
