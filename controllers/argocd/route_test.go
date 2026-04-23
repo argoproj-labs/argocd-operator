@@ -643,7 +643,7 @@ func TestReconcileRouteTLSConfig(t *testing.T) {
 						Name:      common.ArgoCDServerTLSSecretName,
 						Namespace: cr.Namespace,
 						Annotations: map[string]string{
-							"service.beta.openshift.io/originating-service-name": serviceName,
+							common.AnnotationOpenShiftOriginatingServiceName: serviceName,
 						},
 						OwnerReferences: []metav1.OwnerReference{
 							{
@@ -695,7 +695,7 @@ func TestIsCreatedByServiceCA(t *testing.T) {
 			Name:      common.ArgoCDServerTLSSecretName,
 			Namespace: cr.Namespace,
 			Annotations: map[string]string{
-				"service.beta.openshift.io/originating-service-name": serviceName,
+				common.AnnotationOpenShiftOriginatingServiceName: serviceName,
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				{
@@ -744,7 +744,7 @@ func TestIsCreatedByServiceCA(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			testSecret := secret.DeepCopy()
 			test.updateSecret(testSecret)
-			assert.Equal(t, test.want, isCreatedByServiceCA(cr.Name, *testSecret))
+			assert.Equal(t, test.want, isCreatedByServiceCA(nameWithSuffix("server", cr), *testSecret))
 		})
 	}
 }
