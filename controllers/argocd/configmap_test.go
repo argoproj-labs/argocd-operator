@@ -39,6 +39,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	appsv1 "k8s.io/api/apps/v1"
 )
 
 var _ reconcile.Reconciler = &ReconcileArgoCD{}
@@ -1764,7 +1765,8 @@ p, role:custom-app-viewer, logs, get, */*, allow`
 
 func TestReconcileArgoCD_RemovesLegacyLogEnforceFlag(t *testing.T) {
 	// Setup fake ArgoCD instance and client
-	cr := makeTestArgoCD() // helper to create ArgoCD CR
+	cr := makeTestArgoCD()
+
 	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      common.ArgoCDConfigMapName,
@@ -1776,7 +1778,9 @@ func TestReconcileArgoCD_RemovesLegacyLogEnforceFlag(t *testing.T) {
 	}
 
 	scheme := runtime.NewScheme()
+
 	_ = corev1.AddToScheme(scheme)
+	_ = appsv1.AddToScheme(scheme) // <-- add this
 	_ = argoproj.AddToScheme(scheme)
 
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cr, cm).Build()
@@ -1797,7 +1801,6 @@ func TestReconcileArgoCD_RemovesLegacyLogEnforceFlag(t *testing.T) {
 	_, exists := updated.Data["server.rbac.log.enforce.enable"]
 	assert.False(t, exists, "expected deprecated key to be removed")
 }
-
 func TestReconcileArgoCD_reconcileArgoCmdParamsConfigMap(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
