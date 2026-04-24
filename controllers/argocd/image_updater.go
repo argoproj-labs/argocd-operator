@@ -24,10 +24,15 @@ import (
 
 const (
 	DefaultImageUpdaterImage      = "quay.io/argoprojlabs/argocd-image-updater"
-	DefaultImageUpdaterTag        = "v1.1.1"
+	DefaultImageUpdaterTag        = "latest" //TODO: temporary keeps it as latest until v1.2 releases
 	ArgocdImageUpdaterConfigCM    = "argocd-image-updater-config"
 	ArgocdImageUpdaterSSHConfigCM = "argocd-image-updater-ssh-config"
 	ArgocdImageUpdaterSecret      = "argocd-image-updater-secret" // #nosec G101
+
+	// imageUpdaterManagedNamespaceLabel is applied to every Role and RoleBinding that the
+	// operator creates in a per-namespace watch scope. It allows the operator to list and
+	// prune stale objects when IMAGE_UPDATER_WATCH_NAMESPACES changes between reconciles.
+	imageUpdaterManagedNamespaceLabel = "argocd.argoproj.io/image-updater-managed-namespace"
 )
 
 func (r *ReconcileArgoCD) reconcileImageUpdaterController(cr *argoproj.ArgoCD) error {
@@ -58,6 +63,14 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterControllerEnabled(cr *argoproj.Ar
 		if env.Name == "IMAGE_UPDATER_WATCH_NAMESPACES" {
 			watchNamespaces = strings.TrimSpace(env.Value)
 			break
+		}
+	}
+
+	// When the mode is not cluster-scoped, remove any ClusterRole/ClusterRoleBinding that may
+	// have been created by a previous reconcile cycle when watchNamespaces was "*".
+	if watchNamespaces != "*" {
+		if err := r.deleteImageUpdaterClusterRBAC(cr); err != nil {
+			return err
 		}
 	}
 
@@ -136,6 +149,19 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterControllerEnabled(cr *argoproj.Ar
 				}
 			}
 		}
+	}
+
+	// Remove per-namespace Roles/RoleBindings for namespaces no longer in the watch list.
+	desiredNamespaces := map[string]struct{}{}
+	if watchNamespaces != "" && watchNamespaces != "*" {
+		for _, ns := range strings.Split(watchNamespaces, ",") {
+			if ns = strings.TrimSpace(ns); ns != "" {
+				desiredNamespaces[ns] = struct{}{}
+			}
+		}
+	}
+	if err := r.pruneImageUpdaterNamespaceRBAC(cr, desiredNamespaces); err != nil {
+		return err
 	}
 
 	log.Info("reconciling Image Updater secret")
@@ -233,37 +259,11 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterControllerDisabled(cr *argoproj.A
 		return err
 	}
 
-	// For a comma-separated IMAGE_UPDATER_WATCH_NAMESPACES, manager roles were created in
-	// each listed namespace. Delete them here. Option 1 ("") is handled above (same role name
-	// in cr.Namespace); Option 3 ("*") used a ClusterRole, also handled above.
-	watchNamespaces := ""
-	for _, env := range cr.Spec.ImageUpdater.Env {
-		if env.Name == "IMAGE_UPDATER_WATCH_NAMESPACES" {
-			watchNamespaces = strings.TrimSpace(env.Value)
-			break
-		}
-	}
-	if watchNamespaces != "" && watchNamespaces != "*" {
-		for _, ns := range strings.Split(watchNamespaces, ",") {
-			ns = strings.TrimSpace(ns)
-			if ns == "" {
-				continue
-			}
-			log.Info("deleting Image Updater manager role", "namespace", ns)
-			nsRole, err := r.reconcileImageUpdaterRoleForNamespace(ns, cr, policyRuleForRoleManagerRoleForImageUpdaterController())
-			if err != nil {
-				return err
-			}
-			if nsRole == nil {
-				// Role was not found — fetch a stub so the RoleBinding deletion can proceed.
-				nsRole = &rbacv1.Role{}
-				nsRole.Name = getRoleNameForApplicationSourceNamespaces(ns, cr)
-			}
-			log.Info("deleting Image Updater manager role binding", "namespace", ns)
-			if err := r.reconcileImageUpdaterRoleBindingForNamespace(ns, cr, nsRole, sa); err != nil {
-				return err
-			}
-		}
+	// Delete all per-namespace Roles/RoleBindings previously created for any watch-namespace list.
+	// pruneImageUpdaterNamespaceRBAC with an empty desired set removes everything it finds by label.
+	log.Info("deleting Image Updater namespace roles and role bindings")
+	if err := r.pruneImageUpdaterNamespaceRBAC(cr, map[string]struct{}{}); err != nil {
+		return err
 	}
 
 	log.Info("deleting Image Updater secret")
@@ -363,6 +363,7 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterRoleBinding(cr *argoproj.ArgoCD, 
 
 func (r *ReconcileArgoCD) reconcileImageUpdaterRoleForNamespace(namespace string, cr *argoproj.ArgoCD, policyRules []rbacv1.PolicyRule) (*rbacv1.Role, error) {
 	desiredRole := newRoleForApplicationSourceNamespaces(namespace, policyRules, cr)
+	desiredRole.Labels[imageUpdaterManagedNamespaceLabel] = "true"
 	role, err := r.reconcileRoleHelper(cr, desiredRole)
 	if err != nil {
 		return nil, err
@@ -375,6 +376,7 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterRoleForNamespace(namespace string
 
 func (r *ReconcileArgoCD) reconcileImageUpdaterRoleBindingForNamespace(namespace string, cr *argoproj.ArgoCD, role *rbacv1.Role, sa *corev1.ServiceAccount) error {
 	desiredRoleBinding := newRoleBindingForSupportNamespaces(cr, namespace)
+	desiredRoleBinding.Labels[imageUpdaterManagedNamespaceLabel] = "true"
 	desiredRoleBinding.RoleRef = rbacv1.RoleRef{
 		APIGroup: rbacv1.GroupName,
 		Kind:     "Role",
@@ -390,6 +392,55 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterRoleBindingForNamespace(namespace
 		},
 	}
 	return r.reconcileRoleBindingHelper(cr, desiredRoleBinding)
+}
+
+// pruneImageUpdaterNamespaceRBAC removes per-namespace Image Updater Roles and RoleBindings
+// whose namespace is not present in desiredNamespaces. Pass an empty map to remove all of them
+// (used when Image Updater is disabled). Only objects carrying imageUpdaterManagedNamespaceLabel
+// are considered, so no other operator-managed RBAC is touched.
+func (r *ReconcileArgoCD) pruneImageUpdaterNamespaceRBAC(cr *argoproj.ArgoCD, desiredNamespaces map[string]struct{}) error {
+	matchLabels := client.MatchingLabels{
+		common.ArgoCDKeyName:              cr.Name,
+		imageUpdaterManagedNamespaceLabel: "true",
+	}
+
+	// pruneManaged lists objects of the given type and deletes those whose namespace is not
+	// in desiredNamespaces. getItems is called after List, so it always sees the populated slice.
+	pruneManaged := func(list client.ObjectList, getItems func() []client.Object) error {
+		if err := r.Client.List(context.TODO(), list, matchLabels); err != nil {
+			return fmt.Errorf("failed to list %T: %w", list, err)
+		}
+		for _, obj := range getItems() {
+			if _, ok := desiredNamespaces[obj.GetNamespace()]; ok {
+				continue
+			}
+			argoutil.LogResourceDeletion(log, obj, "namespace removed from IMAGE_UPDATER_WATCH_NAMESPACES")
+			if err := r.Client.Delete(context.TODO(), obj); err != nil && !errors.IsNotFound(err) {
+				return err
+			}
+		}
+		return nil
+	}
+
+	roleList := &rbacv1.RoleList{}
+	if err := pruneManaged(roleList, func() []client.Object {
+		objs := make([]client.Object, len(roleList.Items))
+		for i := range roleList.Items {
+			objs[i] = &roleList.Items[i]
+		}
+		return objs
+	}); err != nil {
+		return err
+	}
+
+	rbList := &rbacv1.RoleBindingList{}
+	return pruneManaged(rbList, func() []client.Object {
+		objs := make([]client.Object, len(rbList.Items))
+		for i := range rbList.Items {
+			objs[i] = &rbList.Items[i]
+		}
+		return objs
+	})
 }
 
 func (r *ReconcileArgoCD) reconcileImageUpdaterClusterRole(cr *argoproj.ArgoCD) (*rbacv1.ClusterRole, error) {
@@ -423,6 +474,28 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterClusterRoleBinding(cr *argoproj.A
 	}
 
 	return r.reconcileRoleBindingHelper(cr, desiredClusterRoleBinding)
+}
+
+// deleteImageUpdaterClusterRBAC deletes the Image Updater ClusterRole and ClusterRoleBinding
+// if they exist. It is called when the watch scope is no longer cluster-wide ("*"), so that
+// resources from a previous reconcile cycle do not remain stale on the cluster.
+func (r *ReconcileArgoCD) deleteImageUpdaterClusterRBAC(cr *argoproj.ArgoCD) error {
+	name := GenerateUniqueResourceName(common.ArgoCDImageUpdaterControllerComponent, cr)
+
+	for _, obj := range []client.Object{&rbacv1.ClusterRole{}, &rbacv1.ClusterRoleBinding{}} {
+		if err := argoutil.FetchObject(r.Client, "", name, obj); err != nil {
+			if !errors.IsNotFound(err) {
+				return err
+			}
+		} else {
+			argoutil.LogResourceDeletion(log, obj, "IMAGE_UPDATER_WATCH_NAMESPACES is no longer \"*\"")
+			if err := r.Delete(context.TODO(), obj); err != nil && !errors.IsNotFound(err) {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 // reconcileImageUpdaterSecret only creates/deletes the argocd-image-updater-secret based on whether image updater is enabled/disabled in the CR

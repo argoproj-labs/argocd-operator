@@ -474,6 +474,58 @@ func TestReconcileImageUpdater_CreateConfigMap(t *testing.T) {
 	assertNotFound(t, err)
 }
 
+func TestDeleteImageUpdaterClusterRBAC(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.ImageUpdater.Enabled = true
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	clusterRBACName := GenerateUniqueResourceName(common.ArgoCDImageUpdaterControllerComponent, a)
+
+	t.Run("no-op when ClusterRole and ClusterRoleBinding do not exist", func(t *testing.T) {
+		assert.NoError(t, r.deleteImageUpdaterClusterRBAC(a))
+	})
+
+	t.Run("deletes existing ClusterRole and ClusterRoleBinding", func(t *testing.T) {
+		// Pre-create the ClusterRole and ClusterRoleBinding the same way the enabled reconciler would.
+		clusterRole, err := r.reconcileImageUpdaterClusterRole(a)
+		assert.NoError(t, err)
+		assert.NotNil(t, clusterRole)
+
+		if clusterRole != nil {
+			assert.NoError(t, r.reconcileImageUpdaterClusterRoleBinding(a, clusterRole, &v1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{Name: "sa", Namespace: a.Namespace},
+			}))
+		}
+
+		// Verify they exist before deletion.
+		assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: clusterRBACName}, &rbacv1.ClusterRole{}))
+		assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: clusterRBACName}, &rbacv1.ClusterRoleBinding{}))
+
+		// Delete.
+		assert.NoError(t, r.deleteImageUpdaterClusterRBAC(a))
+
+		// Verify they are gone.
+		err = r.Get(context.TODO(), types.NamespacedName{Name: clusterRBACName}, &rbacv1.ClusterRole{})
+		assert.True(t, errors.IsNotFound(err))
+
+		err = r.Get(context.TODO(), types.NamespacedName{Name: clusterRBACName}, &rbacv1.ClusterRoleBinding{})
+		assert.True(t, errors.IsNotFound(err))
+	})
+
+	t.Run("idempotent: second call is a no-op after deletion", func(t *testing.T) {
+		assert.NoError(t, r.deleteImageUpdaterClusterRBAC(a))
+	})
+}
+
 func TestReconcileImageUpdater_RoleForNamespace(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	const targetNS = "target-ns"
@@ -731,4 +783,148 @@ func TestReconcileImageUpdater_testEnvVars(t *testing.T) {
 	if diff := cmp.Diff(envMap, deployment.Spec.Template.Spec.Containers[0].Env); diff != "" {
 		t.Fatalf("operator failed to override the manual changes to image updater controller:\n%s", diff)
 	}
+}
+
+func TestPruneImageUpdaterNamespaceRBAC(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.ImageUpdater.Enabled = true
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	rules := policyRuleForRoleManagerRoleForImageUpdaterController()
+	sa := &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa", Namespace: a.Namespace}}
+
+	// Create roles and bindings in ns1, ns2, ns3.
+	for _, ns := range []string{"ns1", "ns2", "ns3"} {
+		role, err := r.reconcileImageUpdaterRoleForNamespace(ns, a, rules)
+		assert.NoError(t, err)
+		assert.NotNil(t, role)
+		assert.NoError(t, r.reconcileImageUpdaterRoleBindingForNamespace(ns, a, role, sa))
+	}
+
+	// Verify label is present on the created role.
+	roleNs1 := &rbacv1.Role{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
+		Name:      getRoleNameForApplicationSourceNamespaces("ns1", a),
+		Namespace: "ns1",
+	}, roleNs1))
+	assert.Equal(t, "true", roleNs1.Labels[imageUpdaterManagedNamespaceLabel])
+
+	t.Run("prune removes roles not in the desired set", func(t *testing.T) {
+		// Keep only ns1; ns2 and ns3 should be pruned.
+		desired := map[string]struct{}{"ns1": {}}
+		assert.NoError(t, r.pruneImageUpdaterNamespaceRBAC(a, desired))
+
+		// ns1 must still exist.
+		assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
+			Name:      getRoleNameForApplicationSourceNamespaces("ns1", a),
+			Namespace: "ns1",
+		}, &rbacv1.Role{}))
+		assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
+			Name:      getRoleBindingNameForSourceNamespaces(a.Name, "ns1"),
+			Namespace: "ns1",
+		}, &rbacv1.RoleBinding{}))
+
+		// ns2 and ns3 must be gone.
+		for _, ns := range []string{"ns2", "ns3"} {
+			err := r.Get(context.TODO(), types.NamespacedName{
+				Name:      getRoleNameForApplicationSourceNamespaces(ns, a),
+				Namespace: ns,
+			}, &rbacv1.Role{})
+			assert.True(t, errors.IsNotFound(err), "expected role in %s to be deleted", ns)
+
+			err = r.Get(context.TODO(), types.NamespacedName{
+				Name:      getRoleBindingNameForSourceNamespaces(a.Name, ns),
+				Namespace: ns,
+			}, &rbacv1.RoleBinding{})
+			assert.True(t, errors.IsNotFound(err), "expected role binding in %s to be deleted", ns)
+		}
+	})
+
+	t.Run("prune with empty set removes all remaining namespace RBAC", func(t *testing.T) {
+		assert.NoError(t, r.pruneImageUpdaterNamespaceRBAC(a, map[string]struct{}{}))
+
+		err := r.Get(context.TODO(), types.NamespacedName{
+			Name:      getRoleNameForApplicationSourceNamespaces("ns1", a),
+			Namespace: "ns1",
+		}, &rbacv1.Role{})
+		assert.True(t, errors.IsNotFound(err))
+
+		err = r.Get(context.TODO(), types.NamespacedName{
+			Name:      getRoleBindingNameForSourceNamespaces(a.Name, "ns1"),
+			Namespace: "ns1",
+		}, &rbacv1.RoleBinding{})
+		assert.True(t, errors.IsNotFound(err))
+	})
+
+	t.Run("prune is idempotent on empty cluster", func(t *testing.T) {
+		assert.NoError(t, r.pruneImageUpdaterNamespaceRBAC(a, map[string]struct{}{}))
+	})
+}
+
+// TestReconcileImageUpdaterControllerEnabled_PrunesStaleNamespaceRBAC verifies that when the
+// watch-namespace list shrinks, the operator removes roles and bindings for the dropped namespaces
+// without touching the remaining ones.
+func TestReconcileImageUpdaterControllerEnabled_PrunesStaleNamespaceRBAC(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	// Start with ns1 and ns2 in the watch list.
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.ImageUpdater.Enabled = true
+		a.Spec.ImageUpdater.Env = []v1.EnvVar{
+			{Name: "IMAGE_UPDATER_WATCH_NAMESPACES", Value: "ns1,ns2"},
+		}
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	// First reconcile: both namespaces get roles.
+	assert.NoError(t, r.reconcileImageUpdaterControllerEnabled(a))
+
+	for _, ns := range []string{"ns1", "ns2"} {
+		assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
+			Name:      getRoleNameForApplicationSourceNamespaces(ns, a),
+			Namespace: ns,
+		}, &rbacv1.Role{}), "expected role in %s after first reconcile", ns)
+	}
+
+	// Shrink to ns1 only.
+	a.Spec.ImageUpdater.Env = []v1.EnvVar{
+		{Name: "IMAGE_UPDATER_WATCH_NAMESPACES", Value: "ns1"},
+	}
+
+	// Second reconcile: ns2 role and binding should be pruned.
+	assert.NoError(t, r.reconcileImageUpdaterControllerEnabled(a))
+
+	// ns1 still exists.
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
+		Name:      getRoleNameForApplicationSourceNamespaces("ns1", a),
+		Namespace: "ns1",
+	}, &rbacv1.Role{}))
+
+	// ns2 is gone.
+	err := r.Get(context.TODO(), types.NamespacedName{
+		Name:      getRoleNameForApplicationSourceNamespaces("ns2", a),
+		Namespace: "ns2",
+	}, &rbacv1.Role{})
+	assert.True(t, errors.IsNotFound(err), "stale role in ns2 should have been pruned")
+
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      getRoleBindingNameForSourceNamespaces(a.Name, "ns2"),
+		Namespace: "ns2",
+	}, &rbacv1.RoleBinding{})
+	assert.True(t, errors.IsNotFound(err), "stale role binding in ns2 should have been pruned")
 }
