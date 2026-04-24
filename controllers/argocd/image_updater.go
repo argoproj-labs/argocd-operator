@@ -407,7 +407,7 @@ func (r *ReconcileArgoCD) pruneImageUpdaterNamespaceRBAC(cr *argoproj.ArgoCD, de
 	// pruneManaged lists objects of the given type and deletes those whose namespace is not
 	// in desiredNamespaces. getItems is called after List, so it always sees the populated slice.
 	pruneManaged := func(list client.ObjectList, getItems func() []client.Object) error {
-		if err := r.Client.List(context.TODO(), list, matchLabels); err != nil {
+		if err := r.List(context.TODO(), list, matchLabels); err != nil {
 			return fmt.Errorf("failed to list %T: %w", list, err)
 		}
 		for _, obj := range getItems() {
@@ -415,7 +415,7 @@ func (r *ReconcileArgoCD) pruneImageUpdaterNamespaceRBAC(cr *argoproj.ArgoCD, de
 				continue
 			}
 			argoutil.LogResourceDeletion(log, obj, "namespace removed from IMAGE_UPDATER_WATCH_NAMESPACES")
-			if err := r.Client.Delete(context.TODO(), obj); err != nil && !errors.IsNotFound(err) {
+			if err := r.Delete(context.TODO(), obj); err != nil && !errors.IsNotFound(err) {
 				return err
 			}
 		}
