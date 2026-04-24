@@ -32258,6 +32258,9 @@ spec:
                 description: Version is the tag to use with the ArgoCD container image
                   for all ArgoCD components.
                 type: string
+              webTerminalEnabled:
+                description: WebTerminal defines the web terminal options for ArgoCD.
+                type: boolean
               webhookSecrets:
                 description: |-
                   WebhookSecrets references Kubernetes Secrets that supply webhook credentials per provider.

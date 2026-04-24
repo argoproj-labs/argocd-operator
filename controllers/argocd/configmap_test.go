@@ -257,6 +257,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 		"statusbadge.enabled":     "false",
 		"url":                     "https://argocd-server",
 		"users.anonymous.enabled": "false",
+		"exec.enabled":            "false",
 	}
 
 	cmdTests := []struct {
@@ -268,6 +269,15 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 			"defaults",
 			[]argoCDOpt{},
 			map[string]string{},
+		},
+		{
+			"with-web-terminal-enabled",
+			[]argoCDOpt{func(a *argoproj.ArgoCD) {
+				a.Spec.WebTerminalEnabled = true
+			}},
+			map[string]string{
+				"exec.enabled": "true",
+			},
 		},
 		{
 			"with-banner",
