@@ -38,8 +38,9 @@ func TestReconcileImageUpdater_CreateRoles(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	desiredPolicyRules := policyRuleForRoleForImageUpdaterController()
 
-	_, err := r.reconcileImageUpdaterRole(a)
+	_, err := r.reconcileImageUpdaterRole(a, desiredPolicyRules)
 	assert.NoError(t, err)
 
 	testRole := &rbacv1.Role{}
@@ -48,12 +49,10 @@ func TestReconcileImageUpdater_CreateRoles(t *testing.T) {
 		Namespace: a.Namespace,
 	}, testRole))
 
-	desiredPolicyRules := policyRuleForRoleForImageUpdaterController()
-
 	assert.Equal(t, desiredPolicyRules, testRole.Rules)
 
 	a.Spec.ImageUpdater.Enabled = false
-	_, err = r.reconcileImageUpdaterRole(a)
+	_, err = r.reconcileImageUpdaterRole(a, desiredPolicyRules)
 	assert.NoError(t, err)
 
 	err = r.Get(context.TODO(), types.NamespacedName{
@@ -84,7 +83,7 @@ func TestReconcileImageUpdater_CreateClusterRoles(t *testing.T) {
 		Name: GenerateUniqueResourceName(common.ArgoCDImageUpdaterControllerComponent, a),
 	}, testRole))
 
-	desiredPolicyRules := policyRuleForClusterRoleForImageUpdaterController()
+	desiredPolicyRules := policyRuleForRoleManagerRoleForImageUpdaterController()
 
 	assert.Equal(t, desiredPolicyRules, testRole.Rules)
 
@@ -473,6 +472,197 @@ func TestReconcileImageUpdater_CreateConfigMap(t *testing.T) {
 	configMap := &v1.ConfigMap{}
 	err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-image-updater-config", Namespace: a.Namespace}, configMap)
 	assertNotFound(t, err)
+}
+
+func TestReconcileImageUpdater_RoleForNamespace(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	const targetNS = "target-ns"
+
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.ImageUpdater.Enabled = true
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	desiredPolicyRules := policyRuleForRoleManagerRoleForImageUpdaterController()
+	_, err := r.reconcileImageUpdaterRoleForNamespace(targetNS, a, desiredPolicyRules)
+	assert.NoError(t, err)
+
+	testRole := &rbacv1.Role{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
+		Name:      getRoleNameForApplicationSourceNamespaces(targetNS, a),
+		Namespace: targetNS,
+	}, testRole))
+
+	assert.Equal(t, targetNS, testRole.Namespace)
+	assert.Equal(t, desiredPolicyRules, testRole.Rules)
+
+	a.Spec.ImageUpdater.Enabled = false
+	_, err = r.reconcileImageUpdaterRoleForNamespace(targetNS, a, desiredPolicyRules)
+	assert.NoError(t, err)
+
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      getRoleNameForApplicationSourceNamespaces(targetNS, a),
+		Namespace: targetNS,
+	}, testRole)
+	assert.True(t, errors.IsNotFound(err))
+}
+
+func TestReconcileImageUpdater_RoleBindingForNamespace(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	const targetNS = "target-ns"
+
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.ImageUpdater.Enabled = true
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	role := &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{
+		Name:      getRoleNameForApplicationSourceNamespaces(targetNS, a),
+		Namespace: targetNS,
+	}}
+	sa := &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{
+		Name:      "sa-name",
+		Namespace: a.Namespace,
+	}}
+
+	err := r.reconcileImageUpdaterRoleBindingForNamespace(targetNS, a, role, sa)
+	assert.NoError(t, err)
+
+	rb := &rbacv1.RoleBinding{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
+		Name:      getRoleBindingNameForSourceNamespaces(a.Name, targetNS),
+		Namespace: targetNS,
+	}, rb))
+
+	// RoleBinding must be in targetNS, not cr.Namespace
+	assert.Equal(t, targetNS, rb.Namespace)
+	assert.Equal(t, role.Name, rb.RoleRef.Name)
+	assert.Equal(t, sa.Name, rb.Subjects[0].Name)
+	// Subject namespace must be explicit because SA is in a different namespace
+	assert.Equal(t, a.Namespace, rb.Subjects[0].Namespace)
+
+	a.Spec.ImageUpdater.Enabled = false
+	err = r.reconcileImageUpdaterRoleBindingForNamespace(targetNS, a, role, sa)
+	assert.NoError(t, err)
+
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      getRoleBindingNameForSourceNamespaces(a.Name, targetNS),
+		Namespace: targetNS,
+	}, rb)
+	assert.True(t, errors.IsNotFound(err))
+}
+
+func TestReconcileImageUpdater_WatchNamespacesMode(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		name               string
+		watchNamespacesEnv string // raw value set in the env var; empty string means env var not set
+		expectClusterRole  bool
+		// namespaces where a manager role is expected (testNamespace = combined role in own ns)
+		expectManagerRoleInNS []string
+	}{
+		{
+			name:                  "namespace-scoped: env var not set",
+			watchNamespacesEnv:    "",
+			expectClusterRole:     false,
+			expectManagerRoleInNS: []string{testNamespace},
+		},
+		{
+			name:                  "namespace-scoped: env var set to whitespace",
+			watchNamespacesEnv:    "  ",
+			expectClusterRole:     false,
+			expectManagerRoleInNS: []string{testNamespace},
+		},
+		{
+			name:                  "comma-separated: two namespaces",
+			watchNamespacesEnv:    "ns1,ns2",
+			expectClusterRole:     false,
+			expectManagerRoleInNS: []string{"ns1", "ns2"},
+		},
+		{
+			name:                  "comma-separated: single namespace",
+			watchNamespacesEnv:    "ns1",
+			expectClusterRole:     false,
+			expectManagerRoleInNS: []string{"ns1"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			envVars := []v1.EnvVar{}
+			if tt.watchNamespacesEnv != "" {
+				envVars = append(envVars, v1.EnvVar{
+					Name:  "IMAGE_UPDATER_WATCH_NAMESPACES",
+					Value: tt.watchNamespacesEnv,
+				})
+			}
+
+			a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.ImageUpdater.Enabled = true
+				a.Spec.ImageUpdater.Env = envVars
+			})
+
+			resObjs := []client.Object{a}
+			subresObjs := []client.Object{a}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			assert.NoError(t, r.reconcileImageUpdaterControllerEnabled(a))
+
+			for _, ns := range tt.expectManagerRoleInNS {
+				if ns == testNamespace {
+					// Namespace-scoped: base + manager rules are merged into a single role.
+					role := &rbacv1.Role{}
+					assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
+						Name:      generateResourceName(common.ArgoCDImageUpdaterControllerComponent, a),
+						Namespace: ns,
+					}, role), "expected combined role in namespace %s", ns)
+					assert.NotEmpty(t, role.Rules)
+				} else {
+					// Comma-separated: manager role in the listed namespace.
+					role := &rbacv1.Role{}
+					assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
+						Name:      getRoleNameForApplicationSourceNamespaces(ns, a),
+						Namespace: ns,
+					}, role), "expected manager role in namespace %s", ns)
+					assert.Equal(t, policyRuleForRoleManagerRoleForImageUpdaterController(), role.Rules)
+
+					rb := &rbacv1.RoleBinding{}
+					assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
+						Name:      getRoleBindingNameForSourceNamespaces(a.Name, ns),
+						Namespace: ns,
+					}, rb), "expected manager role binding in namespace %s", ns)
+					assert.Equal(t, role.Name, rb.RoleRef.Name)
+					assert.Equal(t, a.Namespace, rb.Subjects[0].Namespace)
+				}
+			}
+
+			clusterRole := &rbacv1.ClusterRole{}
+			clusterRoleErr := r.Get(context.TODO(), types.NamespacedName{
+				Name: GenerateUniqueResourceName(common.ArgoCDImageUpdaterControllerComponent, a),
+			}, clusterRole)
+			if tt.expectClusterRole {
+				assert.NoError(t, clusterRoleErr)
+			} else {
+				assert.True(t, errors.IsNotFound(clusterRoleErr))
+			}
+		})
+	}
 }
 
 func TestReconcileImageUpdater_testEnvVars(t *testing.T) {

@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
-  name: example-argocd
+  name: example-image-updater
   labels:
     example: image-updater
 spec:
