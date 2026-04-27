@@ -624,6 +624,7 @@ func TestReconcileImageUpdater_WatchNamespacesMode(t *testing.T) {
 		watchNamespacesEnv string // raw value set in the env var; empty string means env var not set
 		// clusterConfigNS, when non-empty, is set as ARGOCD_CLUSTER_CONFIG_NAMESPACES for the subtest
 		clusterConfigNS   string
+		expectError       bool // reconcile must return an error
 		expectClusterRole bool
 		expectClusterRB   bool
 		// namespaces where a manager role is expected (testNamespace = combined role in own ns)
@@ -661,6 +662,13 @@ func TestReconcileImageUpdater_WatchNamespacesMode(t *testing.T) {
 			expectClusterRB:       true,
 			expectManagerRoleInNS: []string{},
 		},
+		{
+			// IMAGE_UPDATER_WATCH_NAMESPACES="*" without the ArgoCD instance being in a
+			// cluster-config namespace must be rejected to prevent privilege escalation.
+			name:               "cluster-scoped: * rejected when not a cluster-config namespace",
+			watchNamespacesEnv: "*",
+			expectError:        true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -689,7 +697,12 @@ func TestReconcileImageUpdater_WatchNamespacesMode(t *testing.T) {
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-			assert.NoError(t, r.reconcileImageUpdaterControllerEnabled(a))
+			err := r.reconcileImageUpdaterControllerEnabled(a)
+			if tt.expectError {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
 
 			for _, ns := range tt.expectManagerRoleInNS {
 				if ns == testNamespace {
