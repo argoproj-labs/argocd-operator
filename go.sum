@@ -29,10 +29,10 @@ github.com/alicebob/miniredis/v2 v2.35.0 h1:QwLphYqCEAo1eu1TqPRN2jgVMPBweeQcR21j
 github.com/alicebob/miniredis/v2 v2.35.0/go.mod h1:TcL7YfarKPGDAthEtl5NBeHZfeUQj6OXMm/+iu5cLMM=
 github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be h1:9AeTilPcZAjCFIImctFaOjnTIavg87rW78vTPkQqLI8=
 github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be/go.mod h1:ySMOLuWl6zY27l47sB3qLNK6tF2fkHG55UZxx8oIVo4=
-github.com/argoproj-labs/argocd-image-updater v1.0.3 h1:QJAzZRf6ZbeGW2/G47ux0s9KcWzrfvr47joGJij90IU=
-github.com/argoproj-labs/argocd-image-updater v1.0.3/go.mod h1:7rSuv/1qLiE5IuEQcBGh5f7rPhVyIO3bHChK7oteaMQ=
-github.com/argoproj/argo-cd/v3 v3.1.11 h1:eCxCsl+7/0N4kJVzUvLeBbyYneATFjRW8Q/z7r8d4aM=
-github.com/argoproj/argo-cd/v3 v3.1.11/go.mod h1:JYZ4nAgaMOXxgTfQjC0pdJjmXQNPvEgOLn8YJm4IPow=
+github.com/argoproj-labs/argocd-image-updater v1.0.4 h1:u6663bvqIC+v8UMFQM/sxIBIjsJs5EVS2iQCfhBUtxk=
+github.com/argoproj-labs/argocd-image-updater v1.0.4/go.mod h1:55M5sCkxQDyBnymDrQ95gOo80cvrzWbD0Sb68CVMPi0=
+github.com/argoproj/argo-cd/v3 v3.1.15 h1:pWYYggHEIulBdDWhs3KZPNkofP4yqPn9XT1Poz8WAeY=
+github.com/argoproj/argo-cd/v3 v3.1.15/go.mod h1:JYZ4nAgaMOXxgTfQjC0pdJjmXQNPvEgOLn8YJm4IPow=
 github.com/argoproj/gitops-engine v0.7.1-0.20250905160054-e48120133eec h1:rNAwbRQFvRIuW/e2bU+B10mlzghYXsnwZedYeA7Drz4=
 github.com/argoproj/gitops-engine v0.7.1-0.20250905160054-e48120133eec/go.mod h1:aIBEG3ohgaC1gh/sw2On6knkSnXkqRLDoBj234Dqczw=
 github.com/argoproj/pkg v0.13.7-0.20250305113207-cbc37dc61de5 h1:YBoLSjpoaJXaXAldVvBRKJuOPvIXz9UOv6S96gMJM/Q=
