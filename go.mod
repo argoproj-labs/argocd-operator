@@ -14,7 +14,7 @@ require (
 	github.com/onsi/gomega v1.39.1
 	github.com/openshift/api v0.0.0-20240906151052-5d963dce87aa
 	github.com/operator-framework/api v0.17.5
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.73.2
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.90.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/sethvargo/go-password v0.3.1
 	github.com/stretchr/testify v1.11.1
@@ -27,7 +27,7 @@ require (
 	k8s.io/client-go v0.35.2
 	k8s.io/kube-aggregator v0.35.2
 	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2
-	sigs.k8s.io/controller-runtime v0.23.1
+	sigs.k8s.io/controller-runtime v0.23.3
 	sigs.k8s.io/yaml v1.6.0
 )
 
@@ -71,7 +71,7 @@ require (
 require (
 	github.com/argoproj-labs/argocd-image-updater v1.1.1
 	github.com/google/go-github/v75 v75.0.0 // indirect
-	go.yaml.in/yaml/v2 v2.4.3 // indirect
+	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 )
 
@@ -202,7 +202,7 @@ require (
 	k8s.io/component-helpers v0.34.0 // indirect
 	k8s.io/controller-manager v0.34.0 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
-	k8s.io/kube-openapi v0.0.0-20260127142750-a19766b6e2d4 // indirect
+	k8s.io/kube-openapi v0.0.0-20260317180543-43fb72c5454a // indirect
 	k8s.io/kubectl v0.34.0 // indirect
 	k8s.io/kubernetes v1.34.2 // indirect
 	oras.land/oras-go/v2 v2.6.0 // indirect
