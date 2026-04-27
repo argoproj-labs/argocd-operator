@@ -95,6 +95,25 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			}
 			Expect(match).To(BeTrue(), "StatefulSet should have expected ARGOCD_CONTROLLER_REPLICAS")
 
+
+			By("ensuring algorithm can be set")
+			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
+				ac.Spec.Controller.Sharding = argov1beta1api.ArgoCDApplicationControllerShardSpec{
+					DistributionAlgorithm: "round-robin",
+				}
+			})
+
+			By("checking if ARGOCD_CONTROLLER_SHARDING_ALGORITHM env var is set in the app controller StatefulSet")
+			Eventually(statefulSet).Should(k8sFixture.ExistByName())
+			match = false
+			for _, env := range statefulSet.Spec.Template.Spec.Containers[0].Env {
+				if env.Name == "ARGOCD_CONTROLLER_SHARDING_ALGORITHM" && env.Value == "round-robin" {
+					match = true
+					break
+				}
+			}
+			Expect(match).To(BeTrue(), "Statefulset should have expected ARGOCD_CONTROLLER_SHARDING_ALGORITHM")
+
 			By("disabling sharding")
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
 				ac.Spec.Controller.Sharding = argov1beta1api.ArgoCDApplicationControllerShardSpec{

@@ -1325,6 +1325,15 @@ spec:
                     description: Sharding contains the options for the Application
                       Controller sharding configuration.
                     properties:
+                      algorithm:
+                        description: DistributionAlgorithm determines what algorithm
+                          will be used for distribution of shards. Valid options are
+                          legacy, round-robin, and consistent-hashing
+                        enum:
+                        - legacy
+                        - round-robin
+                        - consistent-hashing
+                        type: string
                       clustersPerShard:
                         description: ClustersPerShard defines the maximum number of
                           clusters managed by each argocd shard
@@ -13819,6 +13828,15 @@ spec:
                     description: Sharding contains the options for the Application
                       Controller sharding configuration.
                     properties:
+                      algorithm:
+                        description: DistributionAlgorithm determines what algorithm
+                          will be used for distribution of shards. Valid options are
+                          legacy, round-robin, and consistent-hashing
+                        enum:
+                        - legacy
+                        - round-robin
+                        - consistent-hashing
+                        type: string
                       clustersPerShard:
                         description: ClustersPerShard defines the maximum number of
                           clusters managed by each argocd shard
