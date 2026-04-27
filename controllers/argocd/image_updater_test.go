@@ -622,7 +622,10 @@ func TestReconcileImageUpdater_WatchNamespacesMode(t *testing.T) {
 	tests := []struct {
 		name               string
 		watchNamespacesEnv string // raw value set in the env var; empty string means env var not set
-		expectClusterRole  bool
+		// clusterConfigNS, when non-empty, is set as ARGOCD_CLUSTER_CONFIG_NAMESPACES for the subtest
+		clusterConfigNS   string
+		expectClusterRole bool
+		expectClusterRB   bool
 		// namespaces where a manager role is expected (testNamespace = combined role in own ns)
 		expectManagerRoleInNS []string
 	}{
@@ -650,10 +653,22 @@ func TestReconcileImageUpdater_WatchNamespacesMode(t *testing.T) {
 			expectClusterRole:     false,
 			expectManagerRoleInNS: []string{"ns1"},
 		},
+		{
+			name:                  "cluster-scoped: watch namespaces set to *",
+			watchNamespacesEnv:    "*",
+			clusterConfigNS:       testNamespace,
+			expectClusterRole:     true,
+			expectClusterRB:       true,
+			expectManagerRoleInNS: []string{},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.clusterConfigNS != "" {
+				t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", tt.clusterConfigNS)
+			}
+
 			envVars := []v1.EnvVar{}
 			if tt.watchNamespacesEnv != "" {
 				envVars = append(envVars, v1.EnvVar{
@@ -704,14 +719,20 @@ func TestReconcileImageUpdater_WatchNamespacesMode(t *testing.T) {
 				}
 			}
 
-			clusterRole := &rbacv1.ClusterRole{}
-			clusterRoleErr := r.Get(context.TODO(), types.NamespacedName{
-				Name: GenerateUniqueResourceName(common.ArgoCDImageUpdaterControllerComponent, a),
-			}, clusterRole)
+			clusterRBACName := GenerateUniqueResourceName(common.ArgoCDImageUpdaterControllerComponent, a)
+
+			clusterRoleErr := r.Get(context.TODO(), types.NamespacedName{Name: clusterRBACName}, &rbacv1.ClusterRole{})
 			if tt.expectClusterRole {
-				assert.NoError(t, clusterRoleErr)
+				assert.NoError(t, clusterRoleErr, "expected ClusterRole to exist")
 			} else {
-				assert.True(t, errors.IsNotFound(clusterRoleErr))
+				assert.True(t, errors.IsNotFound(clusterRoleErr), "expected ClusterRole to be absent")
+			}
+
+			clusterRBErr := r.Get(context.TODO(), types.NamespacedName{Name: clusterRBACName}, &rbacv1.ClusterRoleBinding{})
+			if tt.expectClusterRB {
+				assert.NoError(t, clusterRBErr, "expected ClusterRoleBinding to exist")
+			} else {
+				assert.True(t, errors.IsNotFound(clusterRBErr), "expected ClusterRoleBinding to be absent")
 			}
 		})
 	}
