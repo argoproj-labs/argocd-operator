@@ -95,7 +95,6 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			}
 			Expect(match).To(BeTrue(), "StatefulSet should have expected ARGOCD_CONTROLLER_REPLICAS")
 
-
 			By("ensuring algorithm can be set")
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
 				ac.Spec.Controller.Sharding = argov1beta1api.ArgoCDApplicationControllerShardSpec{
