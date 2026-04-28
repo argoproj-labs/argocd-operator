@@ -504,6 +504,13 @@ func getArgoControllerContainerEnv(cr *argoproj.ArgoCD, replicas int32) []corev1
 			Name:  "ARGOCD_CONTROLLER_REPLICAS",
 			Value: fmt.Sprint(replicas),
 		})
+
+		if cr.Spec.Controller.Sharding.DistributionAlgorithm != "" {
+			env = append(env, corev1.EnvVar{
+				Name:  "ARGOCD_CONTROLLER_SHARDING_ALGORITHM",
+				Value: cr.Spec.Controller.Sharding.DistributionAlgorithm,
+			})
+		}
 	}
 
 	if cr.Spec.Controller.AppSync != nil {

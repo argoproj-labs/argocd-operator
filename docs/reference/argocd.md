@@ -179,6 +179,7 @@ Sharding.dynamicScalingEnabled | true | Whether to enable dynamic scaling of the
 Sharding.minShards | 1 | The minimum number of replicas of the ArgoCD Application Controller component. | Must be greater than 0 |
 Sharding.maxShards | 1 | The maximum number of replicas of the ArgoCD Application Controller component. | Must be greater than `Sharding.minShards` |
 Sharding.clustersPerShard | 1 | The number of clusters that need to be handles by each shard. In case the replica count has reached the maxShards, the shards will manage more than one cluster. | Must be greater than 0 |
+Sharding.algorithm | legacy | The distribution algorithm to use for selecting which clusters get assigned to which shards | Must be one of the following: `legacy`, `round-robin`, or `consistent-hashing`
 ExtraCommandArgs | [Empty] | Allows users to pass command line arguments to controller workload. They get added to default command line arguments provided by the operator. |  |
 InitContainers | [Empty] | List of init containers for the ArgoCD Application Controller component. This field is optional.
 SidecarContainers | [Empty] | List of sidecar containers for the ArgoCD Application Controller component. This field is optional.
