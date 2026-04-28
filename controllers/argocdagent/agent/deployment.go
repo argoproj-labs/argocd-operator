@@ -116,6 +116,7 @@ func buildAgentSpec(compName, saName string, cr *argoproj.ArgoCD) appsv1.Deploym
 						SecurityContext: buildSecurityContext(),
 						Ports:           buildPorts(),
 						VolumeMounts:    append(buildVolumeMounts(), redisAuthMount),
+						Resources:       getAgentResources(cr),
 					},
 				},
 				ServiceAccountName: saName,
@@ -514,6 +515,14 @@ func getAgentRedisAddress(cr *argoproj.ArgoCD) string {
 		return cr.Spec.ArgoCDAgent.Agent.Redis.ServerAddress
 	}
 	return fmt.Sprintf("%s-%s:%d", cr.Name, "redis", common.ArgoCDDefaultRedisPort)
+}
+
+func getAgentResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
+	resources := corev1.ResourceRequirements{}
+	if hasAgent(cr) && cr.Spec.ArgoCDAgent.Agent.Resources != nil {
+		resources = *cr.Spec.ArgoCDAgent.Agent.Resources
+	}
+	return resources
 }
 
 func hasAgent(cr *argoproj.ArgoCD) bool {

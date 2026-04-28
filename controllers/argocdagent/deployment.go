@@ -116,6 +116,7 @@ func buildPrincipalSpec(compName, saName string, cr *argoproj.ArgoCD) appsv1.Dep
 						SecurityContext: buildSecurityContext(),
 						Ports:           buildPorts(compName),
 						VolumeMounts:    append(buildVolumeMounts(), redisAuthMount),
+						Resources:       getPrincipalResources(cr),
 					},
 				},
 				ServiceAccountName: saName,
@@ -553,6 +554,14 @@ func getPrincipalTlsServerRootCASecretName(cr *argoproj.ArgoCD) string {
 		return cr.Spec.ArgoCDAgent.Principal.TLS.RootCASecretName
 	}
 	return "argocd-agent-ca"
+}
+
+func getPrincipalResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
+	resources := corev1.ResourceRequirements{}
+	if hasPrincipal(cr) && cr.Spec.ArgoCDAgent.Principal.Resources != nil {
+		resources = *cr.Spec.ArgoCDAgent.Principal.Resources
+	}
+	return resources
 }
 
 func hasPrincipal(cr *argoproj.ArgoCD) bool {

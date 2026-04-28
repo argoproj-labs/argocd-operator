@@ -289,6 +289,20 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Resources defines the Compute Resources required by the container
+          for the Argo CD Agent agent component.
+        displayName: Resource Requirements
+        path: argoCDAgent.agent.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Controller
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: Resources defines the Compute Resources required by the container
+          for the Argo CD Agent principal component.
+        displayName: Resource Requirements
+        path: argoCDAgent.principal.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Controller
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       - description: 'ClusterDomain is the cluster domain suffix used for constructing
           service FQDNs. Defaults to "cluster.local". The full FQDN will be: <service>.<namespace>.svc.<clusterDomain>
           This is useful for clusters that use a different DNS suffix (e.g., "CLUSTER_ID.cluster.local",
