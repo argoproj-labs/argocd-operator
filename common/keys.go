@@ -134,6 +134,22 @@ const (
 	// ArgoCDKeyGitHubWebhookSecret is the key in argocd-secret for the GitHub webhook shared secret (see Argo CD settings).
 	ArgoCDKeyGitHubWebhookSecret = "webhook.github.secret" // #nosec G101
 
+	// ArgoCDKeyGitLabWebhookSecret is the key in argocd-secret for the GitLab webhook shared secret.
+	ArgoCDKeyGitLabWebhookSecret = "webhook.gitlab.secret" // #nosec G101
+
+	// ArgoCDKeyBitbucketCloudWebhookSecret is the key in argocd-secret for the Bitbucket Cloud webhook UUID.
+	ArgoCDKeyBitbucketCloudWebhookSecret = "webhook.bitbucket.uuid" // #nosec G101
+
+	// ArgoCDKeyBitbucketServerWebhookSecret is the key in argocd-secret for the Bitbucket Server webhook secret.
+	ArgoCDKeyBitbucketServerWebhookSecret = "webhook.bitbucketserver.secret" // #nosec G101
+
+	// ArgoCDKeyGogsWebhookSecret is the key in argocd-secret for the Gogs webhook shared secret.
+	ArgoCDKeyGogsWebhookSecret = "webhook.gogs.secret" // #nosec G101
+
+	// ArgoCDKeyAzureDevOpsWebhookUsername and ArgoCDKeyAzureDevOpsWebhookPassword are keys in argocd-secret for Azure DevOps webhooks.
+	ArgoCDKeyAzureDevOpsWebhookUsername = "webhook.azuredevops.username" // #nosec G101
+	ArgoCDKeyAzureDevOpsWebhookPassword = "webhook.azuredevops.password" // #nosec G101
+
 	// ArgoCDKeyServerURL is the key for server url.
 	ArgoCDKeyServerURL = "url"
 

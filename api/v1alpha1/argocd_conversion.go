@@ -1049,15 +1049,34 @@ func ConvertAlphaToBetaWebhookSecrets(src *ArgoCDWebhookSecretsSpec) *v1beta1.Ar
 	}
 	dst := &v1beta1.ArgoCDWebhookSecretsSpec{}
 	if src.GitHub != nil {
-		dst.GitHub = &v1beta1.ArgoCDWebhookSecretsGitHub{}
-		if src.GitHub.SecretRef != nil {
-			dst.GitHub.SecretRef = &v1beta1.WebhookSecretKeySelector{
-				Name: src.GitHub.SecretRef.Name,
-				Key:  src.GitHub.SecretRef.Key,
-			}
+		dst.GitHub = &v1beta1.ArgoCDWebhookSecretsGitHub{SecretRef: copyAlphaToBetaWebhookRef(src.GitHub.SecretRef)}
+	}
+	if src.GitLab != nil {
+		dst.GitLab = &v1beta1.ArgoCDWebhookSecretsGitLab{SecretRef: copyAlphaToBetaWebhookRef(src.GitLab.SecretRef)}
+	}
+	if src.Bitbucket != nil {
+		dst.Bitbucket = &v1beta1.ArgoCDWebhookSecretsBitbucket{SecretRef: copyAlphaToBetaWebhookRef(src.Bitbucket.SecretRef)}
+	}
+	if src.BitbucketServer != nil {
+		dst.BitbucketServer = &v1beta1.ArgoCDWebhookSecretsBitbucketServer{SecretRef: copyAlphaToBetaWebhookRef(src.BitbucketServer.SecretRef)}
+	}
+	if src.Gogs != nil {
+		dst.Gogs = &v1beta1.ArgoCDWebhookSecretsGogs{SecretRef: copyAlphaToBetaWebhookRef(src.Gogs.SecretRef)}
+	}
+	if src.AzureDevOps != nil {
+		dst.AzureDevOps = &v1beta1.ArgoCDWebhookSecretsAzureDevOps{
+			UsernameSecretRef: copyAlphaToBetaWebhookRef(src.AzureDevOps.UsernameSecretRef),
+			PasswordSecretRef: copyAlphaToBetaWebhookRef(src.AzureDevOps.PasswordSecretRef),
 		}
 	}
 	return dst
+}
+
+func copyAlphaToBetaWebhookRef(src *WebhookSecretKeySelector) *v1beta1.WebhookSecretKeySelector {
+	if src == nil {
+		return nil
+	}
+	return &v1beta1.WebhookSecretKeySelector{Name: src.Name, Key: src.Key}
 }
 
 // ConvertBetaToAlphaWebhookSecrets converts webhook secret refs from v1beta1 to v1alpha1.
@@ -1067,15 +1086,34 @@ func ConvertBetaToAlphaWebhookSecrets(src *v1beta1.ArgoCDWebhookSecretsSpec) *Ar
 	}
 	dst := &ArgoCDWebhookSecretsSpec{}
 	if src.GitHub != nil {
-		dst.GitHub = &ArgoCDWebhookSecretsGitHub{}
-		if src.GitHub.SecretRef != nil {
-			dst.GitHub.SecretRef = &WebhookSecretKeySelector{
-				Name: src.GitHub.SecretRef.Name,
-				Key:  src.GitHub.SecretRef.Key,
-			}
+		dst.GitHub = &ArgoCDWebhookSecretsGitHub{SecretRef: copyBetaToAlphaWebhookRef(src.GitHub.SecretRef)}
+	}
+	if src.GitLab != nil {
+		dst.GitLab = &ArgoCDWebhookSecretsGitLab{SecretRef: copyBetaToAlphaWebhookRef(src.GitLab.SecretRef)}
+	}
+	if src.Bitbucket != nil {
+		dst.Bitbucket = &ArgoCDWebhookSecretsBitbucket{SecretRef: copyBetaToAlphaWebhookRef(src.Bitbucket.SecretRef)}
+	}
+	if src.BitbucketServer != nil {
+		dst.BitbucketServer = &ArgoCDWebhookSecretsBitbucketServer{SecretRef: copyBetaToAlphaWebhookRef(src.BitbucketServer.SecretRef)}
+	}
+	if src.Gogs != nil {
+		dst.Gogs = &ArgoCDWebhookSecretsGogs{SecretRef: copyBetaToAlphaWebhookRef(src.Gogs.SecretRef)}
+	}
+	if src.AzureDevOps != nil {
+		dst.AzureDevOps = &ArgoCDWebhookSecretsAzureDevOps{
+			UsernameSecretRef: copyBetaToAlphaWebhookRef(src.AzureDevOps.UsernameSecretRef),
+			PasswordSecretRef: copyBetaToAlphaWebhookRef(src.AzureDevOps.PasswordSecretRef),
 		}
 	}
 	return dst
+}
+
+func copyBetaToAlphaWebhookRef(src *v1beta1.WebhookSecretKeySelector) *WebhookSecretKeySelector {
+	if src == nil {
+		return nil
+	}
+	return &WebhookSecretKeySelector{Name: src.Name, Key: src.Key}
 }
 
 func ConvertAlphaToBetaNamespaceManagement(src []ManagedNamespaces) []v1beta1.ManagedNamespaces {
