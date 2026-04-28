@@ -99,6 +99,11 @@ func (in *AgentSpec) DeepCopyInto(out *AgentSpec) {
 		*out = new(AgentRedisSpec)
 		**out = **in
 	}
+	if in.Resources != nil {
+		in, out := &in.Resources, &out.Resources
+		*out = new(v1.ResourceRequirements)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.TLS != nil {
 		in, out := &in.TLS, &out.TLS
 		*out = new(AgentTLSSpec)
@@ -1769,6 +1774,11 @@ func (in *PrincipalSpec) DeepCopyInto(out *PrincipalSpec) {
 	if in.Namespace != nil {
 		in, out := &in.Namespace, &out.Namespace
 		*out = new(PrincipalNamespaceSpec)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.Resources != nil {
+		in, out := &in.Resources, &out.Resources
+		*out = new(v1.ResourceRequirements)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.ResourceProxy != nil {

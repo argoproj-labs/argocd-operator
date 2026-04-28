@@ -1318,6 +1318,10 @@ type PrincipalSpec struct {
 	// Namespace is the configuration for the Principal component namespace.
 	Namespace *PrincipalNamespaceSpec `json:"namespace,omitempty"`
 
+	// Resources defines the Compute Resources required by the container for the Argo CD Agent principal component.
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Requirements",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Controller","urn:alm:descriptor:com.tectonic.ui:resourceRequirements"}
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+
 	// ResourceProxy defines the Resource Proxy options for the Principal component.
 	ResourceProxy *PrincipalResourceProxySpec `json:"resourceProxy,omitempty"`
 
@@ -1451,6 +1455,10 @@ type AgentSpec struct {
 
 	// Redis defines the Redis options for the Agent component.
 	Redis *AgentRedisSpec `json:"redis,omitempty"`
+
+	// Resources defines the Compute Resources required by the container for the Argo CD Agent agent component.
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Requirements",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Controller","urn:alm:descriptor:com.tectonic.ui:resourceRequirements"}
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 
 	// TLS defines the TLS options for the Agent component.
 	TLS *AgentTLSSpec `json:"tls,omitempty"`
