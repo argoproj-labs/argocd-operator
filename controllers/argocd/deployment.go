@@ -220,14 +220,19 @@ func getArgoImportVolumes(cr *argoprojv1alpha1.ArgoCDExport) []corev1.Volume {
 	return volumes
 }
 
-func getArgoRedisArgs(useTLS bool) []string {
+func getArgoRedisArgs(useTLS bool, cr *argoproj.ArgoCD) ([]string, error) {
 	args := make([]string, 0)
-
 	args = append(args, "--save", "")
 	args = append(args, "--appendonly", "no")
 	args = append(args, "--aclfile", argoutil.RedisAuthMountPath+"users.acl")
 
 	if useTLS {
+		arguments, err := argoutil.BuildRedisArgs(cr.Spec.Redis.TlsConfig)
+		if err != nil {
+			log.Error(err, "failed to build Redis args")
+			return nil, err
+		}
+		args = append(args, arguments...)
 		args = append(args, "--tls-port", "6379")
 		args = append(args, "--port", "0")
 
@@ -235,8 +240,7 @@ func getArgoRedisArgs(useTLS bool) []string {
 		args = append(args, "--tls-key-file", "/app/config/redis/tls/tls.key")
 		args = append(args, "--tls-auth-clients", "no")
 	}
-
-	return args
+	return args, nil
 }
 
 // getArgoCmpServerInitCommand will return the command for the ArgoCD CMP Server init container
@@ -440,9 +444,13 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 			RunAsUser: int64Ptr(1000),
 		}
 	}
-
+	arguments, err := getArgoRedisArgs(useTLS, cr)
+	if err != nil {
+		log.Error(err, "failed to get Redis args")
+		return err
+	}
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
-		Args:            getArgoRedisArgs(useTLS),
+		Args:            arguments,
 		Image:           argoutil.GetRedisContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            "redis",
@@ -896,7 +904,12 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		serverVolumeMounts = append(serverVolumeMounts, cr.Spec.Server.VolumeMounts...)
 	}
 
+	arguments, err := argoutil.BuildTLSArgs(cr.Spec.Server.TlsConfig)
+	if err != nil {
+		return err
+	}
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
+		Args:            arguments,
 		Command:         getArgoServerCommand(cr, useTLSForRedis),
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
@@ -1076,6 +1089,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			argoutil.LogResourceDeletion(log, existing, "argocd server is disabled")
 			return r.Delete(context.TODO(), existing)
 		}
+
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getArgoContainerImage(cr)
 		actualImagePullPolicy := existing.Spec.Template.Spec.Containers[0].ImagePullPolicy
@@ -1085,6 +1099,10 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
 			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			changes = append(changes, "container image")
+		}
+		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Args, deploy.Spec.Template.Spec.Containers[0].Args) {
+			existing.Spec.Template.Spec.Containers[0].Args = deploy.Spec.Template.Spec.Containers[0].Args
+			changes = append(changes, "container args")
 		}
 		if actualImagePullPolicy != desiredImagePullPolicy {
 			existing.Spec.Template.Spec.Containers[0].ImagePullPolicy = desiredImagePullPolicy

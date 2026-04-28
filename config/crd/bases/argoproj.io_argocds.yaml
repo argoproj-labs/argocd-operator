@@ -11940,6 +11940,26 @@ spec:
                             description: SecretName is The name of the secret containing
                               the TLS certificate and key.
                             type: string
+                          tlsConfig:
+                            description: TLS configuration for the Principal component.
+                            properties:
+                              cipherSuites:
+                                items:
+                                  type: string
+                                type: array
+                              maxVersion:
+                                enum:
+                                - "1.1"
+                                - "1.2"
+                                - "1.3"
+                                type: string
+                              minVersion:
+                                enum:
+                                - "1.1"
+                                - "1.2"
+                                - "1.3"
+                                type: string
+                            type: object
                         type: object
                     type: object
                 type: object
@@ -18685,6 +18705,27 @@ spec:
                           More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                         type: object
                     type: object
+                  tlsConfig:
+                    description: TlsConfig defines the TLS configuration for the Redis
+                      server
+                    properties:
+                      cipherSuites:
+                        items:
+                          type: string
+                        type: array
+                      maxVersion:
+                        enum:
+                        - "1.1"
+                        - "1.2"
+                        - "1.3"
+                        type: string
+                      minVersion:
+                        enum:
+                        - "1.1"
+                        - "1.2"
+                        - "1.3"
+                        type: string
+                    type: object
                   version:
                     description: Version is the Redis container image tag.
                     type: string
@@ -22268,6 +22309,26 @@ spec:
                           type: object
                           x-kubernetes-map-type: atomic
                         type: array
+                    type: object
+                  tlsConfig:
+                    description: TLS configuration for the repo server
+                    properties:
+                      cipherSuites:
+                        items:
+                          type: string
+                        type: array
+                      maxVersion:
+                        enum:
+                        - "1.1"
+                        - "1.2"
+                        - "1.3"
+                        type: string
+                      minVersion:
+                        enum:
+                        - "1.1"
+                        - "1.2"
+                        - "1.3"
+                        type: string
                     type: object
                   verifytls:
                     description: VerifyTLS defines whether repo server API should
@@ -27949,6 +28010,26 @@ spec:
                       - name
                       type: object
                     type: array
+                  tlsConfig:
+                    description: TLS configuration for the Argo CD Server component
+                    properties:
+                      cipherSuites:
+                        items:
+                          type: string
+                        type: array
+                      maxVersion:
+                        enum:
+                        - "1.1"
+                        - "1.2"
+                        - "1.3"
+                        type: string
+                      minVersion:
+                        enum:
+                        - "1.1"
+                        - "1.2"
+                        - "1.3"
+                        type: string
+                    type: object
                   volumeMounts:
                     description: VolumeMounts adds volumeMounts to the Argo CD Server
                       container.

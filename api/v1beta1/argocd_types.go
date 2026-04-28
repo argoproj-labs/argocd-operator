@@ -521,6 +521,9 @@ type ArgoCDRedisSpec struct {
 
 	// Remote specifies the remote URL of the Redis container. (optional, by default, a local instance managed by the operator is used.)
 	Remote *string `json:"remote,omitempty"`
+
+	// TlsConfig defines the TLS configuration for the Redis server
+	TlsConfig *ArgoCDTlsConfig `json:"tlsConfig,omitempty"`
 }
 
 func (a *ArgoCDRedisSpec) IsEnabled() bool {
@@ -606,6 +609,18 @@ type ArgoCDRepoSpec struct {
 
 	// Custom certificates to inject into the repo server container and its plugins to trust source hosting sites
 	SystemCATrust *ArgoCDSystemCATrustSpec `json:"systemCATrust,omitempty"`
+	// TLS configuration for the repo server
+	TlsConfig *ArgoCDTlsConfig `json:"tlsConfig,omitempty"`
+}
+
+type ArgoCDTlsConfig struct {
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Enum="1.1";"1.2";"1.3"
+	MinVersion string `json:"minVersion,omitempty"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Enum="1.1";"1.2";"1.3"
+	MaxVersion   string   `json:"maxVersion,omitempty"`
+	CipherSuites []string `json:"cipherSuites,omitempty"`
 }
 
 func (a *ArgoCDRepoSpec) IsEnabled() bool {
@@ -740,6 +755,8 @@ type ArgoCDServerSpec struct {
 
 	// Custom labels to pods deployed by the operator
 	Labels map[string]string `json:"labels,omitempty"`
+	// TLS configuration for the Argo CD Server component
+	TlsConfig *ArgoCDTlsConfig `json:"tlsConfig,omitempty"`
 }
 
 func (a *ArgoCDServerSpec) IsEnabled() bool {
@@ -1402,6 +1419,8 @@ type PrincipalTLSSpec struct {
 
 	// InsecureGenerate is the flag to allow the principal to generate its own set of TLS cert and key on startup when none are configured
 	InsecureGenerate *bool `json:"insecureGenerate,omitempty"`
+	// TLS configuration for the Principal component.
+	TlsConfig *ArgoCDTlsConfig `json:"tlsConfig,omitempty"`
 }
 
 // ArgoCDAgentPrincipalServiceSpec defines the options for the Service backing the ArgoCD Agent Principalcomponent.
