@@ -307,6 +307,13 @@ func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, dep
 		deployment.Spec.Template.Spec.ServiceAccountName = saName
 	}
 
+	principalResources := getPrincipalResources(cr)
+	if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Resources, principalResources) {
+		log.Info("deployment resource requirements is being updated")
+		changed = true
+		deployment.Spec.Template.Spec.Containers[0].Resources = principalResources
+	}
+
 	return deployment, changed
 }
 
