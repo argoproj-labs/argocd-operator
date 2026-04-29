@@ -887,76 +887,76 @@ func Test_applyWebhookSecretFromRef(t *testing.T) {
 		{
 			name: "GitHub", destKey: common.ArgoCDKeyGitHubWebhookSecret, logName: "GitHub",
 			withSecretRef: func(ws *argoproj.ArgoCDWebhookSecretsSpec) {
-				ws.GitHub = &argoproj.ArgoCDWebhookSecretsGitHub{SecretRef: refSrcToken()}
+				ws.GitHub = &argoproj.ArgoCDWebhookSecretsGitHub{WebhookSecretRef: refSrcToken()}
 			},
 			getRef: func(cr *argoproj.ArgoCD) *argoproj.WebhookSecretKeySelector {
 				if cr.Spec.WebhookSecrets == nil || cr.Spec.WebhookSecrets.GitHub == nil {
 					return nil
 				}
-				return cr.Spec.WebhookSecrets.GitHub.SecretRef
+				return cr.Spec.WebhookSecrets.GitHub.WebhookSecretRef
 			},
 			clearRefName: func(cr *argoproj.ArgoCD) {
-				cr.Spec.WebhookSecrets.GitHub.SecretRef.Name = ""
+				cr.Spec.WebhookSecrets.GitHub.WebhookSecretRef.Name = ""
 			},
 		},
 		{
 			name: "GitLab", destKey: common.ArgoCDKeyGitLabWebhookSecret, logName: "GitLab",
 			withSecretRef: func(ws *argoproj.ArgoCDWebhookSecretsSpec) {
-				ws.GitLab = &argoproj.ArgoCDWebhookSecretsGitLab{SecretRef: refSrcToken()}
+				ws.GitLab = &argoproj.ArgoCDWebhookSecretsGitLab{WebhookSecretRef: refSrcToken()}
 			},
 			getRef: func(cr *argoproj.ArgoCD) *argoproj.WebhookSecretKeySelector {
 				if cr.Spec.WebhookSecrets == nil || cr.Spec.WebhookSecrets.GitLab == nil {
 					return nil
 				}
-				return cr.Spec.WebhookSecrets.GitLab.SecretRef
+				return cr.Spec.WebhookSecrets.GitLab.WebhookSecretRef
 			},
 			clearRefName: func(cr *argoproj.ArgoCD) {
-				cr.Spec.WebhookSecrets.GitLab.SecretRef.Name = ""
+				cr.Spec.WebhookSecrets.GitLab.WebhookSecretRef.Name = ""
 			},
 		},
 		{
 			name: "BitbucketCloud", destKey: common.ArgoCDKeyBitbucketCloudWebhookSecret, logName: "Bitbucket Cloud",
 			withSecretRef: func(ws *argoproj.ArgoCDWebhookSecretsSpec) {
-				ws.Bitbucket = &argoproj.ArgoCDWebhookSecretsBitbucket{SecretRef: refSrcToken()}
+				ws.Bitbucket = &argoproj.ArgoCDWebhookSecretsBitbucket{WebhookUUIDSecretRef: refSrcToken()}
 			},
 			getRef: func(cr *argoproj.ArgoCD) *argoproj.WebhookSecretKeySelector {
 				if cr.Spec.WebhookSecrets == nil || cr.Spec.WebhookSecrets.Bitbucket == nil {
 					return nil
 				}
-				return cr.Spec.WebhookSecrets.Bitbucket.SecretRef
+				return cr.Spec.WebhookSecrets.Bitbucket.WebhookUUIDSecretRef
 			},
 			clearRefName: func(cr *argoproj.ArgoCD) {
-				cr.Spec.WebhookSecrets.Bitbucket.SecretRef.Name = ""
+				cr.Spec.WebhookSecrets.Bitbucket.WebhookUUIDSecretRef.Name = ""
 			},
 		},
 		{
 			name: "BitbucketServer", destKey: common.ArgoCDKeyBitbucketServerWebhookSecret, logName: "Bitbucket Server",
 			withSecretRef: func(ws *argoproj.ArgoCDWebhookSecretsSpec) {
-				ws.BitbucketServer = &argoproj.ArgoCDWebhookSecretsBitbucketServer{SecretRef: refSrcToken()}
+				ws.BitbucketServer = &argoproj.ArgoCDWebhookSecretsBitbucketServer{WebhookSecretRef: refSrcToken()}
 			},
 			getRef: func(cr *argoproj.ArgoCD) *argoproj.WebhookSecretKeySelector {
 				if cr.Spec.WebhookSecrets == nil || cr.Spec.WebhookSecrets.BitbucketServer == nil {
 					return nil
 				}
-				return cr.Spec.WebhookSecrets.BitbucketServer.SecretRef
+				return cr.Spec.WebhookSecrets.BitbucketServer.WebhookSecretRef
 			},
 			clearRefName: func(cr *argoproj.ArgoCD) {
-				cr.Spec.WebhookSecrets.BitbucketServer.SecretRef.Name = ""
+				cr.Spec.WebhookSecrets.BitbucketServer.WebhookSecretRef.Name = ""
 			},
 		},
 		{
 			name: "Gogs", destKey: common.ArgoCDKeyGogsWebhookSecret, logName: "Gogs",
 			withSecretRef: func(ws *argoproj.ArgoCDWebhookSecretsSpec) {
-				ws.Gogs = &argoproj.ArgoCDWebhookSecretsGogs{SecretRef: refSrcToken()}
+				ws.Gogs = &argoproj.ArgoCDWebhookSecretsGogs{WebhookSecretRef: refSrcToken()}
 			},
 			getRef: func(cr *argoproj.ArgoCD) *argoproj.WebhookSecretKeySelector {
 				if cr.Spec.WebhookSecrets == nil || cr.Spec.WebhookSecrets.Gogs == nil {
 					return nil
 				}
-				return cr.Spec.WebhookSecrets.Gogs.SecretRef
+				return cr.Spec.WebhookSecrets.Gogs.WebhookSecretRef
 			},
 			clearRefName: func(cr *argoproj.ArgoCD) {
-				cr.Spec.WebhookSecrets.Gogs.SecretRef.Name = ""
+				cr.Spec.WebhookSecrets.Gogs.WebhookSecretRef.Name = ""
 			},
 		},
 	}
@@ -1216,10 +1216,10 @@ func Test_applyDeclarativeWebhookSecrets_multiProvider(t *testing.T) {
 		Spec: argoproj.ArgoCDSpec{
 			WebhookSecrets: &argoproj.ArgoCDWebhookSecretsSpec{
 				GitHub: &argoproj.ArgoCDWebhookSecretsGitHub{
-					SecretRef: &argoproj.WebhookSecretKeySelector{Name: "gh", Key: "t"},
+					WebhookSecretRef: &argoproj.WebhookSecretKeySelector{Name: "gh", Key: "t"},
 				},
 				GitLab: &argoproj.ArgoCDWebhookSecretsGitLab{
-					SecretRef: &argoproj.WebhookSecretKeySelector{Name: "gl", Key: "s"},
+					WebhookSecretRef: &argoproj.WebhookSecretKeySelector{Name: "gl", Key: "s"},
 				},
 			},
 		},

@@ -1049,19 +1049,19 @@ func ConvertAlphaToBetaWebhookSecrets(src *ArgoCDWebhookSecretsSpec) *v1beta1.Ar
 	}
 	dst := &v1beta1.ArgoCDWebhookSecretsSpec{}
 	if src.GitHub != nil {
-		dst.GitHub = &v1beta1.ArgoCDWebhookSecretsGitHub{SecretRef: copyAlphaToBetaWebhookRef(src.GitHub.SecretRef)}
+		dst.GitHub = &v1beta1.ArgoCDWebhookSecretsGitHub{WebhookSecretRef: copyAlphaToBetaWebhookRef(src.GitHub.WebhookSecretRef)}
 	}
 	if src.GitLab != nil {
-		dst.GitLab = &v1beta1.ArgoCDWebhookSecretsGitLab{SecretRef: copyAlphaToBetaWebhookRef(src.GitLab.SecretRef)}
+		dst.GitLab = &v1beta1.ArgoCDWebhookSecretsGitLab{WebhookSecretRef: copyAlphaToBetaWebhookRef(src.GitLab.WebhookSecretRef)}
 	}
 	if src.Bitbucket != nil {
-		dst.Bitbucket = &v1beta1.ArgoCDWebhookSecretsBitbucket{SecretRef: copyAlphaToBetaWebhookRef(src.Bitbucket.SecretRef)}
+		dst.Bitbucket = &v1beta1.ArgoCDWebhookSecretsBitbucket{WebhookUUIDSecretRef: copyAlphaToBetaWebhookRef(src.Bitbucket.WebhookUUIDSecretRef)}
 	}
 	if src.BitbucketServer != nil {
-		dst.BitbucketServer = &v1beta1.ArgoCDWebhookSecretsBitbucketServer{SecretRef: copyAlphaToBetaWebhookRef(src.BitbucketServer.SecretRef)}
+		dst.BitbucketServer = &v1beta1.ArgoCDWebhookSecretsBitbucketServer{WebhookSecretRef: copyAlphaToBetaWebhookRef(src.BitbucketServer.WebhookSecretRef)}
 	}
 	if src.Gogs != nil {
-		dst.Gogs = &v1beta1.ArgoCDWebhookSecretsGogs{SecretRef: copyAlphaToBetaWebhookRef(src.Gogs.SecretRef)}
+		dst.Gogs = &v1beta1.ArgoCDWebhookSecretsGogs{WebhookSecretRef: copyAlphaToBetaWebhookRef(src.Gogs.WebhookSecretRef)}
 	}
 	if src.AzureDevOps != nil {
 		dst.AzureDevOps = &v1beta1.ArgoCDWebhookSecretsAzureDevOps{
@@ -1086,19 +1086,19 @@ func ConvertBetaToAlphaWebhookSecrets(src *v1beta1.ArgoCDWebhookSecretsSpec) *Ar
 	}
 	dst := &ArgoCDWebhookSecretsSpec{}
 	if src.GitHub != nil {
-		dst.GitHub = &ArgoCDWebhookSecretsGitHub{SecretRef: copyBetaToAlphaWebhookRef(src.GitHub.SecretRef)}
+		dst.GitHub = &ArgoCDWebhookSecretsGitHub{WebhookSecretRef: copyBetaToAlphaWebhookRef(src.GitHub.WebhookSecretRef)}
 	}
 	if src.GitLab != nil {
-		dst.GitLab = &ArgoCDWebhookSecretsGitLab{SecretRef: copyBetaToAlphaWebhookRef(src.GitLab.SecretRef)}
+		dst.GitLab = &ArgoCDWebhookSecretsGitLab{WebhookSecretRef: copyBetaToAlphaWebhookRef(src.GitLab.WebhookSecretRef)}
 	}
 	if src.Bitbucket != nil {
-		dst.Bitbucket = &ArgoCDWebhookSecretsBitbucket{SecretRef: copyBetaToAlphaWebhookRef(src.Bitbucket.SecretRef)}
+		dst.Bitbucket = &ArgoCDWebhookSecretsBitbucket{WebhookUUIDSecretRef: copyBetaToAlphaWebhookRef(src.Bitbucket.WebhookUUIDSecretRef)}
 	}
 	if src.BitbucketServer != nil {
-		dst.BitbucketServer = &ArgoCDWebhookSecretsBitbucketServer{SecretRef: copyBetaToAlphaWebhookRef(src.BitbucketServer.SecretRef)}
+		dst.BitbucketServer = &ArgoCDWebhookSecretsBitbucketServer{WebhookSecretRef: copyBetaToAlphaWebhookRef(src.BitbucketServer.WebhookSecretRef)}
 	}
 	if src.Gogs != nil {
-		dst.Gogs = &ArgoCDWebhookSecretsGogs{SecretRef: copyBetaToAlphaWebhookRef(src.Gogs.SecretRef)}
+		dst.Gogs = &ArgoCDWebhookSecretsGogs{WebhookSecretRef: copyBetaToAlphaWebhookRef(src.Gogs.WebhookSecretRef)}
 	}
 	if src.AzureDevOps != nil {
 		dst.AzureDevOps = &ArgoCDWebhookSecretsAzureDevOps{

@@ -8796,13 +8796,18 @@ spec:
                         - name
                         type: object
                     type: object
+                    x-kubernetes-validations:
+                    - message: usernameSecretRef and passwordSecretRef must be set
+                        together
+                      rule: (has(self.usernameSecretRef) && has(self.passwordSecretRef))
+                        || (!has(self.usernameSecretRef) && !has(self.passwordSecretRef))
                   bitbucket:
                     description: 'Bitbucket: Secret key reference for the Bitbucket
                       Cloud webhook UUID.'
                     properties:
-                      secretRef:
-                        description: SecretRef points to the key holding the Bitbucket
-                          Cloud webhook UUID.
+                      webhookUUIDSecretRef:
+                        description: WebhookUUIDSecretRef points to the key holding
+                          the Bitbucket Cloud webhook UUID.
                         properties:
                           key:
                             description: Key in the Secret whose value should be used.
@@ -8819,9 +8824,9 @@ spec:
                     description: 'BitbucketServer: Secret key reference for the Bitbucket
                       Server webhook secret.'
                     properties:
-                      secretRef:
-                        description: SecretRef points to the key holding the webhook
-                          secret value.
+                      webhookSecretRef:
+                        description: WebhookSecretRef points to the key holding the
+                          Bitbucket Server webhook shared secret.
                         properties:
                           key:
                             description: Key in the Secret whose value should be used.
@@ -8838,9 +8843,9 @@ spec:
                     description: 'GitHub: Secret key reference for the GitHub webhook
                       shared secret.'
                     properties:
-                      secretRef:
-                        description: SecretRef points to the key holding the webhook
-                          secret value.
+                      webhookSecretRef:
+                        description: WebhookSecretRef points to the key holding the
+                          GitHub webhook shared secret.
                         properties:
                           key:
                             description: Key in the Secret whose value should be used.
@@ -8857,9 +8862,9 @@ spec:
                     description: 'GitLab: Secret key reference for the GitLab webhook
                       shared secret.'
                     properties:
-                      secretRef:
-                        description: SecretRef points to the key holding the webhook
-                          secret value.
+                      webhookSecretRef:
+                        description: WebhookSecretRef points to the key holding the
+                          GitLab webhook shared secret.
                         properties:
                           key:
                             description: Key in the Secret whose value should be used.
@@ -8876,9 +8881,9 @@ spec:
                     description: 'Gogs: Secret key reference for the Gogs webhook
                       shared secret.'
                     properties:
-                      secretRef:
-                        description: SecretRef points to the key holding the webhook
-                          secret value.
+                      webhookSecretRef:
+                        description: WebhookSecretRef points to the key holding the
+                          Gogs webhook shared secret.
                         properties:
                           key:
                             description: Key in the Secret whose value should be used.
@@ -32405,13 +32410,18 @@ spec:
                         - name
                         type: object
                     type: object
+                    x-kubernetes-validations:
+                    - message: usernameSecretRef and passwordSecretRef must be set
+                        together
+                      rule: (has(self.usernameSecretRef) && has(self.passwordSecretRef))
+                        || (!has(self.usernameSecretRef) && !has(self.passwordSecretRef))
                   bitbucket:
                     description: 'Bitbucket: Secret key reference for the Bitbucket
                       Cloud webhook UUID.'
                     properties:
-                      secretRef:
-                        description: SecretRef points to the key holding the Bitbucket
-                          Cloud webhook UUID.
+                      webhookUUIDSecretRef:
+                        description: WebhookUUIDSecretRef points to the key holding
+                          the Bitbucket Cloud webhook UUID.
                         properties:
                           key:
                             description: Key in the Secret whose value should be used.
@@ -32428,9 +32438,9 @@ spec:
                     description: 'BitbucketServer: Secret key reference for the Bitbucket
                       Server webhook secret.'
                     properties:
-                      secretRef:
-                        description: SecretRef points to the key holding the webhook
-                          secret value.
+                      webhookSecretRef:
+                        description: WebhookSecretRef points to the key holding the
+                          Bitbucket Server webhook shared secret.
                         properties:
                           key:
                             description: Key in the Secret whose value should be used.
@@ -32447,9 +32457,9 @@ spec:
                     description: 'GitHub: Secret key reference for the GitHub webhook
                       shared secret.'
                     properties:
-                      secretRef:
-                        description: SecretRef points to the key holding the webhook
-                          secret value.
+                      webhookSecretRef:
+                        description: WebhookSecretRef points to the key holding the
+                          GitHub webhook shared secret.
                         properties:
                           key:
                             description: Key in the Secret whose value should be used.
@@ -32466,9 +32476,9 @@ spec:
                     description: 'GitLab: Secret key reference for the GitLab webhook
                       shared secret.'
                     properties:
-                      secretRef:
-                        description: SecretRef points to the key holding the webhook
-                          secret value.
+                      webhookSecretRef:
+                        description: WebhookSecretRef points to the key holding the
+                          GitLab webhook shared secret.
                         properties:
                           key:
                             description: Key in the Secret whose value should be used.
@@ -32485,9 +32495,9 @@ spec:
                     description: 'Gogs: Secret key reference for the Gogs webhook
                       shared secret.'
                     properties:
-                      secretRef:
-                        description: SecretRef points to the key holding the webhook
-                          secret value.
+                      webhookSecretRef:
+                        description: WebhookSecretRef points to the key holding the
+                          Gogs webhook shared secret.
                         properties:
                           key:
                             description: Key in the Secret whose value should be used.

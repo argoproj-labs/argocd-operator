@@ -52,7 +52,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			ctx = context.Background()
 		})
 
-		It("verifies spec.webhookSecrets.github.secretRef is synced into argocd-secret as webhook.github.secret", func() {
+		It("verifies spec.webhookSecrets.github.webhookSecretRef is synced into argocd-secret as webhook.github.secret", func() {
 			By("creating Argo CD instance")
 			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 			defer cleanupFunc()
@@ -83,11 +83,11 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			}
 			Expect(k8sClient.Create(ctx, userSecret)).To(Succeed())
 
-			By("setting spec.webhookSecrets.github.secretRef on the ArgoCD CR")
+			By("setting spec.webhookSecrets.github.webhookSecretRef on the ArgoCD CR")
 			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCD), argoCD)).To(Succeed())
 			argoCD.Spec.WebhookSecrets = &argov1beta1api.ArgoCDWebhookSecretsSpec{
 				GitHub: &argov1beta1api.ArgoCDWebhookSecretsGitHub{
-					SecretRef: &argov1beta1api.WebhookSecretKeySelector{
+					WebhookSecretRef: &argov1beta1api.WebhookSecretKeySelector{
 						Name: "github-webhook-credentials",
 						Key:  "token",
 					},
@@ -101,7 +101,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			)
 		})
 
-		It("verifies spec.webhookSecrets.gitlab.secretRef is synced into argocd-secret as webhook.gitlab.secret", func() {
+		It("verifies spec.webhookSecrets.gitlab.webhookSecretRef is synced into argocd-secret as webhook.gitlab.secret", func() {
 			By("creating Argo CD instance")
 			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 			defer cleanupFunc()
@@ -132,11 +132,11 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			}
 			Expect(k8sClient.Create(ctx, userSecret)).To(Succeed())
 
-			By("setting spec.webhookSecrets.gitlab.secretRef on the ArgoCD CR")
+			By("setting spec.webhookSecrets.gitlab.webhookSecretRef on the ArgoCD CR")
 			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCD), argoCD)).To(Succeed())
 			argoCD.Spec.WebhookSecrets = &argov1beta1api.ArgoCDWebhookSecretsSpec{
 				GitLab: &argov1beta1api.ArgoCDWebhookSecretsGitLab{
-					SecretRef: &argov1beta1api.WebhookSecretKeySelector{
+					WebhookSecretRef: &argov1beta1api.WebhookSecretKeySelector{
 						Name: "gitlab-webhook-credentials",
 						Key:  "secret",
 					},
@@ -210,7 +210,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			)
 		})
 
-		It("verifies GitHub and GitLab webhook secretRefs can be configured together on one ArgoCD instance", func() {
+		It("verifies GitHub and GitLab webhook secret references can be configured together on one ArgoCD instance", func() {
 			By("creating Argo CD instance")
 			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 			defer cleanupFunc()
@@ -250,10 +250,10 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCD), argoCD)).To(Succeed())
 			argoCD.Spec.WebhookSecrets = &argov1beta1api.ArgoCDWebhookSecretsSpec{
 				GitHub: &argov1beta1api.ArgoCDWebhookSecretsGitHub{
-					SecretRef: &argov1beta1api.WebhookSecretKeySelector{Name: "gh-creds", Key: "token"},
+					WebhookSecretRef: &argov1beta1api.WebhookSecretKeySelector{Name: "gh-creds", Key: "token"},
 				},
 				GitLab: &argov1beta1api.ArgoCDWebhookSecretsGitLab{
-					SecretRef: &argov1beta1api.WebhookSecretKeySelector{Name: "gl-creds", Key: "secret"},
+					WebhookSecretRef: &argov1beta1api.WebhookSecretKeySelector{Name: "gl-creds", Key: "secret"},
 				},
 			}
 			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
@@ -267,7 +267,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			)
 		})
 
-		It("verifies Bitbucket Cloud, Bitbucket Server, and Gogs secretRefs are synced into argocd-secret", func() {
+		It("verifies Bitbucket Cloud, Bitbucket Server, and Gogs webhook secret references are synced into argocd-secret", func() {
 			By("creating Argo CD instance")
 			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 			defer cleanupFunc()
@@ -313,13 +313,13 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCD), argoCD)).To(Succeed())
 			argoCD.Spec.WebhookSecrets = &argov1beta1api.ArgoCDWebhookSecretsSpec{
 				Bitbucket: &argov1beta1api.ArgoCDWebhookSecretsBitbucket{
-					SecretRef: &argov1beta1api.WebhookSecretKeySelector{Name: "bb-cloud-creds", Key: "uuid"},
+					WebhookUUIDSecretRef: &argov1beta1api.WebhookSecretKeySelector{Name: "bb-cloud-creds", Key: "uuid"},
 				},
 				BitbucketServer: &argov1beta1api.ArgoCDWebhookSecretsBitbucketServer{
-					SecretRef: &argov1beta1api.WebhookSecretKeySelector{Name: "bb-server-creds", Key: "secret"},
+					WebhookSecretRef: &argov1beta1api.WebhookSecretKeySelector{Name: "bb-server-creds", Key: "secret"},
 				},
 				Gogs: &argov1beta1api.ArgoCDWebhookSecretsGogs{
-					SecretRef: &argov1beta1api.WebhookSecretKeySelector{Name: "gogs-creds", Key: "secret"},
+					WebhookSecretRef: &argov1beta1api.WebhookSecretKeySelector{Name: "gogs-creds", Key: "secret"},
 				},
 			}
 			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
@@ -366,7 +366,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCD), argoCD)).To(Succeed())
 			argoCD.Spec.WebhookSecrets = &argov1beta1api.ArgoCDWebhookSecretsSpec{
 				GitHub: &argov1beta1api.ArgoCDWebhookSecretsGitHub{
-					SecretRef: &argov1beta1api.WebhookSecretKeySelector{Name: "gh-clear-creds", Key: "token"},
+					WebhookSecretRef: &argov1beta1api.WebhookSecretKeySelector{Name: "gh-clear-creds", Key: "token"},
 				},
 			}
 			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
@@ -424,10 +424,10 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCD), argoCD)).To(Succeed())
 			argoCD.Spec.WebhookSecrets = &argov1beta1api.ArgoCDWebhookSecretsSpec{
 				GitHub: &argov1beta1api.ArgoCDWebhookSecretsGitHub{
-					SecretRef: &argov1beta1api.WebhookSecretKeySelector{Name: "partial-gh", Key: "token"},
+					WebhookSecretRef: &argov1beta1api.WebhookSecretKeySelector{Name: "partial-gh", Key: "token"},
 				},
 				GitLab: &argov1beta1api.ArgoCDWebhookSecretsGitLab{
-					SecretRef: &argov1beta1api.WebhookSecretKeySelector{Name: "partial-gl", Key: "secret"},
+					WebhookSecretRef: &argov1beta1api.WebhookSecretKeySelector{Name: "partial-gl", Key: "secret"},
 				},
 			}
 			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
@@ -515,6 +515,36 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 					secretFixture.NotHaveDataKey(common.ArgoCDKeyAzureDevOpsWebhookPassword),
 				),
 			)
+		})
+
+		It("rejects spec.webhookSecrets.azureDevOps when only usernameSecretRef is set (CRD validation: both refs required together)", func() {
+			By("creating namespace and an ArgoCD CR with azureDevOps missing passwordSecretRef")
+			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
+			defer cleanupFunc()
+
+			invalid := &argov1beta1api.ArgoCD{
+				ObjectMeta: metav1.ObjectMeta{Name: "example-argocd-invalid-ado-pair", Namespace: ns.Name},
+				Spec: argov1beta1api.ArgoCDSpec{
+					Server: argov1beta1api.ArgoCDServerSpec{
+						Route: argov1beta1api.ArgoCDRouteSpec{Enabled: true},
+					},
+					WebhookSecrets: &argov1beta1api.ArgoCDWebhookSecretsSpec{
+						AzureDevOps: &argov1beta1api.ArgoCDWebhookSecretsAzureDevOps{
+							UsernameSecretRef: &argov1beta1api.WebhookSecretKeySelector{Name: "only-user-ref", Key: "username"},
+							// PasswordSecretRef intentionally omitted — violates CRD XValidation (pair rule).
+						},
+					},
+				},
+			}
+
+			err := k8sClient.Create(ctx, invalid)
+			Expect(err).To(HaveOccurred(), "apiserver should reject azureDevOps with only usernameSecretRef")
+			msg := err.Error()
+			Expect(msg).To(And(
+				ContainSubstring("usernameSecretRef"),
+				ContainSubstring("passwordSecretRef"),
+				ContainSubstring("together"),
+			))
 		})
 	})
 })

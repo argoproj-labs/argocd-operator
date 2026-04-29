@@ -398,48 +398,68 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secre
 	return nil
 }
 
-// declarativeSingleRefProvider describes one webhook.* key synced from a single secretRef (see webhookSingleRefProviders).
+// declarativeSingleRefProvider describes one webhook.* key synced from a Kubernetes Secret reference.
 type declarativeSingleRefProvider struct {
-	getRef  func(*argoproj.ArgoCDWebhookSecretsSpec) *argoproj.WebhookSecretKeySelector
 	destKey string
-	logName string // used in applyWebhookSecretFromRef logs and to build human-readable entries in *changes
+	logName string // provider label for applyWebhookSecretFromRef logs and for recording sync updates in *changes
+	getRef  func(*argoproj.ArgoCDWebhookSecretsSpec) *argoproj.WebhookSecretKeySelector
 }
 
 // webhookSingleRefProviders lists Git/GitLab/Bitbucket/Gogs single-ref entries in stable order for applyAllSingleRefDeclarativeWebhookSecrets.
 var webhookSingleRefProviders = []declarativeSingleRefProvider{
-	{getRef: func(webhookSecrets *argoproj.ArgoCDWebhookSecretsSpec) *argoproj.WebhookSecretKeySelector {
-		if webhookSecrets == nil || webhookSecrets.GitHub == nil {
-			return nil
-		}
-		return webhookSecrets.GitHub.SecretRef
-	}, destKey: common.ArgoCDKeyGitHubWebhookSecret, logName: "GitHub"},
-	{getRef: func(webhookSecrets *argoproj.ArgoCDWebhookSecretsSpec) *argoproj.WebhookSecretKeySelector {
-		if webhookSecrets == nil || webhookSecrets.GitLab == nil {
-			return nil
-		}
-		return webhookSecrets.GitLab.SecretRef
-	}, destKey: common.ArgoCDKeyGitLabWebhookSecret, logName: "GitLab"},
-	{getRef: func(webhookSecrets *argoproj.ArgoCDWebhookSecretsSpec) *argoproj.WebhookSecretKeySelector {
-		if webhookSecrets == nil || webhookSecrets.Bitbucket == nil {
-			return nil
-		}
-		return webhookSecrets.Bitbucket.SecretRef
-	}, destKey: common.ArgoCDKeyBitbucketCloudWebhookSecret, logName: "Bitbucket Cloud"},
-	{getRef: func(webhookSecrets *argoproj.ArgoCDWebhookSecretsSpec) *argoproj.WebhookSecretKeySelector {
-		if webhookSecrets == nil || webhookSecrets.BitbucketServer == nil {
-			return nil
-		}
-		return webhookSecrets.BitbucketServer.SecretRef
-	}, destKey: common.ArgoCDKeyBitbucketServerWebhookSecret, logName: "Bitbucket Server"},
-	{getRef: func(webhookSecrets *argoproj.ArgoCDWebhookSecretsSpec) *argoproj.WebhookSecretKeySelector {
-		if webhookSecrets == nil || webhookSecrets.Gogs == nil {
-			return nil
-		}
-		return webhookSecrets.Gogs.SecretRef
-	}, destKey: common.ArgoCDKeyGogsWebhookSecret, logName: "Gogs"},
+	{
+		destKey: common.ArgoCDKeyGitHubWebhookSecret,
+		logName: "GitHub",
+		getRef: func(webhookSecrets *argoproj.ArgoCDWebhookSecretsSpec) *argoproj.WebhookSecretKeySelector {
+			if webhookSecrets == nil || webhookSecrets.GitHub == nil {
+				return nil
+			}
+			return webhookSecrets.GitHub.WebhookSecretRef
+		},
+	},
+	{
+		destKey: common.ArgoCDKeyGitLabWebhookSecret,
+		logName: "GitLab",
+		getRef: func(webhookSecrets *argoproj.ArgoCDWebhookSecretsSpec) *argoproj.WebhookSecretKeySelector {
+			if webhookSecrets == nil || webhookSecrets.GitLab == nil {
+				return nil
+			}
+			return webhookSecrets.GitLab.WebhookSecretRef
+		},
+	},
+	{
+		destKey: common.ArgoCDKeyBitbucketCloudWebhookSecret,
+		logName: "Bitbucket Cloud",
+		getRef: func(webhookSecrets *argoproj.ArgoCDWebhookSecretsSpec) *argoproj.WebhookSecretKeySelector {
+			if webhookSecrets == nil || webhookSecrets.Bitbucket == nil {
+				return nil
+			}
+			return webhookSecrets.Bitbucket.WebhookUUIDSecretRef
+		},
+	},
+	{
+		destKey: common.ArgoCDKeyBitbucketServerWebhookSecret,
+		logName: "Bitbucket Server",
+		getRef: func(webhookSecrets *argoproj.ArgoCDWebhookSecretsSpec) *argoproj.WebhookSecretKeySelector {
+			if webhookSecrets == nil || webhookSecrets.BitbucketServer == nil {
+				return nil
+			}
+			return webhookSecrets.BitbucketServer.WebhookSecretRef
+		},
+	},
+	{
+		destKey: common.ArgoCDKeyGogsWebhookSecret,
+		logName: "Gogs",
+		getRef: func(webhookSecrets *argoproj.ArgoCDWebhookSecretsSpec) *argoproj.WebhookSecretKeySelector {
+			if webhookSecrets == nil || webhookSecrets.Gogs == nil {
+				return nil
+			}
+			return webhookSecrets.Gogs.WebhookSecretRef
+		},
+	},
 }
 
-// applyAllSingleRefDeclarativeWebhookSecrets applies webhookSingleRefProviders (one secretRef per Git provider key).
+// applyAllSingleRefDeclarativeWebhookSecrets applies webhookSingleRefProviders (one ref per Git provider key).
 func applyAllSingleRefDeclarativeWebhookSecrets(ctx context.Context, c client.Client, cr *argoproj.ArgoCD, argocdSecret *corev1.Secret, webhookSecrets *argoproj.ArgoCDWebhookSecretsSpec, changes *[]string) error {
 	for _, p := range webhookSingleRefProviders {
 		ref := p.getRef(webhookSecrets)
@@ -503,14 +523,14 @@ func applyDeclarativeWebhookSecrets(ctx context.Context, c client.Client, cr *ar
 
 // applyWebhookSecretFromRef copies the referenced Secret key into argocdSecret.Data[destKey].
 // Returns true if argocdSecret was modified.
-// If ref is nil, secretRef.name is empty, or the Secret/key cannot be resolved, any managed value at destKey is removed.
+// If ref is nil, ref.Name is empty, or the Secret/key cannot be resolved, any managed value at destKey is removed.
 // Other Secret Get errors are returned so the reconciler can retry.
 func applyWebhookSecretFromRef(ctx context.Context, c client.Client, cr *argoproj.ArgoCD, argocdSecret *corev1.Secret, ref *argoproj.WebhookSecretKeySelector, destKey, providerLogName string) (bool, error) {
 	if ref == nil {
 		return deleteManagedWebhookKey(argocdSecret, destKey), nil
 	}
 	if ref.Name == "" {
-		log.Info(fmt.Sprintf("skipping %s webhook secret sync: secretRef.name is empty", providerLogName))
+		log.Info(fmt.Sprintf("skipping %s webhook secret sync: referenced Secret name is empty", providerLogName))
 		return deleteManagedWebhookKey(argocdSecret, destKey), nil
 	}
 	ns := cr.Namespace
