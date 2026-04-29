@@ -28,7 +28,7 @@ The operator supports two installation modes:
 
 The controller runs in the same namespace as the Argo CD instance and watches only that namespace. This is the default behavior when `IMAGE_UPDATER_WATCH_NAMESPACES` is not set or is empty.
 
-If you use Argo CD's [Applications in any namespace](https://argo-cd.readthedocs.io/en/stable/operator-manual/app-any-namespace/) feature and have `Application` resources in additional namespaces, you can specify a comma-separated list of namespaces to watch:
+If you use Argo CD's [Applications in any namespace](https://argocd-operator.readthedocs.io/en/latest/usage/apps-in-any-namespace/) feature and have `Application` resources in additional namespaces, you can specify a comma-separated list of namespaces to watch:
 
 ``` yaml
 spec:
