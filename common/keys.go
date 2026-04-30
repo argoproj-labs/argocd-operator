@@ -138,6 +138,8 @@ const (
 	ArgoCDKeyGitLabWebhookSecret = "webhook.gitlab.secret" // #nosec G101
 
 	// ArgoCDKeyBitbucketCloudWebhookSecret is the key in argocd-secret for the Bitbucket Cloud webhook UUID.
+	// Argo CD treats Bitbucket Cloud and Bitbucket Server as two rows, not as one generic “Bitbucket secret”,
+	// see https://argo-cd.readthedocs.io/en/stable/operator-manual/webhook/#2-configure-argo-cd-with-the-webhook-secret-optional
 	ArgoCDKeyBitbucketCloudWebhookSecret = "webhook.bitbucket.uuid" // #nosec G101
 
 	// ArgoCDKeyBitbucketServerWebhookSecret is the key in argocd-secret for the Bitbucket Server webhook secret.

@@ -295,6 +295,49 @@ func Test_ReconcileArgoCD_ReconcileExistingArgoSecret(t *testing.T) {
 	assert.True(t, argoutil.IsTrackedByOperator(testSecret.Labels))
 }
 
+func Test_ReconcileArgoSecret_CreateIncludesDeclarativeWebhookSecrets(t *testing.T) {
+	argocd := &argoproj.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd",
+			Namespace: "argocd-operator",
+		},
+		Spec: argoproj.ArgoCDSpec{
+			WebhookSecrets: &argoproj.ArgoCDWebhookSecretsSpec{
+				GitHub: &argoproj.ArgoCDWebhookSecretsGitHub{
+					WebhookSecretRef: &argoproj.WebhookSecretKeySelector{Name: "webhook-src", Key: "token"},
+				},
+			},
+		},
+	}
+
+	srcSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "webhook-src", Namespace: "argocd-operator"},
+		Data:       map[string][]byte{"token": []byte("declared-token")},
+	}
+
+	clusterSecret := argoutil.NewSecretWithSuffix(argocd, "cluster")
+	clusterSecret.Data = map[string][]byte{common.ArgoCDKeyAdminPassword: []byte("something")}
+	tlsSecret := argoutil.NewSecretWithSuffix(argocd, "tls")
+
+	resObjs := []client.Object{argocd}
+	subresObjs := []client.Object{argocd}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	require.NoError(t, r.Create(context.TODO(), clusterSecret))
+	require.NoError(t, r.Create(context.TODO(), tlsSecret))
+	require.NoError(t, r.Create(context.TODO(), srcSecret))
+
+	require.NoError(t, r.reconcileArgoSecret(argocd))
+
+	out := &corev1.Secret{}
+	require.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: "argocd-operator"}, out))
+	require.Equal(t, []byte("declared-token"), out.Data[common.ArgoCDKeyGitHubWebhookSecret])
+	assert.True(t, argoutil.IsTrackedByOperator(out.Labels))
+}
+
 func Test_ReconcileArgoCD_ReconcileShouldNotChangeWhenUpdatedAdminPass(t *testing.T) {
 	argocd := &argoproj.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{

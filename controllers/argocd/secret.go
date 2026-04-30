@@ -206,6 +206,11 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoproj.ArgoCD) error {
 		secret.Data[common.ArgoCDDexSecretKey] = []byte(*dexOIDCClientSecret)
 	}
 
+	var webhookChanges []string
+	if err := applyDeclarativeWebhookSecrets(context.TODO(), r.Client, cr, secret, &webhookChanges); err != nil {
+		return err
+	}
+
 	if err := controllerutil.SetControllerReference(cr, secret, r.Scheme); err != nil {
 		return err
 	}
