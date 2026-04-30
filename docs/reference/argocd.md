@@ -780,44 +780,27 @@ spec:
 
 ## Prometheus Options
 
-The following properties are available for configuring the Prometheus component.
+The following properties are available for configuring Prometheus metrics exposure for Argo CD.
 
 Name | Default | Description
 --- | --- | ---
-Enabled | false | Toggle Prometheus support globally for ArgoCD.
-Host | `example-argocd-prometheus` | The hostname to use for Ingress/Route resources.
-Ingress | `false` | Toggles Ingress for Prometheus.
-[Route](#prometheus-route-options) | [Object] | Route configuration options.
-Size | 1 | The replica count for the Prometheus StatefulSet.
+Enabled | false | When set to `true`, creates ServiceMonitors and PrometheusRules for scraping Argo CD metrics.
+Host | `example-argocd-prometheus` | **Deprecated**: This field is no longer used and will be ignored.
+Ingress | `false` | **Deprecated**: This field is no longer used and will be ignored.
+Route | [Object] | **Deprecated**: This field is no longer used and will be ignored.
+Size | 1 | **Deprecated**: This field is no longer used and will be ignored.
 
-### Prometheus Ingress Options
-
-The following properties are available for configuring the Prometheus Ingress.
-
-Name | Default | Description
---- | --- | ---
-Annotations | [Empty] | The map of annotations to use for the Ingress resource.
-Enabled | `false` | Toggle creation of an Ingress resource.
-IngressClassName | [Empty] | IngressClass to use for the Ingress resource.
-Path | `/` | Path to use for Ingress resources.
-TLS | [Empty] | TLS configuration for the Ingress.
-
-### Prometheus Route Options
-
-The following properties are available to configure the Route for the Prometheus component.
-
-Name | Default | Description
---- | --- | ---
-Annotations | [Empty] | The map of annotations to add to the Route.
-Enabled | `false` | Toggles the creation of a Route for the Prometheus component.
-Labels | [Empty] | The map of labels to add to the Route.
-Path | `/` | The path for the Route.
-TLS | [Object] | The TLSConfig for the Route.
-WildcardPolicy| `None` | The wildcard policy for the Route. Can be one of `Subdomain` or `None`.
+!!! note "Important Changes"
+    Starting with this version, the operator no longer creates Prometheus CR, Service, Route, or Ingress resources. When `.spec.prometheus.enabled` is set to `true`, the operator creates:
+    
+    - **ServiceMonitors**: For scraping metrics from Argo CD components (application-controller, repo-server, server)
+    - **PrometheusRules**: For alerting based on Argo CD workload status (when `.spec.monitoring.enabled` is also `true`)
+    
+    The `Host`, `Ingress`, `Route`, and `Size` fields are deprecated and no longer have any effect.
 
 ### Prometheus Example
 
-The following example shows all properties set to the default values.
+The following example shows how to enable metrics exposure:
 
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
@@ -825,16 +808,13 @@ kind: ArgoCD
 metadata:
   name: example-argocd
   labels:
-    example: insights
+    example: metrics
 spec:
   prometheus:
-    enabled: false
-    host: example-argocd-prometheus
-    ingress:
-      enabled: false
-    route: false
-    size: 1
+    enabled: true
 ```
+
+This will create ServiceMonitor resources that allow your existing Prometheus instance to discover and scrape metrics from Argo CD components.
 
 ## RBAC Options
 
@@ -1051,6 +1031,7 @@ Enabled | true | Flag to enable repo server during ArgoCD installation.
 Remote | [Empty] | Specifies the remote URL of the repo server container. By default, it points to a local instance managed by the operator. This field is optional.
 Annotations | [Empty] | Custom annotations to pods deployed by the operator
 Labels | [Empty] | Custom labels to pods deployed by the operator
+[SystemCATrust](#repo-server-tls-trust-configuration) | [Empty] | Custom certificates to inject into the repo server container and its plugins to trust source hosting sites
 
 ### Pass Command Arguments To Repo Server
 
@@ -1100,6 +1081,52 @@ spec:
       - --reposerver.max.combined.directory.manifests.size
       - 10M
 ```
+
+### Repo server TLS trust configuration
+
+The operator permits injecting custom TLS certificates into the Repo Server container and Config Management Plugins (sidecar containers):
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: repo
+spec:
+  repo:
+    systemCATrust:
+      secrets:
+        - name: my-local-cert-secret
+          items:
+            - key: key-name-in-the-secret-object
+              # Must end with .crt
+              path: desired-file-name-of-the-certificate.crt
+      configMaps:
+        - name: my-local-cert-cm
+          # Map all keys in the ConfigMap to files with the same name
+          # Key names in the ConfigMap must end with .crt
+          items: {}
+      clusterTrustBundles:
+        - name: my-global-ctb
+          path: my-global-ctb.crt
+          optional: true
+```
+
+This is orthogonal to declaring per-host TLS certificate in `argocd-tls-certs-cm`, as several notable differences exist:
+
+- The certificates are not pinned for individual host, so CA/wildcard certificates can be utilized.
+- The certificates are properly configured inside the container, permitting more sophisticated (yet secure) plugin logic. For example:
+    - Kustomize can invoke Helm reaching to other hosts than the source repo
+    - Kustomize can pull resources from other repositories/sources over HTTPS
+    - In general, Config Management Plugin can invoke any TLS-enabled tool present in the image with TLS verification on.
+
+The certificates from Secrets or ConfigMaps must exist in the same namespace as the ArgoCD instance.
+Also, they can selectively pick individual keys, or map all their declared keys by omitting the `items` field.
+
+Each type of the trust source can be declared as optional---the absence of a non-optional source will cause deployment failure.
+
+Unless the `.repo.systemCATrust.dropImageCertificates` is set to true, the user-declared certificates are merged with those from the image.
 
 ## Resource Customizations
 

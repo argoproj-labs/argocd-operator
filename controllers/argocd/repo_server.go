@@ -18,15 +18,25 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"hash"
 	"reflect"
+	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
+	certificatesv1beta1 "k8s.io/api/certificates/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	argocdoperatorv1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -52,7 +62,7 @@ func getArgoRepoCommand(cr *argocdoperatorv1beta1.ArgoCD, useTLSForRedis bool) [
 	cmd = append(cmd, "argocd-repo-server")
 
 	if cr.Spec.Redis.IsEnabled() {
-		cmd = append(cmd, "--redis", getRedisServerAddress(cr))
+		cmd = append(cmd, "--redis", argoutil.GetRedisServerAddress(cr))
 	} else {
 		log.Info("Redis is Disabled. Skipping adding Redis configuration to Repo Server.")
 	}
@@ -84,7 +94,7 @@ func getRepoServerAddress(cr *argocdoperatorv1beta1.ArgoCD) string {
 	if cr.Spec.Repo.IsRemote() {
 		return *cr.Spec.Repo.Remote
 	}
-	return fqdnServiceRef("repo-server", common.ArgoCDDefaultRepoServerPort, cr)
+	return argoutil.FqdnServiceRef("repo-server", common.ArgoCDDefaultRepoServerPort, cr)
 }
 
 // reconcileRepoDeployment will ensure the Deployment resource is present for the ArgoCD Repo component.
@@ -103,19 +113,10 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 
 	// Global proxy env vars go first
 	repoEnv := cr.Spec.Repo.Env
-	repoEnv = append(repoEnv, corev1.EnvVar{
-		Name: "REDIS_PASSWORD",
-		ValueFrom: &corev1.EnvVarSource{
-			SecretKeyRef: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: fmt.Sprintf("%s-%s", cr.Name, "redis-initial-password"),
-				},
-				Key: "admin.password",
-			},
-		},
-	})
+
 	// Environment specified in the CR take precedence over everything else
 	repoEnv = argoutil.EnvMerge(repoEnv, proxyEnvVars(), false)
+	repoEnv = argoutil.EnvMerge(repoEnv, argoutil.GetRedisAuthEnv(), false)
 	if cr.Spec.Repo.ExecTimeout != nil {
 		repoEnv = argoutil.EnvMerge(repoEnv, []corev1.EnvVar{{Name: "ARGOCD_EXEC_TIMEOUT", Value: fmt.Sprintf("%ds", *cr.Spec.Repo.ExecTimeout)}}, true)
 	}
@@ -166,6 +167,8 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 		}
 	}
 
+	redisAuthVolume, redisAuthMount := argoutil.MountRedisAuthToArgo(cr)
+
 	repoServerVolumeMounts := []corev1.VolumeMount{
 		{
 			Name:      "ssh-known-hosts",
@@ -195,6 +198,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 			Name:      "plugins",
 			MountPath: "/home/argocd/cmp-server/plugins",
 		},
+		redisAuthMount,
 	}
 
 	if !volumeMountOverridesTmpVolume {
@@ -333,6 +337,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
+		redisAuthVolume,
 	}
 
 	// If the user is not used a custom /tmp mount, then just use the default
@@ -348,8 +353,9 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 	if cr.Spec.Repo.Volumes != nil {
 		repoServerVolumes = append(repoServerVolumes, cr.Spec.Repo.Volumes...)
 	}
-
 	deploy.Spec.Template.Spec.Volumes = repoServerVolumes
+
+	r.injectCATrustToContainers(cr, deploy)
 
 	if replicas := getArgoCDRepoServerReplicas(cr); replicas != nil {
 		deploy.Spec.Replicas = replicas
@@ -365,6 +371,12 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 		for key, value := range cr.Spec.Repo.Labels {
 			deploy.Spec.Template.Labels[key] = value
 		}
+	}
+
+	log.Info("Applying ArgoCD Repo Server reconciler hook")
+	if err := applyReconcilerHook(cr, deploy, ""); err != nil {
+		log.Error(err, "ArgoCD Repo Server reconciler hook failed")
+		return err
 	}
 
 	existing := newDeploymentWithSuffix("repo-server", "repo-server", cr)
@@ -383,8 +395,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 			return r.Delete(context.TODO(), deploy)
 		}
 
-		changed := false
-		explanation := ""
+		var changes []string
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getRepoServerContainerImage(cr)
 		actualImagePullPolicy := existing.Spec.Template.Spec.Containers[0].ImagePullPolicy
@@ -397,120 +408,69 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 				}
 			}
 			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-			explanation = "container image"
-			changed = true
+			changes = append(changes, "container image")
 		}
 		if actualImagePullPolicy != desiredImagePullPolicy {
 			existing.Spec.Template.Spec.Containers[0].ImagePullPolicy = desiredImagePullPolicy
-			if changed {
-				explanation += ", "
-			}
-			explanation += "image pull policy"
-			changed = true
+			changes = append(changes, "image pull policy")
 		}
-		updateNodePlacement(existing, deploy, &changed, &explanation)
+
+		changes = append(changes, updateNodePlacement(existing, deploy)...)
+
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
 			existing.Spec.Template.Spec.Volumes = deploy.Spec.Template.Spec.Volumes
-			if changed {
-				explanation += ", "
-			}
-			explanation += "volumes"
-			changed = true
+			changes = append(changes, "volumes")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].VolumeMounts,
 			existing.Spec.Template.Spec.Containers[0].VolumeMounts) {
 			existing.Spec.Template.Spec.Containers[0].VolumeMounts = deploy.Spec.Template.Spec.Containers[0].VolumeMounts
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container volume mounts"
-			changed = true
+			changes = append(changes, "container volume mounts")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Env,
 			existing.Spec.Template.Spec.Containers[0].Env) {
 			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container env"
-			changed = true
+			changes = append(changes, "container env")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Resources, existing.Spec.Template.Spec.Containers[0].Resources) {
 			existing.Spec.Template.Spec.Containers[0].Resources = deploy.Spec.Template.Spec.Containers[0].Resources
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container resources"
-			changed = true
+			changes = append(changes, "container resources")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Command, existing.Spec.Template.Spec.Containers[0].Command) {
 			existing.Spec.Template.Spec.Containers[0].Command = deploy.Spec.Template.Spec.Containers[0].Command
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container command"
-			changed = true
+			changes = append(changes, "container command")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].SecurityContext, existing.Spec.Template.Spec.Containers[0].SecurityContext) {
 			existing.Spec.Template.Spec.Containers[0].SecurityContext = deploy.Spec.Template.Spec.Containers[0].SecurityContext
-			if changed {
-				explanation += ", "
-			}
-			explanation += "container security context"
-			changed = true
+			changes = append(changes, "container security context")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.SecurityContext, existing.Spec.Template.Spec.SecurityContext) {
 			existing.Spec.Template.Spec.SecurityContext = deploy.Spec.Template.Spec.SecurityContext
-			if changed {
-				explanation += ", "
-			}
-			explanation += "pod security context"
-			changed = true
+			changes = append(changes, "pod security context")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[1:],
 			existing.Spec.Template.Spec.Containers[1:]) {
 			existing.Spec.Template.Spec.Containers = append(existing.Spec.Template.Spec.Containers[0:1],
 				deploy.Spec.Template.Spec.Containers[1:]...)
-			if changed {
-				explanation += ", "
-			}
-			explanation += "additional containers"
-			changed = true
+			changes = append(changes, "additional containers")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers, existing.Spec.Template.Spec.InitContainers) {
 			existing.Spec.Template.Spec.InitContainers = deploy.Spec.Template.Spec.InitContainers
-			if changed {
-				explanation += ", "
-			}
-			explanation += "init containers"
-			changed = true
+			changes = append(changes, "init containers")
 		}
 		if !reflect.DeepEqual(deploy.Spec.Replicas, existing.Spec.Replicas) {
 			existing.Spec.Replicas = deploy.Spec.Replicas
-			if changed {
-				explanation += ", "
-			}
-			explanation += "replicas"
-			changed = true
+			changes = append(changes, "replicas")
 		}
 
 		if deploy.Spec.Template.Spec.AutomountServiceAccountToken != existing.Spec.Template.Spec.AutomountServiceAccountToken {
 			existing.Spec.Template.Spec.AutomountServiceAccountToken = deploy.Spec.Template.Spec.AutomountServiceAccountToken
-			if changed {
-				explanation += ", "
-			}
-			explanation += "auto-mount service account token"
-			changed = true
+			changes = append(changes, "auto-mount service account token")
 		}
 
 		if deploy.Spec.Template.Spec.ServiceAccountName != existing.Spec.Template.Spec.ServiceAccountName {
 			existing.Spec.Template.Spec.ServiceAccountName = deploy.Spec.Template.Spec.ServiceAccountName
 			existing.Spec.Template.Spec.DeprecatedServiceAccount = deploy.Spec.Template.Spec.ServiceAccountName
-			if changed {
-				explanation += ", "
-			}
-			explanation += "service account name"
-			changed = true
+			changes = append(changes, "service account name")
 		}
 
 		// Add Kubernetes-specific labels/annotations from the live object in the source to preserve metadata.
@@ -519,24 +479,16 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
 			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
-			if changed {
-				explanation += ", "
-			}
-			explanation += "annotations"
-			changed = true
+			changes = append(changes, "annotations")
 		}
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Labels, existing.Spec.Template.Labels) {
 			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
-			if changed {
-				explanation += ", "
-			}
-			explanation += "labels"
-			changed = true
+			changes = append(changes, "labels")
 		}
 
-		if changed {
-			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
+		if len(changes) > 0 {
+			argoutil.LogResourceUpdate(log, existing, "updating", strings.Join(changes, ", "))
 			return r.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
@@ -557,6 +509,232 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 	}
 	argoutil.LogResourceCreation(log, deploy)
 	return r.Create(context.TODO(), deploy)
+}
+
+// injectCATrustToContainers Creates the init container and volumes to trust CAs specified by `spec.repo.systemCATrust`.
+//
+// Take CAs from the `argocd-ca-trust-source` volume and mix it with the distro CAs into `argocd-ca-trust-target` volumes.
+// Several ubuntu-specific problems exist:
+// 1. /etc/ssl/certs/ cannot be updated by `update-ca-certificates` without root - desirable in the production container.
+// 2. /etc/ssl/certs/ symlinkes to /usr/local/share/ca-certificates/, so mounting one without the other is futile.
+//
+// All source certs are projected into the `argocd-ca-trust-source` volume that is ultimately mounted in the prod container (addresses #2).
+//
+// To amend content of /etc/ssl/certs/ (ca-trust-target), an init container is used:
+//   - it mounts `argocd-ca-trust-target` over `/etc/ssl/certs/` (addressing #1 by making it writable volume),
+//     and `ca-trust-source` over `/usr/local/share/ca-certificates/`,
+//     and amends it with user-added certs using `update-ca-certificates`.
+//
+// The production container is then mounted with `/etc/ssl/certs/` (`argocd-ca-trust-target`) and
+// `/usr/local/share/ca-certificates/` (`argocd-ca-trust-source`) providing read-only CAs needed.
+func (r *ReconcileArgoCD) injectCATrustToContainers(cr *argocdoperatorv1beta1.ArgoCD, deploy *appsv1.Deployment) {
+	if cr.Spec.Repo.SystemCATrust == nil {
+		return
+	}
+
+	sources, sourceNames, sourcesChecksum := r.caTrustVolumes(cr)
+
+	// Update pod checksum so eventual update to sources causes deployment rollout
+	if deploy.Spec.Template.Annotations == nil {
+		deploy.Spec.Template.Annotations = make(map[string]string)
+	}
+	if old, ok := deploy.Spec.Template.Annotations[common.ArgoCDCATrustChecksum]; ok && old != sourcesChecksum {
+		log.Info("repo-server " + common.ArgoCDCATrustChecksum + " changed")
+	}
+	deploy.Spec.Template.Annotations[common.ArgoCDCATrustChecksum] = sourcesChecksum
+
+	volumeSource := "argocd-ca-trust-source"
+	volumeTarget := "argocd-ca-trust-target"
+
+	repoServerVolumes := []corev1.Volume{
+		{
+			Name: volumeSource,
+			VolumeSource: corev1.VolumeSource{
+				Projected: &corev1.ProjectedVolumeSource{
+					Sources:     sources,
+					DefaultMode: ptr.To(int32(0o444)),
+				},
+			},
+		}, {
+			Name: volumeTarget,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+	}
+
+	// The `/tmp` volume can be user-provided, so the actual mount name must be looked up
+	volumeTmp := ""
+	for _, vm := range deploy.Spec.Template.Spec.Containers[0].VolumeMounts {
+		if vm.MountPath == "/tmp" {
+			volumeTmp = vm.Name
+			break
+		}
+	}
+
+	repoServerImage := getRepoServerContainerImage(cr)
+	deploy.Spec.Template.Spec.InitContainers = append(
+		deploy.Spec.Template.Spec.InitContainers,
+		caTrustInitContainer(cr, repoServerImage, volumeSource, volumeTarget, volumeTmp),
+	)
+
+	prodVolumeMounts := func() []corev1.VolumeMount {
+		return []corev1.VolumeMount{
+			{Name: volumeSource, ReadOnly: true, MountPath: "/usr/local/share/ca-certificates/"},
+			{Name: volumeTarget, ReadOnly: true, MountPath: "/etc/ssl/certs/"},
+		}
+	}
+
+	// Inject to prod container and sidecars (plugins)
+	var containerNames []string
+	for i, container := range deploy.Spec.Template.Spec.Containers {
+		// This can only work with ubuntu or compatible, so do not inject to potentially incompatible containers
+		if container.Image == repoServerImage {
+			// Accessing by index because the container is a copy of the original struct
+			deploy.Spec.Template.Spec.Containers[i].VolumeMounts = append(deploy.Spec.Template.Spec.Containers[i].VolumeMounts, prodVolumeMounts()...)
+			containerNames = append(containerNames, container.Name)
+		}
+	}
+
+	log.Info(fmt.Sprintf(
+		"injecting system CA trust from %s to containers %s",
+		strings.Join(sourceNames, ", "),
+		strings.Join(containerNames, ", "),
+	))
+
+	deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, repoServerVolumes...)
+}
+
+func (r *ReconcileArgoCD) caTrustVolumes(cr *argocdoperatorv1beta1.ArgoCD) (sources []corev1.VolumeProjection, sourceNames []string, checksum string) {
+	// The projected file needs to have the `.crt` suffix for the update-ca-certificates to work correctly. Add it if not present.
+	ensureValidPath := func(path string) string {
+		if strings.HasSuffix(path, ".crt") {
+			return path
+		}
+		return path + ".crt"
+	}
+
+	trackSource := func(kind string, name string, optional *bool) {
+		path := kind + ":" + name
+		if optional != nil && *optional {
+			path += "(optional)"
+		}
+		sourceNames = append(sourceNames, path)
+	}
+
+	// Create checksum from the source projection spec and the source contents.
+	// This is to detect that either of them has changed and rollout is needed.
+	objectChecksum := newObjectChecksum()
+
+	// Relevant bundles cannot be queried independently and need to be looked up through `isRelevantCtb`, so pulled as a list ahead of time
+	bundles := certificatesv1beta1.ClusterTrustBundleList{}
+	if len(cr.Spec.Repo.SystemCATrust.ClusterTrustBundles) > 0 {
+		err := r.List(context.TODO(), &bundles)
+		if err != nil {
+			log.Error(err, "failed querying ClusterTrustBundles for System CA Trust checksum")
+		}
+	}
+
+	for i, bundleProjection := range cr.Spec.Repo.SystemCATrust.ClusterTrustBundles {
+		bundleProjection = *bundleProjection.DeepCopy()
+		// Using .Path, because .Name might not be specified
+		trackSource("ClusterTrustBundle", bundleProjection.Path, bundleProjection.Optional)
+
+		bundleProjection.Path = ensureValidPath(bundleProjection.Path)
+		sources = append(sources, corev1.VolumeProjection{ClusterTrustBundle: &bundleProjection})
+
+		objectChecksum.sprintf("ctb:%d:%s", i, bundleProjection.Path)
+		for _, bundle := range findRelevantBundles(bundles, bundleProjection) {
+			objectChecksum.writeObject(&bundle)
+		}
+	}
+	for i, secretProjection := range cr.Spec.Repo.SystemCATrust.Secrets {
+		secretProjection = *secretProjection.DeepCopy()
+		trackSource("Secret", secretProjection.Name, secretProjection.Optional)
+
+		for i, item := range secretProjection.Items {
+			secretProjection.Items[i].Path = ensureValidPath(item.Path)
+		}
+		sources = append(sources, corev1.VolumeProjection{Secret: &secretProjection})
+
+		objectChecksum.sprintf("secret:%d:%s", i, secretProjection.Name)
+		var secret corev1.Secret
+		err := r.Get(context.TODO(), types.NamespacedName{Namespace: cr.Namespace, Name: secretProjection.Name}, &secret)
+		if err != nil && !errors.IsNotFound(err) {
+			log.Error(err, "failed querying Secret for System CA Trust checksum", "name", secretProjection.Name, "namespace", cr.Namespace)
+		}
+		objectChecksum.writeObject(&secret)
+	}
+	for i, cmProjection := range cr.Spec.Repo.SystemCATrust.ConfigMaps {
+		cmProjection = *cmProjection.DeepCopy()
+		trackSource("ConfigMap", cmProjection.Name, cmProjection.Optional)
+
+		for i, cmi := range cmProjection.Items {
+			cmProjection.Items[i].Path = ensureValidPath(cmi.Path)
+		}
+		sources = append(sources, corev1.VolumeProjection{ConfigMap: &cmProjection})
+
+		objectChecksum.sprintf("cm:%d:%s", i, cmProjection.Name)
+		var cm corev1.ConfigMap
+		err := r.Get(context.TODO(), types.NamespacedName{Namespace: cr.Namespace, Name: cmProjection.Name}, &cm)
+		if err != nil && !errors.IsNotFound(err) {
+			log.Error(err, "failed querying ConfigMap for System CA Trust checksum", "name", cmProjection.Name, "namespace", cr.Namespace)
+		}
+		objectChecksum.writeObject(&cm)
+	}
+
+	return sources, sourceNames, objectChecksum.hexSum()
+}
+
+func caTrustInitContainer(cr *argocdoperatorv1beta1.ArgoCD, argoImage string, volumeSource string, volumeTarget string, tmpVolume string) corev1.Container {
+	// This is where the image keeps its vendored CAs, look elsewhere if DropImageCertificates
+	imageCertPath := "/usr/share/ca-certificates"
+	if cr.Spec.Repo.SystemCATrust.DropImageCertificates {
+		imageCertPath = "/systemCATrust.dropImageCertificates"
+	}
+
+	return corev1.Container{
+		Name:            "update-ca-certificates",
+		Image:           argoImage,
+		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
+		Env: proxyEnvVars(corev1.EnvVar{
+			Name:  "IMAGE_CERT_PATH",
+			Value: imageCertPath,
+		}),
+		Command: []string{"/bin/bash", "-c"},
+		Args: []string{`
+                set -eEuo pipefail
+                trap 's=$?; echo >&2 "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
+
+                echo "User defined CA files:"
+                ls -l /usr/local/share/ca-certificates/
+
+                # Make sure the file exist even when the update-ca-certificates produces no pem blocks
+                echo "" > /etc/ssl/certs/ca-certificates.crt
+
+                update-ca-certificates --verbose --certsdir "$IMAGE_CERT_PATH"
+                echo "Resulting /etc/ssl/certs/"
+                ls -l /etc/ssl/certs/
+
+                echo "Done!"
+        `},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name: volumeSource,
+				// Source path for user additional certificates - empty in the image, so not shadowing anything.
+				MountPath: "/usr/local/share/ca-certificates/",
+				ReadOnly:  true,
+			}, {
+				Name:      volumeTarget,
+				MountPath: "/etc/ssl/certs/",
+			}, {
+				Name:      tmpVolume,
+				MountPath: "/tmp",
+			},
+		},
+		Resources:       getArgoRepoResources(cr),
+		SecurityContext: argoutil.DefaultSecurityContext(),
+	}
 }
 
 // getArgoRepoResources will return the ResourceRequirements for the Argo CD Repo server container.
@@ -758,4 +936,141 @@ func (r *ReconcileArgoCD) reconcileRepoServerTLSSecret(cr *argocdoperatorv1beta1
 	}
 
 	return nil
+}
+
+// systemCATrustMapper triggers reconciliation of repo-server Deployment if some of the tracked Secrets, ConfigMaps or ClusterTrustBundles have changed
+func (r *ReconcileArgoCD) systemCATrustMapper(ctx context.Context, o client.Object) (toReconcile []reconcile.Request) {
+	// For cluster-wide resources, it is needed to consult all argos. For cluster-scoped ones, only the argos in the same NS.
+	argoNamespace := client.InNamespace(o.GetNamespace())
+	var argoCDs argocdoperatorv1beta1.ArgoCDList
+	if err := r.List(ctx, &argoCDs, argoNamespace); err != nil {
+		log.Error(err, "unable to list ArgoCD instances")
+		return
+	}
+
+	for _, argocd := range argoCDs.Items {
+		if argocd.Spec.Repo.SystemCATrust == nil {
+			continue
+		}
+
+		switch obj := o.(type) {
+		case *corev1.Secret:
+			for _, trustSource := range argocd.Spec.Repo.SystemCATrust.Secrets {
+				if trustSource.Name == obj.Name {
+					toReconcile = append(toReconcile, reconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Namespace: argocd.Namespace,
+							Name:      argocd.Name,
+						},
+					})
+					break
+				}
+			}
+		case *corev1.ConfigMap:
+			for _, trustSource := range argocd.Spec.Repo.SystemCATrust.ConfigMaps {
+				if trustSource.Name == obj.Name {
+					toReconcile = append(toReconcile, reconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Namespace: argocd.Namespace,
+							Name:      argocd.Name,
+						},
+					})
+					break
+				}
+			}
+		case *certificatesv1beta1.ClusterTrustBundle:
+			for _, trustSource := range argocd.Spec.Repo.SystemCATrust.ClusterTrustBundles {
+				if isRelevantCtb(trustSource, obj) {
+					toReconcile = append(toReconcile, reconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Namespace: argocd.Namespace,
+							Name:      argocd.Name,
+						},
+					})
+					break
+				}
+			}
+		default:
+			panic(fmt.Errorf("systemCATrustMapper called for unknown type %T", o))
+		}
+	}
+
+	return
+}
+
+// isRelevantCtb detects if the actual ClusterTrustBundle matches the projection
+// Ref.: https://github.com/kubernetes/kubernetes/blob/66452049f3d692768c39c797b21b793dce80314e/pkg/kubelet/clustertrustbundle/clustertrustbundle_manager.go#L231
+func isRelevantCtb(proj corev1.ClusterTrustBundleProjection, actual *certificatesv1beta1.ClusterTrustBundle) bool {
+	// ClusterTrustBundle uses either .Name or .SignerName plus eventual .LabelSelector to identify the source
+	if proj.Name != nil && *proj.Name == actual.Name {
+		return true
+	}
+
+	if proj.SignerName != nil && *proj.SignerName == actual.Spec.SignerName {
+		// If unset, interpreted as "match nothing".  If set but empty, interpreted as "match everything".
+		if proj.LabelSelector == nil {
+			return false
+		}
+		if len(proj.LabelSelector.MatchLabels)+len(proj.LabelSelector.MatchExpressions) == 0 {
+			return true
+		}
+
+		selector, err := metav1.LabelSelectorAsSelector(proj.LabelSelector)
+		if err != nil {
+			log.Error(err, "Failed evaluating label selector for System CA trust ClusterTrustBundle", "selector", proj.LabelSelector)
+			return false
+		}
+
+		return selector.Matches(labels.Set(actual.Labels))
+	}
+
+	return false
+}
+
+func findRelevantBundles(bundles certificatesv1beta1.ClusterTrustBundleList, bundleProjection corev1.ClusterTrustBundleProjection) []certificatesv1beta1.ClusterTrustBundle {
+	var relevant []certificatesv1beta1.ClusterTrustBundle
+	for _, bundle := range bundles.Items {
+		if isRelevantCtb(bundleProjection, &bundle) {
+			relevant = append(relevant, bundle)
+		}
+	}
+	return relevant
+}
+
+type objectChecksum struct {
+	hash.Hash
+	serializer *json.Serializer
+}
+
+func newObjectChecksum() *objectChecksum {
+	serializer := json.NewSerializerWithOptions(
+		json.DefaultMetaFactory,
+		nil,
+		nil,
+		json.SerializerOptions{
+			Yaml:   false,
+			Pretty: false,
+			Strict: false,
+		},
+	)
+
+	return &objectChecksum{sha256.New(), serializer}
+}
+
+func (och *objectChecksum) writeObject(obj runtime.Object) {
+	err := och.serializer.Encode(obj, och)
+	if err != nil {
+		log.Error(err, "unable to fingerprint object", "object", obj)
+	}
+}
+
+func (och *objectChecksum) sprintf(format string, a ...interface{}) {
+	_, err := och.Write(fmt.Appendf([]byte{}, format, a...))
+	if err != nil {
+		log.Error(err, "unable to fingerprint string", "format", format)
+	}
+}
+
+func (och *objectChecksum) hexSum() string {
+	return fmt.Sprintf("%x", och.Sum([]byte{}))
 }

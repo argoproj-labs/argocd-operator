@@ -1,12 +1,12 @@
-name: Code scans
+name: "Validation, verifications, and lints"
 on:
   pull_request:
     paths-ignore:
       - "docs/**"
     branches:
-      - 'master'
-      - 'release-*'
-      - 'rhos-*'
+      - "master"
+      - "release-*"
+      - "rhos-*"
 
 jobs:
   lint_code:
@@ -18,13 +18,30 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version-file: 'go.mod'
+          go-version-file: "go.mod"
       - name: "Ensure code passes 'go-sec' - run 'make gosec' to identify issues"
         run: |
           make gosec
       - name: "Ensure code passes 'golangci-lint' - run 'make lint' to identify issues"
         run: |
-          make lint 
+          make lint
       - name: Ensure there is no diff in code
+        run: |
+          git diff --ignore-matching-lines='.*createdAt:.*' --exit-code -- .
+
+  verify_argo_cd_has_updated_dependencies:
+    name: Verify Argo CD has updated dependencies, for the given target version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: "go.mod"
+      - name: "Call update dependencies Makefile target"
+        run: |
+          make update-dependencies
+      - name: Ensure there is no unexpected diff in repository artifacts
         run: |
           git diff --ignore-matching-lines='.*createdAt:.*' --exit-code -- .

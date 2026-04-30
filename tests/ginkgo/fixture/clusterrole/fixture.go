@@ -2,16 +2,16 @@ package clusterrole
 
 import (
 	"context"
+	"reflect"
 
-	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
-	//lint:ignore ST1001 "This is a common practice in Gomega tests for readability."
-	. "github.com/onsi/ginkgo/v2" //nolint:all
-	//lint:ignore ST1001 "This is a common practice in Gomega tests for readability."
-	. "github.com/onsi/gomega" //nolint:all
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	matcher "github.com/onsi/gomega/types"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 )
 
 // Update will keep trying to update object until it succeeds, or times out.
@@ -32,6 +32,13 @@ func Update(obj *rbacv1.ClusterRole, modify func(*rbacv1.ClusterRole)) {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
+}
+
+func HaveRules(expectedRules []rbacv1.PolicyRule) matcher.GomegaMatcher {
+	return fetchRole(func(cr *rbacv1.ClusterRole) bool {
+		GinkgoWriter.Println("HaveRules - Expected:", expectedRules, "/ Actual:", cr.Rules)
+		return reflect.DeepEqual(expectedRules, cr.Rules)
+	})
 }
 
 // This is intentionally NOT exported, for now. Create another function in this file/package that calls this function, and export that.

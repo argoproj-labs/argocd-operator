@@ -3,7 +3,14 @@
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
-VERSION ?= 0.18.0
+VERSION ?= 0.19.0
+
+# ARGO_CD_TARGET_VERSION is the target version that argocd-operator will install.
+# Update this when you upgrade the Argo CD dependencies of the project.
+# After updating, call 'make update-dependencies'.
+# Notes:
+# - String should NOT begin with 'v' prefix, e.g. 'v3.1.1'
+ARGO_CD_TARGET_VERSION ?= 3.3.6
 
 # Try to detect Docker or Podman
 CONTAINER_RUNTIME := $(shell command -v docker 2> /dev/null || command -v podman 2> /dev/null)
@@ -160,6 +167,34 @@ install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~
 	## causing failures as we don't set up the webhook for local testing.
 	$(KUSTOMIZE) build config/crd | sed '/conversion:/,/- v1beta1/d' |kubectl apply --server-side=true -f -
 
+list-crds: ## List all CRDs in the cluster
+	@echo "=== Installed CRDs ==="
+	@kubectl get crds --sort-by=.metadata.name
+	@echo ""
+	@echo "=== ArgoCD Operator CRDs ==="
+	@kubectl get crds | grep argoproj.io || echo "None found"
+	@echo ""
+	@echo "=== Prometheus Operator CRDs ==="
+	@kubectl get crds | grep monitoring.coreos.com || echo "None found"
+	@echo ""
+	@echo "=== OpenShift Route CRDs ==="
+	@kubectl get crds | grep route.openshift.io || echo "None found"
+
+PROMETHEUS_OPERATOR_VERSION ?= v0.73.2
+install-prometheus-crds: ## Install Prometheus Operator CRDs if not already installed
+	@echo "Checking for Prometheus Operator CRDs..."
+	@if kubectl get crd prometheuses.monitoring.coreos.com >/dev/null 2>&1 && \
+	   kubectl get crd servicemonitors.monitoring.coreos.com >/dev/null 2>&1 && \
+	   kubectl get crd prometheusrules.monitoring.coreos.com >/dev/null 2>&1; then \
+		echo "All Prometheus Operator CRDs already installed, skipping installation"; \
+	else \
+		echo "Installing Prometheus Operator CRDs $(PROMETHEUS_OPERATOR_VERSION)..."; \
+		kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/$(PROMETHEUS_OPERATOR_VERSION)/example/prometheus-operator-crd/monitoring.coreos.com_prometheuses.yaml; \
+		kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/$(PROMETHEUS_OPERATOR_VERSION)/example/prometheus-operator-crd/monitoring.coreos.com_servicemonitors.yaml; \
+		kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/$(PROMETHEUS_OPERATOR_VERSION)/example/prometheus-operator-crd/monitoring.coreos.com_prometheusrules.yaml; \
+		echo "Prometheus Operator CRDs installed successfully"; \
+	fi
+
 uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/crd | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
@@ -172,14 +207,11 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 
 ##@ E2E
 
-e2e: ## Run operator e2e tests
-	kubectl kuttl test ./tests/k8s --config ./tests/kuttl-tests.yaml
 
+start-e2e: install-prometheus-crds ## Start operator for E2E tests (installs required CRDs if needed)
+	ARGOCD_CLUSTER_CONFIG_NAMESPACES="argocd-e2e-cluster-config, argocd-test-impersonation-1-046, argocd-agent-principal-1-051, argocd-agent-agent-1-052, appset-argocd, appset-old-ns, appset-new-ns, appset-argocd-clusterrole, ns-hosting-principal, ns-hosting-managed-agent, ns-hosting-autonomous-agent" make run
 
-start-e2e:
-	ARGOCD_CLUSTER_CONFIG_NAMESPACES="argocd-e2e-cluster-config, argocd-test-impersonation-1-046, argocd-agent-principal-1-051, argocd-agent-agent-1-052, appset-argocd, appset-old-ns, appset-new-ns, ns-hosting-principal, ns-hosting-managed-agent, ns-hosting-autonomous-agent" make run
-
-all: test install run e2e ## UnitTest, Run the operator locally and execute e2e tests.
+all: test install run ## UnitTest, Run the operator locally
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 controller-gen: ## Download controller-gen locally if necessary.
@@ -343,23 +375,16 @@ e2e-tests-parallel-ginkgo: ginkgo
 
 
 GINKGO_CLI = $(shell pwd)/bin/ginkgo
+GINKGO_MOD_VERSION = $(shell go list -m -f '{{.Version}}' github.com/onsi/ginkgo/v2)
 .PHONY: ginkgo
 ginkgo: ## Download ginkgo locally if necessary.
-	$(call go-get-tool,$(GINKGO_CLI),github.com/onsi/ginkgo/v2/ginkgo@v2.22.2)
+	$(call go-install-tool,$(GINKGO_CLI),github.com/onsi/ginkgo/v2/ginkgo@$(GINKGO_MOD_VERSION))
 
+# Updates upstream dependencies throughout the repository
+.PHONY: update-dependencies
+update-dependencies:
+	hack/update-dependencies-script/run.sh
 
-# go-get-tool will 'go install' any package $2 and install it to $1.
-PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
-define go-get-tool
-@[ -f $(1) ] || { \
-set -e ;\
-TMP_DIR=$$(mktemp -d) ;\
-cd $$TMP_DIR ;\
-go mod init tmp ;\
-echo "Downloading $(2)" ;\
-currentver=$$(go version | { read _ _ v _; echo $$v; } | sed  's/go//g') ;\
-requiredver="1.19" ;\
-if [ $$(printf '%s\n' $$requiredver $$currentver | sort -V | head -n1) = $$requiredver ]; then export GOFLAGS=""; GOBIN=$(PROJECT_DIR)/bin go install $(2);  else  GOBIN=$(PROJECT_DIR)/bin go get $(2); fi;\
-rm -rf $$TMP_DIR ;\
-}
-endef
+.PHONY: serve-docs
+serve-docs: ## Serve documentation locally using mkdocs in a container
+	$(CONTAINER_RUNTIME) run --rm -it -p 8000:8000 -v $(PWD):/argocd-operator -w /argocd-operator --name argocd-operator-mkdocs registry.access.redhat.com/ubi9/python-311:latest /bin/bash -c "pip install -r docs/requirements.txt && mkdocs serve -a 0.0.0.0:8000"

@@ -15,7 +15,6 @@
 package argocd
 
 import (
-	"bytes"
 	"context"
 	"crypto"
 	"crypto/rand"
@@ -26,9 +25,7 @@ import (
 	"os"
 	"reflect"
 	"sort"
-	"strconv"
 	"strings"
-	"text/template"
 	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -36,6 +33,7 @@ import (
 	"github.com/argoproj/argo-cd/v3/util/glob"
 	"github.com/distribution/reference"
 	"github.com/go-logr/logr"
+	certificates "k8s.io/api/certificates/v1beta1"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -76,8 +74,9 @@ const (
 )
 
 var (
-	versionAPIFound      = false
-	imageUpdaterAPIFound = false
+	versionAPIFound            = false
+	imageUpdaterAPIFound       = false
+	clusterTrustBundleAPIFound = false
 )
 
 // IsVersionAPIAvailable returns true if the version api is present
@@ -88,6 +87,10 @@ func IsVersionAPIAvailable() bool {
 // IsImageUpdaterAPIAvailable returns true if the image updater api is present
 func IsImageUpdaterAPIAvailable() bool {
 	return imageUpdaterAPIFound
+}
+
+func IsClusterTrustBundleAPIFound() bool {
+	return clusterTrustBundleAPIFound
 }
 
 // verifyVersionAPI will verify that the template API is present.
@@ -107,6 +110,16 @@ func verifyImageUpdaterAPI() error {
 		return err
 	}
 	imageUpdaterAPIFound = found
+	return nil
+}
+
+// verifyClusterTrustBundleAPI will verify that the ClusterTrustBundle API is present.
+func verifyClusterTrustBundleAPI() error {
+	found, err := argoutil.VerifyAPI(certificates.GroupName, certificates.SchemeGroupVersion.Version)
+	if err != nil {
+		return err
+	}
+	clusterTrustBundleAPIFound = found
 	return nil
 }
 
@@ -166,7 +179,7 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 	}
 
 	if cr.Spec.Redis.IsEnabled() {
-		cmd = append(cmd, "--redis", getRedisServerAddress(cr))
+		cmd = append(cmd, "--redis", argoutil.GetRedisServerAddress(cr))
 	} else {
 		log.Info("Redis is Disabled. Skipping adding Redis configuration to Application Controller.")
 	}
@@ -400,276 +413,11 @@ func getArgoControllerParellismLimit(cr *argoproj.ArgoCD) int32 {
 	return pl
 }
 
-// getRedisConfigPath will return the path for the Redis configuration templates.
-func getRedisConfigPath() string {
-	path := os.Getenv("REDIS_CONFIG_PATH")
-	if len(path) > 0 {
-		return path
-	}
-	return common.ArgoCDDefaultRedisConfigPath
-}
-
-// getRedisInitScript will load the redis configuration from a template on disk for the given ArgoCD.
-// If an error occurs, an empty string value will be returned.
-func getRedisConf(useTLSForRedis bool) string {
-	path := fmt.Sprintf("%s/redis.conf.tpl", getRedisConfigPath())
-	params := map[string]string{
-		"UseTLS": strconv.FormatBool(useTLSForRedis),
-	}
-	conf, err := loadTemplateFile(path, params)
-	if err != nil {
-		log.Error(err, "unable to load redis configuration")
-		return ""
-	}
-	return conf
-}
-
-// getRedisContainerImage will return the container image for the Redis server.
-func getRedisContainerImage(cr *argoproj.ArgoCD) string {
-	defaultImg, defaultTag := false, false
-	img := cr.Spec.Redis.Image
-	if img == "" {
-		img = common.ArgoCDDefaultRedisImage
-		defaultImg = true
-	}
-	tag := cr.Spec.Redis.Version
-	if tag == "" {
-		tag = common.ArgoCDDefaultRedisVersion
-		defaultTag = true
-	}
-	if e := os.Getenv(common.ArgoCDRedisImageEnvName); e != "" && (defaultTag && defaultImg) {
-		return e
-	}
-	return argoutil.CombineImageTag(img, tag)
-}
-
-// getRedisHAContainerImage will return the container image for the Redis server in HA mode.
-func getRedisHAContainerImage(cr *argoproj.ArgoCD) string {
-	defaultImg, defaultTag := false, false
-	img := cr.Spec.Redis.Image
-	if img == "" {
-		img = common.ArgoCDDefaultRedisImage
-		defaultImg = true
-	}
-	tag := cr.Spec.Redis.Version
-	if tag == "" {
-		tag = common.ArgoCDDefaultRedisVersionHA
-		defaultTag = true
-	}
-	if e := os.Getenv(common.ArgoCDRedisHAImageEnvName); e != "" && (defaultTag && defaultImg) {
-		return e
-	}
-	return argoutil.CombineImageTag(img, tag)
-}
-
-// getRedisHAProxyAddress will return the Redis HA Proxy service address for the given ArgoCD.
-func getRedisHAProxyAddress(cr *argoproj.ArgoCD) string {
-	return fqdnServiceRef("redis-ha-haproxy", common.ArgoCDDefaultRedisPort, cr)
-}
-
-// getRedisHAProxyContainerImage will return the container image for the Redis HA Proxy.
-func getRedisHAProxyContainerImage(cr *argoproj.ArgoCD) string {
-	defaultImg, defaultTag := false, false
-	img := cr.Spec.HA.RedisProxyImage
-	if len(img) <= 0 {
-		img = common.ArgoCDDefaultRedisHAProxyImage
-		defaultImg = true
-	}
-
-	tag := cr.Spec.HA.RedisProxyVersion
-	if len(tag) <= 0 {
-		tag = common.ArgoCDDefaultRedisHAProxyVersion
-		defaultTag = true
-	}
-
-	if e := os.Getenv(common.ArgoCDRedisHAProxyImageEnvName); e != "" && (defaultTag && defaultImg) {
-		return e
-	}
-
-	return argoutil.CombineImageTag(img, tag)
-}
-
-// getRedisInitScript will load the redis init script from a template on disk for the given ArgoCD.
-// If an error occurs, an empty string value will be returned.
-func getRedisInitScript(cr *argoproj.ArgoCD, useTLSForRedis bool) string {
-	path := fmt.Sprintf("%s/init.sh.tpl", getRedisConfigPath())
-	vars := map[string]string{
-		"ServiceName": nameWithSuffix("redis-ha", cr),
-		"UseTLS":      strconv.FormatBool(useTLSForRedis),
-	}
-
-	script, err := loadTemplateFile(path, vars)
-	if err != nil {
-		log.Error(err, "unable to load redis init-script")
-		return ""
-	}
-	return script
-}
-
-// getRedisHAProxySConfig will load the Redis HA Proxy configuration from a template on disk for the given ArgoCD.
-// If an error occurs, an empty string value will be returned.
-func getRedisHAProxyConfig(cr *argoproj.ArgoCD, useTLSForRedis bool) string {
-	path := fmt.Sprintf("%s/haproxy.cfg.tpl", getRedisConfigPath())
-	vars := map[string]string{
-		"ServiceName": nameWithSuffix("redis-ha", cr),
-		"UseTLS":      strconv.FormatBool(useTLSForRedis),
-	}
-
-	script, err := loadTemplateFile(path, vars)
-	if err != nil {
-		log.Error(err, "unable to load redis haproxy configuration")
-		return ""
-	}
-	return script
-}
-
-// getRedisHAProxyScript will load the Redis HA Proxy init script from a template on disk for the given ArgoCD.
-// If an error occurs, an empty string value will be returned.
-func getRedisHAProxyScript(cr *argoproj.ArgoCD) string {
-	path := fmt.Sprintf("%s/haproxy_init.sh.tpl", getRedisConfigPath())
-	vars := map[string]string{
-		"ServiceName": nameWithSuffix("redis-ha", cr),
-	}
-
-	script, err := loadTemplateFile(path, vars)
-	if err != nil {
-		log.Error(err, "unable to load redis haproxy init script")
-		return ""
-	}
-	return script
-}
-
-// getRedisResources will return the ResourceRequirements for the Redis container.
-func getRedisResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
-	resources := corev1.ResourceRequirements{}
-
-	// Allow override of resource requirements from CR
-	if cr.Spec.Redis.Resources != nil {
-		resources = *cr.Spec.Redis.Resources
-	}
-
-	return resources
-}
-
-// getRedisHAResources will return the ResourceRequirements for the Redis HA.
-func getRedisHAResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
-	resources := corev1.ResourceRequirements{}
-
-	// Allow override of resource requirements from CR
-	if cr.Spec.HA.Resources != nil {
-		resources = *cr.Spec.HA.Resources
-	}
-
-	return resources
-}
-
-// getRedisSentinelConf will load the redis sentinel configuration from a template on disk for the given ArgoCD.
-// If an error occurs, an empty string value will be returned.
-func getRedisSentinelConf(useTLSForRedis bool) string {
-	path := fmt.Sprintf("%s/sentinel.conf.tpl", getRedisConfigPath())
-	params := map[string]string{
-		"UseTLS": strconv.FormatBool(useTLSForRedis),
-	}
-	conf, err := loadTemplateFile(path, params)
-	if err != nil {
-		log.Error(err, "unable to load redis sentinel configuration")
-		return ""
-	}
-	return conf
-}
-
-// getRedisLivenessScript will load the redis liveness script from a template on disk for the given ArgoCD.
-// If an error occurs, an empty string value will be returned.
-func getRedisLivenessScript(useTLSForRedis bool) string {
-	path := fmt.Sprintf("%s/redis_liveness.sh.tpl", getRedisConfigPath())
-	params := map[string]string{
-		"UseTLS": strconv.FormatBool(useTLSForRedis),
-	}
-	conf, err := loadTemplateFile(path, params)
-	if err != nil {
-		log.Error(err, "unable to load redis liveness script")
-		return ""
-	}
-	return conf
-}
-
-// getRedisReadinessScript will load the redis readiness script from a template on disk for the given ArgoCD.
-// If an error occurs, an empty string value will be returned.
-func getRedisReadinessScript(useTLSForRedis bool) string {
-	path := fmt.Sprintf("%s/redis_readiness.sh.tpl", getRedisConfigPath())
-	params := map[string]string{
-		"UseTLS": strconv.FormatBool(useTLSForRedis),
-	}
-	conf, err := loadTemplateFile(path, params)
-	if err != nil {
-		log.Error(err, "unable to load redis readiness script")
-		return ""
-	}
-	return conf
-}
-
-// getSentinelLivenessScript will load the redis liveness script from a template on disk for the given ArgoCD.
-// If an error occurs, an empty string value will be returned.
-func getSentinelLivenessScript(useTLSForRedis bool) string {
-	path := fmt.Sprintf("%s/sentinel_liveness.sh.tpl", getRedisConfigPath())
-	params := map[string]string{
-		"UseTLS": strconv.FormatBool(useTLSForRedis),
-	}
-	conf, err := loadTemplateFile(path, params)
-	if err != nil {
-		log.Error(err, "unable to load sentinel liveness script")
-		return ""
-	}
-	return conf
-}
-
-// getRedisServerAddress will return the Redis service address for the given ArgoCD.
-func getRedisServerAddress(cr *argoproj.ArgoCD) string {
-	if cr.Spec.Redis.Remote != nil && *cr.Spec.Redis.Remote != "" {
-		return *cr.Spec.Redis.Remote
-	}
-
-	// If principal is enabled, then Argo CD server/repo server should be configured to use redis proxy from principal (argo cd agent)
-	if cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Principal != nil && cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
-		return argoutil.GenerateAgentPrincipalRedisProxyServiceName(cr.Name) + "." + cr.Namespace + ".svc.cluster.local:6379"
-	}
-
-	if cr.Spec.HA.Enabled {
-		return getRedisHAProxyAddress(cr)
-	}
-
-	return fqdnServiceRef(common.ArgoCDDefaultRedisSuffix, common.ArgoCDDefaultRedisPort, cr)
-}
-
-// loadTemplateFile will parse a template with the given path and execute it with the given params.
-func loadTemplateFile(path string, params map[string]string) (string, error) {
-	tmpl, err := template.ParseFiles(path)
-	if err != nil {
-		log.Error(err, "unable to parse template")
-		return "", fmt.Errorf("unable to parse template. error: %w", err)
-	}
-
-	buf := new(bytes.Buffer)
-	err = tmpl.Execute(buf, params)
-	if err != nil {
-		log.Error(err, "unable to execute template")
-		return "", fmt.Errorf("unable to execute template. error: %w", err)
-	}
-	return buf.String(), nil
-}
-
 // nameWithSuffix will return a name based on the given ArgoCD using the better truncation approach.
 // The CR name is truncated first, then the full suffix is appended to preserve suffix readability.
 // Example: Given a long ArgoCD name, this ensures suffixes like "redis-initial-password" remain intact.
 func nameWithSuffix(suffix string, cr *argoproj.ArgoCD) string {
-	truncatedCRName := argoutil.GetTruncatedCRName(cr)
-	return fmt.Sprintf("%s-%s", truncatedCRName, suffix)
-}
-
-// fqdnServiceRef will return the FQDN referencing a specific service name, as set up by the operator, with the
-// given port.
-func fqdnServiceRef(service string, port int, cr *argoproj.ArgoCD) string {
-	return fmt.Sprintf("%s.%s.svc.cluster.local:%d", nameWithSuffix(service, cr), cr.Namespace, port)
+	return argoutil.NameWithSuffix(cr.ObjectMeta, suffix)
 }
 
 // InspectCluster will verify the availability of extra features available to the cluster, such as Prometheus and
@@ -689,6 +437,9 @@ func InspectCluster() error {
 	}
 
 	if err := verifyVersionAPI(); err != nil {
+		return err
+	}
+	if err := verifyClusterTrustBundleAPI(); err != nil {
 		return err
 	}
 	return nil
@@ -806,7 +557,7 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *
 	}
 
 	log.Info("reconciling local users")
-	if err := r.reconcileLocalUsers(cr); err != nil {
+	if err := r.reconcileLocalUsers(*cr); err != nil {
 		return err
 	}
 
@@ -866,12 +617,10 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *
 		}
 	}
 
-	// check ManagedApplicationSetSourceNamespaces for proper cleanup
-	if cr.Spec.ApplicationSet != nil || len(r.ManagedApplicationSetSourceNamespaces) > 0 {
-		log.Info("reconciling ApplicationSet controller")
-		if err := r.reconcileApplicationSetController(cr); err != nil {
-			return err
-		}
+	// Always reconcile so omitting spec.applicationSet runs cleanup.
+	log.Info("reconciling ApplicationSet controller")
+	if err := r.reconcileApplicationSetController(cr); err != nil {
+		return err
 	}
 
 	if !reflect.DeepEqual(cr.Spec.Notifications, argoproj.ArgoCDNotifications{}) || len(r.ManagedNotificationsSourceNamespaces) > 0 {
@@ -1011,7 +760,7 @@ func removeString(slice []string, s string) []string {
 }
 
 // setResourceWatches will register Watches for each of the supported Resources.
-func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, clusterSecretResourceMapper, applicationSetGitlabSCMTLSConfigMapMapper, nmMapper handler.MapFunc) *builder.Builder {
+func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, clusterSecretResourceMapper, applicationSetGitlabSCMTLSConfigMapMapper, nmMapper, systemCATrustMapper handler.MapFunc) *builder.Builder {
 
 	// Add new predicate to delete Notifications Resources. The predicate watches the Argo CD CR for changes to the `.spec.Notifications.Enabled`
 	// field. When a change is detected that results in notifications being disabled, we trigger deletion of notifications resources
@@ -1039,56 +788,45 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 	// Watch for changes to primary resource ArgoCD
 	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(deleteNotificationsPred, r.argoCDNamespaceManagementFilterPredicate()))
 
-	// Watch for changes to ConfigMap sub-resources owned by ArgoCD instances.
+	// Watch for changes to sub-resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.ConfigMap{})
-
-	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.Secret{})
-
-	// Watch for changes to Service sub-resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.Service{})
-
-	// Watch for changes to Deployment sub-resources owned by ArgoCD instances.
 	bldr.Owns(&appsv1.Deployment{})
-
-	// Watch for changes to Ingress sub-resources owned by ArgoCD instances.
 	bldr.Owns(&networkingv1.Ingress{})
+	bldr.Owns(&appsv1.StatefulSet{})
+
+	// Watch for changes to NetworkPolicy sub-resources owned by ArgoCD instances.
+	// This ensures that if a NetworkPolicy is deleted, the controller reconciles and recreates it.
+	bldr.Owns(&networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{
+		Labels: map[string]string{
+			common.ArgoCDKeyPartOf: common.ArgoCDAppName,
+		},
+	}})
 
 	bldr.Owns(&v1.Role{})
-
 	bldr.Owns(&v1.RoleBinding{})
+	bldr.Owns(&v1alpha1.NotificationsConfiguration{})
 
-	nmMapperResourceHandler := handler.EnqueueRequestsFromMapFunc(nmMapper)
-
-	bldr.Watches(&argoproj.NamespaceManagement{}, nmMapperResourceHandler, builder.WithPredicates(r.namespaceManagementFilterPredicate()))
+	bldr.Watches(&argoproj.NamespaceManagement{}, handler.EnqueueRequestsFromMapFunc(nmMapper), builder.WithPredicates(r.namespaceManagementFilterPredicate()))
 
 	clusterResourceHandler := handler.EnqueueRequestsFromMapFunc(clusterResourceMapper)
-
-	clusterSecretResourceHandler := handler.EnqueueRequestsFromMapFunc(clusterSecretResourceMapper)
-
-	appSetGitlabSCMTLSConfigMapHandler := handler.EnqueueRequestsFromMapFunc(applicationSetGitlabSCMTLSConfigMapMapper)
-
-	tlsSecretHandler := handler.EnqueueRequestsFromMapFunc(tlsSecretMapper)
-
 	bldr.Watches(&v1.ClusterRoleBinding{}, clusterResourceHandler)
-
 	bldr.Watches(&v1.ClusterRole{}, clusterResourceHandler)
 
 	bldr.Watches(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{
 		Name: common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName,
-	}}, appSetGitlabSCMTLSConfigMapHandler)
+	}}, handler.EnqueueRequestsFromMapFunc(applicationSetGitlabSCMTLSConfigMapMapper))
 
 	// Watch for secrets of type TLS that might be created by external processes
-	bldr.Watches(&corev1.Secret{Type: corev1.SecretTypeTLS}, tlsSecretHandler)
+	bldr.Watches(&corev1.Secret{Type: corev1.SecretTypeTLS}, handler.EnqueueRequestsFromMapFunc(tlsSecretMapper))
 
 	// Watch for cluster secrets added to the argocd instance
 	bldr.Watches(&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
 		Labels: map[string]string{
 			common.ArgoCDManagedByClusterArgoCDLabel: "cluster",
-		}}}, clusterSecretResourceHandler)
-
-	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
-	bldr.Owns(&appsv1.StatefulSet{})
+		},
+	}}, handler.EnqueueRequestsFromMapFunc(clusterSecretResourceMapper))
 
 	// Inspect cluster to verify availability of extra features
 	// This sets the flags that are used in subsequent checks
@@ -1109,11 +847,14 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 		bldr.Owns(&monitoringv1.ServiceMonitor{})
 	}
 
-	// Watch for changes to NotificationsConfiguration CR
-	bldr.Owns(&v1alpha1.NotificationsConfiguration{})
+	systemCATrustHandler := handler.EnqueueRequestsFromMapFunc(systemCATrustMapper)
+	bldr.Watches(&corev1.Secret{}, systemCATrustHandler)
+	bldr.Watches(&corev1.ConfigMap{}, systemCATrustHandler)
+	if IsClusterTrustBundleAPIFound() {
+		bldr.Watches(&certificates.ClusterTrustBundle{}, systemCATrustHandler)
+	}
 
 	namespaceHandler := handler.EnqueueRequestsFromMapFunc(namespaceResourceMapper)
-
 	bldr.Watches(&corev1.Namespace{}, namespaceHandler, builder.WithPredicates(r.namespaceFilterPredicate()))
 
 	bldrHook := newBuilderHook(r.Client, bldr)
@@ -1702,7 +1443,6 @@ func insertOrUpdateConditionsInSlice(newCondition metav1.Condition, existingCond
 	}
 
 	now := metav1.Now()
-
 	changed := false
 
 	if index == -1 {
@@ -1720,13 +1460,35 @@ func insertOrUpdateConditionsInSlice(newCondition metav1.Condition, existingCond
 	}
 
 	return changed, existingConditions
+}
 
+func removeCondition(conditions *[]metav1.Condition, conditionType string) {
+	if conditions == nil {
+		return
+	}
+
+	newConditions := (*conditions)[:0]
+	for _, c := range *conditions {
+		if c.Type != conditionType {
+			newConditions = append(newConditions, c)
+		}
+	}
+
+	*conditions = newConditions
 }
 
 // createCondition returns Condition based on input provided.
 // 1. Returns Success condition if no error message is provided, all fields are default.
 // 2. If Message is provided, it returns Failed condition having all default fields except Message.
 func createCondition(message string) metav1.Condition {
+	if message == argoproj.OpenShiftOAuthErrorMessage {
+		return metav1.Condition{
+			Type:    argoproj.ArgoCDConditionConfigurationError,
+			Reason:  argoproj.ArgoCDConditionReasonSSOError,
+			Message: message,
+			Status:  metav1.ConditionTrue,
+		}
+	}
 	if message == "" {
 		return metav1.Condition{
 			Type:    argoproj.ArgoCDConditionType,
@@ -1735,7 +1497,6 @@ func createCondition(message string) metav1.Condition {
 			Status:  metav1.ConditionTrue,
 		}
 	}
-
 	return metav1.Condition{
 		Type:    argoproj.ArgoCDConditionType,
 		Reason:  argoproj.ArgoCDConditionReasonErrorOccurred,
@@ -1897,6 +1658,11 @@ func (r *ReconcileArgoCD) reconcileArgoCDAgent(cr *argoproj.ArgoCD) error {
 
 	log.Info("reconciling ArgoCD Agent's Principal healthz service")
 	if err := argocdagent.ReconcilePrincipalHealthzService(r.Client, compName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ArgoCD Agent's Principal network policy")
+	if err := argocdagent.ReconcilePrincipalNetworkPolicy(r.Client, compName, cr, r.Scheme); err != nil {
 		return err
 	}
 
@@ -2159,8 +1925,6 @@ func getNamespacesToDelete(oldList, newList []argoproj.ManagedNamespaces, allNam
 // the component's name, and a boolean indicating if the component is enabled.
 func (r *ReconcileArgoCD) reconcileDeploymentHelper(cr *argoproj.ArgoCD, desiredDeployment *appsv1.Deployment, componentName string, enabled bool) error {
 	// fetch existing deployment by name
-	deploymentChanged := false
-	explanation := ""
 	existingDeployment := &appsv1.Deployment{}
 	if err := r.Get(context.TODO(), types.NamespacedName{Name: desiredDeployment.Name, Namespace: cr.Namespace}, existingDeployment); err != nil {
 		if !apierrors.IsNotFound(err) {
@@ -2188,138 +1952,82 @@ func (r *ReconcileArgoCD) reconcileDeploymentHelper(cr *argoproj.ArgoCD, desired
 	}
 
 	// deployment exists and should. Reconcile deployment if changed
-	updateNodePlacement(existingDeployment, desiredDeployment, &deploymentChanged, &explanation)
+	changes := updateNodePlacement(existingDeployment, desiredDeployment)
 
 	if existingDeployment.Spec.Template.Spec.Containers[0].Image != desiredDeployment.Spec.Template.Spec.Containers[0].Image {
 		existingDeployment.Spec.Template.Spec.Containers[0].Image = desiredDeployment.Spec.Template.Spec.Containers[0].Image
 		existingDeployment.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "container image"
-		deploymentChanged = true
+		changes = append(changes, "container image")
 	}
 
 	if existingDeployment.Spec.Template.Spec.Containers[0].ImagePullPolicy != desiredDeployment.Spec.Template.Spec.Containers[0].ImagePullPolicy {
 		existingDeployment.Spec.Template.Spec.Containers[0].ImagePullPolicy = desiredDeployment.Spec.Template.Spec.Containers[0].ImagePullPolicy
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "image pull policy"
-		deploymentChanged = true
+		changes = append(changes, "image pull policy")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Command, desiredDeployment.Spec.Template.Spec.Containers[0].Command) {
 		existingDeployment.Spec.Template.Spec.Containers[0].Command = desiredDeployment.Spec.Template.Spec.Containers[0].Command
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "container command"
-		deploymentChanged = true
+		changes = append(changes, "container command")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Env,
 		desiredDeployment.Spec.Template.Spec.Containers[0].Env) {
 		existingDeployment.Spec.Template.Spec.Containers[0].Env = desiredDeployment.Spec.Template.Spec.Containers[0].Env
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "container env"
-		deploymentChanged = true
+		changes = append(changes, "container env")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Volumes, desiredDeployment.Spec.Template.Spec.Volumes) {
 		existingDeployment.Spec.Template.Spec.Volumes = desiredDeployment.Spec.Template.Spec.Volumes
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "volumes"
-		deploymentChanged = true
+		changes = append(changes, "volumes")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Replicas, desiredDeployment.Spec.Replicas) {
 		existingDeployment.Spec.Replicas = desiredDeployment.Spec.Replicas
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "replicas"
-		deploymentChanged = true
+		changes = append(changes, "replicas")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, desiredDeployment.Spec.Template.Spec.Containers[0].VolumeMounts) {
 		existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = desiredDeployment.Spec.Template.Spec.Containers[0].VolumeMounts
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "container volume mounts"
-		deploymentChanged = true
+		changes = append(changes, "container volume mounts")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Resources, desiredDeployment.Spec.Template.Spec.Containers[0].Resources) {
 		existingDeployment.Spec.Template.Spec.Containers[0].Resources = desiredDeployment.Spec.Template.Spec.Containers[0].Resources
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "container resources"
-		deploymentChanged = true
+		changes = append(changes, "container resources")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].SecurityContext, desiredDeployment.Spec.Template.Spec.Containers[0].SecurityContext) {
 		existingDeployment.Spec.Template.Spec.Containers[0].SecurityContext = desiredDeployment.Spec.Template.Spec.Containers[0].SecurityContext
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "container security context"
-		deploymentChanged = true
+		changes = append(changes, "container security context")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.SecurityContext, desiredDeployment.Spec.Template.Spec.SecurityContext) {
 		existingDeployment.Spec.Template.Spec.SecurityContext = desiredDeployment.Spec.Template.Spec.SecurityContext
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "pod security context"
-		deploymentChanged = true
+		changes = append(changes, "pod security context")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.ServiceAccountName, desiredDeployment.Spec.Template.Spec.ServiceAccountName) {
 		existingDeployment.Spec.Template.Spec.ServiceAccountName = desiredDeployment.Spec.Template.Spec.ServiceAccountName
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "service account name"
-		deploymentChanged = true
+		changes = append(changes, "service account name")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Labels, desiredDeployment.Labels) {
 		existingDeployment.Labels = desiredDeployment.Labels
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "labels"
-		deploymentChanged = true
+		changes = append(changes, "labels")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Labels, desiredDeployment.Spec.Template.Labels) {
 		existingDeployment.Spec.Template.Labels = desiredDeployment.Spec.Template.Labels
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "pod labels"
-		deploymentChanged = true
+		changes = append(changes, "pod labels")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Selector, desiredDeployment.Spec.Selector) {
 		existingDeployment.Spec.Selector = desiredDeployment.Spec.Selector
-		if deploymentChanged {
-			explanation += ", "
-		}
-		explanation += "selector"
-		deploymentChanged = true
+		changes = append(changes, "selector")
 	}
 
-	if deploymentChanged {
-		argoutil.LogResourceUpdate(log, existingDeployment, "updating", explanation)
+	if len(changes) > 0 {
+		argoutil.LogResourceUpdate(log, existingDeployment, "updating", strings.Join(changes, ", "))
 		return r.Update(context.TODO(), existingDeployment)
 	}
 

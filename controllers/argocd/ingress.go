@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -164,40 +165,26 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error 
 		ingress.Spec.TLS = cr.Spec.Server.Ingress.TLS
 	}
 	if objectFound {
-		changed := false
-		explanation := ""
+		var changes []string
 		// If Ingress found and enabled, make sure the ingressClassName is up-to-date
 		if existingIngress.Spec.IngressClassName != cr.Spec.Server.Ingress.IngressClassName {
 			existingIngress.Spec.IngressClassName = cr.Spec.Server.Ingress.IngressClassName
-			explanation = "ingress class name"
-			changed = true
+			changes = append(changes, "ingress class name")
 		}
 		if !reflect.DeepEqual(cr.Spec.Server.Ingress.Annotations, existingIngress.Annotations) {
 			existingIngress.Annotations = cr.Spec.Server.Ingress.Annotations
-			if changed {
-				explanation += ", "
-			}
-			explanation += "annotations"
-			changed = true
+			changes = append(changes, "annotations")
 		}
 		if !reflect.DeepEqual(ingress.Spec.Rules, existingIngress.Spec.Rules) {
 			existingIngress.Spec.Rules = ingress.Spec.Rules
-			if changed {
-				explanation += ", "
-			}
-			explanation += "ingress rules"
-			changed = true
+			changes = append(changes, "ingress rules")
 		}
 		if !reflect.DeepEqual(ingress.Spec.TLS, existingIngress.Spec.TLS) {
 			existingIngress.Spec.TLS = ingress.Spec.TLS
-			if changed {
-				explanation += ", "
-			}
-			explanation += "ingress tls"
-			changed = true
+			changes = append(changes, "ingress tls")
 		}
-		if changed {
-			argoutil.LogResourceUpdate(log, existingIngress, "updating", explanation)
+		if len(changes) > 0 {
+			argoutil.LogResourceUpdate(log, existingIngress, "updating", strings.Join(changes, ", "))
 			return r.Update(context.TODO(), existingIngress)
 		}
 		return nil // Ingress with no changes to apply, do nothing
@@ -326,7 +313,9 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
 	return nil
 }
 
-// reconcilePrometheusIngress will ensure that the Prometheus Ingress is present.
+// reconcilePrometheusIngress will ensure that the Prometheus Ingress is deleted.
+// The Prometheus Ingress is deprecated and no longer created by the operator.
+// If it exists, it will be deleted.
 func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoproj.ArgoCD) error {
 	ingress := newIngressWithSuffix("prometheus", cr)
 	ingressExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress)
@@ -334,82 +323,12 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoproj.ArgoCD) error 
 		return err
 	}
 	if ingressExists {
-		if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Ingress.Enabled {
-			// Ingress exists but enabled flag has been set to false, delete the Ingress
-			var explanation string
-			if !cr.Spec.Prometheus.Enabled {
-				explanation = "prometheus is disabled"
-			} else {
-				explanation = "prometheus ingress is disabled"
-			}
-			argoutil.LogResourceDeletion(log, ingress, explanation)
-			return r.Delete(context.TODO(), ingress)
-		}
-		return nil // Ingress found and enabled, do nothing
+		// Prometheus Ingress is deprecated, delete it if it exists
+		argoutil.LogResourceDeletion(log, ingress, "prometheus ingress is deprecated and no longer supported")
+		return r.Delete(context.TODO(), ingress)
 	}
 
-	if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Ingress.Enabled {
-		return nil // Prometheus itself or Ingress not enabled, move along...
-	}
-
-	// Add default annotations
-	atns := make(map[string]string)
-	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
-	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
-
-	// Override default annotations if specified
-	if len(cr.Spec.Prometheus.Ingress.Annotations) > 0 {
-		atns = cr.Spec.Prometheus.Ingress.Annotations
-	}
-
-	ingress.Annotations = atns
-
-	ingress.Spec.IngressClassName = cr.Spec.Prometheus.Ingress.IngressClassName
-
-	pathType := networkingv1.PathTypeImplementationSpecific
-	// Add rules
-	ingress.Spec.Rules = []networkingv1.IngressRule{
-		{
-			Host: getPrometheusHost(cr),
-			IngressRuleValue: networkingv1.IngressRuleValue{
-				HTTP: &networkingv1.HTTPIngressRuleValue{
-					Paths: []networkingv1.HTTPIngressPath{
-						{
-							Path: getPathOrDefault(cr.Spec.Prometheus.Ingress.Path),
-							Backend: networkingv1.IngressBackend{
-								Service: &networkingv1.IngressServiceBackend{
-									Name: "prometheus-operated",
-									Port: networkingv1.ServiceBackendPort{
-										Name: "web",
-									},
-								},
-							},
-							PathType: &pathType,
-						},
-					},
-				},
-			},
-		},
-	}
-
-	// Add TLS options
-	ingress.Spec.TLS = []networkingv1.IngressTLS{
-		{
-			Hosts:      []string{cr.Name},
-			SecretName: common.ArgoCDSecretName,
-		},
-	}
-
-	// Allow override of TLS options if specified
-	if len(cr.Spec.Prometheus.Ingress.TLS) > 0 {
-		ingress.Spec.TLS = cr.Spec.Prometheus.Ingress.TLS
-	}
-
-	if err := controllerutil.SetControllerReference(cr, ingress, r.Scheme); err != nil {
-		return err
-	}
-	argoutil.LogResourceCreation(log, ingress)
-	return r.Create(context.TODO(), ingress)
+	return nil // Prometheus Ingress does not exist, nothing to do
 }
 
 // reconcileApplicationSetControllerIngress will ensure that the ApplicationSetController Ingress is present.

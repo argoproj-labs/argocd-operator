@@ -1023,3 +1023,86 @@ func TestReconcileNotifications_SourceNamespaceResourcesIncludeNotificationsConf
 	assert.Equal(t, DefaultNotificationsConfigurationInstanceName, notifCfg.Name)
 	assert.Equal(t, sourceNamespace, notifCfg.Namespace)
 }
+
+func TestReconcileNotifications_LogFormatFallback(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	tests := []struct {
+		name       string
+		logFormat  string
+		logformat  string
+		wantFormat string
+	}{
+		{
+			name:       "new LogFormat field is used when set",
+			logFormat:  "json",
+			logformat:  "",
+			wantFormat: "json",
+		},
+		{
+			name:       "deprecated logformat field used as fallback when LogFormat is empty",
+			logFormat:  "",
+			logformat:  "json",
+			wantFormat: "json",
+		},
+		{
+			name:       "new LogFormat takes precedence when both fields are set",
+			logFormat:  "json",
+			logformat:  "text",
+			wantFormat: "json",
+		},
+		{
+			name:       "default format text is used when neither field is set",
+			logFormat:  "",
+			logformat:  "",
+			wantFormat: common.ArgoCDDefaultLogFormat,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.Notifications.Enabled = true
+				a.Spec.Notifications.LogFormat = tt.logFormat
+				//nolint:staticcheck // intentionally setting deprecated field to exercise the backward compatibility fallback
+				a.Spec.Notifications.Logformat = tt.logformat
+			})
+
+			// Populate the fake client with ArgoCD CR , so reconciler can read/write kubernetes objects
+			resObjs := []client.Object{a}
+			subresObjs := []client.Object{a}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			// zero value service account
+			sa := v1.ServiceAccount{}
+			assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
+
+			deployment := &appsv1.Deployment{}
+			assert.NoError(t, r.Get(
+				context.TODO(),
+				types.NamespacedName{
+					Name:      a.Name + "-notifications-controller",
+					Namespace: a.Namespace,
+				},
+				deployment))
+
+			cmd := deployment.Spec.Template.Spec.Containers[0].Command
+			logFormatIdx := -1
+			for i, arg := range cmd {
+				if arg == "--logformat" {
+					logFormatIdx = i
+					break
+				}
+			}
+			if assert.NotEqual(t, -1, logFormatIdx,
+				"--logformat flag must be present in the notifications-controller command") {
+				assert.Equal(t, tt.wantFormat, cmd[logFormatIdx+1],
+					"wrong value after --logformat flag (logFormat=%q logformat=%q)",
+					tt.logFormat, tt.logformat)
+			}
+		})
+	}
+
+}

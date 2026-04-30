@@ -35,34 +35,38 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
+	errs "errors"
+
+	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logr "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-type lock struct {
-	lock sync.Mutex
-}
-
-func (l *lock) protect(code func()) {
-	l.lock.Lock()
-	defer l.lock.Unlock()
-	code()
-}
-
-type TokenRenewalTimer struct {
+type tokenRenewalTimer struct {
 	timer   *time.Timer
 	stopped bool
+}
+
+func NewLocalUsersInfo() *LocalUsersInfo {
+	return &LocalUsersInfo{
+		tokenRenewalTimers: map[string]*tokenRenewalTimer{},
+	}
 }
 
 type LocalUsersInfo struct {
 	// Stores the the timers that will auto-renew the API tokens for local users
 	// after they expire. The key format is "argocd-namespace/user-name"
-	TokenRenewalTimers map[string]*TokenRenewalTimer
+	// - Acquire 'lock' before reading/writing from this field
+	tokenRenewalTimers map[string]*tokenRenewalTimer
+
 	// Protects access to the token renewal timers and the K8S resources that
 	// get updated as part of renewing the user tokens
-	UserTokensLock lock
+	// - Ensure this lock is acquired before accessing `tokenRenewalTimers`, or modifying local user Secret
+	// - In most cases, this will be be automatically acquired by 'reconcileLocalUsers'
+	lock sync.Mutex
 }
 
 // blank assignment to verify that ReconcileArgoCD implements reconcile.Reconciler
@@ -124,6 +128,8 @@ var ActiveInstanceMap = make(map[string]string)
 //+kubebuilder:rbac:groups="apiregistration.k8s.io",resources="apiservices",verbs=get;list
 //+kubebuilder:rbac:groups=argoproj.io,resources=namespacemanagements;namespacemanagements/finalizers;namespacemanagements/status,verbs=*
 //+kubebuilder:rbac:groups=argocd-image-updater.argoproj.io,resources=imageupdaters;imageupdaters/finalizers,verbs=*
+//+kubebuilder:rbac:groups=config.openshift.io,resources=authentications,verbs=get;list;watch
+//+kubebuilder:rbac:groups=certificates.k8s.io,resources=clustertrustbundles,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -284,7 +290,9 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 			return reconcile.Result{}, argocd, argoCDStatus, err
 		}
 	}
-
+	if err = r.restoreTrackingLabelsForOrphanedNamespaces(ctx, argocd); err != nil {
+		return reconcile.Result{}, argocd, argoCDStatus, err
+	}
 	if err = r.setManagedNamespaces(argocd); err != nil {
 		return reconcile.Result{}, argocd, argoCDStatus, err
 	}
@@ -364,6 +372,111 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 // SetupWithManager sets up the controller with the Manager.
 func (r *ReconcileArgoCD) SetupWithManager(mgr ctrl.Manager) error {
 	bldr := ctrl.NewControllerManagedBy(mgr)
-	r.setResourceWatches(bldr, r.clusterResourceMapper, r.tlsSecretMapper, r.namespaceResourceMapper, r.clusterSecretResourceMapper, r.applicationSetSCMTLSConfigMapMapper, r.nmMapper)
+	r.setResourceWatches(bldr, r.clusterResourceMapper, r.tlsSecretMapper, r.namespaceResourceMapper, r.clusterSecretResourceMapper, r.applicationSetSCMTLSConfigMapMapper, r.nmMapper, r.systemCATrustMapper)
 	return bldr.Complete(r)
+}
+
+func (r *ReconcileArgoCD) restoreTrackingLabelsForOrphanedNamespaces(ctx context.Context, cr *argoproj.ArgoCD) error {
+	// List all Roles owned by this ArgoCD CR across all namespaces
+	roles := &rbacv1.RoleList{}
+	if err := r.List(ctx, roles, client.MatchingLabels{common.ArgoCDKeyPartOf: common.ArgoCDAppName, common.ArgoCDKeyManagedBy: cr.Name}, client.InNamespace(metav1.NamespaceAll)); err != nil {
+		return err
+	}
+	var aggregatedErr error
+	for _, role := range roles.Items {
+		// Skip ArgoCD namespace (implicitly tracked)
+		if role.Namespace == cr.Namespace {
+			continue
+		}
+		// Strict orphan validation
+		if !isOrphanedRole(&role, cr) {
+			continue
+		}
+		requiredLabels := requiredTrackingLabelsForRole(&role, cr)
+		if len(requiredLabels) == 0 {
+			continue
+		}
+		// Fetch namespace
+		namespace := &corev1.Namespace{}
+		if err := r.Get(ctx, types.NamespacedName{Name: role.Namespace}, namespace); err != nil {
+			if !errors.IsNotFound(err) {
+				aggregatedErr = errs.Join(aggregatedErr, err)
+			}
+			continue
+		}
+		// Add only missing labels
+		if addMissingLabels(namespace, requiredLabels) {
+			argoutil.LogResourceUpdate(log, namespace, "restoring ArgoCD tracking labels for orphaned namespace")
+			if err := r.Update(ctx, namespace); err != nil {
+				aggregatedErr = errs.Join(aggregatedErr, err)
+			}
+		}
+	}
+	return aggregatedErr
+}
+
+// Orphan validation helpers
+// Core predicate that guarantees convergence and safety
+func isOrphanedRole(role *rbacv1.Role, cr *argoproj.ArgoCD) bool {
+	isAppSetRole := role.Name == getResourceNameForApplicationSetSourceNamespaces(cr)
+	isAppRole := role.Name == getRoleNameForApplicationSourceNamespaces(role.Namespace, cr)
+
+	if !isAppSetRole && !isAppRole {
+		return false
+	}
+	if !hasApplicationScopedRules(role.Rules) {
+		return false
+	}
+	return true
+}
+
+// RBAC scope validation
+func hasApplicationScopedRules(rules []rbacv1.PolicyRule) bool {
+	const argoCDAPIGroup = "argoproj.io"
+	for _, rule := range rules {
+		if !contains(rule.APIGroups, argoCDAPIGroup) {
+			continue
+		}
+		if contains(rule.Resources, "*") {
+			return true
+		}
+		for _, res := range rule.Resources {
+			switch res {
+			case
+				"applications",
+				"applications/status",
+				"applicationsets",
+				"applicationsets/status":
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// Namespace mutation helpers
+func requiredTrackingLabelsForRole(role *rbacv1.Role, cr *argoproj.ArgoCD) map[string]string {
+	labels := map[string]string{}
+	if role.Name == getResourceNameForApplicationSetSourceNamespaces(cr) {
+		labels[common.ArgoCDApplicationSetManagedByClusterArgoCDLabel] = cr.Namespace
+	}
+
+	if role.Name == getRoleNameForApplicationSourceNamespaces(role.Namespace, cr) {
+		labels[common.ArgoCDManagedByClusterArgoCDLabel] = cr.Namespace
+	}
+	return labels
+}
+
+func addMissingLabels(ns *corev1.Namespace, required map[string]string) bool {
+	if ns.Labels == nil {
+		ns.Labels = map[string]string{}
+	}
+	changed := false
+	for k, v := range required {
+		if _, exists := ns.Labels[k]; !exists {
+			ns.Labels[k] = v
+			changed = true
+		}
+	}
+	return changed
 }

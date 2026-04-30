@@ -1,4 +1,5 @@
 // Copyright 2021 ArgoCD Operator Developers
+
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,6 +47,7 @@ func applicationSetDefaultVolumes() []v1.Volume {
 		"plugins":                             true,
 		"argocd-repo-server-tls":              true,
 		common.ArgoCDRedisServerTLSSecretName: true,
+		argoutil.RedisAuthVolumeName:          true,
 	}
 	volumes := make([]v1.Volume, len(repoVolumes)-len(ignoredVolumes))
 	j := 0
@@ -87,11 +89,54 @@ func TestReconcileApplicationSet_CreateDeployments(t *testing.T) {
 	checkExpectedDeploymentValues(t, r, deployment, &sa, nil, nil, a)
 }
 
+func TestReconcileApplicationSet_RemovesResourcesWhenSpecApplicationSetNil(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	assert.NoError(t, r.reconcileApplicationSetController(a))
+
+	deployName := nameWithSuffix("applicationset-controller", a)
+	saName := getServiceAccountName(a.Name, "applicationset-controller")
+	roleName := generateResourceName("applicationset-controller", a)
+	rb := newRoleBindingWithname("applicationset-controller", a)
+	svc := newServiceWithSuffix(common.ApplicationSetServiceNameSuffix, common.ApplicationSetServiceNameSuffix, a)
+
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: deployName, Namespace: a.Namespace}, &appsv1.Deployment{}))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: saName, Namespace: a.Namespace}, &v1.ServiceAccount{}))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: roleName, Namespace: a.Namespace}, &rbacv1.Role{}))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: rb.Name, Namespace: a.Namespace}, &rbacv1.RoleBinding{}))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: svc.Name, Namespace: a.Namespace}, &v1.Service{}))
+
+	a.Spec.ApplicationSet = nil
+	assert.NoError(t, r.reconcileApplicationSetController(a))
+
+	err := r.Get(context.TODO(), types.NamespacedName{Name: deployName, Namespace: a.Namespace}, &appsv1.Deployment{})
+	assert.True(t, apierrors.IsNotFound(err), "expected deployment deleted when spec.applicationSet is nil")
+	err = r.Get(context.TODO(), types.NamespacedName{Name: saName, Namespace: a.Namespace}, &v1.ServiceAccount{})
+	assert.True(t, apierrors.IsNotFound(err), "expected serviceaccount deleted when spec.applicationSet is nil")
+	err = r.Get(context.TODO(), types.NamespacedName{Name: roleName, Namespace: a.Namespace}, &rbacv1.Role{})
+	assert.True(t, apierrors.IsNotFound(err), "expected role deleted when spec.applicationSet is nil")
+	err = r.Get(context.TODO(), types.NamespacedName{Name: rb.Name, Namespace: a.Namespace}, &rbacv1.RoleBinding{})
+	assert.True(t, apierrors.IsNotFound(err), "expected rolebinding deleted when spec.applicationSet is nil")
+	err = r.Get(context.TODO(), types.NamespacedName{Name: svc.Name, Namespace: a.Namespace}, &v1.Service{})
+	assert.True(t, apierrors.IsNotFound(err), "expected service deleted when spec.applicationSet is nil")
+}
+
 func checkExpectedDeploymentValues(t *testing.T, r *ReconcileArgoCD, deployment *appsv1.Deployment, sa *v1.ServiceAccount, extraVolumes *[]v1.Volume, extraVolumeMounts *[]v1.VolumeMount, a *argoproj.ArgoCD) {
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.Name)
 	appsetAssertExpectedLabels(t, &deployment.ObjectMeta)
 
-	want := []v1.Container{r.applicationSetContainer(a, false)}
+	containerWant, err := r.applicationSetContainer(a, false)
+	assert.NoError(t, err)
+	want := []v1.Container{containerWant}
 
 	if diff := cmp.Diff(want, deployment.Spec.Template.Spec.Containers); diff != "" {
 		t.Fatalf("failed to reconcile applicationset-controller deployment containers:\n%s", diff)
@@ -404,9 +449,11 @@ func TestReconcileApplicationSet_Deployments_resourceRequirements(t *testing.T) 
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.Name)
 	appsetAssertExpectedLabels(t, &deployment.ObjectMeta)
 
-	containerWant := []v1.Container{r.applicationSetContainer(a, false)}
+	containerWant, err := r.applicationSetContainer(a, false)
+	assert.NoError(t, err)
+	containerWantSlice := []v1.Container{containerWant}
 
-	if diff := cmp.Diff(containerWant, deployment.Spec.Template.Spec.Containers); diff != "" {
+	if diff := cmp.Diff(containerWantSlice, deployment.Spec.Template.Spec.Containers); diff != "" {
 		t.Fatalf("failed to reconcile argocd-server deployment:\n%s", diff)
 	}
 
@@ -1591,6 +1638,97 @@ func TestReconcileApplicationSetSourceNamespacesResources_NonClusterConfigNamesp
 				}
 			} else {
 				assert.Empty(t, r.ManagedApplicationSetSourceNamespaces)
+			}
+		})
+	}
+}
+
+func TestReconcileApplicationSet_LogFormatFallback(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		name string
+		// logFormat has priority over logformat
+		logFormat  string
+		logformat  string
+		wantFormat string
+	}{
+		{
+			// Production code path: logFormat != "" so the if-fallback is never triggered
+			name:       "new LogFormat field is used when set",
+			logFormat:  "json",
+			logformat:  "",
+			wantFormat: "json",
+		},
+		{
+			// Backward compatibility path: logFormat == "" so code enters the if block and reads the deprecated logformat field instead
+			name:       "deprecated logformat field used as fallback when LogFormat is empty",
+			logFormat:  "",
+			logformat:  "json",
+			wantFormat: "json",
+		},
+		{
+			// Priority check - both fields contain some value
+			name:       "new LogFormat takes precedence when both fields are set",
+			logFormat:  "json",
+			logformat:  "text",
+			wantFormat: "json",
+		},
+		{
+			// Both fields are empty
+			name:       "default format text is used when neither field is set",
+			logFormat:  "",
+			logformat:  "",
+			wantFormat: common.ArgoCDDefaultLogFormat,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Provides base ArgoCD CR with namespace "argocd"
+			a := makeTestArgoCD()
+
+			// cr.Spec.ApplicationSet.LogFormat.
+			spec := argoproj.ArgoCDApplicationSet{
+				LogFormat: tt.logFormat,
+			}
+			//nolint:staticcheck // intentionally setting deprecated field to exercise the backward-compatibility fallback
+			spec.Logformat = tt.logformat
+			a.Spec.ApplicationSet = &spec
+
+			// Seed fake client with ArgoCD CR so that reconciler can read & write K8s objects without a real cluster
+			resObjs := []client.Object{a}
+			subresObjs := []client.Object{a}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			assert.NoError(t, r.reconcileApplicationSetController(a))
+
+			deployment := &appsv1.Deployment{}
+			assert.NoError(t, r.Get(
+				context.TODO(),
+				types.NamespacedName{
+					Name:      "argocd-applicationset-controller",
+					Namespace: a.Namespace,
+				},
+				deployment))
+
+			cmd := deployment.Spec.Template.Spec.Containers[0].Command
+			logFormatIdx := -1
+			for i, arg := range cmd {
+				if arg == "--logformat" {
+					logFormatIdx = i
+					break
+				}
+			}
+
+			if assert.NotEqual(t, -1, logFormatIdx,
+				"--logFormat flag must be present in the applicationset-controller command") {
+				assert.Equal(t, tt.wantFormat, cmd[logFormatIdx+1],
+					"wrong value after --logformat flag (logFormat=%q logformat=%q)",
+					tt.logFormat, tt.logformat)
 			}
 		})
 	}

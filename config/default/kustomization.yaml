@@ -25,10 +25,11 @@ resources:
 # - ../prometheus
 
 patches:
-# Protect the /metrics endpoint by putting it behind auth.
-# If you want your controller-manager to expose the /metrics
-# endpoint w/o any authn/z, please comment the following line.
-#- path: manager_auth_proxy_patch.yaml
+# Protect the /metrics endpoint with controller-runtime authn/authz.
+# If you comment out manager_metrics_patch.yaml, also comment out metrics_service.yaml,
+# metrics_role.yaml, metrics_role_binding.yaml, and metrics_reader_clusterrole.yaml
+# in ../rbac/kustomization.yaml so the metrics Service is disabled as well.
+- path: manager_metrics_patch.yaml
 
 # Mount the controller config file for loading manager configurations
 # through a ComponentConfig type
@@ -72,3 +73,5 @@ vars:
 #    kind: Service
 #    version: v1
 #    name: webhook-service
+#- name: CLUSTER_DOMAIN
+#  value: cluster.local

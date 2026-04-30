@@ -344,10 +344,9 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				Expect(container.Env).To(ContainElement(corev1.EnvVar{Name: key, Value: value}), "Environment variable %s should be set to %s", key, value)
 			}
 
-			Expect(container.Env).To(ContainElement(And(
-				HaveField("Name", agent.EnvRedisPassword),
-				HaveField("ValueFrom.SecretKeyRef", Not(BeNil())),
-			)), "REDIS_PASSWORD should be set with valueFrom.secretKeyRef")
+			Expect(container.Env).NotTo(ContainElement(
+				HaveField("Name", "REDIS_PASSWORD"),
+			), "REDIS_PASSWORD should not be set")
 
 			By("Verify custom environment variable is present")
 
@@ -370,7 +369,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			By("Create ArgoCD instance")
 
-			argoCD.Spec.ArgoCDAgent.Agent.Image = "quay.io/argoprojlabs/argocd-agent:v0.5.0"
+			argoCD.Spec.ArgoCDAgent.Agent.Image = common.ArgoCDAgentAgentDefaultImageName
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 
 			By("Verify expected resources are created for agent pod")
@@ -381,7 +380,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			container := deploymentFixture.GetTemplateSpecContainerByName(argoCDAgentAgentName, *agentDeployment)
 			Expect(container).ToNot(BeNil())
-			Expect(container.Image).To(Equal("quay.io/argoprojlabs/argocd-agent:v0.5.0"))
+			Expect(container.Image).To(Equal(common.ArgoCDAgentAgentDefaultImageName))
 
 			By("Verify environment variables are set correctly")
 

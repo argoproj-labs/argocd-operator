@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -131,10 +132,6 @@ func TestReconcileAgentDeployment_DeploymentDoesNotExist_AgentEnabled(t *testing
 	assert.Equal(t, buildAgentContainerEnv(cr), container.Env)
 	assert.Equal(t, buildSecurityContext(), container.SecurityContext)
 	assert.Equal(t, buildPorts(), container.Ports)
-	assert.Equal(t, buildVolumeMounts(), container.VolumeMounts)
-
-	// Verify pod volumes configuration
-	assert.Equal(t, buildVolumes(), deployment.Spec.Template.Spec.Volumes)
 
 	// Verify owner reference is set
 	assert.Len(t, deployment.OwnerReferences, 1)
@@ -252,6 +249,38 @@ func TestReconcileAgentDeployment_DeploymentExists_AgentEnabled_ServiceAccountCh
 	assert.Equal(t, newSAName, deployment.Spec.Template.Spec.ServiceAccountName)
 }
 
+func TestReconcileAgentDeployment_DeploymentExists_AgentEnabled_VolumesChanged(t *testing.T) {
+	// Test case: Deployment exists, agent is enabled, but volumes have changed
+	// Expected behavior: Should update the Deployment with expected volumes
+
+	cr := makeTestArgoCD(withAgentEnabled(true))
+
+	// Create existing Deployment with old service account
+	existingDeployment := makeTestDeployment(cr)
+	//existingDeployment.Spec.Template.Spec.Volumes
+
+	resObjs := []client.Object{cr, existingDeployment}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	require.NoError(t, ReconcileAgentDeployment(cl, testAgentCompName, testAgentCompName, cr, sch))
+
+	deployment := &appsv1.Deployment{}
+	deploymentName := types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testAgentCompName),
+		Namespace: cr.Namespace,
+	}
+	require.NoError(t, cl.Get(context.TODO(), deploymentName, deployment))
+
+	deployment.Spec.Template.Spec.Volumes = []corev1.Volume{}
+	require.NoError(t, cl.Update(context.TODO(), deployment))
+
+	require.NoError(t, ReconcileAgentDeployment(cl, testAgentCompName, testAgentCompName, cr, sch))
+	require.NoError(t, cl.Get(context.TODO(), deploymentName, deployment))
+
+	assert.Len(t, deployment.Spec.Template.Spec.Volumes, 2)
+}
+
 func TestReconcileAgentDeployment_DeploymentExists_AgentNotSet(t *testing.T) {
 	// Test case: Deployment exists but agent is not set (nil)
 	// Expected behavior: Should delete the Deployment
@@ -351,16 +380,8 @@ func TestReconcileAgentDeployment_VerifyDeploymentSpec(t *testing.T) {
 	envNames := make(map[string]bool)
 	for _, env := range container.Env {
 		envNames[env.Name] = true
-		// Most environment variables should have direct values, except for secrets like Redis password
-		if env.Name == "REDIS_PASSWORD" {
-			assert.NotNil(t, env.ValueFrom, "REDIS_PASSWORD should reference a secret")
-			assert.NotNil(t, env.ValueFrom.SecretKeyRef, "REDIS_PASSWORD should reference a secret key")
-			assert.Equal(t, "argocd-redis-initial-password", env.ValueFrom.SecretKeyRef.Name)
-			assert.Equal(t, "admin.password", env.ValueFrom.SecretKeyRef.Key)
-		} else {
-			// All other environment variables should have direct values, not references
-			assert.Nil(t, env.ValueFrom, "Environment variable %s should have direct value, not reference", env.Name)
-		}
+		// All environment variables should have direct values, not references
+		assert.Nil(t, env.ValueFrom, "Environment variable %s should have direct value, not reference", env.Name)
 	}
 	// Check for some agent-specific environment variables
 	assert.True(t, envNames["ARGOCD_AGENT_REMOTE_SERVER"], "ARGOCD_AGENT_REMOTE_SERVER should be set")
@@ -440,23 +461,23 @@ func TestReconcileAgentDeployment_VolumeMountsAndVolumes(t *testing.T) {
 
 	// Verify volume mounts
 	container := deployment.Spec.Template.Spec.Containers[0]
-	assert.Equal(t, buildVolumeMounts(), container.VolumeMounts)
 
-	// Verify volumes
-	assert.Equal(t, buildVolumes(), deployment.Spec.Template.Spec.Volumes)
-
-	// Verify specific volume mount details (agent only has userpass-passwd)
-	assert.Len(t, container.VolumeMounts, 1)
+	// Verify specific volume mount details
+	assert.Len(t, container.VolumeMounts, 2)
 	userpassMount := container.VolumeMounts[0]
 	assert.Equal(t, "userpass-passwd", userpassMount.Name)
 	assert.Equal(t, "/app/config/creds", userpassMount.MountPath)
 
-	// Verify specific volume details (agent only has userpass-passwd)
-	assert.Len(t, deployment.Spec.Template.Spec.Volumes, 1)
+	assert.Equal(t, "redis-initial-pass", container.VolumeMounts[1].Name)
+
+	// Verify specific volume details
+	assert.Len(t, deployment.Spec.Template.Spec.Volumes, 2)
 	userpassVolume := deployment.Spec.Template.Spec.Volumes[0]
 	assert.Equal(t, "userpass-passwd", userpassVolume.Name)
 	assert.Equal(t, "argocd-agent-agent-userpass", userpassVolume.Secret.SecretName)
 	assert.Equal(t, ptr.To(true), userpassVolume.Secret.Optional)
+
+	assert.Equal(t, "redis-initial-pass", deployment.Spec.Template.Spec.Volumes[1].Name)
 }
 
 func TestBuildAgentImage(t *testing.T) {
@@ -529,6 +550,182 @@ func TestBuildAgentImage(t *testing.T) {
 
 			result := buildAgentImage(tt.cr)
 			assert.Equal(t, tt.expectedImage, result, tt.description)
+		})
+	}
+}
+
+// withAgentAllowedNamespaces configures AllowedNamespaces on the Agent spec
+func withAgentAllowedNamespaces(namespaces []string) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		if a.Spec.ArgoCDAgent == nil {
+			a.Spec.ArgoCDAgent = &argoproj.ArgoCDAgentSpec{}
+		}
+		if a.Spec.ArgoCDAgent.Agent == nil {
+			a.Spec.ArgoCDAgent.Agent = &argoproj.AgentSpec{}
+		}
+		a.Spec.ArgoCDAgent.Agent.AllowedNamespaces = namespaces
+	}
+}
+
+func TestGetAgentDestinationBasedMapping(t *testing.T) {
+	tests := []struct {
+		name     string
+		cr       *argoproj.ArgoCD
+		expected string
+	}{
+		{
+			name:     "agent not configured",
+			cr:       makeTestArgoCD(),
+			expected: "false",
+		},
+		{
+			name:     "agent enabled without DBM",
+			cr:       makeTestArgoCD(withAgentEnabled(true)),
+			expected: "false",
+		},
+		{
+			name:     "DBM explicitly disabled",
+			cr:       makeTestArgoCD(withAgentEnabled(true), withAgentDestinationMapping(false, false)),
+			expected: "false",
+		},
+		{
+			name:     "DBM enabled",
+			cr:       makeTestArgoCD(withAgentEnabled(true), withAgentDestinationMapping(true, false)),
+			expected: "true",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, getAgentDestinationBasedMapping(tt.cr))
+		})
+	}
+}
+
+func TestGetAgentCreateNamespace(t *testing.T) {
+	tests := []struct {
+		name     string
+		cr       *argoproj.ArgoCD
+		expected string
+	}{
+		{
+			name:     "agent not configured",
+			cr:       makeTestArgoCD(),
+			expected: "false",
+		},
+		{
+			name:     "agent enabled without DBM",
+			cr:       makeTestArgoCD(withAgentEnabled(true)),
+			expected: "false",
+		},
+		{
+			name:     "DBM enabled without createNamespace",
+			cr:       makeTestArgoCD(withAgentEnabled(true), withAgentDestinationMapping(true, false)),
+			expected: "false",
+		},
+		{
+			name:     "DBM disabled with createNamespace true",
+			cr:       makeTestArgoCD(withAgentEnabled(true), withAgentDestinationMapping(false, true)),
+			expected: "false",
+		},
+		{
+			name:     "DBM enabled with createNamespace",
+			cr:       makeTestArgoCD(withAgentEnabled(true), withAgentDestinationMapping(true, true)),
+			expected: "true",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, getAgentCreateNamespace(tt.cr))
+		})
+	}
+}
+
+func TestGetAgentAllowedNamespaces(t *testing.T) {
+	tests := []struct {
+		name     string
+		cr       *argoproj.ArgoCD
+		expected string
+	}{
+		{
+			name:     "agent not configured",
+			cr:       makeTestArgoCD(),
+			expected: "",
+		},
+		{
+			name:     "agent enabled without allowed namespaces",
+			cr:       makeTestArgoCD(withAgentEnabled(true)),
+			expected: "",
+		},
+		{
+			name:     "single namespace",
+			cr:       makeTestArgoCD(withAgentEnabled(true), withAgentAllowedNamespaces([]string{"ns1"})),
+			expected: "ns1",
+		},
+		{
+			name:     "multiple namespaces",
+			cr:       makeTestArgoCD(withAgentEnabled(true), withAgentAllowedNamespaces([]string{"ns1", "ns2", "ns3"})),
+			expected: "ns1,ns2,ns3",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, getAgentAllowedNamespaces(tt.cr))
+		})
+	}
+}
+
+func TestBuildAgentContainerEnv_DestinationBasedMappingVars(t *testing.T) {
+	tests := []struct {
+		name              string
+		cr                *argoproj.ArgoCD
+		wantDBMValue      string
+		wantCreateNSValue string
+		wantAllowedNS     string
+	}{
+		{
+			name:              "defaults without DBM",
+			cr:                makeTestArgoCD(withAgentEnabled(true)),
+			wantDBMValue:      "false",
+			wantCreateNSValue: "false",
+			wantAllowedNS:     "",
+		},
+		{
+			name:              "DBM enabled",
+			cr:                makeTestArgoCD(withAgentEnabled(true), withAgentDestinationMapping(true, false)),
+			wantDBMValue:      "true",
+			wantCreateNSValue: "false",
+			wantAllowedNS:     "",
+		},
+		{
+			name: "DBM enabled with createNamespace and allowedNamespaces",
+			cr: makeTestArgoCD(
+				withAgentEnabled(true),
+				withAgentDestinationMapping(true, true),
+				withAgentAllowedNamespaces([]string{"ns1", "ns2"}),
+			),
+			wantDBMValue:      "true",
+			wantCreateNSValue: "true",
+			wantAllowedNS:     "ns1,ns2",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			envVars := buildAgentContainerEnv(tt.cr)
+			envMap := make(map[string]string)
+			for _, e := range envVars {
+				envMap[e.Name] = e.Value
+			}
+
+			assert.Equal(t, tt.wantDBMValue, envMap[EnvArgoCDAgentDestinationBasedMap],
+				"ARGOCD_AGENT_DESTINATION_BASED_MAPPING mismatch")
+			assert.Equal(t, tt.wantCreateNSValue, envMap[EnvArgoCDAgentCreateNamespace],
+				"ARGOCD_AGENT_CREATE_NAMESPACE mismatch")
+			assert.Equal(t, tt.wantAllowedNS, envMap[EnvArgoCDAgentAllowedNamespaces],
+				"ARGOCD_AGENT_ALLOWED_NAMESPACES mismatch")
 		})
 	}
 }

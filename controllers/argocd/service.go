@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -410,12 +411,17 @@ func ensureAutoTLSAnnotation(k8sClient client.Client, svc *corev1.Service, secre
 	if autoTLSAnnotationName != "" {
 		val, ok := svc.Annotations[autoTLSAnnotationName]
 		if enabled {
-			// Don't request a TLS certificate from the OpenShift Service CA if the secret already exists.
-			isTLSSecretFound, err := argoutil.IsObjectFound(k8sClient, svc.Namespace, secretName, &corev1.Secret{})
+			tlsSecret := &corev1.Secret{}
+			isTLSSecretFound, err := argoutil.IsObjectFound(k8sClient, svc.Namespace, secretName, tlsSecret)
 			if err != nil {
 				return false, err
 			}
 			if !ok && isTLSSecretFound {
+				if isCreatedByServiceCA(svc.Name, *tlsSecret) {
+					log.Info(fmt.Sprintf("restoring AutoTLS annotation on service %s for OpenShift serving cert secret %s", svc.Name, secretName))
+					svc.Annotations[autoTLSAnnotationName] = autoTLSAnnotationValue
+					return true, nil
+				}
 				log.Info(fmt.Sprintf("skipping AutoTLS on service %s since the TLS secret is already present", svc.Name))
 				return false, nil
 			}
@@ -505,8 +511,7 @@ func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
 		return err
 	}
 	if svcExists {
-		changed := false
-		explanation := ""
+		var changes []string
 		if !cr.Spec.Server.IsEnabled() {
 			argoutil.LogResourceDeletion(log, svc, "argocd server is disabled")
 			return r.Delete(context.TODO(), svc)
@@ -516,19 +521,14 @@ func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
 			return err
 		}
 		if update {
-			explanation = "auto tls annotation"
-			changed = true
+			changes = append(changes, "auto tls annotation")
 		}
 		if !reflect.DeepEqual(svc.Spec.Type, existingSVC.Spec.Type) {
 			existingSVC.Spec.Type = svc.Spec.Type
-			if changed {
-				explanation += ", "
-			}
-			explanation += "service type"
-			changed = true
+			changes = append(changes, "service type")
 		}
-		if changed {
-			argoutil.LogResourceUpdate(log, existingSVC, "updating", explanation)
+		if len(changes) > 0 {
+			argoutil.LogResourceUpdate(log, existingSVC, "updating", strings.Join(changes, ", "))
 			return r.Update(context.TODO(), existingSVC)
 		}
 		return nil

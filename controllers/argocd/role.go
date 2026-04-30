@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
@@ -388,18 +389,17 @@ func (r *ReconcileArgoCD) reconcileClusterRole(componentName string, policyRules
 		return nil, r.Delete(context.TODO(), existingClusterRole)
 	}
 
-	changed := false
-	var explanation string
+	var changes []string
 
 	// if existing ClusterRole field values differ from expected values then update them
 	if cr.Spec.AggregatedClusterRoles {
-		changed, explanation = matchAggregatedClusterRoleFields(expectedClusterRole, existingClusterRole, componentName)
+		changes = matchAggregatedClusterRoleFields(expectedClusterRole, existingClusterRole, componentName)
 	} else {
-		changed, explanation = matchDefaultClusterRoleFields(expectedClusterRole, existingClusterRole, componentName)
+		changes = matchDefaultClusterRoleFields(expectedClusterRole, existingClusterRole, componentName)
 	}
 
-	if changed {
-		argoutil.LogResourceUpdate(log, existingClusterRole, "updating", explanation)
+	if len(changes) > 0 {
+		argoutil.LogResourceUpdate(log, existingClusterRole, "updating", strings.Join(changes, ", "))
 		if err := r.Update(context.TODO(), existingClusterRole); err != nil {
 			return nil, err
 		}
@@ -487,10 +487,8 @@ func configureAggregatedClusterRole(cr *argoproj.ArgoCD, clusterRole *v1.Cluster
 }
 
 // matchAggregatedClusterRoleFields compares field values of expected and existing ClusterRoles for aggregated ClusterRole
-func matchAggregatedClusterRoleFields(expectedClusterRole *v1.ClusterRole, existingClusterRole *v1.ClusterRole, name string) (bool, string) {
-	changed := false
+func matchAggregatedClusterRoleFields(expectedClusterRole *v1.ClusterRole, existingClusterRole *v1.ClusterRole, name string) (changes []string) {
 	aggregatedClusterRoleExists := true
-	var explanation string
 
 	// if it is base ClusterRole then compare AggregationRule, Annotations and Rules
 	if name == common.ArgoCDApplicationControllerComponent {
@@ -498,17 +496,12 @@ func matchAggregatedClusterRoleFields(expectedClusterRole *v1.ClusterRole, exist
 		if !reflect.DeepEqual(existingClusterRole.AggregationRule, expectedClusterRole.AggregationRule) {
 			aggregatedClusterRoleExists = false
 			existingClusterRole.AggregationRule = expectedClusterRole.AggregationRule
-			explanation = "aggregation rule"
-			changed = true
+			changes = append(changes, "aggregation rule")
 		}
 
 		if !reflect.DeepEqual(existingClusterRole.Annotations, expectedClusterRole.Annotations) {
 			existingClusterRole.Annotations = expectedClusterRole.Annotations
-			if changed {
-				explanation += ", "
-			}
-			explanation += "annotations"
-			changed = true
+			changes = append(changes, "annotations")
 		}
 
 		// if existing ClusterRole is not Aggregated ClusterRole then only make Rules empty
@@ -521,11 +514,7 @@ func matchAggregatedClusterRoleFields(expectedClusterRole *v1.ClusterRole, exist
 	if name == common.ArgoCDApplicationControllerComponentView {
 		if !reflect.DeepEqual(existingClusterRole.Labels, expectedClusterRole.Labels) {
 			existingClusterRole.Labels = expectedClusterRole.Labels
-			if changed {
-				explanation += ", "
-			}
-			explanation += "labels"
-			changed = true
+			changes = append(changes, "labels")
 		}
 	}
 
@@ -533,60 +522,40 @@ func matchAggregatedClusterRoleFields(expectedClusterRole *v1.ClusterRole, exist
 	if name == common.ArgoCDApplicationControllerComponentAdmin {
 		if !reflect.DeepEqual(existingClusterRole.AggregationRule, expectedClusterRole.AggregationRule) {
 			existingClusterRole.AggregationRule = expectedClusterRole.AggregationRule
-			if changed {
-				explanation += ", "
-			}
-			explanation += "aggregation rule"
-			changed = true
+			changes = append(changes, "aggregation rule")
 		}
 
 		if !reflect.DeepEqual(existingClusterRole.Labels, expectedClusterRole.Labels) {
 			existingClusterRole.Labels = expectedClusterRole.Labels
-			if changed {
-				explanation += ", "
-			}
-			explanation += "labels"
-			changed = true
+			changes = append(changes, "labels")
 		}
 	}
 
-	return changed, explanation
+	return changes
 }
 
 // matchDefaultClusterRoleFields compares field values of expected and existing ClusterRoles for default ClusterRole
-func matchDefaultClusterRoleFields(expectedClusterRole *v1.ClusterRole, existingClusterRole *v1.ClusterRole, name string) (bool, string) {
-	changed := false
-	var explanation string
-
+func matchDefaultClusterRoleFields(expectedClusterRole *v1.ClusterRole, existingClusterRole *v1.ClusterRole, name string) (changes []string) {
 	// if it is base ClusterRole then compare AggregationRule and Annotations
 	if name == common.ArgoCDApplicationControllerComponent {
 		if !reflect.DeepEqual(existingClusterRole.AggregationRule, expectedClusterRole.AggregationRule) {
 			existingClusterRole.AggregationRule = expectedClusterRole.AggregationRule
-			explanation = "aggregation rule"
-			changed = true
+			changes = append(changes, "aggregation rule")
 		}
 
 		if !reflect.DeepEqual(existingClusterRole.Annotations, expectedClusterRole.Annotations) {
 			existingClusterRole.Annotations = expectedClusterRole.Annotations
-			if changed {
-				explanation += ", "
-			}
-			explanation += "annotations"
-			changed = true
+			changes = append(changes, "annotations")
 		}
 	}
 
 	// for all default ClusterRoles compare Rules
 	if !reflect.DeepEqual(existingClusterRole.Rules, expectedClusterRole.Rules) {
 		existingClusterRole.Rules = expectedClusterRole.Rules
-		if changed {
-			explanation += ", "
-		}
-		explanation += "policy rules"
-		changed = true
+		changes = append(changes, "policy rules")
 	}
 
-	return changed, explanation
+	return changes
 }
 
 func verifyInstallationMode(cr *argoproj.ArgoCD, allowed bool) error {

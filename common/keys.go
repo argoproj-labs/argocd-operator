@@ -131,6 +131,9 @@ const (
 	// ArgoCDKeyServerSecretKey is the server secret key property name for the Argo secret.
 	ArgoCDKeyServerSecretKey = "server.secretkey"
 
+	// ArgoCDKeyGitHubWebhookSecret is the key in argocd-secret for the GitHub webhook shared secret (see Argo CD settings).
+	ArgoCDKeyGitHubWebhookSecret = "webhook.github.secret" // #nosec G101
+
 	// ArgoCDKeyServerURL is the key for server url.
 	ArgoCDKeyServerURL = "url"
 
@@ -222,6 +225,9 @@ const (
 
 	// ArgoCDNotificationsManagedByClusterArgoCDLabel is needed to identify namespace mentioned as notifications sourceNamespaces on ArgoCD
 	ArgoCDNotificationsManagedByClusterArgoCDLabel = "argocd.argoproj.io/notifications-managed-by-cluster-argocd"
+
+	// ArgoCDCATrustChecksum is applied to repo-server Deployment to trigger reconciliation when some of the SystemCATrust sources changes
+	ArgoCDCATrustChecksum = "argocd.argoproj.io/ca-trust-checksum"
 
 	// ArgoCDControllerClusterRoleEnvName is an environment variable to specify a custom cluster role for Argo CD application controller
 	ArgoCDControllerClusterRoleEnvName = "CONTROLLER_CLUSTER_ROLE"

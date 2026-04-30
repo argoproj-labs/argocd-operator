@@ -1,15 +1,14 @@
-
 # Development
 
 ### Requirements
 
 The requirements for building the operator are fairly minimal.
 
- * Go 1.16+
- * Operator SDK 1.11.0+
- * Bash or equivalent
- * Docker
- 
+* Go 1.16+
+* Operator SDK 1.11.0+
+* Bash or equivalent
+* Docker
+
 ### Building from Source
 
 The `Makefile` in the root directory contains several targets to build and release the operator binaries from source.
@@ -19,8 +18,8 @@ The `Makefile` in the root directory contains several targets to build and relea
 The `Makefile` defines several variables to control the names of the images to build and push.
 These variables can either be set as environment variables, or specified when invoking `make`.
 
- * `IMG` is the image URL to use all building/pushing image targets.
- * `BUNDLE_IMG` defines the image:tag used for the bundle.
+* `IMG` is the image URL to use all building/pushing image targets.
+* `BUNDLE_IMG` defines the image:tag used for the bundle.
 
 Have a look `Makefile` for all of the variables and how they are used.
 
@@ -42,11 +41,12 @@ make docker-push
 
 ### Bundle
 
-Create and push the bundle image for to use the operator in OLM as a CatalogSource. 
+Create and push the bundle image for to use the operator in OLM as a CatalogSource.
 
 ``` bash
 make bundle-build bundle-push
 ```
+
 To override the name of the bundle image, specify the `BUNDLE_IMG` tag, for example
 
 ``` bash
@@ -79,7 +79,7 @@ make test
 
 Run the e2e tests.
 
-Refer E2E test [guide](../e2e-test-guide.md) for the setup and execution.
+Refer [E2E test guide](./e2e-test-guide.md) for the setup and execution.
 
 ```bash
 k3d cluster create --servers 3
@@ -125,9 +125,11 @@ Specify the bundle image to include using the `BUNDLE_IMG` variable
 make catalog-build BUNDLE_IMG=quay.io/my-org/argocd-operator-bundle:latest CATALOG_IMG=quay.io/my-org/argocd-operator-index:latest
 make catalog-push CATALOG_IMG=quay.io/my-org/argocd-operator-index:latest
 ```
+
 For more infomation see [build operator images to test on a cluster.](https://argocd-operator.readthedocs.io/en/latest/developer-guide/development/#building-the-operator-images-to-test-on-a-cluster)
 
 Once the operator is installed, you would need to configure an ArgoCD instance that the operator would manage. The sample instance configuration is below:
+
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
@@ -137,40 +139,19 @@ metadata:
     example: basic
 spec: {}
 ```
+
 Store your ArgoCD configuration in a yaml file and execute below command to configure the ArgoCD instance.
 
 ``` bash
 kubectl apply -f <path_to_yaml_file>
 ```
+
 For configuring specific properties based on the use case, you can look at the entire list of the configurable properties [here.](https://argocd-operator.readthedocs.io/en/latest/reference/argocd/)
 
 ### Build and Verify Argo CD Operator Docs
 
-**Note**: Please note that you need to have `Python3` Installed as a prerequisite.
-
-Create a Python Virtual Environment. This is not mandatory, you can continue without creating a Virtual Environment as well.
-
 ```bash
-python3 -m venv doc
-```
-
-Get into the virtual environment, if you have created one using the above step.
-
-```bash
-source doc/bin/activate
-```
-
-Install the required Python libraries
-
-```bash
-pip3 install mkdocs
-pip3 install mkdocs-material
-```
-
-Start the `mkdocs` server locally to verify the UI changes.
-
-```bash
-mkdocs serve
+make serve-docs
 ```
 
 ### Default Argo CD Version
@@ -183,7 +164,6 @@ The operator bundles and provides the CRDs that are used by Argo CD to ensure th
 
 Update the [CRDs][argocd_upstream_crds] from the upstream Argo CD project in the `config/crd/bases` directory to ensure they match the version of Argo CD that will be used as the default.
 
-[podman_link]:https://podman.io
 [argocd_upstream_crds]:https://github.com/argoproj/argo-cd/tree/master/manifests/crds
 
 #### Container Image

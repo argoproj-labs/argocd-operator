@@ -3,6 +3,7 @@ package argocd
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -10,18 +11,20 @@ import (
 	"testing"
 
 	argopass "github.com/argoproj/argo-cd/v3/util/password"
-
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	corev1 "k8s.io/api/core/v1"
 	testclient "k8s.io/client-go/kubernetes/fake"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -360,6 +363,77 @@ func Test_ReconcileArgoCD_ReconcileShouldNotChangeWhenUpdatedAdminPass(t *testin
 		t.Errorf("Expected data for data.server.secretKey but got nothing")
 	}
 	assert.True(t, argoutil.IsTrackedByOperator(testSecret.Labels))
+}
+
+func Test_ReconcileArgoCD_ReconcileRedisInitialPasswordSecret(t *testing.T) {
+	const suffix = "redis-initial-password"
+	argocd := &argoproj.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd",
+			Namespace: "argocd-operator",
+		},
+	}
+	secretName := argoutil.NewSecretWithSuffix(argocd, suffix).Name
+	secretNN := types.NamespacedName{Name: secretName, Namespace: "argocd-operator"}
+
+	resObjs := []client.Object{argocd}
+	subresObjs := []client.Object{argocd}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	var actual corev1.Secret
+	fetchSecret := func() error {
+		return r.Get(t.Context(), secretNN, &actual)
+	}
+	assertSecretValid := func() string {
+		assert.Equal(t, "true", string(actual.Data["immutable"]))
+		assert.Equal(t, "default", string(actual.Data["auth_username"]))
+		assert.Contains(t, string(actual.Data["users.acl"]), "user default on >")
+		assert.Contains(t, string(actual.Data["users.acl"]), " allchannels allkeys allcommands")
+		actualPwd := string(actual.Data["auth"])
+		assert.NotEqual(t, "", actualPwd)
+		assert.Contains(t, string(actual.Data["users.acl"]), actualPwd, "Password is mentioned in the ACL file")
+		return actualPwd
+	}
+
+	t.Run("Create when does not exist", func(t *testing.T) {
+		require.ErrorContains(t, fetchSecret(), fmt.Sprintf(`secrets "%s" not found`, secretName))
+
+		require.NoError(t, r.reconcileRedisInitialPasswordSecret(argocd))
+
+		require.NoError(t, fetchSecret())
+		assertSecretValid()
+	})
+
+	t.Run("Update keys and regenerate on operator upgrade", func(t *testing.T) {
+		const oldPwd = "asdfghjkl"
+		secret := argoutil.NewSecretWithSuffix(argocd, suffix)
+		secret.Data = map[string][]byte{
+			"immutable":                   []byte("true"),
+			common.ArgoCDKeyAdminPassword: []byte(oldPwd),
+		}
+		require.NoError(t, r.Update(t.Context(), secret))
+
+		require.NoError(t, r.reconcileRedisInitialPasswordSecret(argocd))
+
+		require.NoError(t, fetchSecret())
+		actualPwd := assertSecretValid()
+		assert.NotEqual(t, oldPwd, actualPwd)
+	})
+
+	t.Run("Keep untouched if healthy", func(t *testing.T) {
+		require.NoError(t, fetchSecret())
+		assertSecretValid()
+		oldVersion := actual.ResourceVersion
+
+		require.NoError(t, r.reconcileRedisInitialPasswordSecret(argocd))
+
+		require.NoError(t, fetchSecret())
+		assertSecretValid()
+		assert.Equal(t, oldVersion, actual.ResourceVersion, "Resource version should not change")
+	})
 }
 
 func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
@@ -789,4 +863,146 @@ func TestCombineClusterSecretNamespacesWithManagedNamespaces(t *testing.T) {
 	}, []string{"c", "d", "e", "c", "d"})
 	assert.Equal(t, "a,b,c,d,e", res)
 
+}
+
+func Test_applyGitHubWebhookSecretFromRef(t *testing.T) {
+	ctx := context.Background()
+	scheme := runtime.NewScheme()
+	assert.NoError(t, clientgoscheme.AddToScheme(scheme))
+	assert.NoError(t, argoproj.AddToScheme(scheme))
+
+	baseCR := func() *argoproj.ArgoCD {
+		return &argoproj.ArgoCD{
+			ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: "ns-a"},
+			Spec: argoproj.ArgoCDSpec{
+				WebhookSecrets: &argoproj.ArgoCDWebhookSecretsSpec{
+					GitHub: &argoproj.ArgoCDWebhookSecretsGitHub{
+						SecretRef: &argoproj.WebhookSecretKeySelector{
+							Name: "src",
+							Key:  "token",
+						},
+					},
+				},
+			},
+		}
+	}
+
+	t.Run("success copies value", func(t *testing.T) {
+		cr := baseCR()
+		src := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "src", Namespace: "ns-a"},
+			Data:       map[string][]byte{"token": []byte("supersecret")},
+		}
+		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(src).Build()
+		argocd := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "argocd-secret", Namespace: "ns-a"}, Data: map[string][]byte{}}
+		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
+		require.NoError(t, err)
+		assert.True(t, changed)
+		assert.Equal(t, []byte("supersecret"), argocd.Data[common.ArgoCDKeyGitHubWebhookSecret])
+	})
+
+	t.Run("unchanged when value already matches", func(t *testing.T) {
+		cr := baseCR()
+		src := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "src", Namespace: "ns-a"},
+			Data:       map[string][]byte{"token": []byte("same")},
+		}
+		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(src).Build()
+		argocd := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "argocd-secret", Namespace: "ns-a"},
+			Data: map[string][]byte{
+				common.ArgoCDKeyGitHubWebhookSecret: []byte("same"),
+			},
+		}
+		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
+		require.NoError(t, err)
+		assert.False(t, changed)
+	})
+
+	t.Run("source secret missing", func(t *testing.T) {
+		cr := baseCR()
+		cl := fake.NewClientBuilder().WithScheme(scheme).Build()
+		argocd := &corev1.Secret{Data: map[string][]byte{
+			common.ArgoCDKeyGitHubWebhookSecret: []byte("stale"),
+		}}
+		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
+		require.NoError(t, err)
+		assert.True(t, changed)
+		assert.Empty(t, argocd.Data[common.ArgoCDKeyGitHubWebhookSecret])
+	})
+
+	t.Run("key missing in source secret", func(t *testing.T) {
+		cr := baseCR()
+		src := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "src", Namespace: "ns-a"},
+			Data:       map[string][]byte{"other": []byte("x")},
+		}
+		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(src).Build()
+		argocd := &corev1.Secret{Data: map[string][]byte{
+			common.ArgoCDKeyGitHubWebhookSecret: []byte("stale"),
+		}}
+		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
+		require.NoError(t, err)
+		assert.True(t, changed)
+		assert.Empty(t, argocd.Data[common.ArgoCDKeyGitHubWebhookSecret])
+	})
+
+	t.Run("get returns non-NotFound error", func(t *testing.T) {
+		cr := baseCR()
+		want := errors.New("simulated API failure")
+		cl := &getAlwaysErrClient{Client: fake.NewClientBuilder().WithScheme(scheme).Build(), getErr: want}
+		argocd := &corev1.Secret{Data: map[string][]byte{}}
+		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
+		assert.ErrorIs(t, err, want)
+		assert.False(t, changed)
+	})
+
+	t.Run("get returns non-NotFound error preserves stale webhook secret", func(t *testing.T) {
+		cr := baseCR()
+		want := errors.New("simulated API failure")
+		cl := &getAlwaysErrClient{Client: fake.NewClientBuilder().WithScheme(scheme).Build(), getErr: want}
+		stale := []byte("stale")
+		argocd := &corev1.Secret{Data: map[string][]byte{
+			common.ArgoCDKeyGitHubWebhookSecret: stale,
+		}}
+		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
+		assert.ErrorIs(t, err, want)
+		assert.False(t, changed)
+		assert.Equal(t, stale, argocd.Data[common.ArgoCDKeyGitHubWebhookSecret])
+	})
+
+	t.Run("no webhook spec", func(t *testing.T) {
+		cr := &argoproj.ArgoCD{ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: "ns-a"}}
+		cl := fake.NewClientBuilder().WithScheme(scheme).Build()
+		argocd := &corev1.Secret{Data: map[string][]byte{
+			common.ArgoCDKeyGitHubWebhookSecret: []byte("stale"),
+		}}
+		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
+		require.NoError(t, err)
+		assert.True(t, changed)
+		assert.Empty(t, argocd.Data[common.ArgoCDKeyGitHubWebhookSecret])
+	})
+
+	t.Run("empty secret ref name removes stale value", func(t *testing.T) {
+		cr := baseCR()
+		cr.Spec.WebhookSecrets.GitHub.SecretRef.Name = ""
+		cl := fake.NewClientBuilder().WithScheme(scheme).Build()
+		argocd := &corev1.Secret{Data: map[string][]byte{
+			common.ArgoCDKeyGitHubWebhookSecret: []byte("stale"),
+		}}
+		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
+		require.NoError(t, err)
+		assert.True(t, changed)
+		assert.Empty(t, argocd.Data[common.ArgoCDKeyGitHubWebhookSecret])
+	})
+}
+
+// getAlwaysErrClient wraps a client.Client and always returns getErr from Get (for testing Secret read failures).
+type getAlwaysErrClient struct {
+	client.Client
+	getErr error
+}
+
+func (c *getAlwaysErrClient) Get(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
+	return c.getErr
 }

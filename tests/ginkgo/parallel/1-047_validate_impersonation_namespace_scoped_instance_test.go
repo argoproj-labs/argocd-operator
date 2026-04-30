@@ -124,7 +124,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 					Namespace: argoCD_NS.Name,
 				},
 				Spec: appv1alpha1.AppProjectSpec{
-					ClusterResourceWhitelist: []metav1.GroupKind{{
+					ClusterResourceWhitelist: []appv1alpha1.ClusterResourceRestrictionItem{{
 						Group: "*",
 						Kind:  "*",
 					}},

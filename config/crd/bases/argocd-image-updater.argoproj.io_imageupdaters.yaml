@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.1
+    controller-gen.kubebuilder.io/version: v0.19.0
   name: imageupdaters.argocd-image-updater.argoproj.io
 spec:
   group: argocd-image-updater.argoproj.io
@@ -14,7 +14,20 @@ spec:
     singular: imageupdater
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .status.applicationsMatched
+      name: Apps
+      type: integer
+    - jsonPath: .status.imagesManaged
+      name: Images
+      type: integer
+    - jsonPath: .status.lastCheckedAt
+      name: Last Checked
+      type: date
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: ImageUpdater is the Schema for the imageupdaters API
@@ -45,7 +58,7 @@ spec:
               applicationRefs:
                 description: |-
                   ApplicationRefs indicates the set of applications to be managed.
-                  ApplicationRefs is a list of rules to select Argo CD Applications within the `spec.namespace`.
+                  ApplicationRefs is a list of rules to select Argo CD Applications within the ImageUpdater CR's namespace.
                   Each reference can also provide specific overrides for the global settings defined above.
                 items:
                   description: ApplicationRef contains various criteria by which to
@@ -55,6 +68,7 @@ spec:
                       description: |-
                         CommonUpdateSettings overrides the global CommonUpdateSettings for applications
                         matched by this selector.
+                        This field is ignored when UseAnnotations is true.
                       properties:
                         allowTags:
                           description: |-
@@ -101,6 +115,7 @@ spec:
                         Images contains a list of configurations that how images should be updated.
                         These rules apply to applications selected by namePattern in ApplicationRefs, and each
                         image can override global/ApplicationRef settings.
+                        This field is ignored when UseAnnotations is true.
                       items:
                         description: |-
                           ImageConfig defines how a specific container image should be discovered, updated,
@@ -180,25 +195,23 @@ spec:
                                     description: |-
                                       Name is the dot-separated path to the Helm key for the image repository/name part.
                                       Example: "image.repository", "frontend.deployment.image.name".
-                                      This field is required if the Helm target is used.
+                                      If neither spec nor name/tag are set, defaults to "image.name".
+                                      If spec is set, this field is ignored.
                                     type: string
                                   spec:
                                     description: |-
-                                      Spec is an optional dot-separated path to a Helm key where the full image string
+                                      Spec is the dot-separated path to a Helm key where the full image string
                                       (e.g., "image/name:1.0") should be written.
                                       Use this if your Helm chart expects the entire image reference in a single field,
-                                      rather than separate name/tag fields. If this is set, other Helm parameter-related
-                                      options will be ignored.
+                                      rather than separate name/tag fields. If this is set, name and tag will be ignored.
                                     type: string
                                   tag:
                                     description: |-
                                       Tag is the dot-separated path to the Helm key for the image tag part.
                                       Example: "image.tag", "frontend.deployment.image.version".
-                                      This field is required if the Helm target is used.
+                                      If neither spec nor name/tag are set, defaults to "image.tag".
+                                      If spec is set, this field is ignored.
                                     type: string
-                                required:
-                                - name
-                                - tag
                                 type: object
                               kustomize:
                                 description: |-
@@ -225,7 +238,6 @@ spec:
                         - alias
                         - imageName
                         type: object
-                      minItems: 1
                       type: array
                       x-kubernetes-list-map-keys:
                       - alias
@@ -281,10 +293,21 @@ spec:
                       description: NamePattern indicates the glob pattern for application
                         name
                       type: string
+                    useAnnotations:
+                      default: false
+                      description: |-
+                        UseAnnotations When true, read image configuration from Application's
+                        argocd-image-updater.argoproj.io/* annotations instead of
+                        requiring explicit Images[] configuration in this CR.
+                        When this field is set to true, only namePattern and labelSelectors are used for
+                        application selection. All other fields (CommonUpdateSettings, WriteBackConfig, Images)
+                        are ignored.
+                      type: boolean
                     writeBackConfig:
                       description: |-
                         WriteBackConfig overrides the global WriteBackConfig settings for applications
                         matched by this selector.
+                        This field is ignored when UseAnnotations is true.
                       properties:
                         gitConfig:
                           description: |-
@@ -296,6 +319,25 @@ spec:
                                 Branch to commit updates to.
                                 Required if write-back method is Git and this is not specified at the spec level.
                               type: string
+                            pullRequest:
+                              description: |-
+                                PullRequest configures creation of pull requests when writing back image updates to Git.
+                                When set, the controller opens a PR instead of pushing to the branch.
+                                If not specified write back config method is `git`.
+                              properties:
+                                github:
+                                  description: GitHub configures PR creation via the
+                                    GitHub API.
+                                  type: object
+                                gitlab:
+                                  description: GitLab configures MR creation via the
+                                    GitLab API.
+                                  type: object
+                              type: object
+                              x-kubernetes-validations:
+                              - message: Exactly one of github or gitlab must be set
+                                rule: '(has(self.github) ? 1 : 0) + (has(self.gitlab)
+                                  ? 1 : 0) == 1'
                             repository:
                               description: |-
                                 Repository URL to commit changes to.
@@ -322,9 +364,13 @@ spec:
                       - method
                       type: object
                   required:
-                  - images
                   - namePattern
                   type: object
+                  x-kubernetes-validations:
+                  - message: Either useAnnotations must be true, or images must be
+                      provided with at least one item
+                    rule: '!(has(self.useAnnotations) && self.useAnnotations == true)
+                      ? (has(self.images) && size(self.images) > 0) : true'
                 minItems: 1
                 type: array
                 x-kubernetes-list-map-keys:
@@ -376,12 +422,6 @@ spec:
                       This acts as the default if not overridden at a more specific level.
                     type: string
                 type: object
-              namespace:
-                description: |-
-                  Namespace indicates the target namespace of the applications.
-                  This is the namespace where the controller will look for Argo CD Applications
-                  matching the criteria in ApplicationRefs.
-                type: string
               writeBackConfig:
                 description: |-
                   WriteBackConfig provides global default settings for how and where to write back image updates.
@@ -397,6 +437,25 @@ spec:
                           Branch to commit updates to.
                           Required if write-back method is Git and this is not specified at the spec level.
                         type: string
+                      pullRequest:
+                        description: |-
+                          PullRequest configures creation of pull requests when writing back image updates to Git.
+                          When set, the controller opens a PR instead of pushing to the branch.
+                          If not specified write back config method is `git`.
+                        properties:
+                          github:
+                            description: GitHub configures PR creation via the GitHub
+                              API.
+                            type: object
+                          gitlab:
+                            description: GitLab configures MR creation via the GitLab
+                              API.
+                            type: object
+                        type: object
+                        x-kubernetes-validations:
+                        - message: Exactly one of github or gitlab must be set
+                          rule: '(has(self.github) ? 1 : 0) + (has(self.gitlab) ?
+                            1 : 0) == 1'
                       repository:
                         description: |-
                           Repository URL to commit changes to.
@@ -424,12 +483,19 @@ spec:
                 type: object
             required:
             - applicationRefs
-            - namespace
             type: object
           status:
             description: ImageUpdaterStatus defines the observed state of ImageUpdater
             properties:
+              applicationsMatched:
+                description: ApplicationsMatched is the number of Argo CD applications
+                  matched by this CR's selectors.
+                format: int32
+                minimum: 0
+                type: integer
               conditions:
+                description: Conditions represent the latest available observations
+                  of the resource's state.
                 items:
                   description: Condition contains details for one aspect of the current
                     state of this API Resource.
@@ -485,48 +551,73 @@ spec:
                   - type
                   type: object
                 type: array
-              imageStatus:
-                description: ImageStatus indicates the detailed status for the list
-                  of managed images
-                items:
-                  description: ImageStatus contains information for an image:version
-                    and its update status in hosting applications
-                  properties:
-                    applications:
-                      description: Applications contains a list of applications and
-                        when the image was last updated therein
-                      items:
-                        description: ImageApplicationLastUpdated contains information
-                          for an application and when the image was last updated therein
-                        properties:
-                          appName:
-                            description: AppName indicates and namespace and the application
-                              name
-                            type: string
-                          lastUpdatedAt:
-                            description: LastUpdatedAt indicates when the image in
-                              this application was last updated
-                            format: date-time
-                            type: string
-                        required:
-                        - appName
-                        type: object
-                      type: array
-                    name:
-                      description: Name indicates the image name
-                      type: string
-                    version:
-                      description: Version indicates the image version
-                      type: string
-                  required:
-                  - name
-                  - version
-                  type: object
-                type: array
-              reconciledAt:
-                description: LastUpdatedAt indicates when the image updater last ran
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              imagesManaged:
+                description: ImagesManaged is the number of images that were eligible
+                  for update checking.
+                format: int32
+                minimum: 0
+                type: integer
+              lastCheckedAt:
+                description: LastCheckedAt indicates when the controller last checked
+                  for image updates.
                 format: date-time
                 type: string
+              lastUpdatedAt:
+                description: LastUpdatedAt indicates when the controller last performed
+                  an image update.
+                format: date-time
+                type: string
+              observedGeneration:
+                description: ObservedGeneration is the most recent generation observed
+                  by the controller.
+                format: int64
+                minimum: 0
+                type: integer
+              recentUpdates:
+                description: RecentUpdates contains the list of image updates performed
+                  during the last update cycle.
+                items:
+                  description: RecentUpdate records a single image update performed
+                    during the last update.
+                  properties:
+                    alias:
+                      description: Alias is the alias of the image configuration that
+                        was updated.
+                      type: string
+                    applicationsUpdated:
+                      description: ApplicationsUpdated is the number of applications
+                        in which this image was updated.
+                      format: int32
+                      minimum: 0
+                      type: integer
+                    image:
+                      description: Image is the full image reference.
+                      type: string
+                    message:
+                      description: Message provides a human-readable description of
+                        the update action.
+                      type: string
+                    newVersion:
+                      description: NewVersion is the new tag or digest the image was
+                        updated to.
+                      type: string
+                    updatedAt:
+                      description: UpdatedAt is the timestamp when the update was
+                        applied.
+                      format: date-time
+                      type: string
+                  required:
+                  - alias
+                  - applicationsUpdated
+                  - image
+                  - newVersion
+                  - updatedAt
+                  type: object
+                type: array
+                x-kubernetes-list-type: atomic
             type: object
         type: object
     served: true

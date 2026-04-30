@@ -3,6 +3,7 @@ package utils
 import (
 	"os"
 
+	certificatesv1beta1 "k8s.io/api/certificates/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -28,8 +29,7 @@ import (
 	argov1alpha1api "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 
-	//lint:ignore ST1001 "This is a common practice in Gomega tests for readability."
-	. "github.com/onsi/gomega" //nolint:all
+	. "github.com/onsi/gomega"
 )
 
 func GetE2ETestKubeClient() (client.Client, *runtime.Scheme) {
@@ -125,6 +125,10 @@ func getKubeClient(config *rest.Config) (client.Client, *runtime.Scheme, error) 
 	}
 
 	if err := imageUpdater.AddToScheme(scheme); err != nil {
+		return nil, nil, err
+	}
+
+	if err := certificatesv1beta1.AddToScheme(scheme); err != nil {
 		return nil, nil, err
 	}
 

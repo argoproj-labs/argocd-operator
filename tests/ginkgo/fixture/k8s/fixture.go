@@ -7,10 +7,8 @@ import (
 
 	"k8s.io/client-go/util/retry"
 
-	//lint:ignore ST1001 "This is a common practice in Gomega tests for readability."
-	. "github.com/onsi/ginkgo/v2" //nolint:all
-	//lint:ignore ST1001 "This is a common practice in Gomega tests for readability."
-	. "github.com/onsi/gomega" //nolint:all
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 
 	matcher "github.com/onsi/gomega/types"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -101,15 +99,23 @@ func NotHaveLabelWithValue(key string, value string) matcher.GomegaMatcher {
 // ExistByName checks if the given k8s resource exists, when retrieving it by name/namespace.
 // - It does NOT check if the resource content matches. It only checks that a resource of that type and name exists.
 func ExistByName() matcher.GomegaMatcher {
+	return ExistByNameWithClient(nil)
+}
+
+// ExistByNameWithClient checks if the given k8s resource exists, when retrieving it by name/namespace.
+// - It does NOT check if the resource content matches. It only checks that a resource of that type and name exists.
+//
+// NOTE: you probably want to instead use ExistByName()
+func ExistByNameWithClient(k8sClient client.Client) matcher.GomegaMatcher {
+	if k8sClient == nil {
+		var err error
+		k8sClient, _, err = utils.GetE2ETestKubeClientWithError()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(k8sClient).ShouldNot(BeNil())
+	}
 
 	return WithTransform(func(k8sObject client.Object) bool {
-		k8sClient, _, err := utils.GetE2ETestKubeClientWithError()
-		if err != nil {
-			GinkgoWriter.Println(err)
-			return false
-		}
-
-		err = k8sClient.Get(context.Background(), client.ObjectKeyFromObject(k8sObject), k8sObject)
+		err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(k8sObject), k8sObject)
 		if err != nil {
 			GinkgoWriter.Println("Object does not exists in ExistByName:", k8sObject.GetName(), err)
 		} else {

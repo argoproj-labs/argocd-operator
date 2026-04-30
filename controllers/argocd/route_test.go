@@ -643,7 +643,7 @@ func TestReconcileRouteTLSConfig(t *testing.T) {
 						Name:      common.ArgoCDServerTLSSecretName,
 						Namespace: cr.Namespace,
 						Annotations: map[string]string{
-							"service.beta.openshift.io/originating-service-name": serviceName,
+							common.AnnotationOpenShiftOriginatingServiceName: serviceName,
 						},
 						OwnerReferences: []metav1.OwnerReference{
 							{
@@ -695,7 +695,7 @@ func TestIsCreatedByServiceCA(t *testing.T) {
 			Name:      common.ArgoCDServerTLSSecretName,
 			Namespace: cr.Namespace,
 			Annotations: map[string]string{
-				"service.beta.openshift.io/originating-service-name": serviceName,
+				common.AnnotationOpenShiftOriginatingServiceName: serviceName,
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				{
@@ -744,7 +744,7 @@ func TestIsCreatedByServiceCA(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			testSecret := secret.DeepCopy()
 			test.updateSecret(testSecret)
-			assert.Equal(t, test.want, isCreatedByServiceCA(cr.Name, *testSecret))
+			assert.Equal(t, test.want, isCreatedByServiceCA(nameWithSuffix("server", cr), *testSecret))
 		})
 	}
 }
@@ -882,120 +882,60 @@ func TestOverrideRouteTLSData(t *testing.T) {
 	}
 }
 
-func TestReconilePrometheusRouteWithExternalTLSData(t *testing.T) {
-
-	prometheusRouteName := testArgoCDName + "-prometheus"
-
-	crt := []byte("Y2VydGlmY2F0ZQ==")
-	key := []byte("cHJpdmF0ZS1rZXk=")
+// TestReconcileRouteServerPath tests that spec.server.route.path is properly set on the Route
+func TestReconcileRouteServerPath(t *testing.T) {
+	argoutil.SetRouteAPIFound(true)
+	ctx := context.Background()
+	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
-		name        string
-		argocd      argoproj.ArgoCD
-		routeName   string
-		expectErr   bool
-		expectedTLS *routev1.TLSConfig
+		name         string
+		updateArgoCD func(cr *argoproj.ArgoCD)
+		wantPath     string
 	}{
 		{
-			name: "prometheus route without tls data",
-			argocd: *makeArgoCD(func(a *argoproj.ArgoCD) {
-				a.Spec.Prometheus = argoproj.ArgoCDPrometheusSpec{
-					Enabled: true,
-					Route: argoproj.ArgoCDRouteSpec{
-						Enabled: true,
-					},
-				}
-			}),
-			routeName:   prometheusRouteName,
-			expectedTLS: nil,
-		},
-		{
-			name: "prometheus route with embedded tls data (deprecated method)",
-			argocd: *makeArgoCD(func(a *argoproj.ArgoCD) {
-				a.Spec.Prometheus.Enabled = true
-				a.Spec.Prometheus.Route = argoproj.ArgoCDRouteSpec{
-					Enabled: true,
-					TLS: &routev1.TLSConfig{
-						Termination: routev1.TLSTerminationPassthrough,
-						Key:         "key",
-						Certificate: "crt",
-					},
-				}
-			}),
-			routeName: prometheusRouteName,
-			expectedTLS: &routev1.TLSConfig{
-				Termination: routev1.TLSTerminationPassthrough,
-				Key:         "key",
-				Certificate: "crt",
+			name: "should set path when configured",
+			updateArgoCD: func(cr *argoproj.ArgoCD) {
+				cr.Spec.Server.Route.Enabled = true
+				cr.Spec.Server.Route.Path = "/argocd"
 			},
+			wantPath: "/argocd",
 		},
 		{
-			name: "prometheus route with tls data in secret",
-			argocd: *makeArgoCD(func(a *argoproj.ArgoCD) {
-				a.Spec.Prometheus.Enabled = true
-				a.Spec.Prometheus.Route = argoproj.ArgoCDRouteSpec{
-					Enabled: true,
-					TLS: &routev1.TLSConfig{
-						ExternalCertificate: &routev1.LocalObjectReference{
-							Name: "valid-secret",
-						},
-					},
-				}
-			}),
-			routeName: prometheusRouteName,
-			expectedTLS: &routev1.TLSConfig{
-				Certificate: string(crt),
-				Key:         string(key),
+			name: "should leave path empty when not configured",
+			updateArgoCD: func(cr *argoproj.ArgoCD) {
+				cr.Spec.Server.Route.Enabled = true
 			},
-		},
-		{
-			name: "prometheus route with non-existing secret",
-			argocd: *makeArgoCD(func(a *argoproj.ArgoCD) {
-				a.Spec.Prometheus.Enabled = true
-				a.Spec.Prometheus.Route = argoproj.ArgoCDRouteSpec{
-					Enabled: true,
-					TLS: &routev1.TLSConfig{
-						ExternalCertificate: &routev1.LocalObjectReference{
-							Name: "non-existing-secret",
-						},
-					},
-				}
-			}),
-			routeName: prometheusRouteName,
-			expectErr: true,
+			wantPath: "",
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			argoutil.SetRouteAPIFound(true)
-			ctx := context.TODO()
-			a := &test.argocd
-			logf.SetLogger(ZapLogger(true))
-			resObjs := []client.Object{a}
-			subresObjs := []client.Object{a}
+			argoCD := makeArgoCD(test.updateArgoCD)
+
+			resObjs := []client.Object{argoCD}
+			subresObjs := []client.Object{argoCD}
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
-			fakeClient := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(fakeClient, sch, testclient.NewSimpleClientset())
-			tlsData := map[string][]byte{
-				"tls.crt": crt,
-				"tls.key": key,
-			}
-			assert.NoError(t, argoutil.CreateTLSSecret(r.Client, "valid-secret", testNamespace, tlsData))
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
+
 			req := reconcile.Request{
 				NamespacedName: testNamespacedName(testArgoCDName),
 			}
 
 			_, err := r.Reconcile(ctx, req)
-			if test.expectErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				route := routev1.Route{}
-				err = argoutil.FetchObject(r.Client, a.Namespace, test.routeName, &route)
-				assert.NoError(t, err)
-				assert.Equal(t, test.expectedTLS, route.Spec.TLS)
+			assert.NoError(t, err)
+
+			loaded := &routev1.Route{}
+			err = r.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
+			fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
+
+			if diff := cmp.Diff(test.wantPath, loaded.Spec.Path); diff != "" {
+				t.Fatalf("failed to reconcile route path:\n%s", diff)
 			}
 		})
 	}

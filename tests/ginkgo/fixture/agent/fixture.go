@@ -23,6 +23,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -46,6 +47,7 @@ type PrincipalResources struct {
 	ClusterRole              *rbacv1.ClusterRole
 	ClusterRoleBinding       *rbacv1.ClusterRoleBinding
 	PrincipalDeployment      *appsv1.Deployment
+	PrincipalNetworkPolicy   *networkingv1.NetworkPolicy
 	PrincipalRoute           *routev1.Route
 	ServicesToDelete         []string
 }
@@ -102,6 +104,7 @@ type VerifyExpectedResourcesExistParams struct {
 	ClusterRoleBinding       *rbacv1.ClusterRoleBinding
 	PrincipalDeployment      *appsv1.Deployment
 	PrincipalRoute           *routev1.Route
+	PrincipalNetworkPolicy   *networkingv1.NetworkPolicy
 	SecretNames              AgentSecretNames
 	ServiceNames             []string
 	DeploymentNames          []string
@@ -118,6 +121,7 @@ func VerifyResourcesDeleted(resources PrincipalResources) {
 	Eventually(resources.ClusterRole).Should(k8sFixture.NotExistByName())
 	Eventually(resources.ClusterRoleBinding).Should(k8sFixture.NotExistByName())
 	Eventually(resources.PrincipalDeployment).Should(k8sFixture.NotExistByName())
+	Eventually(resources.PrincipalNetworkPolicy).Should(k8sFixture.NotExistByName())
 
 	for _, serviceName := range resources.ServicesToDelete {
 		if serviceName == "" {
@@ -327,6 +331,7 @@ func VerifyExpectedResourcesExist(params VerifyExpectedResourcesExistParams) {
 	Eventually(params.RoleBinding).Should(k8sFixture.ExistByName())
 	Eventually(params.ClusterRole).Should(k8sFixture.ExistByName())
 	Eventually(params.ClusterRoleBinding).Should(k8sFixture.ExistByName())
+	Eventually(params.PrincipalNetworkPolicy).Should(k8sFixture.ExistByName())
 
 	for _, serviceName := range params.ServiceNames {
 		if serviceName == "" {

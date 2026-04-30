@@ -9,10 +9,8 @@ import (
 	"sync"
 	"time"
 
-	//lint:ignore ST1001 "This is a common practice in Gomega tests for readability."
-	. "github.com/onsi/ginkgo/v2" //nolint:all
-	//lint:ignore ST1001 "This is a common practice in Gomega tests for readability."
-	. "github.com/onsi/gomega" //nolint:all
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	securityv1 "github.com/openshift/api/security/v1"
 
 	crdv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -205,6 +203,8 @@ func CreateNamespace(name string) *corev1.Namespace {
 		Labels: NamespaceLabels,
 	}}
 
+	By("creating namespace '" + ns.Name + "'")
+
 	err := k8sClient.Create(context.Background(), ns)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -318,6 +318,53 @@ func EnvLocalRun() bool {
 func EnvCI() bool {
 	_, exists := os.LookupEnv("CI")
 	return exists
+}
+
+// waitForAllEnvVarsToBeRemovedFromDeployments checks all Deployments in the Namespace, to ensure that none of those Deployments contain environment variables defined within envVarKeys.
+// This can be used before a test starts to ensure that Operator or Argo CD containers are back to default state.
+//
+//nolint:unused
+func waitForAllEnvVarsToBeRemovedFromDeployments(ns string, envVarKeys []string, k8sClient client.Client) {
+
+	Eventually(func() bool {
+		var deplList appsv1.DeploymentList
+
+		if err := k8sClient.List(context.Background(), &deplList, client.InNamespace(ns)); err != nil {
+			GinkgoWriter.Println(err)
+			return false
+		}
+
+		// For each Deployment in the list...
+		for _, depl := range deplList.Items {
+
+			// If at least one of the Deployments has not been observed, wait and try again
+			if depl.Generation != depl.Status.ObservedGeneration {
+				return false
+			}
+
+			// For each container of the deployment
+			for _, container := range depl.Spec.Template.Spec.Containers {
+
+				// For each env var we are looking for
+				for _, envVarKey := range envVarKeys {
+
+					for _, containerEnvKey := range container.Env {
+
+						if containerEnvKey.Name == envVarKey {
+							GinkgoWriter.Println("Waiting:", containerEnvKey, "is still present in Deployment ", depl.Name)
+							return false
+						}
+
+					}
+				}
+			}
+		}
+
+		// All Deployments in NS are reconciled and ready
+		return true
+
+	}, "3m", "1s").Should(BeTrue())
+
 }
 
 func WaitForAllDeploymentsInTheNamespaceToBeReady(ns string, k8sClient client.Client) {
@@ -614,6 +661,17 @@ func OutputDebugOnFail(namespaceParams ...any) {
 		GinkgoWriter.Println("----------------------------------------------------------------")
 	}
 
+	kubectlOutput, err = osFixture.ExecCommandWithOutputParam(false, true, "kubectl", "get", "applications", "-A", "-o", "yaml")
+	if err != nil {
+		GinkgoWriter.Println("unable to output all argo cd statuses", err, kubectlOutput)
+	} else {
+		GinkgoWriter.Println("")
+		GinkgoWriter.Println("----------------------------------------------------------------")
+		GinkgoWriter.Println("'kubectl get applications -A -o yaml':")
+		GinkgoWriter.Println(kubectlOutput)
+		GinkgoWriter.Println("----------------------------------------------------------------")
+	}
+
 	GinkgoWriter.Println("You can skip this debug output by setting 'SKIP_DEBUG_OUTPUT=true'")
 
 }
@@ -663,7 +721,7 @@ func outputPodLog(podSubstring string) {
 		return
 	}
 
-	// Look specifically for operator pod
+	// Look specifically for pod with name
 	matchingPods := []corev1.Pod{}
 	for idx := range podList.Items {
 		pod := podList.Items[idx]
@@ -674,19 +732,19 @@ func outputPodLog(podSubstring string) {
 
 	if len(matchingPods) == 0 {
 		// This can happen when the operator is not running on the cluster
-		GinkgoWriter.Println("DebugOutputOperatorLogs was called, but no pods were found.")
+		GinkgoWriter.Println("outputPodLog was called looking for substring '" + podSubstring + "', but no pods were found.")
 		return
 	}
 
 	if len(matchingPods) != 1 {
-		GinkgoWriter.Println("unexpected number of operator pods", matchingPods)
+		GinkgoWriter.Println("unexpected number of pods", matchingPods)
 		return
 	}
 
 	// Extract operator logs
 	kubectlLogOutput, err := osFixture.ExecCommandWithOutputParam(false, true, "kubectl", "logs", "pod/"+matchingPods[0].Name, "manager", "-n", matchingPods[0].Namespace)
 	if err != nil {
-		GinkgoWriter.Println("unable to extract operator logs", err)
+		GinkgoWriter.Println("unable to extract logs for", matchingPods[0].Name, err)
 		return
 	}
 
@@ -697,7 +755,7 @@ func outputPodLog(podSubstring string) {
 
 	GinkgoWriter.Println("")
 	GinkgoWriter.Println("----------------------------------------------------------------")
-	GinkgoWriter.Println("Log output from operator pod:")
+	GinkgoWriter.Println("Log output from pod '" + matchingPods[0].Name + "' in " + matchingPods[0].Namespace + ":")
 	for _, line := range lines[startIndex:] {
 		GinkgoWriter.Println(">", line)
 	}

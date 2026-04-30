@@ -126,10 +126,26 @@ func IsObjectFound(client client.Client, namespace string, name string, obj clie
 	return true, nil
 }
 
-// NameWithSuffix will return a string using the Name from the given ObjectMeta with the provded suffix appended.
-// Example: If ObjectMeta.Name is "test" and suffix is "object", the value of "test-object" will be returned.
+// NameWithSuffix will return a name based on the given resource using the better truncation approach.
+// The object name is truncated first, then the full suffix is appended to preserve suffix readability.
+// Example: Given a long resource name, this ensures suffixes like "redis-initial-password" remain intact.
 func NameWithSuffix(meta metav1.ObjectMeta, suffix string) string {
-	return fmt.Sprintf("%s-%s", meta.Name, suffix)
+	return fmt.Sprintf("%s-%s", TruncateCRName(meta.Name), suffix)
+}
+
+// FqdnServiceRef will return the FQDN referencing a specific service name, as set up by the operator, with the
+// given port.
+func FqdnServiceRef(service string, port int, cr *argoproj.ArgoCD) string {
+	return fmt.Sprintf("%s.%s.svc.%s:%d", NameWithSuffix(cr.ObjectMeta, service), cr.Namespace, GetClusterDomain(cr), port)
+}
+
+// GetClusterDomain returns the cluster domain suffix for the given ArgoCD instance.
+// If not specified in the CR, defaults to the standard cluster domain.
+func GetClusterDomain(cr *argoproj.ArgoCD) string {
+	if cr.Spec.ClusterDomain != "" {
+		return cr.Spec.ClusterDomain
+	}
+	return common.ArgoCDDefaultClusterDomain
 }
 
 func newEvent(meta metav1.ObjectMeta) *corev1.Event {
@@ -201,6 +217,8 @@ func LogResourceAction(log logr.Logger, action string, object metav1.Object, exp
 	log.Info(msg)
 }
 
+// GenerateAgentPrincipalRedisProxyServiceName generates a deterministic Service name for the agent's principal Redis proxy.
+// It truncates the Custom Resource (CR) name to ensure the final appended name stays within Kubernetes length limits.
 func GenerateAgentPrincipalRedisProxyServiceName(crName string) string {
 	truncatedCRName := TruncateWithHash(crName, 36)
 	return fmt.Sprintf("%s-agent-%s", truncatedCRName, "principal-redisproxy")

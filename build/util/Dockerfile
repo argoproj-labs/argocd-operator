@@ -1,5 +1,5 @@
-# Argo CD v3.2.1
-FROM quay.io/argoproj/argocd@sha256:a8532a23ed5f6e65afaf2a082b65fc74614549e54774f6b25fe3c993faa7bea3 as argocd
+# Argo CD v3.3.6
+FROM quay.io/argoproj/argocd@sha256:16b92ba472fbb9287459cc52e0ecff07288dff461209955098edb56ce866fe49 AS argocd
 
 # Final Image
 FROM docker.io/library/ubuntu:24.04
@@ -7,7 +7,7 @@ FROM docker.io/library/ubuntu:24.04
 USER root
 
 ENV ARGOCD_USER_ID=999
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN groupadd -g $ARGOCD_USER_ID argocd && \
     useradd -r -u $ARGOCD_USER_ID -g argocd argocd && \

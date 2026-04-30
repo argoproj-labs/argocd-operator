@@ -7,6 +7,7 @@ import (
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -207,6 +208,84 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 					assert.Equal(t, desiredRuleGroup, testRule.Spec.Groups)
 				}
 
+			}
+		})
+	}
+}
+
+func TestReconcilePrometheus_Deleted(t *testing.T) {
+	tests := []struct {
+		name                string
+		argocd              *argoproj.ArgoCD
+		existingPrometheus  bool
+		wantPrometheusFound bool
+	}{
+		{
+			name: "prometheus enabled, no existing Prometheus CR, should not create",
+			argocd: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.Prometheus.Enabled = true
+			}),
+			existingPrometheus:  false,
+			wantPrometheusFound: false,
+		},
+		{
+			name: "prometheus disabled, no existing Prometheus CR, should not create",
+			argocd: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.Prometheus.Enabled = false
+			}),
+			existingPrometheus:  false,
+			wantPrometheusFound: false,
+		},
+		{
+			name: "prometheus enabled, existing Prometheus CR, should delete",
+			argocd: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.Prometheus.Enabled = true
+			}),
+			existingPrometheus:  true,
+			wantPrometheusFound: false,
+		},
+		{
+			name: "prometheus disabled, existing Prometheus CR, should delete",
+			argocd: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.Prometheus.Enabled = false
+			}),
+			existingPrometheus:  true,
+			wantPrometheusFound: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			resObjs := []client.Object{test.argocd}
+			subresObjs := []client.Object{test.argocd}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			err := monitoringv1.AddToScheme(r.Scheme)
+			assert.NoError(t, err)
+
+			if test.existingPrometheus {
+				prometheus := newPrometheus(test.argocd)
+				err := r.Create(context.TODO(), prometheus)
+				assert.NoError(t, err)
+			}
+
+			err = r.reconcilePrometheus(test.argocd)
+			assert.NoError(t, err)
+
+			// Verify the Prometheus CR state
+			testPrometheus := &monitoringv1.Prometheus{}
+			err = r.Get(context.TODO(), types.NamespacedName{
+				Name:      test.argocd.Name,
+				Namespace: test.argocd.Namespace,
+			}, testPrometheus)
+
+			if test.wantPrometheusFound {
+				assert.NoError(t, err, "expected Prometheus CR to exist")
+			} else {
+				assert.True(t, errors.IsNotFound(err), "expected Prometheus CR to not exist")
 			}
 		})
 	}

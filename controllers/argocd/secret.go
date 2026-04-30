@@ -15,6 +15,7 @@
 package argocd
 
 import (
+	"bytes"
 	"context"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -122,7 +123,7 @@ func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.Pr
 	dnsNames := []string{
 		cr.Name,
 		nameWithSuffix("grpc", cr),
-		fmt.Sprintf("%s.%s.svc.cluster.local", cr.Name, cr.Namespace),
+		fmt.Sprintf("%s.%s.svc.%s", cr.Name, cr.Namespace, argoutil.GetClusterDomain(cr)),
 	}
 
 	//lint:ignore SA1019 known to be deprecated
@@ -333,8 +334,7 @@ func (r *ReconcileArgoCD) reconcileClusterSecrets(cr *argoproj.ArgoCD) error {
 
 // reconcileExistingArgoSecret will ensure that the Argo CD Secret is up to date.
 func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secret *corev1.Secret, clusterSecret *corev1.Secret, tlsSecret *corev1.Secret) error {
-	changed := false
-	explanation := ""
+	var changes []string
 
 	if secret.Data == nil {
 		secret.Data = make(map[string][]byte)
@@ -359,19 +359,14 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secre
 
 			secret.Data[common.ArgoCDKeyAdminPassword] = []byte(hashedPassword)
 			secret.Data[common.ArgoCDKeyAdminPasswordMTime] = nowBytes()
-			explanation = "argo admin password"
-			changed = true
+			changes = append(changes, "argo admin password")
 		}
 	}
 
 	if hasArgoTLSChanged(secret, tlsSecret) {
 		secret.Data[common.ArgoCDKeyTLSCert] = tlsSecret.Data[common.ArgoCDKeyTLSCert]
 		secret.Data[common.ArgoCDKeyTLSPrivateKey] = tlsSecret.Data[common.ArgoCDKeyTLSPrivateKey]
-		if changed {
-			explanation += ", "
-		}
-		explanation += "argo tls secret"
-		changed = true
+		changes = append(changes, "argo tls secret")
 	}
 
 	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeDex {
@@ -384,23 +379,79 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secre
 			expected := *dexOIDCClientSecret
 			if actual != expected {
 				secret.Data[common.ArgoCDDexSecretKey] = []byte(*dexOIDCClientSecret)
-				if changed {
-					explanation += ", "
-				}
-				explanation += "argo dex secret"
-				changed = true
+				changes = append(changes, "argo dex secret")
 			}
 		}
 	}
 
+	changed, err := applyGitHubWebhookSecretFromRef(context.TODO(), r.Client, cr, secret)
+	if err != nil {
+		return err
+	}
 	if changed {
-		argoutil.LogResourceUpdate(log, secret, "updating", explanation)
+		changes = append(changes, "github webhook secret")
+	}
+
+	if len(changes) > 0 {
+		argoutil.LogResourceUpdate(log, secret, "updating", strings.Join(changes, ", "))
 		if err := r.Update(context.TODO(), secret); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+// applyGitHubWebhookSecretFromRef copies spec.webhookSecrets.github.secretRef into argocdSecret.Data[webhook.github.secret].
+// Returns true if argocdSecret was modified. If the declaration is removed or can no longer be resolved,
+// any previously managed webhook.github.secret value is removed.
+// Other Secret read errors are returned so the reconciler can retry.
+func applyGitHubWebhookSecretFromRef(ctx context.Context, c client.Client, cr *argoproj.ArgoCD, argocdSecret *corev1.Secret) (bool, error) {
+	if cr.Spec.WebhookSecrets == nil || cr.Spec.WebhookSecrets.GitHub == nil || cr.Spec.WebhookSecrets.GitHub.SecretRef == nil {
+		return deleteGitHubWebhookSecret(argocdSecret), nil
+	}
+	ref := cr.Spec.WebhookSecrets.GitHub.SecretRef
+	if ref.Name == "" {
+		log.Info("skipping GitHub webhook secret sync: secretRef.name is empty")
+		return deleteGitHubWebhookSecret(argocdSecret), nil
+	}
+	ns := cr.Namespace
+	src := &corev1.Secret{}
+	key := types.NamespacedName{Name: ref.Name, Namespace: ns}
+	if err := c.Get(ctx, key, src); err != nil {
+		if apierrors.IsNotFound(err) {
+			log.Info(fmt.Sprintf("warning: GitHub webhook secret reference not found (Secret %s/%s), skipping sync", ns, ref.Name))
+			return deleteGitHubWebhookSecret(argocdSecret), nil
+		}
+		return false, err
+	}
+	raw, ok := src.Data[ref.Key]
+	if !ok || len(raw) == 0 {
+		log.Info(fmt.Sprintf("warning: key %q missing or empty in Secret %s/%s, skipping GitHub webhook secret sync", ref.Key, ns, ref.Name))
+		return deleteGitHubWebhookSecret(argocdSecret), nil
+	}
+	val := make([]byte, len(raw))
+	copy(val, raw)
+
+	if argocdSecret.Data == nil {
+		argocdSecret.Data = make(map[string][]byte)
+	}
+	if bytes.Equal(argocdSecret.Data[common.ArgoCDKeyGitHubWebhookSecret], val) {
+		return false, nil
+	}
+	argocdSecret.Data[common.ArgoCDKeyGitHubWebhookSecret] = val
+	return true, nil
+}
+
+func deleteGitHubWebhookSecret(argocdSecret *corev1.Secret) bool {
+	if argocdSecret.Data == nil {
+		return false
+	}
+	if _, exists := argocdSecret.Data[common.ArgoCDKeyGitHubWebhookSecret]; !exists {
+		return false
+	}
+	delete(argocdSecret.Data, common.ArgoCDKeyGitHubWebhookSecret)
+	return true
 }
 
 // reconcileGrafanaSecret will ensure that the Grafana Secret is present.
@@ -747,12 +798,28 @@ func (r *ReconcileArgoCD) getClusterSecrets(cr *argoproj.ArgoCD) (*corev1.Secret
 func (r *ReconcileArgoCD) reconcileRedisInitialPasswordSecret(cr *argoproj.ArgoCD) error {
 	secret := argoutil.NewSecretWithSuffix(cr, "redis-initial-password")
 
-	secretExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret)
+	existed := true
+	// Recreate if the secret or some of its keys are missing
+	err := argoutil.FetchObject(r.Client, cr.Namespace, secret.Name, secret)
 	if err != nil {
-		return err
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+		existed = false
 	}
-	if secretExists {
-		return nil // Secret found, do nothing
+	if secret.Data != nil {
+		_, hasPwd := secret.Data[common.ArgoCDKeyAdminPassword]
+		_, hasAuth := secret.Data["auth"]
+		_, hasUsername := secret.Data["auth_username"]
+		_, hasAcl := secret.Data["users.acl"]
+		if hasPwd && hasAuth && hasUsername && hasAcl {
+			return nil // Healthy - keep it
+		}
+	}
+
+	if existed {
+		// Drop unsettable fields created by FetchObject
+		secret = argoutil.NewSecretWithSuffix(cr, "redis-initial-password")
 	}
 
 	redisInitialPassword, err := generateRedisAdminPassword()
@@ -760,13 +827,15 @@ func (r *ReconcileArgoCD) reconcileRedisInitialPasswordSecret(cr *argoproj.ArgoC
 		return err
 	}
 
-	secret.Data = map[string][]byte{
-		"immutable":                   []byte("true"),
-		common.ArgoCDKeyAdminPassword: redisInitialPassword,
-	}
+	secret.Data = argoutil.GetRedisSecretData(redisInitialPassword)
 
 	if err := controllerutil.SetControllerReference(cr, secret, r.Scheme); err != nil {
 		return err
+	}
+
+	if existed {
+		argoutil.LogResourceUpdate(log, secret)
+		return r.Update(context.TODO(), secret)
 	}
 	argoutil.LogResourceCreation(log, secret)
 	return r.Create(context.TODO(), secret)
