@@ -9,7 +9,6 @@ import (
 	"github.com/argoproj/argo-cd/v3/util/glob"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -66,7 +65,6 @@ func (r *ReconcileArgoCD) reconcileNamespaceManagement(argocd *argoproj.ArgoCD) 
 		} else {
 			message = fmt.Sprintf("Namespace %s is not permitted for management by ArgoCD instance %s based on NamespaceManagement rules", namespace, argocd.Namespace)
 			errorMessages = append(errorMessages, message)
-			statusUpdates = append(statusUpdates, nmStatus{nm: nm, message: message})
 		}
 
 		statusUpdates = append(statusUpdates, nmStatus{nm: nm, message: message})
@@ -159,19 +157,6 @@ func (r *ReconcileArgoCD) disableNamespaceManagement(argocd *argoproj.ArgoCD, k8
 		}
 
 		for _, nsName := range matchedNamespaces {
-			// Get namespace object
-			namespace := &corev1.Namespace{}
-			if err := r.Get(ctx, types.NamespacedName{Name: nsName}, namespace); err != nil {
-				log.Error(err, fmt.Sprintf("unable to fetch namespace %s", nsName))
-				return err
-			}
-
-			// Skip RBAC deletion if the namespace has the "managed-by" label
-			if namespace.Labels[common.ArgoCDManagedByLabel] == nsName {
-				log.Info(fmt.Sprintf("Skipping RBAC deletion for namespace %s due to managed-by label", nsName))
-				continue
-			}
-
 			if allowManaged {
 				if err := deleteRBACsForNamespace(nsName, k8sClient); err != nil {
 					log.Error(err, fmt.Sprintf("Failed to delete RBACs for namespace: %s", nsName))
