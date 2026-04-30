@@ -713,7 +713,7 @@ func policyRuleForRoleForImageUpdaterController() []v1.PolicyRule {
 	}
 }
 
-func policyRuleForClusterRoleForImageUpdaterController() []v1.PolicyRule {
+func policyRuleForRoleManagerRoleForImageUpdaterController() []v1.PolicyRule {
 	return []v1.PolicyRule{
 		{
 			APIGroups: []string{
