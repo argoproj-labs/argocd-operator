@@ -217,13 +217,6 @@ func LogResourceAction(log logr.Logger, action string, object metav1.Object, exp
 	log.Info(msg)
 }
 
-// GenerateAgentPrincipalRedisProxyServiceName generates a deterministic Service name for the agent's principal Redis proxy.
-// It truncates the Custom Resource (CR) name to ensure the final appended name stays within Kubernetes length limits.
-func GenerateAgentPrincipalRedisProxyServiceName(crName string) string {
-	truncatedCRName := TruncateWithHash(crName, 36)
-	return fmt.Sprintf("%s-agent-%s", truncatedCRName, "principal-redisproxy")
-}
-
 // AddTrackedByOperatorLabel adds the ArgoCDTrackedByOperator label to the resource
 func AddTrackedByOperatorLabel(meta *metav1.ObjectMeta) {
 	if meta.Labels == nil {
