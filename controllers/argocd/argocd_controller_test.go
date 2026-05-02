@@ -101,7 +101,7 @@ func TestReconcileArgoCD_DexWorkloads(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r := makeTestReconciler(cl, sch, makeTestK8sClientWithTokenReactor("mock-dex-token"))
 
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
@@ -139,10 +139,6 @@ func TestReconcileArgoCD_DexWorkloads(t *testing.T) {
 		assert.True(t, len(objectToVerify.GetOwnerReferences()) > 0)
 	}
 
-	var secretList corev1.SecretList
-	err = r.List(context.TODO(), &secretList, client.InNamespace(a.Namespace))
-	assert.NoError(t, err)
-
 	configMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "argocd-cm",
@@ -154,16 +150,12 @@ func TestReconcileArgoCD_DexWorkloads(t *testing.T) {
 
 	assert.Equal(t, configMap.Data["dex.config"], a.Spec.SSO.Dex.Config)
 
-	var dexSecret *corev1.Secret
-
-	for idx := range secretList.Items {
-		secret := secretList.Items[idx]
-		if strings.HasPrefix(secret.Name, "argocd-dex-server-token-") {
-			dexSecret = &secret
-			break
-		}
-	}
-	assert.NotNil(t, dexSecret)
+	// Verify the expiring token Secret (Opaque type) was created with the expected fixed name.
+	dexTokenSecret := &corev1.Secret{}
+	expectedTokenSecretName := getDexServerTokenSecretName(a)
+	err = r.Get(context.TODO(), types.NamespacedName{Name: expectedTokenSecretName, Namespace: a.Namespace}, dexTokenSecret)
+	assert.NoError(t, err, "expected dex token secret %q to exist", expectedTokenSecretName)
+	assert.Equal(t, corev1.SecretTypeOpaque, dexTokenSecret.Type)
 
 	err = r.Get(context.TODO(), client.ObjectKeyFromObject(a), a)
 	assert.NoError(t, err)

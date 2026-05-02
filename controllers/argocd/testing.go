@@ -19,6 +19,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-logr/logr"
 
@@ -26,13 +27,16 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
+	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
+	testclient "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
+	k8stesting "k8s.io/client-go/testing"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -63,6 +67,30 @@ func makeTestReconciler(client client.Client, sch *runtime.Scheme, k8sClient kub
 			tokenRenewalTimers: map[string]*tokenRenewalTimer{},
 		},
 	}
+}
+
+// makeTestK8sClientWithTokenReactor returns a fake Kubernetes client pre-configured
+// with a reactor that responds to TokenRequest sub-resource calls by returning a
+// token whose value is mockToken and whose expiry is ArgoCDDexServerTokenExpirySecs from now.
+func makeTestK8sClientWithTokenReactor(mockToken string) *testclient.Clientset {
+	k8sClient := testclient.NewSimpleClientset()
+	k8sClient.PrependReactor("create", "serviceaccounts", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		createAction, ok := action.(k8stesting.CreateAction)
+		if !ok {
+			return false, nil, nil
+		}
+		if createAction.GetSubresource() != "token" {
+			return false, nil, nil
+		}
+		expiry := metav1.NewTime(time.Now().Add(time.Duration(common.ArgoCDDexServerTokenExpirySecs) * time.Second))
+		return true, &authv1.TokenRequest{
+			Status: authv1.TokenRequestStatus{
+				Token:               mockToken,
+				ExpirationTimestamp: expiry,
+			},
+		}, nil
+	})
+	return k8sClient
 }
 
 func makeTestReconcilerClient(sch *runtime.Scheme, resObjs, subresObjs []client.Object, runtimeObj []runtime.Object) client.Client {
