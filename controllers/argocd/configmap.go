@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -387,7 +388,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	cm.Data[common.ArgoCDKeyHelpChatURL] = getHelpChatURL(cr)
 	cm.Data[common.ArgoCDKeyHelpChatText] = getHelpChatText(cr)
 	cm.Data[common.ArgoCDKeyKustomizeBuildOptions] = getKustomizeBuildOptions(cr)
-	cm.Data[common.ArgoCDWebTerminalEnabledKey] = fmt.Sprintf("%t", isWebTerminalEnabled(cr))
+	cm.Data[common.ArgoCDWebTerminalEnabledKey] = strconv.FormatBool(isWebTerminalEnabled(cr))
 
 	// Set installationID as a top-level key
 	if cr.Spec.InstallationID != "" {
@@ -1051,7 +1052,7 @@ func getDefaultResourceExclusions() []filteredResource {
 // isWebTerminalEnabled will return whether the web terminal is enabled for the given ArgoCD.
 func isWebTerminalEnabled(cr *argoproj.ArgoCD) bool {
 	if cr.Spec.WebTerminalEnabled == nil {
-		return false
+		return common.ArgoCDWebTerminalEnabledDefaultValue
 	}
 	return *cr.Spec.WebTerminalEnabled
 }
