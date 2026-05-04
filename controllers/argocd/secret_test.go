@@ -295,6 +295,49 @@ func Test_ReconcileArgoCD_ReconcileExistingArgoSecret(t *testing.T) {
 	assert.True(t, argoutil.IsTrackedByOperator(testSecret.Labels))
 }
 
+func Test_ReconcileArgoSecret_CreateIncludesDeclarativeWebhookSecrets(t *testing.T) {
+	argocd := &argoproj.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd",
+			Namespace: "argocd-operator",
+		},
+		Spec: argoproj.ArgoCDSpec{
+			WebhookSecrets: &argoproj.ArgoCDWebhookSecretsSpec{
+				GitHub: &argoproj.ArgoCDWebhookSecretsGitHub{
+					WebhookSecretRef: &argoproj.WebhookSecretKeySelector{Name: "webhook-src", Key: "token"},
+				},
+			},
+		},
+	}
+
+	srcSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "webhook-src", Namespace: "argocd-operator"},
+		Data:       map[string][]byte{"token": []byte("declared-token")},
+	}
+
+	clusterSecret := argoutil.NewSecretWithSuffix(argocd, "cluster")
+	clusterSecret.Data = map[string][]byte{common.ArgoCDKeyAdminPassword: []byte("something")}
+	tlsSecret := argoutil.NewSecretWithSuffix(argocd, "tls")
+
+	resObjs := []client.Object{argocd}
+	subresObjs := []client.Object{argocd}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	require.NoError(t, r.Create(context.TODO(), clusterSecret))
+	require.NoError(t, r.Create(context.TODO(), tlsSecret))
+	require.NoError(t, r.Create(context.TODO(), srcSecret))
+
+	require.NoError(t, r.reconcileArgoSecret(argocd))
+
+	out := &corev1.Secret{}
+	require.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: "argocd-operator"}, out))
+	require.Equal(t, []byte("declared-token"), out.Data[common.ArgoCDKeyGitHubWebhookSecret])
+	assert.True(t, argoutil.IsTrackedByOperator(out.Labels))
+}
+
 func Test_ReconcileArgoCD_ReconcileShouldNotChangeWhenUpdatedAdminPass(t *testing.T) {
 	argocd := &argoproj.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
@@ -865,136 +908,375 @@ func TestCombineClusterSecretNamespacesWithManagedNamespaces(t *testing.T) {
 
 }
 
-func Test_applyGitHubWebhookSecretFromRef(t *testing.T) {
+// Test_applyWebhookSecretFromRef covers applyWebhookSecretFromRef for all single-ref webhook provider
+func Test_applyWebhookSecretFromRef(t *testing.T) {
 	ctx := context.Background()
 	scheme := runtime.NewScheme()
 	assert.NoError(t, clientgoscheme.AddToScheme(scheme))
 	assert.NoError(t, argoproj.AddToScheme(scheme))
 
-	baseCR := func() *argoproj.ArgoCD {
-		return &argoproj.ArgoCD{
+	refSrcToken := func() *argoproj.WebhookSecretKeySelector {
+		return &argoproj.WebhookSecretKeySelector{Name: "src", Key: "token"}
+	}
+
+	providers := []struct {
+		name          string
+		destKey       string
+		logName       string
+		withSecretRef func(ws *argoproj.ArgoCDWebhookSecretsSpec)
+		getRef        func(cr *argoproj.ArgoCD) *argoproj.WebhookSecretKeySelector
+		clearRefName  func(cr *argoproj.ArgoCD)
+	}{
+		{
+			name: "GitHub", destKey: common.ArgoCDKeyGitHubWebhookSecret, logName: "GitHub",
+			withSecretRef: func(ws *argoproj.ArgoCDWebhookSecretsSpec) {
+				ws.GitHub = &argoproj.ArgoCDWebhookSecretsGitHub{WebhookSecretRef: refSrcToken()}
+			},
+			getRef: func(cr *argoproj.ArgoCD) *argoproj.WebhookSecretKeySelector {
+				if cr.Spec.WebhookSecrets == nil || cr.Spec.WebhookSecrets.GitHub == nil {
+					return nil
+				}
+				return cr.Spec.WebhookSecrets.GitHub.WebhookSecretRef
+			},
+			clearRefName: func(cr *argoproj.ArgoCD) {
+				cr.Spec.WebhookSecrets.GitHub.WebhookSecretRef.Name = ""
+			},
+		},
+		{
+			name: "GitLab", destKey: common.ArgoCDKeyGitLabWebhookSecret, logName: "GitLab",
+			withSecretRef: func(ws *argoproj.ArgoCDWebhookSecretsSpec) {
+				ws.GitLab = &argoproj.ArgoCDWebhookSecretsGitLab{WebhookSecretRef: refSrcToken()}
+			},
+			getRef: func(cr *argoproj.ArgoCD) *argoproj.WebhookSecretKeySelector {
+				if cr.Spec.WebhookSecrets == nil || cr.Spec.WebhookSecrets.GitLab == nil {
+					return nil
+				}
+				return cr.Spec.WebhookSecrets.GitLab.WebhookSecretRef
+			},
+			clearRefName: func(cr *argoproj.ArgoCD) {
+				cr.Spec.WebhookSecrets.GitLab.WebhookSecretRef.Name = ""
+			},
+		},
+		{
+			name: "BitbucketCloud", destKey: common.ArgoCDKeyBitbucketCloudWebhookSecret, logName: "Bitbucket Cloud",
+			withSecretRef: func(ws *argoproj.ArgoCDWebhookSecretsSpec) {
+				ws.Bitbucket = &argoproj.ArgoCDWebhookSecretsBitbucket{WebhookUUIDSecretRef: refSrcToken()}
+			},
+			getRef: func(cr *argoproj.ArgoCD) *argoproj.WebhookSecretKeySelector {
+				if cr.Spec.WebhookSecrets == nil || cr.Spec.WebhookSecrets.Bitbucket == nil {
+					return nil
+				}
+				return cr.Spec.WebhookSecrets.Bitbucket.WebhookUUIDSecretRef
+			},
+			clearRefName: func(cr *argoproj.ArgoCD) {
+				cr.Spec.WebhookSecrets.Bitbucket.WebhookUUIDSecretRef.Name = ""
+			},
+		},
+		{
+			name: "BitbucketServer", destKey: common.ArgoCDKeyBitbucketServerWebhookSecret, logName: "Bitbucket Server",
+			withSecretRef: func(ws *argoproj.ArgoCDWebhookSecretsSpec) {
+				ws.BitbucketServer = &argoproj.ArgoCDWebhookSecretsBitbucketServer{WebhookSecretRef: refSrcToken()}
+			},
+			getRef: func(cr *argoproj.ArgoCD) *argoproj.WebhookSecretKeySelector {
+				if cr.Spec.WebhookSecrets == nil || cr.Spec.WebhookSecrets.BitbucketServer == nil {
+					return nil
+				}
+				return cr.Spec.WebhookSecrets.BitbucketServer.WebhookSecretRef
+			},
+			clearRefName: func(cr *argoproj.ArgoCD) {
+				cr.Spec.WebhookSecrets.BitbucketServer.WebhookSecretRef.Name = ""
+			},
+		},
+		{
+			name: "Gogs", destKey: common.ArgoCDKeyGogsWebhookSecret, logName: "Gogs",
+			withSecretRef: func(ws *argoproj.ArgoCDWebhookSecretsSpec) {
+				ws.Gogs = &argoproj.ArgoCDWebhookSecretsGogs{WebhookSecretRef: refSrcToken()}
+			},
+			getRef: func(cr *argoproj.ArgoCD) *argoproj.WebhookSecretKeySelector {
+				if cr.Spec.WebhookSecrets == nil || cr.Spec.WebhookSecrets.Gogs == nil {
+					return nil
+				}
+				return cr.Spec.WebhookSecrets.Gogs.WebhookSecretRef
+			},
+			clearRefName: func(cr *argoproj.ArgoCD) {
+				cr.Spec.WebhookSecrets.Gogs.WebhookSecretRef.Name = ""
+			},
+		},
+	}
+
+	newCRWithWebhookRef := func(withSecretRef func(ws *argoproj.ArgoCDWebhookSecretsSpec)) *argoproj.ArgoCD {
+		cr := &argoproj.ArgoCD{
 			ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: "ns-a"},
 			Spec: argoproj.ArgoCDSpec{
-				WebhookSecrets: &argoproj.ArgoCDWebhookSecretsSpec{
-					GitHub: &argoproj.ArgoCDWebhookSecretsGitHub{
-						SecretRef: &argoproj.WebhookSecretKeySelector{
-							Name: "src",
-							Key:  "token",
-						},
-					},
-				},
+				WebhookSecrets: &argoproj.ArgoCDWebhookSecretsSpec{},
 			},
 		}
+		withSecretRef(cr.Spec.WebhookSecrets)
+		return cr
 	}
 
 	t.Run("success copies value", func(t *testing.T) {
-		cr := baseCR()
-		src := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "src", Namespace: "ns-a"},
-			Data:       map[string][]byte{"token": []byte("supersecret")},
+		for _, p := range providers {
+			t.Run(p.name, func(t *testing.T) {
+				cr := newCRWithWebhookRef(p.withSecretRef)
+				src := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "src", Namespace: "ns-a"},
+					Data:       map[string][]byte{"token": []byte("supersecret")},
+				}
+				cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(src).Build()
+				argocd := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "argocd-secret", Namespace: "ns-a"}, Data: map[string][]byte{}}
+				changed, err := applyWebhookSecretFromRef(ctx, cl, cr, argocd, p.getRef(cr), p.destKey, p.logName)
+				require.NoError(t, err)
+				assert.True(t, changed)
+				assert.Equal(t, []byte("supersecret"), argocd.Data[p.destKey])
+			})
 		}
-		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(src).Build()
-		argocd := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "argocd-secret", Namespace: "ns-a"}, Data: map[string][]byte{}}
-		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
-		require.NoError(t, err)
-		assert.True(t, changed)
-		assert.Equal(t, []byte("supersecret"), argocd.Data[common.ArgoCDKeyGitHubWebhookSecret])
 	})
 
 	t.Run("unchanged when value already matches", func(t *testing.T) {
-		cr := baseCR()
-		src := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "src", Namespace: "ns-a"},
-			Data:       map[string][]byte{"token": []byte("same")},
+		for _, p := range providers {
+			t.Run(p.name, func(t *testing.T) {
+				cr := newCRWithWebhookRef(p.withSecretRef)
+				src := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "src", Namespace: "ns-a"},
+					Data:       map[string][]byte{"token": []byte("same")},
+				}
+				cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(src).Build()
+				argocd := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "argocd-secret", Namespace: "ns-a"},
+					Data: map[string][]byte{
+						p.destKey: []byte("same"),
+					},
+				}
+				changed, err := applyWebhookSecretFromRef(ctx, cl, cr, argocd, p.getRef(cr), p.destKey, p.logName)
+				require.NoError(t, err)
+				assert.False(t, changed)
+			})
 		}
-		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(src).Build()
-		argocd := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "argocd-secret", Namespace: "ns-a"},
-			Data: map[string][]byte{
-				common.ArgoCDKeyGitHubWebhookSecret: []byte("same"),
-			},
-		}
-		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
-		require.NoError(t, err)
-		assert.False(t, changed)
 	})
 
 	t.Run("source secret missing", func(t *testing.T) {
-		cr := baseCR()
-		cl := fake.NewClientBuilder().WithScheme(scheme).Build()
-		argocd := &corev1.Secret{Data: map[string][]byte{
-			common.ArgoCDKeyGitHubWebhookSecret: []byte("stale"),
-		}}
-		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
-		require.NoError(t, err)
-		assert.True(t, changed)
-		assert.Empty(t, argocd.Data[common.ArgoCDKeyGitHubWebhookSecret])
+		for _, p := range providers {
+			t.Run(p.name, func(t *testing.T) {
+				cr := newCRWithWebhookRef(p.withSecretRef)
+				cl := fake.NewClientBuilder().WithScheme(scheme).Build()
+				argocd := &corev1.Secret{Data: map[string][]byte{
+					p.destKey: []byte("stale"),
+				}}
+				changed, err := applyWebhookSecretFromRef(ctx, cl, cr, argocd, p.getRef(cr), p.destKey, p.logName)
+				require.NoError(t, err)
+				assert.True(t, changed)
+				assert.Empty(t, argocd.Data[p.destKey])
+			})
+		}
 	})
 
 	t.Run("key missing in source secret", func(t *testing.T) {
-		cr := baseCR()
-		src := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "src", Namespace: "ns-a"},
-			Data:       map[string][]byte{"other": []byte("x")},
+		for _, p := range providers {
+			t.Run(p.name, func(t *testing.T) {
+				cr := newCRWithWebhookRef(p.withSecretRef)
+				src := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "src", Namespace: "ns-a"},
+					Data:       map[string][]byte{"other": []byte("x")},
+				}
+				cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(src).Build()
+				argocd := &corev1.Secret{Data: map[string][]byte{
+					p.destKey: []byte("stale"),
+				}}
+				changed, err := applyWebhookSecretFromRef(ctx, cl, cr, argocd, p.getRef(cr), p.destKey, p.logName)
+				require.NoError(t, err)
+				assert.True(t, changed)
+				assert.Empty(t, argocd.Data[p.destKey])
+			})
 		}
-		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(src).Build()
-		argocd := &corev1.Secret{Data: map[string][]byte{
-			common.ArgoCDKeyGitHubWebhookSecret: []byte("stale"),
-		}}
-		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
-		require.NoError(t, err)
-		assert.True(t, changed)
-		assert.Empty(t, argocd.Data[common.ArgoCDKeyGitHubWebhookSecret])
 	})
 
 	t.Run("get returns non-NotFound error", func(t *testing.T) {
-		cr := baseCR()
-		want := errors.New("simulated API failure")
-		cl := &getAlwaysErrClient{Client: fake.NewClientBuilder().WithScheme(scheme).Build(), getErr: want}
-		argocd := &corev1.Secret{Data: map[string][]byte{}}
-		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
-		assert.ErrorIs(t, err, want)
-		assert.False(t, changed)
+		for _, p := range providers {
+			t.Run(p.name, func(t *testing.T) {
+				cr := newCRWithWebhookRef(p.withSecretRef)
+				want := errors.New("simulated API failure")
+				cl := &getAlwaysErrClient{Client: fake.NewClientBuilder().WithScheme(scheme).Build(), getErr: want}
+				argocd := &corev1.Secret{Data: map[string][]byte{}}
+				changed, err := applyWebhookSecretFromRef(ctx, cl, cr, argocd, p.getRef(cr), p.destKey, p.logName)
+				assert.ErrorIs(t, err, want)
+				assert.False(t, changed)
+			})
+		}
 	})
 
 	t.Run("get returns non-NotFound error preserves stale webhook secret", func(t *testing.T) {
-		cr := baseCR()
-		want := errors.New("simulated API failure")
-		cl := &getAlwaysErrClient{Client: fake.NewClientBuilder().WithScheme(scheme).Build(), getErr: want}
-		stale := []byte("stale")
-		argocd := &corev1.Secret{Data: map[string][]byte{
-			common.ArgoCDKeyGitHubWebhookSecret: stale,
-		}}
-		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
-		assert.ErrorIs(t, err, want)
-		assert.False(t, changed)
-		assert.Equal(t, stale, argocd.Data[common.ArgoCDKeyGitHubWebhookSecret])
+		for _, p := range providers {
+			t.Run(p.name, func(t *testing.T) {
+				cr := newCRWithWebhookRef(p.withSecretRef)
+				want := errors.New("simulated API failure")
+				cl := &getAlwaysErrClient{Client: fake.NewClientBuilder().WithScheme(scheme).Build(), getErr: want}
+				stale := []byte("stale")
+				argocd := &corev1.Secret{Data: map[string][]byte{
+					p.destKey: stale,
+				}}
+				changed, err := applyWebhookSecretFromRef(ctx, cl, cr, argocd, p.getRef(cr), p.destKey, p.logName)
+				assert.ErrorIs(t, err, want)
+				assert.False(t, changed)
+				assert.Equal(t, stale, argocd.Data[p.destKey])
+			})
+		}
 	})
 
 	t.Run("no webhook spec", func(t *testing.T) {
-		cr := &argoproj.ArgoCD{ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: "ns-a"}}
-		cl := fake.NewClientBuilder().WithScheme(scheme).Build()
-		argocd := &corev1.Secret{Data: map[string][]byte{
-			common.ArgoCDKeyGitHubWebhookSecret: []byte("stale"),
-		}}
-		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
-		require.NoError(t, err)
-		assert.True(t, changed)
-		assert.Empty(t, argocd.Data[common.ArgoCDKeyGitHubWebhookSecret])
+		for _, p := range providers {
+			t.Run(p.name, func(t *testing.T) {
+				cr := &argoproj.ArgoCD{ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: "ns-a"}}
+				cl := fake.NewClientBuilder().WithScheme(scheme).Build()
+				argocd := &corev1.Secret{Data: map[string][]byte{
+					p.destKey: []byte("stale"),
+				}}
+				changed, err := applyWebhookSecretFromRef(ctx, cl, cr, argocd, nil, p.destKey, p.logName)
+				require.NoError(t, err)
+				assert.True(t, changed)
+				assert.Empty(t, argocd.Data[p.destKey])
+			})
+		}
 	})
 
 	t.Run("empty secret ref name removes stale value", func(t *testing.T) {
-		cr := baseCR()
-		cr.Spec.WebhookSecrets.GitHub.SecretRef.Name = ""
-		cl := fake.NewClientBuilder().WithScheme(scheme).Build()
-		argocd := &corev1.Secret{Data: map[string][]byte{
-			common.ArgoCDKeyGitHubWebhookSecret: []byte("stale"),
-		}}
-		changed, err := applyGitHubWebhookSecretFromRef(ctx, cl, cr, argocd)
+		for _, p := range providers {
+			t.Run(p.name, func(t *testing.T) {
+				cr := newCRWithWebhookRef(p.withSecretRef)
+				p.clearRefName(cr)
+				cl := fake.NewClientBuilder().WithScheme(scheme).Build()
+				argocd := &corev1.Secret{Data: map[string][]byte{
+					p.destKey: []byte("stale"),
+				}}
+				changed, err := applyWebhookSecretFromRef(ctx, cl, cr, argocd, p.getRef(cr), p.destKey, p.logName)
+				require.NoError(t, err)
+				assert.True(t, changed)
+				assert.Empty(t, argocd.Data[p.destKey])
+			})
+		}
+	})
+}
+
+func Test_applyAzureDevOpsWebhookSecretRefs(t *testing.T) {
+	ctx := context.Background()
+	scheme := runtime.NewScheme()
+	assert.NoError(t, clientgoscheme.AddToScheme(scheme))
+	assert.NoError(t, argoproj.AddToScheme(scheme))
+	cleanupBase := &argoproj.ArgoCD{ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: "ns-a"}}
+
+	t.Run("copies username and password from referenced Secret", func(t *testing.T) {
+		ws := &argoproj.ArgoCDWebhookSecretsSpec{
+			AzureDevOps: &argoproj.ArgoCDWebhookSecretsAzureDevOps{
+				UsernameSecretRef: &argoproj.WebhookSecretKeySelector{Name: "ado", Key: "username"},
+				PasswordSecretRef: &argoproj.WebhookSecretKeySelector{Name: "ado", Key: "password"},
+			},
+		}
+		cr := &argoproj.ArgoCD{
+			ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: "ns-a"},
+			Spec:       argoproj.ArgoCDSpec{WebhookSecrets: ws},
+		}
+		ado := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "ado", Namespace: "ns-a"},
+			Data: map[string][]byte{
+				"username": []byte("ado-user"),
+				"password": []byte("ado-pass"),
+			},
+		}
+		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(ado).Build()
+		argocd := &corev1.Secret{Data: map[string][]byte{}}
+		changed, err := applyAzureDevOpsWebhookSecretRefs(ctx, cl, cr, argocd, ws)
 		require.NoError(t, err)
 		assert.True(t, changed)
-		assert.Empty(t, argocd.Data[common.ArgoCDKeyGitHubWebhookSecret])
+		assert.Equal(t, []byte("ado-user"), argocd.Data[common.ArgoCDKeyAzureDevOpsWebhookUsername])
+		assert.Equal(t, []byte("ado-pass"), argocd.Data[common.ArgoCDKeyAzureDevOpsWebhookPassword])
 	})
+
+	t.Run("nil webhook spec removes both managed keys", func(t *testing.T) {
+		cl := fake.NewClientBuilder().WithScheme(scheme).Build()
+		argocd := &corev1.Secret{Data: map[string][]byte{
+			common.ArgoCDKeyAzureDevOpsWebhookUsername: []byte("u"),
+			common.ArgoCDKeyAzureDevOpsWebhookPassword: []byte("p"),
+		}}
+		changed, err := applyAzureDevOpsWebhookSecretRefs(ctx, cl, cleanupBase, argocd, nil)
+		require.NoError(t, err)
+		assert.True(t, changed)
+		assert.Empty(t, argocd.Data[common.ArgoCDKeyAzureDevOpsWebhookUsername])
+		assert.Empty(t, argocd.Data[common.ArgoCDKeyAzureDevOpsWebhookPassword])
+	})
+
+	t.Run("empty username ref name removes only username key", func(t *testing.T) {
+		ws := &argoproj.ArgoCDWebhookSecretsSpec{
+			AzureDevOps: &argoproj.ArgoCDWebhookSecretsAzureDevOps{
+				UsernameSecretRef: &argoproj.WebhookSecretKeySelector{Name: "", Key: "username"},
+				PasswordSecretRef: &argoproj.WebhookSecretKeySelector{Name: "ado", Key: "password"},
+			},
+		}
+		cr := &argoproj.ArgoCD{ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: "ns-a"}, Spec: argoproj.ArgoCDSpec{WebhookSecrets: ws}}
+		ado := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ado", Namespace: "ns-a"}, Data: map[string][]byte{"password": []byte("p-only")}}
+		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(ado).Build()
+		argocd := &corev1.Secret{Data: map[string][]byte{
+			common.ArgoCDKeyAzureDevOpsWebhookUsername: []byte("stale-user"),
+		}}
+		changed, err := applyAzureDevOpsWebhookSecretRefs(ctx, cl, cr, argocd, ws)
+		require.NoError(t, err)
+		assert.True(t, changed)
+		assert.Empty(t, argocd.Data[common.ArgoCDKeyAzureDevOpsWebhookUsername])
+		assert.Equal(t, []byte("p-only"), argocd.Data[common.ArgoCDKeyAzureDevOpsWebhookPassword])
+	})
+
+	t.Run("get error on username ref preserves both stale values", func(t *testing.T) {
+		want := errors.New("simulated API failure")
+		ws := &argoproj.ArgoCDWebhookSecretsSpec{
+			AzureDevOps: &argoproj.ArgoCDWebhookSecretsAzureDevOps{
+				UsernameSecretRef: &argoproj.WebhookSecretKeySelector{Name: "missing", Key: "u"},
+				PasswordSecretRef: &argoproj.WebhookSecretKeySelector{Name: "missing", Key: "p"},
+			},
+		}
+		cr := &argoproj.ArgoCD{ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: "ns-a"}, Spec: argoproj.ArgoCDSpec{WebhookSecrets: ws}}
+		cl := &getAlwaysErrClient{Client: fake.NewClientBuilder().WithScheme(scheme).Build(), getErr: want}
+		u, p := []byte("u-stale"), []byte("p-stale")
+		argocd := &corev1.Secret{Data: map[string][]byte{
+			common.ArgoCDKeyAzureDevOpsWebhookUsername: u,
+			common.ArgoCDKeyAzureDevOpsWebhookPassword: p,
+		}}
+		changed, err := applyAzureDevOpsWebhookSecretRefs(ctx, cl, cr, argocd, ws)
+		assert.ErrorIs(t, err, want)
+		assert.False(t, changed)
+		assert.Equal(t, u, argocd.Data[common.ArgoCDKeyAzureDevOpsWebhookUsername])
+		assert.Equal(t, p, argocd.Data[common.ArgoCDKeyAzureDevOpsWebhookPassword])
+	})
+}
+
+// Test_applyDeclarativeWebhookSecrets_multiProvider covers applyDeclarativeWebhookSecrets with GitHub+GitLab
+// (orchestrates the single-ref loop, distinct from applyWebhookSecretFromRef in isolation).
+func Test_applyDeclarativeWebhookSecrets_multiProvider(t *testing.T) {
+	ctx := context.Background()
+	scheme := runtime.NewScheme()
+	assert.NoError(t, clientgoscheme.AddToScheme(scheme))
+	assert.NoError(t, argoproj.AddToScheme(scheme))
+	cr := &argoproj.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{Name: "argocd", Namespace: "ns-a"},
+		Spec: argoproj.ArgoCDSpec{
+			WebhookSecrets: &argoproj.ArgoCDWebhookSecretsSpec{
+				GitHub: &argoproj.ArgoCDWebhookSecretsGitHub{
+					WebhookSecretRef: &argoproj.WebhookSecretKeySelector{Name: "gh", Key: "t"},
+				},
+				GitLab: &argoproj.ArgoCDWebhookSecretsGitLab{
+					WebhookSecretRef: &argoproj.WebhookSecretKeySelector{Name: "gl", Key: "s"},
+				},
+			},
+		},
+	}
+	gh := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "gh", Namespace: "ns-a"}, Data: map[string][]byte{"t": []byte("g")}}
+	gl := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "gl", Namespace: "ns-a"}, Data: map[string][]byte{"s": []byte("l")}}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(gh, gl).Build()
+	argocd := &corev1.Secret{Data: map[string][]byte{}}
+	var changes []string
+	require.NoError(t, applyDeclarativeWebhookSecrets(ctx, cl, cr, argocd, &changes))
+	assert.Contains(t, changes, "GitHub webhook secret")
+	assert.Contains(t, changes, "GitLab webhook secret")
+	assert.Equal(t, []byte("g"), argocd.Data[common.ArgoCDKeyGitHubWebhookSecret])
+	assert.Equal(t, []byte("l"), argocd.Data[common.ArgoCDKeyGitLabWebhookSecret])
 }
 
 // getAlwaysErrClient wraps a client.Client and always returns getErr from Get (for testing Secret read failures).

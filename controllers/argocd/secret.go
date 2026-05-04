@@ -208,6 +208,11 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoproj.ArgoCD) error {
 		}
 	}
 
+	var webhookChanges []string
+	if err := applyDeclarativeWebhookSecrets(context.TODO(), r.Client, cr, secret, &webhookChanges); err != nil {
+		return err
+	}
+
 	if err := controllerutil.SetControllerReference(cr, secret, r.Scheme); err != nil {
 		return err
 	}
@@ -386,12 +391,8 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secre
 		}
 	}
 
-	changed, err := applyGitHubWebhookSecretFromRef(context.TODO(), r.Client, cr, secret)
-	if err != nil {
+	if err := applyDeclarativeWebhookSecrets(context.TODO(), r.Client, cr, secret, &changes); err != nil {
 		return err
-	}
-	if changed {
-		changes = append(changes, "github webhook secret")
 	}
 
 	if len(changes) > 0 {
@@ -404,55 +405,176 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secre
 	return nil
 }
 
-// applyGitHubWebhookSecretFromRef copies spec.webhookSecrets.github.secretRef into argocdSecret.Data[webhook.github.secret].
-// Returns true if argocdSecret was modified. If the declaration is removed or can no longer be resolved,
-// any previously managed webhook.github.secret value is removed.
-// Other Secret read errors are returned so the reconciler can retry.
-func applyGitHubWebhookSecretFromRef(ctx context.Context, c client.Client, cr *argoproj.ArgoCD, argocdSecret *corev1.Secret) (bool, error) {
-	if cr.Spec.WebhookSecrets == nil || cr.Spec.WebhookSecrets.GitHub == nil || cr.Spec.WebhookSecrets.GitHub.SecretRef == nil {
-		return deleteGitHubWebhookSecret(argocdSecret), nil
+// declarativeSingleRefProvider describes one webhook.* key synced from a Kubernetes Secret reference.
+type declarativeSingleRefProvider struct {
+	destKey string
+	logName string // provider label for applyWebhookSecretFromRef logs and for recording sync updates in *changes
+	getRef  func(*argoproj.ArgoCDWebhookSecretsSpec) *argoproj.WebhookSecretKeySelector
+}
+
+// webhookSingleRefProviders lists Git/GitLab/Bitbucket/Gogs single-ref entries in stable order for applyAllSingleRefDeclarativeWebhookSecrets.
+var webhookSingleRefProviders = []declarativeSingleRefProvider{
+	{
+		destKey: common.ArgoCDKeyGitHubWebhookSecret,
+		logName: "GitHub",
+		getRef: func(webhookSecrets *argoproj.ArgoCDWebhookSecretsSpec) *argoproj.WebhookSecretKeySelector {
+			if webhookSecrets == nil || webhookSecrets.GitHub == nil {
+				return nil
+			}
+			return webhookSecrets.GitHub.WebhookSecretRef
+		},
+	},
+	{
+		destKey: common.ArgoCDKeyGitLabWebhookSecret,
+		logName: "GitLab",
+		getRef: func(webhookSecrets *argoproj.ArgoCDWebhookSecretsSpec) *argoproj.WebhookSecretKeySelector {
+			if webhookSecrets == nil || webhookSecrets.GitLab == nil {
+				return nil
+			}
+			return webhookSecrets.GitLab.WebhookSecretRef
+		},
+	},
+	{
+		destKey: common.ArgoCDKeyBitbucketCloudWebhookSecret,
+		logName: "Bitbucket Cloud",
+		getRef: func(webhookSecrets *argoproj.ArgoCDWebhookSecretsSpec) *argoproj.WebhookSecretKeySelector {
+			if webhookSecrets == nil || webhookSecrets.Bitbucket == nil {
+				return nil
+			}
+			return webhookSecrets.Bitbucket.WebhookUUIDSecretRef
+		},
+	},
+	{
+		destKey: common.ArgoCDKeyBitbucketServerWebhookSecret,
+		logName: "Bitbucket Server",
+		getRef: func(webhookSecrets *argoproj.ArgoCDWebhookSecretsSpec) *argoproj.WebhookSecretKeySelector {
+			if webhookSecrets == nil || webhookSecrets.BitbucketServer == nil {
+				return nil
+			}
+			return webhookSecrets.BitbucketServer.WebhookSecretRef
+		},
+	},
+	{
+		destKey: common.ArgoCDKeyGogsWebhookSecret,
+		logName: "Gogs",
+		getRef: func(webhookSecrets *argoproj.ArgoCDWebhookSecretsSpec) *argoproj.WebhookSecretKeySelector {
+			if webhookSecrets == nil || webhookSecrets.Gogs == nil {
+				return nil
+			}
+			return webhookSecrets.Gogs.WebhookSecretRef
+		},
+	},
+}
+
+// applyAllSingleRefDeclarativeWebhookSecrets applies webhookSingleRefProviders (one ref per Git provider key).
+func applyAllSingleRefDeclarativeWebhookSecrets(ctx context.Context, c client.Client, cr *argoproj.ArgoCD, argocdSecret *corev1.Secret, webhookSecrets *argoproj.ArgoCDWebhookSecretsSpec, changes *[]string) error {
+	for _, p := range webhookSingleRefProviders {
+		ref := p.getRef(webhookSecrets)
+		changed, err := applyWebhookSecretFromRef(ctx, c, cr, argocdSecret, ref, p.destKey, p.logName)
+		if err != nil {
+			return err
+		}
+		if changed {
+			*changes = append(*changes, fmt.Sprintf("%s webhook secret", p.logName))
+		}
 	}
-	ref := cr.Spec.WebhookSecrets.GitHub.SecretRef
+	return nil
+}
+
+// applyAzureDevOpsWebhookSecretRefs syncs username and password refs when azureDevOps is set; otherwise removes both keys.
+func applyAzureDevOpsWebhookSecretRefs(ctx context.Context, c client.Client, cr *argoproj.ArgoCD, argocdSecret *corev1.Secret, webhookSecrets *argoproj.ArgoCDWebhookSecretsSpec) (bool, error) {
+	if webhookSecrets == nil || webhookSecrets.AzureDevOps == nil {
+		c1 := deleteManagedWebhookKey(argocdSecret, common.ArgoCDKeyAzureDevOpsWebhookUsername)
+		c2 := deleteManagedWebhookKey(argocdSecret, common.ArgoCDKeyAzureDevOpsWebhookPassword)
+		return c1 || c2, nil
+	}
+	ado := webhookSecrets.AzureDevOps
+	fields := []struct {
+		ref     *argoproj.WebhookSecretKeySelector
+		destKey string
+		logName string
+	}{
+		{ado.UsernameSecretRef, common.ArgoCDKeyAzureDevOpsWebhookUsername, "Azure DevOps username"},
+		{ado.PasswordSecretRef, common.ArgoCDKeyAzureDevOpsWebhookPassword, "Azure DevOps password"},
+	}
+	var changed bool
+	for _, f := range fields {
+		fieldChanged, err := applyWebhookSecretFromRef(ctx, c, cr, argocdSecret, f.ref, f.destKey, f.logName)
+		if err != nil {
+			return false, err
+		}
+		changed = changed || fieldChanged
+	}
+	return changed, nil
+}
+
+// applyDeclarativeWebhookSecrets applies single-ref webhook providers then Azure DevOps refs from cr.Spec.WebhookSecrets into argocd-secret.
+// It appends the change reasons to *changes when the secret is modified.
+func applyDeclarativeWebhookSecrets(ctx context.Context, c client.Client, cr *argoproj.ArgoCD, argocdSecret *corev1.Secret, changes *[]string) error {
+	var webhookSecrets *argoproj.ArgoCDWebhookSecretsSpec
+	if cr.Spec.WebhookSecrets != nil {
+		webhookSecrets = cr.Spec.WebhookSecrets
+	}
+	if err := applyAllSingleRefDeclarativeWebhookSecrets(ctx, c, cr, argocdSecret, webhookSecrets, changes); err != nil {
+		return err
+	}
+	changed, err := applyAzureDevOpsWebhookSecretRefs(ctx, c, cr, argocdSecret, webhookSecrets)
+	if err != nil {
+		return err
+	}
+	if changed {
+		*changes = append(*changes, "azure devops webhook credentials")
+	}
+	return nil
+}
+
+// applyWebhookSecretFromRef copies the referenced Secret key into argocdSecret.Data[destKey].
+// Returns true if argocdSecret was modified.
+// If ref is nil, ref.Name is empty, or the Secret/key cannot be resolved, any managed value at destKey is removed.
+// Other Secret Get errors are returned so the reconciler can retry.
+func applyWebhookSecretFromRef(ctx context.Context, c client.Client, cr *argoproj.ArgoCD, argocdSecret *corev1.Secret, ref *argoproj.WebhookSecretKeySelector, destKey, providerLogName string) (bool, error) {
+	if ref == nil {
+		return deleteManagedWebhookKey(argocdSecret, destKey), nil
+	}
 	if ref.Name == "" {
-		log.Info("skipping GitHub webhook secret sync: secretRef.name is empty")
-		return deleteGitHubWebhookSecret(argocdSecret), nil
+		log.Info(fmt.Sprintf("skipping %s webhook secret sync: referenced Secret name is empty", providerLogName))
+		return deleteManagedWebhookKey(argocdSecret, destKey), nil
 	}
 	ns := cr.Namespace
 	src := &corev1.Secret{}
 	key := types.NamespacedName{Name: ref.Name, Namespace: ns}
 	if err := c.Get(ctx, key, src); err != nil {
-		if apierrors.IsNotFound(err) {
-			log.Info(fmt.Sprintf("warning: GitHub webhook secret reference not found (Secret %s/%s), skipping sync", ns, ref.Name))
-			return deleteGitHubWebhookSecret(argocdSecret), nil
+		if !apierrors.IsNotFound(err) {
+			return false, err
 		}
-		return false, err
+		log.Info(fmt.Sprintf("warning: %s webhook secret reference not found (Secret %s/%s), skipping sync", providerLogName, ns, ref.Name))
+		return deleteManagedWebhookKey(argocdSecret, destKey), nil
 	}
 	raw, ok := src.Data[ref.Key]
 	if !ok || len(raw) == 0 {
-		log.Info(fmt.Sprintf("warning: key %q missing or empty in Secret %s/%s, skipping GitHub webhook secret sync", ref.Key, ns, ref.Name))
-		return deleteGitHubWebhookSecret(argocdSecret), nil
+		log.Info(fmt.Sprintf("warning: key %q missing or empty in Secret %s/%s, skipping %s webhook secret sync", ref.Key, ns, ref.Name, providerLogName))
+		return deleteManagedWebhookKey(argocdSecret, destKey), nil
 	}
 	val := make([]byte, len(raw))
 	copy(val, raw)
-
 	if argocdSecret.Data == nil {
 		argocdSecret.Data = make(map[string][]byte)
 	}
-	if bytes.Equal(argocdSecret.Data[common.ArgoCDKeyGitHubWebhookSecret], val) {
+	if bytes.Equal(argocdSecret.Data[destKey], val) {
 		return false, nil
 	}
-	argocdSecret.Data[common.ArgoCDKeyGitHubWebhookSecret] = val
+	argocdSecret.Data[destKey] = val
 	return true, nil
 }
 
-func deleteGitHubWebhookSecret(argocdSecret *corev1.Secret) bool {
+func deleteManagedWebhookKey(argocdSecret *corev1.Secret, key string) bool {
 	if argocdSecret.Data == nil {
 		return false
 	}
-	if _, exists := argocdSecret.Data[common.ArgoCDKeyGitHubWebhookSecret]; !exists {
+	if _, exists := argocdSecret.Data[key]; !exists {
 		return false
 	}
-	delete(argocdSecret.Data, common.ArgoCDKeyGitHubWebhookSecret)
+	delete(argocdSecret.Data, key)
 	return true
 }
 

@@ -8752,13 +8752,127 @@ spec:
                   WebhookSecrets references Kubernetes Secrets that supply webhook credentials per provider.
                   The operator syncs values into argocd-secret under the keys Argo CD expects.
                 properties:
-                  github:
-                    description: 'GitHub: Secret key reference for the webhook secret
-                      used to verify incoming webhook requests.'
+                  azureDevOps:
+                    description: 'AzureDevOps: Secret key references for the Azure
+                      DevOps webhook username and password (or PAT).'
                     properties:
-                      secretRef:
-                        description: SecretRef points to the key holding the webhook
-                          secret value.
+                      passwordSecretRef:
+                        description: PasswordSecretRef points to the key holding the
+                          password or PAT.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                      usernameSecretRef:
+                        description: UsernameSecretRef points to the key holding the
+                          username.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                    x-kubernetes-validations:
+                    - message: usernameSecretRef and passwordSecretRef must be set
+                        together
+                      rule: (has(self.usernameSecretRef) && has(self.passwordSecretRef))
+                        || (!has(self.usernameSecretRef) && !has(self.passwordSecretRef))
+                  bitbucket:
+                    description: 'Bitbucket: Secret key reference for the Bitbucket
+                      Cloud webhook UUID.'
+                    properties:
+                      webhookUUIDSecretRef:
+                        description: WebhookUUIDSecretRef points to the key holding
+                          the Bitbucket Cloud webhook UUID.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                  bitbucketServer:
+                    description: 'BitbucketServer: Secret key reference for the Bitbucket
+                      Server webhook secret.'
+                    properties:
+                      webhookSecretRef:
+                        description: WebhookSecretRef points to the key holding the
+                          Bitbucket Server webhook shared secret.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                  github:
+                    description: 'GitHub: Secret key reference for the GitHub webhook
+                      shared secret.'
+                    properties:
+                      webhookSecretRef:
+                        description: WebhookSecretRef points to the key holding the
+                          GitHub webhook shared secret.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                  gitlab:
+                    description: 'GitLab: Secret key reference for the GitLab webhook
+                      shared secret.'
+                    properties:
+                      webhookSecretRef:
+                        description: WebhookSecretRef points to the key holding the
+                          GitLab webhook shared secret.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                  gogs:
+                    description: 'Gogs: Secret key reference for the Gogs webhook
+                      shared secret.'
+                    properties:
+                      webhookSecretRef:
+                        description: WebhookSecretRef points to the key holding the
+                          Gogs webhook shared secret.
                         properties:
                           key:
                             description: Key in the Secret whose value should be used.
@@ -32252,13 +32366,127 @@ spec:
                   WebhookSecrets references Kubernetes Secrets that supply webhook credentials per provider.
                   The operator syncs values into argocd-secret under the keys Argo CD expects.
                 properties:
-                  github:
-                    description: 'GitHub: Secret key reference for the webhook secret
-                      used to verify incoming webhook requests.'
+                  azureDevOps:
+                    description: 'AzureDevOps: Secret key references for the Azure
+                      DevOps webhook username and password (or PAT).'
                     properties:
-                      secretRef:
-                        description: SecretRef points to the key holding the webhook
-                          secret value.
+                      passwordSecretRef:
+                        description: PasswordSecretRef points to the key holding the
+                          password or PAT.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                      usernameSecretRef:
+                        description: UsernameSecretRef points to the key holding the
+                          username.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                    x-kubernetes-validations:
+                    - message: usernameSecretRef and passwordSecretRef must be set
+                        together
+                      rule: (has(self.usernameSecretRef) && has(self.passwordSecretRef))
+                        || (!has(self.usernameSecretRef) && !has(self.passwordSecretRef))
+                  bitbucket:
+                    description: 'Bitbucket: Secret key reference for the Bitbucket
+                      Cloud webhook UUID.'
+                    properties:
+                      webhookUUIDSecretRef:
+                        description: WebhookUUIDSecretRef points to the key holding
+                          the Bitbucket Cloud webhook UUID.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                  bitbucketServer:
+                    description: 'BitbucketServer: Secret key reference for the Bitbucket
+                      Server webhook secret.'
+                    properties:
+                      webhookSecretRef:
+                        description: WebhookSecretRef points to the key holding the
+                          Bitbucket Server webhook shared secret.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                  github:
+                    description: 'GitHub: Secret key reference for the GitHub webhook
+                      shared secret.'
+                    properties:
+                      webhookSecretRef:
+                        description: WebhookSecretRef points to the key holding the
+                          GitHub webhook shared secret.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                  gitlab:
+                    description: 'GitLab: Secret key reference for the GitLab webhook
+                      shared secret.'
+                    properties:
+                      webhookSecretRef:
+                        description: WebhookSecretRef points to the key holding the
+                          GitLab webhook shared secret.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                  gogs:
+                    description: 'Gogs: Secret key reference for the Gogs webhook
+                      shared secret.'
+                    properties:
+                      webhookSecretRef:
+                        description: WebhookSecretRef points to the key holding the
+                          Gogs webhook shared secret.
                         properties:
                           key:
                             description: Key in the Secret whose value should be used.

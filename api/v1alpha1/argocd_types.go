@@ -908,15 +908,63 @@ type ManagedNamespaces struct {
 // ArgoCDWebhookSecretsSpec holds declarative references to Secrets for Git provider webhook credentials.
 // +k8s:openapi-gen=true
 type ArgoCDWebhookSecretsSpec struct {
-	// GitHub: Secret key reference for the webhook secret used to verify incoming webhook requests.
+	// GitHub: Secret key reference for the GitHub webhook shared secret.
 	GitHub *ArgoCDWebhookSecretsGitHub `json:"github,omitempty"`
+	// GitLab: Secret key reference for the GitLab webhook shared secret.
+	GitLab *ArgoCDWebhookSecretsGitLab `json:"gitlab,omitempty"`
+	// Bitbucket: Secret key reference for the Bitbucket Cloud webhook UUID.
+	Bitbucket *ArgoCDWebhookSecretsBitbucket `json:"bitbucket,omitempty"`
+	// BitbucketServer: Secret key reference for the Bitbucket Server webhook secret.
+	BitbucketServer *ArgoCDWebhookSecretsBitbucketServer `json:"bitbucketServer,omitempty"`
+	// Gogs: Secret key reference for the Gogs webhook shared secret.
+	Gogs *ArgoCDWebhookSecretsGogs `json:"gogs,omitempty"`
+	// AzureDevOps: Secret key references for the Azure DevOps webhook username and password (or PAT).
+	AzureDevOps *ArgoCDWebhookSecretsAzureDevOps `json:"azureDevOps,omitempty"`
 }
 
 // ArgoCDWebhookSecretsGitHub declares where to read the GitHub webhook secret.
 // +k8s:openapi-gen=true
 type ArgoCDWebhookSecretsGitHub struct {
-	// SecretRef points to the key holding the webhook secret value.
-	SecretRef *WebhookSecretKeySelector `json:"secretRef,omitempty"`
+	// WebhookSecretRef points to the key holding the GitHub webhook shared secret.
+	WebhookSecretRef *WebhookSecretKeySelector `json:"webhookSecretRef,omitempty"`
+}
+
+// ArgoCDWebhookSecretsGitLab declares where to read the GitLab webhook secret.
+// +k8s:openapi-gen=true
+type ArgoCDWebhookSecretsGitLab struct {
+	// WebhookSecretRef points to the key holding the GitLab webhook shared secret.
+	WebhookSecretRef *WebhookSecretKeySelector `json:"webhookSecretRef,omitempty"`
+}
+
+// ArgoCDWebhookSecretsBitbucket declares where to read the Bitbucket Cloud webhook UUID.
+// +k8s:openapi-gen=true
+type ArgoCDWebhookSecretsBitbucket struct {
+	// WebhookUUIDSecretRef points to the key holding the Bitbucket Cloud webhook UUID.
+	WebhookUUIDSecretRef *WebhookSecretKeySelector `json:"webhookUUIDSecretRef,omitempty"`
+}
+
+// ArgoCDWebhookSecretsBitbucketServer declares where to read the Bitbucket Server webhook secret.
+// +k8s:openapi-gen=true
+type ArgoCDWebhookSecretsBitbucketServer struct {
+	// WebhookSecretRef points to the key holding the Bitbucket Server webhook shared secret.
+	WebhookSecretRef *WebhookSecretKeySelector `json:"webhookSecretRef,omitempty"`
+}
+
+// ArgoCDWebhookSecretsGogs declares where to read the Gogs webhook secret.
+// +k8s:openapi-gen=true
+type ArgoCDWebhookSecretsGogs struct {
+	// WebhookSecretRef points to the key holding the Gogs webhook shared secret.
+	WebhookSecretRef *WebhookSecretKeySelector `json:"webhookSecretRef,omitempty"`
+}
+
+// ArgoCDWebhookSecretsAzureDevOps declares where to read the Azure DevOps webhook credentials.
+// +k8s:openapi-gen=true
+// +kubebuilder:validation:XValidation:rule="(has(self.usernameSecretRef) && has(self.passwordSecretRef)) || (!has(self.usernameSecretRef) && !has(self.passwordSecretRef))",message="usernameSecretRef and passwordSecretRef must be set together"
+type ArgoCDWebhookSecretsAzureDevOps struct {
+	// UsernameSecretRef points to the key holding the username.
+	UsernameSecretRef *WebhookSecretKeySelector `json:"usernameSecretRef,omitempty"`
+	// PasswordSecretRef points to the key holding the password or PAT.
+	PasswordSecretRef *WebhookSecretKeySelector `json:"passwordSecretRef,omitempty"`
 }
 
 // WebhookSecretKeySelector references one key within a Secret.
