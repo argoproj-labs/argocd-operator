@@ -57,7 +57,7 @@ func ReconcilePrincipalServiceMonitor(client client.Client, compName string, cr 
 
 			argoutil.LogResourceUpdate(log, sm, "updating principal ServiceMonitor spec")
 			if err := client.Update(context.TODO(), sm); err != nil {
-				return fmt.Errorf("failed to update principal ServiceMonitor %s: %v", smName, err)
+				return fmt.Errorf("failed to update principal ServiceMonitor %s: %w", smName, err)
 			}
 		}
 		return nil
@@ -75,7 +75,7 @@ func ReconcilePrincipalServiceMonitor(client client.Client, compName string, cr 
 
 	argoutil.LogResourceCreation(log, sm)
 	if err := client.Create(context.TODO(), sm); err != nil {
-		return fmt.Errorf("failed to create principal ServiceMonitor %s: %v", smName, err)
+		return fmt.Errorf("failed to create principal ServiceMonitor %s: %w", smName, err)
 	}
 	return nil
 }

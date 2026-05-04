@@ -57,7 +57,7 @@ func ReconcileAgentServiceMonitor(client client.Client, compName string, cr *arg
 
 			argoutil.LogResourceUpdate(log, sm, "updating agent ServiceMonitor spec")
 			if err := client.Update(context.TODO(), sm); err != nil {
-				return fmt.Errorf("failed to update agent ServiceMonitor %s: %v", smName, err)
+				return fmt.Errorf("failed to update agent ServiceMonitor %s: %w", smName, err)
 			}
 		}
 		return nil
@@ -75,7 +75,7 @@ func ReconcileAgentServiceMonitor(client client.Client, compName string, cr *arg
 
 	argoutil.LogResourceCreation(log, sm)
 	if err := client.Create(context.TODO(), sm); err != nil {
-		return fmt.Errorf("failed to create agent ServiceMonitor %s: %v", smName, err)
+		return fmt.Errorf("failed to create agent ServiceMonitor %s: %w", smName, err)
 	}
 	return nil
 }
