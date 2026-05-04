@@ -116,6 +116,7 @@ func buildPrincipalSpec(compName, saName string, cr *argoproj.ArgoCD) appsv1.Dep
 						SecurityContext: buildSecurityContext(),
 						Ports:           buildPorts(compName),
 						VolumeMounts:    append(buildVolumeMounts(), redisAuthMount),
+						Resources:       getPrincipalResources(cr),
 					},
 				},
 				ServiceAccountName: saName,
@@ -304,6 +305,13 @@ func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, dep
 		log.Info("deployment service account name is being updated")
 		changed = true
 		deployment.Spec.Template.Spec.ServiceAccountName = saName
+	}
+
+	principalResources := getPrincipalResources(cr)
+	if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Resources, principalResources) {
+		log.Info("deployment resource requirements is being updated")
+		changed = true
+		deployment.Spec.Template.Spec.Containers[0].Resources = principalResources
 	}
 
 	return deployment, changed
@@ -553,6 +561,14 @@ func getPrincipalTlsServerRootCASecretName(cr *argoproj.ArgoCD) string {
 		return cr.Spec.ArgoCDAgent.Principal.TLS.RootCASecretName
 	}
 	return "argocd-agent-ca"
+}
+
+func getPrincipalResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
+	resources := corev1.ResourceRequirements{}
+	if hasPrincipal(cr) && cr.Spec.ArgoCDAgent.Principal.Resources != nil {
+		resources = *cr.Spec.ArgoCDAgent.Principal.Resources
+	}
+	return resources
 }
 
 func hasPrincipal(cr *argoproj.ArgoCD) bool {
