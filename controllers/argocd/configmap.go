@@ -1051,7 +1051,6 @@ func getDefaultResourceExclusions() []filteredResource {
 // isWebTerminalEnabled will return whether the web terminal is enabled for the given ArgoCD.
 func isWebTerminalEnabled(cr *argoproj.ArgoCD) bool {
 	if cr.Spec.WebTerminalEnabled == nil {
-		// decide your default behavior
 		return false
 	}
 	return *cr.Spec.WebTerminalEnabled
