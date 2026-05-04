@@ -23,6 +23,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -51,7 +52,7 @@ func makeTestDeploymentWithCustomImage(cr *argoproj.ArgoCD, customImage string) 
 	return deployment
 }
 
-// Helper function to create ArgoCD with custom principal image
+// Helper function to create ArgoCD with custom agent image
 func withAgentImage(image string) argoCDOpt {
 	return func(a *argoproj.ArgoCD) {
 		if a.Spec.ArgoCDAgent == nil {
@@ -61,6 +62,18 @@ func withAgentImage(image string) argoCDOpt {
 			a.Spec.ArgoCDAgent.Agent = &argoproj.AgentSpec{}
 		}
 		a.Spec.ArgoCDAgent.Agent.Image = image
+	}
+}
+
+func withResourceRequirements(resources corev1.ResourceRequirements) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		if a.Spec.ArgoCDAgent == nil {
+			a.Spec.ArgoCDAgent = &argoproj.ArgoCDAgentSpec{}
+		}
+		if a.Spec.ArgoCDAgent.Agent == nil {
+			a.Spec.ArgoCDAgent.Agent = &argoproj.AgentSpec{}
+		}
+		a.Spec.ArgoCDAgent.Agent.Resources = &resources
 	}
 }
 
@@ -257,7 +270,7 @@ func TestReconcileAgentDeployment_DeploymentExists_AgentEnabled_VolumesChanged(t
 
 	// Create existing Deployment with old service account
 	existingDeployment := makeTestDeployment(cr)
-	//existingDeployment.Spec.Template.Spec.Volumes
+	// existingDeployment.Spec.Template.Spec.Volumes
 
 	resObjs := []client.Object{cr, existingDeployment}
 	sch := makeTestReconcilerScheme()
@@ -728,4 +741,64 @@ func TestBuildAgentContainerEnv_DestinationBasedMappingVars(t *testing.T) {
 				"ARGOCD_AGENT_ALLOWED_NAMESPACES mismatch")
 		})
 	}
+}
+
+func TestReconcileAgentDeployment_ResourceRequirements(t *testing.T) {
+	cr := makeTestArgoCD(withAgentEnabled(true), withResourceRequirements(corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resourcev1.MustParse("500m"),
+			corev1.ResourceMemory: resourcev1.MustParse("512Mi"),
+		},
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resourcev1.MustParse("250m"),
+			corev1.ResourceMemory: resourcev1.MustParse("256Mi"),
+		},
+	}))
+	saName := generateAgentResourceName(cr.Name, "agent")
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcileAgentDeployment(cl, "agent", saName, cr, sch)
+	assert.NoError(t, err)
+
+	deployment := &appsv1.Deployment{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, "agent"),
+		Namespace: cr.Namespace,
+	}, deployment)
+	assert.NoError(t, err)
+
+	testResources := corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resourcev1.MustParse("500m"),
+			corev1.ResourceMemory: resourcev1.MustParse("512Mi"),
+		},
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resourcev1.MustParse("250m"),
+			corev1.ResourceMemory: resourcev1.MustParse("256Mi"),
+		},
+	}
+	assert.Equal(t, testResources, deployment.Spec.Template.Spec.Containers[0].Resources)
+
+	// Ensure that the requirements can be updated
+	updatedResources := corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resourcev1.MustParse("250m"),
+			corev1.ResourceMemory: resourcev1.MustParse("256Mi"),
+		},
+	}
+	cr.Spec.ArgoCDAgent.Agent.Resources = &updatedResources
+
+	err = ReconcileAgentDeployment(cl, "agent", saName, cr, sch)
+	assert.NoError(t, err)
+
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, "agent"),
+		Namespace: cr.Namespace,
+	}, deployment)
+	assert.NoError(t, err)
+
+	assert.Equal(t, updatedResources, deployment.Spec.Template.Spec.Containers[0].Resources)
 }
