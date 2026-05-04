@@ -66,7 +66,6 @@ func HaveNonEmptyKeyValue(key string) matcher.GomegaMatcher {
 
 		return len(a) > 0
 	})
-
 }
 
 // HaveStringDataKeyValue returns true if Secret has 'key' field under .data map, and the value of that field is equal to 'value'

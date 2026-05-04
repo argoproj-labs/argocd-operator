@@ -1126,9 +1126,13 @@ func generateEncodedPEM(t *testing.T) []byte {
 	return encoded
 }
 
-// TestReconcileArgoCD_reconcileDexOAuthClientSecret This test make sures that if dex is enabled a service account is created with token stored in a secret which is used for oauth
+// TestReconcileArgoCD_reconcileDexOAuthClientSecret verifies that getDexOAuthClientSecret
+// uses the TokenRequest API to obtain a time-limited token and stores it in an Opaque
+// Secret rather than creating a non-expiring kubernetes.io/service-account-token Secret.
 func TestReconcileArgoCD_reconcileDexOAuthClientSecret(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
+	const mockToken = "mock-dex-oauth-token"
+
 	a := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
 		ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 			Provider: argoproj.SSOProviderTypeDex,
@@ -1143,22 +1147,42 @@ func TestReconcileArgoCD_reconcileDexOAuthClientSecret(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r := makeTestReconciler(cl, sch, makeTestK8sClientWithTokenReactor(mockToken))
 
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	_, err := r.reconcileServiceAccount(common.ArgoCDDefaultDexServiceAccountName, a)
 	assert.NoError(t, err)
-	_, err = r.getDexOAuthClientSecret(a)
+
+	token, err := r.getDexOAuthClientSecret(a)
 	assert.NoError(t, err)
+	assert.NotNil(t, token)
+	assert.Equal(t, mockToken, *token)
+
+	// Verify an Opaque token Secret was created (not a ServiceAccountToken type Secret).
+	expectedSecretName := getDexServerTokenSecretName(a)
+	tokenSecret := &corev1.Secret{}
+	assert.NoError(t, argoutil.FetchObject(r.Client, a.Namespace, expectedSecretName, tokenSecret))
+	assert.Equal(t, corev1.SecretTypeOpaque, tokenSecret.Type)
+	assert.Equal(t, mockToken, string(tokenSecret.Data["token"]))
+	assert.NotEmpty(t, tokenSecret.Data["expiry"])
+	expiry, parseErr := time.Parse(time.RFC3339, string(tokenSecret.Data["expiry"]))
+	assert.NoError(t, parseErr, "expiry must be a valid RFC3339 timestamp")
+	assert.True(t, time.Until(expiry) > 0, "token expiry must be in the future")
+
+	// Verify the SA.Secrets list was NOT modified (no legacy token reference added).
 	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, a)
 	assert.NoError(t, argoutil.FetchObject(r.Client, a.Namespace, sa.Name, sa))
-	tokenExists := false
-	for _, saSecret := range sa.Secrets {
-		if strings.Contains(saSecret.Name, "dex-server-token") {
-			tokenExists = true
+	for _, ref := range sa.Secrets {
+		if strings.Contains(ref.Name, "token") {
+			assert.NotEqual(t, corev1.SecretTypeServiceAccountToken,
+				func() corev1.SecretType {
+					s := &corev1.Secret{}
+					_ = argoutil.FetchObject(r.Client, a.Namespace, ref.Name, s)
+					return s.Type
+				}(),
+				"SA.Secrets must not reference a non-expiring ServiceAccountToken Secret")
 		}
 	}
-	assert.True(t, tokenExists, "Dex is enabled but unable to create oauth client secret")
 }
 
 func TestRetainKubernetesData(t *testing.T) {

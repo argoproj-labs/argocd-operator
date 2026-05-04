@@ -201,9 +201,11 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoproj.ArgoCD) error {
 	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeDex {
 		dexOIDCClientSecret, err := r.getDexOAuthClientSecret(cr)
 		if err != nil {
-			return nil
+			return err
 		}
-		secret.Data[common.ArgoCDDexSecretKey] = []byte(*dexOIDCClientSecret)
+		if dexOIDCClientSecret != nil {
+			secret.Data[common.ArgoCDDexSecretKey] = []byte(*dexOIDCClientSecret)
+		}
 	}
 
 	if err := controllerutil.SetControllerReference(cr, secret, r.Scheme); err != nil {
@@ -767,6 +769,10 @@ func (r *ReconcileArgoCD) reconcileRedisTLSSecret(cr *argoproj.ArgoCD, useTLSFor
 // reconcileSecrets will reconcile all ArgoCD Secret resources.
 func (r *ReconcileArgoCD) reconcileSecrets(cr *argoproj.ArgoCD) error {
 	if err := r.reconcileClusterSecrets(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileDexLegacySATokenSecrets(cr); err != nil {
 		return err
 	}
 

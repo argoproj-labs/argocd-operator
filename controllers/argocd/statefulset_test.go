@@ -739,7 +739,7 @@ func Test_ContainsInvalidImage(t *testing.T) {
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	// Test that containsInvalidImage returns false if there is nothing wrong with the Pod
-	containsInvalidImageRes, err := containsInvalidImage(*a, *r)
+	containsInvalidImageRes, err := containsInvalidImage(*a, r)
 	assert.NoError(t, err)
 	if containsInvalidImageRes {
 		t.Fatalf("containsInvalidImage failed, got true, expected false")
@@ -751,7 +751,7 @@ func Test_ContainsInvalidImage(t *testing.T) {
 	err = cl.Status().Update(context.Background(), po)
 	assert.NoError(t, err)
 
-	containsInvalidImageRes, err = containsInvalidImage(*a, *r)
+	containsInvalidImageRes, err = containsInvalidImage(*a, r)
 	assert.NoError(t, err)
 	assert.True(t, containsInvalidImageRes)
 
