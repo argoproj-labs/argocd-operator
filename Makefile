@@ -10,7 +10,7 @@ VERSION ?= 0.19.0
 # After updating, call 'make update-dependencies'.
 # Notes:
 # - String should NOT begin with 'v' prefix, e.g. 'v3.1.1'
-ARGO_CD_TARGET_VERSION ?= 3.3.6
+ARGO_CD_TARGET_VERSION ?= 3.3.8
 
 # Try to detect Docker or Podman
 CONTAINER_RUNTIME := $(shell command -v docker 2> /dev/null || command -v podman 2> /dev/null)

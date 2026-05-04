@@ -213,7 +213,7 @@ require (
 )
 
 replace (
-	// This replace block is from Argo CD v3.3.6 go.mod
+	// This replace block is from Argo CD v3.3.8 go.mod
 	github.com/golang/protobuf => github.com/golang/protobuf v1.5.4
 	github.com/grpc-ecosystem/grpc-gateway => github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	golang.org/x/tools => golang.org/x/tools v0.35.0
