@@ -32248,7 +32248,8 @@ spec:
                   for all ArgoCD components.
                 type: string
               webTerminalEnabled:
-                description: WebTerminal defines the web terminal options for ArgoCD.
+                description: WebTerminalEnabled allows you to get a shell inside a
+                  running pod just like you would with kubectl exec
                 type: boolean
               webhookSecrets:
                 description: |-

@@ -275,7 +275,8 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 		{
 			"with-web-terminal-enabled",
 			[]argoCDOpt{func(a *argoproj.ArgoCD) {
-				a.Spec.WebTerminalEnabled = true
+				val := true
+				a.Spec.WebTerminalEnabled = &val
 			}},
 			map[string]string{
 				"exec.enabled": "true",
@@ -1781,7 +1782,7 @@ func TestReconcileArgoCD_RemovesLegacyLogEnforceFlag(t *testing.T) {
 	scheme := runtime.NewScheme()
 
 	_ = corev1.AddToScheme(scheme)
-	_ = appsv1.AddToScheme(scheme) // <-- add this
+	_ = appsv1.AddToScheme(scheme)
 	_ = argoproj.AddToScheme(scheme)
 
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cr, cm).Build()
@@ -1802,6 +1803,7 @@ func TestReconcileArgoCD_RemovesLegacyLogEnforceFlag(t *testing.T) {
 	_, exists := updated.Data["server.rbac.log.enforce.enable"]
 	assert.False(t, exists, "expected deprecated key to be removed")
 }
+
 func TestReconcileArgoCD_reconcileArgoCmdParamsConfigMap(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 

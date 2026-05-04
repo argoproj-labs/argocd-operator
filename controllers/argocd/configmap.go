@@ -387,7 +387,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	cm.Data[common.ArgoCDKeyHelpChatURL] = getHelpChatURL(cr)
 	cm.Data[common.ArgoCDKeyHelpChatText] = getHelpChatText(cr)
 	cm.Data[common.ArgoCDKeyKustomizeBuildOptions] = getKustomizeBuildOptions(cr)
-	cm.Data[common.ArgoCDKeyWebTerminalEnabled] = getWebTerminalEnabled(cr)
+	cm.Data[common.ArgoCDWebTerminalEnabledKey] = fmt.Sprintf("%t", isWebTerminalEnabled(cr))
 
 	// Set installationID as a top-level key
 	if cr.Spec.InstallationID != "" {
@@ -524,9 +524,9 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 		return err
 	}
 	if found {
-		webTerminalChanged := false
-		if cm.Data[common.ArgoCDKeyWebTerminalEnabled] != existingCM.Data[common.ArgoCDKeyWebTerminalEnabled] {
-			webTerminalChanged = true
+		webTerminalFlagChanged := false
+		if cm.Data[common.ArgoCDWebTerminalEnabledKey] != existingCM.Data[common.ArgoCDWebTerminalEnabledKey] {
+			webTerminalFlagChanged = true
 		}
 		// reconcile dex configuration if dex is enabled `.spec.sso.dex.provider` or there is
 		// existing dex configuration
@@ -568,7 +568,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 				return err
 			}
 			// trigger rollout ONLY if web terminal setting changed
-			if webTerminalChanged {
+			if webTerminalFlagChanged {
 				log.Info("Web terminal enabled setting changed, triggering ArgoCD server rollout")
 				apiDepl := &appsv1.Deployment{
 					ObjectMeta: metav1.ObjectMeta{
@@ -1048,11 +1048,11 @@ func getDefaultResourceExclusions() []filteredResource {
 	}
 }
 
-// getWebTerminalEnabled will return whether the web terminal is enabled for the given ArgoCD.
-func getWebTerminalEnabled(cr *argoproj.ArgoCD) string {
-	wte := common.ArgoCDDefaultWebTerminalEnabled
-	if cr.Spec.WebTerminalEnabled {
-		wte = "true"
+// isWebTerminalEnabled will return whether the web terminal is enabled for the given ArgoCD.
+func isWebTerminalEnabled(cr *argoproj.ArgoCD) bool {
+	if cr.Spec.WebTerminalEnabled == nil {
+		// decide your default behavior
+		return false
 	}
-	return wte
+	return *cr.Spec.WebTerminalEnabled
 }
