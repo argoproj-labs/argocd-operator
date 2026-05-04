@@ -1646,6 +1646,13 @@ func (r *ReconcileArgoCD) reconcileArgoCDAgent(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
+	if IsPrometheusAPIAvailable() {
+		log.Info("reconciling ArgoCD Agent's Principal metrics ServiceMonitor")
+		if err := argocdagent.ReconcilePrincipalServiceMonitor(r.Client, compName, cr, r.Scheme, cr.Spec.Prometheus.Enabled); err != nil {
+			return err
+		}
+	}
+
 	log.Info("reconciling ArgoCD Agent's Principal redis proxy service")
 	if err := argocdagent.ReconcilePrincipalRedisProxyService(r.Client, compName, cr, r.Scheme); err != nil {
 		return err
@@ -1708,6 +1715,13 @@ func (r *ReconcileArgoCD) reconcileArgoCDAgent(cr *argoproj.ArgoCD) error {
 	log.Info("reconciling ArgoCD Agent's Agent metrics service")
 	if err := agent.ReconcileAgentMetricsService(r.Client, agentCompName, cr, r.Scheme); err != nil {
 		return err
+	}
+
+	if IsPrometheusAPIAvailable() {
+		log.Info("reconciling ArgoCD Agent's Agent metrics ServiceMonitor")
+		if err := agent.ReconcileAgentServiceMonitor(r.Client, agentCompName, cr, r.Scheme, cr.Spec.Prometheus.Enabled); err != nil {
+			return err
+		}
 	}
 
 	log.Info("reconciling ArgoCD Agent's Agent healthz service")
