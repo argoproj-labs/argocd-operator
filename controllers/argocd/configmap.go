@@ -18,9 +18,11 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v2"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -386,6 +388,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	cm.Data[common.ArgoCDKeyHelpChatURL] = getHelpChatURL(cr)
 	cm.Data[common.ArgoCDKeyHelpChatText] = getHelpChatText(cr)
 	cm.Data[common.ArgoCDKeyKustomizeBuildOptions] = getKustomizeBuildOptions(cr)
+	cm.Data[common.ArgoCDWebTerminalEnabledKey] = strconv.FormatBool(isWebTerminalEnabled(cr))
 
 	// Set installationID as a top-level key
 	if cr.Spec.InstallationID != "" {
@@ -522,7 +525,10 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 		return err
 	}
 	if found {
-
+		webTerminalFlagChanged := false
+		if cm.Data[common.ArgoCDWebTerminalEnabledKey] != existingCM.Data[common.ArgoCDWebTerminalEnabledKey] {
+			webTerminalFlagChanged = true
+		}
 		// reconcile dex configuration if dex is enabled `.spec.sso.dex.provider` or there is
 		// existing dex configuration
 		if UseDex(cr) {
@@ -558,7 +564,23 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 				explanation += ", owner reference"
 			}
 			argoutil.LogResourceUpdate(log, existingCM, explanation)
-			return r.Update(context.TODO(), existingCM)
+			err = r.Update(context.TODO(), existingCM)
+			if err != nil {
+				return err
+			}
+			// trigger rollout ONLY if web terminal setting changed
+			if webTerminalFlagChanged {
+				log.Info("Web terminal enabled setting changed, triggering ArgoCD server rollout")
+				apiDepl := &appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      nameWithSuffix("server", cr),
+						Namespace: cr.Namespace,
+					},
+				}
+				if err := r.triggerRollout(apiDepl, "webTerminalEnabled.changed"); err != nil {
+					return err
+				}
+			}
 		}
 		return nil // Do nothing as there is no change in the configmap.
 	}
@@ -1025,4 +1047,12 @@ func getDefaultResourceExclusions() []filteredResource {
 				"AdmissionReport", "ClusterAdmissionReport", "BackgroundScanReport",
 				"ClusterBackgroundScanReport", "UpdateRequest"}},
 	}
+}
+
+// isWebTerminalEnabled will return whether the web terminal is enabled for the given ArgoCD.
+func isWebTerminalEnabled(cr *argoproj.ArgoCD) bool {
+	if cr.Spec.WebTerminalEnabled == nil {
+		return common.ArgoCDWebTerminalEnabledDefaultValue
+	}
+	return *cr.Spec.WebTerminalEnabled
 }

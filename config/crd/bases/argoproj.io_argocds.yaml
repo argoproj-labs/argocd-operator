@@ -32247,6 +32247,10 @@ spec:
                 description: Version is the tag to use with the ArgoCD container image
                   for all ArgoCD components.
                 type: string
+              webTerminalEnabled:
+                description: WebTerminalEnabled allows you to get a shell inside a
+                  running pod just like you would with kubectl exec
+                type: boolean
               webhookSecrets:
                 description: |-
                   WebhookSecrets references Kubernetes Secrets that supply webhook credentials per provider.

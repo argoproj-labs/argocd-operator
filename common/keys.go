@@ -258,4 +258,8 @@ const (
 	// ArgoCDImagePullPolicyEnvName is the environment variable used to get the global image pull policy
 	// for all ArgoCD components managed by the operator.
 	ArgoCDImagePullPolicyEnvName = "IMAGE_PULL_POLICY"
+	// ArgoCDWebTerminalEnabledKey is the configuration key for enabling the web terminal.
+	ArgoCDWebTerminalEnabledKey = "exec.enabled"
+	// ArgoCDWebTerminalEnabledDefaultValue is the default value for enabling the web terminal.
+	ArgoCDWebTerminalEnabledDefaultValue = false
 )

@@ -36,6 +36,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	appsv1 "k8s.io/api/apps/v1"
+
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
@@ -257,6 +259,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 		"statusbadge.enabled":     "false",
 		"url":                     "https://argocd-server",
 		"users.anonymous.enabled": "false",
+		"exec.enabled":            "false",
 	}
 
 	cmdTests := []struct {
@@ -268,6 +271,16 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 			"defaults",
 			[]argoCDOpt{},
 			map[string]string{},
+		},
+		{
+			"with-web-terminal-enabled",
+			[]argoCDOpt{func(a *argoproj.ArgoCD) {
+				val := true
+				a.Spec.WebTerminalEnabled = &val
+			}},
+			map[string]string{
+				"exec.enabled": "true",
+			},
 		},
 		{
 			"with-banner",
@@ -1754,7 +1767,8 @@ p, role:custom-app-viewer, logs, get, */*, allow`
 
 func TestReconcileArgoCD_RemovesLegacyLogEnforceFlag(t *testing.T) {
 	// Setup fake ArgoCD instance and client
-	cr := makeTestArgoCD() // helper to create ArgoCD CR
+	cr := makeTestArgoCD()
+
 	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      common.ArgoCDConfigMapName,
@@ -1766,7 +1780,9 @@ func TestReconcileArgoCD_RemovesLegacyLogEnforceFlag(t *testing.T) {
 	}
 
 	scheme := runtime.NewScheme()
+
 	_ = corev1.AddToScheme(scheme)
+	_ = appsv1.AddToScheme(scheme)
 	_ = argoproj.AddToScheme(scheme)
 
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cr, cm).Build()

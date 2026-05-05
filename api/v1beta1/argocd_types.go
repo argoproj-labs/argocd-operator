@@ -1079,6 +1079,8 @@ type ArgoCDSpec struct {
 	// WebhookSecrets references Kubernetes Secrets that supply webhook credentials per provider.
 	// The operator syncs values into argocd-secret under the keys Argo CD expects.
 	WebhookSecrets *ArgoCDWebhookSecretsSpec `json:"webhookSecrets,omitempty"`
+	// WebTerminalEnabled allows you to get a shell inside a running pod just like you would with kubectl exec
+	WebTerminalEnabled *bool `json:"webTerminalEnabled,omitempty"`
 }
 
 // NamespaceManagement defines the namespace management settings

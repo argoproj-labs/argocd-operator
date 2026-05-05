@@ -309,6 +309,8 @@ vs-ssh.visualstudio.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7Hr1oTWqNqOlzGJOf
 
 	// ArgoCDDefaultClusterDomain is the default cluster domain suffix for service FQDNs.
 	ArgoCDDefaultClusterDomain = "cluster.local"
+	// ArgoCDDefaultWebTerminalEnabled is the default web terminal enabled switch.
+	ArgoCDDefaultWebTerminalEnabled = "false"
 )
 
 // DefaultLabels returns the default set of labels for controllers.
