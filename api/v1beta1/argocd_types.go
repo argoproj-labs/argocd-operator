@@ -338,6 +338,22 @@ type ArgoCDImageUpdaterSpec struct {
 
 	// Resources defines the Compute Resources required by the container for Argo CD Image Updater.
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+	// NetworkPolicy controls whether the operator should create NetworkPolicy resources.
+	// if empty, the default is to create network policies
+	NetworkPolicy *ImageUpdaterNetworkPolicySpec `json:"networkPolicy,omitempty"`
+}
+
+// ImageUpdaterNetworkPolicySpec defines whether the operator should create NetworkPolicies for image updater.
+type ImageUpdaterNetworkPolicySpec struct {
+	// Enabled defines whether NetworkPolicy resources should be created for this instance.
+	// When enabled, the operator will reconcile NetworkPolicies for imageupdater.
+	// When disabled, the operator will remove any previously-created NetworkPolicies.
+	// +kubebuilder:default=true
+	Enabled *bool `json:"enabled,omitempty"`
+}
+
+func (a *ImageUpdaterNetworkPolicySpec) IsEnabled() bool {
+	return a == nil || a.Enabled == nil || *a.Enabled
 }
 
 // ArgoCDImportSpec defines the desired state for the ArgoCD import/restore process.

@@ -17872,6 +17872,19 @@ spec:
                       - name
                       type: object
                     type: array
+                  networkPolicy:
+                    description: |-
+                      NetworkPolicy controls whether the operator should create NetworkPolicy resources.
+                      if empty, the default is to create network policies
+                    properties:
+                      enabled:
+                        default: true
+                        description: |-
+                          Enabled defines whether NetworkPolicy resources should be created for this instance.
+                          When enabled, the operator will reconcile NetworkPolicies for imageupdater.
+                          When disabled, the operator will remove any previously-created NetworkPolicies.
+                        type: boolean
+                    type: object
                   resources:
                     description: Resources defines the Compute Resources required
                       by the container for Argo CD Image Updater.
