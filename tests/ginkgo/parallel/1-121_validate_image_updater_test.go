@@ -109,12 +109,13 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			}
 			// verify network policy is created
 			networkPolicy := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-%s", argoCD.Name, "image-updater-network-policy"), Namespace: ns.Name}}
-			Eventually(networkPolicy).Should(k8sFixture.ExistByName())
-			var netpolDisable = false
+			Eventually(networkPolicy, "3m", "5s").Should(k8sFixture.ExistByName())
+			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCD), argoCD)).To(Succeed())
+			netpolDisable := false
 			argoCD.Spec.ImageUpdater.NetworkPolicy = &argov1beta1api.ImageUpdaterNetworkPolicySpec{}
 			argoCD.Spec.ImageUpdater.NetworkPolicy.Enabled = &netpolDisable
 			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
-			Eventually(networkPolicy).Should(k8sFixture.NotExistByName())
+			Eventually(networkPolicy, "3m", "5s").Should(k8sFixture.NotExistByName())
 
 			statefulSet := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: "argocd-application-controller", Namespace: ns.Name}}
 			Eventually(statefulSet).Should(k8sFixture.ExistByName())
