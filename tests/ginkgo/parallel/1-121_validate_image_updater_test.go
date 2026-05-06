@@ -18,6 +18,7 @@ package parallel
 
 import (
 	"context"
+	"fmt"
 
 	appv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
 	"github.com/argoproj/gitops-engine/pkg/health"
@@ -25,6 +26,7 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -105,6 +107,14 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				Eventually(depl).Should(deplFixture.HaveReplicas(1))
 				Eventually(depl, "3m", "5s").Should(deplFixture.HaveReadyReplicas(1), depl.Name+" was not ready")
 			}
+			// verify network policy is created
+			networkPolicy := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-%s", argoCD.Name, "image-updater-network-policy"), Namespace: ns.Name}}
+			Eventually(networkPolicy).Should(k8sFixture.ExistByName())
+			var netpolDisable = false
+			argoCD.Spec.ImageUpdater.NetworkPolicy = &argov1beta1api.ImageUpdaterNetworkPolicySpec{}
+			argoCD.Spec.ImageUpdater.NetworkPolicy.Enabled = &netpolDisable
+			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
+			Eventually(networkPolicy).Should(k8sFixture.NotExistByName())
 
 			statefulSet := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: "argocd-application-controller", Namespace: ns.Name}}
 			Eventually(statefulSet).Should(k8sFixture.ExistByName())
