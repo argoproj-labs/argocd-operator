@@ -338,8 +338,7 @@ type ArgoCDImageUpdaterSpec struct {
 
 	// Resources defines the Compute Resources required by the container for Argo CD Image Updater.
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
-	// NetworkPolicy controls whether the operator should create NetworkPolicy resources.
-	// if empty, the default is to create network policies
+	// NetworkPolicy controls whether the operator should create NetworkPolicy resources for the Image Updater. Defaults to enabled when not specified.
 	NetworkPolicy *ImageUpdaterNetworkPolicySpec `json:"networkPolicy,omitempty"`
 }
 
