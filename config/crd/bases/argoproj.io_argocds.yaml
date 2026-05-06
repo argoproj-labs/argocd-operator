@@ -18249,9 +18249,9 @@ spec:
                       type: object
                     type: array
                   networkPolicy:
-                    description: |-
-                      NetworkPolicy controls whether the operator should create NetworkPolicy resources.
-                      if empty, the default is to create network policies
+                    description: NetworkPolicy controls whether the operator should
+                      create NetworkPolicy resources for the Image Updater. Defaults
+                      to enabled when not specified.
                     properties:
                       enabled:
                         default: true
