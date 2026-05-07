@@ -187,6 +187,8 @@ Volumes | [Empty] | Configure addition volumes for the ArgoCD Application Contro
 VolumeMounts | [Empty] | Configure addition volume mounts for the ArgoCD Application Controller component. This field is optional.
 Annotations | [Empty] | Custom annotations to pods deployed by the operator
 Labels | [Empty] | Custom labels to pods deployed by the operator
+Metrics.Interval | [Empty] | Prometheus scrape interval for the Application Controller ServiceMonitor. If empty, Prometheus uses its default.
+Metrics.ScrapeTimeout | [Empty] | Prometheus scrape timeout for the Application Controller ServiceMonitor. If empty, Prometheus uses its default.
 
 ### Controller Example
 
@@ -590,6 +592,8 @@ Version | *(recent Argo CD version)* | The tag to use with the Notifications con
 Resources | [Empty] | The container compute resources.
 LogLevel | info | The log level to be used by the ArgoCD Application Controller component. Valid options are debug, info, error, and warn.
 sourceNamespaces | [Empty] | List of namespaces allowed to manage their own notification configuration (ConfigMap and Secret).
+Metrics.Interval | [Empty] | Prometheus scrape interval for the Notifications ServiceMonitor. If empty, Prometheus uses its default.
+Metrics.ScrapeTimeout | [Empty] | Prometheus scrape timeout for the Notifications ServiceMonitor. If empty, Prometheus uses its default.
 
 ### Notifications Controller Example
 
@@ -817,6 +821,35 @@ spec:
 
 This will create ServiceMonitor resources that allow your existing Prometheus instance to discover and scrape metrics from Argo CD components.
 
+To configure scrape interval and timeout per component, use the `metrics` field on each component:
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+spec:
+  prometheus:
+    enabled: true
+  controller:
+    metrics:
+      interval: "60s"
+      scrapeTimeout: "30s"
+  repo:
+    metrics:
+      interval: "90s"
+  server:
+    metrics:
+      scrapeTimeout: "15s"
+  notifications:
+    enabled: true
+    metrics:
+      interval: "45s"
+      scrapeTimeout: "20s"
+```
+
+When a field is omitted, the ServiceMonitor endpoint does not set it and Prometheus uses its global default.
+
 ## RBAC Options
 
 The following properties are available for configuring RBAC for the Argo CD cluster.
@@ -1033,6 +1066,8 @@ Remote | [Empty] | Specifies the remote URL of the repo server container. By def
 Annotations | [Empty] | Custom annotations to pods deployed by the operator
 Labels | [Empty] | Custom labels to pods deployed by the operator
 [SystemCATrust](#repo-server-tls-trust-configuration) | [Empty] | Custom certificates to inject into the repo server container and its plugins to trust source hosting sites
+Metrics.Interval | [Empty] | Prometheus scrape interval for the Repo Server ServiceMonitor. If empty, Prometheus uses its default.
+Metrics.ScrapeTimeout | [Empty] | Prometheus scrape timeout for the Repo Server ServiceMonitor. If empty, Prometheus uses its default.
 
 ### Pass Command Arguments To Repo Server
 
@@ -1450,6 +1485,8 @@ Volumes | [Empty] | Configure addition volumes for the Argo CD server component.
 VolumeMounts | [Empty] | Configure addition volume mounts for the Argo CD server component. This field is optional.
 Annotations | [Empty] | Custom annotations to pods deployed by the operator
 Labels | [Empty] | Custom labels to pods deployed by the operator
+Metrics.Interval | [Empty] | Prometheus scrape interval for the Server ServiceMonitor. If empty, Prometheus uses its default.
+Metrics.ScrapeTimeout | [Empty] | Prometheus scrape timeout for the Server ServiceMonitor. If empty, Prometheus uses its default.
 
 
 ### Server Autoscale Options

@@ -137,6 +137,9 @@ type ArgoCDApplicationControllerSpec struct {
 
 	// RespectRBAC restricts controller from discovering/syncing specific resources, Defaults is empty if not configured. Valid options are strict and normal.
 	RespectRBAC string `json:"respectRBAC,omitempty"`
+
+	// Metrics defines the metrics configuration for the Application Controller ServiceMonitor.
+	Metrics ArgoCDMetricsSpec `json:"metrics,omitempty"`
 }
 
 func (a *ArgoCDApplicationControllerSpec) IsEnabled() bool {
@@ -442,6 +445,20 @@ type ArgoCDNotifications struct {
 	// LogFormat refers to the log format used by the argocd-notifications. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
 	// +kubebuilder:validation:Enum=text;json
 	LogFormat string `json:"logFormat,omitempty"`
+
+	// Metrics defines the metrics configuration for the Notifications ServiceMonitor.
+	Metrics ArgoCDMetricsSpec `json:"metrics,omitempty"`
+}
+
+// ArgoCDMetricsSpec defines the metrics configuration for a component's ServiceMonitor.
+type ArgoCDMetricsSpec struct {
+	// Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
+	// If empty, Prometheus uses its default scrape interval.
+	Interval string `json:"interval,omitempty"`
+
+	// ScrapeTimeout specifies the Prometheus scrape timeout for this component's ServiceMonitor.
+	// If empty, Prometheus uses the global scrape timeout.
+	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
 }
 
 // ArgoCDPrometheusSpec defines the desired state for the Prometheus component.
@@ -610,6 +627,9 @@ type ArgoCDRepoSpec struct {
 
 	// Custom certificates to inject into the repo server container and its plugins to trust source hosting sites
 	SystemCATrust *ArgoCDSystemCATrustSpec `json:"systemCATrust,omitempty"`
+
+	// Metrics defines the metrics configuration for the Repo Server ServiceMonitor.
+	Metrics ArgoCDMetricsSpec `json:"metrics,omitempty"`
 }
 
 func (a *ArgoCDRepoSpec) IsEnabled() bool {
@@ -744,6 +764,9 @@ type ArgoCDServerSpec struct {
 
 	// Custom labels to pods deployed by the operator
 	Labels map[string]string `json:"labels,omitempty"`
+
+	// Metrics defines the metrics configuration for the Server ServiceMonitor.
+	Metrics ArgoCDMetricsSpec `json:"metrics,omitempty"`
 }
 
 func (a *ArgoCDServerSpec) IsEnabled() bool {

@@ -108,6 +108,9 @@ type ArgoCDApplicationControllerSpec struct {
 
 	// Env lets you specify environment for application controller pods
 	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	// Metrics defines the metrics configuration for the Application Controller ServiceMonitor.
+	Metrics ArgoCDMetricsSpec `json:"metrics,omitempty"`
 }
 
 // ArgoCDApplicationControllerShardSpec defines the options available for enabling sharding for the Application Controller component.
@@ -357,6 +360,20 @@ type ArgoCDNotifications struct {
 	// LogFormat refers to the log format used by the argocd-notifications. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
 	// +kubebuilder:validation:Enum=text;json
 	LogFormat string `json:"logFormat,omitempty"`
+
+	// Metrics defines the metrics configuration for the Notifications ServiceMonitor.
+	Metrics ArgoCDMetricsSpec `json:"metrics,omitempty"`
+}
+
+// ArgoCDMetricsSpec defines the metrics configuration for a component's ServiceMonitor.
+type ArgoCDMetricsSpec struct {
+	// Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
+	// If empty, Prometheus uses its default scrape interval.
+	Interval string `json:"interval,omitempty"`
+
+	// ScrapeTimeout specifies the Prometheus scrape timeout for this component's ServiceMonitor.
+	// If empty, Prometheus uses the global scrape timeout.
+	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
 }
 
 // ArgoCDPrometheusSpec defines the desired state for the Prometheus component.
@@ -496,6 +513,9 @@ type ArgoCDRepoSpec struct {
 	// server deployment. If the image field is omitted from a SidecarContainer,
 	// the image for the repo server will be used.
 	SidecarContainers []corev1.Container `json:"sidecarContainers,omitempty"`
+
+	// Metrics defines the metrics configuration for the Repo Server ServiceMonitor.
+	Metrics ArgoCDMetricsSpec `json:"metrics,omitempty"`
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.
@@ -589,6 +609,9 @@ type ArgoCDServerSpec struct {
 	// ExtraCommandArgs will not be added, if one of these commands is already part of the server command
 	// with same or different value.
 	ExtraCommandArgs []string `json:"extraCommandArgs,omitempty"`
+
+	// Metrics defines the metrics configuration for the Server ServiceMonitor.
+	Metrics ArgoCDMetricsSpec `json:"metrics,omitempty"`
 }
 
 // ArgoCDServerServiceSpec defines the Service options for Argo CD Server component.
