@@ -545,7 +545,7 @@ func ConvertAlphaToBetaNotifications(src *ArgoCDNotifications) *v1beta1.ArgoCDNo
 			Version:          src.Version,
 			Resources:        src.Resources,
 			LogLevel:         src.LogLevel,
-			Logformat:        src.Logformat,
+			Logformat:        src.Logformat, //nolint:staticcheck // SA1019: must convert deprecated field to avoid data loss.
 			LogFormat:        src.LogFormat,
 			Metrics:          v1beta1.ArgoCDMetricsSpec(src.Metrics),
 		}
@@ -565,7 +565,7 @@ func ConvertBetaToAlphaNotifications(src *v1beta1.ArgoCDNotifications) *ArgoCDNo
 			Version:          src.Version,
 			Resources:        src.Resources,
 			LogLevel:         src.LogLevel,
-			Logformat:        src.Logformat,
+			Logformat:        src.Logformat, //nolint:staticcheck // SA1019: must convert deprecated field to avoid data loss.
 			LogFormat:        src.LogFormat,
 			Metrics:          ArgoCDMetricsSpec(src.Metrics),
 		}
