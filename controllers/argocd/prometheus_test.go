@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
@@ -289,4 +290,266 @@ func TestReconcilePrometheus_Deleted(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestReconcileMetricsServiceMonitor(t *testing.T) {
+	tests := []struct {
+		name           string
+		argocd         *argoproj.ArgoCD
+		wantSMFound    bool
+		wantInterval   monitoringv1.Duration
+		wantScrTimeout monitoringv1.Duration
+	}{
+		{
+			name: "prometheus enabled, no metrics config",
+			argocd: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.Prometheus.Enabled = true
+			}),
+			wantSMFound: true,
+		},
+		{
+			name: "prometheus disabled",
+			argocd: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.Prometheus.Enabled = false
+			}),
+			wantSMFound: false,
+		},
+		{
+			name: "prometheus enabled, controller metrics set",
+			argocd: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.Prometheus.Enabled = true
+				cr.Spec.Controller.Metrics = argoproj.ArgoCDMetricsSpec{
+					Interval:      "45s",
+					ScrapeTimeout: "20s",
+				}
+			}),
+			wantSMFound:    true,
+			wantInterval:   "45s",
+			wantScrTimeout: "20s",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			resObjs := []client.Object{test.argocd}
+			subresObjs := []client.Object{test.argocd}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			err := monitoringv1.AddToScheme(r.Scheme)
+			assert.NoError(t, err)
+
+			err = r.reconcileMetricsServiceMonitor(test.argocd)
+			assert.NoError(t, err)
+
+			sm := &monitoringv1.ServiceMonitor{}
+			err = r.Get(context.TODO(), types.NamespacedName{
+				Name:      fmt.Sprintf("%s-%s", test.argocd.Name, common.ArgoCDKeyMetrics),
+				Namespace: test.argocd.Namespace,
+			}, sm)
+
+			if test.wantSMFound {
+				assert.NoError(t, err)
+				assert.Equal(t, test.wantInterval, sm.Spec.Endpoints[0].Interval)
+				assert.Equal(t, test.wantScrTimeout, sm.Spec.Endpoints[0].ScrapeTimeout)
+			} else {
+				assert.True(t, errors.IsNotFound(err))
+			}
+		})
+	}
+}
+
+func TestReconcileRepoServerServiceMonitor(t *testing.T) {
+	tests := []struct {
+		name           string
+		argocd         *argoproj.ArgoCD
+		wantSMFound    bool
+		wantInterval   monitoringv1.Duration
+		wantScrTimeout monitoringv1.Duration
+	}{
+		{
+			name: "prometheus enabled, no metrics config",
+			argocd: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.Prometheus.Enabled = true
+			}),
+			wantSMFound: true,
+		},
+		{
+			name: "prometheus disabled",
+			argocd: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.Prometheus.Enabled = false
+			}),
+			wantSMFound: false,
+		},
+		{
+			name: "prometheus enabled, repo metrics set",
+			argocd: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.Prometheus.Enabled = true
+				cr.Spec.Repo.Metrics = argoproj.ArgoCDMetricsSpec{
+					Interval:      "90s",
+					ScrapeTimeout: "45s",
+				}
+			}),
+			wantSMFound:    true,
+			wantInterval:   "90s",
+			wantScrTimeout: "45s",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			resObjs := []client.Object{test.argocd}
+			subresObjs := []client.Object{test.argocd}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			err := monitoringv1.AddToScheme(r.Scheme)
+			assert.NoError(t, err)
+
+			err = r.reconcileRepoServerServiceMonitor(test.argocd)
+			assert.NoError(t, err)
+
+			sm := &monitoringv1.ServiceMonitor{}
+			err = r.Get(context.TODO(), types.NamespacedName{
+				Name:      fmt.Sprintf("%s-repo-server-metrics", test.argocd.Name),
+				Namespace: test.argocd.Namespace,
+			}, sm)
+
+			if test.wantSMFound {
+				assert.NoError(t, err)
+				assert.Equal(t, test.wantInterval, sm.Spec.Endpoints[0].Interval)
+				assert.Equal(t, test.wantScrTimeout, sm.Spec.Endpoints[0].ScrapeTimeout)
+			} else {
+				assert.True(t, errors.IsNotFound(err))
+			}
+		})
+	}
+}
+
+func TestReconcileServerMetricsServiceMonitor(t *testing.T) {
+	tests := []struct {
+		name           string
+		argocd         *argoproj.ArgoCD
+		wantSMFound    bool
+		wantInterval   monitoringv1.Duration
+		wantScrTimeout monitoringv1.Duration
+	}{
+		{
+			name: "prometheus enabled, no metrics config",
+			argocd: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.Prometheus.Enabled = true
+			}),
+			wantSMFound: true,
+		},
+		{
+			name: "prometheus disabled",
+			argocd: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.Prometheus.Enabled = false
+			}),
+			wantSMFound: false,
+		},
+		{
+			name: "prometheus enabled, server metrics set",
+			argocd: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.Prometheus.Enabled = true
+				cr.Spec.Server.Metrics = argoproj.ArgoCDMetricsSpec{
+					Interval:      "120s",
+					ScrapeTimeout: "60s",
+				}
+			}),
+			wantSMFound:    true,
+			wantInterval:   "120s",
+			wantScrTimeout: "60s",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			resObjs := []client.Object{test.argocd}
+			subresObjs := []client.Object{test.argocd}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			err := monitoringv1.AddToScheme(r.Scheme)
+			assert.NoError(t, err)
+
+			err = r.reconcileServerMetricsServiceMonitor(test.argocd)
+			assert.NoError(t, err)
+
+			sm := &monitoringv1.ServiceMonitor{}
+			err = r.Get(context.TODO(), types.NamespacedName{
+				Name:      fmt.Sprintf("%s-server-metrics", test.argocd.Name),
+				Namespace: test.argocd.Namespace,
+			}, sm)
+
+			if test.wantSMFound {
+				assert.NoError(t, err)
+				assert.Equal(t, test.wantInterval, sm.Spec.Endpoints[0].Interval)
+				assert.Equal(t, test.wantScrTimeout, sm.Spec.Endpoints[0].ScrapeTimeout)
+			} else {
+				assert.True(t, errors.IsNotFound(err))
+			}
+		})
+	}
+}
+
+func TestServiceMonitorEndpointUpdate(t *testing.T) {
+	a := makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+		cr.Spec.Prometheus.Enabled = true
+		cr.Spec.Controller.Metrics = argoproj.ArgoCDMetricsSpec{
+			Interval: "30s",
+		}
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	err := monitoringv1.AddToScheme(r.Scheme)
+	assert.NoError(t, err)
+
+	err = r.reconcileMetricsServiceMonitor(a)
+	assert.NoError(t, err)
+
+	sm := &monitoringv1.ServiceMonitor{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      fmt.Sprintf("%s-%s", a.Name, common.ArgoCDKeyMetrics),
+		Namespace: a.Namespace,
+	}, sm)
+	assert.NoError(t, err)
+	assert.Equal(t, monitoringv1.Duration("30s"), sm.Spec.Endpoints[0].Interval)
+
+	a.Spec.Controller.Metrics.Interval = "60s"
+	a.Spec.Controller.Metrics.ScrapeTimeout = "25s"
+	err = r.reconcileMetricsServiceMonitor(a)
+	assert.NoError(t, err)
+
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      fmt.Sprintf("%s-%s", a.Name, common.ArgoCDKeyMetrics),
+		Namespace: a.Namespace,
+	}, sm)
+	assert.NoError(t, err)
+	assert.Equal(t, monitoringv1.Duration("60s"), sm.Spec.Endpoints[0].Interval)
+	assert.Equal(t, monitoringv1.Duration("25s"), sm.Spec.Endpoints[0].ScrapeTimeout)
+
+	a.Spec.Controller.Metrics = argoproj.ArgoCDMetricsSpec{}
+	err = r.reconcileMetricsServiceMonitor(a)
+	assert.NoError(t, err)
+
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      fmt.Sprintf("%s-%s", a.Name, common.ArgoCDKeyMetrics),
+		Namespace: a.Namespace,
+	}, sm)
+	assert.NoError(t, err)
+	assert.Empty(t, sm.Spec.Endpoints[0].Interval)
+	assert.Empty(t, sm.Spec.Endpoints[0].ScrapeTimeout)
 }
