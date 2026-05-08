@@ -30,15 +30,14 @@ import (
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
 	argocdFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/argocd"
 	k8sFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/k8s"
+	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/statefulset"
 	fixtureUtils "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
-
 	Context("1-048_validate_controller_sharding", func() {
-
 		var (
 			k8sClient client.Client
 			ctx       context.Context
@@ -52,7 +51,6 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 		})
 
 		It("verifies that enabling sharding with 3 replicas causes Application Controller to split to 3 replicas, and disabling reverts to 1", func() {
-
 			By("creating simple namespace-scoped Argo CD instance")
 			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 			defer cleanupFunc()
@@ -106,14 +104,19 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("checking if ARGOCD_CONTROLLER_SHARDING_ALGORITHM env var is set in the app controller StatefulSet")
 			Eventually(statefulSet).Should(k8sFixture.ExistByName())
-			match = false
-			for _, env := range statefulSet.Spec.Template.Spec.Containers[0].Env {
-				if env.Name == "ARGOCD_CONTROLLER_SHARDING_ALGORITHM" && env.Value == "round-robin" {
-					match = true
-					break
+			Eventually(statefulSet, "60s", "5s").Should(statefulset.HaveContainerWithEnvVar("ARGOCD_CONTROLLER_SHARDING_ALGORITHM", "round-robin", 0), "Statefulset should have expected ARGOCD_CONTROLLER_SHARDING_ALGORITHM to be round-robin")
+
+			By("unset algorithm and ensure that it is not set")
+			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
+				ac.Spec.Controller.Sharding = argov1beta1api.ArgoCDApplicationControllerShardSpec{
+					Enabled:  true,
+					Replicas: 3,
 				}
-			}
-			Expect(match).To(BeTrue(), "Statefulset should have expected ARGOCD_CONTROLLER_SHARDING_ALGORITHM")
+			})
+
+			By("checking if ARGOCD_CONTROLLER_SHARDING_ALGORITHM env var is not set in app controller StatefulSet")
+			Eventually(statefulSet).Should(k8sFixture.ExistByName())
+			Eventually(statefulSet, "60s", "5s").ShouldNot(statefulset.HaveContainerWithEnvVar("ARGOCD_CONTROLLER_SHARDING_ALGORITHM", "round-robin", 0), "Statefulset should not have ARGOCD_CONTROLLER_SHARDING_ALGORITHM")
 
 			By("disabling sharding")
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
@@ -140,8 +143,6 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				}
 			}
 			Expect(replicasVarFound).To(BeFalse(), "If sharding is disabled then the ARGOCD_CONTROLLER_REPLICAS var is not set")
-
 		})
-
 	})
 })
