@@ -110,3 +110,13 @@ If you're using the Argo CD CLI with Dex authentication, make sure to use the ne
    argocd login <your-argocd-server> --sso
    argocd app list
    ```
+
+## Declarative webhook secrets (`spec.webhookSecrets`)
+
+The Argo CD Operator can populate Argo CD’s Git webhook credentials from Kubernetes `Secret`
+references declared on **`spec.webhookSecrets`** in the **ArgoCD** CR (`v1beta1`). This is optional and **backward compatible**:
+
+- **If you do not set** `spec.webhookSecrets`, the operator continues to omit declarative webhook management; **`webhook.*` keys already present in `argocd-secret` are left as-is**, including values you patched in manually before this feature existed.
+- **If you set** `spec.webhookSecrets`, the operator syncs the providers you declare into `argocd-secret`. Providers not listed while management is enabled can have their **`webhook.*` keys cleared** on reconcile—see [Configuring webhook secrets](./usage/webhook-secrets.md) for exact semantics.
+
+For migration from manual edits, verification, integrations (External Secrets, Sealed Secrets), and troubleshooting, use the **[Configuring webhook secrets](./usage/webhook-secrets.md)** guide. A small runnable example is **`examples/argocd-webhook-secrets.yaml`** at the repo root (works from any local checkout). A [GitHub `blob/master` copy](https://github.com/argoproj-labs/argocd-operator/blob/master/examples/argocd-webhook-secrets.yaml) appears only after that path exists on the default branch.
