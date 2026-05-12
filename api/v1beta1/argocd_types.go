@@ -1065,8 +1065,9 @@ type ArgoCDSpec struct {
 	AggregatedClusterRoles bool `json:"aggregatedClusterRoles,omitempty"`
 
 	// CmdParams specifies command-line parameters for the Argo CD components.
-	// The only keys currently supported for this parameter are:
+	// Keys commonly used with this field include:
 	// - controller.resource.health.persist
+	// - applicationsetcontroller.enable.tokenref.strict.mode — when ApplicationSet-in-any-namespace is active, the operator defaults this to "true"
 	CmdParams map[string]string `json:"cmdParams,omitempty"`
 
 	// ArgoCDAgent defines configurations for the ArgoCD Agent component.
