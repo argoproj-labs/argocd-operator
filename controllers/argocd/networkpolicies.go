@@ -42,6 +42,8 @@ const (
 	ArgoCDApplicationSetControllerNetworkPolicy = "applicationset-controller-network-policy"
 	// ImageUpdaterNetworkPolicy is the name of the network policy which controls Image Updater traffic
 	ImageUpdaterNetworkPolicy = "image-updater-network-policy"
+	// WebhookTrafficNetworkPolicy is the name of the network policy which controls Webhook traffic
+	WebhookTrafficNetworkPolicy = "webhook-traffic-network-policy"
 )
 
 func (r *ReconcileArgoCD) ReconcileNetworkPolicies(cr *argoproj.ArgoCD) error {
@@ -111,6 +113,7 @@ func (r *ReconcileArgoCD) deleteArgoCDNetworkPolicies(cr *argoproj.ArgoCD) error
 	}
 	if !cr.Spec.ImageUpdater.NetworkPolicy.IsEnabled() {
 		names = append(names, fmt.Sprintf("%s-%s", cr.Name, ImageUpdaterNetworkPolicy))
+		names = append(names, fmt.Sprintf("%s-%s", cr.Name, WebhookTrafficNetworkPolicy))
 	}
 
 	for _, name := range names {
@@ -1050,8 +1053,8 @@ func (r *ReconcileArgoCD) ReconcileArgoCDRepoServerNetworkPolicy(cr *argoproj.Ar
 	return nil
 }
 
-func (r *ReconcileArgoCD) ReconcileImageUpdaterNetworkPolicy(cr *argoproj.ArgoCD) error {
-	desired := returnNetworkPolicyHeaders(cr, ImageUpdaterNetworkPolicy)
+func createImageUpdaterNetworkPolicy(cr *argoproj.ArgoCD, name string, namespaceSelectorLabels map[string]string, port int32) *networkingv1.NetworkPolicy {
+	desired := returnNetworkPolicyHeaders(cr, name)
 	desired.Spec = networkingv1.NetworkPolicySpec{
 		PodSelector: metav1.LabelSelector{
 			MatchLabels: map[string]string{
@@ -1066,35 +1069,40 @@ func (r *ReconcileArgoCD) ReconcileImageUpdaterNetworkPolicy(cr *argoproj.ArgoCD
 				From: []networkingv1.NetworkPolicyPeer{
 					{
 						NamespaceSelector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{
-								"metrics": "enabled",
-							},
+							MatchLabels: namespaceSelectorLabels,
 						},
 					},
 				},
 				Ports: []networkingv1.NetworkPolicyPort{
 					{
 						Protocol: TCPProtocol,
-						Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 8443},
+						Port: &intstr.IntOrString{
+							Type:   intstr.Int,
+							IntVal: port,
+						},
 					},
 				},
 			},
 		},
 	}
 
+	return desired
+}
+
+func reconcileNetworkPolicy(r *ReconcileArgoCD, cr *argoproj.ArgoCD, desired *networkingv1.NetworkPolicy) error {
 	existing := &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", cr.Name, ImageUpdaterNetworkPolicy),
-			Namespace: cr.Namespace,
+			Name:      desired.Name,
+			Namespace: desired.Namespace,
 		},
 	}
 
-	npExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
+	exists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
 	if err != nil {
 		return err
 	}
 
-	if npExists {
+	if exists {
 		modified := false
 		explanation := ""
 
@@ -1126,30 +1134,49 @@ func (r *ReconcileArgoCD) ReconcileImageUpdaterNetworkPolicy(cr *argoproj.ArgoCD
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			if err := r.Update(context.TODO(), existing); err != nil {
 				log.Error(err, "Failed to update %s network policy in namespace %s", existing.Name, cr.Namespace)
-				return fmt.Errorf("failed to update %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
+				return fmt.Errorf(
+					"failed to update %s network policy in namespace %s. error: %w",
+					existing.Name,
+					cr.Namespace,
+					err,
+				)
 			}
 		}
 		return nil
 	}
 
 	if err := controllerutil.SetControllerReference(cr, desired, r.Scheme); err != nil {
-		log.Error(err, "Failed to set controller reference on image updater network policy")
-		return fmt.Errorf("failed to set controller reference on image updater network policy. error: %w", err)
+		log.Error(err, "Failed to set controller reference on network policy")
+		return fmt.Errorf("failed to set controller reference on network policy. error: %w", err)
 	}
-
 	argoutil.LogResourceCreation(log, desired)
 	if err := r.Create(context.TODO(), desired); err != nil {
-		log.Error(err, "Failed to create %s network policy in namespace %s", existing.Name, cr.Namespace)
-		return fmt.Errorf("failed to create %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
+		log.Error(err, "Failed to create %s network policy in namespace %s", desired.Name, cr.Namespace)
+		return fmt.Errorf("failed to create %s network policy in namespace %s. error: %w", desired.Name, cr.Namespace, err)
 	}
 
 	return nil
 }
 
-func returnNetworkPolicyHeaders(cr *argoproj.ArgoCD, NetworkPolicyName string) *networkingv1.NetworkPolicy {
+func (r *ReconcileArgoCD) ReconcileImageUpdaterNetworkPolicy(cr *argoproj.ArgoCD) error {
+	metricsPolicy := createImageUpdaterNetworkPolicy(cr, ImageUpdaterNetworkPolicy, map[string]string{"metrics": "enabled"}, 8443)
+	webhookPolicy := createImageUpdaterNetworkPolicy(cr, WebhookTrafficNetworkPolicy, map[string]string{"webhooks": "enabled"}, 8082)
+
+	if err := reconcileNetworkPolicy(r, cr, metricsPolicy); err != nil {
+		return err
+	}
+
+	if err := reconcileNetworkPolicy(r, cr, webhookPolicy); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func returnNetworkPolicyHeaders(cr *argoproj.ArgoCD, networkPolicyName string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", cr.Name, NetworkPolicyName),
+			Name:      fmt.Sprintf("%s-%s", cr.Name, networkPolicyName),
 			Namespace: cr.Namespace,
 			Labels:    argoutil.LabelsForCluster(cr),
 		},
