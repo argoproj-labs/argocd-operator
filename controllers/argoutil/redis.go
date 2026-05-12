@@ -337,6 +337,9 @@ func loadTemplateFile(path string, params map[string]string) (string, error) {
 	return buf.String(), nil
 }
 
+// GenerateAgentPrincipalRedisProxyServiceName generates a deterministic Service name for the agent's principal Redis proxy.
+// It truncates the Custom Resource (CR) name to ensure the final appended name stays within Kubernetes length limits.
 func GenerateAgentPrincipalRedisProxyServiceName(crName string) string {
-	return fmt.Sprintf("%s-agent-%s", crName, "principal-redisproxy")
+	truncatedCRName := TruncateWithHash(crName, 36)
+	return fmt.Sprintf("%s-agent-%s", truncatedCRName, "principal-redisproxy")
 }

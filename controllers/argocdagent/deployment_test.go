@@ -22,6 +22,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -60,6 +61,18 @@ func withPrincipalImage(image string) argoCDOpt {
 			a.Spec.ArgoCDAgent.Principal = &argoproj.PrincipalSpec{}
 		}
 		a.Spec.ArgoCDAgent.Principal.Image = image
+	}
+}
+
+func withResourceRequirements(resources corev1.ResourceRequirements) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		if a.Spec.ArgoCDAgent == nil {
+			a.Spec.ArgoCDAgent = &argoproj.ArgoCDAgentSpec{}
+		}
+		if a.Spec.ArgoCDAgent.Principal == nil {
+			a.Spec.ArgoCDAgent.Principal = &argoproj.PrincipalSpec{}
+		}
+		a.Spec.ArgoCDAgent.Principal.Resources = &resources
 	}
 }
 
@@ -606,4 +619,64 @@ func TestBuildPrincipalImage(t *testing.T) {
 			assert.Equal(t, tt.expectedImage, result, tt.description)
 		})
 	}
+}
+
+func TestReconcilePrincipalDeployment_ResourceRequirements(t *testing.T) {
+	cr := makeTestArgoCD(withPrincipalEnabled(true), withResourceRequirements(corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resourcev1.MustParse("500m"),
+			corev1.ResourceMemory: resourcev1.MustParse("512Mi"),
+		},
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resourcev1.MustParse("250m"),
+			corev1.ResourceMemory: resourcev1.MustParse("256Mi"),
+		},
+	}))
+	saName := generateAgentResourceName(cr.Name, testCompName)
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch)
+	assert.NoError(t, err)
+
+	deployment := &appsv1.Deployment{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName),
+		Namespace: cr.Namespace,
+	}, deployment)
+	assert.NoError(t, err)
+
+	testResources := corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resourcev1.MustParse("500m"),
+			corev1.ResourceMemory: resourcev1.MustParse("512Mi"),
+		},
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resourcev1.MustParse("250m"),
+			corev1.ResourceMemory: resourcev1.MustParse("256Mi"),
+		},
+	}
+	assert.Equal(t, testResources, deployment.Spec.Template.Spec.Containers[0].Resources)
+
+	// Ensure that the requirements can be updated
+	updatedResources := corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resourcev1.MustParse("250m"),
+			corev1.ResourceMemory: resourcev1.MustParse("256Mi"),
+		},
+	}
+	cr.Spec.ArgoCDAgent.Principal.Resources = &updatedResources
+
+	err = ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch)
+	assert.NoError(t, err)
+
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName),
+		Namespace: cr.Namespace,
+	}, deployment)
+	assert.NoError(t, err)
+
+	assert.Equal(t, updatedResources, deployment.Spec.Template.Spec.Containers[0].Resources)
 }
