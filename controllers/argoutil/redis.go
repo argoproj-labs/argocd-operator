@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"text/template"
@@ -168,21 +169,25 @@ func GetRedisHAProxyContainerImage(cr *argoproj.ArgoCD) string {
 	return CombineImageTag(img, tag)
 }
 
-// GetRedisInitScript will load the redis init script from a template on disk for the given ArgoCD.
-// If an error occurs, an empty string value will be returned.
-func GetRedisInitScript(cr *argoproj.ArgoCD, useTLSForRedis bool) string {
-	path := fmt.Sprintf("%s/init.sh.tpl", getRedisConfigPath())
-	vars := map[string]string{
-		"ServiceName": NameWithSuffix(cr.ObjectMeta, "redis-ha"),
-		"UseTLS":      strconv.FormatBool(useTLSForRedis),
+func getRedisConfigContent(segment string) string {
+	base := getRedisConfigPath()
+	fp := filepath.Clean(filepath.Join(base, segment))
+	if !strings.HasPrefix(fp, base) {
+		panic(fmt.Errorf("unsafe path for %s + %s", base, segment))
 	}
 
-	script, err := loadTemplateFile(path, vars)
+	data, err := os.ReadFile(fp)
 	if err != nil {
-		log.Error(err, "unable to load redis init-script")
+		log.Error(err, "unable to load redis "+segment)
 		return ""
 	}
-	return script
+	return string(data)
+}
+
+// GetRedisInitScript will load the redis init script.
+// If an error occurs, an empty string value will be returned.
+func GetRedisInitScript() string {
+	return getRedisConfigContent("init.sh")
 }
 
 // GetRedisHAProxyConfig will load the Redis HA Proxy configuration from a template on disk for the given ArgoCD.
@@ -202,20 +207,10 @@ func GetRedisHAProxyConfig(cr *argoproj.ArgoCD, useTLSForRedis bool) string {
 	return script
 }
 
-// GetRedisHAProxyScript will load the Redis HA Proxy init script from a template on disk for the given ArgoCD.
+// GetRedisHAProxyScript will load the Redis HA Proxy init script.
 // If an error occurs, an empty string value will be returned.
-func GetRedisHAProxyScript(cr *argoproj.ArgoCD) string {
-	path := fmt.Sprintf("%s/haproxy_init.sh.tpl", getRedisConfigPath())
-	vars := map[string]string{
-		"ServiceName": NameWithSuffix(cr.ObjectMeta, "redis-ha"),
-	}
-
-	script, err := loadTemplateFile(path, vars)
-	if err != nil {
-		log.Error(err, "unable to load redis haproxy init script")
-		return ""
-	}
-	return script
+func GetRedisHAProxyScript() string {
+	return getRedisConfigContent("haproxy_init.sh")
 }
 
 // GetRedisResources will return the ResourceRequirements for the Redis container.
@@ -257,49 +252,22 @@ func GetRedisSentinelConf(useTLSForRedis bool) string {
 	return conf
 }
 
-// GetRedisLivenessScript will load the redis liveness script from a template on disk for the given ArgoCD.
+// GetRedisLivenessScript will load the redis liveness script.
 // If an error occurs, an empty string value will be returned.
-func GetRedisLivenessScript(useTLSForRedis bool) string {
-	path := fmt.Sprintf("%s/redis_liveness.sh.tpl", getRedisConfigPath())
-	params := map[string]string{
-		"UseTLS": strconv.FormatBool(useTLSForRedis),
-	}
-	conf, err := loadTemplateFile(path, params)
-	if err != nil {
-		log.Error(err, "unable to load redis liveness script")
-		return ""
-	}
-	return conf
+func GetRedisLivenessScript() string {
+	return getRedisConfigContent("redis_liveness.sh")
 }
 
-// GetRedisReadinessScript will load the redis readiness script from a template on disk for the given ArgoCD.
+// GetRedisReadinessScript will load the redis readiness script.
 // If an error occurs, an empty string value will be returned.
-func GetRedisReadinessScript(useTLSForRedis bool) string {
-	path := fmt.Sprintf("%s/redis_readiness.sh.tpl", getRedisConfigPath())
-	params := map[string]string{
-		"UseTLS": strconv.FormatBool(useTLSForRedis),
-	}
-	conf, err := loadTemplateFile(path, params)
-	if err != nil {
-		log.Error(err, "unable to load redis readiness script")
-		return ""
-	}
-	return conf
+func GetRedisReadinessScript() string {
+	return getRedisConfigContent("redis_readiness.sh")
 }
 
 // GetSentinelLivenessScript will load the redis liveness script from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func GetSentinelLivenessScript(useTLSForRedis bool) string {
-	path := fmt.Sprintf("%s/sentinel_liveness.sh.tpl", getRedisConfigPath())
-	params := map[string]string{
-		"UseTLS": strconv.FormatBool(useTLSForRedis),
-	}
-	conf, err := loadTemplateFile(path, params)
-	if err != nil {
-		log.Error(err, "unable to load sentinel liveness script")
-		return ""
-	}
-	return conf
+func GetSentinelLivenessScript() string {
+	return getRedisConfigContent("sentinel_liveness.sh")
 }
 
 // GetRedisServerAddress will return the Redis service address for the given ArgoCD.
