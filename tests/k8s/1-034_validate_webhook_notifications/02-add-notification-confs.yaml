@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: NotificationsConfiguration
+metadata:
+ name: default-notifications-configuration
+spec:
+  services:
+   service.webhook.test-webhook: |
+       url: https://webhook/hooks/example
+  triggers:
+   trigger.test-on-created: |-
+     - description: Application is created.
+       send: ["test-app-created"]
+       when: "true"
+  templates:
+   template.test-app-created: |
+     webhook:
+       test-webhook:
+         method: POST
+         body: |
+           {"created":"{{.app.metadata.name}}","type":"{{(call .repo.GetAppDetails).Type}}"}
+
