@@ -294,7 +294,7 @@ bundle-push: ## Push the bundle image.
 	$(MAKE) docker-push IMG=$(BUNDLE_IMG)
 
 # UTIL_IMG defines the image:tag used for the utility image (for backup).
-# You can use it as an arg. (E.g make bundle-build UTIL_IMG=<some-registry>/<project-name-bundle>:<tag>)
+# You can use it as an arg. (E.g make util-build UTIL_IMG=<some-registry>/<project-name-bundle>:<tag>)
 UTIL_IMG ?= $(IMAGE_TAG_BASE)-util:v$(VERSION)
 
 .PHONY: util-build
@@ -306,7 +306,7 @@ util-push: ## Push the util container image
 	$(MAKE) docker-push IMG=$(UTIL_IMG)
 
 # REGISTRY_IMG defines the image:tag used for the (legacy) registry container image.
-# You can use it as an arg. (E.g make bundle-build UTIL_IMG=<some-registry>/<project-name-bundle>:<tag>)
+# You can use it as an arg. (E.g make registry-build REGISTRY_IMG=<some-registry>/<project-name-bundle>:<tag>)
 REGISTRY_IMG ?= $(IMAGE_TAG_BASE)-registry:v$(VERSION)
 
 .PHONY: registry-build
