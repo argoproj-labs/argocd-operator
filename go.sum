@@ -41,8 +41,8 @@ github.com/antlr4-go/antlr/v4 v4.13.1 h1:SqQKkuVZ+zWkMMNkjy5FZe5mr5WURWnlpmOuzYW
 github.com/antlr4-go/antlr/v4 v4.13.1/go.mod h1:GKmUxMtwp6ZgGwZSva4eWPC5mS6vUAmOABFgjdkM7Nw=
 github.com/argoproj-labs/argocd-image-updater v1.2.0 h1:223SgqI7UQEL24JZJCLAUIxQikzlqsMO4rhCui/xXOQ=
 github.com/argoproj-labs/argocd-image-updater v1.2.0/go.mod h1:j1JPjPvs6HqZBgwOTQPSbclvJjQEAvvWuWyiYCDNNIo=
-github.com/argoproj/argo-cd/v3 v3.3.8 h1:rjQvEtEMNoxx9vhf7IwR6EF8A1XlkH8Dd+7slAqvGCU=
-github.com/argoproj/argo-cd/v3 v3.3.8/go.mod h1:133vb5p+R4RgcS62hAns6MiGPmwuhvghzKrH5ZWFlpY=
+github.com/argoproj/argo-cd/v3 v3.3.10 h1:3QE36lhN/0ntjwl2TH13xL23w2J2AaXgC0Dxn0469h4=
+github.com/argoproj/argo-cd/v3 v3.3.10/go.mod h1:LdPjAnIFbx0khaB6vLsOKrGoSWeJ8kzOt//jF1ltCPg=
 github.com/argoproj/gitops-engine v0.7.1-0.20251217140045-5baed5604d2d h1:iUJYrbSvpV9n8vyl1sBt1GceM60HhHfnHxuzcm5apDg=
 github.com/argoproj/gitops-engine v0.7.1-0.20251217140045-5baed5604d2d/go.mod h1:PauXVUVcfiTgC+34lDdWzPS101g4NpsUtDAjFBnWf94=
 github.com/argoproj/pkg v0.13.7-0.20250305113207-cbc37dc61de5 h1:YBoLSjpoaJXaXAldVvBRKJuOPvIXz9UOv6S96gMJM/Q=

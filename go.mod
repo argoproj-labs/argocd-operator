@@ -4,7 +4,7 @@ go 1.25.9
 
 require (
 	// Update in Makefile and run `make update-dependencies`
-	github.com/argoproj/argo-cd/v3 v3.3.8
+	github.com/argoproj/argo-cd/v3 v3.3.10
 	github.com/argoproj/gitops-engine v0.7.1-0.20251217140045-5baed5604d2d
 	github.com/cert-manager/cert-manager v1.20.2
 	github.com/go-logr/logr v1.4.3
@@ -214,7 +214,7 @@ require (
 )
 
 replace (
-	// This replace block is from Argo CD v3.3.8 go.mod
+	// This replace block is from Argo CD v3.3.10 go.mod
 	github.com/golang/protobuf => github.com/golang/protobuf v1.5.4
 	github.com/grpc-ecosystem/grpc-gateway => github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	golang.org/x/tools => golang.org/x/tools v0.35.0
