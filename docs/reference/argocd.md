@@ -186,8 +186,8 @@ Volumes | [Empty] | Configure addition volumes for the ArgoCD Application Contro
 VolumeMounts | [Empty] | Configure addition volume mounts for the ArgoCD Application Controller component. This field is optional.
 Annotations | [Empty] | Custom annotations to pods deployed by the operator
 Labels | [Empty] | Custom labels to pods deployed by the operator
-Metrics.Interval | [Empty] | Prometheus scrape interval for the Application Controller ServiceMonitor. If empty, Prometheus uses its default. | |
-Metrics.ScrapeTimeout | [Empty] | Prometheus scrape timeout for the Application Controller ServiceMonitor. If empty, Prometheus uses its default. | |
+Metrics.Interval | [Empty] | Prometheus scrape interval for the Application Controller ServiceMonitor. If empty, Prometheus uses its default.
+Metrics.ScrapeTimeout | [Empty] | Prometheus scrape timeout for the Application Controller ServiceMonitor. If empty, Prometheus uses its default.
 
 ### Controller Example
 
