@@ -606,10 +606,21 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterDeployment(cr *argoproj.ArgoCD, s
 	if image == "" {
 		image = argoutil.CombineImageTag(DefaultImageUpdaterImage, DefaultImageUpdaterTag)
 	}
-
+	args := []string{"run"}
+	tls := cr.Spec.ImageUpdater.TlsConfig
+	minVer, maxVer, err := argoutil.ResolveTLSConfig(tls)
+	if err != nil {
+		return err
+	}
+	// Always pass TLS version flags
+	args = append(args, fmt.Sprintf("--tlsminversion=%s", argoutil.TLSVersionName(minVer)), fmt.Sprintf("--tlsmaxversion=%s", argoutil.TLSVersionName(maxVer)))
+	// Only pass cipher flag when configured
+	if tls != nil && len(tls.CipherSuites) > 0 {
+		args = append(args, fmt.Sprintf("--tlsciphers=%s", strings.Join(tls.CipherSuites, ":")))
+	}
 	podSpec.Containers = []corev1.Container{{
 		Command:         []string{"/manager"},
-		Args:            []string{"run"},
+		Args:            args,
 		Image:           image,
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            common.ArgoCDImageUpdaterControllerComponent,
