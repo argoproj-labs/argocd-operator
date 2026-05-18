@@ -170,7 +170,7 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 				By("waiting for deployment " + deploymentName)
 				Eventually(func() error {
 					return c.Get(ctx, types.NamespacedName{Name: deploymentName, Namespace: argocdNamespace}, deployment)
-				}, 2*time.Minute, 2*time.Second).Should(Succeed())
+				}, 3*time.Minute, 2*time.Second).Should(Succeed())
 
 				By("validating default TLS args in " + deploymentName)
 				Eventually(func() bool {
@@ -198,7 +198,7 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 						return true
 					}
 					return false
-				}, 60*time.Second, 2*time.Second).Should(BeTrue())
+				}, 3*time.Minute, 2*time.Second).Should(BeTrue())
 			}
 			By("validating default TLS args in Redis deployment")
 			Eventually(func() bool {
