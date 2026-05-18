@@ -975,17 +975,17 @@ func (r *ReconcileArgoCD) reconcileArgoCmdParamsConfigMap(cr *argoproj.ArgoCD) e
 	tokenRefStrictModeValue, hasExplicitTokenRefStrictMode := getTokenRefStrictModeCmdParamValue(cr.Spec.CmdParams)
 	if hasExplicitTokenRefStrictMode {
 		cm.Data[common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey] = tokenRefStrictModeValue
-	}
-
-	// When applicationSet-in-any-namespace is effectively enabled, default tokenRef strict mode so only
-	// Secrets labeled as SCM credentials can be used with tokenRef
-	if argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace) && cr.Spec.ApplicationSet != nil {
-		allowedAppSetNS, err := r.getAllowedApplicationSetSourceNamespaces(cr)
-		if err != nil {
-			return err
-		}
-		if len(allowedAppSetNS) > 0 && !hasExplicitTokenRefStrictMode {
-			cm.Data[common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey] = "true"
+	} else {
+		// When applicationSet-in-any-namespace is effectively enabled, default tokenRef strict mode so only
+		// Secrets labeled as SCM credentials can be used with tokenRef
+		if argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace) && cr.Spec.ApplicationSet != nil {
+			allowedAppSetNS, err := r.getAllowedApplicationSetSourceNamespaces(cr)
+			if err != nil {
+				return err
+			}
+			if len(allowedAppSetNS) > 0 {
+				cm.Data[common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey] = "true"
+			}
 		}
 	}
 
