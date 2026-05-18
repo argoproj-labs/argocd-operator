@@ -279,6 +279,18 @@ func TestReconcileApplicationSetProxyConfiguration(t *testing.T) {
 
 	want := []v1.EnvVar{
 		{
+			Name: common.ArgoCDApplicationSetControllerTokenRefStrictModeEnvName,
+			ValueFrom: &v1.EnvVarSource{
+				ConfigMapKeyRef: &v1.ConfigMapKeySelector{
+					LocalObjectReference: v1.LocalObjectReference{
+						Name: common.ArgoCDCmdParamsConfigMapName,
+					},
+					Key:      common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey,
+					Optional: boolPtr(true),
+				},
+			},
+		},
+		{
 			Name:  "HTTPS_PROXY",
 			Value: "https://example.com",
 		},
@@ -1250,6 +1262,18 @@ func TestArgoCDApplicationSetEnv(t *testing.T) {
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	defaultEnv := []v1.EnvVar{
+		{
+			Name: common.ArgoCDApplicationSetControllerTokenRefStrictModeEnvName,
+			ValueFrom: &v1.EnvVarSource{
+				ConfigMapKeyRef: &v1.ConfigMapKeySelector{
+					LocalObjectReference: v1.LocalObjectReference{
+						Name: common.ArgoCDCmdParamsConfigMapName,
+					},
+					Key:      common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey,
+					Optional: boolPtr(true),
+				},
+			},
+		},
 		{
 			Name: "NAMESPACE",
 			ValueFrom: &v1.EnvVarSource{
