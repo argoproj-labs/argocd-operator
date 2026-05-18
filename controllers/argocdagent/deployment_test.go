@@ -33,22 +33,29 @@ import (
 )
 
 // Helper function to create a test deployment
-func makeTestDeployment(cr *argoproj.ArgoCD) *appsv1.Deployment {
+func makeTestDeployment(cr *argoproj.ArgoCD) (*appsv1.Deployment, error) {
+	spec, err := buildPrincipalSpec(testCompName, generateAgentResourceName(cr.Name, testCompName), cr, "", nil)
+	if err != nil {
+		return nil, err
+	}
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      generateAgentResourceName(cr.Name, testCompName),
 			Namespace: cr.Namespace,
 			Labels:    buildLabelsForAgentPrincipal(cr.Name, testCompName),
 		},
-		Spec: buildPrincipalSpec(testCompName, generateAgentResourceName(cr.Name, testCompName), cr),
-	}
+		Spec: spec,
+	}, nil
 }
 
 // Helper function to create a test deployment with custom image
-func makeTestDeploymentWithCustomImage(cr *argoproj.ArgoCD, customImage string) *appsv1.Deployment {
-	deployment := makeTestDeployment(cr)
+func makeTestDeploymentWithCustomImage(cr *argoproj.ArgoCD, customImage string) (*appsv1.Deployment, error) {
+	deployment, err := makeTestDeployment(cr)
+	if err != nil {
+		return nil, err
+	}
 	deployment.Spec.Template.Spec.Containers[0].Image = customImage
-	return deployment
+	return deployment, nil
 }
 
 // Helper function to create ArgoCD with custom principal image
@@ -89,7 +96,7 @@ func TestReconcilePrincipalDeployment_DeploymentDoesNotExist_PrincipalDisabled(t
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil)
 	assert.NoError(t, err)
 
 	// Verify Deployment was not created
@@ -112,7 +119,7 @@ func TestReconcilePrincipalDeployment_DeploymentDoesNotExist_PrincipalEnabled(t 
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil)
 	assert.NoError(t, err)
 
 	// Verify Deployment was created
@@ -129,18 +136,21 @@ func TestReconcilePrincipalDeployment_DeploymentDoesNotExist_PrincipalEnabled(t 
 	assert.Equal(t, buildLabelsForAgentPrincipal(cr.Name, testCompName), deployment.Labels)
 
 	// Verify Deployment has expected spec
-	expectedSpec := buildPrincipalSpec(testCompName, saName, cr)
+	expectedSpec, err := buildPrincipalSpec(testCompName, saName, cr, "", nil)
+	assert.NoError(t, err)
 	assert.Equal(t, expectedSpec.Selector, deployment.Spec.Selector)
 	assert.Equal(t, expectedSpec.Template.Labels, deployment.Spec.Template.Labels)
 	assert.Equal(t, expectedSpec.Template.Spec.ServiceAccountName, deployment.Spec.Template.Spec.ServiceAccountName)
 
 	// Verify container configuration
+	envParams, err := buildPrincipalContainerEnv(cr, "", nil)
+	assert.NoError(t, err)
 	assert.Len(t, deployment.Spec.Template.Spec.Containers, 1)
 	container := deployment.Spec.Template.Spec.Containers[0]
 	assert.Equal(t, generateAgentResourceName(cr.Name, testCompName), container.Name)
 	assert.Equal(t, buildPrincipalImage(cr), container.Image)
 	assert.Equal(t, buildArgs(testCompName), container.Args)
-	assert.Equal(t, buildPrincipalContainerEnv(cr), container.Env)
+	assert.Equal(t, envParams, container.Env)
 	assert.Equal(t, buildSecurityContext(), container.SecurityContext)
 	assert.Equal(t, buildPorts(testCompName), container.Ports)
 
@@ -158,13 +168,14 @@ func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalDisabled(t *test
 	saName := generateAgentResourceName(cr.Name, testCompName)
 
 	// Create existing Deployment
-	existingDeployment := makeTestDeployment(cr)
+	existingDeployment, err := makeTestDeployment(cr)
+	assert.NoError(t, err)
 
 	resObjs := []client.Object{cr, existingDeployment}
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch)
+	err = ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil)
 	assert.NoError(t, err)
 
 	// Verify Deployment was deleted
@@ -184,13 +195,14 @@ func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalEnabled_NoChange
 	saName := generateAgentResourceName(cr.Name, testCompName)
 
 	// Create existing Deployment with correct spec
-	existingDeployment := makeTestDeployment(cr)
+	existingDeployment, err := makeTestDeployment(cr)
+	assert.NoError(t, err)
 
 	resObjs := []client.Object{cr, existingDeployment}
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch)
+	err = ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil)
 	assert.NoError(t, err)
 
 	// Verify Deployment still exists with same spec
@@ -212,13 +224,14 @@ func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalEnabled_ImageCha
 	saName := generateAgentResourceName(cr.Name, testCompName)
 
 	// Create existing Deployment with old image
-	existingDeployment := makeTestDeploymentWithCustomImage(cr, "quay.io/argoproj/argocd-agent:v1")
+	existingDeployment, err := makeTestDeploymentWithCustomImage(cr, "quay.io/argoproj/argocd-agent:v1")
+	assert.NoError(t, err)
 
 	resObjs := []client.Object{cr, existingDeployment}
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch)
+	err = ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil)
 	assert.NoError(t, err)
 
 	// Verify Deployment was updated with new image
@@ -240,14 +253,15 @@ func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalEnabled_ServiceA
 	newSAName := "new-service-account"
 
 	// Create existing Deployment with old service account
-	existingDeployment := makeTestDeployment(cr)
+	existingDeployment, err := makeTestDeployment(cr)
+	assert.NoError(t, err)
 	existingDeployment.Spec.Template.Spec.ServiceAccountName = oldSAName
 
 	resObjs := []client.Object{cr, existingDeployment}
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, newSAName, cr, sch)
+	err = ReconcilePrincipalDeployment(cl, testCompName, newSAName, cr, sch, "", nil)
 	assert.NoError(t, err)
 
 	// Verify Deployment was updated with new service account
@@ -268,13 +282,14 @@ func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalNotSet(t *testin
 	saName := generateAgentResourceName(cr.Name, testCompName)
 
 	// Create existing Deployment
-	existingDeployment := makeTestDeployment(cr)
+	existingDeployment, err := makeTestDeployment(cr)
+	assert.NoError(t, err)
 
 	resObjs := []client.Object{cr, existingDeployment}
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch)
+	err = ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil)
 	assert.NoError(t, err)
 
 	// Verify Deployment was deleted
@@ -297,7 +312,7 @@ func TestReconcilePrincipalDeployment_DeploymentDoesNotExist_AgentNotSet(t *test
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil)
 	assert.NoError(t, err)
 
 	// Verify Deployment was not created
@@ -317,13 +332,14 @@ func TestReconcilePrincipalDeployment_DeploymentExists_AgentNotSet(t *testing.T)
 	saName := generateAgentResourceName(cr.Name, testCompName)
 
 	// Create existing Deployment
-	existingDeployment := makeTestDeployment(cr)
+	existingDeployment, err := makeTestDeployment(cr)
+	assert.NoError(t, err)
 
 	resObjs := []client.Object{cr, existingDeployment}
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch)
+	err = ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil)
 	assert.NoError(t, err)
 
 	// Verify Deployment was deleted
@@ -346,7 +362,7 @@ func TestReconcilePrincipalDeployment_VerifyDeploymentSpec(t *testing.T) {
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil)
 	assert.NoError(t, err)
 
 	// Verify Deployment was created
@@ -456,7 +472,7 @@ func TestReconcilePrincipalDeployment_CustomImage(t *testing.T) {
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil)
 	assert.NoError(t, err)
 
 	// Verify Deployment was created with custom image
@@ -480,7 +496,7 @@ func TestReconcilePrincipalDeployment_DefaultImage(t *testing.T) {
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil)
 	assert.NoError(t, err)
 
 	// Verify Deployment was created with default image
@@ -504,7 +520,7 @@ func TestReconcilePrincipalDeployment_VolumeMountsAndVolumes(t *testing.T) {
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil)
 	assert.NoError(t, err)
 
 	// Verify Deployment was created
@@ -638,7 +654,7 @@ func TestReconcilePrincipalDeployment_ResourceRequirements(t *testing.T) {
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil)
 	assert.NoError(t, err)
 
 	deployment := &appsv1.Deployment{}
@@ -669,7 +685,7 @@ func TestReconcilePrincipalDeployment_ResourceRequirements(t *testing.T) {
 	}
 	cr.Spec.ArgoCDAgent.Principal.Resources = &updatedResources
 
-	err = ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch)
+	err = ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil)
 	assert.NoError(t, err)
 
 	err = cl.Get(context.TODO(), types.NamespacedName{

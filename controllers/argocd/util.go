@@ -1679,7 +1679,7 @@ func (r *ReconcileArgoCD) reconcileArgoCDAgent(cr *argoproj.ArgoCD) error {
 	}
 
 	log.Info("reconciling ArgoCD Agent's Principal deployment")
-	if err := argocdagent.ReconcilePrincipalDeployment(r.Client, compName, sa.Name, cr, r.Scheme); err != nil {
+	if err := argocdagent.ReconcilePrincipalDeployment(r.Client, compName, sa.Name, cr, r.Scheme, r.CentralTlsConfigProfile.MinVersion, r.CentralTlsConfigProfile.Ciphers); err != nil {
 		return err
 	}
 
@@ -1984,8 +1984,7 @@ func (r *ReconcileArgoCD) reconcileDeploymentHelper(cr *argoproj.ArgoCD, desired
 		changes = append(changes, "container command")
 	}
 
-	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Env,
-		desiredDeployment.Spec.Template.Spec.Containers[0].Env) {
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Env, desiredDeployment.Spec.Template.Spec.Containers[0].Env) {
 		existingDeployment.Spec.Template.Spec.Containers[0].Env = desiredDeployment.Spec.Template.Spec.Containers[0].Env
 		changes = append(changes, "container env")
 	}
@@ -2038,6 +2037,11 @@ func (r *ReconcileArgoCD) reconcileDeploymentHelper(cr *argoproj.ArgoCD, desired
 	if !reflect.DeepEqual(existingDeployment.Spec.Selector, desiredDeployment.Spec.Selector) {
 		existingDeployment.Spec.Selector = desiredDeployment.Spec.Selector
 		changes = append(changes, "selector")
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Args, desiredDeployment.Spec.Template.Spec.Containers[0].Args) {
+		existingDeployment.Spec.Template.Spec.Containers[0].Args = desiredDeployment.Spec.Template.Spec.Containers[0].Args
+		changes = append(changes, "container args")
 	}
 
 	if len(changes) > 0 {

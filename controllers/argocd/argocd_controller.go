@@ -37,6 +37,7 @@ import (
 
 	errs "errors"
 
+	configv1 "github.com/openshift/api/config/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -102,6 +103,15 @@ type ReconcileArgoCD struct {
 	// re-run to renew the Dex OAuth client token before it expires.
 	// Key: ArgoCD namespace, Value: time.Duration
 	dexTokenRequeueAfter sync.Map
+	// CentralTlsConfigProfile specifies the TLS configuration profile in the cluster.
+	CentralTlsConfigProfile TlsConfigProfile
+}
+
+type TlsConfigProfile struct {
+	// MinVersion specifies the minimum TLS version configured in cluster.
+	MinVersion configv1.TLSProtocolVersion
+	// Ciphers specifies the list of supported TLS cipher suites in cluster.
+	Ciphers []string
 }
 
 var log = logr.Log.WithName("controller_argocd")
@@ -135,6 +145,7 @@ var ActiveInstanceMap = make(map[string]string)
 //+kubebuilder:rbac:groups=argocd-image-updater.argoproj.io,resources=imageupdaters;imageupdaters/finalizers,verbs=*
 //+kubebuilder:rbac:groups=config.openshift.io,resources=authentications,verbs=get;list;watch
 //+kubebuilder:rbac:groups=certificates.k8s.io,resources=clustertrustbundles,verbs=get;list;watch
+//+kubebuilder:rbac:groups=config.openshift.io,resources=apiservers,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

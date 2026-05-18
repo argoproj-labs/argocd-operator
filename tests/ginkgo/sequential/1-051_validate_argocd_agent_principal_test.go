@@ -219,6 +219,9 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				argocdagent.EnvArgoCDPrincipalTLSServerRootCASecretName: agentRootCASecretName,
 				argocdagent.EnvArgoCDPrincipalResourceProxySecretName:   agentResourceProxyTLSSecretName,
 				argocdagent.EnvArgoCDPrincipalResourceProxyCaSecretName: agentRootCASecretName,
+				argocdagent.EnvArgoCDPrincipalTlsMinVersion:             "",
+				argocdagent.EnvArgoCDPrincipalTlsMaxVersion:             "",
+				argocdagent.EnvArgoCDPrincipalCipherSuites:              "",
 				argocdagent.EnvArgoCDPrincipalJwtSecretName:             agentJWTSecretName,
 			}
 

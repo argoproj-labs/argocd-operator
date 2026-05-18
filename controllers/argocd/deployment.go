@@ -28,6 +28,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
+	configv1 "github.com/openshift/api/config/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -220,14 +221,19 @@ func getArgoImportVolumes(cr *argoprojv1alpha1.ArgoCDExport) []corev1.Volume {
 	return volumes
 }
 
-func getArgoRedisArgs(useTLS bool) []string {
+func getArgoRedisArgs(useTLS bool, cr *argoproj.ArgoCD, centralTLSConfig TlsConfigProfile) ([]string, error) {
 	args := make([]string, 0)
-
 	args = append(args, "--save", "")
 	args = append(args, "--appendonly", "no")
 	args = append(args, "--aclfile", argoutil.RedisAuthMountPath+"users.acl")
 
 	if useTLS {
+		arguments, err := BuildRedisArgs(cr.Spec.Redis.TlsConfig, centralTLSConfig)
+		if err != nil {
+			log.Error(err, "failed to build Redis args")
+			return nil, err
+		}
+		args = append(args, arguments...)
 		args = append(args, "--tls-port", "6379")
 		args = append(args, "--port", "0")
 
@@ -235,8 +241,49 @@ func getArgoRedisArgs(useTLS bool) []string {
 		args = append(args, "--tls-key-file", "/app/config/redis/tls/tls.key")
 		args = append(args, "--tls-auth-clients", "no")
 	}
+	return args, nil
+}
 
-	return args
+// BuildRedisArgs builds arguments for redis deployment.
+// precedence will be for argoCD cr passed values
+// then for central tls config if no values are passed in argocd CR.
+func BuildRedisArgs(tlsCfg *argoproj.ArgoCDTlsConfig, centralTLSConfig TlsConfigProfile) ([]string, error) {
+	var args []string
+	// CR values take precedence
+	if tlsCfg != nil {
+		err := argoutil.ValidateTLSConfig(tlsCfg)
+		if err != nil {
+			return nil, err
+		}
+		protocols := argoutil.BuildRedisProtocols(tlsCfg)
+		if len(protocols) > 0 {
+			args = append(args, "--tls-protocols", strings.Join(protocols, " "))
+		}
+		if len(tlsCfg.CipherSuites) > 0 {
+			ciphers := argoutil.JoinCiphers(tlsCfg.CipherSuites)
+			if tlsCfg.MinVersion == "1.3" || tlsCfg.MaxVersion == "1.3" {
+				args = append(args, "--tls-ciphersuites", ciphers)
+			}
+			args = append(args, "--tls-ciphers", ciphers)
+		}
+		return args, nil
+	} else if centralTLSConfig.MinVersion != "" || len(centralTLSConfig.Ciphers) > 0 {
+		if centralTLSConfig.MinVersion != "" {
+			mappedVersion := argoutil.RedisTLSProtocolVersionString(centralTLSConfig.MinVersion)
+			args = append(args, "--tls-protocols", mappedVersion)
+		}
+
+		if len(centralTLSConfig.Ciphers) > 0 {
+			ciphers := strings.Join(argoutil.MapCipherSuites(centralTLSConfig.Ciphers), ":")
+			if centralTLSConfig.MinVersion == configv1.VersionTLS13 {
+				args = append(args, "--tls-ciphersuites", ciphers)
+			} else {
+				args = append(args, "--tls-ciphers", ciphers)
+			}
+		}
+		return args, nil
+	}
+	return nil, nil
 }
 
 // getArgoCmpServerInitCommand will return the command for the ArgoCD CMP Server init container
@@ -440,9 +487,13 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 			RunAsUser: int64Ptr(1000),
 		}
 	}
-
+	arguments, err := getArgoRedisArgs(useTLS, cr, r.CentralTlsConfigProfile)
+	if err != nil {
+		log.Error(err, "failed to get Redis args")
+		return err
+	}
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
-		Args:            getArgoRedisArgs(useTLS),
+		Args:            arguments,
 		Image:           argoutil.GetRedisContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            "redis",
@@ -896,7 +947,12 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		serverVolumeMounts = append(serverVolumeMounts, cr.Spec.Server.VolumeMounts...)
 	}
 
+	arguments, err := BuildTLSArgs(cr.Spec.Server.TlsConfig, r.CentralTlsConfigProfile)
+	if err != nil {
+		return err
+	}
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
+		Args:            arguments,
 		Command:         getArgoServerCommand(cr, useTLSForRedis),
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
@@ -1076,6 +1132,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			argoutil.LogResourceDeletion(log, existing, "argocd server is disabled")
 			return r.Delete(context.TODO(), existing)
 		}
+
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getArgoContainerImage(cr)
 		actualImagePullPolicy := existing.Spec.Template.Spec.Containers[0].ImagePullPolicy
@@ -1085,6 +1142,10 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
 			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			changes = append(changes, "container image")
+		}
+		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Args, deploy.Spec.Template.Spec.Containers[0].Args) {
+			existing.Spec.Template.Spec.Containers[0].Args = deploy.Spec.Template.Spec.Containers[0].Args
+			changes = append(changes, "container args")
 		}
 		if actualImagePullPolicy != desiredImagePullPolicy {
 			existing.Spec.Template.Spec.Containers[0].ImagePullPolicy = desiredImagePullPolicy
@@ -1173,6 +1234,39 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 	}
 	argoutil.LogResourceCreation(log, deploy)
 	return r.Create(context.TODO(), deploy)
+}
+
+func BuildTLSArgs(tlsCfg *argoproj.ArgoCDTlsConfig, centralTLSConfig TlsConfigProfile) ([]string, error) {
+	var args []string
+	if tlsCfg != nil {
+		err := argoutil.ValidateTLSConfig(tlsCfg)
+		if err != nil {
+			return nil, err
+		}
+		if tlsCfg.MinVersion != "" {
+			args = append(args, "--tlsminversion", tlsCfg.MinVersion)
+		}
+		if tlsCfg.MaxVersion != "" {
+			args = append(args, "--tlsmaxversion", tlsCfg.MaxVersion)
+		}
+		if len(tlsCfg.CipherSuites) > 0 {
+			if ciphers := argoutil.JoinCiphers(tlsCfg.CipherSuites); ciphers != "" {
+				args = append(args, "--tlsciphers", ciphers)
+			}
+		}
+		return args, nil
+	} else if centralTLSConfig.MinVersion != "" || len(centralTLSConfig.Ciphers) > 0 {
+		if centralTLSConfig.MinVersion != "" {
+			mappedVersion := argoutil.TLSProtocolVersionString(centralTLSConfig.MinVersion)
+			args = append(args, "--tlsminversion", mappedVersion)
+		}
+		if len(centralTLSConfig.Ciphers) > 0 {
+			ciphers := strings.Join(argoutil.MapCipherSuites(centralTLSConfig.Ciphers), ":")
+			args = append(args, "--tlsciphers", ciphers)
+		}
+		return args, nil
+	}
+	return nil, nil
 }
 
 // triggerDeploymentRollout will update the label with the given key to trigger a new rollout of the Deployment.

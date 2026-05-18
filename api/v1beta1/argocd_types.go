@@ -345,6 +345,8 @@ type ArgoCDImageUpdaterSpec struct {
 
 	// Resources defines the Compute Resources required by the container for Argo CD Image Updater.
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+	// TLS configuration for the Image Updater
+	TlsConfig *ArgoCDTlsConfig `json:"tlsConfig,omitempty"`
 }
 
 // ArgoCDImportSpec defines the desired state for the ArgoCD import/restore process.
@@ -542,6 +544,9 @@ type ArgoCDRedisSpec struct {
 
 	// Remote specifies the remote URL of the Redis container. (optional, by default, a local instance managed by the operator is used.)
 	Remote *string `json:"remote,omitempty"`
+
+	// TlsConfig defines the TLS configuration for the Redis server
+	TlsConfig *ArgoCDTlsConfig `json:"tlsConfig,omitempty"`
 }
 
 func (a *ArgoCDRedisSpec) IsEnabled() bool {
@@ -630,6 +635,20 @@ type ArgoCDRepoSpec struct {
 
 	// Metrics defines the metrics configuration for the Repo Server ServiceMonitor.
 	Metrics *ArgoCDMetricsSpec `json:"metrics,omitempty"`
+	// TLS configuration for the repo server
+	TlsConfig *ArgoCDTlsConfig `json:"tlsConfig,omitempty"`
+}
+
+// ArgoCDTLSConfig defines TLS configuration for Argo CD components.
+// +kubebuilder:validation:XValidation:rule="!has(self.minVersion) || !has(self.maxVersion) || self.minVersion <= self.maxVersion",message="minVersion must be less than or equal to maxVersion"
+type ArgoCDTlsConfig struct {
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Enum="1.0";"1.1";"1.2";"1.3"
+	MinVersion string `json:"minVersion,omitempty"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Enum="1.0";"1.1";"1.2";"1.3"
+	MaxVersion   string   `json:"maxVersion,omitempty"`
+	CipherSuites []string `json:"cipherSuites,omitempty"`
 }
 
 func (a *ArgoCDRepoSpec) IsEnabled() bool {
@@ -767,6 +786,8 @@ type ArgoCDServerSpec struct {
 
 	// Metrics defines the metrics configuration for the Server ServiceMonitor.
 	Metrics *ArgoCDMetricsSpec `json:"metrics,omitempty"`
+	// TLS configuration for the Argo CD Server component
+	TlsConfig *ArgoCDTlsConfig `json:"tlsConfig,omitempty"`
 }
 
 func (a *ArgoCDServerSpec) IsEnabled() bool {
@@ -1486,6 +1507,8 @@ type PrincipalTLSSpec struct {
 
 	// InsecureGenerate is the flag to allow the principal to generate its own set of TLS cert and key on startup when none are configured
 	InsecureGenerate *bool `json:"insecureGenerate,omitempty"`
+	// TLS configuration for the Principal component.
+	TlsConfig *ArgoCDTlsConfig `json:"tlsConfig,omitempty"`
 }
 
 // ArgoCDAgentPrincipalServiceSpec defines the options for the Service backing the ArgoCD Agent Principalcomponent.
