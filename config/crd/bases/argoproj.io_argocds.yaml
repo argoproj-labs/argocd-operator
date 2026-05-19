@@ -1231,6 +1231,21 @@ spec:
                       Controller component. Defaults to ArgoCDDefaultLogLevel if not
                       configured. Valid options are debug, info, error, and warn.
                     type: string
+                  metrics:
+                    description: Metrics defines the metrics configuration for the
+                      Application Controller ServiceMonitor.
+                    properties:
+                      interval:
+                        description: |-
+                          Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
+                          If empty, Prometheus uses its default scrape interval.
+                        type: string
+                      scrapeTimeout:
+                        description: |-
+                          ScrapeTimeout specifies the Prometheus scrape timeout for this component's ServiceMonitor.
+                          If empty, Prometheus uses the global scrape timeout.
+                        type: string
+                    type: object
                   parallelismLimit:
                     description: ParallelismLimit defines the limit for parallel kubectl
                       operations
@@ -2137,6 +2152,21 @@ spec:
                   logformat:
                     description: 'Deprecated: use LogFormat instead.'
                     type: string
+                  metrics:
+                    description: Metrics defines the metrics configuration for the
+                      Notifications ServiceMonitor.
+                    properties:
+                      interval:
+                        description: |-
+                          Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
+                          If empty, Prometheus uses its default scrape interval.
+                        type: string
+                      scrapeTimeout:
+                        description: |-
+                          ScrapeTimeout specifies the Prometheus scrape timeout for this component's ServiceMonitor.
+                          If empty, Prometheus uses the global scrape timeout.
+                        type: string
+                    type: object
                   replicas:
                     description: Replicas defines the number of replicas to run for
                       notifications-controller
@@ -4238,6 +4268,21 @@ spec:
                       by the Repo Server. Defaults to ArgoCDDefaultLogLevel if not
                       set.  Valid options are debug, info, error, and warn.
                     type: string
+                  metrics:
+                    description: Metrics defines the metrics configuration for the
+                      Repo Server ServiceMonitor.
+                    properties:
+                      interval:
+                        description: |-
+                          Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
+                          If empty, Prometheus uses its default scrape interval.
+                        type: string
+                      scrapeTimeout:
+                        description: |-
+                          ScrapeTimeout specifies the Prometheus scrape timeout for this component's ServiceMonitor.
+                          If empty, Prometheus uses the global scrape timeout.
+                        type: string
+                    type: object
                   mountsatoken:
                     description: MountSAToken describes whether you would like to
                       have the Repo server mount the service account token
@@ -8269,6 +8314,21 @@ spec:
                       ArgoCD Server component. Defaults to ArgoCDDefaultLogLevel if
                       not set.  Valid options are debug, info, error, and warn.
                     type: string
+                  metrics:
+                    description: Metrics defines the metrics configuration for the
+                      Server ServiceMonitor.
+                    properties:
+                      interval:
+                        description: |-
+                          Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
+                          If empty, Prometheus uses its default scrape interval.
+                        type: string
+                      scrapeTimeout:
+                        description: |-
+                          ScrapeTimeout specifies the Prometheus scrape timeout for this component's ServiceMonitor.
+                          If empty, Prometheus uses the global scrape timeout.
+                        type: string
+                    type: object
                   replicas:
                     description: Replicas defines the number of replicas for argocd-server.
                       Default is nil. Value should be greater than or equal to 0.
@@ -13953,6 +14013,21 @@ spec:
                       Controller component. Defaults to ArgoCDDefaultLogLevel if not
                       configured. Valid options are debug, info, error, and warn.
                     type: string
+                  metrics:
+                    description: Metrics defines the metrics configuration for the
+                      Application Controller ServiceMonitor.
+                    properties:
+                      interval:
+                        description: |-
+                          Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
+                          If empty, Prometheus uses its default scrape interval.
+                        type: string
+                      scrapeTimeout:
+                        description: |-
+                          ScrapeTimeout specifies the Prometheus scrape timeout for this component's ServiceMonitor.
+                          If empty, Prometheus uses the global scrape timeout.
+                        type: string
+                    type: object
                   parallelismLimit:
                     description: ParallelismLimit defines the limit for parallel kubectl
                       operations
@@ -18535,6 +18610,21 @@ spec:
                   logformat:
                     description: 'Deprecated: use LogFormat instead.'
                     type: string
+                  metrics:
+                    description: Metrics defines the metrics configuration for the
+                      Notifications ServiceMonitor.
+                    properties:
+                      interval:
+                        description: |-
+                          Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
+                          If empty, Prometheus uses its default scrape interval.
+                        type: string
+                      scrapeTimeout:
+                        description: |-
+                          ScrapeTimeout specifies the Prometheus scrape timeout for this component's ServiceMonitor.
+                          If empty, Prometheus uses the global scrape timeout.
+                        type: string
+                    type: object
                   replicas:
                     description: Replicas defines the number of replicas to run for
                       notifications-controller
@@ -20659,6 +20749,21 @@ spec:
                       by the Repo Server. Defaults to ArgoCDDefaultLogLevel if not
                       set.  Valid options are debug, info, error, and warn.
                     type: string
+                  metrics:
+                    description: Metrics defines the metrics configuration for the
+                      Repo Server ServiceMonitor.
+                    properties:
+                      interval:
+                        description: |-
+                          Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
+                          If empty, Prometheus uses its default scrape interval.
+                        type: string
+                      scrapeTimeout:
+                        description: |-
+                          ScrapeTimeout specifies the Prometheus scrape timeout for this component's ServiceMonitor.
+                          If empty, Prometheus uses the global scrape timeout.
+                        type: string
+                    type: object
                   mountsatoken:
                     description: MountSAToken describes whether you would like to
                       have the Repo server mount the service account token
@@ -26466,6 +26571,21 @@ spec:
                       ArgoCD Server component. Defaults to ArgoCDDefaultLogLevel if
                       not set.  Valid options are debug, info, error, and warn.
                     type: string
+                  metrics:
+                    description: Metrics defines the metrics configuration for the
+                      Server ServiceMonitor.
+                    properties:
+                      interval:
+                        description: |-
+                          Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
+                          If empty, Prometheus uses its default scrape interval.
+                        type: string
+                      scrapeTimeout:
+                        description: |-
+                          ScrapeTimeout specifies the Prometheus scrape timeout for this component's ServiceMonitor.
+                          If empty, Prometheus uses the global scrape timeout.
+                        type: string
+                    type: object
                   replicas:
                     description: Replicas defines the number of replicas for argocd-server.
                       Default is nil. Value should be greater than or equal to 0.
