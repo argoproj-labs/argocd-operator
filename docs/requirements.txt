@@ -7,6 +7,6 @@ markdown_include==0.8.1
 pygments==2.20.0
 jinja2==3.1.6
 markdown==3.10
-pymdown-extensions==10.17.1
+pymdown-extensions==10.21.3
 # Workaround for https://github.com/mkdocs/mkdocs/issues/4032
 click==8.2.1
