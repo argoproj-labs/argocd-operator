@@ -165,6 +165,10 @@ type ArgoCDApplicationControllerShardSpec struct {
 	// ClustersPerShard defines the maximum number of clusters managed by each argocd shard
 	// +kubebuilder:validation:Minimum=1
 	ClustersPerShard int32 `json:"clustersPerShard,omitempty"`
+
+	// DistributionAlgorithm determines what algorithm will be used for distribution of shards. Valid options are legacy, round-robin, and consistent-hashing
+	// +kubebuilder:validation:Enum=legacy;round-robin;consistent-hashing
+	DistributionAlgorithm string `json:"algorithm,omitempty"`
 }
 
 // ArgoCDApplicationSet defines whether the Argo CD ApplicationSet controller should be installed.
