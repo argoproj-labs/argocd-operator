@@ -23,6 +23,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	routev1 "github.com/openshift/api/route/v1"
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -904,6 +905,55 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			})
 
 			Eventually(principalNetworkPolicy).Should(k8sFixture.NotExistByName())
+		})
+
+		It("should create and delete principal ServiceMonitor based on prometheus enabled flag", func() {
+
+			By("Create ArgoCD instance with principal enabled and prometheus enabled")
+
+			argoCD.Spec.Prometheus.Enabled = true
+			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+
+			By("Verify expected resources are created for principal pod")
+
+			verifyExpectedResourcesExist(ns)
+
+			By("Verify principal ServiceMonitor is created")
+
+			principalServiceMonitor := &monitoringv1.ServiceMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-agent-principal-metrics", argoCDName),
+					Namespace: ns.Name,
+				},
+			}
+			Eventually(principalServiceMonitor, "2m", "2s").Should(k8sFixture.ExistByName())
+
+			By("Disable prometheus and verify ServiceMonitor is deleted")
+
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: argoCDName, Namespace: ns.Name}, argoCD)).To(Succeed())
+			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
+				ac.Spec.Prometheus.Enabled = false
+			})
+
+			Eventually(principalServiceMonitor, "2m", "2s").Should(k8sFixture.NotExistByName())
+
+			By("Re-enable prometheus and verify ServiceMonitor is recreated")
+
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: argoCDName, Namespace: ns.Name}, argoCD)).To(Succeed())
+			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
+				ac.Spec.Prometheus.Enabled = true
+			})
+
+			Eventually(principalServiceMonitor, "2m", "2s").Should(k8sFixture.ExistByName())
+
+			By("Disable principal and verify ServiceMonitor is deleted")
+
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: argoCDName, Namespace: ns.Name}, argoCD)).To(Succeed())
+			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
+				ac.Spec.ArgoCDAgent.Principal.Enabled = ptr.To(false)
+			})
+
+			Eventually(principalServiceMonitor, "2m", "2s").Should(k8sFixture.NotExistByName())
 		})
 	})
 })
