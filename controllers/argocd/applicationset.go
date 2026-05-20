@@ -79,9 +79,23 @@ func (r *ReconcileArgoCD) getArgoApplicationSetCommand(cr *argoproj.ArgoCD) ([]s
 
 	// Only allow applicationsets in any namespace for cluster-scoped clusters
 	if argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace) {
-		appsetsSourceNamespaces, err := r.getAllowedApplicationSetSourceNamespaces(cr)
+
+		// appset source namespaces should be subset of apps source namespaces
+		appsetsSourceNamespacesExpanded, err := r.getApplicationSetSourceNamespaces(cr)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to get ApplicationSet source namespaces: %w", err)
+		}
+		appsNamespaces, err := r.getSourceNamespaces(cr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get apps source namespaces: %w", err)
+		}
+		appsetsSourceNamespaces := []string{}
+		for _, ns := range appsetsSourceNamespacesExpanded {
+			if contains(appsNamespaces, ns) {
+				appsetsSourceNamespaces = append(appsetsSourceNamespaces, ns)
+			} else {
+				log.V(1).Info(fmt.Sprintf("Apps in target sourceNamespace %s is not enabled, thus skipping the namespace in deployment command.", ns))
+			}
 		}
 		if len(appsetsSourceNamespaces) > 0 {
 			cmd = append(cmd, "--applicationset-namespaces", fmt.Sprint(strings.Join(appsetsSourceNamespaces, ",")))
@@ -104,28 +118,6 @@ func (r *ReconcileArgoCD) getArgoApplicationSetCommand(cr *argoproj.ArgoCD) ([]s
 	cmd = appendUniqueArgs(cmd, extraArgs)
 
 	return cmd, nil
-}
-
-// getAllowedApplicationSetSourceNamespaces returns the effective ApplicationSet source namespaces:
-// expanded from .spec.applicationSet.sourceNamespaces and filtered to namespaces allowed by .spec.sourceNamespaces
-func (r *ReconcileArgoCD) getAllowedApplicationSetSourceNamespaces(cr *argoproj.ArgoCD) ([]string, error) {
-	appsetsSourceNamespacesExpanded, err := r.getApplicationSetSourceNamespaces(cr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get ApplicationSet source namespaces: %w", err)
-	}
-	appsNamespaces, err := r.getSourceNamespaces(cr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get apps source namespaces: %w", err)
-	}
-	appsetsSourceNamespaces := []string{}
-	for _, ns := range appsetsSourceNamespacesExpanded {
-		if contains(appsNamespaces, ns) {
-			appsetsSourceNamespaces = append(appsetsSourceNamespaces, ns)
-		} else {
-			log.V(1).Info(fmt.Sprintf("sourceNamespace %s is not allowed by Argo CD apps-in-any-namespace configuration, thus skipping it.", ns))
-		}
-	}
-	return appsetsSourceNamespaces, nil
 }
 
 func (r *ReconcileArgoCD) reconcileApplicationSetController(cr *argoproj.ArgoCD) error {
@@ -764,14 +756,26 @@ func (r *ReconcileArgoCD) reconcileApplicationSetSourceNamespacesResources(cr *a
 		return nil
 	}
 
-	// create resources only for appset namespaces that are also allowed by apps-in-any-ns.
-	appsetsSourceNamespaces, err := r.getAllowedApplicationSetSourceNamespaces(cr)
+	// create resources for each appset source namespace
+	appsetsSourceNamespacesExpanded, err := r.getApplicationSetSourceNamespaces(cr)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed getting ApplicationSet source namespaces: %w", err)
 	}
 
-	// create resources for each allowed source namespace
-	for _, sourceNamespace := range appsetsSourceNamespaces {
+	// source ns should be part of app-in-any-ns
+	appsNamespaces, err := r.getSourceNamespaces(cr)
+	if err != nil {
+		return fmt.Errorf("failed to get apps source namespaces: %w", err)
+	}
+
+	// create resources for each appset source namespace (after wildcard expansion)
+	for _, sourceNamespace := range appsetsSourceNamespacesExpanded {
+		// Only process namespaces that are also in apps source namespaces
+		if !contains(appsNamespaces, sourceNamespace) {
+			log.Info(fmt.Sprintf("skipping reconciliation of resources for sourceNamespace %s as Apps in target sourceNamespace is not enabled", sourceNamespace))
+			continue
+		}
+
 		// skip source ns if doesn't exist
 		namespace := &corev1.Namespace{}
 		if err := r.Get(context.TODO(), types.NamespacedName{Name: sourceNamespace}, namespace); err != nil {
