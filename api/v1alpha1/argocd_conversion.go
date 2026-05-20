@@ -815,6 +815,7 @@ func ConvertAlphaToBetaPrincipal(src *PrincipalSpec) *v1beta1.PrincipalSpec {
 			TLS:           ConvertAlphaToBetaPrincipalTLS(src.TLS),
 			ResourceProxy: ConvertAlphaToBetaPrincipalResourceProxy(src.ResourceProxy),
 			JWT:           ConvertAlphaToBetaPrincipalJWT(src.JWT),
+			Metrics:       ConvertAlphaToBetaMetrics(src.Metrics),
 		}
 	}
 	return dst
@@ -847,6 +848,7 @@ func ConvertBetaToAlphaPrincipal(src *v1beta1.PrincipalSpec) *PrincipalSpec {
 			TLS:           ConvertBetaToAlphaPrincipalTLS(src.TLS),
 			ResourceProxy: ConvertBetaToAlphaPrincipalResourceProxy(src.ResourceProxy),
 			JWT:           ConvertBetaToAlphaPrincipalJWT(src.JWT),
+			Metrics:       ConvertBetaToAlphaMetrics(src.Metrics),
 		}
 	}
 	return dst
@@ -1007,6 +1009,7 @@ func ConvertAlphaToBetaAgent(src *AgentSpec) *v1beta1.AgentSpec {
 			Client:    ConvertAlphaToBetaAgentClient(src.Client),
 			Redis:     ConvertAlphaToBetaAgentRedis(src.Redis),
 			TLS:       ConvertAlphaToBetaAgentTLS(src.TLS),
+			Metrics:   ConvertAlphaToBetaMetrics(src.Metrics),
 		}
 	}
 	return dst
@@ -1025,6 +1028,7 @@ func ConvertBetaToAlphaAgent(src *v1beta1.AgentSpec) *AgentSpec {
 			Client:    ConvertBetaToAlphaAgentClient(src.Client),
 			Redis:     ConvertBetaToAlphaAgentRedis(src.Redis),
 			TLS:       ConvertBetaToAlphaAgentTLS(src.TLS),
+			Metrics:   ConvertBetaToAlphaMetrics(src.Metrics),
 		}
 	}
 	return dst

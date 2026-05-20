@@ -1412,6 +1412,9 @@ type PrincipalSpec struct {
 
 	// DestinationBasedMapping is the flag to enable destination based mapping for the Principal component.
 	DestinationBasedMapping *bool `json:"destinationBasedMapping,omitempty"`
+
+	// Metrics defines the metrics configuration for the Principal ServiceMonitor.
+	Metrics *ArgoCDMetricsSpec `json:"metrics,omitempty"`
 }
 
 type PrincipalServerSpec struct {
@@ -1541,6 +1544,9 @@ type AgentSpec struct {
 
 	// DestinationBasedMapping defines the options for destination based mapping for the Agent component.
 	DestinationBasedMapping *DestinationBasedMappingSpec `json:"destinationBasedMapping,omitempty"`
+
+	// Metrics defines the metrics configuration for the Agent ServiceMonitor.
+	Metrics *ArgoCDMetricsSpec `json:"metrics,omitempty"`
 }
 
 type DestinationBasedMappingSpec struct {

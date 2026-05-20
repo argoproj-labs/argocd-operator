@@ -22,6 +22,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -260,6 +261,151 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				}
 				return notifSM.Spec.Endpoints[0].Interval == "" &&
 					notifSM.Spec.Endpoints[0].ScrapeTimeout == ""
+			}, "2m", "5s").Should(BeTrue())
+		})
+
+		It("verifies principal metrics config is applied to ServiceMonitor", func() {
+
+			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
+			defer cleanupFunc()
+
+			argoCDName := "example-argocd"
+			principalSMName := argoCDName + "-agent-principal-metrics"
+
+			argoCD := &argov1beta1api.ArgoCD{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      argoCDName,
+					Namespace: ns.Name,
+				},
+				Spec: argov1beta1api.ArgoCDSpec{
+					Prometheus: argov1beta1api.ArgoCDPrometheusSpec{Enabled: true},
+					Controller: argov1beta1api.ArgoCDApplicationControllerSpec{Enabled: ptr.To(false)},
+					ArgoCDAgent: &argov1beta1api.ArgoCDAgentSpec{
+						Principal: &argov1beta1api.PrincipalSpec{
+							Enabled: ptr.To(true),
+							Metrics: &argov1beta1api.ArgoCDMetricsSpec{
+								Interval:      "40s",
+								ScrapeTimeout: "12s",
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+
+			principalSM := &monitoringv1.ServiceMonitor{
+				ObjectMeta: metav1.ObjectMeta{Name: principalSMName, Namespace: ns.Name},
+			}
+			Eventually(principalSM, "2m", "5s").Should(k8sFixture.ExistByName())
+			Expect(principalSM.Spec.Endpoints).To(HaveLen(1))
+			Expect(principalSM.Spec.Endpoints[0].Interval).To(Equal(monitoringv1.Duration("40s")))
+			Expect(principalSM.Spec.Endpoints[0].ScrapeTimeout).To(Equal(monitoringv1.Duration("12s")))
+
+			By("updating principal metrics config")
+			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
+				ac.Spec.ArgoCDAgent.Principal.Metrics = &argov1beta1api.ArgoCDMetricsSpec{
+					Interval: "130s", ScrapeTimeout: "55s",
+				}
+			})
+
+			Eventually(func() bool {
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(principalSM), principalSM); err != nil {
+					return false
+				}
+				if len(principalSM.Spec.Endpoints) == 0 {
+					return false
+				}
+				return principalSM.Spec.Endpoints[0].Interval == monitoringv1.Duration("130s") &&
+					principalSM.Spec.Endpoints[0].ScrapeTimeout == monitoringv1.Duration("55s")
+			}, "2m", "5s").Should(BeTrue())
+
+			By("clearing principal metrics config")
+			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
+				ac.Spec.ArgoCDAgent.Principal.Metrics = nil
+			})
+
+			Eventually(func() bool {
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(principalSM), principalSM); err != nil {
+					return false
+				}
+				if len(principalSM.Spec.Endpoints) == 0 {
+					return false
+				}
+				return principalSM.Spec.Endpoints[0].Interval == "" &&
+					principalSM.Spec.Endpoints[0].ScrapeTimeout == ""
+			}, "2m", "5s").Should(BeTrue())
+		})
+
+		It("verifies agent metrics config is applied to ServiceMonitor", func() {
+
+			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
+			defer cleanupFunc()
+
+			argoCDName := "example-argocd"
+			agentSMName := argoCDName + "-agent-agent-metrics"
+
+			argoCD := &argov1beta1api.ArgoCD{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      argoCDName,
+					Namespace: ns.Name,
+				},
+				Spec: argov1beta1api.ArgoCDSpec{
+					Prometheus: argov1beta1api.ArgoCDPrometheusSpec{Enabled: true},
+					Controller: argov1beta1api.ArgoCDApplicationControllerSpec{Enabled: ptr.To(false)},
+					Server:     argov1beta1api.ArgoCDServerSpec{Enabled: ptr.To(false)},
+					ArgoCDAgent: &argov1beta1api.ArgoCDAgentSpec{
+						Agent: &argov1beta1api.AgentSpec{
+							Enabled: ptr.To(true),
+							Metrics: &argov1beta1api.ArgoCDMetricsSpec{
+								Interval:      "50s",
+								ScrapeTimeout: "18s",
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+
+			agentSM := &monitoringv1.ServiceMonitor{
+				ObjectMeta: metav1.ObjectMeta{Name: agentSMName, Namespace: ns.Name},
+			}
+			Eventually(agentSM, "2m", "5s").Should(k8sFixture.ExistByName())
+			Expect(agentSM.Spec.Endpoints).To(HaveLen(1))
+			Expect(agentSM.Spec.Endpoints[0].Interval).To(Equal(monitoringv1.Duration("50s")))
+			Expect(agentSM.Spec.Endpoints[0].ScrapeTimeout).To(Equal(monitoringv1.Duration("18s")))
+
+			By("updating agent metrics config")
+			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
+				ac.Spec.ArgoCDAgent.Agent.Metrics = &argov1beta1api.ArgoCDMetricsSpec{
+					Interval: "160s", ScrapeTimeout: "65s",
+				}
+			})
+
+			Eventually(func() bool {
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(agentSM), agentSM); err != nil {
+					return false
+				}
+				if len(agentSM.Spec.Endpoints) == 0 {
+					return false
+				}
+				return agentSM.Spec.Endpoints[0].Interval == monitoringv1.Duration("160s") &&
+					agentSM.Spec.Endpoints[0].ScrapeTimeout == monitoringv1.Duration("65s")
+			}, "2m", "5s").Should(BeTrue())
+
+			By("clearing agent metrics config")
+			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
+				ac.Spec.ArgoCDAgent.Agent.Metrics = nil
+			})
+
+			Eventually(func() bool {
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(agentSM), agentSM); err != nil {
+					return false
+				}
+				if len(agentSM.Spec.Endpoints) == 0 {
+					return false
+				}
+				return agentSM.Spec.Endpoints[0].Interval == "" &&
+					agentSM.Spec.Endpoints[0].ScrapeTimeout == ""
 			}, "2m", "5s").Should(BeTrue())
 		})
 	})

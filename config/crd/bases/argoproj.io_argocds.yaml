@@ -688,6 +688,21 @@ spec:
                         description: LogLevel refers to the log level used by the
                           Agent component.
                         type: string
+                      metrics:
+                        description: Metrics defines the metrics configuration for
+                          the Agent ServiceMonitor.
+                        properties:
+                          interval:
+                            description: |-
+                              Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
+                              If empty, Prometheus uses its default scrape interval.
+                            type: string
+                          scrapeTimeout:
+                            description: |-
+                              ScrapeTimeout specifies the Prometheus scrape timeout for this component's ServiceMonitor.
+                              If empty, Prometheus uses the global scrape timeout.
+                            type: string
+                        type: object
                       redis:
                         description: Redis defines the Redis options for the Agent
                           component.
@@ -911,6 +926,21 @@ spec:
                         description: LogLevel refers to the log level used by the
                           Principal component.
                         type: string
+                      metrics:
+                        description: Metrics defines the metrics configuration for
+                          the Principal ServiceMonitor.
+                        properties:
+                          interval:
+                            description: |-
+                              Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
+                              If empty, Prometheus uses its default scrape interval.
+                            type: string
+                          scrapeTimeout:
+                            description: |-
+                              ScrapeTimeout specifies the Prometheus scrape timeout for this component's ServiceMonitor.
+                              If empty, Prometheus uses the global scrape timeout.
+                            type: string
+                        type: object
                       namespace:
                         description: Namespace is the configuration for the Principal
                           component namespace.
@@ -11788,6 +11818,21 @@ spec:
                         description: LogLevel refers to the log level used by the
                           Agent component.
                         type: string
+                      metrics:
+                        description: Metrics defines the metrics configuration for
+                          the Agent ServiceMonitor.
+                        properties:
+                          interval:
+                            description: |-
+                              Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
+                              If empty, Prometheus uses its default scrape interval.
+                            type: string
+                          scrapeTimeout:
+                            description: |-
+                              ScrapeTimeout specifies the Prometheus scrape timeout for this component's ServiceMonitor.
+                              If empty, Prometheus uses the global scrape timeout.
+                            type: string
+                        type: object
                       redis:
                         description: Redis defines the Redis options for the Agent
                           component.
@@ -12075,6 +12120,21 @@ spec:
                         description: LogLevel refers to the log level used by the
                           Principal component.
                         type: string
+                      metrics:
+                        description: Metrics defines the metrics configuration for
+                          the Principal ServiceMonitor.
+                        properties:
+                          interval:
+                            description: |-
+                              Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
+                              If empty, Prometheus uses its default scrape interval.
+                            type: string
+                          scrapeTimeout:
+                            description: |-
+                              ScrapeTimeout specifies the Prometheus scrape timeout for this component's ServiceMonitor.
+                              If empty, Prometheus uses the global scrape timeout.
+                            type: string
+                        type: object
                       namespace:
                         description: Namespace is the configuration for the Principal
                           component namespace.

@@ -84,6 +84,19 @@ func buildAgentServiceMonitor(name, compName string, cr *argoproj.ArgoCD) *monit
 	lbls := buildLabelsForAgent(cr.Name, compName)
 	lbls[common.ArgoCDKeyRelease] = "prometheus-operator"
 
+	endpoint := monitoringv1.Endpoint{
+		Port: AgentMetricsServicePortName,
+	}
+	if cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Agent != nil && cr.Spec.ArgoCDAgent.Agent.Metrics != nil {
+		metrics := cr.Spec.ArgoCDAgent.Agent.Metrics
+		if metrics.Interval != "" {
+			endpoint.Interval = monitoringv1.Duration(metrics.Interval)
+		}
+		if metrics.ScrapeTimeout != "" {
+			endpoint.ScrapeTimeout = monitoringv1.Duration(metrics.ScrapeTimeout)
+		}
+	}
+
 	return &monitoringv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -96,11 +109,7 @@ func buildAgentServiceMonitor(name, compName string, cr *argoproj.ArgoCD) *monit
 					common.ArgoCDKeyName: generateAgentResourceName(cr.Name, compName),
 				},
 			},
-			Endpoints: []monitoringv1.Endpoint{
-				{
-					Port: AgentMetricsServicePortName,
-				},
-			},
+			Endpoints: []monitoringv1.Endpoint{endpoint},
 		},
 	}
 }

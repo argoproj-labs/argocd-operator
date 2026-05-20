@@ -84,6 +84,19 @@ func buildPrincipalServiceMonitor(name, compName string, cr *argoproj.ArgoCD) *m
 	lbls := buildLabelsForAgentPrincipal(cr.Name, compName)
 	lbls[common.ArgoCDKeyRelease] = "prometheus-operator"
 
+	endpoint := monitoringv1.Endpoint{
+		Port: PrincipalMetricsServicePortName,
+	}
+	if cr.Spec.ArgoCDAgent != nil && cr.Spec.ArgoCDAgent.Principal != nil && cr.Spec.ArgoCDAgent.Principal.Metrics != nil {
+		metrics := cr.Spec.ArgoCDAgent.Principal.Metrics
+		if metrics.Interval != "" {
+			endpoint.Interval = monitoringv1.Duration(metrics.Interval)
+		}
+		if metrics.ScrapeTimeout != "" {
+			endpoint.ScrapeTimeout = monitoringv1.Duration(metrics.ScrapeTimeout)
+		}
+	}
+
 	return &monitoringv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -96,11 +109,7 @@ func buildPrincipalServiceMonitor(name, compName string, cr *argoproj.ArgoCD) *m
 					common.ArgoCDKeyName: generateAgentResourceName(cr.Name, compName),
 				},
 			},
-			Endpoints: []monitoringv1.Endpoint{
-				{
-					Port: PrincipalMetricsServicePortName,
-				},
-			},
+			Endpoints: []monitoringv1.Endpoint{endpoint},
 		},
 	}
 }

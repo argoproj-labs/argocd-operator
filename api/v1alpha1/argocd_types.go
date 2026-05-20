@@ -1215,6 +1215,9 @@ type PrincipalSpec struct {
 
 	// JWT defines the JWT options for the Principal component.
 	JWT *PrincipalJWTSpec `json:"jwt,omitempty"`
+
+	// Metrics defines the metrics configuration for the Principal ServiceMonitor.
+	Metrics *ArgoCDMetricsSpec `json:"metrics,omitempty"`
 }
 
 type PrincipalServerSpec struct {
@@ -1333,6 +1336,9 @@ type AgentSpec struct {
 
 	// Redis defines the Redis options for the Agent component.
 	Redis *AgentRedisSpec `json:"redis,omitempty"`
+
+	// Metrics defines the metrics configuration for the Agent ServiceMonitor.
+	Metrics *ArgoCDMetricsSpec `json:"metrics,omitempty"`
 }
 
 type AgentClientSpec struct {

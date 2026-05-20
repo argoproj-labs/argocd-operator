@@ -299,3 +299,81 @@ func TestReconcilePrincipalServiceMonitor_ServiceMonitorExists_PrincipalNotSet(t
 	}, sm)
 	assert.True(t, errors.IsNotFound(err))
 }
+
+func withPrincipalMetrics(interval, scrapeTimeout string) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		if a.Spec.ArgoCDAgent == nil {
+			a.Spec.ArgoCDAgent = &argoproj.ArgoCDAgentSpec{}
+		}
+		if a.Spec.ArgoCDAgent.Principal == nil {
+			a.Spec.ArgoCDAgent.Principal = &argoproj.PrincipalSpec{}
+		}
+		a.Spec.ArgoCDAgent.Principal.Metrics = &argoproj.ArgoCDMetricsSpec{
+			Interval:      interval,
+			ScrapeTimeout: scrapeTimeout,
+		}
+	}
+}
+
+func TestReconcilePrincipalServiceMonitor_WithMetrics(t *testing.T) {
+	cr := makeTestArgoCD(withPrincipalEnabled(true), withPrincipalMetrics("60s", "30s"))
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerSchemeWithMonitoring()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalServiceMonitor(cl, testCompName, cr, sch, true)
+	assert.NoError(t, err)
+
+	sm := &monitoringv1.ServiceMonitor{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName+"-metrics"),
+		Namespace: cr.Namespace,
+	}, sm)
+	assert.NoError(t, err)
+
+	assert.Equal(t, PrincipalMetricsServicePortName, sm.Spec.Endpoints[0].Port)
+	assert.Equal(t, monitoringv1.Duration("60s"), sm.Spec.Endpoints[0].Interval)
+	assert.Equal(t, monitoringv1.Duration("30s"), sm.Spec.Endpoints[0].ScrapeTimeout)
+}
+
+func TestReconcilePrincipalServiceMonitor_UpdateMetrics(t *testing.T) {
+	cr := makeTestArgoCD(withPrincipalEnabled(true), withPrincipalMetrics("120s", "50s"))
+
+	existingSM := &monitoringv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      generateAgentResourceName(cr.Name, testCompName+"-metrics"),
+			Namespace: cr.Namespace,
+		},
+		Spec: monitoringv1.ServiceMonitorSpec{
+			Selector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					common.ArgoCDKeyName: generateAgentResourceName(cr.Name, testCompName),
+				},
+			},
+			Endpoints: []monitoringv1.Endpoint{
+				{
+					Port:     PrincipalMetricsServicePortName,
+					Interval: monitoringv1.Duration("30s"),
+				},
+			},
+		},
+	}
+
+	resObjs := []client.Object{cr, existingSM}
+	sch := makeTestReconcilerSchemeWithMonitoring()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalServiceMonitor(cl, testCompName, cr, sch, true)
+	assert.NoError(t, err)
+
+	sm := &monitoringv1.ServiceMonitor{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName+"-metrics"),
+		Namespace: cr.Namespace,
+	}, sm)
+	assert.NoError(t, err)
+
+	assert.Equal(t, monitoringv1.Duration("120s"), sm.Spec.Endpoints[0].Interval)
+	assert.Equal(t, monitoringv1.Duration("50s"), sm.Spec.Endpoints[0].ScrapeTimeout)
+}
