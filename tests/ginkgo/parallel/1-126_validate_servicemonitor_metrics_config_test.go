@@ -157,44 +157,52 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			})
 
 			By("verifying controller ServiceMonitor is updated")
-			Eventually(func() monitoringv1.Duration {
-				_ = k8sClient.Get(ctx, client.ObjectKeyFromObject(controllerSM), controllerSM)
-				if len(controllerSM.Spec.Endpoints) == 0 {
-					return ""
+			Eventually(func() bool {
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(controllerSM), controllerSM); err != nil {
+					return false
 				}
-				return controllerSM.Spec.Endpoints[0].Interval
-			}, "2m", "5s").Should(Equal(monitoringv1.Duration("120s")))
-			Expect(controllerSM.Spec.Endpoints[0].ScrapeTimeout).To(Equal(monitoringv1.Duration("50s")))
+				if len(controllerSM.Spec.Endpoints) == 0 {
+					return false
+				}
+				return controllerSM.Spec.Endpoints[0].Interval == monitoringv1.Duration("120s") &&
+					controllerSM.Spec.Endpoints[0].ScrapeTimeout == monitoringv1.Duration("50s")
+			}, "2m", "5s").Should(BeTrue())
 
 			By("verifying repo-server ServiceMonitor is updated")
-			Eventually(func() monitoringv1.Duration {
-				_ = k8sClient.Get(ctx, client.ObjectKeyFromObject(repoSM), repoSM)
-				if len(repoSM.Spec.Endpoints) == 0 {
-					return ""
+			Eventually(func() bool {
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(repoSM), repoSM); err != nil {
+					return false
 				}
-				return repoSM.Spec.Endpoints[0].Interval
-			}, "2m", "5s").Should(Equal(monitoringv1.Duration("150s")))
-			Expect(repoSM.Spec.Endpoints[0].ScrapeTimeout).To(Equal(monitoringv1.Duration("60s")))
+				if len(repoSM.Spec.Endpoints) == 0 {
+					return false
+				}
+				return repoSM.Spec.Endpoints[0].Interval == monitoringv1.Duration("150s") &&
+					repoSM.Spec.Endpoints[0].ScrapeTimeout == monitoringv1.Duration("60s")
+			}, "2m", "5s").Should(BeTrue())
 
 			By("verifying server ServiceMonitor is updated")
-			Eventually(func() monitoringv1.Duration {
-				_ = k8sClient.Get(ctx, client.ObjectKeyFromObject(serverSM), serverSM)
-				if len(serverSM.Spec.Endpoints) == 0 {
-					return ""
+			Eventually(func() bool {
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(serverSM), serverSM); err != nil {
+					return false
 				}
-				return serverSM.Spec.Endpoints[0].Interval
-			}, "2m", "5s").Should(Equal(monitoringv1.Duration("180s")))
-			Expect(serverSM.Spec.Endpoints[0].ScrapeTimeout).To(Equal(monitoringv1.Duration("70s")))
+				if len(serverSM.Spec.Endpoints) == 0 {
+					return false
+				}
+				return serverSM.Spec.Endpoints[0].Interval == monitoringv1.Duration("180s") &&
+					serverSM.Spec.Endpoints[0].ScrapeTimeout == monitoringv1.Duration("70s")
+			}, "2m", "5s").Should(BeTrue())
 
 			By("verifying notifications ServiceMonitor is updated")
-			Eventually(func() monitoringv1.Duration {
-				_ = k8sClient.Get(ctx, client.ObjectKeyFromObject(notifSM), notifSM)
-				if len(notifSM.Spec.Endpoints) == 0 {
-					return ""
+			Eventually(func() bool {
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(notifSM), notifSM); err != nil {
+					return false
 				}
-				return notifSM.Spec.Endpoints[0].Interval
-			}, "2m", "5s").Should(Equal(monitoringv1.Duration("200s")))
-			Expect(notifSM.Spec.Endpoints[0].ScrapeTimeout).To(Equal(monitoringv1.Duration("80s")))
+				if len(notifSM.Spec.Endpoints) == 0 {
+					return false
+				}
+				return notifSM.Spec.Endpoints[0].Interval == monitoringv1.Duration("200s") &&
+					notifSM.Spec.Endpoints[0].ScrapeTimeout == monitoringv1.Duration("80s")
+			}, "2m", "5s").Should(BeTrue())
 
 			By("Case 3: Clear metrics from all components")
 
@@ -207,44 +215,52 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			})
 
 			By("verifying controller ServiceMonitor has empty interval and scrapeTimeout")
-			Eventually(func() monitoringv1.Duration {
-				_ = k8sClient.Get(ctx, client.ObjectKeyFromObject(controllerSM), controllerSM)
-				if len(controllerSM.Spec.Endpoints) == 0 {
-					return "pending"
+			Eventually(func() bool {
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(controllerSM), controllerSM); err != nil {
+					return false
 				}
-				return controllerSM.Spec.Endpoints[0].Interval
-			}, "2m", "5s").Should(Equal(monitoringv1.Duration("")))
-			Expect(controllerSM.Spec.Endpoints[0].ScrapeTimeout).To(Equal(monitoringv1.Duration("")))
+				if len(controllerSM.Spec.Endpoints) == 0 {
+					return false
+				}
+				return controllerSM.Spec.Endpoints[0].Interval == "" &&
+					controllerSM.Spec.Endpoints[0].ScrapeTimeout == ""
+			}, "2m", "5s").Should(BeTrue())
 
 			By("verifying repo-server ServiceMonitor has empty interval and scrapeTimeout")
-			Eventually(func() monitoringv1.Duration {
-				_ = k8sClient.Get(ctx, client.ObjectKeyFromObject(repoSM), repoSM)
-				if len(repoSM.Spec.Endpoints) == 0 {
-					return "pending"
+			Eventually(func() bool {
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(repoSM), repoSM); err != nil {
+					return false
 				}
-				return repoSM.Spec.Endpoints[0].Interval
-			}, "2m", "5s").Should(Equal(monitoringv1.Duration("")))
-			Expect(repoSM.Spec.Endpoints[0].ScrapeTimeout).To(Equal(monitoringv1.Duration("")))
+				if len(repoSM.Spec.Endpoints) == 0 {
+					return false
+				}
+				return repoSM.Spec.Endpoints[0].Interval == "" &&
+					repoSM.Spec.Endpoints[0].ScrapeTimeout == ""
+			}, "2m", "5s").Should(BeTrue())
 
 			By("verifying server ServiceMonitor has empty interval and scrapeTimeout")
-			Eventually(func() monitoringv1.Duration {
-				_ = k8sClient.Get(ctx, client.ObjectKeyFromObject(serverSM), serverSM)
-				if len(serverSM.Spec.Endpoints) == 0 {
-					return "pending"
+			Eventually(func() bool {
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(serverSM), serverSM); err != nil {
+					return false
 				}
-				return serverSM.Spec.Endpoints[0].Interval
-			}, "2m", "5s").Should(Equal(monitoringv1.Duration("")))
-			Expect(serverSM.Spec.Endpoints[0].ScrapeTimeout).To(Equal(monitoringv1.Duration("")))
+				if len(serverSM.Spec.Endpoints) == 0 {
+					return false
+				}
+				return serverSM.Spec.Endpoints[0].Interval == "" &&
+					serverSM.Spec.Endpoints[0].ScrapeTimeout == ""
+			}, "2m", "5s").Should(BeTrue())
 
 			By("verifying notifications ServiceMonitor has empty interval and scrapeTimeout")
-			Eventually(func() monitoringv1.Duration {
-				_ = k8sClient.Get(ctx, client.ObjectKeyFromObject(notifSM), notifSM)
-				if len(notifSM.Spec.Endpoints) == 0 {
-					return "pending"
+			Eventually(func() bool {
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(notifSM), notifSM); err != nil {
+					return false
 				}
-				return notifSM.Spec.Endpoints[0].Interval
-			}, "2m", "5s").Should(Equal(monitoringv1.Duration("")))
-			Expect(notifSM.Spec.Endpoints[0].ScrapeTimeout).To(Equal(monitoringv1.Duration("")))
+				if len(notifSM.Spec.Endpoints) == 0 {
+					return false
+				}
+				return notifSM.Spec.Endpoints[0].Interval == "" &&
+					notifSM.Spec.Endpoints[0].ScrapeTimeout == ""
+			}, "2m", "5s").Should(BeTrue())
 		})
 	})
 })
