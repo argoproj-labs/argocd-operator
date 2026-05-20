@@ -1071,6 +1071,7 @@ type ArgoCDSpec struct {
 	// CmdParams specifies command-line parameters for the Argo CD components.
 	// The only keys currently supported for this parameter are:
 	// - controller.resource.health.persist
+	// - applicationsetcontroller.enable.tokenref.strict.mode — when ApplicationSet-in-any-namespace is active, the operator defaults this to "true"
 	CmdParams map[string]string `json:"cmdParams,omitempty"`
 
 	// ArgoCDAgent defines configurations for the ArgoCD Agent component.

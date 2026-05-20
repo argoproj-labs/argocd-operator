@@ -1866,3 +1866,121 @@ func TestReconcileArgoCD_reconcileArgoCmdParamsConfigMap(t *testing.T) {
 		})
 	}
 }
+
+func TestReconcileArgoCD_reconcileArgoCmdParamsConfigMap_tokenRefStrictDefault(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	key := common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey
+
+	tests := []struct {
+		name              string
+		applicationSet    *argoproj.ArgoCDApplicationSet
+		extraNamespaces   []client.Object
+		cmdParams         map[string]string
+		expectStrictValue string
+	}{
+		{
+			name: "defaults to true when applicationSet source namespace matches a cluster namespace",
+			applicationSet: &argoproj.ArgoCDApplicationSet{
+				SourceNamespaces: []string{"foo"},
+			},
+			extraNamespaces: []client.Object{
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "foo"}},
+			},
+			expectStrictValue: "true",
+		},
+		{
+			name: "defaults to true when applicationSet source namespace pattern matches a cluster namespace",
+			applicationSet: &argoproj.ArgoCDApplicationSet{
+				SourceNamespaces: []string{"team-*"},
+			},
+			extraNamespaces: []client.Object{
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-a"}},
+			},
+			expectStrictValue: "true",
+		},
+		{
+			name: "defaults to false when applicationSet sourceNamespaces is empty",
+			applicationSet: &argoproj.ArgoCDApplicationSet{
+				SourceNamespaces: []string{},
+			},
+			extraNamespaces: []client.Object{
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "foo"}},
+			},
+			expectStrictValue: "false",
+		},
+		{
+			name:              "defaults to false when applicationSet is nil",
+			applicationSet:    nil,
+			extraNamespaces:   []client.Object{},
+			expectStrictValue: "false",
+		},
+		{
+			name: "defaults to false when applicationSet sourceNamespaces match no cluster namespace",
+			applicationSet: &argoproj.ArgoCDApplicationSet{
+				SourceNamespaces: []string{"bar"},
+			},
+			extraNamespaces: []client.Object{
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "foo"}},
+			},
+			expectStrictValue: "false",
+		},
+		{
+			name: "spec.cmdParams false opts out when source namespaces would default to true",
+			applicationSet: &argoproj.ArgoCDApplicationSet{
+				SourceNamespaces: []string{"foo"},
+			},
+			extraNamespaces: []client.Object{
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "foo"}},
+			},
+			cmdParams: map[string]string{
+				key: "false",
+			},
+			expectStrictValue: "false",
+		},
+		{
+			name: "spec.cmdParams true overrides when applicationSet sourceNamespaces are empty",
+			applicationSet: &argoproj.ArgoCDApplicationSet{
+				SourceNamespaces: []string{},
+			},
+			extraNamespaces: []client.Object{
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "foo"}},
+			},
+			cmdParams: map[string]string{
+				key: "true",
+			},
+			expectStrictValue: "true",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+				ac.Spec.ApplicationSet = tt.applicationSet
+				ac.Spec.CmdParams = tt.cmdParams
+			})
+
+			resObjs := []client.Object{a}
+			resObjs = append(resObjs, tt.extraNamespaces...)
+			subresObjs := []client.Object{a}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			err := r.reconcileArgoCmdParamsConfigMap(a)
+			assert.NoError(t, err)
+
+			cm := &corev1.ConfigMap{}
+			err = r.Get(context.TODO(), types.NamespacedName{
+				Name:      common.ArgoCDCmdParamsConfigMapName,
+				Namespace: testNamespace,
+			}, cm)
+			assert.NoError(t, err)
+
+			val, exists := cm.Data[key]
+			assert.True(t, exists, "expected tokenRef strict mode key in argocd-cmd-params-cm")
+			assert.Equal(t, tt.expectStrictValue, val)
+		})
+	}
+}

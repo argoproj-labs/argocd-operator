@@ -388,14 +388,28 @@ func identifyDeploymentDifference(x appsv1.Deployment, y appsv1.Deployment) stri
 
 func (r *ReconcileArgoCD) applicationSetContainer(cr *argoproj.ArgoCD, addSCMGitlabVolumeMount bool) (corev1.Container, error) {
 	// Global proxy env vars go first
-	appSetEnv := []corev1.EnvVar{{
-		Name: "NAMESPACE",
-		ValueFrom: &corev1.EnvVarSource{
-			FieldRef: &corev1.ObjectFieldSelector{
-				FieldPath: "metadata.namespace",
+	appSetEnv := []corev1.EnvVar{
+		{
+			Name: "NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				},
 			},
 		},
-	}}
+		{
+			Name: common.ArgoCDApplicationSetControllerTokenRefStrictModeEnvName,
+			ValueFrom: &corev1.EnvVarSource{
+				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDCmdParamsConfigMapName,
+					},
+					Key:      common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey,
+					Optional: boolPtr(true),
+				},
+			},
+		},
+	}
 
 	// Merge ApplicationSet env vars provided by the user
 	// User should be able to override the default NAMESPACE environmental variable
