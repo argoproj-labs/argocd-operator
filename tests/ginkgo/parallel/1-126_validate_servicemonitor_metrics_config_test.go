@@ -71,26 +71,26 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 						Enabled: true,
 					},
 					Controller: argov1beta1api.ArgoCDApplicationControllerSpec{
-						Metrics: argov1beta1api.ArgoCDMetricsSpec{
+						Metrics: &argov1beta1api.ArgoCDMetricsSpec{
 							Interval:      "30s",
 							ScrapeTimeout: "10s",
 						},
 					},
 					Repo: argov1beta1api.ArgoCDRepoSpec{
-						Metrics: argov1beta1api.ArgoCDMetricsSpec{
+						Metrics: &argov1beta1api.ArgoCDMetricsSpec{
 							Interval:      "45s",
 							ScrapeTimeout: "15s",
 						},
 					},
 					Server: argov1beta1api.ArgoCDServerSpec{
-						Metrics: argov1beta1api.ArgoCDMetricsSpec{
+						Metrics: &argov1beta1api.ArgoCDMetricsSpec{
 							Interval:      "60s",
 							ScrapeTimeout: "20s",
 						},
 					},
 					Notifications: argov1beta1api.ArgoCDNotifications{
 						Enabled: true,
-						Metrics: argov1beta1api.ArgoCDMetricsSpec{
+						Metrics: &argov1beta1api.ArgoCDMetricsSpec{
 							Interval:      "90s",
 							ScrapeTimeout: "30s",
 						},
@@ -142,16 +142,16 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("updating metrics config on all components")
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
-				ac.Spec.Controller.Metrics = argov1beta1api.ArgoCDMetricsSpec{
+				ac.Spec.Controller.Metrics = &argov1beta1api.ArgoCDMetricsSpec{
 					Interval: "120s", ScrapeTimeout: "50s",
 				}
-				ac.Spec.Repo.Metrics = argov1beta1api.ArgoCDMetricsSpec{
+				ac.Spec.Repo.Metrics = &argov1beta1api.ArgoCDMetricsSpec{
 					Interval: "150s", ScrapeTimeout: "60s",
 				}
-				ac.Spec.Server.Metrics = argov1beta1api.ArgoCDMetricsSpec{
+				ac.Spec.Server.Metrics = &argov1beta1api.ArgoCDMetricsSpec{
 					Interval: "180s", ScrapeTimeout: "70s",
 				}
-				ac.Spec.Notifications.Metrics = argov1beta1api.ArgoCDMetricsSpec{
+				ac.Spec.Notifications.Metrics = &argov1beta1api.ArgoCDMetricsSpec{
 					Interval: "200s", ScrapeTimeout: "80s",
 				}
 			})
@@ -200,10 +200,10 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("clearing metrics config from all components")
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
-				ac.Spec.Controller.Metrics = argov1beta1api.ArgoCDMetricsSpec{}
-				ac.Spec.Repo.Metrics = argov1beta1api.ArgoCDMetricsSpec{}
-				ac.Spec.Server.Metrics = argov1beta1api.ArgoCDMetricsSpec{}
-				ac.Spec.Notifications.Metrics = argov1beta1api.ArgoCDMetricsSpec{}
+				ac.Spec.Controller.Metrics = nil
+				ac.Spec.Repo.Metrics = nil
+				ac.Spec.Server.Metrics = nil
+				ac.Spec.Notifications.Metrics = nil
 			})
 
 			By("verifying controller ServiceMonitor has empty interval and scrapeTimeout")

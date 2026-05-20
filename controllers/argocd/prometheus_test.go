@@ -318,10 +318,10 @@ func TestReconcileMetricsServiceMonitor(t *testing.T) {
 			name: "prometheus enabled, controller metrics set",
 			argocd: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
 				cr.Spec.Prometheus.Enabled = true
-				cr.Spec.Controller.Metrics = argoproj.ArgoCDMetricsSpec{
-					Interval:      "45s",
-					ScrapeTimeout: "20s",
-				}
+			cr.Spec.Controller.Metrics = &argoproj.ArgoCDMetricsSpec{
+				Interval:      "45s",
+				ScrapeTimeout: "20s",
+			}
 			}),
 			wantSMFound:    true,
 			wantInterval:   "45s",
@@ -387,10 +387,10 @@ func TestReconcileRepoServerServiceMonitor(t *testing.T) {
 			name: "prometheus enabled, repo metrics set",
 			argocd: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
 				cr.Spec.Prometheus.Enabled = true
-				cr.Spec.Repo.Metrics = argoproj.ArgoCDMetricsSpec{
-					Interval:      "90s",
-					ScrapeTimeout: "45s",
-				}
+			cr.Spec.Repo.Metrics = &argoproj.ArgoCDMetricsSpec{
+				Interval:      "90s",
+				ScrapeTimeout: "45s",
+			}
 			}),
 			wantSMFound:    true,
 			wantInterval:   "90s",
@@ -456,10 +456,10 @@ func TestReconcileServerMetricsServiceMonitor(t *testing.T) {
 			name: "prometheus enabled, server metrics set",
 			argocd: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
 				cr.Spec.Prometheus.Enabled = true
-				cr.Spec.Server.Metrics = argoproj.ArgoCDMetricsSpec{
-					Interval:      "120s",
-					ScrapeTimeout: "60s",
-				}
+			cr.Spec.Server.Metrics = &argoproj.ArgoCDMetricsSpec{
+				Interval:      "120s",
+				ScrapeTimeout: "60s",
+			}
 			}),
 			wantSMFound:    true,
 			wantInterval:   "120s",
@@ -502,9 +502,9 @@ func TestReconcileServerMetricsServiceMonitor(t *testing.T) {
 func TestServiceMonitorEndpointUpdate(t *testing.T) {
 	a := makeTestArgoCD(func(cr *argoproj.ArgoCD) {
 		cr.Spec.Prometheus.Enabled = true
-		cr.Spec.Controller.Metrics = argoproj.ArgoCDMetricsSpec{
-			Interval: "30s",
-		}
+	cr.Spec.Controller.Metrics = &argoproj.ArgoCDMetricsSpec{
+		Interval: "30s",
+	}
 	})
 
 	resObjs := []client.Object{a}
@@ -541,7 +541,7 @@ func TestServiceMonitorEndpointUpdate(t *testing.T) {
 	assert.Equal(t, monitoringv1.Duration("60s"), sm.Spec.Endpoints[0].Interval)
 	assert.Equal(t, monitoringv1.Duration("25s"), sm.Spec.Endpoints[0].ScrapeTimeout)
 
-	a.Spec.Controller.Metrics = argoproj.ArgoCDMetricsSpec{}
+	a.Spec.Controller.Metrics = nil
 	err = r.reconcileMetricsServiceMonitor(a)
 	assert.NoError(t, err)
 

@@ -199,10 +199,26 @@ func ConvertAlphaToBetaController(src *ArgoCDApplicationControllerSpec) *v1beta1
 			AppSync:          src.AppSync,
 			Sharding:         v1beta1.ArgoCDApplicationControllerShardSpec(src.Sharding),
 			Env:              src.Env,
-			Metrics:          v1beta1.ArgoCDMetricsSpec(src.Metrics),
+			Metrics:          ConvertAlphaToBetaMetrics(src.Metrics),
 		}
 	}
 	return dst
+}
+
+func ConvertAlphaToBetaMetrics(src *ArgoCDMetricsSpec) *v1beta1.ArgoCDMetricsSpec {
+	if src == nil {
+		return nil
+	}
+	dst := v1beta1.ArgoCDMetricsSpec(*src)
+	return &dst
+}
+
+func ConvertBetaToAlphaMetrics(src *v1beta1.ArgoCDMetricsSpec) *ArgoCDMetricsSpec {
+	if src == nil {
+		return nil
+	}
+	dst := ArgoCDMetricsSpec(*src)
+	return &dst
 }
 
 func ConvertAlphaToBetaRedis(src *ArgoCDRedisSpec) *v1beta1.ArgoCDRedisSpec {
@@ -240,7 +256,7 @@ func ConvertAlphaToBetaRepo(src *ArgoCDRepoSpec) *v1beta1.ArgoCDRepoSpec {
 			Version:              src.Version,
 			VolumeMounts:         src.VolumeMounts,
 			Volumes:              src.Volumes,
-			Metrics:              v1beta1.ArgoCDMetricsSpec(src.Metrics),
+			Metrics:              ConvertAlphaToBetaMetrics(src.Metrics),
 		}
 	}
 	return dst
@@ -375,7 +391,7 @@ func ConvertAlphaToBetaServer(src *ArgoCDServerSpec) *v1beta1.ArgoCDServerSpec {
 			Service:          v1beta1.ArgoCDServerServiceSpec(src.Service),
 			Env:              src.Env,
 			ExtraCommandArgs: src.ExtraCommandArgs,
-			Metrics:          v1beta1.ArgoCDMetricsSpec(src.Metrics),
+			Metrics:          ConvertAlphaToBetaMetrics(src.Metrics),
 		}
 	}
 	return dst
@@ -467,7 +483,7 @@ func ConvertBetaToAlphaController(src *v1beta1.ArgoCDApplicationControllerSpec) 
 			AppSync:          src.AppSync,
 			Sharding:         ArgoCDApplicationControllerShardSpec(src.Sharding),
 			Env:              src.Env,
-			Metrics:          ArgoCDMetricsSpec(src.Metrics),
+			Metrics:          ConvertBetaToAlphaMetrics(src.Metrics),
 		}
 	}
 	return dst
@@ -547,7 +563,7 @@ func ConvertAlphaToBetaNotifications(src *ArgoCDNotifications) *v1beta1.ArgoCDNo
 			LogLevel:         src.LogLevel,
 			Logformat:        src.Logformat, //nolint:staticcheck // SA1019: must convert deprecated field to avoid data loss.
 			LogFormat:        src.LogFormat,
-			Metrics:          v1beta1.ArgoCDMetricsSpec(src.Metrics),
+			Metrics:          ConvertAlphaToBetaMetrics(src.Metrics),
 		}
 	}
 	return dst
@@ -567,7 +583,7 @@ func ConvertBetaToAlphaNotifications(src *v1beta1.ArgoCDNotifications) *ArgoCDNo
 			LogLevel:         src.LogLevel,
 			Logformat:        src.Logformat, //nolint:staticcheck // SA1019: must convert deprecated field to avoid data loss.
 			LogFormat:        src.LogFormat,
-			Metrics:          ArgoCDMetricsSpec(src.Metrics),
+			Metrics:          ConvertBetaToAlphaMetrics(src.Metrics),
 		}
 	}
 	return dst
@@ -641,7 +657,7 @@ func ConvertBetaToAlphaServer(src *v1beta1.ArgoCDServerSpec) *ArgoCDServerSpec {
 			Service:          ArgoCDServerServiceSpec(src.Service),
 			Env:              src.Env,
 			ExtraCommandArgs: src.ExtraCommandArgs,
-			Metrics:          ArgoCDMetricsSpec(src.Metrics),
+			Metrics:          ConvertBetaToAlphaMetrics(src.Metrics),
 		}
 	}
 	return dst
@@ -755,7 +771,7 @@ func ConvertBetaToAlphaRepo(src *v1beta1.ArgoCDRepoSpec) *ArgoCDRepoSpec {
 			Version:              src.Version,
 			VolumeMounts:         src.VolumeMounts,
 			Volumes:              src.Volumes,
-			Metrics:              ArgoCDMetricsSpec(src.Metrics),
+			Metrics:              ConvertBetaToAlphaMetrics(src.Metrics),
 		}
 	}
 	return dst

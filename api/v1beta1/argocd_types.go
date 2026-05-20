@@ -139,7 +139,7 @@ type ArgoCDApplicationControllerSpec struct {
 	RespectRBAC string `json:"respectRBAC,omitempty"`
 
 	// Metrics defines the metrics configuration for the Application Controller ServiceMonitor.
-	Metrics ArgoCDMetricsSpec `json:"metrics,omitempty"`
+	Metrics *ArgoCDMetricsSpec `json:"metrics,omitempty"`
 }
 
 func (a *ArgoCDApplicationControllerSpec) IsEnabled() bool {
@@ -447,7 +447,7 @@ type ArgoCDNotifications struct {
 	LogFormat string `json:"logFormat,omitempty"`
 
 	// Metrics defines the metrics configuration for the Notifications ServiceMonitor.
-	Metrics ArgoCDMetricsSpec `json:"metrics,omitempty"`
+	Metrics *ArgoCDMetricsSpec `json:"metrics,omitempty"`
 }
 
 // ArgoCDMetricsSpec defines the metrics configuration for a component's ServiceMonitor.
@@ -629,7 +629,7 @@ type ArgoCDRepoSpec struct {
 	SystemCATrust *ArgoCDSystemCATrustSpec `json:"systemCATrust,omitempty"`
 
 	// Metrics defines the metrics configuration for the Repo Server ServiceMonitor.
-	Metrics ArgoCDMetricsSpec `json:"metrics,omitempty"`
+	Metrics *ArgoCDMetricsSpec `json:"metrics,omitempty"`
 }
 
 func (a *ArgoCDRepoSpec) IsEnabled() bool {
@@ -766,7 +766,7 @@ type ArgoCDServerSpec struct {
 	Labels map[string]string `json:"labels,omitempty"`
 
 	// Metrics defines the metrics configuration for the Server ServiceMonitor.
-	Metrics ArgoCDMetricsSpec `json:"metrics,omitempty"`
+	Metrics *ArgoCDMetricsSpec `json:"metrics,omitempty"`
 }
 
 func (a *ArgoCDServerSpec) IsEnabled() bool {

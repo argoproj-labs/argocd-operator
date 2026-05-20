@@ -110,7 +110,7 @@ type ArgoCDApplicationControllerSpec struct {
 	Env []corev1.EnvVar `json:"env,omitempty"`
 
 	// Metrics defines the metrics configuration for the Application Controller ServiceMonitor.
-	Metrics ArgoCDMetricsSpec `json:"metrics,omitempty"`
+	Metrics *ArgoCDMetricsSpec `json:"metrics,omitempty"`
 }
 
 // ArgoCDApplicationControllerShardSpec defines the options available for enabling sharding for the Application Controller component.
@@ -362,7 +362,7 @@ type ArgoCDNotifications struct {
 	LogFormat string `json:"logFormat,omitempty"`
 
 	// Metrics defines the metrics configuration for the Notifications ServiceMonitor.
-	Metrics ArgoCDMetricsSpec `json:"metrics,omitempty"`
+	Metrics *ArgoCDMetricsSpec `json:"metrics,omitempty"`
 }
 
 // ArgoCDMetricsSpec defines the metrics configuration for a component's ServiceMonitor.
@@ -515,7 +515,7 @@ type ArgoCDRepoSpec struct {
 	SidecarContainers []corev1.Container `json:"sidecarContainers,omitempty"`
 
 	// Metrics defines the metrics configuration for the Repo Server ServiceMonitor.
-	Metrics ArgoCDMetricsSpec `json:"metrics,omitempty"`
+	Metrics *ArgoCDMetricsSpec `json:"metrics,omitempty"`
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.
@@ -611,7 +611,7 @@ type ArgoCDServerSpec struct {
 	ExtraCommandArgs []string `json:"extraCommandArgs,omitempty"`
 
 	// Metrics defines the metrics configuration for the Server ServiceMonitor.
-	Metrics ArgoCDMetricsSpec `json:"metrics,omitempty"`
+	Metrics *ArgoCDMetricsSpec `json:"metrics,omitempty"`
 }
 
 // ArgoCDServerServiceSpec defines the Service options for Argo CD Server component.

@@ -796,33 +796,33 @@ func TestAlphaToBetaConversion(t *testing.T) {
 		{
 			name: "ArgoCD Example - Component Metrics",
 			input: makeTestArgoCDAlpha(func(cr *ArgoCD) {
-				cr.Spec.Controller.Metrics = ArgoCDMetricsSpec{
+				cr.Spec.Controller.Metrics = &ArgoCDMetricsSpec{
 					Interval:      "60s",
 					ScrapeTimeout: "30s",
 				}
-				cr.Spec.Repo.Metrics = ArgoCDMetricsSpec{
+				cr.Spec.Repo.Metrics = &ArgoCDMetricsSpec{
 					Interval: "90s",
 				}
-				cr.Spec.Server.Metrics = ArgoCDMetricsSpec{
+				cr.Spec.Server.Metrics = &ArgoCDMetricsSpec{
 					ScrapeTimeout: "15s",
 				}
-				cr.Spec.Notifications.Metrics = ArgoCDMetricsSpec{
+				cr.Spec.Notifications.Metrics = &ArgoCDMetricsSpec{
 					Interval:      "45s",
 					ScrapeTimeout: "20s",
 				}
 			}),
 			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
-				cr.Spec.Controller.Metrics = v1beta1.ArgoCDMetricsSpec{
+				cr.Spec.Controller.Metrics = &v1beta1.ArgoCDMetricsSpec{
 					Interval:      "60s",
 					ScrapeTimeout: "30s",
 				}
-				cr.Spec.Repo.Metrics = v1beta1.ArgoCDMetricsSpec{
+				cr.Spec.Repo.Metrics = &v1beta1.ArgoCDMetricsSpec{
 					Interval: "90s",
 				}
-				cr.Spec.Server.Metrics = v1beta1.ArgoCDMetricsSpec{
+				cr.Spec.Server.Metrics = &v1beta1.ArgoCDMetricsSpec{
 					ScrapeTimeout: "15s",
 				}
-				cr.Spec.Notifications.Metrics = v1beta1.ArgoCDMetricsSpec{
+				cr.Spec.Notifications.Metrics = &v1beta1.ArgoCDMetricsSpec{
 					Interval:      "45s",
 					ScrapeTimeout: "20s",
 				}
@@ -1213,33 +1213,33 @@ func TestBetaToAlphaConversion(t *testing.T) {
 		{
 			name: "ArgoCD Example - Component Metrics",
 			input: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
-				cr.Spec.Controller.Metrics = v1beta1.ArgoCDMetricsSpec{
+				cr.Spec.Controller.Metrics = &v1beta1.ArgoCDMetricsSpec{
 					Interval:      "60s",
 					ScrapeTimeout: "30s",
 				}
-				cr.Spec.Repo.Metrics = v1beta1.ArgoCDMetricsSpec{
+				cr.Spec.Repo.Metrics = &v1beta1.ArgoCDMetricsSpec{
 					Interval: "90s",
 				}
-				cr.Spec.Server.Metrics = v1beta1.ArgoCDMetricsSpec{
+				cr.Spec.Server.Metrics = &v1beta1.ArgoCDMetricsSpec{
 					ScrapeTimeout: "15s",
 				}
-				cr.Spec.Notifications.Metrics = v1beta1.ArgoCDMetricsSpec{
+				cr.Spec.Notifications.Metrics = &v1beta1.ArgoCDMetricsSpec{
 					Interval:      "45s",
 					ScrapeTimeout: "20s",
 				}
 			}),
 			expectedOutput: makeTestArgoCDAlpha(func(cr *ArgoCD) {
-				cr.Spec.Controller.Metrics = ArgoCDMetricsSpec{
+				cr.Spec.Controller.Metrics = &ArgoCDMetricsSpec{
 					Interval:      "60s",
 					ScrapeTimeout: "30s",
 				}
-				cr.Spec.Repo.Metrics = ArgoCDMetricsSpec{
+				cr.Spec.Repo.Metrics = &ArgoCDMetricsSpec{
 					Interval: "90s",
 				}
-				cr.Spec.Server.Metrics = ArgoCDMetricsSpec{
+				cr.Spec.Server.Metrics = &ArgoCDMetricsSpec{
 					ScrapeTimeout: "15s",
 				}
-				cr.Spec.Notifications.Metrics = ArgoCDMetricsSpec{
+				cr.Spec.Notifications.Metrics = &ArgoCDMetricsSpec{
 					Interval:      "45s",
 					ScrapeTimeout: "20s",
 				}

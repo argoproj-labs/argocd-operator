@@ -96,9 +96,12 @@ func newServiceMonitorWithSuffix(suffix string, cr *argoproj.ArgoCD) *monitoring
 }
 
 // getMetricsEndpoint returns the desired ServiceMonitor endpoint built from the component's metrics spec.
-func getMetricsEndpoint(metrics argoproj.ArgoCDMetricsSpec) monitoringv1.Endpoint {
+func getMetricsEndpoint(metrics *argoproj.ArgoCDMetricsSpec) monitoringv1.Endpoint {
 	endpoint := monitoringv1.Endpoint{
 		Port: common.ArgoCDKeyMetrics,
+	}
+	if metrics == nil {
+		return endpoint
 	}
 	if metrics.Interval != "" {
 		endpoint.Interval = monitoringv1.Duration(metrics.Interval)
@@ -120,6 +123,7 @@ func (r *ReconcileArgoCD) updateServiceMonitorEndpointIfNeeded(sm *monitoringv1.
 		return nil
 	}
 	sm.Spec.Endpoints = []monitoringv1.Endpoint{desired}
+	argoutil.LogResourceUpdate(log, sm)
 	return r.Update(context.TODO(), sm)
 }
 

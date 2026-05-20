@@ -531,7 +531,7 @@ func TestReconcileNotifications_CreateServiceMonitor(t *testing.T) {
 func TestReconcileNotifications_ServiceMonitorWithMetrics(t *testing.T) {
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.Notifications.Enabled = true
-		a.Spec.Notifications.Metrics = argoproj.ArgoCDMetricsSpec{
+		a.Spec.Notifications.Metrics = &argoproj.ArgoCDMetricsSpec{
 			Interval:      "60s",
 			ScrapeTimeout: "30s",
 		}
