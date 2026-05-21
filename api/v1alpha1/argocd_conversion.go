@@ -77,7 +77,7 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.OIDCConfig = src.Spec.OIDCConfig
 	dst.Spec.Monitoring = v1beta1.ArgoCDMonitoringSpec(src.Spec.Monitoring)
 	dst.Spec.NodePlacement = (*v1beta1.ArgoCDNodePlacementSpec)(src.Spec.NodePlacement)
-	dst.Spec.Notifications = v1beta1.ArgoCDNotifications(src.Spec.Notifications)
+	dst.Spec.Notifications = *ConvertAlphaToBetaNotifications(&src.Spec.Notifications)
 	dst.Spec.Prometheus = *ConvertAlphaToBetaPrometheus(&src.Spec.Prometheus)
 	dst.Spec.RBAC = v1beta1.ArgoCDRBACSpec(src.Spec.RBAC)
 	dst.Spec.Redis = *ConvertAlphaToBetaRedis(&src.Spec.Redis)
@@ -154,7 +154,7 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.OIDCConfig = src.Spec.OIDCConfig
 	dst.Spec.Monitoring = ArgoCDMonitoringSpec(src.Spec.Monitoring)
 	dst.Spec.NodePlacement = (*ArgoCDNodePlacementSpec)(src.Spec.NodePlacement)
-	dst.Spec.Notifications = ArgoCDNotifications(src.Spec.Notifications)
+	dst.Spec.Notifications = *ConvertBetaToAlphaNotifications(&src.Spec.Notifications)
 	dst.Spec.Prometheus = *ConvertBetaToAlphaPrometheus(&src.Spec.Prometheus)
 	dst.Spec.RBAC = ArgoCDRBACSpec(src.Spec.RBAC)
 	dst.Spec.Redis = *ConvertBetaToAlphaRedis(&src.Spec.Redis)
@@ -199,9 +199,26 @@ func ConvertAlphaToBetaController(src *ArgoCDApplicationControllerSpec) *v1beta1
 			AppSync:          src.AppSync,
 			Sharding:         v1beta1.ArgoCDApplicationControllerShardSpec(src.Sharding),
 			Env:              src.Env,
+			Metrics:          ConvertAlphaToBetaMetrics(src.Metrics),
 		}
 	}
 	return dst
+}
+
+func ConvertAlphaToBetaMetrics(src *ArgoCDMetricsSpec) *v1beta1.ArgoCDMetricsSpec {
+	if src == nil {
+		return nil
+	}
+	dst := v1beta1.ArgoCDMetricsSpec(*src)
+	return &dst
+}
+
+func ConvertBetaToAlphaMetrics(src *v1beta1.ArgoCDMetricsSpec) *ArgoCDMetricsSpec {
+	if src == nil {
+		return nil
+	}
+	dst := ArgoCDMetricsSpec(*src)
+	return &dst
 }
 
 func ConvertAlphaToBetaRedis(src *ArgoCDRedisSpec) *v1beta1.ArgoCDRedisSpec {
@@ -239,6 +256,7 @@ func ConvertAlphaToBetaRepo(src *ArgoCDRepoSpec) *v1beta1.ArgoCDRepoSpec {
 			Version:              src.Version,
 			VolumeMounts:         src.VolumeMounts,
 			Volumes:              src.Volumes,
+			Metrics:              ConvertAlphaToBetaMetrics(src.Metrics),
 		}
 	}
 	return dst
@@ -373,6 +391,7 @@ func ConvertAlphaToBetaServer(src *ArgoCDServerSpec) *v1beta1.ArgoCDServerSpec {
 			Service:          v1beta1.ArgoCDServerServiceSpec(src.Service),
 			Env:              src.Env,
 			ExtraCommandArgs: src.ExtraCommandArgs,
+			Metrics:          ConvertAlphaToBetaMetrics(src.Metrics),
 		}
 	}
 	return dst
@@ -464,6 +483,7 @@ func ConvertBetaToAlphaController(src *v1beta1.ArgoCDApplicationControllerSpec) 
 			AppSync:          src.AppSync,
 			Sharding:         ArgoCDApplicationControllerShardSpec(src.Sharding),
 			Env:              src.Env,
+			Metrics:          ConvertBetaToAlphaMetrics(src.Metrics),
 		}
 	}
 	return dst
@@ -524,6 +544,46 @@ func ConvertBetaToAlphaPrometheus(src *v1beta1.ArgoCDPrometheusSpec) *ArgoCDProm
 			Ingress: ArgoCDIngressSpec(src.Ingress),
 			Route:   ArgoCDRouteSpec(src.Route),
 			Size:    src.Size,
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaNotifications(src *ArgoCDNotifications) *v1beta1.ArgoCDNotifications {
+	var dst *v1beta1.ArgoCDNotifications
+	if src != nil {
+		dst = &v1beta1.ArgoCDNotifications{
+			Replicas:         src.Replicas,
+			Enabled:          src.Enabled,
+			SourceNamespaces: src.SourceNamespaces,
+			Env:              src.Env,
+			Image:            src.Image,
+			Version:          src.Version,
+			Resources:        src.Resources,
+			LogLevel:         src.LogLevel,
+			Logformat:        src.Logformat, //nolint:staticcheck // SA1019: must convert deprecated field to avoid data loss.
+			LogFormat:        src.LogFormat,
+			Metrics:          ConvertAlphaToBetaMetrics(src.Metrics),
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaNotifications(src *v1beta1.ArgoCDNotifications) *ArgoCDNotifications {
+	var dst *ArgoCDNotifications
+	if src != nil {
+		dst = &ArgoCDNotifications{
+			Replicas:         src.Replicas,
+			Enabled:          src.Enabled,
+			SourceNamespaces: src.SourceNamespaces,
+			Env:              src.Env,
+			Image:            src.Image,
+			Version:          src.Version,
+			Resources:        src.Resources,
+			LogLevel:         src.LogLevel,
+			Logformat:        src.Logformat, //nolint:staticcheck // SA1019: must convert deprecated field to avoid data loss.
+			LogFormat:        src.LogFormat,
+			Metrics:          ConvertBetaToAlphaMetrics(src.Metrics),
 		}
 	}
 	return dst
@@ -597,6 +657,7 @@ func ConvertBetaToAlphaServer(src *v1beta1.ArgoCDServerSpec) *ArgoCDServerSpec {
 			Service:          ArgoCDServerServiceSpec(src.Service),
 			Env:              src.Env,
 			ExtraCommandArgs: src.ExtraCommandArgs,
+			Metrics:          ConvertBetaToAlphaMetrics(src.Metrics),
 		}
 	}
 	return dst
@@ -710,6 +771,7 @@ func ConvertBetaToAlphaRepo(src *v1beta1.ArgoCDRepoSpec) *ArgoCDRepoSpec {
 			Version:              src.Version,
 			VolumeMounts:         src.VolumeMounts,
 			Volumes:              src.Volumes,
+			Metrics:              ConvertBetaToAlphaMetrics(src.Metrics),
 		}
 	}
 	return dst
@@ -753,6 +815,7 @@ func ConvertAlphaToBetaPrincipal(src *PrincipalSpec) *v1beta1.PrincipalSpec {
 			TLS:           ConvertAlphaToBetaPrincipalTLS(src.TLS),
 			ResourceProxy: ConvertAlphaToBetaPrincipalResourceProxy(src.ResourceProxy),
 			JWT:           ConvertAlphaToBetaPrincipalJWT(src.JWT),
+			Metrics:       ConvertAlphaToBetaMetrics(src.Metrics),
 		}
 	}
 	return dst
@@ -785,6 +848,7 @@ func ConvertBetaToAlphaPrincipal(src *v1beta1.PrincipalSpec) *PrincipalSpec {
 			TLS:           ConvertBetaToAlphaPrincipalTLS(src.TLS),
 			ResourceProxy: ConvertBetaToAlphaPrincipalResourceProxy(src.ResourceProxy),
 			JWT:           ConvertBetaToAlphaPrincipalJWT(src.JWT),
+			Metrics:       ConvertBetaToAlphaMetrics(src.Metrics),
 		}
 	}
 	return dst
@@ -945,6 +1009,7 @@ func ConvertAlphaToBetaAgent(src *AgentSpec) *v1beta1.AgentSpec {
 			Client:    ConvertAlphaToBetaAgentClient(src.Client),
 			Redis:     ConvertAlphaToBetaAgentRedis(src.Redis),
 			TLS:       ConvertAlphaToBetaAgentTLS(src.TLS),
+			Metrics:   ConvertAlphaToBetaMetrics(src.Metrics),
 		}
 	}
 	return dst
@@ -963,6 +1028,7 @@ func ConvertBetaToAlphaAgent(src *v1beta1.AgentSpec) *AgentSpec {
 			Client:    ConvertBetaToAlphaAgentClient(src.Client),
 			Redis:     ConvertBetaToAlphaAgentRedis(src.Redis),
 			TLS:       ConvertBetaToAlphaAgentTLS(src.TLS),
+			Metrics:   ConvertBetaToAlphaMetrics(src.Metrics),
 		}
 	}
 	return dst

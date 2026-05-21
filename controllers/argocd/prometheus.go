@@ -95,6 +95,38 @@ func newServiceMonitorWithSuffix(suffix string, cr *argoproj.ArgoCD) *monitoring
 	return newServiceMonitorWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), cr)
 }
 
+// getMetricsEndpoint returns the desired ServiceMonitor endpoint built from the component's metrics spec.
+func getMetricsEndpoint(metrics *argoproj.ArgoCDMetricsSpec) monitoringv1.Endpoint {
+	endpoint := monitoringv1.Endpoint{
+		Port: common.ArgoCDKeyMetrics,
+	}
+	if metrics == nil {
+		return endpoint
+	}
+	if metrics.Interval != "" {
+		endpoint.Interval = monitoringv1.Duration(metrics.Interval)
+	}
+	if metrics.ScrapeTimeout != "" {
+		endpoint.ScrapeTimeout = monitoringv1.Duration(metrics.ScrapeTimeout)
+	}
+	return endpoint
+}
+
+// updateServiceMonitorEndpointIfNeeded compares the existing ServiceMonitor's endpoint fields
+// with the desired endpoint and updates the resource if they differ.
+func (r *ReconcileArgoCD) updateServiceMonitorEndpointIfNeeded(sm *monitoringv1.ServiceMonitor, desired monitoringv1.Endpoint) error {
+	if len(sm.Spec.Endpoints) == 1 &&
+		sm.Spec.Endpoints[0].Port == desired.Port &&
+		sm.Spec.Endpoints[0].Scheme == desired.Scheme &&
+		sm.Spec.Endpoints[0].Interval == desired.Interval &&
+		sm.Spec.Endpoints[0].ScrapeTimeout == desired.ScrapeTimeout {
+		return nil
+	}
+	sm.Spec.Endpoints = []monitoringv1.Endpoint{desired}
+	argoutil.LogResourceUpdate(log, sm)
+	return r.Update(context.TODO(), sm)
+}
+
 // reconcileMetricsServiceMonitor will ensure that the ServiceMonitor is present for the ArgoCD metrics Service.
 func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) error {
 	sm := newServiceMonitorWithSuffix(common.ArgoCDKeyMetrics, cr)
@@ -102,13 +134,15 @@ func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) er
 	if err != nil {
 		return err
 	}
+	desiredEndpoint := getMetricsEndpoint(cr.Spec.Controller.Metrics)
+
 	if smExists {
 		if !cr.Spec.Prometheus.Enabled {
 			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
 			argoutil.LogResourceDeletion(log, sm, "prometheus is disabled")
 			return r.Delete(context.TODO(), sm)
 		}
-		return nil // ServiceMonitor found, do nothing
+		return r.updateServiceMonitorEndpointIfNeeded(sm, desiredEndpoint)
 	}
 
 	if !cr.Spec.Prometheus.Enabled {
@@ -120,11 +154,7 @@ func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) er
 			common.ArgoCDKeyName: nameWithSuffix(common.ArgoCDKeyMetrics, cr),
 		},
 	}
-	sm.Spec.Endpoints = []monitoringv1.Endpoint{
-		{
-			Port: common.ArgoCDKeyMetrics,
-		},
-	}
+	sm.Spec.Endpoints = []monitoringv1.Endpoint{desiredEndpoint}
 
 	if err := controllerutil.SetControllerReference(cr, sm, r.Scheme); err != nil {
 		return err
@@ -158,13 +188,16 @@ func (r *ReconcileArgoCD) reconcileRepoServerServiceMonitor(cr *argoproj.ArgoCD)
 	if err != nil {
 		return err
 	}
+
+	desiredEndpoint := getMetricsEndpoint(cr.Spec.Repo.Metrics)
+
 	if smExists {
 		if !cr.Spec.Prometheus.Enabled {
 			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
 			argoutil.LogResourceDeletion(log, sm, "prometheus is disabled")
 			return r.Delete(context.TODO(), sm)
 		}
-		return nil // ServiceMonitor found, do nothing
+		return r.updateServiceMonitorEndpointIfNeeded(sm, desiredEndpoint)
 	}
 
 	if !cr.Spec.Prometheus.Enabled {
@@ -176,11 +209,7 @@ func (r *ReconcileArgoCD) reconcileRepoServerServiceMonitor(cr *argoproj.ArgoCD)
 			common.ArgoCDKeyName: nameWithSuffix("repo-server", cr),
 		},
 	}
-	sm.Spec.Endpoints = []monitoringv1.Endpoint{
-		{
-			Port: common.ArgoCDKeyMetrics,
-		},
-	}
+	sm.Spec.Endpoints = []monitoringv1.Endpoint{desiredEndpoint}
 
 	if err := controllerutil.SetControllerReference(cr, sm, r.Scheme); err != nil {
 		return err
@@ -196,13 +225,16 @@ func (r *ReconcileArgoCD) reconcileServerMetricsServiceMonitor(cr *argoproj.Argo
 	if err != nil {
 		return err
 	}
+
+	desiredEndpoint := getMetricsEndpoint(cr.Spec.Server.Metrics)
+
 	if smExists {
 		if !cr.Spec.Prometheus.Enabled {
 			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
 			argoutil.LogResourceDeletion(log, sm, "prometheus is disabled")
 			return r.Delete(context.TODO(), sm)
 		}
-		return nil // ServiceMonitor found, do nothing
+		return r.updateServiceMonitorEndpointIfNeeded(sm, desiredEndpoint)
 	}
 
 	if !cr.Spec.Prometheus.Enabled {
@@ -214,11 +246,7 @@ func (r *ReconcileArgoCD) reconcileServerMetricsServiceMonitor(cr *argoproj.Argo
 			common.ArgoCDKeyName: nameWithSuffix("server-metrics", cr),
 		},
 	}
-	sm.Spec.Endpoints = []monitoringv1.Endpoint{
-		{
-			Port: common.ArgoCDKeyMetrics,
-		},
-	}
+	sm.Spec.Endpoints = []monitoringv1.Endpoint{desiredEndpoint}
 
 	if err := controllerutil.SetControllerReference(cr, sm, r.Scheme); err != nil {
 		return err

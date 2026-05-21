@@ -522,10 +522,45 @@ func TestReconcileNotifications_CreateServiceMonitor(t *testing.T) {
 	assert.Equal(t, testServiceMonitor.Labels["release"], "prometheus-operator")
 
 	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Port, "metrics")
-	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Scheme, "http")
-	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Interval, monitoringv1.Duration("30s"))
+	assert.Empty(t, testServiceMonitor.Spec.Endpoints[0].Interval)
+	assert.Empty(t, testServiceMonitor.Spec.Endpoints[0].ScrapeTimeout)
 	assert.Equal(t, testServiceMonitor.Spec.Selector.MatchLabels["app.kubernetes.io/name"],
 		fmt.Sprintf("%s-%s", a.Name, "notifications-controller-metrics"))
+}
+
+func TestReconcileNotifications_ServiceMonitorWithMetrics(t *testing.T) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Notifications.Enabled = true
+		a.Spec.Notifications.Metrics = &argoproj.ArgoCDMetricsSpec{
+			Interval:      "60s",
+			ScrapeTimeout: "30s",
+		}
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	err := monitoringv1.AddToScheme(sch)
+	assert.NoError(t, err)
+	err = v1alpha1.AddToScheme(sch)
+	assert.NoError(t, err)
+
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	prometheusAPIFound = true
+	err = r.reconcileNotificationsController(a)
+	assert.NoError(t, err)
+
+	testServiceMonitor := &monitoringv1.ServiceMonitor{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
+		Name:      fmt.Sprintf("%s-%s", a.Name, "notifications-controller-metrics"),
+		Namespace: a.Namespace,
+	}, testServiceMonitor))
+
+	assert.Equal(t, monitoringv1.Duration("60s"), testServiceMonitor.Spec.Endpoints[0].Interval)
+	assert.Equal(t, monitoringv1.Duration("30s"), testServiceMonitor.Spec.Endpoints[0].ScrapeTimeout)
 }
 
 func TestReconcileNotifications_CreateSecret(t *testing.T) {

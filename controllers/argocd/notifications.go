@@ -612,9 +612,10 @@ func (r *ReconcileArgoCD) reconcileNotificationsServiceMonitor(cr *argoproj.Argo
 	if err != nil {
 		return err
 	}
+	desiredEndpoint := getMetricsEndpoint(cr.Spec.Notifications.Metrics)
+
 	if smExists {
-		// Service found, do nothing
-		return nil
+		return r.updateServiceMonitorEndpointIfNeeded(serviceMonitor, desiredEndpoint)
 	}
 
 	serviceMonitor.Spec.Selector = v1.LabelSelector{
@@ -622,14 +623,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsServiceMonitor(cr *argoproj.Argo
 			common.ArgoCDKeyName: name,
 		},
 	}
-
-	serviceMonitor.Spec.Endpoints = []monitoringv1.Endpoint{
-		{
-			Port:     "metrics",
-			Scheme:   "http",
-			Interval: "30s",
-		},
-	}
+	serviceMonitor.Spec.Endpoints = []monitoringv1.Endpoint{desiredEndpoint}
 
 	argoutil.LogResourceCreation(log, serviceMonitor)
 	return r.Create(context.TODO(), serviceMonitor)
