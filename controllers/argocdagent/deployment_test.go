@@ -16,6 +16,7 @@ package argocdagent
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -30,6 +31,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	configv1 "github.com/openshift/api/config/v1"
 )
 
 // Helper function to create a test deployment
@@ -695,4 +697,226 @@ func TestReconcilePrincipalDeployment_ResourceRequirements(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, updatedResources, deployment.Spec.Template.Spec.Containers[0].Resources)
+}
+
+func TestGetPrincipalTlsConfig(t *testing.T) {
+	tests := []struct {
+		name              string
+		cr                *argoproj.ArgoCD
+		centralMinVersion configv1.TLSProtocolVersion
+		centralCiphers    []string
+		expected          map[string]string
+		wantErr           bool
+	}{
+		{
+			name:     "nil argocd agent",
+			cr:       &argoproj.ArgoCD{},
+			expected: map[string]string{},
+			wantErr:  false,
+		},
+		{
+			name: "nil principal",
+			cr: &argoproj.ArgoCD{
+				Spec: argoproj.ArgoCDSpec{
+					ArgoCDAgent: &argoproj.ArgoCDAgentSpec{},
+				},
+			},
+			expected: map[string]string{},
+			wantErr:  false,
+		},
+		{
+			name: "nil tls config",
+			cr: &argoproj.ArgoCD{
+				Spec: argoproj.ArgoCDSpec{
+					ArgoCDAgent: &argoproj.ArgoCDAgentSpec{
+						Principal: &argoproj.PrincipalSpec{
+							TLS: &argoproj.PrincipalTLSSpec{
+								TlsConfig: nil,
+							},
+						},
+					},
+				},
+			},
+			expected: map[string]string{},
+			wantErr:  false,
+		},
+		{
+			name: "CR tls config takes precedence",
+			cr: &argoproj.ArgoCD{
+				Spec: argoproj.ArgoCDSpec{
+					ArgoCDAgent: &argoproj.ArgoCDAgentSpec{
+						Principal: &argoproj.PrincipalSpec{
+							TLS: &argoproj.PrincipalTLSSpec{
+								TlsConfig: &argoproj.ArgoCDTlsConfig{
+									MinVersion: "1.2",
+									MaxVersion: "1.3",
+									CipherSuites: []string{
+										"TLS_AES_128_GCM_SHA256",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			centralMinVersion: configv1.VersionTLS13,
+			centralCiphers: []string{
+				"ECDHE-RSA-AES128-GCM-SHA256",
+			},
+			expected: map[string]string{
+				"--tlsminversion": "tls1.2",
+				"--tlsmaxversion": "tls1.3",
+				"--tlsciphers":    "TLS_AES_128_GCM_SHA256",
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid CR tls config",
+			cr: &argoproj.ArgoCD{
+				Spec: argoproj.ArgoCDSpec{
+					ArgoCDAgent: &argoproj.ArgoCDAgentSpec{
+						Principal: &argoproj.PrincipalSpec{
+							TLS: &argoproj.PrincipalTLSSpec{
+								TlsConfig: &argoproj.ArgoCDTlsConfig{
+									CipherSuites: []string{
+										"INVALID_CIPHER",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: nil,
+			wantErr:  true,
+		},
+		{
+			name: "fallback to central tls profile with tls 1.2",
+			cr: &argoproj.ArgoCD{
+				Spec: argoproj.ArgoCDSpec{
+					ArgoCDAgent: &argoproj.ArgoCDAgentSpec{
+						Principal: &argoproj.PrincipalSpec{
+							TLS: &argoproj.PrincipalTLSSpec{},
+						},
+					},
+				},
+			},
+			centralMinVersion: configv1.VersionTLS12,
+			centralCiphers: []string{
+				"ECDHE-RSA-AES128-GCM-SHA256",
+				"TLS_AES_128_GCM_SHA256",
+			},
+			expected: map[string]string{
+				"--tlsminversion": "tls1.2",
+				"--tlsciphers":    "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+			},
+			wantErr: false,
+		},
+		{
+			name: "fallback to central tls profile with tls 1.3",
+			cr: &argoproj.ArgoCD{
+				Spec: argoproj.ArgoCDSpec{
+					ArgoCDAgent: &argoproj.ArgoCDAgentSpec{
+						Principal: &argoproj.PrincipalSpec{
+							TLS: &argoproj.PrincipalTLSSpec{},
+						},
+					},
+				},
+			},
+			centralMinVersion: "VersionTLS13",
+			centralCiphers: []string{
+				"TLS_AES_128_GCM_SHA256",
+				"ECDHE-RSA-AES128-GCM-SHA256",
+			},
+			expected: map[string]string{
+				"--tlsminversion": "tls1.3",
+				"--tlsciphers":    "TLS_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+			},
+			wantErr: false,
+		},
+		{
+			name: "central tls with only tls13 ciphers filtered",
+			cr: &argoproj.ArgoCD{
+				Spec: argoproj.ArgoCDSpec{
+					ArgoCDAgent: &argoproj.ArgoCDAgentSpec{
+						Principal: &argoproj.PrincipalSpec{
+							TLS: &argoproj.PrincipalTLSSpec{},
+						},
+					},
+				},
+			},
+			centralMinVersion: configv1.VersionTLS12,
+			centralCiphers: []string{
+				"TLS_AES_128_GCM_SHA256",
+				"TLS_AES_256_GCM_SHA384",
+			},
+			expected: map[string]string{
+				"--tlsminversion": "tls1.2",
+			},
+			wantErr: false,
+		},
+		{
+			name: "central tls with mapped non tls13 ciphers",
+			cr: &argoproj.ArgoCD{
+				Spec: argoproj.ArgoCDSpec{
+					ArgoCDAgent: &argoproj.ArgoCDAgentSpec{
+						Principal: &argoproj.PrincipalSpec{
+							TLS: &argoproj.PrincipalTLSSpec{},
+						},
+					},
+				},
+			},
+			centralMinVersion: configv1.VersionTLS12,
+			centralCiphers: []string{
+				"ECDHE-RSA-AES256-GCM-SHA384",
+			},
+			expected: map[string]string{
+				"--tlsminversion": "tls1.2",
+				"--tlsciphers":    "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+			},
+			wantErr: false,
+		},
+		{
+			name: "central tls with empty cipher mapping",
+			cr: &argoproj.ArgoCD{
+				Spec: argoproj.ArgoCDSpec{
+					ArgoCDAgent: &argoproj.ArgoCDAgentSpec{
+						Principal: &argoproj.PrincipalSpec{
+							TLS: &argoproj.PrincipalTLSSpec{},
+						},
+					},
+				},
+			},
+			centralMinVersion: configv1.VersionTLS12,
+			centralCiphers: []string{
+				"INVALID",
+			},
+			expected: map[string]string{
+				"--tlsminversion": "tls1.2",
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := getPrincipalTlsConfig(
+				tt.cr,
+				tt.centralMinVersion,
+				tt.centralCiphers,
+			)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error but got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !reflect.DeepEqual(got, tt.expected) {
+				t.Fatalf("expected %#v got %#v", tt.expected, got)
+			}
+		})
+	}
 }
