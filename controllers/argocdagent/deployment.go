@@ -586,7 +586,6 @@ func getPrincipalTlsConfig(cr *argoproj.ArgoCD, centralTLSProfileMinVersion conf
 	if tlsCfg != nil {
 		return argoutil.BuildArgoCDAgentTLSArgs(tlsCfg, arguments)
 	}
-	// Fallback to cluster TLS profile
 	if centralTLSProfileMinVersion != "" {
 		arguments["--tlsminversion"] = argoutil.AgentTLSProtocolVersionString(centralTLSProfileMinVersion)
 	}

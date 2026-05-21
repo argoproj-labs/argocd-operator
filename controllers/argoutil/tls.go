@@ -128,59 +128,6 @@ func NewSignedCertificate(cfg *certmanagerv1.CertificateSpec, dnsNames []string,
 	return x509.ParseCertificate(certDERBytes)
 }
 
-var (
-	supportedCipherSuites = buildCipherSuiteMap()
-)
-
-func buildCipherSuiteMap() map[string]*tls.CipherSuite {
-	m := make(map[string]*tls.CipherSuite)
-	for _, cs := range tls.CipherSuites() {
-		m[cs.Name] = cs
-	}
-	return m
-}
-
-func ValidateTLSConfig(tlsCfg *argoproj.ArgoCDTlsConfig) error {
-	if tlsCfg == nil {
-		return nil
-	}
-	minVersion := tlsCfg.MinVersion
-	maxVersion := tlsCfg.MaxVersion
-	if len(tlsCfg.CipherSuites) == 0 {
-		return nil
-	}
-	for _, name := range tlsCfg.CipherSuites {
-		name = strings.TrimSpace(name)
-		if name == "" {
-			continue
-		}
-		cs, ok := supportedCipherSuites[name]
-		if !ok {
-			return fmt.Errorf("unsupported cipher suite: %s", name)
-		}
-		if minVersion == "1.3" {
-			continue
-		}
-		if !isCipherCompatible(cs, minVersion, maxVersion) {
-			return fmt.Errorf(
-				"cipher suite %s is not compatible with TLS versions",
-				name,
-			)
-		}
-	}
-	return nil
-}
-
-func isCipherCompatible(cs *tls.CipherSuite, minVersion, maxVersion string) bool {
-	for _, v := range cs.SupportedVersions {
-		version := tlsVersionString(v)
-		if (minVersion == "" || version >= minVersion) && (maxVersion == "" || version <= maxVersion) {
-			return true
-		}
-	}
-	return false
-}
-
 func tlsVersionString(v uint16) string {
 	switch v {
 	case tls.VersionTLS10:
@@ -194,20 +141,6 @@ func tlsVersionString(v uint16) string {
 	default:
 		return ""
 	}
-}
-
-func JoinCiphers(cipherSuites []string) string {
-	if len(cipherSuites) == 0 {
-		return ""
-	}
-	return strings.Join(cipherSuites, ":")
-}
-
-func AgentJoinCiphers(cipherSuites []string) string {
-	if len(cipherSuites) == 0 {
-		return ""
-	}
-	return strings.Join(cipherSuites, ",")
 }
 
 func RedisTLSVersion(version string) string {
@@ -225,20 +158,16 @@ func AgentTLSVersion(version string) string {
 }
 
 func BuildArgoCDAgentTLSArgs(tlsCfg *argoproj.ArgoCDTlsConfig, args map[string]string) (map[string]string, error) {
-	if err := ValidateTLSConfig(tlsCfg); err != nil {
-		return nil, err
-	}
-	if tlsCfg == nil {
-		return args, nil
-	}
 	if min := AgentTLSVersion(tlsCfg.MinVersion); min != "" {
 		args["--tlsminversion"] = min
 	}
 	if max := AgentTLSVersion(tlsCfg.MaxVersion); max != "" {
 		args["--tlsmaxversion"] = max
 	}
-	if ciphers := AgentJoinCiphers(tlsCfg.CipherSuites); ciphers != "" {
-		args["--tlsciphers"] = ciphers
+	if len(tlsCfg.CipherSuites) > 0 {
+		if ciphers := strings.Join(tlsCfg.CipherSuites, ","); ciphers != "" {
+			args["--tlsciphers"] = ciphers
+		}
 	}
 	return args, nil
 }
@@ -280,6 +209,9 @@ func AgentTLSProtocolVersionString(v configv1.TLSProtocolVersion) string {
 	return "tls" + version
 }
 
+// Redis protocol needs to be passed in below format.
+// # Accept only TLSv1.2 and TLSv1.3 connections
+// tls-protocols "TLSv1.2 TLSv1.3"
 func BuildRedisProtocols(tlsCfg *argoproj.ArgoCDTlsConfig) []string {
 	if tlsCfg == nil {
 		return nil

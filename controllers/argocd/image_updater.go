@@ -607,33 +607,11 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterDeployment(cr *argoproj.ArgoCD, s
 		image = argoutil.CombineImageTag(DefaultImageUpdaterImage, DefaultImageUpdaterTag)
 	}
 	args := []string{"run"}
-	tls := cr.Spec.ImageUpdater.TlsConfig
-	if tls != nil {
-		err := argoutil.ValidateTLSConfig(tls)
-		if err != nil {
-			return err
-		}
-		// Always pass TLS version flags
-		if tls.MinVersion != "" {
-			args = append(args, "--tlsminversion", tls.MinVersion)
-		}
-		if tls.MaxVersion != "" {
-			args = append(args, "--tlsmaxversion", tls.MaxVersion)
-		}
-		// Only pass cipher flag when configured
-		if len(tls.CipherSuites) > 0 {
-			args = append(args, "--tlsciphers", strings.Join(tls.CipherSuites, ":"))
-		}
-	} else if r.CentralTlsConfigProfile.MinVersion != "" || len(r.CentralTlsConfigProfile.Ciphers) > 0 {
-		if r.CentralTlsConfigProfile.MinVersion != "" {
-			mappedVersion := argoutil.TLSProtocolVersionString(r.CentralTlsConfigProfile.MinVersion)
-			args = append(args, "--tlsminversion", mappedVersion)
-		}
-		if len(r.CentralTlsConfigProfile.Ciphers) > 0 {
-			ciphers := strings.Join(argoutil.MapCipherSuites(r.CentralTlsConfigProfile.Ciphers), ":")
-			args = append(args, "--tlsciphers", ciphers)
-		}
+	imageUpdaterTLSProfileArguments, err := BuildTLSArgs(cr.Spec.ImageUpdater.TlsConfig, r.CentralTlsConfigProfile)
+	if err != nil {
+		return err
 	}
+	args = append(args, imageUpdaterTLSProfileArguments...)
 	podSpec.Containers = []corev1.Container{{
 		Command:         []string{"/manager"},
 		Args:            args,

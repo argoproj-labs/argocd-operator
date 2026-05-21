@@ -3134,22 +3134,8 @@ func TestBuildRedisArgs(t *testing.T) {
 				"TLSv1.3",
 				"--tls-ciphersuites",
 				"TLS_AES_128_GCM_SHA256",
-				"--tls-ciphers",
-				"TLS_AES_128_GCM_SHA256",
 			},
 			wantErr: false,
-		},
-		{
-			name: "invalid cipher in CR config",
-			tlsCfg: &argoproj.ArgoCDTlsConfig{
-				MinVersion: "1.2",
-				CipherSuites: []string{
-					"INVALID_CIPHER",
-				},
-			},
-			centralTLS: TlsConfigProfile{},
-			expected:   nil,
-			wantErr:    true,
 		},
 		{
 			name:   "central TLS config with tls 1.2",
@@ -3258,8 +3244,6 @@ func TestBuildRedisArgs(t *testing.T) {
 			expected: []string{
 				"--tls-protocols",
 				"TLSv1.2",
-				"--tls-ciphers",
-				"",
 			},
 			wantErr: false,
 		},
@@ -3343,17 +3327,6 @@ func TestBuildTLSArgs(t *testing.T) {
 				"1.3",
 			},
 			wantErr: false,
-		},
-		{
-			name: "invalid cipher in CR config",
-			tlsCfg: &argoproj.ArgoCDTlsConfig{
-				CipherSuites: []string{
-					"INVALID_CIPHER",
-				},
-			},
-			centralTLS: TlsConfigProfile{},
-			expected:   nil,
-			wantErr:    true,
 		},
 		{
 			name:   "central TLS config with min version only",

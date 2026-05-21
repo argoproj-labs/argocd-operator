@@ -771,26 +771,6 @@ func TestGetPrincipalTlsConfig(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "invalid CR tls config",
-			cr: &argoproj.ArgoCD{
-				Spec: argoproj.ArgoCDSpec{
-					ArgoCDAgent: &argoproj.ArgoCDAgentSpec{
-						Principal: &argoproj.PrincipalSpec{
-							TLS: &argoproj.PrincipalTLSSpec{
-								TlsConfig: &argoproj.ArgoCDTlsConfig{
-									CipherSuites: []string{
-										"INVALID_CIPHER",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			expected: nil,
-			wantErr:  true,
-		},
-		{
 			name: "fallback to central tls profile with tls 1.2",
 			cr: &argoproj.ArgoCD{
 				Spec: argoproj.ArgoCDSpec{

@@ -249,41 +249,40 @@ func getArgoRedisArgs(useTLS bool, cr *argoproj.ArgoCD, centralTLSConfig TlsConf
 // then for central tls config if no values are passed in argocd CR.
 func BuildRedisArgs(tlsCfg *argoproj.ArgoCDTlsConfig, centralTLSConfig TlsConfigProfile) ([]string, error) {
 	var args []string
+	// Resolve effective TLS settings
+	var (
+		protocols []string
+		ciphers   []string
+		isTLS13   bool
+	)
 	// CR values take precedence
 	if tlsCfg != nil {
-		err := argoutil.ValidateTLSConfig(tlsCfg)
-		if err != nil {
-			return nil, err
-		}
-		protocols := argoutil.BuildRedisProtocols(tlsCfg)
-		if len(protocols) > 0 {
-			args = append(args, "--tls-protocols", strings.Join(protocols, " "))
-		}
-		if len(tlsCfg.CipherSuites) > 0 {
-			ciphers := argoutil.JoinCiphers(tlsCfg.CipherSuites)
-			if tlsCfg.MinVersion == "1.3" || tlsCfg.MaxVersion == "1.3" {
-				args = append(args, "--tls-ciphersuites", ciphers)
-			}
-			args = append(args, "--tls-ciphers", ciphers)
-		}
-		return args, nil
-	} else if centralTLSConfig.MinVersion != "" || len(centralTLSConfig.Ciphers) > 0 {
+		protocols = argoutil.BuildRedisProtocols(tlsCfg)
+		ciphers = tlsCfg.CipherSuites
+		isTLS13 = tlsCfg.MinVersion == "1.3" || tlsCfg.MaxVersion == "1.3"
+	} else {
 		if centralTLSConfig.MinVersion != "" {
-			mappedVersion := argoutil.RedisTLSProtocolVersionString(centralTLSConfig.MinVersion)
-			args = append(args, "--tls-protocols", mappedVersion)
+			protocols = []string{argoutil.RedisTLSProtocolVersionString(centralTLSConfig.MinVersion)}
 		}
-
-		if len(centralTLSConfig.Ciphers) > 0 {
-			ciphers := strings.Join(argoutil.MapCipherSuites(centralTLSConfig.Ciphers), ":")
-			if centralTLSConfig.MinVersion == configv1.VersionTLS13 {
-				args = append(args, "--tls-ciphersuites", ciphers)
-			} else {
-				args = append(args, "--tls-ciphers", ciphers)
-			}
-		}
-		return args, nil
+		ciphers = argoutil.MapCipherSuites(centralTLSConfig.Ciphers)
+		isTLS13 = centralTLSConfig.MinVersion == configv1.VersionTLS13
 	}
-	return nil, nil
+
+	// Build protocol args
+	if len(protocols) > 0 {
+		args = append(args, "--tls-protocols", strings.Join(protocols, " "))
+	}
+
+	// Build cipher args
+	if len(ciphers) > 0 {
+		cipherString := strings.Join(ciphers, ":")
+		if isTLS13 {
+			args = append(args, "--tls-ciphersuites", cipherString)
+		} else {
+			args = append(args, "--tls-ciphers", cipherString)
+		}
+	}
+	return args, nil
 }
 
 // getArgoCmpServerInitCommand will return the command for the ArgoCD CMP Server init container
@@ -1238,35 +1237,20 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 
 func BuildTLSArgs(tlsCfg *argoproj.ArgoCDTlsConfig, centralTLSConfig TlsConfigProfile) ([]string, error) {
 	var args []string
-	if tlsCfg != nil {
-		err := argoutil.ValidateTLSConfig(tlsCfg)
-		if err != nil {
-			return nil, err
-		}
-		if tlsCfg.MinVersion != "" {
-			args = append(args, "--tlsminversion", tlsCfg.MinVersion)
-		}
-		if tlsCfg.MaxVersion != "" {
-			args = append(args, "--tlsmaxversion", tlsCfg.MaxVersion)
-		}
-		if len(tlsCfg.CipherSuites) > 0 {
-			if ciphers := argoutil.JoinCiphers(tlsCfg.CipherSuites); ciphers != "" {
-				args = append(args, "--tlsciphers", ciphers)
-			}
-		}
-		return args, nil
-	} else if centralTLSConfig.MinVersion != "" || len(centralTLSConfig.Ciphers) > 0 {
-		if centralTLSConfig.MinVersion != "" {
-			mappedVersion := argoutil.TLSProtocolVersionString(centralTLSConfig.MinVersion)
-			args = append(args, "--tlsminversion", mappedVersion)
-		}
-		if len(centralTLSConfig.Ciphers) > 0 {
-			ciphers := strings.Join(argoutil.MapCipherSuites(centralTLSConfig.Ciphers), ":")
-			args = append(args, "--tlsciphers", ciphers)
-		}
-		return args, nil
+	if tlsCfg != nil && tlsCfg.MinVersion != "" {
+		args = append(args, "--tlsminversion", tlsCfg.MinVersion)
+	} else if centralTLSConfig.MinVersion != "" {
+		args = append(args, "--tlsminversion", argoutil.TLSProtocolVersionString(centralTLSConfig.MinVersion))
 	}
-	return nil, nil
+	if tlsCfg != nil && len(tlsCfg.CipherSuites) > 0 {
+		args = append(args, "--tlsciphers", strings.Join(tlsCfg.CipherSuites, ":"))
+	} else if len(centralTLSConfig.Ciphers) > 0 {
+		args = append(args, "--tlsciphers", strings.Join(argoutil.MapCipherSuites(centralTLSConfig.Ciphers), ":"))
+	}
+	if tlsCfg != nil && tlsCfg.MaxVersion != "" {
+		args = append(args, "--tlsmaxversion", tlsCfg.MaxVersion)
+	}
+	return args, nil
 }
 
 // triggerDeploymentRollout will update the label with the given key to trigger a new rollout of the Deployment.
