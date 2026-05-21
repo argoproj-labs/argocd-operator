@@ -615,14 +615,14 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterDeployment(cr *argoproj.ArgoCD, s
 		}
 		// Always pass TLS version flags
 		if tls.MinVersion != "" {
-			args = append(args, fmt.Sprintf("--tlsminversion=%s", tls.MinVersion))
+			args = append(args, "--tlsminversion", tls.MinVersion)
 		}
 		if tls.MaxVersion != "" {
-			args = append(args, fmt.Sprintf("--tlsmaxversion=%s", tls.MaxVersion))
+			args = append(args, "--tlsmaxversion", tls.MaxVersion)
 		}
 		// Only pass cipher flag when configured
 		if len(tls.CipherSuites) > 0 {
-			args = append(args, fmt.Sprintf("--tlsciphers=%s", strings.Join(tls.CipherSuites, ":")))
+			args = append(args, "--tlsciphers", strings.Join(tls.CipherSuites, ":"))
 		}
 	} else if r.CentralTlsConfigProfile.MinVersion != "" || len(r.CentralTlsConfigProfile.Ciphers) > 0 {
 		if r.CentralTlsConfigProfile.MinVersion != "" {
@@ -631,7 +631,7 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterDeployment(cr *argoproj.ArgoCD, s
 		}
 		if len(r.CentralTlsConfigProfile.Ciphers) > 0 {
 			ciphers := strings.Join(argoutil.MapCipherSuites(r.CentralTlsConfigProfile.Ciphers), ":")
-			args = append(args, fmt.Sprintf("--tlsciphers=%s", ciphers))
+			args = append(args, "--tlsciphers", ciphers)
 		}
 	}
 	podSpec.Containers = []corev1.Container{{
