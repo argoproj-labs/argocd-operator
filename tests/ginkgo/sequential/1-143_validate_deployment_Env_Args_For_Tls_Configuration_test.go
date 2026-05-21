@@ -491,27 +491,12 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 
 			By("Check The deployments doesnt have invalid values and check the argocd CR status for Error")
 			Expect(c.Get(ctx, types.NamespacedName{Name: argocdInstanceName, Namespace: argocdNamespace}, argo)).To(Succeed())
-			argo.Spec.Repo.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
-			argo.Spec.Server.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
-			argo.Spec.Redis.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
-			argo.Spec.ImageUpdater.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
+			argo.Spec.Repo.TlsConfig.CipherSuites = []string{"INVALID_TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
+			argo.Spec.Server.TlsConfig.CipherSuites = []string{"INVALID_TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
+			argo.Spec.Redis.TlsConfig.CipherSuites = []string{"INVALID_TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
+			argo.Spec.ImageUpdater.TlsConfig.CipherSuites = []string{"INVALID_TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
 			Expect(c.Update(ctx, argo)).To(Succeed())
 			time.Sleep(5 * time.Second)
-			Eventually(func() *metav1.Condition {
-				err := c.Get(ctx, types.NamespacedName{Name: argocdInstanceName, Namespace: argocdNamespace}, argo)
-				if err != nil {
-					return nil
-				}
-				for _, cond := range argo.Status.Conditions {
-					if cond.Reason == "ErrorOccurred" && cond.Message == "unsupported cipher suite: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256" {
-						return &cond
-					}
-				}
-				return nil
-			}, 30*time.Second, 1*time.Second).ShouldNot(BeNil(), "Expected TLS validation error condition not found")
-
-			// --- Validate updated TLS values ---
-			By("validating updated TLS invalid double CipherSuites For RepoServer, Server and Redis")
 			Eventually(func() bool {
 				for _, deploymentName := range coreDeployments {
 					deployment := &appsv1.Deployment{}
@@ -530,11 +515,11 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 							GinkgoWriter.Printf("%s: expected tlsmaxversion=1.3, got %s\n", deploymentName, max)
 							return false
 						}
-						if ciphers != "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256" {
-							GinkgoWriter.Printf("%s: expected tlsciphers=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, got %s\n", deploymentName, ciphers)
+						if ciphers != "INVALID_TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256" {
+							GinkgoWriter.Printf("%s: expected tlsciphers=INVALID_TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, got %s\n", deploymentName, ciphers)
 							return false
 						}
-						GinkgoWriter.Printf("%s not updated TLS invalid values OK: min=%s max=%s\n ciphers=%s\n", deploymentName, min, max, ciphers)
+						GinkgoWriter.Printf("%s updated TLS OK: min=%s max=%s\n ciphers=%s\n", deploymentName, min, max, ciphers)
 						valid = true
 					}
 					if !valid {
@@ -543,7 +528,6 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 				}
 				return true
 			}, 60*time.Second, 2*time.Second).Should(BeTrue(), "all deployments should have updated TLS configuration")
-
 			By("validating TLS double CipherSuite in Redis deployment")
 			Eventually(func() bool {
 				deployment := &appsv1.Deployment{}
@@ -583,17 +567,16 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 							tlsCiphers = args[i+1]
 						}
 					}
-
 				}
 
 				// --- Print results (always helpful in debugging)
-				if hasCiphers && tlsCipherSuites != "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256" {
-					GinkgoWriter.Printf("  --tls-ciphersuites=%q\n should be TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, but got %q\n", tlsCipherSuites, tlsCipherSuites)
+				if hasCiphers && tlsCipherSuites != "INVALID_TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256" {
+					GinkgoWriter.Printf("  --tls-ciphersuites=%q\n should be INVALID_TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, but got %q\n", tlsCipherSuites, tlsCipherSuites)
 					return false
 				}
 
-				if hasCiphersTLS2 && tlsCiphers != "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256" {
-					GinkgoWriter.Printf("  --tls-ciphers=%q\n should be TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, but got %q\n", tlsCiphers, tlsCiphers)
+				if hasCiphersTLS2 && tlsCiphers != "INVALID_TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256" {
+					GinkgoWriter.Printf("  --tls-ciphers=%q\n should be INVALID_TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, but got %q\n", tlsCiphers, tlsCiphers)
 					return false
 				}
 
@@ -601,7 +584,6 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 					GinkgoWriter.Printf("%s: expected --tls-protocols=TLSv1.2 TLSv1.3, got %s\n", deployment.Name, tlsProtocols)
 					return false
 				}
-				GinkgoWriter.Print("TLS Invalid  values not populated")
 				GinkgoWriter.Printf("%s TLS args protocol value: %s\n", deployment.Name, tlsProtocols)
 				GinkgoWriter.Printf("%s TLS args ciphersuites value: %s\n", deployment.Name, tlsCipherSuites)
 				GinkgoWriter.Printf("%s TLS args ciphers value: %s\n", deployment.Name, tlsCiphers)

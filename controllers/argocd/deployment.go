@@ -278,9 +278,8 @@ func BuildRedisArgs(tlsCfg *argoproj.ArgoCDTlsConfig, centralTLSConfig TlsConfig
 		cipherString := strings.Join(ciphers, ":")
 		if isTLS13 {
 			args = append(args, "--tls-ciphersuites", cipherString)
-		} else {
-			args = append(args, "--tls-ciphers", cipherString)
 		}
+		args = append(args, "--tls-ciphers", cipherString)
 	}
 	return args, nil
 }
