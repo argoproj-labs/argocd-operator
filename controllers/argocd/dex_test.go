@@ -393,7 +393,12 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 					},
 				},
 				ImagePullPolicy: corev1.PullIfNotPresent,
-				SecurityContext: argoutil.DefaultSecurityContext(),
+				SecurityContext: func() *corev1.SecurityContext {
+					sc := argoutil.DefaultSecurityContext()
+					dexUID := common.ArgoCDDefaultDexRunAsUser
+					sc.RunAsUser = &dexUID
+					return sc
+				}(),
 				VolumeMounts: []corev1.VolumeMount{
 					{Name: "static-files", MountPath: "/shared"},
 					{Name: "dexconfig", MountPath: "/tmp"},
@@ -510,7 +515,12 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 							},
 						},
 						ImagePullPolicy: corev1.PullIfNotPresent,
-						SecurityContext: argoutil.DefaultSecurityContext(),
+						SecurityContext: func() *corev1.SecurityContext {
+							sc := argoutil.DefaultSecurityContext()
+							dexUID := common.ArgoCDDefaultDexRunAsUser
+							sc.RunAsUser = &dexUID
+							return sc
+						}(),
 						VolumeMounts: []corev1.VolumeMount{
 							{Name: "static-files", MountPath: "/shared"},
 							{Name: "dexconfig", MountPath: "/tmp"},
@@ -632,7 +642,12 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 							},
 						},
 						ImagePullPolicy: corev1.PullIfNotPresent,
-						SecurityContext: argoutil.DefaultSecurityContext(),
+						SecurityContext: func() *corev1.SecurityContext {
+							sc := argoutil.DefaultSecurityContext()
+							dexUID := common.ArgoCDDefaultDexRunAsUser
+							sc.RunAsUser = &dexUID
+							return sc
+						}(),
 						VolumeMounts: []corev1.VolumeMount{
 							{Name: "static-files", MountPath: "/shared"},
 							{Name: "dexconfig", MountPath: "/tmp"},

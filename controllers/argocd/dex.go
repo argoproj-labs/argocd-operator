@@ -417,6 +417,13 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		}
 	}
 
+	// Dex v2.45.0+ declares its image USER as the string "dex" rather than a numeric UID.
+	// Kubernetes requires a numeric runAsUser when runAsNonRoot is true and the image USER is non-numeric,
+	// otherwise it refuses to create the container (CreateContainerConfigError).
+	dexSecCtx := argoutil.DefaultSecurityContext()
+	dexUID := common.ArgoCDDefaultDexRunAsUser
+	dexSecCtx.RunAsUser = &dexUID
+
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command: []string{
 			"/shared/argocd-dex",
@@ -449,7 +456,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 			},
 		},
 		Resources:       getDexResources(cr),
-		SecurityContext: argoutil.DefaultSecurityContext(),
+		SecurityContext: dexSecCtx,
 		VolumeMounts:    dexVolumeMounts,
 	}}
 

@@ -129,6 +129,10 @@ const (
 	// ArgoCDDefaultDexVersion is the Dex container image tag to use when not specified.
 	ArgoCDDefaultDexVersion = "sha256:b8469881d3cb3a73001506f0d3aaefecb9c45d2311c1e0f405d8ac538316c59d" // v2.45.0
 
+	// ArgoCDDefaultDexRunAsUser is the numeric UID of the "dex" user declared in the Dex image.
+	// Kubernetes requires a numeric runAsUser when runAsNonRoot is true and the image USER is a named string.
+	ArgoCDDefaultDexRunAsUser = int64(1001)
+
 	// ArgoCDDefaultExportJobImage is the export job container image to use when not specified.
 	ArgoCDDefaultExportJobImage = "quay.io/argoprojlabs/argocd-operator-util"
 
