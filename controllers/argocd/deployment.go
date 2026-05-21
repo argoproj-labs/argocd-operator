@@ -28,7 +28,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
-	configv1 "github.com/openshift/api/config/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -249,36 +248,44 @@ func getArgoRedisArgs(useTLS bool, cr *argoproj.ArgoCD, centralTLSConfig TlsConf
 // then for central tls config if no values are passed in argocd CR.
 func BuildRedisArgs(tlsCfg *argoproj.ArgoCDTlsConfig, centralTLSConfig TlsConfigProfile) ([]string, error) {
 	var args []string
-	// Resolve effective TLS settings
 	var (
 		protocols []string
 		ciphers   []string
-		isTLS13   bool
+		minVer    string
+		maxVer    string
 	)
 	// CR values take precedence
 	if tlsCfg != nil {
 		protocols = argoutil.BuildRedisProtocols(tlsCfg)
 		ciphers = tlsCfg.CipherSuites
-		isTLS13 = tlsCfg.MinVersion == "1.3" || tlsCfg.MaxVersion == "1.3"
+		minVer = argoutil.RedisTLSVersion(tlsCfg.MinVersion)
+		maxVer = argoutil.RedisTLSVersion(tlsCfg.MaxVersion)
 	} else {
 		if centralTLSConfig.MinVersion != "" {
 			protocols = []string{argoutil.RedisTLSProtocolVersionString(centralTLSConfig.MinVersion)}
+			minVer = argoutil.RedisTLSProtocolVersionString(centralTLSConfig.MinVersion)
+			maxVer = ""
 		}
 		ciphers = argoutil.MapCipherSuites(centralTLSConfig.Ciphers)
-		isTLS13 = centralTLSConfig.MinVersion == configv1.VersionTLS13
 	}
-
 	// Build protocol args
 	if len(protocols) > 0 {
 		args = append(args, "--tls-protocols", strings.Join(protocols, " "))
 	}
-
 	// Build cipher args
 	if len(ciphers) > 0 {
 		cipherString := strings.Join(ciphers, ":")
-		if isTLS13 {
+		tls13Only := minVer == "TLSv1.3" && (maxVer == "" || maxVer == "TLSv1.3")
+		mixedTLS12And13 := minVer != "TLSv1.3" && maxVer == "TLSv1.3"
+		switch {
+		case tls13Only:
+			// TLS 1.3 only
 			args = append(args, "--tls-ciphersuites", cipherString)
-		} else {
+		case mixedTLS12And13:
+			// Need both for Redis/OpenSSL
+			args = append(args, "--tls-ciphers", cipherString, "--tls-ciphersuites", cipherString)
+		default:
+			// TLS 1.2 and below
 			args = append(args, "--tls-ciphers", cipherString)
 		}
 	}

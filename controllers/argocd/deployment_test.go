@@ -3234,6 +3234,27 @@ func TestBuildRedisArgs(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "CR config with ciphers",
+			tlsCfg: &argoproj.ArgoCDTlsConfig{
+				MinVersion: "1.2",
+				MaxVersion: "1.3",
+				CipherSuites: []string{
+					"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+					"TLS_AES_128_GCM_SHA256",
+				},
+			},
+			centralTLS: TlsConfigProfile{},
+			expected: []string{
+				"--tls-protocols",
+				"TLSv1.2 TLSv1.3",
+				"--tls-ciphers",
+				"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:TLS_AES_128_GCM_SHA256",
+				"--tls-ciphersuites",
+				"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:TLS_AES_128_GCM_SHA256",
+			},
+			wantErr: false,
+		},
+		{
 			name:   "central TLS config with unmapped cipher",
 			tlsCfg: nil,
 			centralTLS: TlsConfigProfile{
