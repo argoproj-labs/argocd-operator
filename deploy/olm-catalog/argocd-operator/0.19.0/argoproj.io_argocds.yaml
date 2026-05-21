@@ -1,11 +1,22 @@
----
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.18.0
+  creationTimestamp: null
   name: argocds.argoproj.io
 spec:
+  conversion:
+    strategy: Webhook
+    webhook:
+      clientConfig:
+        service:
+          name: argocd-operator-webhook-service
+          namespace: argocd-operator-system
+          path: /convert
+      conversionReviewVersions:
+      - v1alpha1
+      - v1beta1
   group: argoproj.io
   names:
     kind: ArgoCD
@@ -2121,18 +2132,21 @@ spec:
                   image:
                     description: Image is the Argo CD Notifications image (optional)
                     type: string
-                  logLevel:
-                    description: LogLevel describes the log level that should be used
-                      by the argocd-notifications. Defaults to ArgoCDDefaultLogLevel
-                      if not set.  Valid options are debug,info, error, and warn.
-                    type: string
-                  logformat:
+                  logFormat:
                     description: LogFormat refers to the log format used by the argocd-notifications.
                       Defaults to ArgoCDDefaultLogFormat if not configured. Valid
                       options are text or json.
                     enum:
                     - text
                     - json
+                    type: string
+                  logLevel:
+                    description: LogLevel describes the log level that should be used
+                      by the argocd-notifications. Defaults to ArgoCDDefaultLogLevel
+                      if not set.  Valid options are debug,info, error, and warn.
+                    type: string
+                  logformat:
+                    description: 'Deprecated: use LogFormat instead.'
                     type: string
                   replicas:
                     description: Replicas defines the number of replicas to run for
@@ -8743,6 +8757,145 @@ spec:
                 description: Version is the tag to use with the ArgoCD container image
                   for all ArgoCD components.
                 type: string
+              webhookSecrets:
+                description: |-
+                  WebhookSecrets references Kubernetes Secrets that supply webhook credentials per provider.
+                  The operator syncs values into argocd-secret under the keys Argo CD expects.
+                properties:
+                  azureDevOps:
+                    description: 'AzureDevOps: Secret key references for the Azure
+                      DevOps webhook username and password (or PAT).'
+                    properties:
+                      passwordSecretRef:
+                        description: PasswordSecretRef points to the key holding the
+                          password or PAT.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                      usernameSecretRef:
+                        description: UsernameSecretRef points to the key holding the
+                          username.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                    x-kubernetes-validations:
+                    - message: usernameSecretRef and passwordSecretRef must be set
+                        together
+                      rule: (has(self.usernameSecretRef) && has(self.passwordSecretRef))
+                        || (!has(self.usernameSecretRef) && !has(self.passwordSecretRef))
+                  bitbucket:
+                    description: 'Bitbucket: Secret key reference for the Bitbucket
+                      Cloud webhook UUID.'
+                    properties:
+                      webhookUUIDSecretRef:
+                        description: WebhookUUIDSecretRef points to the key holding
+                          the Bitbucket Cloud webhook UUID.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                  bitbucketServer:
+                    description: 'BitbucketServer: Secret key reference for the Bitbucket
+                      Server webhook secret.'
+                    properties:
+                      webhookSecretRef:
+                        description: WebhookSecretRef points to the key holding the
+                          Bitbucket Server webhook shared secret.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                  github:
+                    description: 'GitHub: Secret key reference for the GitHub webhook
+                      shared secret.'
+                    properties:
+                      webhookSecretRef:
+                        description: WebhookSecretRef points to the key holding the
+                          GitHub webhook shared secret.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                  gitlab:
+                    description: 'GitLab: Secret key reference for the GitLab webhook
+                      shared secret.'
+                    properties:
+                      webhookSecretRef:
+                        description: WebhookSecretRef points to the key holding the
+                          GitLab webhook shared secret.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                  gogs:
+                    description: 'Gogs: Secret key reference for the Gogs webhook
+                      shared secret.'
+                    properties:
+                      webhookSecretRef:
+                        description: WebhookSecretRef points to the key holding the
+                          Gogs webhook shared secret.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                type: object
             type: object
           status:
             description: ArgoCDStatus defines the observed state of ArgoCD
@@ -9117,18 +9270,21 @@ spec:
                       type: string
                     description: Custom labels to pods deployed by the operator
                     type: object
-                  logLevel:
-                    description: LogLevel describes the log level that should be used
-                      by the ApplicationSet controller. Defaults to ArgoCDDefaultLogLevel
-                      if not set.  Valid options are debug,info, error, and warn.
-                    type: string
-                  logformat:
+                  logFormat:
                     description: LogFormat refers to the log format used by the ApplicationSet
                       component. Defaults to ArgoCDDefaultLogFormat if not configured.
                       Valid options are text or json.
                     enum:
                     - text
                     - json
+                    type: string
+                  logLevel:
+                    description: LogLevel describes the log level that should be used
+                      by the ApplicationSet controller. Defaults to ArgoCDDefaultLogLevel
+                      if not set.  Valid options are debug,info, error, and warn.
+                    type: string
+                  logformat:
+                    description: 'Deprecated: use LogFormat instead.'
                     type: string
                   resources:
                     description: Resources defines the Compute Resources required
@@ -11583,6 +11739,66 @@ spec:
                               server to be used by the PrincAgentipal component.
                             type: string
                         type: object
+                      resources:
+                        description: Resources defines the Compute Resources required
+                          by the container for the Argo CD Agent agent component.
+                        properties:
+                          claims:
+                            description: |-
+                              Claims lists the names of resources, defined in spec.resourceClaims,
+                              that are used by this container.
+
+                              This field depends on the
+                              DynamicResourceAllocation feature gate.
+
+                              This field is immutable. It can only be set for containers.
+                            items:
+                              description: ResourceClaim references one entry in PodSpec.ResourceClaims.
+                              properties:
+                                name:
+                                  description: |-
+                                    Name must match the name of one entry in pod.spec.resourceClaims of
+                                    the Pod where this field is used. It makes that resource available
+                                    inside a container.
+                                  type: string
+                                request:
+                                  description: |-
+                                    Request is the name chosen for a request in the referenced claim.
+                                    If empty, everything from the claim is made available, otherwise
+                                    only the result of this request.
+                                  type: string
+                              required:
+                              - name
+                              type: object
+                            type: array
+                            x-kubernetes-list-map-keys:
+                            - name
+                            x-kubernetes-list-type: map
+                          limits:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: |-
+                              Limits describes the maximum amount of compute resources allowed.
+                              More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                            type: object
+                          requests:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: |-
+                              Requests describes the minimum amount of compute resources required.
+                              If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+                              otherwise to an implementation-defined value. Requests cannot exceed Limits.
+                              More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                            type: object
+                        type: object
                       tls:
                         description: TLS defines the TLS options for the Agent component.
                         properties:
@@ -11853,6 +12069,66 @@ spec:
                               the TLS certificate and key for the resource proxy.
                             type: string
                         type: object
+                      resources:
+                        description: Resources defines the Compute Resources required
+                          by the container for the Argo CD Agent principal component.
+                        properties:
+                          claims:
+                            description: |-
+                              Claims lists the names of resources, defined in spec.resourceClaims,
+                              that are used by this container.
+
+                              This field depends on the
+                              DynamicResourceAllocation feature gate.
+
+                              This field is immutable. It can only be set for containers.
+                            items:
+                              description: ResourceClaim references one entry in PodSpec.ResourceClaims.
+                              properties:
+                                name:
+                                  description: |-
+                                    Name must match the name of one entry in pod.spec.resourceClaims of
+                                    the Pod where this field is used. It makes that resource available
+                                    inside a container.
+                                  type: string
+                                request:
+                                  description: |-
+                                    Request is the name chosen for a request in the referenced claim.
+                                    If empty, everything from the claim is made available, otherwise
+                                    only the result of this request.
+                                  type: string
+                              required:
+                              - name
+                              type: object
+                            type: array
+                            x-kubernetes-list-map-keys:
+                            - name
+                            x-kubernetes-list-type: map
+                          limits:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: |-
+                              Limits describes the maximum amount of compute resources allowed.
+                              More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                            type: object
+                          requests:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: |-
+                              Requests describes the minimum amount of compute resources required.
+                              If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+                              otherwise to an implementation-defined value. Requests cannot exceed Limits.
+                              More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                            type: object
+                        type: object
                       server:
                         description: Server defines the server options for the Principal
                           component.
@@ -11933,11 +12209,19 @@ spec:
                 required:
                 - content
                 type: object
+              clusterDomain:
+                description: |-
+                  ClusterDomain is the cluster domain suffix used for constructing service FQDNs. Defaults to "cluster.local".
+                  The full FQDN will be: <service>.<namespace>.svc.<clusterDomain>
+                  This is useful for clusters that use a different DNS suffix (e.g., "CLUSTER_ID.cluster.local", "edge.local").
+                type: string
               cmdParams:
                 additionalProperties:
                   type: string
-                description: CmdParams specifies command-line parameters for the Argo
-                  CD components.
+                description: |-
+                  CmdParams specifies command-line parameters for the Argo CD components.
+                  The only keys currently supported for this parameter are:
+                  - controller.resource.health.persist
                 type: object
               configManagementPlugins:
                 description: 'Deprecated: ConfigManagementPlugins field is no longer
@@ -18246,18 +18530,21 @@ spec:
                   image:
                     description: Image is the Argo CD Notifications image (optional)
                     type: string
-                  logLevel:
-                    description: LogLevel describes the log level that should be used
-                      by the argocd-notifications. Defaults to ArgoCDDefaultLogLevel
-                      if not set.  Valid options are debug,info, error, and warn.
-                    type: string
-                  logformat:
+                  logFormat:
                     description: LogFormat refers to the log format used by the argocd-notifications.
                       Defaults to ArgoCDDefaultLogFormat if not configured. Valid
                       options are text or json.
                     enum:
                     - text
                     - json
+                    type: string
+                  logLevel:
+                    description: LogLevel describes the log level that should be used
+                      by the argocd-notifications. Defaults to ArgoCDDefaultLogLevel
+                      if not set.  Valid options are debug,info, error, and warn.
+                    type: string
+                  logformat:
+                    description: 'Deprecated: use LogFormat instead.'
                     type: string
                   replicas:
                     description: Replicas defines the number of replicas to run for
@@ -32203,6 +32490,149 @@ spec:
                 description: Version is the tag to use with the ArgoCD container image
                   for all ArgoCD components.
                 type: string
+              webTerminalEnabled:
+                description: WebTerminalEnabled allows you to get a shell inside a
+                  running pod just like you would with kubectl exec
+                type: boolean
+              webhookSecrets:
+                description: |-
+                  WebhookSecrets references Kubernetes Secrets that supply webhook credentials per provider.
+                  The operator syncs values into argocd-secret under the keys Argo CD expects.
+                properties:
+                  azureDevOps:
+                    description: 'AzureDevOps: Secret key references for the Azure
+                      DevOps webhook username and password (or PAT).'
+                    properties:
+                      passwordSecretRef:
+                        description: PasswordSecretRef points to the key holding the
+                          password or PAT.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                      usernameSecretRef:
+                        description: UsernameSecretRef points to the key holding the
+                          username.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                    x-kubernetes-validations:
+                    - message: usernameSecretRef and passwordSecretRef must be set
+                        together
+                      rule: (has(self.usernameSecretRef) && has(self.passwordSecretRef))
+                        || (!has(self.usernameSecretRef) && !has(self.passwordSecretRef))
+                  bitbucket:
+                    description: 'Bitbucket: Secret key reference for the Bitbucket
+                      Cloud webhook UUID.'
+                    properties:
+                      webhookUUIDSecretRef:
+                        description: WebhookUUIDSecretRef points to the key holding
+                          the Bitbucket Cloud webhook UUID.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                  bitbucketServer:
+                    description: 'BitbucketServer: Secret key reference for the Bitbucket
+                      Server webhook secret.'
+                    properties:
+                      webhookSecretRef:
+                        description: WebhookSecretRef points to the key holding the
+                          Bitbucket Server webhook shared secret.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                  github:
+                    description: 'GitHub: Secret key reference for the GitHub webhook
+                      shared secret.'
+                    properties:
+                      webhookSecretRef:
+                        description: WebhookSecretRef points to the key holding the
+                          GitHub webhook shared secret.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                  gitlab:
+                    description: 'GitLab: Secret key reference for the GitLab webhook
+                      shared secret.'
+                    properties:
+                      webhookSecretRef:
+                        description: WebhookSecretRef points to the key holding the
+                          GitLab webhook shared secret.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                  gogs:
+                    description: 'Gogs: Secret key reference for the Gogs webhook
+                      shared secret.'
+                    properties:
+                      webhookSecretRef:
+                        description: WebhookSecretRef points to the key holding the
+                          Gogs webhook shared secret.
+                        properties:
+                          key:
+                            description: Key in the Secret whose value should be used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                type: object
             type: object
             x-kubernetes-validations:
             - message: spec.sso and spec.oidcConfig cannot both be set
@@ -32358,3 +32788,9 @@ spec:
     storage: true
     subresources:
       status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: null
+  storedVersions: null
