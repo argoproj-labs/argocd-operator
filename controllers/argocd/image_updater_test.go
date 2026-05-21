@@ -14,14 +14,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	testclient "k8s.io/client-go/kubernetes/fake"
-
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	testclient "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -1023,14 +1021,14 @@ func TestReconcileImageUpdaterDeployment_TLSArgs(t *testing.T) {
 			scheme := runtime.NewScheme()
 
 			_ = appsv1.AddToScheme(scheme)
-			_ = corev1.AddToScheme(scheme)
+			_ = v1.AddToScheme(scheme)
 			_ = argoproj.AddToScheme(scheme)
 
 			cr := makeTestArgoCD()
 			cr.Spec.ImageUpdater.Enabled = true
 			cr.Spec.ImageUpdater.TlsConfig = tt.imageTLS
 
-			sa := &corev1.ServiceAccount{
+			sa := &v1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-sa",
 					Namespace: cr.Namespace,
