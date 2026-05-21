@@ -26,8 +26,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	configv1 "github.com/openshift/api/config/v1"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 const (
