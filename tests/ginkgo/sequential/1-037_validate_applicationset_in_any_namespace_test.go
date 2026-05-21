@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/argoproj/argo-cd/gitops-engine/pkg/health"
 	appv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
-	"github.com/argoproj/gitops-engine/pkg/health"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"

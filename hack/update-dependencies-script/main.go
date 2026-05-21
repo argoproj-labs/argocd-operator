@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -396,6 +398,16 @@ func copyGoModReplaceBlockFromArgoCDToArgoCDOperator(argoCDRepoRoot string, argo
 				newArgoCDOperatorGoModFileContents += replaceBlockFromArgoCDLine + "\n"
 			}
 
+			// argo-cd declares gitops-engine at a pseudo-version where go.mod didn't exist yet, then
+			// overrides it with a local replace (=> ./gitops-engine) that only works inside its own
+			// monorepo. Downstream consumers must pin it to the actual argo-cd commit instead.
+			gitopsEngineLine, err := buildGitopsEngineReplaceLine(argoCDRepoRoot, targetArgoCDVersion)
+			if err != nil {
+				exitWithError(fmt.Errorf("unable to build gitops-engine replace line: %v", err))
+				return
+			}
+			newArgoCDOperatorGoModFileContents += gitopsEngineLine + "\n"
+
 		} else if x >= argocdOperatorReplaceStart && x <= argocdOperatorReplaceEnd {
 			// skip existing replace block in argocd-operator's go.mod
 			continue
@@ -407,6 +419,41 @@ func copyGoModReplaceBlockFromArgoCDToArgoCDOperator(argoCDRepoRoot string, argo
 		exitWithError(fmt.Errorf("unable to write to file: %s %v", argocdOperatorGoModPath, err))
 		return
 	}
+}
+
+// buildGitopsEngineReplaceLine generates the replace directive that pins
+// github.com/argoproj/argo-cd/gitops-engine to the actual argo-cd commit, e.g.:
+//
+//	// argo-cd v3.4.2 declares gitops-engine at a pseudo-version where go.mod
+//	// didn't exist yet, then overrides with replace => ./gitops-engine locally.
+//	// Downstream consumers must resolve it themselves; pin to the v3.4.2 commit.
+//	github.com/argoproj/argo-cd/gitops-engine => github.com/argoproj/argo-cd/gitops-engine v0.0.0-20260512203152-0dc6b1b57dd5
+func buildGitopsEngineReplaceLine(argoCDRepoRoot string, targetArgoCDVersion string) (string, error) {
+	// Fetch hash and Unix timestamp in one call. %ct is timezone-agnostic (seconds since epoch),
+	// which we then convert to UTC — pseudo-versions must use UTC timestamps.
+	out, _, err := runCommandWithWorkDir(argoCDRepoRoot, "git", "log", "-1", "--format=%H %ct")
+	if err != nil {
+		return "", fmt.Errorf("unable to get git commit info: %v", err)
+	}
+	parts := strings.Fields(strings.TrimSpace(out))
+	if len(parts) != 2 || len(parts[0]) < 12 {
+		return "", fmt.Errorf("unexpected git log output: %q", out)
+	}
+	hash := parts[0]
+	unixSec, err := strconv.ParseInt(parts[1], 10, 64)
+	if err != nil {
+		return "", fmt.Errorf("unable to parse commit timestamp %q: %v", parts[1], err)
+	}
+	ts := time.Unix(unixSec, 0).UTC().Format("20060102150405")
+	pseudoVersion := "v0.0.0-" + ts + "-" + hash[:12]
+
+	return fmt.Sprintf(
+		"\t// %s declares gitops-engine at a pseudo-version where go.mod\n"+
+			"\t// didn't exist yet, then overrides with replace => ./gitops-engine locally.\n"+
+			"\t// Downstream consumers must resolve it themselves; pin to the %s commit.\n"+
+			"\tgithub.com/argoproj/argo-cd/gitops-engine => github.com/argoproj/argo-cd/gitops-engine %s",
+		targetArgoCDVersion, targetArgoCDVersion, pseudoVersion,
+	), nil
 }
 
 // updateGoModAndRegenBundle ensures that argocd-operator go.mod is update to date with latest from upstream argocd-operator

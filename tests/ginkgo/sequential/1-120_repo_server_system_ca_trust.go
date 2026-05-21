@@ -597,7 +597,7 @@ func createHelmApp(ns *corev1.Namespace, source *appv1alpha1.ApplicationSource) 
 			},
 			SyncPolicy: &appv1alpha1.SyncPolicy{
 				Automated: &appv1alpha1.SyncPolicyAutomated{
-					Prune: true, SelfHeal: true,
+					Prune: ptr.To(true), SelfHeal: ptr.To(true),
 				},
 			},
 		},

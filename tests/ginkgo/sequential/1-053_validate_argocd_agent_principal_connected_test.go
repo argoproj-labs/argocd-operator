@@ -41,9 +41,9 @@ import (
 
 	osFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/os"
 
+	"github.com/argoproj/argo-cd/gitops-engine/pkg/health"
 	"github.com/argoproj/argo-cd/v3/pkg/apiclient/application"
 	argocdv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
-	"github.com/argoproj/gitops-engine/pkg/health"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -844,8 +844,8 @@ func buildApplicationResource(applicationName, nsName, agentName, argocdInstance
 			},
 			SyncPolicy: &argocdv1alpha1.SyncPolicy{
 				Automated: &argocdv1alpha1.SyncPolicyAutomated{
-					Prune:    true,
-					SelfHeal: true,
+					Prune:    ptr.To(true),
+					SelfHeal: ptr.To(true),
 				},
 				ManagedNamespaceMetadata: &argocdv1alpha1.ManagedNamespaceMetadata{
 					Labels: map[string]string{
