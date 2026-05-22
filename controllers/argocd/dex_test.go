@@ -514,20 +514,20 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 								ContainerPort: 5558,
 							},
 						},
-					ImagePullPolicy: corev1.PullIfNotPresent,
-					SecurityContext: argoutil.DefaultSecurityContext(),
-					VolumeMounts: []corev1.VolumeMount{
-						{Name: "static-files", MountPath: "/shared"},
-						{Name: "dexconfig", MountPath: "/tmp"},
+						ImagePullPolicy: corev1.PullIfNotPresent,
+						SecurityContext: argoutil.DefaultSecurityContext(),
+						VolumeMounts: []corev1.VolumeMount{
+							{Name: "static-files", MountPath: "/shared"},
+							{Name: "dexconfig", MountPath: "/tmp"},
+						},
 					},
 				},
+				ServiceAccountName: "argocd-argocd-dex-server",
+				NodeSelector:       common.DefaultNodeSelector(),
 			},
-			ServiceAccountName: "argocd-argocd-dex-server",
-			NodeSelector:       common.DefaultNodeSelector(),
 		},
-	},
-	{
-		name:       "update dex deployment - .spec.sso.dex.env",
+		{
+			name:       "update dex deployment - .spec.sso.dex.env",
 			setEnvFunc: nil,
 			updateCrFunc: func(cr *argoproj.ArgoCD) {
 				cr.Spec.SSO.Dex.Env = []corev1.EnvVar{
