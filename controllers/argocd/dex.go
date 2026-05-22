@@ -421,8 +421,11 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 	// Kubernetes requires a numeric runAsUser when runAsNonRoot is true and the image USER is non-numeric,
 	// otherwise it refuses to create the container (CreateContainerConfigError).
 	dexSecCtx := argoutil.DefaultSecurityContext()
-	dexUID := common.ArgoCDDefaultDexRunAsUser
-	dexSecCtx.RunAsUser = &dexUID
+	dexImage := getDexContainerImage(cr)
+	if strings.HasPrefix(dexImage, common.ArgoCDDefaultDexImage) {
+		dexUID := common.ArgoCDDefaultDexRunAsUser
+		dexSecCtx.RunAsUser = &dexUID
+	}
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command: []string{
