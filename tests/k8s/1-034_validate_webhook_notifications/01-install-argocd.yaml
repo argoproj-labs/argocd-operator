@@ -1,0 +1,44 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example
+spec:
+  notifications:
+    enabled: true
+  tls: 
+    initialCerts:
+      # value is copied from tls.crt key in setup-webhook-server.yaml
+      webhook: |
+        -----BEGIN CERTIFICATE-----
+        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
+        UVwpFuaKz5vTCD36Gmmy/u8y
+        -----END CERTIFICATE-----
