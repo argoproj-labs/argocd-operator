@@ -80,36 +80,36 @@ If you're using the Argo CD CLI with Dex authentication, make sure to use the ne
 #### Example Migration Workflow
 
 1. **Identify affected policies:**
-   ```bash
-   kubectl get cm argocd-rbac-cm -n argocd -o=jsonpath='{.data.policy\.csv}'
-   ```
+```bash
+kubectl get cm argocd-rbac-cm -n argocd -o=jsonpath='{.data.policy\.csv}'
+```
 
 2. **Decode sub claims:**
-   ```bash
-   echo "YOUR_SUB_CLAIM_HERE" | base64 -d
-   ```
+```bash
+echo "YOUR_SUB_CLAIM_HERE" | base64 -d
+```
 
 3. **Update policies:**
-   ```yaml
-   apiVersion: argoproj.io/v1beta1
-   kind: ArgoCD
-   metadata:
-     name: example-argocd
-     labels:
-       example: rbac-migration
-   spec:
-     rbac:
-       policy: |
-         # Old: g, ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA, role:example
-         # New: g, example@argoproj.io, role:example
-         g, example@argoproj.io, role:example
-   ```
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: rbac-migration
+spec:
+  rbac:
+    policy: |
+      # Old: g, ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA, role:example
+      # New: g, example@argoproj.io, role:example
+      g, example@argoproj.io, role:example
+```
 
 4. **Test authentication:**
-   ```bash
-   argocd login <your-argocd-server> --sso
-   argocd app list
-   ```
+```bash
+argocd login <your-argocd-server> --sso
+argocd app list
+```
 
 ## Declarative webhook secrets (`spec.webhookSecrets`)
 
@@ -119,4 +119,4 @@ references declared on **`spec.webhookSecrets`** in the **ArgoCD** CR (`v1beta1`
 - **If you do not set** `spec.webhookSecrets`, the operator continues to omit declarative webhook management; **`webhook.*` keys already present in `argocd-secret` are left as-is**, including values you patched in manually before this feature existed.
 - **If you set** `spec.webhookSecrets`, the operator syncs the providers you declare into `argocd-secret`. Providers not listed while management is enabled can have their **`webhook.*` keys cleared** on reconcile—see [Configuring webhook secrets](./usage/webhook-secrets.md) for exact semantics.
 
-For migration from manual edits, verification, integrations (External Secrets, Sealed Secrets), and troubleshooting, use the **[Configuring webhook secrets](./usage/webhook-secrets.md)** guide. A runnable example can be found at [`examples/argocd-webhook-secrets.yaml`](../examples/argocd-webhook-secrets.yaml) in this repository ([view on GitHub](https://github.com/argoproj-labs/argocd-operator/blob/master/examples/argocd-webhook-secrets.yaml)).
+For migration from manual edits, verification, integrations (External Secrets, Sealed Secrets), and troubleshooting, use the **[Configuring webhook secrets](./usage/webhook-secrets.md)** guide. A runnable example can be found at <https://github.com/argoproj-labs/argocd-operator/blob/master/examples/argocd-webhook-secrets.yaml>.
