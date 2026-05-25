@@ -10,7 +10,7 @@ VERSION ?= 0.19.0
 # After updating, call 'make update-dependencies'.
 # Notes:
 # - String should NOT begin with 'v' prefix, e.g. 'v3.1.1'
-ARGO_CD_TARGET_VERSION ?= 3.3.10
+ARGO_CD_TARGET_VERSION ?= 3.4.2
 
 # Try to detect Docker or Podman
 CONTAINER_RUNTIME := $(shell command -v docker 2> /dev/null || command -v podman 2> /dev/null)
@@ -44,7 +44,7 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 OPERATOR_SDK_VERSION ?= v1.35.0
 
 GOSEC_VERSION ?= v2.22.7
-GOLANGCILINT_VERSION ?= v2.3.0
+GOLANGCILINT_VERSION ?= v2.12.2
 
 
 # IMAGE_TAG_BASE defines the docker.io namespace and part of the image name for remote images.

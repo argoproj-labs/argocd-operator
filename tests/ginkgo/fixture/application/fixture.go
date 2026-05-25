@@ -9,9 +9,9 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 
+	"github.com/argoproj/argo-cd/gitops-engine/pkg/health"
+	"github.com/argoproj/argo-cd/gitops-engine/pkg/sync/common"
 	appv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
-	"github.com/argoproj/gitops-engine/pkg/health"
-	"github.com/argoproj/gitops-engine/pkg/sync/common"
 	matcher "github.com/onsi/gomega/types"
 
 	. "github.com/onsi/ginkgo/v2"

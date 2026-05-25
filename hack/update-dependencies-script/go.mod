@@ -1,3 +1,3 @@
 module github.com/argoproj-labs/argocd-operator/dependency-upgrade
 
-go 1.25
+go 1.26

@@ -393,7 +393,12 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 					},
 				},
 				ImagePullPolicy: corev1.PullIfNotPresent,
-				SecurityContext: argoutil.DefaultSecurityContext(),
+				SecurityContext: func() *corev1.SecurityContext {
+					sc := argoutil.DefaultSecurityContext()
+					dexUID := common.ArgoCDDefaultDexRunAsUser
+					sc.RunAsUser = &dexUID
+					return sc
+				}(),
 				VolumeMounts: []corev1.VolumeMount{
 					{Name: "static-files", MountPath: "/shared"},
 					{Name: "dexconfig", MountPath: "/tmp"},
@@ -589,7 +594,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 				Containers: []corev1.Container{
 					{
 						Name:  "dex",
-						Image: "ghcr.io/dexidp/dex@sha256:b08a58c9731c693b8db02154d7afda798e1888dc76db30d34c4a0d0b8a26d913", // (v2.43.0) NOTE: this value is modified by dependency update script
+						Image: "ghcr.io/dexidp/dex@sha256:b8469881d3cb3a73001506f0d3aaefecb9c45d2311c1e0f405d8ac538316c59d", // (v2.45.0) NOTE: this value is modified by dependency update script
 						Command: []string{
 							"/shared/argocd-dex",
 							"rundex",
@@ -632,7 +637,12 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 							},
 						},
 						ImagePullPolicy: corev1.PullIfNotPresent,
-						SecurityContext: argoutil.DefaultSecurityContext(),
+						SecurityContext: func() *corev1.SecurityContext {
+							sc := argoutil.DefaultSecurityContext()
+							dexUID := common.ArgoCDDefaultDexRunAsUser
+							sc.RunAsUser = &dexUID
+							return sc
+						}(),
 						VolumeMounts: []corev1.VolumeMount{
 							{Name: "static-files", MountPath: "/shared"},
 							{Name: "dexconfig", MountPath: "/tmp"},
