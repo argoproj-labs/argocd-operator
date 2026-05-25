@@ -47,7 +47,7 @@ const (
 )
 
 func (r *ReconcileArgoCD) ReconcileNetworkPolicies(cr *argoproj.ArgoCD) error {
-	if IsImageUpdaterAPIAvailable() {
+	if IsImageUpdaterAPIAvailable() && cr.Spec.ImageUpdater.Enabled && cr.Spec.NetworkPolicy.IsEnabled() {
 		if err := r.ReconcileImageUpdaterNetworkPolicy(cr); err != nil {
 			return err
 		}
@@ -65,7 +65,7 @@ func (r *ReconcileArgoCD) ReconcileNetworkPolicies(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
-	if !cr.Spec.NetworkPolicy.IsEnabled() || !cr.Spec.ImageUpdater.NetworkPolicy.IsEnabled() {
+	if !cr.Spec.NetworkPolicy.IsEnabled() {
 		return r.deleteArgoCDNetworkPolicies(cr)
 	}
 
@@ -1091,22 +1091,18 @@ func reconcileNetworkPolicy(r *ReconcileArgoCD, cr *argoproj.ArgoCD, desired *ne
 			Namespace: desired.Namespace,
 		},
 	}
-
 	exists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
 	if err != nil {
 		return err
 	}
-
 	if exists {
 		modified := false
 		explanation := ""
-
 		if !reflect.DeepEqual(existing.Spec.PodSelector, desired.Spec.PodSelector) {
 			existing.Spec.PodSelector = desired.Spec.PodSelector
 			explanation = "pod selector"
 			modified = true
 		}
-
 		if !reflect.DeepEqual(existing.Spec.PolicyTypes, desired.Spec.PolicyTypes) {
 			existing.Spec.PolicyTypes = desired.Spec.PolicyTypes
 			if modified {
@@ -1115,7 +1111,6 @@ func reconcileNetworkPolicy(r *ReconcileArgoCD, cr *argoproj.ArgoCD, desired *ne
 			explanation += "policy types"
 			modified = true
 		}
-
 		if !reflect.DeepEqual(existing.Spec.Ingress, desired.Spec.Ingress) {
 			existing.Spec.Ingress = desired.Spec.Ingress
 			if modified {
@@ -1124,22 +1119,15 @@ func reconcileNetworkPolicy(r *ReconcileArgoCD, cr *argoproj.ArgoCD, desired *ne
 			explanation += "ingress rules"
 			modified = true
 		}
-
 		if modified {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			if err := r.Update(context.TODO(), existing); err != nil {
-				log.Error(err, "Failed to update %s network policy in namespace %s", existing.Name, cr.Namespace)
-				return fmt.Errorf(
-					"failed to update %s network policy in namespace %s. error: %w",
-					existing.Name,
-					cr.Namespace,
-					err,
-				)
+				log.Error(err, fmt.Sprintf("Failed to update %s network policy in namespace: %s", existing.Name, cr.Namespace))
+				return fmt.Errorf("failed to update %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 			}
 		}
 		return nil
 	}
-
 	if err := controllerutil.SetControllerReference(cr, desired, r.Scheme); err != nil {
 		log.Error(err, "Failed to set controller reference on network policy")
 		return fmt.Errorf("failed to set controller reference on network policy. error: %w", err)
@@ -1149,22 +1137,18 @@ func reconcileNetworkPolicy(r *ReconcileArgoCD, cr *argoproj.ArgoCD, desired *ne
 		log.Error(err, "Failed to create %s network policy in namespace %s", desired.Name, cr.Namespace)
 		return fmt.Errorf("failed to create %s network policy in namespace %s. error: %w", desired.Name, cr.Namespace, err)
 	}
-
 	return nil
 }
 
 func (r *ReconcileArgoCD) ReconcileImageUpdaterNetworkPolicy(cr *argoproj.ArgoCD) error {
 	metricsPolicy := createImageUpdaterNetworkPolicy(cr, ImageUpdaterNetworkPolicy, map[string]string{"metrics": "enabled"}, 8443)
 	webhookPolicy := createImageUpdaterNetworkPolicy(cr, WebhookTrafficNetworkPolicy, map[string]string{"webhooks": "enabled"}, 8082)
-
 	if err := reconcileNetworkPolicy(r, cr, metricsPolicy); err != nil {
 		return err
 	}
-
 	if err := reconcileNetworkPolicy(r, cr, webhookPolicy); err != nil {
 		return err
 	}
-
 	return nil
 }
 

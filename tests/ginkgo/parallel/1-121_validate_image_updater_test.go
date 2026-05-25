@@ -114,8 +114,8 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Eventually(WebhookTrafficNetworkPolicy, "3m", "5s").Should(k8sFixture.ExistByName())
 			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCD), argoCD)).To(Succeed())
 			netpolDisable := false
-			argoCD.Spec.ImageUpdater.NetworkPolicy = &argov1beta1api.ImageUpdaterNetworkPolicySpec{}
-			argoCD.Spec.ImageUpdater.NetworkPolicy.Enabled = &netpolDisable
+			argoCD.Spec.NetworkPolicy = argov1beta1api.ArgoCDNetworkPolicySpec{}
+			argoCD.Spec.NetworkPolicy.Enabled = &netpolDisable
 			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
 			Eventually(networkPolicy, "3m", "5s").Should(k8sFixture.NotExistByName())
 			Eventually(WebhookTrafficNetworkPolicy, "3m", "5s").Should(k8sFixture.NotExistByName())

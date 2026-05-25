@@ -9,8 +9,10 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -225,6 +227,23 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterControllerDisabled(cr *argoproj.A
 	_ = argoutil.FetchObject(r.Client, "", clusterRoleName, clusterRole)
 	if clusterRole.Name == "" {
 		clusterRole.Name = clusterRoleName
+	}
+	// delete network policies when disable
+	networkPolicies := []string{
+		generateResourceName(ImageUpdaterNetworkPolicy, cr),
+		generateResourceName(WebhookTrafficNetworkPolicy, cr),
+	}
+	for _, npName := range networkPolicies {
+		np := &networkingv1.NetworkPolicy{}
+		_ = argoutil.FetchObject(r.Client, cr.Namespace, npName, np)
+		if np.Name == "" {
+			np.Name = npName
+			np.Namespace = cr.Namespace
+		}
+		argoutil.LogResourceDeletion(log, np, "image updater is disabled")
+		if err := r.Delete(context.TODO(), np); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
 	}
 
 	log.Info("deleting Image Updater deployment")
