@@ -420,6 +420,12 @@ func nameWithSuffix(suffix string, cr *argoproj.ArgoCD) string {
 	return argoutil.NameWithSuffix(cr.ObjectMeta, suffix)
 }
 
+// applicationControllerResourceName returns the application controller StatefulSet name and
+// the app.kubernetes.io/name label value for its pods.
+func applicationControllerResourceName(cr *argoproj.ArgoCD) string {
+	return argoutil.NameWithSuffixForStatefulSet(cr.ObjectMeta, "application-controller")
+}
+
 // InspectCluster will verify the availability of extra features available to the cluster, such as Prometheus and
 // OpenShift Routes.
 func InspectCluster() error {

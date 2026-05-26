@@ -86,7 +86,7 @@ func newStatefulSetWithName(name string, component string, cr *argoproj.ArgoCD) 
 
 // newStatefulSetWithSuffix returns a new StatefulSet instance for the given ArgoCD using the given suffix.
 func newStatefulSetWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) *appsv1.StatefulSet {
-	return newStatefulSetWithName(nameWithSuffix(suffix, cr), component, cr)
+	return newStatefulSetWithName(argoutil.NameWithSuffixForStatefulSet(cr.ObjectMeta, suffix), component, cr)
 }
 
 func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
@@ -604,7 +604,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 
 	replicas := r.getApplicationControllerReplicaCount(cr)
 
-	ss := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
+	ss := newStatefulSetWithName(applicationControllerResourceName(cr), "application-controller", cr)
 	ss.Spec.Replicas = &replicas
 	controllerEnv := cr.Spec.Controller.Env
 	// Sharding setting explicitly overrides a value set in the env
@@ -679,7 +679,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 	}
 
 	AddSeccompProfileForOpenShift(r.Client, podSpec)
-	podSpec.ServiceAccountName = nameWithSuffix("argocd-application-controller", cr)
+	podSpec.ServiceAccountName = nameWithSuffix(common.ArgoCDApplicationControllerComponent, cr)
 
 	controllerVolumes := []corev1.Volume{
 		{
@@ -748,7 +748,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 				PodAffinityTerm: corev1.PodAffinityTerm{
 					LabelSelector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							common.ArgoCDKeyName: nameWithSuffix("argocd-application-controller", cr),
+							common.ArgoCDKeyName: applicationControllerResourceName(cr),
 						},
 					},
 					TopologyKey: common.ArgoCDKeyHostname,
@@ -989,7 +989,7 @@ func updateNodePlacementStateful(existing *appsv1.StatefulSet, ss *appsv1.Statef
 func containsInvalidImage(cr argoproj.ArgoCD, r *ReconcileArgoCD) (bool, error) {
 
 	podList := &corev1.PodList{}
-	applicationControllerListOption := client.MatchingLabels{common.ArgoCDKeyName: fmt.Sprintf("%s-%s", cr.Name, "application-controller")}
+	applicationControllerListOption := client.MatchingLabels{common.ArgoCDKeyName: applicationControllerResourceName(&cr)}
 
 	if err := r.List(context.TODO(), podList, applicationControllerListOption, client.InNamespace(cr.Namespace)); err != nil {
 		log.Error(err, "Failed to list Pods")

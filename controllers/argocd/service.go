@@ -111,7 +111,7 @@ func (r *ReconcileArgoCD) reconcileMetricsService(cr *argoproj.ArgoCD) error {
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: nameWithSuffix("application-controller", cr),
+		common.ArgoCDKeyName: applicationControllerResourceName(cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{

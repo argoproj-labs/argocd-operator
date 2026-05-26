@@ -216,7 +216,7 @@ func TestReconcileArgoCD_reconcileApplicationController(t *testing.T) {
 	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      "argocd-application-controller",
+			Name:      applicationControllerResourceName(a),
 			Namespace: a.Namespace,
 		},
 		ss))
@@ -262,7 +262,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withRedisTLS(t *testing.
 	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      "argocd-application-controller",
+			Name:      applicationControllerResourceName(a),
 			Namespace: a.Namespace,
 		},
 		ss))
@@ -304,7 +304,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withUpdate(t *testing.T)
 	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      "argocd-application-controller",
+			Name:      applicationControllerResourceName(a),
 			Namespace: a.Namespace,
 		},
 		ss))
@@ -373,7 +373,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withResources(t *testing
 	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      "argocd-application-controller",
+			Name:      applicationControllerResourceName(a),
 			Namespace: a.Namespace,
 		},
 		ss))
@@ -540,7 +540,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 		assert.NoError(t, r.Get(
 			context.TODO(),
 			types.NamespacedName{
-				Name:      "argocd-application-controller",
+				Name:      applicationControllerResourceName(a),
 				Namespace: a.Namespace,
 			},
 			ss))
@@ -592,7 +592,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withAppSync(t *testing.T
 	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      "argocd-application-controller",
+			Name:      applicationControllerResourceName(a),
 			Namespace: a.Namespace,
 		},
 		ss))
@@ -647,7 +647,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withEnv(t *testing.T) {
 	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      "argocd-application-controller",
+			Name:      applicationControllerResourceName(a),
 			Namespace: a.Namespace,
 		},
 		ss))
@@ -724,7 +724,7 @@ func Test_ContainsInvalidImage(t *testing.T) {
 			Name:      "argo-cd-application-controller",
 			Namespace: a.Namespace,
 			Labels: map[string]string{
-				common.ArgoCDKeyName: fmt.Sprintf("%s-%s", a.Name, "application-controller"),
+				common.ArgoCDKeyName: applicationControllerResourceName(a),
 			},
 		},
 	}
@@ -857,7 +857,7 @@ func TestReconcileAppController_Initcontainer(t *testing.T) {
 	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      "argocd-application-controller",
+			Name:      applicationControllerResourceName(a),
 			Namespace: a.Namespace,
 		},
 		ss))
@@ -874,7 +874,7 @@ func TestReconcileAppController_Initcontainer(t *testing.T) {
 	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      "argocd-application-controller",
+			Name:      applicationControllerResourceName(a),
 			Namespace: a.Namespace,
 		},
 		ss))
@@ -905,7 +905,7 @@ func TestReconcileArgoCD_sidecarcontainer(t *testing.T) {
 	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      "argocd-application-controller",
+			Name:      applicationControllerResourceName(a),
 			Namespace: a.Namespace,
 		},
 		ss))
@@ -922,7 +922,7 @@ func TestReconcileArgoCD_sidecarcontainer(t *testing.T) {
 	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      "argocd-application-controller",
+			Name:      applicationControllerResourceName(a),
 			Namespace: a.Namespace,
 		},
 		ss))
@@ -1090,12 +1090,10 @@ func TestStatefulSetWithLongName(t *testing.T) {
 	}
 	assert.NotNil(t, redisStatefulset, "Redis HA statefulset should exist")
 
-	// Verify that the StatefulSet name is truncated and within limits
-	assert.LessOrEqual(t, len(redisStatefulset.Name), 63)
+	// Verify that the StatefulSet name is truncated and within limits for controller revisions
+	assert.LessOrEqual(t, len(redisStatefulset.Name), argoutil.GetMaxStatefulSetNameLength())
+	assert.LessOrEqual(t, len(redisStatefulset.Name)+11, argoutil.GetMaxLabelLength())
 	assert.Contains(t, redisStatefulset.Name, "redis")
-
-	// Verify that the StatefulSet name contains the "server" suffix (unique identifier)
-	assert.Contains(t, redisStatefulset.Name, "redis-ha-server", "StatefulSet name should contain the full suffix for uniqueness")
 
 	// Verify that the component label is set correctly
 	assert.Equal(t, "redis", redisStatefulset.Labels[common.ArgoCDKeyComponent])
@@ -1109,4 +1107,22 @@ func TestStatefulSetWithLongName(t *testing.T) {
 
 	// Verify that the service name uses the component name (our fix)
 	assert.Equal(t, expectedComponentName, redisStatefulset.Spec.ServiceName)
+}
+
+func TestApplicationControllerStatefulSetWithLongCRName(t *testing.T) {
+	longName := "long-cr-name-for-statefulset-test"
+	a := makeTestArgoCD()
+	a.Name = longName
+
+	resourceName := applicationControllerResourceName(a)
+	ss := newStatefulSetWithName(resourceName, "application-controller", a)
+
+	assert.LessOrEqual(t, len(ss.Name), argoutil.GetMaxStatefulSetNameLength())
+	assert.LessOrEqual(t, len(ss.Name)+11, argoutil.GetMaxLabelLength())
+	assert.Equal(t, resourceName, ss.Labels[common.ArgoCDKeyName])
+	assert.Equal(t, resourceName, ss.Spec.Template.Labels[common.ArgoCDKeyName])
+	assert.Equal(t, resourceName, ss.Spec.Selector.MatchLabels[common.ArgoCDKeyName])
+
+	saName := nameWithSuffix(common.ArgoCDApplicationControllerComponent, a)
+	assert.LessOrEqual(t, len(saName), argoutil.GetMaxLabelLength())
 }

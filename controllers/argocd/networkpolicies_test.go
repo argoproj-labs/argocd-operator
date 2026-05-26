@@ -126,7 +126,7 @@ func TestRedisNetworkPolicy(t *testing.T) {
 
 	// Check if the network policy has the correct ingress rules
 	assert.Equal(t, 3, len(np.Spec.Ingress[0].From))
-	assert.Equal(t, "argocd-application-controller", np.Spec.Ingress[0].From[0].PodSelector.MatchLabels["app.kubernetes.io/name"])
+	assert.Equal(t, applicationControllerResourceName(a), np.Spec.Ingress[0].From[0].PodSelector.MatchLabels["app.kubernetes.io/name"])
 	assert.Equal(t, "argocd-repo-server", np.Spec.Ingress[0].From[1].PodSelector.MatchLabels["app.kubernetes.io/name"])
 	assert.Equal(t, "argocd-server", np.Spec.Ingress[0].From[2].PodSelector.MatchLabels["app.kubernetes.io/name"])
 	assert.Equal(t, 1, len(np.Spec.Ingress[0].Ports))
@@ -153,7 +153,7 @@ func TestRedisHANetworkPolicy(t *testing.T) {
 
 	// Check if the network policy has the correct ingress rules
 	assert.Equal(t, 3, len(np.Spec.Ingress[0].From))
-	assert.Equal(t, "argocd-application-controller", np.Spec.Ingress[0].From[0].PodSelector.MatchLabels["app.kubernetes.io/name"])
+	assert.Equal(t, applicationControllerResourceName(a), np.Spec.Ingress[0].From[0].PodSelector.MatchLabels["app.kubernetes.io/name"])
 	assert.Equal(t, "argocd-repo-server", np.Spec.Ingress[0].From[1].PodSelector.MatchLabels["app.kubernetes.io/name"])
 	assert.Equal(t, "argocd-server", np.Spec.Ingress[0].From[2].PodSelector.MatchLabels["app.kubernetes.io/name"])
 	assert.Equal(t, 2, len(np.Spec.Ingress[0].Ports))
@@ -420,7 +420,7 @@ func TestArgoCDApplicationControllerNetworkPolicy(t *testing.T) {
 	err = r.Get(context.TODO(), client.ObjectKey{Name: fmt.Sprintf("%s-%s", a.Name, ArgoCDApplicationControllerNetworkPolicy), Namespace: a.Namespace}, np)
 	assert.NoError(t, err)
 
-	assert.Equal(t, nameWithSuffix("application-controller", a), np.Spec.PodSelector.MatchLabels["app.kubernetes.io/name"])
+	assert.Equal(t, applicationControllerResourceName(a), np.Spec.PodSelector.MatchLabels["app.kubernetes.io/name"])
 	assert.Equal(t, networkingv1.PolicyTypeIngress, np.Spec.PolicyTypes[0])
 
 	assert.Equal(t, 1, len(np.Spec.Ingress))
@@ -456,7 +456,7 @@ func TestArgoCDRepoServerNetworkPolicy(t *testing.T) {
 		}
 	}
 	assert.ElementsMatch(t, []string{
-		nameWithSuffix("application-controller", a),
+		applicationControllerResourceName(a),
 		nameWithSuffix("server", a),
 		nameWithSuffix("notifications-controller", a),
 		"argocd-applicationset-controller",

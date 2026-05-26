@@ -373,7 +373,7 @@ func (r *ReconcileArgoCD) ReconcileRedisNetworkPolicy(cr *argoproj.ArgoCD) error
 						{
 							PodSelector: &metav1.LabelSelector{
 								MatchLabels: map[string]string{
-									"app.kubernetes.io/name": nameWithSuffix("application-controller", cr),
+									"app.kubernetes.io/name": applicationControllerResourceName(cr),
 								},
 							},
 						},
@@ -514,7 +514,7 @@ func (r *ReconcileArgoCD) ReconcileRedisHANetworkPolicy(cr *argoproj.ArgoCD) err
 						{
 							PodSelector: &metav1.LabelSelector{
 								MatchLabels: map[string]string{
-									"app.kubernetes.io/name": nameWithSuffix("application-controller", cr),
+									"app.kubernetes.io/name": applicationControllerResourceName(cr),
 								},
 							},
 						},
@@ -807,7 +807,7 @@ func (r *ReconcileArgoCD) ReconcileArgoCDApplicationControllerNetworkPolicy(cr *
 	desired.Spec = networkingv1.NetworkPolicySpec{
 		PodSelector: metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				"app.kubernetes.io/name": nameWithSuffix("application-controller", cr),
+				"app.kubernetes.io/name": applicationControllerResourceName(cr),
 			},
 		},
 		PolicyTypes: []networkingv1.PolicyType{
@@ -914,7 +914,7 @@ func (r *ReconcileArgoCD) ReconcileArgoCDRepoServerNetworkPolicy(cr *argoproj.Ar
 					{
 						PodSelector: &metav1.LabelSelector{
 							MatchLabels: map[string]string{
-								"app.kubernetes.io/name": nameWithSuffix("application-controller", cr),
+								"app.kubernetes.io/name": applicationControllerResourceName(cr),
 							},
 						},
 					},

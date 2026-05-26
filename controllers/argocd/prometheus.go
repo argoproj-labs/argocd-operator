@@ -291,7 +291,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoproj.ArgoCD) error {
 					},
 					Expr: intstr.IntOrString{
 						Type:   intstr.String,
-						StrVal: fmt.Sprintf("kube_statefulset_status_replicas{statefulset=\"%s\", namespace=\"%s\"} != kube_statefulset_status_replicas_ready{statefulset=\"%s\", namespace=\"%s\"} ", cr.Name+"-application-controller", cr.Namespace, cr.Name+"-application-controller", cr.Namespace),
+						StrVal: fmt.Sprintf("kube_statefulset_status_replicas{statefulset=\"%s\", namespace=\"%s\"} != kube_statefulset_status_replicas_ready{statefulset=\"%s\", namespace=\"%s\"} ", applicationControllerResourceName(cr), cr.Namespace, applicationControllerResourceName(cr), cr.Namespace),
 					},
 					For: ptr.To((monitoringv1.Duration)("1m")),
 					Labels: map[string]string{
