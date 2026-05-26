@@ -12,7 +12,6 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -241,7 +240,7 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterControllerDisabled(cr *argoproj.A
 			np.Namespace = cr.Namespace
 		}
 		argoutil.LogResourceDeletion(log, np, "image updater is disabled")
-		if err := r.Delete(context.TODO(), np); err != nil && !apierrors.IsNotFound(err) {
+		if err := r.Delete(context.TODO(), np); err != nil && !errors.IsNotFound(err) {
 			return err
 		}
 	}
