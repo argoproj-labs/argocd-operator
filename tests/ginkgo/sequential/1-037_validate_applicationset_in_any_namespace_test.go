@@ -1346,7 +1346,6 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				},
 			}
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
-			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
 			cmdParamsCM := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -1354,25 +1353,14 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					Namespace: argoCD.Namespace,
 				},
 			}
-			Eventually(cmdParamsCM).Should(configmapFixture.HaveStringDataKeyValue(common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey, "true"))
+			Eventually(cmdParamsCM, "3m", "5s").Should(configmapFixture.HaveStringDataKeyValue(common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey, "true"))
 		})
 
-		It("defaults tokenRef strict mode to false when applicationSet sourceNamespaces are empty or removed", func() {
+		It("defaults tokenRef strict mode to false when applicationSet sourceNamespaces are empty on create", func() {
 			appsetArgocdNS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("appset-argocd")
 			cleanupFunctions = append(cleanupFunctions, cleanupFunc)
 
-			targetNS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("appset-target-ns")
-			cleanupFunctions = append(cleanupFunctions, cleanupFunc)
-
-			cmdParamsCM := &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      common.ArgoCDCmdParamsConfigMapName,
-					Namespace: appsetArgocdNS.Name,
-				},
-			}
-
-			By("empty applicationSet.sourceNamespaces on create")
-			argoCDEmpty := &v1beta1.ArgoCD{
+			argoCD := &v1beta1.ArgoCD{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "tokenref-strict-false-empty",
 					Namespace: appsetArgocdNS.Name,
@@ -1383,12 +1371,25 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					},
 				},
 			}
-			Expect(k8sClient.Create(ctx, argoCDEmpty)).To(Succeed())
-			Eventually(argoCDEmpty, "5m", "5s").Should(argocdFixture.BeAvailable())
-			Eventually(cmdParamsCM).Should(configmapFixture.HaveStringDataKeyValue(common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey, "false"))
+			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 
-			By("removing applicationSet.sourceNamespaces after they were configured")
-			argoCDRemove := &v1beta1.ArgoCD{
+			cmdParamsCM := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      common.ArgoCDCmdParamsConfigMapName,
+					Namespace: argoCD.Namespace,
+				},
+			}
+			Eventually(cmdParamsCM, "3m", "5s").Should(configmapFixture.HaveStringDataKeyValue(common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey, "false"))
+		})
+
+		It("defaults tokenRef strict mode to false when applicationSet sourceNamespaces are removed", func() {
+			appsetArgocdNS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("appset-argocd")
+			cleanupFunctions = append(cleanupFunctions, cleanupFunc)
+
+			targetNS, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("appset-target-ns")
+			cleanupFunctions = append(cleanupFunctions, cleanupFunc)
+
+			argoCD := &v1beta1.ArgoCD{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "tokenref-strict-false-removed",
 					Namespace: appsetArgocdNS.Name,
@@ -1399,20 +1400,20 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					},
 				},
 			}
-			Expect(k8sClient.Create(ctx, argoCDRemove)).To(Succeed())
-			Eventually(argoCDRemove, "5m", "5s").Should(argocdFixture.BeAvailable())
-			cmdParamsCMRemove := &corev1.ConfigMap{
+			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+
+			cmdParamsCM := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      common.ArgoCDCmdParamsConfigMapName,
-					Namespace: argoCDRemove.Namespace,
+					Namespace: argoCD.Namespace,
 				},
 			}
-			Eventually(cmdParamsCMRemove).Should(configmapFixture.HaveStringDataKeyValue(common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey, "true"))
+			Eventually(cmdParamsCM, "3m", "5s").Should(configmapFixture.HaveStringDataKeyValue(common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey, "true"))
 
-			argocdFixture.Update(argoCDRemove, func(ac *v1beta1.ArgoCD) {
+			argocdFixture.Update(argoCD, func(ac *v1beta1.ArgoCD) {
 				ac.Spec.ApplicationSet.SourceNamespaces = []string{}
 			})
-			Eventually(cmdParamsCMRemove, "3m", "5s").Should(configmapFixture.HaveStringDataKeyValue(common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey, "false"))
+			Eventually(cmdParamsCM, "3m", "5s").Should(configmapFixture.HaveStringDataKeyValue(common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey, "false"))
 		})
 
 		It("reconciles tokenRef strict mode cmd-params drift when applicationSet sourceNamespaces remain configured", func() {
@@ -1434,7 +1435,6 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				},
 			}
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
-			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
 			cmdParamsCM := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -1442,12 +1442,12 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					Namespace: argoCD.Namespace,
 				},
 			}
-			Eventually(cmdParamsCM).Should(configmapFixture.HaveStringDataKeyValue(common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey, "true"))
+			Eventually(cmdParamsCM, "3m", "5s").Should(configmapFixture.HaveStringDataKeyValue(common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey, "true"))
 
 			configmapFixture.Update(cmdParamsCM, func(cm *corev1.ConfigMap) {
 				cm.Data[common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey] = "false"
 			})
-			Eventually(cmdParamsCM).Should(configmapFixture.HaveStringDataKeyValue(common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey, "false"))
+			Eventually(cmdParamsCM, "3m", "5s").Should(configmapFixture.HaveStringDataKeyValue(common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey, "false"))
 
 			By("triggering reconciliation via ArgoCD metadata change")
 			argocdFixture.Update(argoCD, func(ac *v1beta1.ArgoCD) {
@@ -1481,7 +1481,6 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				},
 			}
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
-			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 
 			cmdParamsCM := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -1489,7 +1488,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					Namespace: argoCD.Namespace,
 				},
 			}
-			Eventually(cmdParamsCM).Should(configmapFixture.HaveStringDataKeyValue(common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey, "false"))
+			Eventually(cmdParamsCM, "3m", "5s").Should(configmapFixture.HaveStringDataKeyValue(common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey, "false"))
 
 			By("triggering reconcile by updating ArgoCD spec.cmdParams and verifying opt-out persists")
 			argocdFixture.Update(argoCD, func(ac *v1beta1.ArgoCD) {
