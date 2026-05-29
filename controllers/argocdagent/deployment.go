@@ -108,11 +108,7 @@ func buildDeployment(compName string, cr *argoproj.ArgoCD) *appsv1.Deployment {
 
 func buildPrincipalSpec(compName, saName string, cr *argoproj.ArgoCD, centralTLSProfileMinVersion configv1.TLSProtocolVersion, centralTLSProfileCiphers []string) (appsv1.DeploymentSpec, error) {
 	redisAuthVolume, redisAuthMount := argoutil.MountRedisAuthToArgo(cr)
-	envParams, err := buildPrincipalContainerEnv(cr, centralTLSProfileMinVersion, centralTLSProfileCiphers)
-	if err != nil {
-		log.Error(err, "failed to build principal container env")
-		return appsv1.DeploymentSpec{}, err
-	}
+	envParams := buildPrincipalContainerEnv(cr, centralTLSProfileMinVersion, centralTLSProfileCiphers)
 	return appsv1.DeploymentSpec{
 		Selector: buildSelector(compName, cr),
 		Template: corev1.PodTemplateSpec{
@@ -290,11 +286,7 @@ func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, dep
 		changed = true
 		deployment.Spec.Template.Spec.Containers[0].Name = generateAgentResourceName(cr.Name, compName)
 	}
-	envParams, err := buildPrincipalContainerEnv(cr, centralTLSProfileMinVersion, centralTLSProfileCiphers)
-	if err != nil {
-		log.Error(err, "failed to build principal container env")
-		return nil, changed, err
-	}
+	envParams := buildPrincipalContainerEnv(cr, centralTLSProfileMinVersion, centralTLSProfileCiphers)
 	if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Env, envParams) {
 		log.Info("deployment container env is being updated")
 		changed = true
@@ -334,7 +326,7 @@ func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, dep
 	return deployment, changed, nil
 }
 
-func buildPrincipalContainerEnv(cr *argoproj.ArgoCD, centralTLSProfileMinVersion configv1.TLSProtocolVersion, centralTLSProfileCiphers []string) ([]corev1.EnvVar, error) {
+func buildPrincipalContainerEnv(cr *argoproj.ArgoCD, centralTLSProfileMinVersion configv1.TLSProtocolVersion, centralTLSProfileCiphers []string) []corev1.EnvVar {
 	arguments := getPrincipalTlsConfig(cr, centralTLSProfileMinVersion, centralTLSProfileCiphers)
 	env := []corev1.EnvVar{
 		{
@@ -419,7 +411,7 @@ func buildPrincipalContainerEnv(cr *argoproj.ArgoCD, centralTLSProfileMinVersion
 		env = append(env, cr.Spec.ArgoCDAgent.Principal.Env...)
 	}
 
-	return env, nil
+	return env
 }
 
 // These constants are environment variables that correspond to the environment variables

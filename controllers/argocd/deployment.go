@@ -220,7 +220,7 @@ func getArgoImportVolumes(cr *argoprojv1alpha1.ArgoCDExport) []corev1.Volume {
 	return volumes
 }
 
-func getArgoRedisArgs(useTLS bool, cr *argoproj.ArgoCD, centralTLSConfig TlsConfigProfile) ([]string, error) {
+func getArgoRedisArgs(useTLS bool, cr *argoproj.ArgoCD, centralTLSConfig TlsConfigProfile) []string {
 	args := make([]string, 0)
 	args = append(args, "--save", "")
 	args = append(args, "--appendonly", "no")
@@ -236,7 +236,7 @@ func getArgoRedisArgs(useTLS bool, cr *argoproj.ArgoCD, centralTLSConfig TlsConf
 		args = append(args, "--tls-key-file", "/app/config/redis/tls/tls.key")
 		args = append(args, "--tls-auth-clients", "no")
 	}
-	return args, nil
+	return args
 }
 
 // BuildRedisArgs builds arguments for redis deployment.
@@ -489,11 +489,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 			RunAsUser: int64Ptr(1000),
 		}
 	}
-	arguments, err := getArgoRedisArgs(useTLS, cr, r.CentralTlsConfigProfile)
-	if err != nil {
-		log.Error(err, "failed to get Redis args")
-		return err
-	}
+	arguments := getArgoRedisArgs(useTLS, cr, r.CentralTlsConfigProfile)
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Args:            arguments,
 		Image:           argoutil.GetRedisContainerImage(cr),

@@ -146,8 +146,7 @@ func TestReconcilePrincipalDeployment_DeploymentDoesNotExist_PrincipalEnabled(t 
 	assert.Equal(t, expectedSpec.Template.Spec.ServiceAccountName, deployment.Spec.Template.Spec.ServiceAccountName)
 
 	// Verify container configuration
-	envParams, err := buildPrincipalContainerEnv(cr, "", nil)
-	assert.NoError(t, err)
+	envParams := buildPrincipalContainerEnv(cr, "", nil)
 	assert.Len(t, deployment.Spec.Template.Spec.Containers, 1)
 	container := deployment.Spec.Template.Spec.Containers[0]
 	assert.Equal(t, generateAgentResourceName(cr.Name, testCompName), container.Name)
