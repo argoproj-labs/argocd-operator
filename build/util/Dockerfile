@@ -15,11 +15,16 @@ RUN groupadd -g $ARGOCD_USER_ID argocd && \
     chown argocd:0 /home/argocd && \
     chmod g=u /home/argocd && \
     apt-get update && \
-    apt-get dist-upgrade -y && \
-    apt-get install -y \
-    git git-lfs tini curl python3-pip gpg tzdata unzip && \
+    apt-get install -y --no-install-recommends \
+      git tini curl python3-pip gpg tzdata unzip ca-certificates && \
+    curl -L \
+      https://github.com/git-lfs/git-lfs/releases/download/v3.7.1/git-lfs-linux-amd64-v3.7.1.tar.gz \
+      -o /tmp/git-lfs.tar.gz && \
+    tar -xzf /tmp/git-lfs.tar.gz -C /tmp && \
+    /tmp/git-lfs-3.7.1/install.sh && \
+    rm -rf /tmp/git-lfs* && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    rm -rf /var/lib/apt/lists/*
 
 # Create a symlink for python to point to python3
 RUN ln -s /usr/bin/python3 /usr/bin/python
