@@ -42,7 +42,6 @@ import (
 // It creates, updates, or deletes the deployment based on the ArgoCD CR configuration.
 func ReconcilePrincipalDeployment(client client.Client, compName, saName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme, centralTLSProfileMinVersion configv1.TLSProtocolVersion, centralTLSProfileCiphers []string) error {
 	deployment := buildDeployment(compName, cr)
-	var err error
 
 	// Check if deployment already exists
 	exists := true
@@ -63,10 +62,7 @@ func ReconcilePrincipalDeployment(client client.Client, compName, saName string,
 			return nil
 		}
 
-		deployment, changed, err := updateDeploymentIfChanged(compName, saName, cr, deployment, centralTLSProfileMinVersion, centralTLSProfileCiphers)
-		if err != nil {
-			return err
-		}
+		deployment, changed := updateDeploymentIfChanged(compName, saName, cr, deployment, centralTLSProfileMinVersion, centralTLSProfileCiphers)
 		if changed {
 			argoutil.LogResourceUpdate(log, deployment, "principal deployment is being updated")
 			if err := client.Update(context.TODO(), deployment); err != nil {
@@ -86,10 +82,7 @@ func ReconcilePrincipalDeployment(client client.Client, compName, saName string,
 	}
 
 	argoutil.LogResourceCreation(log, deployment)
-	deployment.Spec, err = buildPrincipalSpec(compName, saName, cr, centralTLSProfileMinVersion, centralTLSProfileCiphers)
-	if err != nil {
-		return err
-	}
+	deployment.Spec = buildPrincipalSpec(compName, saName, cr, centralTLSProfileMinVersion, centralTLSProfileCiphers)
 	if err := client.Create(context.TODO(), deployment); err != nil {
 		return fmt.Errorf("failed to create principal deployment %s in namespace %s: %v", deployment.Name, cr.Namespace, err)
 	}
@@ -106,7 +99,7 @@ func buildDeployment(compName string, cr *argoproj.ArgoCD) *appsv1.Deployment {
 	}
 }
 
-func buildPrincipalSpec(compName, saName string, cr *argoproj.ArgoCD, centralTLSProfileMinVersion configv1.TLSProtocolVersion, centralTLSProfileCiphers []string) (appsv1.DeploymentSpec, error) {
+func buildPrincipalSpec(compName, saName string, cr *argoproj.ArgoCD, centralTLSProfileMinVersion configv1.TLSProtocolVersion, centralTLSProfileCiphers []string) appsv1.DeploymentSpec {
 	redisAuthVolume, redisAuthMount := argoutil.MountRedisAuthToArgo(cr)
 	envParams := buildPrincipalContainerEnv(cr, centralTLSProfileMinVersion, centralTLSProfileCiphers)
 	return appsv1.DeploymentSpec{
@@ -133,7 +126,7 @@ func buildPrincipalSpec(compName, saName string, cr *argoproj.ArgoCD, centralTLS
 				Volumes:            append(buildVolumes(), redisAuthVolume),
 			},
 		},
-	}, nil
+	}
 }
 
 func buildSelector(compName string, cr *argoproj.ArgoCD) *metav1.LabelSelector {
@@ -260,7 +253,7 @@ func buildVolumes() []corev1.Volume {
 // updateDeploymentIfChanged compares the current deployment with the desired state
 // and updates it if any changes are detected. Returns the updated deployment and a boolean
 // indicating whether any changes were made.
-func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, deployment *appsv1.Deployment, centralTLSProfileMinVersion configv1.TLSProtocolVersion, centralTLSProfileCiphers []string) (*appsv1.Deployment, bool, error) {
+func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, deployment *appsv1.Deployment, centralTLSProfileMinVersion configv1.TLSProtocolVersion, centralTLSProfileCiphers []string) (*appsv1.Deployment, bool) {
 	changed := false
 
 	if !reflect.DeepEqual(deployment.Spec.Selector, buildSelector(compName, cr)) {
@@ -323,7 +316,7 @@ func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, dep
 		changed = true
 		deployment.Spec.Template.Spec.Containers[0].Resources = principalResources
 	}
-	return deployment, changed, nil
+	return deployment, changed
 }
 
 func buildPrincipalContainerEnv(cr *argoproj.ArgoCD, centralTLSProfileMinVersion configv1.TLSProtocolVersion, centralTLSProfileCiphers []string) []corev1.EnvVar {

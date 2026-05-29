@@ -37,10 +37,7 @@ import (
 
 // Helper function to create a test deployment
 func makeTestDeployment(cr *argoproj.ArgoCD) (*appsv1.Deployment, error) {
-	spec, err := buildPrincipalSpec(testCompName, generateAgentResourceName(cr.Name, testCompName), cr, "", nil)
-	if err != nil {
-		return nil, err
-	}
+	spec := buildPrincipalSpec(testCompName, generateAgentResourceName(cr.Name, testCompName), cr, "", nil)
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      generateAgentResourceName(cr.Name, testCompName),
@@ -139,8 +136,7 @@ func TestReconcilePrincipalDeployment_DeploymentDoesNotExist_PrincipalEnabled(t 
 	assert.Equal(t, buildLabelsForAgentPrincipal(cr.Name, testCompName), deployment.Labels)
 
 	// Verify Deployment has expected spec
-	expectedSpec, err := buildPrincipalSpec(testCompName, saName, cr, "", nil)
-	assert.NoError(t, err)
+	expectedSpec := buildPrincipalSpec(testCompName, saName, cr, "", nil)
 	assert.Equal(t, expectedSpec.Selector, deployment.Spec.Selector)
 	assert.Equal(t, expectedSpec.Template.Labels, deployment.Spec.Template.Labels)
 	assert.Equal(t, expectedSpec.Template.Spec.ServiceAccountName, deployment.Spec.Template.Spec.ServiceAccountName)
