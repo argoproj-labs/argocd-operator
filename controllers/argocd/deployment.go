@@ -220,14 +220,14 @@ func getArgoImportVolumes(cr *argoprojv1alpha1.ArgoCDExport) []corev1.Volume {
 	return volumes
 }
 
-func getArgoRedisArgs(useTLS bool, cr *argoproj.ArgoCD, centralTLSConfig TlsConfigProfile) []string {
+func getArgoRedisArgs(useTLS bool, cr *argoproj.ArgoCD, centralTLSConfig TLSConfigProfile) []string {
 	args := make([]string, 0)
 	args = append(args, "--save", "")
 	args = append(args, "--appendonly", "no")
 	args = append(args, "--aclfile", argoutil.RedisAuthMountPath+"users.acl")
 
 	if useTLS {
-		arguments := BuildRedisArgs(cr.Spec.Redis.TlsConfig, centralTLSConfig)
+		arguments := BuildRedisArgs(cr.Spec.Redis.TLSConfig, centralTLSConfig)
 		args = append(args, arguments...)
 		args = append(args, "--tls-port", "6379")
 		args = append(args, "--port", "0")
@@ -242,7 +242,7 @@ func getArgoRedisArgs(useTLS bool, cr *argoproj.ArgoCD, centralTLSConfig TlsConf
 // BuildRedisArgs builds arguments for redis deployment.
 // precedence will be for argoCD cr passed values
 // then for central tls config if no values are passed in argocd CR.
-func BuildRedisArgs(tlsCfg *argoproj.ArgoCDTlsConfig, centralTLSConfig TlsConfigProfile) []string {
+func BuildRedisArgs(tlsCfg *argoproj.ArgoCDTLSConfig, centralTLSConfig TLSConfigProfile) []string {
 	var args []string
 	var (
 		protocols []string
@@ -489,7 +489,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 			RunAsUser: int64Ptr(1000),
 		}
 	}
-	arguments := getArgoRedisArgs(useTLS, cr, r.CentralTlsConfigProfile)
+	arguments := getArgoRedisArgs(useTLS, cr, r.CentralTLSConfigProfile)
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Args:            arguments,
 		Image:           argoutil.GetRedisContainerImage(cr),
@@ -945,7 +945,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		serverVolumeMounts = append(serverVolumeMounts, cr.Spec.Server.VolumeMounts...)
 	}
 
-	arguments := BuildTLSArgs(cr.Spec.Server.TlsConfig, r.CentralTlsConfigProfile)
+	arguments := BuildTLSArgs(cr.Spec.Server.TLSConfig, r.CentralTLSConfigProfile)
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Args:            arguments,
 		Command:         getArgoServerCommand(cr, useTLSForRedis),
@@ -1231,7 +1231,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 	return r.Create(context.TODO(), deploy)
 }
 
-func BuildTLSArgs(tlsCfg *argoproj.ArgoCDTlsConfig, centralTLSConfig TlsConfigProfile) []string {
+func BuildTLSArgs(tlsCfg *argoproj.ArgoCDTLSConfig, centralTLSConfig TLSConfigProfile) []string {
 	var args []string
 	if tlsCfg != nil && tlsCfg.MinVersion != "" {
 		args = append(args, "--tlsminversion", tlsCfg.MinVersion)

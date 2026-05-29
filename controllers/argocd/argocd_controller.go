@@ -103,11 +103,11 @@ type ReconcileArgoCD struct {
 	// re-run to renew the Dex OAuth client token before it expires.
 	// Key: ArgoCD namespace, Value: time.Duration
 	dexTokenRequeueAfter sync.Map
-	// CentralTlsConfigProfile specifies the TLS configuration profile in the cluster.
-	CentralTlsConfigProfile TlsConfigProfile
+	// CentralTLSConfigProfile specifies the TLS configuration profile in the cluster.
+	CentralTLSConfigProfile TLSConfigProfile
 }
 
-type TlsConfigProfile struct {
+type TLSConfigProfile struct {
 	// MinVersion specifies the minimum TLS version configured in cluster.
 	MinVersion configv1.TLSProtocolVersion
 	// Ciphers specifies the list of supported TLS cipher suites in cluster.

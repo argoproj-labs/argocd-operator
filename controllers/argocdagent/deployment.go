@@ -562,7 +562,7 @@ func getPrincipalTlsConfig(cr *argoproj.ArgoCD, centralTLSProfileMinVersion conf
 	if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || cr.Spec.ArgoCDAgent.Principal.TLS == nil {
 		return arguments
 	}
-	tlsCfg := cr.Spec.ArgoCDAgent.Principal.TLS.TlsConfig
+	tlsCfg := cr.Spec.ArgoCDAgent.Principal.TLS.TLSConfig
 	// CR config takes precedence
 	if tlsCfg != nil {
 		return argoutil.BuildArgoCDAgentTLSArgs(tlsCfg, arguments)

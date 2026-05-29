@@ -3090,28 +3090,28 @@ func TestDeploymentWithLongName(t *testing.T) {
 func TestBuildRedisArgs(t *testing.T) {
 	tests := []struct {
 		name       string
-		tlsCfg     *argoproj.ArgoCDTlsConfig
-		centralTLS TlsConfigProfile
+		tlsCfg     *argoproj.ArgoCDTLSConfig
+		centralTLS TLSConfigProfile
 		expected   []string
 		wantErr    bool
 	}{
 		{
 			name:       "nil config and empty central tls",
 			tlsCfg:     nil,
-			centralTLS: TlsConfigProfile{},
+			centralTLS: TLSConfigProfile{},
 			expected:   nil,
 			wantErr:    false,
 		},
 		{
 			name: "valid CR tls config with tls 1.2",
-			tlsCfg: &argoproj.ArgoCDTlsConfig{
+			tlsCfg: &argoproj.ArgoCDTLSConfig{
 				MinVersion: "1.2",
 				MaxVersion: "1.2",
 				CipherSuites: []string{
 					"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
 				},
 			},
-			centralTLS: TlsConfigProfile{},
+			centralTLS: TLSConfigProfile{},
 			expected: []string{
 				"--tls-protocols",
 				"TLSv1.2",
@@ -3122,14 +3122,14 @@ func TestBuildRedisArgs(t *testing.T) {
 		},
 		{
 			name: "valid CR tls config with tls 1.3",
-			tlsCfg: &argoproj.ArgoCDTlsConfig{
+			tlsCfg: &argoproj.ArgoCDTLSConfig{
 				MinVersion: "1.3",
 				MaxVersion: "1.3",
 				CipherSuites: []string{
 					"TLS_AES_128_GCM_SHA256",
 				},
 			},
-			centralTLS: TlsConfigProfile{},
+			centralTLS: TLSConfigProfile{},
 			expected: []string{
 				"--tls-protocols",
 				"TLSv1.3",
@@ -3141,7 +3141,7 @@ func TestBuildRedisArgs(t *testing.T) {
 		{
 			name:   "central TLS config with tls 1.2",
 			tlsCfg: nil,
-			centralTLS: TlsConfigProfile{
+			centralTLS: TLSConfigProfile{
 				MinVersion: configv1.VersionTLS12,
 				Ciphers: []string{
 					"ECDHE-RSA-AES128-GCM-SHA256",
@@ -3158,7 +3158,7 @@ func TestBuildRedisArgs(t *testing.T) {
 		{
 			name:   "central TLS config with tls 1.3",
 			tlsCfg: nil,
-			centralTLS: TlsConfigProfile{
+			centralTLS: TLSConfigProfile{
 				MinVersion: configv1.VersionTLS13,
 				Ciphers: []string{
 					"TLS_AES_128_GCM_SHA256",
@@ -3175,7 +3175,7 @@ func TestBuildRedisArgs(t *testing.T) {
 		{
 			name:   "central TLS config only version",
 			tlsCfg: nil,
-			centralTLS: TlsConfigProfile{
+			centralTLS: TLSConfigProfile{
 				MinVersion: configv1.VersionTLS12,
 			},
 			expected: []string{
@@ -3187,7 +3187,7 @@ func TestBuildRedisArgs(t *testing.T) {
 		{
 			name:   "central TLS config only ciphers",
 			tlsCfg: nil,
-			centralTLS: TlsConfigProfile{
+			centralTLS: TLSConfigProfile{
 				Ciphers: []string{
 					"ECDHE-RSA-AES256-GCM-SHA384",
 				},
@@ -3200,13 +3200,13 @@ func TestBuildRedisArgs(t *testing.T) {
 		},
 		{
 			name: "CR config takes precedence over central TLS config",
-			tlsCfg: &argoproj.ArgoCDTlsConfig{
+			tlsCfg: &argoproj.ArgoCDTLSConfig{
 				MinVersion: "1.2",
 				CipherSuites: []string{
 					"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
 				},
 			},
-			centralTLS: TlsConfigProfile{
+			centralTLS: TLSConfigProfile{
 				MinVersion: configv1.VersionTLS13,
 				Ciphers: []string{
 					"TLS_AES_128_GCM_SHA256",
@@ -3222,11 +3222,11 @@ func TestBuildRedisArgs(t *testing.T) {
 		},
 		{
 			name: "CR config without ciphers",
-			tlsCfg: &argoproj.ArgoCDTlsConfig{
+			tlsCfg: &argoproj.ArgoCDTLSConfig{
 				MinVersion: "1.2",
 				MaxVersion: "1.3",
 			},
-			centralTLS: TlsConfigProfile{},
+			centralTLS: TLSConfigProfile{},
 			expected: []string{
 				"--tls-protocols",
 				"TLSv1.2 TLSv1.3",
@@ -3235,7 +3235,7 @@ func TestBuildRedisArgs(t *testing.T) {
 		},
 		{
 			name: "CR config with ciphers",
-			tlsCfg: &argoproj.ArgoCDTlsConfig{
+			tlsCfg: &argoproj.ArgoCDTLSConfig{
 				MinVersion: "1.2",
 				MaxVersion: "1.3",
 				CipherSuites: []string{
@@ -3243,7 +3243,7 @@ func TestBuildRedisArgs(t *testing.T) {
 					"TLS_AES_128_GCM_SHA256",
 				},
 			},
-			centralTLS: TlsConfigProfile{},
+			centralTLS: TLSConfigProfile{},
 			expected: []string{
 				"--tls-protocols",
 				"TLSv1.2 TLSv1.3",
@@ -3257,7 +3257,7 @@ func TestBuildRedisArgs(t *testing.T) {
 		{
 			name:   "central TLS config with unmapped cipher",
 			tlsCfg: nil,
-			centralTLS: TlsConfigProfile{
+			centralTLS: TLSConfigProfile{
 				MinVersion: configv1.VersionTLS12,
 				Ciphers: []string{
 					"INVALID",
@@ -3284,25 +3284,25 @@ func TestBuildRedisArgs(t *testing.T) {
 func TestBuildTLSArgs(t *testing.T) {
 	tests := []struct {
 		name       string
-		tlsCfg     *argoproj.ArgoCDTlsConfig
-		centralTLS TlsConfigProfile
+		tlsCfg     *argoproj.ArgoCDTLSConfig
+		centralTLS TLSConfigProfile
 		expected   []string
 		wantErr    bool
 	}{
 		{
 			name:       "nil config and empty central tls",
 			tlsCfg:     nil,
-			centralTLS: TlsConfigProfile{},
+			centralTLS: TLSConfigProfile{},
 			expected:   nil,
 			wantErr:    false,
 		},
 		{
 			name: "valid CR tls config with min and max versions",
-			tlsCfg: &argoproj.ArgoCDTlsConfig{
+			tlsCfg: &argoproj.ArgoCDTLSConfig{
 				MinVersion: "1.2",
 				MaxVersion: "1.3",
 			},
-			centralTLS: TlsConfigProfile{},
+			centralTLS: TLSConfigProfile{},
 			expected: []string{
 				"--tlsminversion",
 				"1.2",
@@ -3313,14 +3313,14 @@ func TestBuildTLSArgs(t *testing.T) {
 		},
 		{
 			name: "valid CR tls config with cipher suites",
-			tlsCfg: &argoproj.ArgoCDTlsConfig{
+			tlsCfg: &argoproj.ArgoCDTLSConfig{
 				MinVersion: "1.2",
 				CipherSuites: []string{
 					"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
 					"TLS_AES_128_GCM_SHA256",
 				},
 			},
-			centralTLS: TlsConfigProfile{},
+			centralTLS: TLSConfigProfile{},
 			expected: []string{
 				"--tlsminversion",
 				"1.2",
@@ -3331,10 +3331,10 @@ func TestBuildTLSArgs(t *testing.T) {
 		},
 		{
 			name: "CR config with only max version",
-			tlsCfg: &argoproj.ArgoCDTlsConfig{
+			tlsCfg: &argoproj.ArgoCDTLSConfig{
 				MaxVersion: "1.3",
 			},
-			centralTLS: TlsConfigProfile{},
+			centralTLS: TLSConfigProfile{},
 			expected: []string{
 				"--tlsmaxversion",
 				"1.3",
@@ -3344,7 +3344,7 @@ func TestBuildTLSArgs(t *testing.T) {
 		{
 			name:   "central TLS config with min version only",
 			tlsCfg: nil,
-			centralTLS: TlsConfigProfile{
+			centralTLS: TLSConfigProfile{
 				MinVersion: configv1.VersionTLS12,
 			},
 			expected: []string{
@@ -3356,7 +3356,7 @@ func TestBuildTLSArgs(t *testing.T) {
 		{
 			name:   "central TLS config with ciphers only",
 			tlsCfg: nil,
-			centralTLS: TlsConfigProfile{
+			centralTLS: TLSConfigProfile{
 				Ciphers: []string{
 					"ECDHE-RSA-AES128-GCM-SHA256",
 				},
@@ -3370,7 +3370,7 @@ func TestBuildTLSArgs(t *testing.T) {
 		{
 			name:   "central TLS config with version and ciphers",
 			tlsCfg: nil,
-			centralTLS: TlsConfigProfile{
+			centralTLS: TLSConfigProfile{
 				MinVersion: configv1.VersionTLS13,
 				Ciphers: []string{
 					"TLS_AES_128_GCM_SHA256",
@@ -3387,13 +3387,13 @@ func TestBuildTLSArgs(t *testing.T) {
 		},
 		{
 			name: "CR config takes precedence over central TLS config",
-			tlsCfg: &argoproj.ArgoCDTlsConfig{
+			tlsCfg: &argoproj.ArgoCDTLSConfig{
 				MinVersion: "1.2",
 				CipherSuites: []string{
 					"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
 				},
 			},
-			centralTLS: TlsConfigProfile{
+			centralTLS: TLSConfigProfile{
 				MinVersion: configv1.VersionTLS13,
 				Ciphers: []string{
 					"TLS_AES_128_GCM_SHA256",
@@ -3409,14 +3409,14 @@ func TestBuildTLSArgs(t *testing.T) {
 		},
 		{
 			name: "CR config with empty cipher entries",
-			tlsCfg: &argoproj.ArgoCDTlsConfig{
+			tlsCfg: &argoproj.ArgoCDTLSConfig{
 				MinVersion: "1.2",
 				CipherSuites: []string{
 					"",
 					" ",
 				},
 			},
-			centralTLS: TlsConfigProfile{},
+			centralTLS: TLSConfigProfile{},
 			expected: []string{
 				"--tlsminversion",
 				"1.2",
@@ -3428,7 +3428,7 @@ func TestBuildTLSArgs(t *testing.T) {
 		{
 			name:   "central TLS config with unmapped cipher",
 			tlsCfg: nil,
-			centralTLS: TlsConfigProfile{
+			centralTLS: TLSConfigProfile{
 				MinVersion: configv1.VersionTLS12,
 				Ciphers: []string{
 					"INVALID",
@@ -3444,8 +3444,8 @@ func TestBuildTLSArgs(t *testing.T) {
 		},
 		{
 			name:       "CR config with no values",
-			tlsCfg:     &argoproj.ArgoCDTlsConfig{},
-			centralTLS: TlsConfigProfile{},
+			tlsCfg:     &argoproj.ArgoCDTLSConfig{},
+			centralTLS: TLSConfigProfile{},
 			expected:   nil,
 			wantErr:    false,
 		},

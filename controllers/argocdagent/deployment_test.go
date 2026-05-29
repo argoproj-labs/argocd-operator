@@ -718,7 +718,7 @@ func TestGetPrincipalTlsConfig(t *testing.T) {
 					ArgoCDAgent: &argoproj.ArgoCDAgentSpec{
 						Principal: &argoproj.PrincipalSpec{
 							TLS: &argoproj.PrincipalTLSSpec{
-								TlsConfig: nil,
+								TLSConfig: nil,
 							},
 						},
 					},
@@ -734,7 +734,7 @@ func TestGetPrincipalTlsConfig(t *testing.T) {
 					ArgoCDAgent: &argoproj.ArgoCDAgentSpec{
 						Principal: &argoproj.PrincipalSpec{
 							TLS: &argoproj.PrincipalTLSSpec{
-								TlsConfig: &argoproj.ArgoCDTlsConfig{
+								TLSConfig: &argoproj.ArgoCDTLSConfig{
 									MinVersion: "1.2",
 									MaxVersion: "1.3",
 									CipherSuites: []string{

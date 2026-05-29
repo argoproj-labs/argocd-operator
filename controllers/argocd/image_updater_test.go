@@ -968,13 +968,13 @@ func TestReconcileImageUpdaterControllerEnabled_PrunesStaleNamespaceRBAC(t *test
 func TestReconcileImageUpdaterDeployment_TLSArgs(t *testing.T) {
 	tests := []struct {
 		name         string
-		imageTLS     *argoproj.ArgoCDTlsConfig
-		centralTLS   TlsConfigProfile
+		imageTLS     *argoproj.ArgoCDTLSConfig
+		centralTLS   TLSConfigProfile
 		expectedArgs []string
 	}{
 		{
 			name: "image updater tls config",
-			imageTLS: &argoproj.ArgoCDTlsConfig{
+			imageTLS: &argoproj.ArgoCDTLSConfig{
 				MinVersion: "1.2",
 				MaxVersion: "1.3",
 				CipherSuites: []string{
@@ -994,7 +994,7 @@ func TestReconcileImageUpdaterDeployment_TLSArgs(t *testing.T) {
 		{
 			name:     "central tls profile",
 			imageTLS: nil,
-			centralTLS: TlsConfigProfile{
+			centralTLS: TLSConfigProfile{
 				MinVersion: configv1.VersionTLS12,
 				Ciphers: []string{
 					"ECDHE-RSA-AES128-GCM-SHA256",
@@ -1011,7 +1011,7 @@ func TestReconcileImageUpdaterDeployment_TLSArgs(t *testing.T) {
 		{
 			name:         "no tls config",
 			imageTLS:     nil,
-			centralTLS:   TlsConfigProfile{},
+			centralTLS:   TLSConfigProfile{},
 			expectedArgs: []string{},
 		},
 	}
@@ -1026,7 +1026,7 @@ func TestReconcileImageUpdaterDeployment_TLSArgs(t *testing.T) {
 
 			cr := makeTestArgoCD()
 			cr.Spec.ImageUpdater.Enabled = true
-			cr.Spec.ImageUpdater.TlsConfig = tt.imageTLS
+			cr.Spec.ImageUpdater.TLSConfig = tt.imageTLS
 
 			sa := &v1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{
@@ -1043,7 +1043,7 @@ func TestReconcileImageUpdaterDeployment_TLSArgs(t *testing.T) {
 			r := &ReconcileArgoCD{
 				Client:                  client,
 				Scheme:                  scheme,
-				CentralTlsConfigProfile: tt.centralTLS,
+				CentralTLSConfigProfile: tt.centralTLS,
 			}
 
 			err := r.reconcileImageUpdaterDeployment(cr, sa)

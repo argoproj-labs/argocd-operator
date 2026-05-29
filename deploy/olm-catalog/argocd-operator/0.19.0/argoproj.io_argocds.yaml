@@ -19150,7 +19150,7 @@ spec:
                         type: object
                     type: object
                   tlsConfig:
-                    description: TlsConfig defines the TLS configuration for the Redis
+                    description: TLSConfig defines the TLS configuration for the Redis
                       server
                     properties:
                       cipherSuites:

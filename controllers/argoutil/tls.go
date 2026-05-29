@@ -142,7 +142,7 @@ func AgentTLSVersion(version string) string {
 	return "tls" + version
 }
 
-func BuildArgoCDAgentTLSArgs(tlsCfg *argoproj.ArgoCDTlsConfig, args map[string]string) map[string]string {
+func BuildArgoCDAgentTLSArgs(tlsCfg *argoproj.ArgoCDTLSConfig, args map[string]string) map[string]string {
 	if min := AgentTLSVersion(tlsCfg.MinVersion); min != "" {
 		args["--tlsminversion"] = min
 	}
@@ -197,7 +197,7 @@ func AgentTLSProtocolVersionString(v configv1.TLSProtocolVersion) string {
 // Redis protocol needs to be passed in below format.
 // # Accept only TLSv1.2 and TLSv1.3 connections
 // tls-protocols "TLSv1.2 TLSv1.3"
-func BuildRedisProtocols(tlsCfg *argoproj.ArgoCDTlsConfig) []string {
+func BuildRedisProtocols(tlsCfg *argoproj.ArgoCDTLSConfig) []string {
 	if tlsCfg == nil {
 		return nil
 	}

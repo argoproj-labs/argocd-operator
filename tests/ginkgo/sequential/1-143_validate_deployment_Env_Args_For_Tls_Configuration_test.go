@@ -145,19 +145,19 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 				Spec: argov1beta1api.ArgoCDSpec{},
 			}
 			argo.Spec.ImageUpdater.Enabled = true
-			argo.Spec.Repo.TlsConfig = &argov1beta1api.ArgoCDTlsConfig{
+			argo.Spec.Repo.TLSConfig = &argov1beta1api.ArgoCDTLSConfig{
 				MinVersion: "1.2",
 				MaxVersion: "1.3",
 			}
-			argo.Spec.Server.TlsConfig = &argov1beta1api.ArgoCDTlsConfig{
+			argo.Spec.Server.TLSConfig = &argov1beta1api.ArgoCDTLSConfig{
 				MinVersion: "1.2",
 				MaxVersion: "1.3",
 			}
-			argo.Spec.Redis.TlsConfig = &argov1beta1api.ArgoCDTlsConfig{
+			argo.Spec.Redis.TLSConfig = &argov1beta1api.ArgoCDTLSConfig{
 				MinVersion: "1.1",
 				MaxVersion: "1.3",
 			}
-			argo.Spec.ImageUpdater.TlsConfig = &argov1beta1api.ArgoCDTlsConfig{
+			argo.Spec.ImageUpdater.TLSConfig = &argov1beta1api.ArgoCDTLSConfig{
 				MinVersion: "1.2",
 				MaxVersion: "1.3",
 			}
@@ -275,10 +275,10 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 
 			By("Update single cipherSuites for RepoServer, Server and Redis Deployments")
 			Expect(c.Get(ctx, types.NamespacedName{Name: argocdInstanceName, Namespace: argocdNamespace}, argo)).To(Succeed())
-			argo.Spec.Repo.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"}
-			argo.Spec.Server.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"}
-			argo.Spec.ImageUpdater.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"}
-			argo.Spec.Redis.TlsConfig = &argov1beta1api.ArgoCDTlsConfig{
+			argo.Spec.Repo.TLSConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"}
+			argo.Spec.Server.TLSConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"}
+			argo.Spec.ImageUpdater.TLSConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"}
+			argo.Spec.Redis.TLSConfig = &argov1beta1api.ArgoCDTLSConfig{
 				MinVersion:   "1.2",
 				MaxVersion:   "1.3",
 				CipherSuites: []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"},
@@ -386,10 +386,10 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 
 			By("Update Two cipherSuites for RepoServer, Server and Redis Deployments")
 			Expect(c.Get(ctx, types.NamespacedName{Name: argocdInstanceName, Namespace: argocdNamespace}, argo)).To(Succeed())
-			argo.Spec.Repo.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
-			argo.Spec.Server.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
-			argo.Spec.Redis.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
-			argo.Spec.ImageUpdater.TlsConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
+			argo.Spec.Repo.TLSConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
+			argo.Spec.Server.TLSConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
+			argo.Spec.Redis.TLSConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
+			argo.Spec.ImageUpdater.TLSConfig.CipherSuites = []string{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
 			Expect(c.Update(ctx, argo)).To(Succeed())
 
 			time.Sleep(5 * time.Second)
@@ -491,10 +491,10 @@ var _ = Describe("Validate Deployment Env Args For TLS Configuration", func() {
 
 			By("Check The deployments doesnt have invalid values and check the argocd CR status for Error")
 			Expect(c.Get(ctx, types.NamespacedName{Name: argocdInstanceName, Namespace: argocdNamespace}, argo)).To(Succeed())
-			argo.Spec.Repo.TlsConfig.CipherSuites = []string{"INVALID_TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
-			argo.Spec.Server.TlsConfig.CipherSuites = []string{"INVALID_TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
-			argo.Spec.Redis.TlsConfig.CipherSuites = []string{"INVALID_TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
-			argo.Spec.ImageUpdater.TlsConfig.CipherSuites = []string{"INVALID_TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
+			argo.Spec.Repo.TLSConfig.CipherSuites = []string{"INVALID_TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
+			argo.Spec.Server.TLSConfig.CipherSuites = []string{"INVALID_TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
+			argo.Spec.Redis.TLSConfig.CipherSuites = []string{"INVALID_TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
+			argo.Spec.ImageUpdater.TLSConfig.CipherSuites = []string{"INVALID_TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}
 			Expect(c.Update(ctx, argo)).To(Succeed())
 			time.Sleep(5 * time.Second)
 			Eventually(func() bool {

@@ -53,14 +53,14 @@ func TestAgentTLSVersion(t *testing.T) {
 func TestBuildArgoCDAgentTLSArgs(t *testing.T) {
 	tests := []struct {
 		name     string
-		cfg      *argoproj.ArgoCDTlsConfig
+		cfg      *argoproj.ArgoCDTLSConfig
 		args     map[string]string
 		expected map[string]string
 		wantErr  bool
 	}{
 		{
 			name: "valid config",
-			cfg: &argoproj.ArgoCDTlsConfig{
+			cfg: &argoproj.ArgoCDTLSConfig{
 				MinVersion: "1.2",
 				MaxVersion: "1.3",
 				CipherSuites: []string{
@@ -152,7 +152,7 @@ func TestAgentTLSProtocolVersionString(t *testing.T) {
 func TestBuildRedisProtocols(t *testing.T) {
 	tests := []struct {
 		name     string
-		cfg      *argoproj.ArgoCDTlsConfig
+		cfg      *argoproj.ArgoCDTLSConfig
 		expected []string
 	}{
 		{
@@ -162,11 +162,11 @@ func TestBuildRedisProtocols(t *testing.T) {
 		},
 		{
 			name: "empty min max",
-			cfg:  &argoproj.ArgoCDTlsConfig{},
+			cfg:  &argoproj.ArgoCDTLSConfig{},
 		},
 		{
 			name: "min and max",
-			cfg: &argoproj.ArgoCDTlsConfig{
+			cfg: &argoproj.ArgoCDTLSConfig{
 				MinVersion: "1.1",
 				MaxVersion: "1.3",
 			},
@@ -178,7 +178,7 @@ func TestBuildRedisProtocols(t *testing.T) {
 		},
 		{
 			name: "only min",
-			cfg: &argoproj.ArgoCDTlsConfig{
+			cfg: &argoproj.ArgoCDTLSConfig{
 				MinVersion: "1.2",
 			},
 			expected: []string{
