@@ -122,5 +122,51 @@ This will configure ApplicationSet controller to allow the defined URLs for SCM 
 
 Only one of either `managed-by` or `applicationset-managed-by-cluster-argocd` labels can be applied to a given namespace. We will be prioritizing `managed-by` label in case of a conflict as this feature is currently in beta, so the new roles/rolebindings will not be created if namespace is already labelled with `managed-by` label, and they will be deleted if a namespace is first added to the `.spec.applicationSet.sourceNamespaces` list and is later also labelled with `managed-by` label.
 
+## TokenRef strict mode
 
+When you configure ApplicationSets in any namespace via `.spec.applicationSet.sourceNamespaces`, the Operator automatically manages ApplicationSet `tokenRef` restrictions in operator-owned `argocd-cmd-params-cm`.
+
+| Setting | Value |
+|:-|:-|
+| ConfigMap key | `applicationsetcontroller.enable.tokenref.strict.mode` |
+| ApplicationSet controller environment variable | `ARGOCD_APPLICATIONSET_CONTROLLER_TOKENREF_STRICT_MODE` |
+| Required Secret label (when strict mode is `true`) | `argocd.argoproj.io/secret-type: scm-creds` |
+
+For more details, see the upstream [tokenRef restrictions](https://argo-cd.readthedocs.io/en/latest/operator-manual/applicationset/Appset-Any-Namespace/#tokenref-restrictions) documentation.
+
+### When the Operator sets the default
+
+The Operator always writes `applicationsetcontroller.enable.tokenref.strict.mode` in `argocd-cmd-params-cm`:
+
+| Condition | Value |
+|:-|:-|
+| `.spec.applicationSet.sourceNamespaces` is empty, unset, or matches no cluster namespace | `"false"` |
+| `.spec.applicationSet.sourceNamespaces` expands (glob or regex) to at least one cluster namespace | `"true"` |
+| `.spec.cmdParams` explicitly sets the key | User value wins (see [Opting out](#opting-out-of-tokenref-strict-mode)) |
+
+The default uses expanded `.spec.applicationSet.sourceNamespaces` only. It does not depend on the cluster-config namespace or on intersection with `.spec.sourceNamespaces`. ApplicationSet RBAC, labels, and `--applicationset-namespaces` still follow their existing rules.
+
+When strict mode is enabled, Secrets referenced by ApplicationSet SCM Provider and Pull Request generators via `tokenRef` must carry the label `argocd.argoproj.io/secret-type` with value `scm-creds`. This limits which Secrets can be used as SCM credentials and reduces the risk of secret exfiltration when ApplicationSets run outside the Argo CD control-plane namespace.
+
+The ArgoCD CR is the source of truth for this setting. The Operator reconciles the desired value into `argocd-cmd-params-cm` and corrects manual edits to this key on reconcile. To change behavior, update `.spec.applicationSet.sourceNamespaces` and/or `.spec.cmdParams` do not edit `argocd-cmd-params-cm` directly.
+
+### Opting out of tokenRef strict mode
+
+If you must disable strict mode while `.spec.applicationSet.sourceNamespaces` is configured, set the key in `.spec.cmdParams` on the ArgoCD CR:
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example
+spec:
+  applicationSet:
+    sourceNamespaces:
+      - foo
+  cmdParams:
+    applicationsetcontroller.enable.tokenref.strict.mode: "false"
+```
+
+!!! important
+    Disabling tokenRef strict mode while ApplicationSets are allowed in non-control-plane namespaces removes the requirement that SCM `tokenRef` Secrets are labeled `argocd.argoproj.io/secret-type: scm-creds`. This weakens protection against referencing arbitrary Secrets (including in the Argo CD namespace) from ApplicationSets users can create in other namespaces. Only opt out temporarily during migration, or if you have compensating controls. Prefer labeling Secrets and keeping strict mode enabled.
 

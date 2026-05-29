@@ -1,6 +1,81 @@
 # Upgrading
 
 This page contains upgrade instructions and migration guides for the Argo CD Operator.
+## Upgrading from Operator ≤0.18 (Argo CD ≤3.3.+) to Operator 0.19+ (Argo CD 3.4.+)
+
+### ApplicationSet tokenRef strict mode
+If you're upgrading to an operator version that defaults ApplicationSet tokenRef strict mode when ApplicationSets in any namespace are configured, note the following changes:
+
+1. When `.spec.applicationSet.sourceNamespaces` expands to at least one cluster namespace, the operator sets `applicationsetcontroller.enable.tokenref.strict.mode` to `"true"` in `argocd-cmd-params-cm`
+2. The ApplicationSet controller requires Secrets referenced by SCM Provider and Pull Request generators via `tokenRef` to be labeled `argocd.argoproj.io/secret-type: scm-creds`
+3. Manual edits to this key in `argocd-cmd-params-cm` are corrected on reconcile; use the ArgoCD CR (`.spec.applicationSet.sourceNamespaces` and/or `.spec.cmdParams`) to change behavior
+4. You may opt out via `.spec.cmdParams`, but this is not recommended, see [ApplicationSets in Any Namespace](./usage/appsets-in-any-namespace.md#opting-out-of-tokenref-strict-mode)
+
+### Detection
+
+The following users are **unaffected** by this change:
+- Users who do not configure `.spec.applicationSet.sourceNamespaces` on their ArgoCD CR
+- Users whose `.spec.applicationSet.sourceNamespaces` patterns match no cluster namespace
+- Users who do not have ApplicationSets that use an SCM Provider or Pull Request generator with a `tokenRef` pointing at a Secret for API authentication
+- Users whose SCM `tokenRef` Secrets already have `argocd.argoproj.io/secret-type: scm-creds`
+
+The following users are **affected** and should perform remediation:
+- Users with a non-empty expanded `.spec.applicationSet.sourceNamespaces` list whose ApplicationSets use an **SCM Provider** or **Pull Request** generator with a **`tokenRef`** pointing at a Secret for API authentication
+- Users whose referenced Secrets are missing the `argocd.argoproj.io/secret-type: scm-creds` label
+
+### Remediation Steps
+
+1. **Find ApplicationSets using `tokenRef`:**
+
+```bash
+kubectl get applicationsets -A -o yaml | grep -B5 -A3 'tokenRef:'
+```
+
+Review SCM Provider and Pull Request generator blocks in each ApplicationSet.
+
+2. **Identify referenced Secrets:**
+
+For each `tokenRef`, note `secretName` and namespace (often the Argo CD namespace or the ApplicationSet namespace).
+
+```bash
+kubectl get secret -n <namespace> <secretName> -o yaml
+```
+
+3. **Label SCM credential Secrets:**
+
+```bash
+kubectl label secret -n <namespace> <secretName> \
+  argocd.argoproj.io/secret-type=scm-creds
+```
+
+Or in Git or your secret management workflow:
+
+```yaml
+metadata:
+  labels:
+    argocd.argoproj.io/secret-type: scm-creds
+```
+
+4. **Verify after upgrade or reconcile:**
+
+```bash
+kubectl get cm -n <argocd-namespace> argocd-cmd-params-cm -o yaml
+kubectl logs -n <argocd-namespace> deploy/<instance>-applicationset-controller --tail=50
+```
+
+Confirm `applicationsetcontroller.enable.tokenref.strict.mode` is `"true"` when source namespaces are configured, and that ApplicationSets reconcile without tokenRef or secret errors.
+
+5. **Temporary opt-out (migration only):**
+
+If you need time to label Secrets, set `.spec.cmdParams` on the ArgoCD CR:
+
+```yaml
+spec:
+  cmdParams:
+    applicationsetcontroller.enable.tokenref.strict.mode: "false"
+```
+
+This removes the `scm-creds` label requirement and is **not recommended** for production. Prefer labeling Secrets and keeping strict mode enabled. See [ApplicationSets in Any Namespace](./usage/appsets-in-any-namespace.md#tokenref-strict-mode) for details.
 
 ## Upgrading from Operator ≤0.14 (Argo CD ≤2.14) to Operator 0.15+ (Argo CD 3.0+)
 
