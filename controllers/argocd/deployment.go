@@ -945,10 +945,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		serverVolumeMounts = append(serverVolumeMounts, cr.Spec.Server.VolumeMounts...)
 	}
 
-	arguments, err := BuildTLSArgs(cr.Spec.Server.TlsConfig, r.CentralTlsConfigProfile)
-	if err != nil {
-		return err
-	}
+	arguments := BuildTLSArgs(cr.Spec.Server.TlsConfig, r.CentralTlsConfigProfile)
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Args:            arguments,
 		Command:         getArgoServerCommand(cr, useTLSForRedis),
@@ -1234,7 +1231,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 	return r.Create(context.TODO(), deploy)
 }
 
-func BuildTLSArgs(tlsCfg *argoproj.ArgoCDTlsConfig, centralTLSConfig TlsConfigProfile) ([]string, error) {
+func BuildTLSArgs(tlsCfg *argoproj.ArgoCDTlsConfig, centralTLSConfig TlsConfigProfile) []string {
 	var args []string
 	if tlsCfg != nil && tlsCfg.MinVersion != "" {
 		args = append(args, "--tlsminversion", tlsCfg.MinVersion)
@@ -1249,7 +1246,7 @@ func BuildTLSArgs(tlsCfg *argoproj.ArgoCDTlsConfig, centralTLSConfig TlsConfigPr
 	if tlsCfg != nil && tlsCfg.MaxVersion != "" {
 		args = append(args, "--tlsmaxversion", tlsCfg.MaxVersion)
 	}
-	return args, nil
+	return args
 }
 
 // triggerDeploymentRollout will update the label with the given key to trigger a new rollout of the Deployment.

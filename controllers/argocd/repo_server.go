@@ -214,10 +214,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 		repoServerVolumeMounts = append(repoServerVolumeMounts, cr.Spec.Repo.VolumeMounts...)
 	}
 
-	arguments, error := BuildTLSArgs(cr.Spec.Repo.TlsConfig, r.CentralTlsConfigProfile)
-	if error != nil {
-		return error
-	}
+	arguments := BuildTLSArgs(cr.Spec.Repo.TlsConfig, r.CentralTlsConfigProfile)
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Args:            arguments,
 		Command:         getArgoRepoCommand(cr, useTLSForRedis),

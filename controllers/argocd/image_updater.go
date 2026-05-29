@@ -607,10 +607,7 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterDeployment(cr *argoproj.ArgoCD, s
 		image = argoutil.CombineImageTag(DefaultImageUpdaterImage, DefaultImageUpdaterTag)
 	}
 	args := []string{"run"}
-	imageUpdaterTLSProfileArguments, err := BuildTLSArgs(cr.Spec.ImageUpdater.TlsConfig, r.CentralTlsConfigProfile)
-	if err != nil {
-		return err
-	}
+	imageUpdaterTLSProfileArguments := BuildTLSArgs(cr.Spec.ImageUpdater.TlsConfig, r.CentralTlsConfigProfile)
 	args = append(args, imageUpdaterTLSProfileArguments...)
 	podSpec.Containers = []corev1.Container{{
 		Command:         []string{"/manager"},
