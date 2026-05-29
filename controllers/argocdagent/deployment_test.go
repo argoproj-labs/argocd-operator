@@ -36,7 +36,7 @@ import (
 )
 
 // Helper function to create a test deployment
-func makeTestDeployment(cr *argoproj.ArgoCD) (*appsv1.Deployment, error) {
+func makeTestDeployment(cr *argoproj.ArgoCD) *appsv1.Deployment {
 	spec := buildPrincipalSpec(testCompName, generateAgentResourceName(cr.Name, testCompName), cr, "", nil)
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -45,17 +45,14 @@ func makeTestDeployment(cr *argoproj.ArgoCD) (*appsv1.Deployment, error) {
 			Labels:    buildLabelsForAgentPrincipal(cr.Name, testCompName),
 		},
 		Spec: spec,
-	}, nil
+	}
 }
 
 // Helper function to create a test deployment with custom image
-func makeTestDeploymentWithCustomImage(cr *argoproj.ArgoCD, customImage string) (*appsv1.Deployment, error) {
-	deployment, err := makeTestDeployment(cr)
-	if err != nil {
-		return nil, err
-	}
+func makeTestDeploymentWithCustomImage(cr *argoproj.ArgoCD, customImage string) *appsv1.Deployment {
+	deployment := makeTestDeployment(cr)
 	deployment.Spec.Template.Spec.Containers[0].Image = customImage
-	return deployment, nil
+	return deployment
 }
 
 // Helper function to create ArgoCD with custom principal image
@@ -166,14 +163,13 @@ func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalDisabled(t *test
 	saName := generateAgentResourceName(cr.Name, testCompName)
 
 	// Create existing Deployment
-	existingDeployment, err := makeTestDeployment(cr)
-	assert.NoError(t, err)
+	existingDeployment := makeTestDeployment(cr)
 
 	resObjs := []client.Object{cr, existingDeployment}
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err = ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil)
 	assert.NoError(t, err)
 
 	// Verify Deployment was deleted
@@ -193,14 +189,13 @@ func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalEnabled_NoChange
 	saName := generateAgentResourceName(cr.Name, testCompName)
 
 	// Create existing Deployment with correct spec
-	existingDeployment, err := makeTestDeployment(cr)
-	assert.NoError(t, err)
+	existingDeployment := makeTestDeployment(cr)
 
 	resObjs := []client.Object{cr, existingDeployment}
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err = ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil)
 	assert.NoError(t, err)
 
 	// Verify Deployment still exists with same spec
@@ -222,14 +217,13 @@ func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalEnabled_ImageCha
 	saName := generateAgentResourceName(cr.Name, testCompName)
 
 	// Create existing Deployment with old image
-	existingDeployment, err := makeTestDeploymentWithCustomImage(cr, "quay.io/argoproj/argocd-agent:v1")
-	assert.NoError(t, err)
+	existingDeployment := makeTestDeploymentWithCustomImage(cr, "quay.io/argoproj/argocd-agent:v1")
 
 	resObjs := []client.Object{cr, existingDeployment}
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err = ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil)
 	assert.NoError(t, err)
 
 	// Verify Deployment was updated with new image
@@ -251,15 +245,14 @@ func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalEnabled_ServiceA
 	newSAName := "new-service-account"
 
 	// Create existing Deployment with old service account
-	existingDeployment, err := makeTestDeployment(cr)
-	assert.NoError(t, err)
+	existingDeployment := makeTestDeployment(cr)
 	existingDeployment.Spec.Template.Spec.ServiceAccountName = oldSAName
 
 	resObjs := []client.Object{cr, existingDeployment}
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err = ReconcilePrincipalDeployment(cl, testCompName, newSAName, cr, sch, "", nil)
+	err := ReconcilePrincipalDeployment(cl, testCompName, newSAName, cr, sch, "", nil)
 	assert.NoError(t, err)
 
 	// Verify Deployment was updated with new service account
@@ -280,14 +273,13 @@ func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalNotSet(t *testin
 	saName := generateAgentResourceName(cr.Name, testCompName)
 
 	// Create existing Deployment
-	existingDeployment, err := makeTestDeployment(cr)
-	assert.NoError(t, err)
+	existingDeployment := makeTestDeployment(cr)
 
 	resObjs := []client.Object{cr, existingDeployment}
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err = ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil)
 	assert.NoError(t, err)
 
 	// Verify Deployment was deleted
@@ -330,14 +322,13 @@ func TestReconcilePrincipalDeployment_DeploymentExists_AgentNotSet(t *testing.T)
 	saName := generateAgentResourceName(cr.Name, testCompName)
 
 	// Create existing Deployment
-	existingDeployment, err := makeTestDeployment(cr)
-	assert.NoError(t, err)
+	existingDeployment := makeTestDeployment(cr)
 
 	resObjs := []client.Object{cr, existingDeployment}
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err = ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil)
 	assert.NoError(t, err)
 
 	// Verify Deployment was deleted
