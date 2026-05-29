@@ -1,7 +1,6 @@
 package argoutil
 
 import (
-	"crypto/tls"
 	"reflect"
 	"testing"
 
@@ -9,27 +8,6 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
-
-func TestTLSVersionString(t *testing.T) {
-	tests := []struct {
-		version  uint16
-		expected string
-	}{
-		{tls.VersionTLS10, "1.0"},
-		{tls.VersionTLS11, "1.1"},
-		{tls.VersionTLS12, "1.2"},
-		{tls.VersionTLS13, "1.3"},
-		{999, ""},
-	}
-
-	for _, tt := range tests {
-		got := tlsVersionString(tt.version)
-
-		if got != tt.expected {
-			t.Fatalf("expected %s got %s", tt.expected, got)
-		}
-	}
-}
 
 func TestRedisTLSVersion(t *testing.T) {
 	tests := []struct {
@@ -101,16 +79,7 @@ func TestBuildArgoCDAgentTLSArgs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := BuildArgoCDAgentTLSArgs(tt.cfg, tt.args)
-
-			if tt.wantErr && err == nil {
-				t.Fatal("expected error but got nil")
-			}
-
-			if !tt.wantErr && err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
+			got := BuildArgoCDAgentTLSArgs(tt.cfg, tt.args)
 			if !tt.wantErr && !reflect.DeepEqual(got, tt.expected) {
 				t.Fatalf("expected %+v got %+v", tt.expected, got)
 			}

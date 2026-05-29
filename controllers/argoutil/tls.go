@@ -17,7 +17,6 @@ package argoutil
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -128,21 +127,6 @@ func NewSignedCertificate(cfg *certmanagerv1.CertificateSpec, dnsNames []string,
 	return x509.ParseCertificate(certDERBytes)
 }
 
-func tlsVersionString(v uint16) string {
-	switch v {
-	case tls.VersionTLS10:
-		return "1.0"
-	case tls.VersionTLS11:
-		return "1.1"
-	case tls.VersionTLS12:
-		return "1.2"
-	case tls.VersionTLS13:
-		return "1.3"
-	default:
-		return ""
-	}
-}
-
 func RedisTLSVersion(version string) string {
 	if version == "1.0" {
 		return "TLSv1"
@@ -150,6 +134,7 @@ func RedisTLSVersion(version string) string {
 	return "TLSv" + version
 }
 
+// For Agent , minimum tls version supported is 1.1, so skipped for 1.0
 func AgentTLSVersion(version string) string {
 	if version == "" || version == "1.0" {
 		return ""
@@ -157,7 +142,7 @@ func AgentTLSVersion(version string) string {
 	return "tls" + version
 }
 
-func BuildArgoCDAgentTLSArgs(tlsCfg *argoproj.ArgoCDTlsConfig, args map[string]string) (map[string]string, error) {
+func BuildArgoCDAgentTLSArgs(tlsCfg *argoproj.ArgoCDTlsConfig, args map[string]string) map[string]string {
 	if min := AgentTLSVersion(tlsCfg.MinVersion); min != "" {
 		args["--tlsminversion"] = min
 	}
@@ -169,7 +154,7 @@ func BuildArgoCDAgentTLSArgs(tlsCfg *argoproj.ArgoCDTlsConfig, args map[string]s
 			args["--tlsciphers"] = ciphers
 		}
 	}
-	return args, nil
+	return args
 }
 
 // -------------------- Redis TLS Args --------------------

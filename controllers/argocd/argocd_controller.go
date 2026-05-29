@@ -145,7 +145,6 @@ var ActiveInstanceMap = make(map[string]string)
 //+kubebuilder:rbac:groups=argocd-image-updater.argoproj.io,resources=imageupdaters;imageupdaters/finalizers,verbs=*
 //+kubebuilder:rbac:groups=config.openshift.io,resources=authentications,verbs=get;list;watch
 //+kubebuilder:rbac:groups=certificates.k8s.io,resources=clustertrustbundles,verbs=get;list;watch
-//+kubebuilder:rbac:groups=config.openshift.io,resources=apiservers,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

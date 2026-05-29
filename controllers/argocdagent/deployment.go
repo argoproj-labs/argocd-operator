@@ -335,11 +335,7 @@ func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, dep
 }
 
 func buildPrincipalContainerEnv(cr *argoproj.ArgoCD, centralTLSProfileMinVersion configv1.TLSProtocolVersion, centralTLSProfileCiphers []string) ([]corev1.EnvVar, error) {
-	arguments, err := getPrincipalTlsConfig(cr, centralTLSProfileMinVersion, centralTLSProfileCiphers)
-	if err != nil {
-		log.Error(err, "failed to get principal TLS config")
-		return nil, err
-	}
+	arguments := getPrincipalTlsConfig(cr, centralTLSProfileMinVersion, centralTLSProfileCiphers)
 	env := []corev1.EnvVar{
 		{
 			Name:  EnvArgoCDPrincipalLogLevel,
@@ -576,10 +572,10 @@ func getPrincipalResourceProxyCaSecretName(cr *argoproj.ArgoCD) string {
 	return "argocd-agent-ca"
 }
 
-func getPrincipalTlsConfig(cr *argoproj.ArgoCD, centralTLSProfileMinVersion configv1.TLSProtocolVersion, centralTLSProfileCiphers []string) (map[string]string, error) {
+func getPrincipalTlsConfig(cr *argoproj.ArgoCD, centralTLSProfileMinVersion configv1.TLSProtocolVersion, centralTLSProfileCiphers []string) map[string]string {
 	arguments := make(map[string]string)
 	if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || cr.Spec.ArgoCDAgent.Principal.TLS == nil {
-		return arguments, nil
+		return arguments
 	}
 	tlsCfg := cr.Spec.ArgoCDAgent.Principal.TLS.TlsConfig
 	// CR config takes precedence
@@ -611,7 +607,7 @@ func getPrincipalTlsConfig(cr *argoproj.ArgoCD, centralTLSProfileMinVersion conf
 			arguments["--tlsciphers"] = strings.Join(ciphers, ",")
 		}
 	}
-	return arguments, nil
+	return arguments
 }
 
 func getPrincipalResourceProxySecretName(cr *argoproj.ArgoCD) string {

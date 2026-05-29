@@ -227,11 +227,7 @@ func getArgoRedisArgs(useTLS bool, cr *argoproj.ArgoCD, centralTLSConfig TlsConf
 	args = append(args, "--aclfile", argoutil.RedisAuthMountPath+"users.acl")
 
 	if useTLS {
-		arguments, err := BuildRedisArgs(cr.Spec.Redis.TlsConfig, centralTLSConfig)
-		if err != nil {
-			log.Error(err, "failed to build Redis args")
-			return nil, err
-		}
+		arguments := BuildRedisArgs(cr.Spec.Redis.TlsConfig, centralTLSConfig)
 		args = append(args, arguments...)
 		args = append(args, "--tls-port", "6379")
 		args = append(args, "--port", "0")
@@ -246,7 +242,7 @@ func getArgoRedisArgs(useTLS bool, cr *argoproj.ArgoCD, centralTLSConfig TlsConf
 // BuildRedisArgs builds arguments for redis deployment.
 // precedence will be for argoCD cr passed values
 // then for central tls config if no values are passed in argocd CR.
-func BuildRedisArgs(tlsCfg *argoproj.ArgoCDTlsConfig, centralTLSConfig TlsConfigProfile) ([]string, error) {
+func BuildRedisArgs(tlsCfg *argoproj.ArgoCDTlsConfig, centralTLSConfig TlsConfigProfile) []string {
 	var args []string
 	var (
 		protocols []string
@@ -289,7 +285,7 @@ func BuildRedisArgs(tlsCfg *argoproj.ArgoCDTlsConfig, centralTLSConfig TlsConfig
 			args = append(args, "--tls-ciphers", cipherString)
 		}
 	}
-	return args, nil
+	return args
 }
 
 // getArgoCmpServerInitCommand will return the command for the ArgoCD CMP Server init container
