@@ -607,6 +607,8 @@ func (r *ReconcileArgoCD) reconcileNotificationsServiceMonitor(cr *argoproj.Argo
 	}
 
 	name := fmt.Sprintf("%s-%s", cr.Name, "notifications-controller-metrics")
+	// Resource names must not exceed 63 characters
+	name = argoutil.TruncateWithHash(name, 63)
 	serviceMonitor := newServiceMonitorWithName(name, cr)
 	smExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, serviceMonitor.Name, serviceMonitor)
 	if err != nil {

@@ -142,15 +142,27 @@ func NameWithSuffix(meta metav1.ObjectMeta, suffix string) string {
 
 // NameWithSuffixForStatefulSet returns a StatefulSet name that stays within the Kubernetes
 // label length limit after controller revision hash suffixes are applied.
-// Abbreviates "application-controller" to "app-controller" for better readability.
+// Preserves the original suffix when possible to maintain backward compatibility.
+// Only abbreviates or truncates when the full name would exceed maxStatefulSetNameLength.
 func NameWithSuffixForStatefulSet(meta metav1.ObjectMeta, suffix string) string {
-	// Abbreviate application-controller to preserve readability in truncated names
-	abbreviatedSuffix := suffix
-	if suffix == "application-controller" {
-		abbreviatedSuffix = "app-controller"
+	truncatedCRName := TruncateCRName(meta.Name)
+	fullName := fmt.Sprintf("%s-%s", truncatedCRName, suffix)
+
+	// If the full name fits within the limit, use it as-is to maintain backward compatibility
+	if len(fullName) <= maxStatefulSetNameLength {
+		return fullName
 	}
 
-	fullName := fmt.Sprintf("%s-%s", TruncateCRName(meta.Name), abbreviatedSuffix)
+	// Name is too long. For application-controller, try abbreviating first
+	if suffix == "application-controller" {
+		abbreviated := fmt.Sprintf("%s-%s", truncatedCRName, "app-controller")
+		if len(abbreviated) <= maxStatefulSetNameLength {
+			return abbreviated
+		}
+		// If abbreviation still doesn't fit, fall through to hash truncation below
+	}
+
+	// As a last resort, truncate with hash to fit within the limit
 	return TruncateWithHash(fullName, maxStatefulSetNameLength)
 }
 

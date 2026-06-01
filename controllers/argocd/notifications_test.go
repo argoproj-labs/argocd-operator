@@ -563,6 +563,42 @@ func TestReconcileNotifications_ServiceMonitorWithMetrics(t *testing.T) {
 	assert.Equal(t, monitoringv1.Duration("30s"), testServiceMonitor.Spec.Endpoints[0].ScrapeTimeout)
 }
 
+func TestReconcileNotifications_ServiceMonitorWithLongName(t *testing.T) {
+	// Test that ServiceMonitor names are truncated to 63 characters
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Name = "this-name-will-push-the-char-limit" // 37 chars + 36 char suffix = 73 chars total
+		a.Spec.Notifications.Enabled = true
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	err := monitoringv1.AddToScheme(sch)
+	assert.NoError(t, err)
+	err = v1alpha1.AddToScheme(sch)
+	assert.NoError(t, err)
+
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	prometheusAPIFound = true
+	err = r.reconcileNotificationsController(a)
+	assert.NoError(t, err)
+
+	// List all ServiceMonitors and find the one for notifications
+	testServiceMonitorList := &monitoringv1.ServiceMonitorList{}
+	err = r.List(context.TODO(), testServiceMonitorList, &client.ListOptions{Namespace: a.Namespace})
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(testServiceMonitorList.Items))
+
+	testServiceMonitor := testServiceMonitorList.Items[0]
+	// Verify the name is truncated to 63 characters
+	assert.LessOrEqual(t, len(testServiceMonitor.GetName()), 63, "ServiceMonitor name exceeds 63 character limit")
+	// Verify the ServiceMonitor was created successfully
+	assert.NotEmpty(t, testServiceMonitor.GetName())
+}
+
 func TestReconcileNotifications_CreateSecret(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {

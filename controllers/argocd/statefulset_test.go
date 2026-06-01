@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -1125,4 +1126,91 @@ func TestApplicationControllerStatefulSetWithLongCRName(t *testing.T) {
 
 	saName := nameWithSuffix(common.ArgoCDApplicationControllerComponent, a)
 	assert.LessOrEqual(t, len(saName), argoutil.GetMaxLabelLength())
+}
+
+func TestReconcileArgoCD_reconcileApplicationControllerStatefulSet_LegacyCleanup(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	// Create ArgoCD with a long name that triggers abbreviation
+	longName := "this-name-will-push-the-char-limit"
+	a := makeTestArgoCD()
+	a.Name = longName
+
+	// Create a legacy StatefulSet with old naming (owned by this CR)
+	oldStatefulSetName := argoutil.NameWithSuffix(a.ObjectMeta, "application-controller")
+	trueVal := true
+	legacyOwnedSS := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      oldStatefulSetName,
+			Namespace: a.Namespace,
+			Labels: map[string]string{
+				common.ArgoCDKeyComponent: "application-controller",
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         "argoproj.io/v1beta1",
+					Kind:               "ArgoCD",
+					Name:               a.Name,
+					UID:                a.UID,
+					Controller:         &trueVal,
+					BlockOwnerDeletion: &trueVal,
+				},
+			},
+		},
+		Spec: appsv1.StatefulSetSpec{
+			Replicas: func() *int32 { r := int32(1); return &r }(),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					common.ArgoCDKeyName: oldStatefulSetName,
+				},
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						common.ArgoCDKeyName: oldStatefulSetName,
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "argocd-application-controller",
+							Image: "quay.io/argoproj/argocd:latest",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	resObjs := []client.Object{a, legacyOwnedSS}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	// First reconcile - should delete the old StatefulSet and return early
+	err := r.reconcileApplicationControllerStatefulSet(a, false)
+	assert.NoError(t, err)
+
+	// Verify legacy owned StatefulSet was deleted
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      legacyOwnedSS.Name,
+		Namespace: legacyOwnedSS.Namespace,
+	}, legacyOwnedSS)
+	assert.True(t, apierrors.IsNotFound(err), "Legacy owned StatefulSet should be deleted")
+
+	// Second reconcile - should create the new StatefulSet with abbreviated name
+	err = r.reconcileApplicationControllerStatefulSet(a, false)
+	assert.NoError(t, err)
+
+	// Verify new StatefulSet with abbreviated name exists
+	newStatefulSetName := argoutil.NameWithSuffixForStatefulSet(a.ObjectMeta, "application-controller")
+	newSS := &appsv1.StatefulSet{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      newStatefulSetName,
+		Namespace: a.Namespace,
+	}, newSS)
+	assert.NoError(t, err, "New StatefulSet with abbreviated name should exist")
+	assert.Contains(t, newSS.Name, "app-controller", "Should use abbreviated suffix")
 }

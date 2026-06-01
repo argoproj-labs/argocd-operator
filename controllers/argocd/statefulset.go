@@ -85,6 +85,7 @@ func newStatefulSetWithName(name string, component string, cr *argoproj.ArgoCD) 
 }
 
 // newStatefulSetWithSuffix returns a new StatefulSet instance for the given ArgoCD using the given suffix.
+// Uses the 52-char StatefulSet naming to prevent controller-revision label overflow for all StatefulSets.
 func newStatefulSetWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) *appsv1.StatefulSet {
 	return newStatefulSetWithName(argoutil.NameWithSuffixForStatefulSet(cr.ObjectMeta, suffix), component, cr)
 }
@@ -819,10 +820,44 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		}
 	}
 
-	existing := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
+	existing := newStatefulSetWithName(applicationControllerResourceName(cr), "application-controller", cr)
 	ssExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
 	if err != nil {
 		return err
+	}
+
+	// Check for and clean up old StatefulSet if the naming strategy has changed.
+	// This ensures backward compatibility when upgrading from previous operator versions
+	// that may have used different naming conventions.
+	oldStatefulSetName := nameWithSuffix("application-controller", cr)
+	if oldStatefulSetName != existing.Name {
+		oldSS := &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      oldStatefulSetName,
+				Namespace: cr.Namespace,
+			},
+		}
+		oldExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, oldStatefulSetName, oldSS)
+		if err != nil {
+			return err
+		}
+		if oldExists {
+			// Verify the old StatefulSet is owned by this ArgoCD CR before deleting
+			if !metav1.IsControlledBy(oldSS, cr) {
+				log.Info("Found StatefulSet with legacy name but it is not owned by this ArgoCD CR, skipping cleanup", "oldName", oldStatefulSetName, "cr", cr.Name)
+			} else {
+				log.Info("Cleaning up old application controller StatefulSet with legacy name", "oldName", oldStatefulSetName, "newName", existing.Name)
+				argoutil.LogResourceDeletion(log, oldSS, "removing StatefulSet with legacy name")
+				if err := r.Delete(context.TODO(), oldSS); err != nil {
+					return err
+				}
+				// If the new StatefulSet doesn't exist yet, it will be created in the next reconciliation.
+				// If it already exists, we just cleaned up the orphaned old one.
+				if !ssExists {
+					return nil
+				}
+			}
+		}
 	}
 	if ssExists {
 		if !cr.Spec.Controller.IsEnabled() {

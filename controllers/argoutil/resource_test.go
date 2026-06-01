@@ -160,24 +160,33 @@ func TestNameWithSuffixForStatefulSet(t *testing.T) {
 		crName         string
 		suffix         string
 		expectContains string
+		expectExact    string // For backward compatibility tests where we expect exact name
 	}{
 		{
-			name:           "abbreviates suffix to preserve readability for short names",
+			name:           "preserves full suffix for short CR names (backward compatibility)",
 			crName:         "argocd",
 			suffix:         "application-controller",
-			expectContains: "app-controller",
+			expectExact:    "argocd-application-controller",
+			expectContains: "application-controller",
 		},
 		{
-			name:           "stays within controller revision limit with medium CR name",
-			crName:         "argocd-sharding-algorithm-test",
+			name:           "preserves full suffix for medium CR names (backward compatibility)",
+			crName:         "example-argocd",
+			suffix:         "application-controller",
+			expectExact:    "example-argocd-application-controller",
+			expectContains: "application-controller",
+		},
+		{
+			name:           "abbreviates suffix for long CR names to stay within 52 char limit",
+			crName:         "this-name-will-push-the-char-limit",
 			suffix:         "application-controller",
 			expectContains: "app-controller",
 		},
 		{
-			name:           "truncates and abbreviates for long CR names to fit within 52 char limit",
-			crName:         "long-cr-name-for-statefulset-test",
+			name:           "truncates with hash for very long CR names",
+			crName:         "very-long-argocd-instance-name-that-needs-truncation-and-more",
 			suffix:         "application-controller",
-			expectContains: "app-controller",
+			expectContains: "", // Will be truncated with hash
 		},
 	}
 
@@ -193,9 +202,17 @@ func TestNameWithSuffixForStatefulSet(t *testing.T) {
 			assert.LessOrEqual(t, len(result)+11, GetMaxLabelLength(),
 				"StatefulSet name + controller revision must be <= %d chars", GetMaxLabelLength())
 
-			// Verify suffix is abbreviated for readability
-			assert.Contains(t, result, tt.expectContains,
-				"Should contain readable abbreviated suffix")
+			// Verify exact name for backward compatibility cases
+			if tt.expectExact != "" {
+				assert.Equal(t, tt.expectExact, result,
+					"Should preserve original naming for backward compatibility")
+			}
+
+			// Verify suffix is present when expected
+			if tt.expectContains != "" {
+				assert.Contains(t, result, tt.expectContains,
+					"Should contain expected suffix")
+			}
 
 			// Verify function is deterministic
 			result2 := NameWithSuffixForStatefulSet(metav1.ObjectMeta{Name: tt.crName}, tt.suffix)

@@ -162,9 +162,14 @@ func (r *ReconcileArgoCD) reconcileRedisHAAnnounceServices(cr *argoproj.ArgoCD) 
 
 		svc.Spec.PublishNotReadyAddresses = true
 
+		// Use the actual StatefulSet name to derive the pod name ensuring consistency
+		// when StatefulSet names get truncated for long CR names.
+		redisHAStatefulSet := redisHAStatefulSetName(cr)
+		redisPodName := fmt.Sprintf("%s-%d", redisHAStatefulSet, i)
+
 		svc.Spec.Selector = map[string]string{
 			common.ArgoCDKeyName:               nameWithSuffix("redis-ha", cr),
-			common.ArgoCDKeyStatefulSetPodName: nameWithSuffix(fmt.Sprintf("redis-ha-server-%d", i), cr),
+			common.ArgoCDKeyStatefulSetPodName: redisPodName,
 		}
 
 		svc.Spec.Ports = []corev1.ServicePort{

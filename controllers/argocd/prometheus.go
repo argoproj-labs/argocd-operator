@@ -92,7 +92,10 @@ func newServiceMonitorWithName(name string, cr *argoproj.ArgoCD) *monitoringv1.S
 
 // newServiceMonitorWithSuffix returns a new ServiceMonitor instance for the given ArgoCD using the given suffix.
 func newServiceMonitorWithSuffix(suffix string, cr *argoproj.ArgoCD) *monitoringv1.ServiceMonitor {
-	return newServiceMonitorWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), cr)
+	name := fmt.Sprintf("%s-%s", cr.Name, suffix)
+	// Resource names must not exceed 63 characters
+	name = argoutil.TruncateWithHash(name, 63)
+	return newServiceMonitorWithName(name, cr)
 }
 
 // getMetricsEndpoint returns the desired ServiceMonitor endpoint built from the component's metrics spec.

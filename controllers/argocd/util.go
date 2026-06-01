@@ -426,6 +426,11 @@ func applicationControllerResourceName(cr *argoproj.ArgoCD) string {
 	return argoutil.NameWithSuffixForStatefulSet(cr.ObjectMeta, "application-controller")
 }
 
+// redisHAStatefulSetName returns the Redis HA StatefulSet name.
+func redisHAStatefulSetName(cr *argoproj.ArgoCD) string {
+	return argoutil.NameWithSuffixForStatefulSet(cr.ObjectMeta, "redis-ha-server")
+}
+
 // InspectCluster will verify the availability of extra features available to the cluster, such as Prometheus and
 // OpenShift Routes.
 func InspectCluster() error {
