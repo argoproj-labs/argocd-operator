@@ -148,8 +148,7 @@ The default uses expanded `.spec.applicationSet.sourceNamespaces` only. It does 
 
 When strict mode is enabled, Secrets referenced by ApplicationSet SCM Provider and Pull Request generators via `tokenRef` must carry the label `argocd.argoproj.io/secret-type` with value `scm-creds`. This limits which Secrets can be used as SCM credentials and reduces the risk of secret exfiltration when ApplicationSets run outside the Argo CD control-plane namespace.
 
-The ArgoCD CR is the source of truth for this setting. The Operator reconciles the desired value into `argocd-cmd-params-cm` and corrects manual edits to this key on reconcile. To change behavior, update `.spec.applicationSet.sourceNamespaces` and/or `.spec.cmdParams` do not edit `argocd-cmd-params-cm` directly.
-
+The ArgoCD CR is the source of truth for this setting. The Operator reconciles the desired value into `argocd-cmd-params-cm` and corrects manual edits to this key on reconcile. To change behavior, update `.spec.applicationSet.sourceNamespaces` and/or `.spec.cmdParams`; do not edit `argocd-cmd-params-cm` directly.
 ### Opting out of tokenRef strict mode
 
 If you must disable strict mode while `.spec.applicationSet.sourceNamespaces` is configured, set the key in `.spec.cmdParams` on the ArgoCD CR:
