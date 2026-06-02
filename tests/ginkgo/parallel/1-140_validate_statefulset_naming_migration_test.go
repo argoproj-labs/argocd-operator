@@ -26,6 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -209,6 +210,352 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				}
 				return false
 			}, "5m", "5s").Should(BeTrue())
+		})
+
+		It("should preserve Redis HA naming for short CR names (backward compatibility)", func() {
+			By("creating namespace for test")
+			ns, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("argocd-e2e-redis-short-name")
+			defer cleanupFunc()
+
+			crName := "example-argocd"
+
+			By("creating ArgoCD CR with short name and HA enabled")
+			argoCDInstance := &argov1beta1api.ArgoCD{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      crName,
+					Namespace: ns.Name,
+				},
+				Spec: argov1beta1api.ArgoCDSpec{
+					HA: argov1beta1api.ArgoCDHASpec{
+						Enabled: true,
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, argoCDInstance)).To(Succeed())
+
+			// For short CR names full "redis-ha-server" suffix should be preserved
+			expectedStatefulSetName := argoutil.NameWithSuffixForStatefulSet(argoCDInstance.ObjectMeta, "redis-ha-server")
+			statefulSet := &appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      expectedStatefulSetName,
+					Namespace: ns.Name,
+				},
+			}
+
+			By("waiting for operator to create Redis HA StatefulSet with preserved name")
+			Eventually(statefulSet, "5m", "5s").Should(k8sFixture.ExistByName())
+
+			// Verify it uses the full suffix, not abbreviated
+			Expect(expectedStatefulSetName).To(Equal(crName + "-redis-ha-server"))
+
+			By("verifying no migration occurred (exactly one Redis HA StatefulSet)")
+			statefulSetList := &appsv1.StatefulSetList{}
+			Eventually(func() int {
+				listOpts := []client.ListOption{
+					client.InNamespace(ns.Name),
+					client.MatchingLabels{"app.kubernetes.io/component": "redis"},
+				}
+				err := k8sClient.List(ctx, statefulSetList, listOpts...)
+				if err != nil {
+					return -1
+				}
+				return len(statefulSetList.Items)
+			}, "2m", "5s").Should(Equal(1))
+
+			By("verifying StatefulSet name is within 52 character limit")
+			Expect(len(expectedStatefulSetName)).To(BeNumerically("<=", 52))
+		})
+
+		It("should abbreviate Redis HA naming for long CR names", func() {
+			By("creating namespace for test")
+			ns, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("argocd-e2e-redis-long-name")
+			defer cleanupFunc()
+
+			// Use a CR name long enough that {cr}-redis-ha-server exceeds the 52-char StatefulSet limit
+			crName := "this-is-a-very-long-argocd-cr-name-for-testing"
+
+			By("creating ArgoCD CR with long name and HA enabled")
+			argoCDInstance := &argov1beta1api.ArgoCD{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      crName,
+					Namespace: ns.Name,
+				},
+				Spec: argov1beta1api.ArgoCDSpec{
+					HA: argov1beta1api.ArgoCDHASpec{
+						Enabled: true,
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, argoCDInstance)).To(Succeed())
+
+			// New StatefulSet name should be truncated to fit within the 52-char limit
+			newStatefulSetName := argoutil.NameWithSuffixForStatefulSet(argoCDInstance.ObjectMeta, "redis-ha-server")
+			newStatefulSet := &appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      newStatefulSetName,
+					Namespace: ns.Name,
+				},
+			}
+
+			By(fmt.Sprintf("waiting for operator to create truncated Redis HA StatefulSet: %s", newStatefulSetName))
+			Eventually(newStatefulSet, "5m", "5s").Should(k8sFixture.ExistByName())
+
+			// Verify STS name is hash-truncated to fit within the 52-char limit
+			fullName := fmt.Sprintf("%s-redis-ha-server", crName)
+			Expect(newStatefulSetName).NotTo(Equal(fullName), "Name should be truncated")
+			Expect(len(newStatefulSetName)).To(BeNumerically("<=", 52), "Redis HA StatefulSet name should not exceed 52 characters")
+
+			By("verifying pod template label uses truncated redis-ha component name")
+			expectedRedisLabel := argoutil.NameWithSuffix(argoCDInstance.ObjectMeta, "redis-ha")
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: newStatefulSetName, Namespace: ns.Name}, newStatefulSet)
+				if err != nil {
+					return false
+				}
+				podName := newStatefulSet.Spec.Template.Labels["app.kubernetes.io/name"]
+				GinkgoWriter.Printf("Pod label 'app.kubernetes.io/name': %s (length: %d)\n", podName, len(podName))
+				return podName == expectedRedisLabel && len(podName) <= 63
+			}, "2m", "5s").Should(BeTrue())
+
+			By("verifying no old-style StatefulSet exists (exactly one Redis HA StatefulSet)")
+			statefulSetList := &appsv1.StatefulSetList{}
+			Eventually(func() int {
+				listOpts := []client.ListOption{
+					client.InNamespace(ns.Name),
+					client.MatchingLabels{"app.kubernetes.io/component": "redis"},
+				}
+				err := k8sClient.List(ctx, statefulSetList, listOpts...)
+				if err != nil {
+					return -1
+				}
+				return len(statefulSetList.Items)
+			}, "2m", "5s").Should(Equal(1))
+		})
+
+		It("should migrate existing application controller StatefulSet from old long name to abbreviated name", func() {
+			By("creating namespace for test")
+			ns, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("argocd-e2e-app-migration")
+			defer cleanupFunc()
+
+			crName := "this-name-will-push-the-char-limit"
+
+			By("creating ArgoCD CR with long name")
+			argoCDInstance := &argov1beta1api.ArgoCD{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      crName,
+					Namespace: ns.Name,
+				},
+				Spec: argov1beta1api.ArgoCDSpec{},
+			}
+			Expect(k8sClient.Create(ctx, argoCDInstance)).To(Succeed())
+
+			// Wait briefly for ArgoCD CR to be picked up by the operator
+			Eventually(func() error {
+				return k8sClient.Get(ctx, types.NamespacedName{
+					Name:      argoCDInstance.Name,
+					Namespace: argoCDInstance.Namespace,
+				}, argoCDInstance)
+			}, "30s", "2s").Should(Succeed())
+
+			By("creating legacy StatefulSet with previous operator naming (nameWithSuffix)")
+			oldStatefulSetName := argoutil.NameWithSuffix(argoCDInstance.ObjectMeta, "application-controller")
+			oldSS := &appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      oldStatefulSetName,
+					Namespace: ns.Name,
+					Labels: map[string]string{
+						"app.kubernetes.io/name":      oldStatefulSetName,
+						"app.kubernetes.io/part-of":   "argocd",
+						"app.kubernetes.io/component": "application-controller",
+					},
+					OwnerReferences: []metav1.OwnerReference{{
+						APIVersion:         "argoproj.io/v1beta1",
+						Kind:               "ArgoCD",
+						Name:               argoCDInstance.Name,
+						UID:                argoCDInstance.UID,
+						Controller:         ptr.To(true),
+						BlockOwnerDeletion: ptr.To(true),
+					}},
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: ptr.To(int32(1)),
+					Selector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"app.kubernetes.io/name": oldStatefulSetName,
+						},
+					},
+					ServiceName: oldStatefulSetName,
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								"app.kubernetes.io/name": oldStatefulSetName,
+							},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{{
+								Name:  "application-controller",
+								Image: "quay.io/argoproj/argocd:latest",
+							}},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, oldSS)).To(Succeed())
+
+			By("verifying old StatefulSet exists")
+			Eventually(oldSS).Should(k8sFixture.ExistByName())
+
+			By("waiting for operator to detect and migrate the StatefulSet")
+			newStatefulSetName := argoutil.NameWithSuffixForStatefulSet(argoCDInstance.ObjectMeta, "application-controller")
+
+			By(fmt.Sprintf("verifying old StatefulSet is eventually deleted: %s", oldStatefulSetName))
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, types.NamespacedName{
+					Name:      oldStatefulSetName,
+					Namespace: ns.Name,
+				}, oldSS)
+				return err != nil
+			}, "3m", "5s").Should(BeTrue(), "Old StatefulSet should be deleted during migration")
+
+			By(fmt.Sprintf("verifying new StatefulSet is created with abbreviated name: %s", newStatefulSetName))
+			newSS := &appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      newStatefulSetName,
+					Namespace: ns.Name,
+				},
+			}
+			Eventually(newSS, "3m", "5s").Should(k8sFixture.ExistByName())
+
+			By("verifying only one application controller StatefulSet exists")
+			statefulSetList := &appsv1.StatefulSetList{}
+			Eventually(func() int {
+				listOpts := []client.ListOption{
+					client.InNamespace(ns.Name),
+					client.MatchingLabels{"app.kubernetes.io/component": "application-controller"},
+				}
+				err := k8sClient.List(ctx, statefulSetList, listOpts...)
+				if err != nil {
+					return -1
+				}
+				return len(statefulSetList.Items)
+			}, "2m", "5s").Should(Equal(1), "Should have exactly one application controller StatefulSet")
+
+			By("verifying the ArgoCD instance becomes available after migration")
+			Eventually(argoCDInstance, "5m", "5s").Should(argocdFixture.BeAvailable())
+		})
+
+		It("should migrate existing Redis HA StatefulSet from old long name to abbreviated name", func() {
+			By("creating namespace for test")
+			ns, cleanupFunc := fixture.CreateNamespaceWithCleanupFunc("argocd-e2e-redis-migration")
+			defer cleanupFunc()
+
+			crName := "this-is-a-very-long-argocd-cr-name-for-testing"
+
+			By("creating ArgoCD CR with long name and HA enabled")
+			argoCDInstance := &argov1beta1api.ArgoCD{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      crName,
+					Namespace: ns.Name,
+				},
+				Spec: argov1beta1api.ArgoCDSpec{
+					HA: argov1beta1api.ArgoCDHASpec{
+						Enabled: true,
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, argoCDInstance)).To(Succeed())
+
+			// Wait briefly for ArgoCD CR to be picked up
+			Eventually(func() error {
+				return k8sClient.Get(ctx, types.NamespacedName{
+					Name:      argoCDInstance.Name,
+					Namespace: argoCDInstance.Namespace,
+				}, argoCDInstance)
+			}, "30s", "2s").Should(Succeed())
+
+			By("creating legacy Redis HA StatefulSet with previous operator naming (nameWithSuffix)")
+			oldStatefulSetName := argoutil.NameWithSuffix(argoCDInstance.ObjectMeta, "redis-ha-server")
+			oldRedisLabel := argoutil.NameWithSuffix(argoCDInstance.ObjectMeta, "redis-ha")
+			oldSS := &appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      oldStatefulSetName,
+					Namespace: ns.Name,
+					Labels: map[string]string{
+						"app.kubernetes.io/name":      oldRedisLabel,
+						"app.kubernetes.io/part-of":   "argocd",
+						"app.kubernetes.io/component": "redis",
+					},
+					OwnerReferences: []metav1.OwnerReference{{
+						APIVersion:         "argoproj.io/v1beta1",
+						Kind:               "ArgoCD",
+						Name:               argoCDInstance.Name,
+						UID:                argoCDInstance.UID,
+						Controller:         ptr.To(true),
+						BlockOwnerDeletion: ptr.To(true),
+					}},
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: ptr.To(int32(3)),
+					Selector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"app.kubernetes.io/name": oldRedisLabel,
+						},
+					},
+					ServiceName: oldRedisLabel,
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								"app.kubernetes.io/name": oldRedisLabel,
+							},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{{
+								Name:  "redis",
+								Image: "redis:7.0.11-alpine",
+							}},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, oldSS)).To(Succeed())
+
+			By("verifying old Redis HA StatefulSet exists")
+			Eventually(oldSS).Should(k8sFixture.ExistByName())
+
+			By("waiting for operator to detect and migrate the Redis HA StatefulSet")
+			newStatefulSetName := argoutil.NameWithSuffixForStatefulSet(argoCDInstance.ObjectMeta, "redis-ha-server")
+
+			By(fmt.Sprintf("verifying old Redis HA StatefulSet is eventually deleted: %s", oldStatefulSetName))
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, types.NamespacedName{
+					Name:      oldStatefulSetName,
+					Namespace: ns.Name,
+				}, oldSS)
+				return err != nil
+			}, "3m", "5s").Should(BeTrue(), "Old Redis HA StatefulSet should be deleted during migration")
+
+			By(fmt.Sprintf("verifying new Redis HA StatefulSet is created with abbreviated name: %s", newStatefulSetName))
+			newSS := &appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      newStatefulSetName,
+					Namespace: ns.Name,
+				},
+			}
+			Eventually(newSS, "3m", "5s").Should(k8sFixture.ExistByName())
+
+			By("verifying only one Redis HA StatefulSet exists")
+			statefulSetList := &appsv1.StatefulSetList{}
+			Eventually(func() int {
+				listOpts := []client.ListOption{
+					client.InNamespace(ns.Name),
+					client.MatchingLabels{"app.kubernetes.io/component": "redis"},
+				}
+				err := k8sClient.List(ctx, statefulSetList, listOpts...)
+				if err != nil {
+					return -1
+				}
+				return len(statefulSetList.Items)
+			}, "2m", "5s").Should(Equal(1), "Should have exactly one Redis HA StatefulSet")
 		})
 	})
 })

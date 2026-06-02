@@ -153,12 +153,12 @@ func (r *ReconcileArgoCD) deleteNotificationsResources(cr *argoproj.ArgoCD) erro
 	sa := &corev1.ServiceAccount{}
 	role := &rbacv1.Role{}
 
-	if err := argoutil.FetchObject(r.Client, cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDNotificationsControllerComponent), sa); err != nil {
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, nameWithSuffix(common.ArgoCDNotificationsControllerComponent, cr), sa); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return err
 		}
 	}
-	if err := argoutil.FetchObject(r.Client, cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDNotificationsControllerComponent), role); err != nil {
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, nameWithSuffix(common.ArgoCDNotificationsControllerComponent, cr), role); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return err
 		}
@@ -606,9 +606,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsServiceMonitor(cr *argoproj.Argo
 		return nil
 	}
 
-	name := fmt.Sprintf("%s-%s", cr.Name, "notifications-controller-metrics")
-	// Resource names must not exceed 63 characters
-	name = argoutil.TruncateWithHash(name, 63)
+	name := nameWithSuffix("notifications-controller-metrics", cr)
 	serviceMonitor := newServiceMonitorWithName(name, cr)
 	smExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, serviceMonitor.Name, serviceMonitor)
 	if err != nil {
@@ -890,7 +888,9 @@ func getNotificationsResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements 
 
 // Returns the name of the role/rolebinding for the source namespaces for notifications-controller in the format of "argocdName-argocdNamespace-notifications"
 func getResourceNameForNotificationsSourceNamespaces(cr *argoproj.ArgoCD) string {
-	return fmt.Sprintf("%s-%s-notifications", cr.Name, cr.Namespace)
+	// For source namespace resources, we need namespace to ensure uniqueness across cluster
+	namespacedName := fmt.Sprintf("%s-%s", argoutil.TruncateCRName(cr.Name), cr.Namespace)
+	return argoutil.TruncateWithHash(fmt.Sprintf("%s-notifications", namespacedName), 63)
 }
 
 // setManagedNotificationSourceNamespaces populates ManagedNotificationsSourceNamespaces var with namespaces

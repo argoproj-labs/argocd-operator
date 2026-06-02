@@ -27,6 +27,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -198,6 +199,59 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_enabled(t *testing.T) {
 	a.Spec.HA.Enabled = false
 	assert.NoError(t, r.reconcileRedisStatefulSet(a))
 	assert.Errorf(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s), "not found")
+}
+
+func TestReconcileArgoCD_reconcileRedisStatefulSet_MigratesFromLegacyName(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	// Create ArgoCD with a long name that will trigger abbreviation for Redis HA
+	// redis-ha-server suffix is 16 chars, so we need CR name > 36 chars to exceed 52 char limit
+	a := makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+		cr.Name = "this-is-a-very-long-argocd-cr-name-for-testing"
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	a.Spec.HA.Enabled = true
+
+	// Create old-style StatefulSet with full unabbreviated name
+	oldStatefulSetName := nameWithSuffix("redis-ha-server", a)
+	oldSS := newStatefulSetWithSuffix("redis-ha-server", "redis", a)
+	oldSS.Name = oldStatefulSetName // Force old naming
+	err := controllerutil.SetControllerReference(a, oldSS, r.Scheme)
+	assert.NoError(t, err)
+	err = r.Create(context.TODO(), oldSS)
+	assert.NoError(t, err)
+
+	// First reconcile deletes old StatefulSet
+	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+
+	// Verify old StatefulSet is deleted
+	oldSSCheck := &appsv1.StatefulSet{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      oldStatefulSetName,
+		Namespace: a.Namespace,
+	}, oldSSCheck)
+	assert.True(t, apierrors.IsNotFound(err), "Old StatefulSet should be deleted after first reconcile")
+
+	// Second reconcile creates new StatefulSet with abbreviated name
+	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+
+	// Verify new StatefulSet exists with abbreviated name
+	newStatefulSetName := argoutil.NameWithSuffixForStatefulSet(a.ObjectMeta, "redis-ha-server")
+	newSS := &appsv1.StatefulSet{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
+		Name:      newStatefulSetName,
+		Namespace: a.Namespace,
+	}, newSS))
+
+	// Verify names are different (migration occurred)
+	assert.NotEqual(t, oldStatefulSetName, newStatefulSetName, "Old and new names should differ")
 }
 
 func TestReconcileArgoCD_reconcileApplicationController(t *testing.T) {

@@ -183,10 +183,16 @@ func TestNameWithSuffixForStatefulSet(t *testing.T) {
 			expectContains: "app-controller",
 		},
 		{
-			name:           "truncates with hash for very long CR names",
+			name:           "abbreviates suffix for very long CR names",
 			crName:         "very-long-argocd-instance-name-that-needs-truncation-and-more",
 			suffix:         "application-controller",
-			expectContains: "", // Will be truncated with hash
+			expectContains: "app-controller", // CR name truncated, suffix abbreviated to fit
+		},
+		{
+			name:           "truncates with hash for very long CR names with non-abbreviated suffix",
+			crName:         "very-long-argocd-instance-name-that-needs-truncation-and-more",
+			suffix:         "redis-ha-server",
+			expectContains: "", // No abbreviation for redis-ha-server, falls through to hash truncation
 		},
 	}
 

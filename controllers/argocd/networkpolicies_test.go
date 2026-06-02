@@ -2,7 +2,6 @@ package argocd
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -57,12 +56,12 @@ func TestReconcileNetworkPolicies_DisabledDeletesExisting(t *testing.T) {
 	assert.NoError(t, err)
 
 	nps := []string{
-		fmt.Sprintf("%s-%s", a.Name, ArgoCDNotificationsControllerNetworkPolicy),
-		fmt.Sprintf("%s-%s", a.Name, ArgoCDDexServerNetworkPolicy),
-		fmt.Sprintf("%s-%s", a.Name, ArgoCDApplicationSetControllerNetworkPolicy),
-		fmt.Sprintf("%s-%s", a.Name, ArgoCDServerNetworkPolicy),
-		fmt.Sprintf("%s-%s", a.Name, ArgoCDApplicationControllerNetworkPolicy),
-		fmt.Sprintf("%s-%s", a.Name, ArgoCDRepoServerNetworkPolicy),
+		nameWithSuffix(ArgoCDNotificationsControllerNetworkPolicy, a),
+		nameWithSuffix(ArgoCDDexServerNetworkPolicy, a),
+		nameWithSuffix(ArgoCDApplicationSetControllerNetworkPolicy, a),
+		nameWithSuffix(ArgoCDServerNetworkPolicy, a),
+		nameWithSuffix(ArgoCDApplicationControllerNetworkPolicy, a),
+		nameWithSuffix(ArgoCDRepoServerNetworkPolicy, a),
 	}
 	for _, name := range nps {
 		np := &networkingv1.NetworkPolicy{}
@@ -89,7 +88,7 @@ func TestReconcileNetworkPolicies_RecreatesDeletedNetworkPolicy(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Delete one policy manually (simulate kubectl delete)
-	name := fmt.Sprintf("%s-%s", a.Name, ArgoCDRepoServerNetworkPolicy)
+	name := nameWithSuffix(ArgoCDRepoServerNetworkPolicy, a)
 	toDelete := &networkingv1.NetworkPolicy{}
 	err = r.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: a.Namespace}, toDelete)
 	assert.NoError(t, err)
@@ -115,11 +114,11 @@ func TestRedisNetworkPolicy(t *testing.T) {
 
 	// Check if the network policy was created
 	np := &networkingv1.NetworkPolicy{}
-	err = r.Get(context.TODO(), client.ObjectKey{Name: fmt.Sprintf("%s-%s", a.Name, RedisNetworkPolicy), Namespace: a.Namespace}, np)
+	err = r.Get(context.TODO(), client.ObjectKey{Name: nameWithSuffix(RedisNetworkPolicy, a), Namespace: a.Namespace}, np)
 	assert.NoError(t, err)
 
 	// Check if the network policy has the correct pod selector
-	assert.Equal(t, fmt.Sprintf("%s-%s", a.Name, "redis"), np.Spec.PodSelector.MatchLabels["app.kubernetes.io/name"])
+	assert.Equal(t, nameWithSuffix("redis", a), np.Spec.PodSelector.MatchLabels["app.kubernetes.io/name"])
 
 	// Check if the network policy has the correct policy types
 	assert.Equal(t, networkingv1.PolicyTypeIngress, np.Spec.PolicyTypes[0])
@@ -142,11 +141,11 @@ func TestRedisHANetworkPolicy(t *testing.T) {
 
 	// Check if the network policy was created
 	np := &networkingv1.NetworkPolicy{}
-	err = r.Get(context.TODO(), client.ObjectKey{Name: fmt.Sprintf("%s-%s", a.Name, RedisHANetworkPolicy), Namespace: a.Namespace}, np)
+	err = r.Get(context.TODO(), client.ObjectKey{Name: nameWithSuffix(RedisHANetworkPolicy, a), Namespace: a.Namespace}, np)
 	assert.NoError(t, err)
 
 	// Check if the network policy has the correct pod selector
-	assert.Equal(t, fmt.Sprintf("%s-%s", a.Name, "redis-ha-haproxy"), np.Spec.PodSelector.MatchLabels["app.kubernetes.io/name"])
+	assert.Equal(t, nameWithSuffix("redis-ha-haproxy", a), np.Spec.PodSelector.MatchLabels["app.kubernetes.io/name"])
 
 	// Check if the network policy has the correct policy types
 	assert.Equal(t, networkingv1.PolicyTypeIngress, np.Spec.PolicyTypes[0])
@@ -174,7 +173,7 @@ func TestRedisNetworkPolicyWithLongName(t *testing.T) {
 
 	// Check if the network policy was created
 	np := &networkingv1.NetworkPolicy{}
-	err = r.Get(context.TODO(), client.ObjectKey{Name: fmt.Sprintf("%s-%s", a.Name, RedisNetworkPolicy), Namespace: a.Namespace}, np)
+	err = r.Get(context.TODO(), client.ObjectKey{Name: nameWithSuffix(RedisNetworkPolicy, a), Namespace: a.Namespace}, np)
 	assert.NoError(t, err)
 
 	// Verify that the pod selector uses the truncated name with preserved suffix
@@ -198,7 +197,7 @@ func TestRedisHANetworkPolicyWithLongName(t *testing.T) {
 
 	// Check if the network policy was created
 	np := &networkingv1.NetworkPolicy{}
-	err = r.Get(context.TODO(), client.ObjectKey{Name: fmt.Sprintf("%s-%s", a.Name, RedisHANetworkPolicy), Namespace: a.Namespace}, np)
+	err = r.Get(context.TODO(), client.ObjectKey{Name: nameWithSuffix(RedisHANetworkPolicy, a), Namespace: a.Namespace}, np)
 	assert.NoError(t, err)
 
 	// Verify that the pod selector uses the truncated name with preserved suffix
@@ -218,11 +217,11 @@ func TestNotificationsControllerNetworkPolicy(t *testing.T) {
 	assert.NoError(t, err)
 
 	np := &networkingv1.NetworkPolicy{}
-	err = r.Get(context.TODO(), client.ObjectKey{Name: fmt.Sprintf("%s-%s", a.Name, ArgoCDNotificationsControllerNetworkPolicy), Namespace: a.Namespace}, np)
+	err = r.Get(context.TODO(), client.ObjectKey{Name: nameWithSuffix(ArgoCDNotificationsControllerNetworkPolicy, a), Namespace: a.Namespace}, np)
 	assert.NoError(t, err)
 
 	// Check if the network policy has the correct pod selector
-	assert.Equal(t, fmt.Sprintf("%s-%s", a.Name, "notifications-controller"), np.Spec.PodSelector.MatchLabels["app.kubernetes.io/name"])
+	assert.Equal(t, nameWithSuffix("notifications-controller", a), np.Spec.PodSelector.MatchLabels["app.kubernetes.io/name"])
 
 	// Check if the network policy has the correct policy types
 	assert.Equal(t, networkingv1.PolicyTypeIngress, np.Spec.PolicyTypes[0])
@@ -249,7 +248,7 @@ func TestNotificationsControllerNetworkPolicyWithLongName(t *testing.T) {
 	assert.NoError(t, err)
 
 	np := &networkingv1.NetworkPolicy{}
-	err = r.Get(context.TODO(), client.ObjectKey{Name: fmt.Sprintf("%s-%s", a.Name, ArgoCDNotificationsControllerNetworkPolicy), Namespace: a.Namespace}, np)
+	err = r.Get(context.TODO(), client.ObjectKey{Name: nameWithSuffix(ArgoCDNotificationsControllerNetworkPolicy, a), Namespace: a.Namespace}, np)
 	assert.NoError(t, err)
 
 	// Verify that the pod selector uses the truncated name with preserved suffix
@@ -270,11 +269,11 @@ func TestDexServerNetworkPolicy(t *testing.T) {
 	assert.NoError(t, err)
 
 	np := &networkingv1.NetworkPolicy{}
-	err = r.Get(context.TODO(), client.ObjectKey{Name: fmt.Sprintf("%s-%s", a.Name, ArgoCDDexServerNetworkPolicy), Namespace: a.Namespace}, np)
+	err = r.Get(context.TODO(), client.ObjectKey{Name: nameWithSuffix(ArgoCDDexServerNetworkPolicy, a), Namespace: a.Namespace}, np)
 	assert.NoError(t, err)
 
 	// podSelector: dex-server
-	assert.Equal(t, fmt.Sprintf("%s-%s", a.Name, "dex-server"), np.Spec.PodSelector.MatchLabels["app.kubernetes.io/name"])
+	assert.Equal(t, nameWithSuffix("dex-server", a), np.Spec.PodSelector.MatchLabels["app.kubernetes.io/name"])
 
 	// ingress: (1) from argocd-server on 5556/5557, (2) from any namespace on 5558
 	assert.Equal(t, networkingv1.PolicyTypeIngress, np.Spec.PolicyTypes[0])
@@ -283,7 +282,7 @@ func TestDexServerNetworkPolicy(t *testing.T) {
 	// Rule 1: from argocd-server
 	assert.Equal(t, 1, len(np.Spec.Ingress[0].From))
 	assert.NotNil(t, np.Spec.Ingress[0].From[0].PodSelector)
-	assert.Equal(t, fmt.Sprintf("%s-%s", a.Name, "server"), np.Spec.Ingress[0].From[0].PodSelector.MatchLabels["app.kubernetes.io/name"])
+	assert.Equal(t, nameWithSuffix("server", a), np.Spec.Ingress[0].From[0].PodSelector.MatchLabels["app.kubernetes.io/name"])
 	assert.Equal(t, 2, len(np.Spec.Ingress[0].Ports))
 	assert.Equal(t, intstr.FromInt(common.ArgoCDDefaultDexHTTPPort), *np.Spec.Ingress[0].Ports[0].Port)
 	assert.Equal(t, intstr.FromInt(common.ArgoCDDefaultDexGRPCPort), *np.Spec.Ingress[0].Ports[1].Port)
@@ -314,7 +313,7 @@ func TestDexServerNetworkPolicyDisabledDeletesExisting(t *testing.T) {
 	assert.NoError(t, err)
 
 	np := &networkingv1.NetworkPolicy{}
-	err = r.Get(context.TODO(), client.ObjectKey{Name: fmt.Sprintf("%s-%s", a.Name, ArgoCDDexServerNetworkPolicy), Namespace: a.Namespace}, np)
+	err = r.Get(context.TODO(), client.ObjectKey{Name: nameWithSuffix(ArgoCDDexServerNetworkPolicy, a), Namespace: a.Namespace}, np)
 	assert.Error(t, err)
 }
 
@@ -332,7 +331,7 @@ func TestDexServerNetworkPolicyWithLongName(t *testing.T) {
 	assert.NoError(t, err)
 
 	np := &networkingv1.NetworkPolicy{}
-	err = r.Get(context.TODO(), client.ObjectKey{Name: fmt.Sprintf("%s-%s", a.Name, ArgoCDDexServerNetworkPolicy), Namespace: a.Namespace}, np)
+	err = r.Get(context.TODO(), client.ObjectKey{Name: nameWithSuffix(ArgoCDDexServerNetworkPolicy, a), Namespace: a.Namespace}, np)
 	assert.NoError(t, err)
 
 	expectedSelector := nameWithSuffix("dex-server", a)
@@ -351,7 +350,7 @@ func TestApplicationSetControllerNetworkPolicy(t *testing.T) {
 	assert.NoError(t, err)
 
 	np := &networkingv1.NetworkPolicy{}
-	err = r.Get(context.TODO(), client.ObjectKey{Name: fmt.Sprintf("%s-%s", a.Name, ArgoCDApplicationSetControllerNetworkPolicy), Namespace: a.Namespace}, np)
+	err = r.Get(context.TODO(), client.ObjectKey{Name: nameWithSuffix(ArgoCDApplicationSetControllerNetworkPolicy, a), Namespace: a.Namespace}, np)
 	assert.NoError(t, err)
 
 	// podSelector: argocd-applicationset-controller
@@ -385,7 +384,7 @@ func TestApplicationSetControllerNetworkPolicyDisabledDeletesExisting(t *testing
 	assert.NoError(t, err)
 
 	np := &networkingv1.NetworkPolicy{}
-	err = r.Get(context.TODO(), client.ObjectKey{Name: fmt.Sprintf("%s-%s", a.Name, ArgoCDApplicationSetControllerNetworkPolicy), Namespace: a.Namespace}, np)
+	err = r.Get(context.TODO(), client.ObjectKey{Name: nameWithSuffix(ArgoCDApplicationSetControllerNetworkPolicy, a), Namespace: a.Namespace}, np)
 	assert.Error(t, err)
 }
 
@@ -397,7 +396,7 @@ func TestArgoCDServerNetworkPolicy(t *testing.T) {
 	assert.NoError(t, err)
 
 	np := &networkingv1.NetworkPolicy{}
-	err = r.Get(context.TODO(), client.ObjectKey{Name: fmt.Sprintf("%s-%s", a.Name, ArgoCDServerNetworkPolicy), Namespace: a.Namespace}, np)
+	err = r.Get(context.TODO(), client.ObjectKey{Name: nameWithSuffix(ArgoCDServerNetworkPolicy, a), Namespace: a.Namespace}, np)
 	assert.NoError(t, err)
 
 	assert.Equal(t, nameWithSuffix("server", a), np.Spec.PodSelector.MatchLabels["app.kubernetes.io/name"])
@@ -417,7 +416,7 @@ func TestArgoCDApplicationControllerNetworkPolicy(t *testing.T) {
 	assert.NoError(t, err)
 
 	np := &networkingv1.NetworkPolicy{}
-	err = r.Get(context.TODO(), client.ObjectKey{Name: fmt.Sprintf("%s-%s", a.Name, ArgoCDApplicationControllerNetworkPolicy), Namespace: a.Namespace}, np)
+	err = r.Get(context.TODO(), client.ObjectKey{Name: nameWithSuffix(ArgoCDApplicationControllerNetworkPolicy, a), Namespace: a.Namespace}, np)
 	assert.NoError(t, err)
 
 	assert.Equal(t, applicationControllerResourceName(a), np.Spec.PodSelector.MatchLabels["app.kubernetes.io/name"])
@@ -439,7 +438,7 @@ func TestArgoCDRepoServerNetworkPolicy(t *testing.T) {
 	assert.NoError(t, err)
 
 	np := &networkingv1.NetworkPolicy{}
-	err = r.Get(context.TODO(), client.ObjectKey{Name: fmt.Sprintf("%s-%s", a.Name, ArgoCDRepoServerNetworkPolicy), Namespace: a.Namespace}, np)
+	err = r.Get(context.TODO(), client.ObjectKey{Name: nameWithSuffix(ArgoCDRepoServerNetworkPolicy, a), Namespace: a.Namespace}, np)
 	assert.NoError(t, err)
 
 	assert.Equal(t, nameWithSuffix("repo-server", a), np.Spec.PodSelector.MatchLabels["app.kubernetes.io/name"])
@@ -479,7 +478,7 @@ func TestArgoCDRepoServerNetworkPolicyUpdatesExisting(t *testing.T) {
 	// Create an existing NP with wrong spec
 	existing := &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", a.Name, ArgoCDRepoServerNetworkPolicy),
+			Name:      nameWithSuffix(ArgoCDRepoServerNetworkPolicy, a),
 			Namespace: a.Namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{

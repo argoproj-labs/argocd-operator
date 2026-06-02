@@ -597,6 +597,35 @@ func TestReconcileNotifications_ServiceMonitorWithLongName(t *testing.T) {
 	assert.LessOrEqual(t, len(testServiceMonitor.GetName()), 63, "ServiceMonitor name exceeds 63 character limit")
 	// Verify the ServiceMonitor was created successfully
 	assert.NotEmpty(t, testServiceMonitor.GetName())
+
+	// Verify the notifications metrics Service exists and is labeled correctly
+	serviceName := argoutil.NameWithSuffix(a.ObjectMeta, "notifications-controller-metrics")
+	testService := &v1.Service{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      serviceName,
+		Namespace: a.Namespace,
+	}, testService)
+	assert.NoError(t, err, "Notifications metrics Service should exist")
+
+	// Verify Service name is also within 63 char limit
+	assert.LessOrEqual(t, len(testService.Name), 63, "Service name exceeds 63 character limit")
+
+	// Verify ServiceMonitor selector matches Service labels
+	// This ensures Prometheus can actually scrape metrics from the Service
+	serviceLabelValue := testService.Labels[common.ArgoCDKeyName]
+	smSelectorValue := testServiceMonitor.Spec.Selector.MatchLabels[common.ArgoCDKeyName]
+	assert.Equal(t, serviceLabelValue, smSelectorValue,
+		"ServiceMonitor selector must match Service labels for metrics scraping to work")
+
+	// Verify both use the same truncated name
+	assert.Equal(t, serviceName, serviceLabelValue,
+		"Service label should use the truncated service name")
+	assert.Equal(t, serviceName, smSelectorValue,
+		"ServiceMonitor selector should use the truncated service name")
+
+	// Verify the alignment is preserved after truncation
+	assert.NotEmpty(t, serviceLabelValue, "Service label should not be empty")
+	assert.NotEmpty(t, smSelectorValue, "ServiceMonitor selector should not be empty")
 }
 
 func TestReconcileNotifications_CreateSecret(t *testing.T) {

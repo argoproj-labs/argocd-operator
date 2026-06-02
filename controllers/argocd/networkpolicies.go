@@ -90,12 +90,12 @@ func (r *ReconcileArgoCD) ReconcileNetworkPolicies(cr *argoproj.ArgoCD) error {
 
 func (r *ReconcileArgoCD) deleteArgoCDNetworkPolicies(cr *argoproj.ArgoCD) error {
 	names := []string{
-		fmt.Sprintf("%s-%s", cr.Name, ArgoCDNotificationsControllerNetworkPolicy),
-		fmt.Sprintf("%s-%s", cr.Name, ArgoCDDexServerNetworkPolicy),
-		fmt.Sprintf("%s-%s", cr.Name, ArgoCDApplicationSetControllerNetworkPolicy),
-		fmt.Sprintf("%s-%s", cr.Name, ArgoCDServerNetworkPolicy),
-		fmt.Sprintf("%s-%s", cr.Name, ArgoCDApplicationControllerNetworkPolicy),
-		fmt.Sprintf("%s-%s", cr.Name, ArgoCDRepoServerNetworkPolicy),
+		nameWithSuffix(ArgoCDNotificationsControllerNetworkPolicy, cr),
+		nameWithSuffix(ArgoCDDexServerNetworkPolicy, cr),
+		nameWithSuffix(ArgoCDApplicationSetControllerNetworkPolicy, cr),
+		nameWithSuffix(ArgoCDServerNetworkPolicy, cr),
+		nameWithSuffix(ArgoCDApplicationControllerNetworkPolicy, cr),
+		nameWithSuffix(ArgoCDRepoServerNetworkPolicy, cr),
 	}
 
 	for _, name := range names {
@@ -178,7 +178,7 @@ func (r *ReconcileArgoCD) ReconcileDexServerNetworkPolicy(cr *argoproj.ArgoCD) e
 
 	existing := &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDDexServerNetworkPolicy),
+			Name:      nameWithSuffix(ArgoCDDexServerNetworkPolicy, cr),
 			Namespace: cr.Namespace,
 		},
 	}
@@ -283,7 +283,7 @@ func (r *ReconcileArgoCD) ReconcileApplicationSetControllerNetworkPolicy(cr *arg
 
 	existing := &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDApplicationSetControllerNetworkPolicy),
+			Name:      nameWithSuffix(ArgoCDApplicationSetControllerNetworkPolicy, cr),
 			Namespace: cr.Namespace,
 		},
 	}
@@ -355,7 +355,7 @@ func (r *ReconcileArgoCD) ReconcileRedisNetworkPolicy(cr *argoproj.ArgoCD) error
 
 	networkPolicy := &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", cr.Name, RedisNetworkPolicy),
+			Name:      nameWithSuffix(RedisNetworkPolicy, cr),
 			Namespace: cr.Namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -426,7 +426,7 @@ func (r *ReconcileArgoCD) ReconcileRedisNetworkPolicy(cr *argoproj.ArgoCD) error
 	// Check if the network policy already exists
 	existing := &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", cr.Name, RedisNetworkPolicy),
+			Name:      nameWithSuffix(RedisNetworkPolicy, cr),
 			Namespace: cr.Namespace,
 		},
 	}
@@ -496,7 +496,7 @@ func (r *ReconcileArgoCD) ReconcileRedisHANetworkPolicy(cr *argoproj.ArgoCD) err
 
 	networkPolicy := &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", cr.Name, RedisHANetworkPolicy),
+			Name:      nameWithSuffix(RedisHANetworkPolicy, cr),
 			Namespace: cr.Namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -551,7 +551,7 @@ func (r *ReconcileArgoCD) ReconcileRedisHANetworkPolicy(cr *argoproj.ArgoCD) err
 	// Check if the network policy already exists
 	existing := &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", cr.Name, RedisHANetworkPolicy),
+			Name:      nameWithSuffix(RedisHANetworkPolicy, cr),
 			Namespace: cr.Namespace,
 		},
 	}
@@ -651,7 +651,7 @@ func (r *ReconcileArgoCD) ReconcileNotificationsControllerNetworkPolicy(cr *argo
 
 	existing := &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDNotificationsControllerNetworkPolicy),
+			Name:      nameWithSuffix(ArgoCDNotificationsControllerNetworkPolicy, cr),
 			Namespace: cr.Namespace,
 		},
 	}
@@ -739,7 +739,7 @@ func (r *ReconcileArgoCD) ReconcileArgoCDServerNetworkPolicy(cr *argoproj.ArgoCD
 
 	existing := &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDServerNetworkPolicy),
+			Name:      nameWithSuffix(ArgoCDServerNetworkPolicy, cr),
 			Namespace: cr.Namespace,
 		},
 	}
@@ -833,7 +833,7 @@ func (r *ReconcileArgoCD) ReconcileArgoCDApplicationControllerNetworkPolicy(cr *
 	// Check if the network policy already exists
 	existing := &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDApplicationControllerNetworkPolicy),
+			Name:      nameWithSuffix(ArgoCDApplicationControllerNetworkPolicy, cr),
 			Namespace: cr.Namespace,
 		},
 	}
@@ -975,7 +975,7 @@ func (r *ReconcileArgoCD) ReconcileArgoCDRepoServerNetworkPolicy(cr *argoproj.Ar
 	// Check if the network policy already exists
 	existing := &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", cr.Name, ArgoCDRepoServerNetworkPolicy),
+			Name:      nameWithSuffix(ArgoCDRepoServerNetworkPolicy, cr),
 			Namespace: cr.Namespace,
 		},
 	}
@@ -1038,7 +1038,7 @@ func (r *ReconcileArgoCD) ReconcileArgoCDRepoServerNetworkPolicy(cr *argoproj.Ar
 func returnNetworkPolicyHeaders(cr *argoproj.ArgoCD, NetworkPolicyName string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", cr.Name, NetworkPolicyName),
+			Name:      nameWithSuffix(NetworkPolicyName, cr),
 			Namespace: cr.Namespace,
 			Labels:    argoutil.LabelsForCluster(cr),
 		},
