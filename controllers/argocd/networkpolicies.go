@@ -1137,7 +1137,7 @@ func reconcileImageUpdaterNetworkPolicy(r *ReconcileArgoCD, cr *argoproj.ArgoCD,
 
 func (r *ReconcileArgoCD) ReconcileImageUpdaterNetworkPolicy(cr *argoproj.ArgoCD) error {
 	metricsPolicy := createImageUpdaterNetworkPolicy(cr, ImageUpdaterNetworkPolicy, 8443)
-	webhookPolicy := createImageUpdaterNetworkPolicy(cr, WebhookTrafficNetworkPolicy, 8082)
+	webhookPolicy := createImageUpdaterNetworkPolicy(cr, ImageUpdaterWebhookNetworkPolicy, 8082)
 	if err := reconcileImageUpdaterNetworkPolicy(r, cr, metricsPolicy); err != nil {
 		return err
 	}

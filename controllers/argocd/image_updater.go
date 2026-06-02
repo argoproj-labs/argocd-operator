@@ -230,7 +230,7 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterControllerDisabled(cr *argoproj.A
 	// delete network policies when disable
 	networkPolicies := []string{
 		generateResourceName(ImageUpdaterNetworkPolicy, cr),
-		generateResourceName(WebhookTrafficNetworkPolicy, cr),
+		generateResourceName(ImageUpdaterWebhookTrafficNetworkPolicy, cr),
 	}
 	for _, npName := range networkPolicies {
 		np := &networkingv1.NetworkPolicy{}
