@@ -57,6 +57,21 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 			defer cleanupFunc()
 
+			dex := &argov1beta1api.ArgoCDDexSpec{
+				Labels: map[string]string{
+					"custom":  "label",
+					"custom2": "dex",
+				},
+				Annotations: map[string]string{
+					"custom":  "annotation",
+					"custom2": "dex",
+				},
+				OpenShiftOAuth: fixture.RunningOnOpenShift(),
+			}
+			if !fixture.RunningOnOpenShift() {
+				dex.Config = "test-config"
+			}
+
 			argoCD := &argov1beta1api.ArgoCD{
 				ObjectMeta: metav1.ObjectMeta{Name: "argocd-sample", Namespace: ns.Name},
 				Spec: argov1beta1api.ArgoCDSpec{
@@ -99,6 +114,20 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 							"custom":  "annotation",
 							"custom2": "applicationSet",
 						},
+					},
+					Redis: argov1beta1api.ArgoCDRedisSpec{
+						Labels: map[string]string{
+							"custom":  "label",
+							"custom2": "redis",
+						},
+						Annotations: map[string]string{
+							"custom":  "annotation",
+							"custom2": "redis",
+						},
+					},
+					SSO: &argov1beta1api.ArgoCDSSOSpec{
+						Provider: argov1beta1api.SSOProviderTypeDex,
+						Dex:      dex,
 					},
 				},
 			}
@@ -143,6 +172,20 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Expect(controllerSS).Should(statefulsetFixture.HaveTemplateAnnotationWithValue("custom", "annotation"))
 			Expect(controllerSS).Should(statefulsetFixture.HaveTemplateAnnotationWithValue("custom2", "controller"))
 
+			redisDepl := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "argocd-sample-redis", Namespace: ns.Name}}
+			Eventually(redisDepl).Should(k8sFixture.ExistByName())
+			Expect(redisDepl).Should(deploymentFixture.HaveTemplateLabelWithValue("custom", "label"))
+			Expect(redisDepl).Should(deploymentFixture.HaveTemplateLabelWithValue("custom2", "redis"))
+			Expect(redisDepl).Should(deploymentFixture.HaveTemplateAnnotationWithValue("custom", "annotation"))
+			Expect(redisDepl).Should(deploymentFixture.HaveTemplateAnnotationWithValue("custom2", "redis"))
+
+			dexDepl := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "argocd-sample-dex-server", Namespace: ns.Name}}
+			Eventually(dexDepl).Should(k8sFixture.ExistByName())
+			Expect(dexDepl).Should(deploymentFixture.HaveTemplateLabelWithValue("custom", "label"))
+			Expect(dexDepl).Should(deploymentFixture.HaveTemplateLabelWithValue("custom2", "dex"))
+			Expect(dexDepl).Should(deploymentFixture.HaveTemplateAnnotationWithValue("custom", "annotation"))
+			Expect(dexDepl).Should(deploymentFixture.HaveTemplateAnnotationWithValue("custom2", "dex"))
+
 			By("removing custom labels and annotations from ArgoCD CR")
 
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
@@ -157,6 +200,14 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 				ac.Spec.ApplicationSet.Labels = map[string]string{}
 				ac.Spec.ApplicationSet.Annotations = map[string]string{}
+
+				ac.Spec.Redis.Labels = map[string]string{}
+				ac.Spec.Redis.Annotations = map[string]string{}
+
+				if ac.Spec.SSO != nil && ac.Spec.SSO.Dex != nil {
+					ac.Spec.SSO.Dex.Labels = map[string]string{}
+					ac.Spec.SSO.Dex.Annotations = map[string]string{}
+				}
 			})
 
 			By("verifying labels and annotations have been removed from template specs of Argo CD components")
@@ -195,6 +246,8 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			expectLabelsAndAnnotationsRemovedFromDepl(appsetDepl)
 			expectLabelsAndAnnotationsRemovedFromDepl(serverDepl)
 			expectLabelsAndAnnotationsRemovedFromDepl(repoDepl)
+			expectLabelsAndAnnotationsRemovedFromDepl(redisDepl)
+			expectLabelsAndAnnotationsRemovedFromDepl(dexDepl)
 
 			// Evaluate the controller statefulset on its own, since it's a StatefulSet not a Deployment
 			Eventually(controllerSS).Should(k8sFixture.ExistByName())
