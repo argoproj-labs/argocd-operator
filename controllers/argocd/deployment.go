@@ -670,6 +670,10 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 		},
 	}}
 
+	env := append(proxyEnvVars(), corev1.EnvVar{
+		Name:  "ARGOCD_REDIS_SERVICE_NAME",
+		Value: nameWithSuffix("redis-ha", cr),
+	})
 	deploy.Spec.Template.Spec.InitContainers = []corev1.Container{{
 		Args: []string{
 			"/readonly/haproxy_init.sh",
@@ -680,7 +684,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 		Image:           argoutil.GetRedisHAProxyContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            "config-init",
-		Env:             proxyEnvVars(),
+		Env:             env,
 		Resources:       argoutil.GetRedisHAResources(cr),
 		SecurityContext: argoutil.DefaultSecurityContext(),
 		VolumeMounts: []corev1.VolumeMount{
