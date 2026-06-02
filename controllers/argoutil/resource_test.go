@@ -20,6 +20,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 func TestGenerateAgentPrincipalRedisProxyServiceName(t *testing.T) {
@@ -281,4 +285,42 @@ func TestGetImagePullPolicy(t *testing.T) {
 			assert.Equal(t, tt.expectedPullPolicy, result, tt.description)
 		})
 	}
+}
+
+// Argo CD tracking annotations applied by a parent (central) Argo CD instance to the ArgoCD CR.
+const (
+	reproduceArgoCDTrackingIDAnnotation     = "argocd.argoproj.io/tracking-id"
+	reproduceArgoCDInstallationIDAnnotation = "argocd.argoproj.io/installation-id"
+)
+
+// TestAnnotationsForCluster_DoesNotPropagateCRAnnotations verifies AnnotationsForCluster returns
+// only the operator's default annotations.
+func TestAnnotationsForCluster_DoesNotPropagateCRAnnotations(t *testing.T) {
+	cr := &argoproj.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "appteam",
+			Namespace: "appteam-argocd",
+			Annotations: map[string]string{
+				reproduceArgoCDTrackingIDAnnotation:     "central-gitops:argoproj.io/ArgoCD:gitops/appteam",
+				reproduceArgoCDInstallationIDAnnotation: "central-argocd",
+				"example.com/team":                      "platform",
+			},
+		},
+	}
+
+	annotations := AnnotationsForCluster(cr)
+
+	// Only operator defaults are present.
+	assert.Equal(t, "appteam", annotations[common.AnnotationName])
+	assert.Equal(t, "appteam-argocd", annotations[common.AnnotationNamespace])
+
+	// No annotations are inherited from the CR.
+	assert.NotContains(t, annotations, reproduceArgoCDTrackingIDAnnotation,
+		"central Argo CD tracking-id must not be copied to operator-managed resources")
+	assert.NotContains(t, annotations, reproduceArgoCDInstallationIDAnnotation,
+		"central Argo CD installation-id must not be copied to operator-managed resources")
+	assert.NotContains(t, annotations, "example.com/team",
+		"CR annotations must not be propagated to operator-managed resources")
+
+	assert.Len(t, annotations, 2, "only the two default annotations should be present")
 }
