@@ -146,12 +146,9 @@ func LabelsForCluster(cr *argoproj.ArgoCD) map[string]string {
 	return labels
 }
 
-// annotationsForCluster returns the annotations for all cluster resources.
+// AnnotationsForCluster returns the annotations for all cluster resources.
 func AnnotationsForCluster(cr *argoproj.ArgoCD) map[string]string {
 	annotations := common.DefaultAnnotations(cr.Name, cr.Namespace)
-	for key, val := range cr.Annotations {
-		annotations[key] = val
-	}
 	return annotations
 }
 
