@@ -51,8 +51,6 @@ func (r *ReconcileArgoCD) ReconcileNetworkPolicies(cr *argoproj.ArgoCD) error {
 		if err := r.ReconcileImageUpdaterNetworkPolicy(cr); err != nil {
 			return err
 		}
-	} else {
-		log.Info("ImageUpdater CRD not found, skipping reconciliation of Image Updater Network Policy Creation. Please install argocd-image-updater CRD to use this feature.")
 	}
 
 	// Reconcile Redis network policy
@@ -1048,12 +1046,12 @@ func (r *ReconcileArgoCD) ReconcileArgoCDRepoServerNetworkPolicy(cr *argoproj.Ar
 	return nil
 }
 
-func createImageUpdaterNetworkPolicy(cr *argoproj.ArgoCD, name string, namespaceSelectorLabels map[string]string, port int32) *networkingv1.NetworkPolicy {
+func createImageUpdaterNetworkPolicy(cr *argoproj.ArgoCD, name string, port int32) *networkingv1.NetworkPolicy {
 	desired := returnNetworkPolicyHeaders(cr, name)
 	desired.Spec = networkingv1.NetworkPolicySpec{
 		PodSelector: metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				"control-plane": "argocd-image-updater-controller",
+				"app.kubernetes.io/name": nameWithSuffix(common.ArgoCDImageUpdaterControllerComponent, cr),
 			},
 		},
 		PolicyTypes: []networkingv1.PolicyType{
@@ -1063,9 +1061,7 @@ func createImageUpdaterNetworkPolicy(cr *argoproj.ArgoCD, name string, namespace
 			{
 				From: []networkingv1.NetworkPolicyPeer{
 					{
-						NamespaceSelector: &metav1.LabelSelector{
-							MatchLabels: namespaceSelectorLabels,
-						},
+						NamespaceSelector: &metav1.LabelSelector{},
 					},
 				},
 				Ports: []networkingv1.NetworkPolicyPort{
@@ -1080,11 +1076,10 @@ func createImageUpdaterNetworkPolicy(cr *argoproj.ArgoCD, name string, namespace
 			},
 		},
 	}
-
 	return desired
 }
 
-func reconcileNetworkPolicy(r *ReconcileArgoCD, cr *argoproj.ArgoCD, desired *networkingv1.NetworkPolicy) error {
+func reconcileImageUpdaterNetworkPolicy(r *ReconcileArgoCD, cr *argoproj.ArgoCD, desired *networkingv1.NetworkPolicy) error {
 	existing := &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      desired.Name,
@@ -1134,19 +1129,19 @@ func reconcileNetworkPolicy(r *ReconcileArgoCD, cr *argoproj.ArgoCD, desired *ne
 	}
 	argoutil.LogResourceCreation(log, desired)
 	if err := r.Create(context.TODO(), desired); err != nil {
-		log.Error(err, "Failed to create %s network policy in namespace %s", desired.Name, cr.Namespace)
+		log.Error(err, fmt.Sprintf("Failed to create %s network policy in namespace: %s", desired.Name, cr.Namespace))
 		return fmt.Errorf("failed to create %s network policy in namespace %s. error: %w", desired.Name, cr.Namespace, err)
 	}
 	return nil
 }
 
 func (r *ReconcileArgoCD) ReconcileImageUpdaterNetworkPolicy(cr *argoproj.ArgoCD) error {
-	metricsPolicy := createImageUpdaterNetworkPolicy(cr, ImageUpdaterNetworkPolicy, map[string]string{"metrics": "enabled"}, 8443)
-	webhookPolicy := createImageUpdaterNetworkPolicy(cr, WebhookTrafficNetworkPolicy, map[string]string{"webhooks": "enabled"}, 8082)
-	if err := reconcileNetworkPolicy(r, cr, metricsPolicy); err != nil {
+	metricsPolicy := createImageUpdaterNetworkPolicy(cr, ImageUpdaterNetworkPolicy, 8443)
+	webhookPolicy := createImageUpdaterNetworkPolicy(cr, WebhookTrafficNetworkPolicy, 8082)
+	if err := reconcileImageUpdaterNetworkPolicy(r, cr, metricsPolicy); err != nil {
 		return err
 	}
-	if err := reconcileNetworkPolicy(r, cr, webhookPolicy); err != nil {
+	if err := reconcileImageUpdaterNetworkPolicy(r, cr, webhookPolicy); err != nil {
 		return err
 	}
 	return nil

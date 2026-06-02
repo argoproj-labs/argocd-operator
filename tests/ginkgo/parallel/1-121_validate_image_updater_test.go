@@ -109,7 +109,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			}
 			// verify network policy is created
 			networkPolicy := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-%s", argoCD.Name, "image-updater-network-policy"), Namespace: ns.Name}}
-			WebhookTrafficNetworkPolicy := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-%s", argoCD.Name, "webhook-traffic-network-policy"), Namespace: ns.Name}}
+			WebhookTrafficNetworkPolicy := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-%s", argoCD.Name, "image-updater-webhook-traffic-network-policy"), Namespace: ns.Name}}
 			Eventually(networkPolicy, "3m", "5s").Should(k8sFixture.ExistByName())
 			Eventually(WebhookTrafficNetworkPolicy, "3m", "5s").Should(k8sFixture.ExistByName())
 			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCD), argoCD)).To(Succeed())
