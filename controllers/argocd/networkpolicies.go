@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -1080,6 +1081,7 @@ func createImageUpdaterNetworkPolicy(cr *argoproj.ArgoCD, name string, port int3
 }
 
 func reconcileImageUpdaterNetworkPolicy(r *ReconcileArgoCD, cr *argoproj.ArgoCD, desired *networkingv1.NetworkPolicy) error {
+	var changes []string
 	existing := &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      desired.Name,
@@ -1091,31 +1093,20 @@ func reconcileImageUpdaterNetworkPolicy(r *ReconcileArgoCD, cr *argoproj.ArgoCD,
 		return err
 	}
 	if exists {
-		modified := false
-		explanation := ""
 		if !reflect.DeepEqual(existing.Spec.PodSelector, desired.Spec.PodSelector) {
 			existing.Spec.PodSelector = desired.Spec.PodSelector
-			explanation = "pod selector"
-			modified = true
+			changes = append(changes, "pod selector")
 		}
 		if !reflect.DeepEqual(existing.Spec.PolicyTypes, desired.Spec.PolicyTypes) {
 			existing.Spec.PolicyTypes = desired.Spec.PolicyTypes
-			if modified {
-				explanation += ", "
-			}
-			explanation += "policy types"
-			modified = true
+			changes = append(changes, "policy types")
 		}
 		if !reflect.DeepEqual(existing.Spec.Ingress, desired.Spec.Ingress) {
 			existing.Spec.Ingress = desired.Spec.Ingress
-			if modified {
-				explanation += ", "
-			}
-			explanation += "ingress rules"
-			modified = true
+			changes = append(changes, "ingress rules")
 		}
-		if modified {
-			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
+		if len(changes) > 0 {
+			argoutil.LogResourceUpdate(log, existing, "updating", strings.Join(changes, ", "))
 			if err := r.Update(context.TODO(), existing); err != nil {
 				log.Error(err, fmt.Sprintf("Failed to update %s network policy in namespace: %s", existing.Name, cr.Namespace))
 				return fmt.Errorf("failed to update %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
