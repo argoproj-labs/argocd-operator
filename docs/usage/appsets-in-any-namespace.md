@@ -124,34 +124,15 @@ Only one of either `managed-by` or `applicationset-managed-by-cluster-argocd` la
 
 ## TokenRef strict mode
 
-When you configure ApplicationSets in any namespace via `.spec.applicationSet.sourceNamespaces`, the Operator automatically manages ApplicationSet `tokenRef` restrictions in operator-owned `argocd-cmd-params-cm`.
+`tokenRef` allows an ApplicationSet generator to reference a Secret that contains authentication details, such as a Git access token.
 
-| Setting | Value |
-|:-|:-|
-| ConfigMap key | `applicationsetcontroller.enable.tokenref.strict.mode` |
-| ApplicationSet controller environment variable | `ARGOCD_APPLICATIONSET_CONTROLLER_TOKENREF_STRICT_MODE` |
-| Required Secret label (when strict mode is `true`) | `argocd.argoproj.io/secret-type: scm-creds` |
+When `.spec.applicationSet.sourceNamespaces` is configured on the ArgoCD CR, the Operator enables tokenRef strict mode by default. In this mode, Secrets referenced by SCM Provider or Pull Request generators through `tokenRef` must be labeled `argocd.argoproj.io/secret-type: scm-creds`. This helps prevent ApplicationSets from referencing Secrets outside the allowed namespace scope.
 
-For more details, see the upstream [tokenRef restrictions](https://argo-cd.readthedocs.io/en/latest/operator-manual/applicationset/Appset-Any-Namespace/#tokenref-restrictions) documentation.
+We recommend keeping strict mode enabled. Disabling it can allow ApplicationSets to reference Secrets more broadly, which may increase the risk of accidental or unauthorized Secret access.
 
-### When the Operator sets the default
+For more details, see the upstream [tokenRef restrictions](https://argo-cd.readthedocs.io/en/latest/operator-manual/applicationset/Appset-Any-Namespace/#tokenref-restrictions) documentation. If you are upgrading from a previous operator version, see [ApplicationSet tokenRef strict mode](../upgrading.md#applicationset-tokenref-strict-mode) in the upgrade guide.
 
-The Operator always writes `applicationsetcontroller.enable.tokenref.strict.mode` in `argocd-cmd-params-cm`:
-
-| Condition | Value |
-|:-|:-|
-| `.spec.applicationSet.sourceNamespaces` is empty, unset, or matches no cluster namespace | `"false"` |
-| `.spec.applicationSet.sourceNamespaces` expands (glob or regex) to at least one cluster namespace | `"true"` |
-| `.spec.cmdParams` explicitly sets the key | User value wins (see [Opting out](#opting-out-of-tokenref-strict-mode)) |
-
-The default uses expanded `.spec.applicationSet.sourceNamespaces` only. It does not depend on the cluster-config namespace or on intersection with `.spec.sourceNamespaces`. ApplicationSet RBAC, labels, and `--applicationset-namespaces` still follow their existing rules.
-
-When strict mode is enabled, Secrets referenced by ApplicationSet SCM Provider and Pull Request generators via `tokenRef` must carry the label `argocd.argoproj.io/secret-type` with value `scm-creds`. This limits which Secrets can be used as SCM credentials and reduces the risk of secret exfiltration when ApplicationSets run outside the Argo CD control-plane namespace.
-
-The ArgoCD CR is the source of truth for this setting. The Operator reconciles the desired value into `argocd-cmd-params-cm` and corrects manual edits to this key on reconcile. To change behavior, update `.spec.applicationSet.sourceNamespaces` and/or `.spec.cmdParams`; do not edit `argocd-cmd-params-cm` directly.
-### Opting out of tokenRef strict mode
-
-If you must disable strict mode while `.spec.applicationSet.sourceNamespaces` is configured, set the key in `.spec.cmdParams` on the ArgoCD CR:
+If required, you can disable strict mode by setting `.spec.cmdParams` on the ArgoCD CR:
 
 ```yaml
 apiVersion: argoproj.io/v1beta1
@@ -167,5 +148,5 @@ spec:
 ```
 
 !!! important
-    Disabling tokenRef strict mode while ApplicationSets are allowed in non-control-plane namespaces removes the requirement that SCM `tokenRef` Secrets are labeled `argocd.argoproj.io/secret-type: scm-creds`. This weakens protection against referencing arbitrary Secrets (including in the Argo CD namespace) from ApplicationSets users can create in other namespaces. Only opt out temporarily during migration, or if you have compensating controls. Prefer labeling Secrets and keeping strict mode enabled.
+    Only disable strict mode temporarily during migration, or if you have compensating controls. Prefer labeling Secrets with `argocd.argoproj.io/secret-type: scm-creds` and keeping strict mode enabled.
 

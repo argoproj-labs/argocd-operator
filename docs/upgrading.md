@@ -1,15 +1,15 @@
 # Upgrading
 
 This page contains upgrade instructions and migration guides for the Argo CD Operator.
-## Upgrading from Operator ≤0.18 (Argo CD ≤3.3.+) to Operator 0.19+ (Argo CD 3.4.+)
+## Upgrading from Operator ≤0.18 to Operator 0.19+
 
 ### ApplicationSet tokenRef strict mode
 If you're upgrading to an operator version that defaults ApplicationSet tokenRef strict mode when ApplicationSets in any namespace are configured, note the following changes:
 
 1. When `.spec.applicationSet.sourceNamespaces` expands to at least one cluster namespace, the operator sets `applicationsetcontroller.enable.tokenref.strict.mode` to `"true"` in `argocd-cmd-params-cm`
 2. The ApplicationSet controller requires Secrets referenced by SCM Provider and Pull Request generators via `tokenRef` to be labeled `argocd.argoproj.io/secret-type: scm-creds`
-3. Manual edits to this key in `argocd-cmd-params-cm` are corrected on reconcile; use the ArgoCD CR (`.spec.applicationSet.sourceNamespaces` and/or `.spec.cmdParams`) to change behavior
-4. You may opt out via `.spec.cmdParams`, but this is not recommended, see [ApplicationSets in Any Namespace](./usage/appsets-in-any-namespace.md#opting-out-of-tokenref-strict-mode)
+3. Manual edits to this key in `argocd-cmd-params-cm` are corrected on reconcile; use the ArgoCD CR (`.spec.cmdParams`) to change behavior
+4. You may opt out via `.spec.cmdParams`, but this is not recommended; see [ApplicationSets in Any Namespace](./usage/appsets-in-any-namespace.md#tokenref-strict-mode)
 
 ### Detection
 
