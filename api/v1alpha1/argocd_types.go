@@ -1088,6 +1088,15 @@ type ArgoCDStatus struct {
 	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="Server",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	Server string `json:"server,omitempty"`
 
+	// CommitServer is a simple, high-level summary of where the Argo CD Commit Server component is in its lifecycle.
+	// There are four possible server values:
+	// Pending: The Argo CD commit server component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+	// Running: All of the required Pods for the Argo CD commit server component are in a Ready state.
+	// Failed: At least one of the  Argo CD commit server component Pods had a failure.
+	// Unknown: The state of the Argo CD commit server component could not be obtained.
+	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="CommitServer",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
+	CommitServer string `json:"commitServer,omitempty"`
+
 	// RepoTLSChecksum contains the SHA256 checksum of the latest known state of tls.crt and tls.key in the argocd-repo-server-tls secret.
 	RepoTLSChecksum string `json:"repoTLSChecksum,omitempty"`
 

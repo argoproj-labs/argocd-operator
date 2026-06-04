@@ -34,6 +34,8 @@ const (
 	ArgoCDApplicationControllerNetworkPolicy = "application-controller-network-policy"
 	// ArgoCDRepoServerNetworkPolicy is the name of the network policy which controls Argo CD Repo Server traffic
 	ArgoCDRepoServerNetworkPolicy = "repo-server-network-policy"
+	// ArgoCDCommitServerNetworkPolicy is the name of the network policy which controls Argo CD Commit Server traffic
+	ArgoCDCommitServerNetworkPolicy = "commit-server-network-policy"
 	// ArgoCDNotificationsControllerNetworkPolicy is the name of the network policy which controls Argo CD Notifications Controller traffic
 	ArgoCDNotificationsControllerNetworkPolicy = "notifications-controller-network-policy"
 	// ArgoCDDexServerNetworkPolicy is the name of the network policy which controls Argo CD Dex Server traffic
@@ -82,6 +84,10 @@ func (r *ReconcileArgoCD) ReconcileNetworkPolicies(cr *argoproj.ArgoCD) error {
 	}
 
 	if err := r.ReconcileArgoCDRepoServerNetworkPolicy(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileArgoCDCommitServerNetworkPolicy(cr); err != nil {
 		return err
 	}
 

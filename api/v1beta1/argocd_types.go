@@ -251,6 +251,30 @@ type ArgoCDCertificateSpec struct {
 	SecretName string `json:"secretName"`
 }
 
+type ArgoCDCommitServerSpec struct {
+	// InitContainers defines the list of initialization containers.
+	InitContainers []corev1.Container `json:"initContainers,omitempty"`
+
+	// LogLevel refers to the log level to be used by the component. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug, info, error, and warn.
+	LogLevel string `json:"logLevel,omitempty"`
+
+	// LogFormat refers to the log level to be used by the component. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
+	LogFormat string `json:"logFormat,omitempty"`
+
+	// Resources defines the Compute Resources required by the container for the component.
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Requirements",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server","urn:alm:descriptor:com.tectonic.ui:resourceRequirements"}
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// Env lets specifies the environment veriables for the pods.
+	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	// Custom annotations to pods deployed by the operator
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Custom labels to pods deployed by the operator
+	Labels map[string]string `json:"labels,omitempty"`
+}
+
 // ArgoCDDexSpec defines the desired state for the Dex server component.
 type ArgoCDDexSpec struct {
 	//Config is the dex connector configuration.
@@ -780,6 +804,16 @@ type ArgoCDServerServiceSpec struct {
 	Type corev1.ServiceType `json:"type"`
 }
 
+type ArgoCDSourceHydratorSpec struct {
+	// Enabled defines whether the Source Hydrator is enabled.
+	Enabled *bool `json:"enabled,omitempty"`
+}
+
+func (a *ArgoCDSourceHydratorSpec) IsEnabled() bool {
+	// The feature is an opt-in, so consider disabled when sourceHydrator is missing or not explicitly enabled.
+	return a != nil && a.Enabled != nil && *a.Enabled
+}
+
 // Resource Customization for custom health check
 type ResourceHealthCheck struct {
 	Group string `json:"group,omitempty"`
@@ -930,6 +964,9 @@ type ArgoCDSpec struct {
 	// Controller defines the Application Controller options for ArgoCD.
 	Controller ArgoCDApplicationControllerSpec `json:"controller,omitempty"`
 
+	// CommitServer defines the options for the ArgoCD Commit Server component.
+	CommitServer ArgoCDCommitServerSpec `json:"commitServer,omitempty"`
+
 	// DisableAdmin will disable the admin user.
 	DisableAdmin bool `json:"disableAdmin,omitempty"`
 
@@ -1053,6 +1090,9 @@ type ArgoCDSpec struct {
 
 	// Server defines the options for the ArgoCD Server component.
 	Server ArgoCDServerSpec `json:"server,omitempty"`
+
+	// SourceHydrator defines the options for the ArgoCD Source Hydrator component.
+	SourceHydrator ArgoCDSourceHydratorSpec `json:"sourceHydrator,omitempty"`
 
 	// SourceNamespaces defines the namespaces application resources are allowed to be created in
 	SourceNamespaces []string `json:"sourceNamespaces,omitempty"`
@@ -1278,6 +1318,15 @@ type ArgoCDStatus struct {
 	// Unknown: The state of the Argo CD server component could not be obtained.
 	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="Server",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	Server string `json:"server,omitempty"`
+
+	// CommitServer is a simple, high-level summary of where the Argo CD Commit Server component is in its lifecycle.
+	// There are four possible server values:
+	// Pending: The Argo CD commit server component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+	// Running: All of the required Pods for the Argo CD commit server component are in a Ready state.
+	// Failed: At least one of the  Argo CD commit server component Pods had a failure.
+	// Unknown: The state of the Argo CD commit server component could not be obtained.
+	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="CommitServer",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
+	CommitServer string `json:"commitServer,omitempty"`
 
 	// RepoTLSChecksum contains the SHA256 checksum of the latest known state of tls.crt and tls.key in the argocd-repo-server-tls secret.
 	RepoTLSChecksum string `json:"repoTLSChecksum,omitempty"`

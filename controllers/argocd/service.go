@@ -582,5 +582,10 @@ func (r *ReconcileArgoCD) reconcileServices(cr *argoproj.ArgoCD) error {
 	if err != nil {
 		return err
 	}
+
+	err = r.reconcileCommitServerService(cr)
+	if err != nil {
+		return err
+	}
 	return nil
 }

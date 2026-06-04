@@ -21,6 +21,7 @@ import (
 
 	routev1 "github.com/openshift/api/route/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -65,6 +66,12 @@ func (r *ReconcileArgoCD) reconcileStatus(cr *argoproj.ArgoCD, argocdStatus *arg
 
 	if argocdStatus.Server == "" {
 		if err := r.reconcileStatusServer(cr, argocdStatus); err != nil {
+			return err
+		}
+	}
+
+	if argocdStatus.CommitServer == "" {
+		if err := r.reconcileStatusCommitServer(cr, argocdStatus); err != nil {
 			return err
 		}
 	}
@@ -325,6 +332,48 @@ func (r *ReconcileArgoCD) reconcileStatusServer(cr *argoproj.ArgoCD, argocdStatu
 	}
 
 	argocdStatus.Server = status
+	return nil
+}
+
+// reconcileStatusCommitServer will ensure that the Server status is updated for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileStatusCommitServer(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus) error {
+	argocdStatus.CommitServer = "Unknown"
+
+	shouldExist := UseCommitServer(cr)
+	deploy := newDeploymentWithSuffix("commit-server", "commit-server", cr)
+	deplExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			if shouldExist {
+				argocdStatus.CommitServer = "Pending"
+			} else {
+				argocdStatus.CommitServer = "Unknown"
+				return nil
+			}
+		} else {
+			argocdStatus.CommitServer = "Failed"
+			return err
+		}
+	}
+
+	if deplExists {
+		argocdStatus.CommitServer = "Pending"
+
+		if deploy.Spec.Replicas != nil {
+			if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
+				argocdStatus.CommitServer = "Running"
+			} else if deploy.Status.Conditions != nil {
+				for _, condition := range deploy.Status.Conditions {
+					if condition.Type == appsv1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue {
+						// Deployment has failed
+						argocdStatus.CommitServer = "Failed"
+						break
+					}
+				}
+			}
+		}
+	}
+
 	return nil
 }
 

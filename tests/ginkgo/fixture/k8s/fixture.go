@@ -2,6 +2,8 @@ package k8s
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -144,10 +146,11 @@ func ExistByNameWithClient(k8sClient client.Client) matcher.GomegaMatcher {
 
 	return WithTransform(func(k8sObject client.Object) bool {
 		err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(k8sObject), k8sObject)
+		kind := strings.TrimPrefix(fmt.Sprintf("%T", k8sObject), "*")
 		if err != nil {
-			GinkgoWriter.Println("Object does not exists in ExistByName:", k8sObject.GetName(), err)
+			GinkgoWriter.Println(kind, "does not exists in ExistByName:", k8sObject.GetName(), err)
 		} else {
-			GinkgoWriter.Println("Object exists in ExistByName:", k8sObject.GetName())
+			GinkgoWriter.Println(kind, "exists in ExistByName:", k8sObject.GetName())
 		}
 		return err == nil
 	}, BeTrue())

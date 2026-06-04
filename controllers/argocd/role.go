@@ -147,7 +147,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 			}
 			roles = append(roles, role)
 
-			if (name == common.ArgoCDDexServerComponent && !UseDex(cr)) ||
+			if (name == common.ArgoCDDexServerComponent && !UseDex(cr)) || (name == common.ArgoCDCommitServerComponent && !UseCommitServer(cr)) ||
 				!UseApplicationController(name, cr) || !UseRedis(name, cr) || !UseServer(name, cr) {
 				continue // Component installation is not requested, do nothing
 			}
@@ -176,6 +176,9 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 			} else if !UseServer(name, cr) {
 				shouldDelete = true
 				explanation = "server is disabled"
+			} else if !UseCommitServer(cr) {
+				shouldDelete = true
+				explanation = "commit server is disabled"
 			}
 			if shouldDelete {
 				argoutil.LogResourceDeletion(log, role, explanation)
