@@ -888,9 +888,7 @@ func getNotificationsResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements 
 
 // Returns the name of the role/rolebinding for the source namespaces for notifications-controller in the format of "argocdName-argocdNamespace-notifications"
 func getResourceNameForNotificationsSourceNamespaces(cr *argoproj.ArgoCD) string {
-	// For source namespace resources, we need namespace to ensure uniqueness across cluster
-	namespacedName := fmt.Sprintf("%s-%s", argoutil.TruncateCRName(cr.Name), cr.Namespace)
-	return argoutil.TruncateWithHash(fmt.Sprintf("%s-notifications", namespacedName), 63)
+	return fmt.Sprintf("%s-%s-notifications", cr.Name, cr.Namespace)
 }
 
 // setManagedNotificationSourceNamespaces populates ManagedNotificationsSourceNamespaces var with namespaces

@@ -1045,9 +1045,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetService(cr *argoproj.ArgoCD) er
 
 // Returns the name of the role/rolebinding for the source namespaces for applicationset-controller in the format of "argocdName-argocdNamespace-applicationset"
 func getResourceNameForApplicationSetSourceNamespaces(cr *argoproj.ArgoCD) string {
-	// For source namespace resources, we need namespace to ensure uniqueness across cluster
-	namespacedName := fmt.Sprintf("%s-%s", argoutil.TruncateCRName(cr.Name), cr.Namespace)
-	return argoutil.TruncateWithHash(fmt.Sprintf("%s-applicationset", namespacedName), 63)
+	return fmt.Sprintf("%s-%s-applicationset", cr.Name, cr.Namespace)
 }
 
 // removeUnmanagedApplicationSetSourceNamespaceResources cleansup resources from ApplicationSetSourceNamespaces if namespace is not managed by argocd instance.

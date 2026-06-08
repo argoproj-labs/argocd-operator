@@ -49,10 +49,7 @@ func generateResourceName(argoComponentName string, cr *argoproj.ArgoCD) string 
 
 // GenerateUniqueResourceName generates unique names for cluster scoped resources
 func GenerateUniqueResourceName(argoComponentName string, cr *argoproj.ArgoCD) string {
-	// For cluster-scoped resources, we need to include namespace to ensure uniqueness
-	// First create name-namespace prefix, then add component suffix
-	namespacedName := fmt.Sprintf("%s-%s", argoutil.TruncateCRName(cr.Name), cr.Namespace)
-	return argoutil.TruncateWithHash(fmt.Sprintf("%s-%s", namespacedName, argoComponentName), 63)
+	return cr.Name + "-" + cr.Namespace + "-" + argoComponentName
 }
 
 func newClusterRole(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) *v1.ClusterRole {
