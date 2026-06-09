@@ -220,7 +220,7 @@ func getArgoImportVolumes(cr *argoprojv1alpha1.ArgoCDExport) []corev1.Volume {
 	return volumes
 }
 
-func getArgoRedisArgs(useTLS bool) []string {
+func getArgoRedisArgs(useTLS bool, centralTLSConfig TLSConfigProfile) []string {
 	args := make([]string, 0)
 
 	args = append(args, "--save", "")
@@ -228,6 +228,10 @@ func getArgoRedisArgs(useTLS bool) []string {
 	args = append(args, "--aclfile", argoutil.RedisAuthMountPath+"users.acl")
 
 	if useTLS {
+		if !centralTLSConfig.DisableClusterTLSProfile {
+			arguments := BuildRedisArgs(centralTLSConfig)
+			args = append(args, arguments...)
+		}
 		args = append(args, "--tls-port", "6379")
 		args = append(args, "--port", "0")
 
@@ -235,7 +239,48 @@ func getArgoRedisArgs(useTLS bool) []string {
 		args = append(args, "--tls-key-file", "/app/config/redis/tls/tls.key")
 		args = append(args, "--tls-auth-clients", "no")
 	}
+	return args
+}
 
+// BuildRedisArgs builds arguments for redis deployment.
+// precedence will be for argoCD cr passed values
+// then for central tls config if no values are passed in argocd CR.
+func BuildRedisArgs(centralTLSConfig TLSConfigProfile) []string {
+	var args []string
+	var (
+		protocols []string
+		ciphers   []string
+		minVer    string
+		maxVer    string
+	)
+	// CR values take precedence
+	if centralTLSConfig.MinVersion != "" {
+		protocols = []string{argoutil.RedisTLSProtocolVersionString(centralTLSConfig.MinVersion)}
+		minVer = argoutil.RedisTLSProtocolVersionString(centralTLSConfig.MinVersion)
+		maxVer = ""
+	}
+	ciphers = argoutil.MapCipherSuites(centralTLSConfig.Ciphers)
+	// Build protocol args
+	if len(protocols) > 0 {
+		args = append(args, "--tls-protocols", strings.Join(protocols, " "))
+	}
+	// Build cipher args
+	if len(ciphers) > 0 {
+		cipherString := strings.Join(ciphers, ":")
+		tls13Only := minVer == "TLSv1.3" && (maxVer == "" || maxVer == "TLSv1.3")
+		mixedTLS12And13 := minVer != "TLSv1.3" && maxVer == "TLSv1.3"
+		switch {
+		case tls13Only:
+			// TLS 1.3 only
+			args = append(args, "--tls-ciphersuites", cipherString)
+		case mixedTLS12And13:
+			// Need both for Redis/OpenSSL
+			args = append(args, "--tls-ciphers", cipherString, "--tls-ciphersuites", cipherString)
+		default:
+			// TLS 1.2 and below
+			args = append(args, "--tls-ciphers", cipherString)
+		}
+	}
 	return args
 }
 
@@ -440,9 +485,9 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 			RunAsUser: int64Ptr(1000),
 		}
 	}
-
+	arguments := getArgoRedisArgs(useTLS, r.CentralTLSConfigProfile)
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
-		Args:            getArgoRedisArgs(useTLS),
+		Args:            arguments,
 		Image:           argoutil.GetRedisContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            "redis",
