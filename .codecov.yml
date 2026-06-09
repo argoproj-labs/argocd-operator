@@ -1,0 +1,16 @@
+flags:
+  unit-tests:
+    carryforward: true
+coverage:
+  status:
+    patch:
+      default:
+        threshold: 2
+    project:
+      default:
+        threshold: 2
+ignore:
+  - "**/*_test.go"
+  - "**/mocks/*"
+  - "test/**/*"
+  - "vendor/**/*"
