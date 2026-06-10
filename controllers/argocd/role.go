@@ -176,7 +176,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 			} else if !UseServer(name, cr) {
 				shouldDelete = true
 				explanation = "server is disabled"
-			} else if !UseCommitServer(cr) {
+			} else if name == common.ArgoCDCommitServerComponent && !UseCommitServer(cr) {
 				shouldDelete = true
 				explanation = "commit server is disabled"
 			}

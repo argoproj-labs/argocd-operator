@@ -6,8 +6,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/utils/ptr"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 func TestShouldDeployCommitServer(t *testing.T) {

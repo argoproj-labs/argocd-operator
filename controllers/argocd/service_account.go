@@ -108,10 +108,8 @@ func (r *ReconcileArgoCD) reconcileServiceAccountPermissions(name string, rules 
 func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoproj.ArgoCD) (*corev1.ServiceAccount, error) {
 	sa := newServiceAccountWithName(name, cr)
 
-	shouldExist := true
-	if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
-		shouldExist = false
-	}
+	shouldExist := name != common.ArgoCDDexServerComponent || UseDex(cr)
+
 	if name == common.ArgoCDCommitServerComponent && !UseCommitServer(cr) {
 		shouldExist = false
 	}
