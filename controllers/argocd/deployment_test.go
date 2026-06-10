@@ -2999,6 +2999,10 @@ func TestReconcileArgoCD_reconcileRepoServerWithFipsEnabled(t *testing.T) {
 			foundEnv = true
 			assert.Equal(t, env.Value, "fips140=on", "GODEBUG environment must be set to fips140=on when fips is enabled")
 		}
+		if env.Name == "GOLANG_FIPS" {
+			foundEnv = true
+			assert.Equal(t, env.Value, "0", "GOLANG_FIPS environment must be set to 0 when fips is enabled")
+		}
 	}
 	assert.True(t, foundEnv, "environment GODEBUG must be set when FIPS is enabled")
 }

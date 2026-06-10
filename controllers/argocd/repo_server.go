@@ -132,7 +132,16 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 			repoEnv = append(repoEnv, corev1.EnvVar{
 				Name:  "GODEBUG",
 				Value: "fips140=on",
-			})
+			},
+				// GOLANG_FIPS and GODEBUG=fips140=on are both mutaully exclusive.
+				// GOLANG_FIPS=1 is set by default but it causes issues
+				// since we are explicitly setting GODEBUG=fips140=on to skip unsupported fips ssh algorithms in Argo CD.
+				// See https://github.com/argoproj/argo-cd/issues/24155,
+				// so we need to set GOLANG_FIPS=0 to avoid the conflict.
+				corev1.EnvVar{
+					Name:  "GOLANG_FIPS",
+					Value: "0",
+				})
 		}
 	}
 
