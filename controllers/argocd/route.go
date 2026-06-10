@@ -64,7 +64,7 @@ func newRouteWithName(name string, cr *argoproj.ArgoCD) *routev1.Route {
 
 // newRouteWithSuffix returns a new Route with the given name suffix for the ArgoCD.
 func newRouteWithSuffix(suffix string, cr *argoproj.ArgoCD) *routev1.Route {
-	return newRouteWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), cr)
+	return newRouteWithName(nameWithSuffix(suffix, cr), cr)
 }
 
 // reconcileRoutes will ensure that all ArgoCD Routes are present.
@@ -322,7 +322,10 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 		host = cr.Spec.ApplicationSet.WebhookServer.Host
 	} else {
 		// Generate the default host
-		baseHost := fmt.Sprintf("%s-%s-%s", cr.Name, common.ApplicationSetControllerWebhookSuffix, cr.Namespace)
+		// For hostnames, we need to ensure the base doesn't exceed DNS label limits
+		// Format: <cr-name>-<suffix>-<namespace>
+		truncatedName := argoutil.TruncateCRName(cr.Name)
+		baseHost := fmt.Sprintf("%s-%s-%s", truncatedName, common.ApplicationSetControllerWebhookSuffix, cr.Namespace)
 		ingressConfig := &configv1.Ingress{}
 		err := r.Get(context.TODO(), client.ObjectKey{Name: "cluster"}, ingressConfig)
 		if err != nil {

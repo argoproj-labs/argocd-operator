@@ -24,6 +24,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
 	argocdFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/argocd"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/configmap"
@@ -73,25 +75,25 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			By("verifying ClusterRole/Bindings exist")
 			appcontrollerCRB := &rbacv1.ClusterRoleBinding{
-				ObjectMeta: metav1.ObjectMeta{Name: "example-argocd-argocd-e2e-cluster-config-argocd-application-controller"},
+				ObjectMeta: metav1.ObjectMeta{Name: argocd.GenerateUniqueResourceName(common.ArgoCDApplicationControllerComponent, argoCDInstance)},
 			}
 			Eventually(appcontrollerCRB).Should(k8sFixture.ExistByName())
 
 			serverCRB := &rbacv1.ClusterRoleBinding{
-				ObjectMeta: metav1.ObjectMeta{Name: "example-argocd-argocd-e2e-cluster-config-argocd-server"},
+				ObjectMeta: metav1.ObjectMeta{Name: argocd.GenerateUniqueResourceName(common.ArgoCDServerComponent, argoCDInstance)},
 			}
 			Eventually(serverCRB).Should(k8sFixture.ExistByName())
 
 			appControllerCR := &rbacv1.ClusterRole{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "example-argocd-argocd-e2e-cluster-config-argocd-application-controller",
+					Name: argocd.GenerateUniqueResourceName(common.ArgoCDApplicationControllerComponent, argoCDInstance),
 				},
 			}
 			Eventually(appControllerCR).Should(k8sFixture.ExistByName())
 
 			serverCR := &rbacv1.ClusterRole{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "example-argocd-argocd-e2e-cluster-config-argocd-server",
+					Name: argocd.GenerateUniqueResourceName(common.ArgoCDServerComponent, argoCDInstance),
 				},
 			}
 			Eventually(serverCR).Should(k8sFixture.ExistByName())
@@ -121,13 +123,13 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Eventually(argoCDInstance, "5m", "5s").Should(argocdFixture.HaveApplicationSetControllerStatus("Running"))
 
 			appSetClusterRole := &rbacv1.ClusterRole{
-				ObjectMeta: metav1.ObjectMeta{Name: "example-argocd-argocd-e2e-cluster-config-argocd-applicationset-controller"},
+				ObjectMeta: metav1.ObjectMeta{Name: argocd.GenerateUniqueResourceName(common.ArgoCDApplicationSetControllerComponent, argoCDInstance)},
 			}
 			Eventually(appSetClusterRole).Should(k8sFixture.ExistByName())
 
 			appSetCRB := &rbacv1.ClusterRoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "example-argocd-argocd-e2e-cluster-config-argocd-applicationset-controller",
+					Name: argocd.GenerateUniqueResourceName(common.ArgoCDApplicationSetControllerComponent, argoCDInstance),
 				},
 			}
 			Eventually(appSetCRB).Should(k8sFixture.ExistByName())

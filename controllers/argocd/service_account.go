@@ -16,7 +16,6 @@ package argocd
 
 import (
 	"context"
-	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
@@ -53,7 +52,7 @@ func newServiceAccountWithName(name string, cr *argoproj.ArgoCD) *corev1.Service
 }
 
 func getServiceAccountName(crName, name string) string {
-	return fmt.Sprintf("%s-%s", crName, name)
+	return argoutil.NameWithSuffix(metav1.ObjectMeta{Name: crName}, name)
 }
 
 // reconcileServiceAccounts will ensure that all ArgoCD Service Accounts are configured.
