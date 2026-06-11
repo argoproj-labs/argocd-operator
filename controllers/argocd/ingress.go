@@ -16,7 +16,6 @@ package argocd
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"strings"
 
@@ -63,7 +62,7 @@ func newIngressWithName(name string, cr *argoproj.ArgoCD) *networkingv1.Ingress 
 
 // newIngressWithSuffix returns a new Ingress with the given name suffix for the ArgoCD.
 func newIngressWithSuffix(suffix string, cr *argoproj.ArgoCD) *networkingv1.Ingress {
-	return newIngressWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), cr)
+	return newIngressWithName(nameWithSuffix(suffix, cr), cr)
 }
 
 // reconcileIngresses will ensure that all ArgoCD Ingress resources are present.

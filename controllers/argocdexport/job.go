@@ -184,7 +184,8 @@ func newExportPodSpec(cr *argoproj.ArgoCDExport, argocdName string, client clien
 	}}
 
 	pod.RestartPolicy = corev1.RestartPolicyOnFailure
-	pod.ServiceAccountName = fmt.Sprintf("%s-%s", argocdName, "argocd-application-controller")
+	// Use the proper naming function to construct service account name
+	pod.ServiceAccountName = argoutil.NameWithSuffix(metav1.ObjectMeta{Name: argocdName}, common.ArgoCDApplicationControllerComponent)
 	pod.Volumes = []corev1.Volume{
 		getArgoStorageVolume("backup-storage", cr),
 		getArgoSecretVolume("secret-storage", cr),

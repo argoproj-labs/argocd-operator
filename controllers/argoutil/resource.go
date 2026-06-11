@@ -44,6 +44,12 @@ const (
 	maxSuffixLength = 25
 	// maxCRNameLength is the maximum length for ArgoCD CR names to accommodate longest suffix
 	maxCRNameLength = maxLabelLength - maxSuffixLength - 1 // -1 for hyphen separator
+	// statefulSetControllerRevisionOverhead is appended by Kubernetes to StatefulSet
+	// controller revision labels ("-" + 10 character hash).
+	statefulSetControllerRevisionOverhead = 11
+	// maxStatefulSetNameLength is the maximum length for StatefulSet names so that
+	// controller revision labels stay within the 63 character limit.
+	maxStatefulSetNameLength = maxLabelLength - statefulSetControllerRevisionOverhead
 )
 
 // AppendStringMap will append the map `add` to the given map `src` and return the result.
@@ -130,7 +136,34 @@ func IsObjectFound(client client.Client, namespace string, name string, obj clie
 // The object name is truncated first, then the full suffix is appended to preserve suffix readability.
 // Example: Given a long resource name, this ensures suffixes like "redis-initial-password" remain intact.
 func NameWithSuffix(meta metav1.ObjectMeta, suffix string) string {
-	return fmt.Sprintf("%s-%s", TruncateCRName(meta.Name), suffix)
+	fullName := fmt.Sprintf("%s-%s", TruncateCRName(meta.Name), suffix)
+	return TruncateWithHash(fullName, maxLabelLength)
+}
+
+// NameWithSuffixForStatefulSet returns a StatefulSet name that stays within the Kubernetes
+// label length limit after controller revision hash suffixes are applied.
+// Preserves the original suffix when possible to maintain backward compatibility.
+// Only abbreviates or truncates when the full name would exceed maxStatefulSetNameLength.
+func NameWithSuffixForStatefulSet(meta metav1.ObjectMeta, suffix string) string {
+	truncatedCRName := TruncateCRName(meta.Name)
+	fullName := fmt.Sprintf("%s-%s", truncatedCRName, suffix)
+
+	// If the full name fits within the limit, use it as-is to maintain backward compatibility
+	if len(fullName) <= maxStatefulSetNameLength {
+		return fullName
+	}
+
+	// Name is too long. For application-controller, try abbreviating first
+	if suffix == "application-controller" {
+		abbreviated := fmt.Sprintf("%s-%s", truncatedCRName, "app-controller")
+		if len(abbreviated) <= maxStatefulSetNameLength {
+			return abbreviated
+		}
+		// If abbreviation still doesn't fit, fall through to hash truncation below
+	}
+
+	// As a last resort, truncate with hash to fit within the limit
+	return TruncateWithHash(fullName, maxStatefulSetNameLength)
 }
 
 // FqdnServiceRef will return the FQDN referencing a specific service name, as set up by the operator, with the
@@ -238,6 +271,12 @@ func GetMaxLabelLength() int {
 // This is exposed for external packages that need to check CR name length
 func GetMaxCRNameLength() int {
 	return maxCRNameLength
+}
+
+// GetMaxStatefulSetNameLength returns the maximum length for StatefulSet names.
+// This is exposed for testing purposes.
+func GetMaxStatefulSetNameLength() int {
+	return maxStatefulSetNameLength
 }
 
 // TruncateWithHash truncates a string to a maximum length and adds a hash suffix to ensure uniqueness

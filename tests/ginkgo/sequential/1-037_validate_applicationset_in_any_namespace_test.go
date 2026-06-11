@@ -10,6 +10,7 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
 	applicationFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/application"
 	appprojectFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/appproject"
@@ -774,7 +775,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			By("first verify that the ClusterRole was not automatically created for the Argo CD instance")
 			clusterRole := &rbacv1.ClusterRole{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        argoCD.Name + "-" + argoCD.Namespace + "-" + common.ArgoCDApplicationSetControllerComponent,
+					Name:        argocd.GenerateUniqueResourceName(common.ArgoCDApplicationSetControllerComponent, argoCD),
 					Annotations: common.DefaultAnnotations(argoCD.Name, argoCD.Namespace),
 				},
 			}
@@ -787,7 +788,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			By("first verify that ClusterRoleBinding was not automatically created for the Argo CD instance")
 			clusterRoleBinding := &rbacv1.ClusterRoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        argoCD.Name + "-" + argoCD.Namespace + "-" + common.ArgoCDApplicationSetControllerComponent,
+					Name:        argocd.GenerateUniqueResourceName(common.ArgoCDApplicationSetControllerComponent, argoCD),
 					Annotations: common.DefaultAnnotations(argoCD.Name, argoCD.Namespace),
 				},
 				Subjects: []rbacv1.Subject{
@@ -1174,7 +1175,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			By("verifying ApplicationSet controller ClusterRole has expected rules")
 			appsetClusterRole := &rbacv1.ClusterRole{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: argoCD.Name + "-" + argoCD.Namespace + "-" + common.ArgoCDApplicationSetControllerComponent,
+					Name: argocd.GenerateUniqueResourceName(common.ArgoCDApplicationSetControllerComponent, argoCD),
 				},
 			}
 			Eventually(appsetClusterRole, "5m", "10s").Should(k8sFixture.ExistByName())

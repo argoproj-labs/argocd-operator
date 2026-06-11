@@ -85,8 +85,9 @@ func newStatefulSetWithName(name string, component string, cr *argoproj.ArgoCD) 
 }
 
 // newStatefulSetWithSuffix returns a new StatefulSet instance for the given ArgoCD using the given suffix.
+// Uses the 52-char StatefulSet naming to prevent controller-revision label overflow for all StatefulSets.
 func newStatefulSetWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) *appsv1.StatefulSet {
-	return newStatefulSetWithName(nameWithSuffix(suffix, cr), component, cr)
+	return newStatefulSetWithName(argoutil.NameWithSuffixForStatefulSet(cr.ObjectMeta, suffix), component, cr)
 }
 
 func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
@@ -405,6 +406,39 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 	if err != nil {
 		return err
 	}
+
+	// Check for and clean up old StatefulSet if the naming strategy has changed.
+	// Previous operator versions used nameWithSuffix (63-char cap); new names use NameWithSuffixForStatefulSet (52-char cap).
+	oldStatefulSetName := nameWithSuffix("redis-ha-server", cr)
+	if oldStatefulSetName != existing.Name {
+		oldSS := &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      oldStatefulSetName,
+				Namespace: cr.Namespace,
+			},
+		}
+		oldExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, oldStatefulSetName, oldSS)
+		if err != nil {
+			return err
+		}
+		if oldExists {
+			// Verify the old StatefulSet is owned by this ArgoCD CR before deleting
+			if !metav1.IsControlledBy(oldSS, cr) {
+				log.Info("Found StatefulSet with legacy name but it is not owned by this ArgoCD CR, skipping cleanup", "oldName", oldStatefulSetName, "cr", cr.Name)
+			} else {
+				log.Info("Cleaning up old Redis HA StatefulSet with legacy name", "oldName", oldStatefulSetName, "newName", existing.Name)
+				argoutil.LogResourceDeletion(log, oldSS, "removing StatefulSet with legacy name")
+				if err := r.Delete(context.TODO(), oldSS); err != nil {
+					return err
+				}
+				// If the new StatefulSet doesn't exist yet, it will be created in the next reconciliation.
+				// If it already exists, we just cleaned up the orphaned old one.
+				if !ssExists {
+					return nil
+				}
+			}
+		}
+	}
 	if ssExists {
 		if !cr.Spec.HA.Enabled || !cr.Spec.Redis.IsEnabled() {
 			// StatefulSet exists but either HA or component enabled flag has been set to false, delete the StatefulSet
@@ -604,7 +638,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 
 	replicas := r.getApplicationControllerReplicaCount(cr)
 
-	ss := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
+	ss := newStatefulSetWithName(applicationControllerResourceName(cr), "application-controller", cr)
 	ss.Spec.Replicas = &replicas
 	controllerEnv := cr.Spec.Controller.Env
 	// Sharding setting explicitly overrides a value set in the env
@@ -679,7 +713,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 	}
 
 	AddSeccompProfileForOpenShift(r.Client, podSpec)
-	podSpec.ServiceAccountName = nameWithSuffix("argocd-application-controller", cr)
+	podSpec.ServiceAccountName = nameWithSuffix(common.ArgoCDApplicationControllerComponent, cr)
 
 	controllerVolumes := []corev1.Volume{
 		{
@@ -748,7 +782,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 				PodAffinityTerm: corev1.PodAffinityTerm{
 					LabelSelector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							common.ArgoCDKeyName: nameWithSuffix("argocd-application-controller", cr),
+							common.ArgoCDKeyName: applicationControllerResourceName(cr),
 						},
 					},
 					TopologyKey: common.ArgoCDKeyHostname,
@@ -819,10 +853,43 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		}
 	}
 
-	existing := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
+	existing := newStatefulSetWithName(applicationControllerResourceName(cr), "application-controller", cr)
 	ssExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
 	if err != nil {
 		return err
+	}
+
+	// Check for and clean up old StatefulSet if the naming strategy has changed.
+	// Previous operator versions used nameWithSuffix (63-char cap); new names use NameWithSuffixForStatefulSet (52-char cap).
+	oldStatefulSetName := nameWithSuffix("application-controller", cr)
+	if oldStatefulSetName != existing.Name {
+		oldSS := &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      oldStatefulSetName,
+				Namespace: cr.Namespace,
+			},
+		}
+		oldExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, oldStatefulSetName, oldSS)
+		if err != nil {
+			return err
+		}
+		if oldExists {
+			// Verify the old StatefulSet is owned by this ArgoCD CR before deleting
+			if !metav1.IsControlledBy(oldSS, cr) {
+				log.Info("Found StatefulSet with legacy name but it is not owned by this ArgoCD CR, skipping cleanup", "oldName", oldStatefulSetName, "cr", cr.Name)
+			} else {
+				log.Info("Cleaning up old application controller StatefulSet with legacy name", "oldName", oldStatefulSetName, "newName", existing.Name)
+				argoutil.LogResourceDeletion(log, oldSS, "removing StatefulSet with legacy name")
+				if err := r.Delete(context.TODO(), oldSS); err != nil {
+					return err
+				}
+				// If the new StatefulSet doesn't exist yet, it will be created in the next reconciliation.
+				// If it already exists, we just cleaned up the orphaned old one.
+				if !ssExists {
+					return nil
+				}
+			}
+		}
 	}
 	if ssExists {
 		if !cr.Spec.Controller.IsEnabled() {
@@ -989,7 +1056,7 @@ func updateNodePlacementStateful(existing *appsv1.StatefulSet, ss *appsv1.Statef
 func containsInvalidImage(cr argoproj.ArgoCD, r *ReconcileArgoCD) (bool, error) {
 
 	podList := &corev1.PodList{}
-	applicationControllerListOption := client.MatchingLabels{common.ArgoCDKeyName: fmt.Sprintf("%s-%s", cr.Name, "application-controller")}
+	applicationControllerListOption := client.MatchingLabels{common.ArgoCDKeyName: applicationControllerResourceName(&cr)}
 
 	if err := r.List(context.TODO(), podList, applicationControllerListOption, client.InNamespace(cr.Namespace)); err != nil {
 		log.Error(err, "Failed to list Pods")
