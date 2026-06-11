@@ -1138,10 +1138,10 @@ func (r *ReconcileArgoCD) ReconcileImageUpdaterNetworkPolicy(cr *argoproj.ArgoCD
 	return nil
 }
 
-func returnNetworkPolicyHeaders(cr *argoproj.ArgoCD, networkPolicyName string) *networkingv1.NetworkPolicy {
+func returnNetworkPolicyHeaders(cr *argoproj.ArgoCD, NetworkPolicyName string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", cr.Name, networkPolicyName),
+			Name:      nameWithSuffix(NetworkPolicyName, cr),
 			Namespace: cr.Namespace,
 			Labels:    argoutil.LabelsForCluster(cr),
 		},
