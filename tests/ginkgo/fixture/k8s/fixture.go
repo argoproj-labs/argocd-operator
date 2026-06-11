@@ -43,6 +43,34 @@ func HaveAnnotationWithValue(key string, value string) matcher.GomegaMatcher {
 	}, BeTrue())
 }
 
+// NotHaveAnnotation verifies that the given annotation key is absent from the object.
+func NotHaveAnnotation(key string) matcher.GomegaMatcher {
+
+	return WithTransform(func(k8sObject client.Object) bool {
+		k8sClient, _, err := utils.GetE2ETestKubeClientWithError()
+		if err != nil {
+			GinkgoWriter.Println(err)
+			return false
+		}
+
+		err = k8sClient.Get(context.Background(), client.ObjectKeyFromObject(k8sObject), k8sObject)
+		if err != nil {
+			GinkgoWriter.Println("NotHaveAnnotation:", err)
+			return false
+		}
+
+		annotations := k8sObject.GetAnnotations()
+		if annotations == nil {
+			return true
+		}
+
+		_, exists := annotations[key]
+		GinkgoWriter.Println("NotHaveAnnotation - key:", key, "exists:", exists)
+		return !exists
+
+	}, BeTrue())
+}
+
 func HaveLabelWithValue(key string, value string) matcher.GomegaMatcher {
 
 	return WithTransform(func(k8sObject client.Object) bool {
