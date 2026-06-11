@@ -115,6 +115,18 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 		},
 	}
 
+	if cr.Spec.Redis.Annotations != nil {
+		for key, value := range cr.Spec.Redis.Annotations {
+			ss.Spec.Template.Annotations[key] = value
+		}
+	}
+	if cr.Spec.Redis.Labels != nil {
+		for key, value := range cr.Spec.Redis.Labels {
+			ss.Spec.Template.Labels[key] = value
+		}
+	}
+	ss.Spec.Template.Labels[common.ArgoCDKeyName] = nameWithSuffix("redis-ha", cr)
+
 	ss.Spec.Template.Spec.Affinity = &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
 			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
@@ -496,6 +508,24 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 			existing.Spec.Template.Spec.InitContainers = ss.Spec.Template.Spec.InitContainers
 			changes = append(changes, "init containers")
 		}
+
+		addKubernetesData(ss.Spec.Template.Labels, existing.Spec.Template.Labels)
+		addKubernetesData(ss.Spec.Template.Annotations, existing.Spec.Template.Annotations)
+
+		// Preserve image.upgraded label if set during this reconcile cycle
+		if v, ok := existing.Spec.Template.Labels["image.upgraded"]; ok {
+			ss.Spec.Template.Labels["image.upgraded"] = v
+		}
+
+		if !reflect.DeepEqual(ss.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
+			existing.Spec.Template.Annotations = ss.Spec.Template.Annotations
+			changes = append(changes, "annotations")
+		}
+		if !reflect.DeepEqual(ss.Spec.Template.Labels, existing.Spec.Template.Labels) {
+			existing.Spec.Template.Labels = ss.Spec.Template.Labels
+			changes = append(changes, "labels")
+		}
+
 		if len(changes) > 0 {
 			argoutil.LogResourceUpdate(log, existing, "updating", strings.Join(changes, ", "))
 			return r.Update(context.TODO(), existing)
@@ -968,6 +998,11 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		// Add Kubernetes-specific labels/annotations from the live object in the source to preserve metadata.
 		addKubernetesData(ss.Spec.Template.Labels, existing.Spec.Template.Labels)
 		addKubernetesData(ss.Spec.Template.Annotations, existing.Spec.Template.Annotations)
+
+		// Preserve image.upgraded label if set during this reconcile cycle
+		if v, ok := existing.Spec.Template.Labels["image.upgraded"]; ok {
+			ss.Spec.Template.Labels["image.upgraded"] = v
+		}
 
 		if !reflect.DeepEqual(ss.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
 			existing.Spec.Template.Annotations = ss.Spec.Template.Annotations

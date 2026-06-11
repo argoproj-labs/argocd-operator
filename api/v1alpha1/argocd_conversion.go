@@ -225,9 +225,11 @@ func ConvertAlphaToBetaRedis(src *ArgoCDRedisSpec) *v1beta1.ArgoCDRedisSpec {
 	var dst *v1beta1.ArgoCDRedisSpec
 	if src != nil {
 		dst = &v1beta1.ArgoCDRedisSpec{
+			Annotations:            src.Annotations,
 			AutoTLS:                src.AutoTLS,
 			DisableTLSVerification: src.DisableTLSVerification,
 			Image:                  src.Image,
+			Labels:                 src.Labels,
 			Resources:              src.Resources,
 			Version:                src.Version,
 		}
@@ -338,9 +340,11 @@ func ConvertAlphaToBetaDex(src *ArgoCDDexSpec) *v1beta1.ArgoCDDexSpec {
 	var dst *v1beta1.ArgoCDDexSpec
 	if src != nil {
 		dst = &v1beta1.ArgoCDDexSpec{
+			Annotations:    src.Annotations,
 			Config:         src.Config,
 			Groups:         src.Groups,
 			Image:          src.Image,
+			Labels:         src.Labels,
 			OpenShiftOAuth: src.OpenShiftOAuth,
 			Resources:      src.Resources,
 			Version:        src.Version,
@@ -605,9 +609,11 @@ func ConvertBetaToAlphaDex(src *v1beta1.ArgoCDDexSpec) *ArgoCDDexSpec {
 	var dst *ArgoCDDexSpec
 	if src != nil {
 		dst = &ArgoCDDexSpec{
+			Annotations:    src.Annotations,
 			Config:         src.Config,
 			Groups:         src.Groups,
 			Image:          src.Image,
+			Labels:         src.Labels,
 			OpenShiftOAuth: src.OpenShiftOAuth,
 			Resources:      src.Resources,
 			Version:        src.Version,
@@ -740,9 +746,11 @@ func ConvertBetaToAlphaRedis(src *v1beta1.ArgoCDRedisSpec) *ArgoCDRedisSpec {
 	var dst *ArgoCDRedisSpec
 	if src != nil {
 		dst = &ArgoCDRedisSpec{
+			Annotations:            src.Annotations,
 			AutoTLS:                src.AutoTLS,
 			DisableTLSVerification: src.DisableTLSVerification,
 			Image:                  src.Image,
+			Labels:                 src.Labels,
 			Resources:              src.Resources,
 			Version:                src.Version,
 		}
