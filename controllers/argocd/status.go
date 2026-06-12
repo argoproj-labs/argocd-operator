@@ -21,7 +21,6 @@ import (
 
 	routev1 "github.com/openshift/api/route/v1"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -343,17 +342,8 @@ func (r *ReconcileArgoCD) reconcileStatusCommitServer(cr *argoproj.ArgoCD, argoc
 	deploy := newDeploymentWithSuffix("commit-server", "commit-server", cr)
 	deplExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy)
 	if err != nil {
-		if apierrors.IsNotFound(err) {
-			if shouldExist {
-				argocdStatus.CommitServer = "Pending"
-			} else {
-				argocdStatus.CommitServer = "Unknown"
-				return nil
-			}
-		} else {
-			argocdStatus.CommitServer = "Failed"
-			return err
-		}
+		argocdStatus.CommitServer = "Failed"
+		return err
 	}
 
 	if deplExists {
@@ -372,6 +362,8 @@ func (r *ReconcileArgoCD) reconcileStatusCommitServer(cr *argoproj.ArgoCD, argoc
 				}
 			}
 		}
+	} else if !shouldExist {
+		argocdStatus.CommitServer = ""
 	}
 
 	return nil

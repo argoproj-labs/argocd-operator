@@ -102,6 +102,7 @@ func (r *ReconcileArgoCD) deleteArgoCDNetworkPolicies(cr *argoproj.ArgoCD) error
 		nameWithSuffix(ArgoCDServerNetworkPolicy, cr),
 		nameWithSuffix(ArgoCDApplicationControllerNetworkPolicy, cr),
 		nameWithSuffix(ArgoCDRepoServerNetworkPolicy, cr),
+		nameWithSuffix(ArgoCDCommitServerNetworkPolicy, cr),
 	}
 
 	for _, name := range names {
