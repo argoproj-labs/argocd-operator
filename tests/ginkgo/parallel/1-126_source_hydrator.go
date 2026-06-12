@@ -76,7 +76,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 					Expect(csNetPol).Should(exist)
 					Eventually(csSA, "30s", "5s").Should(exist)
 				} else {
-					haveStatus := argocdFixture.HaveCommitServerStatus("Unknown")
+					haveStatus := argocdFixture.HaveCommitServerStatus("")
 					Eventually(argoCD, "30s", "5s").Should(haveStatus)
 					Consistently(argoCD, "10s", "2s").Should(haveStatus)
 					Expect(csService).ShouldNot(exist)
