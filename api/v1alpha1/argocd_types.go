@@ -211,6 +211,12 @@ type ArgoCDDexSpec struct {
 	// Version is the Dex container image tag.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex","urn:alm:descriptor:com.tectonic.ui:text"}
 	Version string `json:"version,omitempty"`
+
+	// Custom annotations to pods deployed by the operator
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Custom labels to pods deployed by the operator
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 // ArgoCDGrafanaSpec defines the desired state for the Grafana component.
@@ -451,6 +457,12 @@ type ArgoCDRedisSpec struct {
 	// The value specified here can currently be:
 	// - openshift - Use the OpenShift service CA to request TLS config
 	AutoTLS string `json:"autotls,omitempty"`
+
+	// Custom annotations to pods deployed by the operator
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Custom labels to pods deployed by the operator
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 // ArgoCDRepoSpec defines the desired state for the Argo CD repo server component.

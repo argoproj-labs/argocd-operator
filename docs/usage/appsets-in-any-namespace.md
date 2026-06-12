@@ -122,5 +122,31 @@ This will configure ApplicationSet controller to allow the defined URLs for SCM 
 
 Only one of either `managed-by` or `applicationset-managed-by-cluster-argocd` labels can be applied to a given namespace. We will be prioritizing `managed-by` label in case of a conflict as this feature is currently in beta, so the new roles/rolebindings will not be created if namespace is already labelled with `managed-by` label, and they will be deleted if a namespace is first added to the `.spec.applicationSet.sourceNamespaces` list and is later also labelled with `managed-by` label.
 
+## TokenRef strict mode
 
+`tokenRef` allows an ApplicationSet generator to reference a Secret that contains authentication details, such as a Git access token.
+
+When `.spec.applicationSet.sourceNamespaces` is configured on the ArgoCD CR, the Operator enables tokenRef strict mode by default. In this mode, Secrets referenced by SCM Provider or Pull Request generators through `tokenRef` must be labeled `argocd.argoproj.io/secret-type: scm-creds`. This helps prevent ApplicationSets from referencing Secrets outside the allowed namespace scope.
+
+We recommend keeping strict mode enabled. Disabling it can allow ApplicationSets to reference Secrets more broadly, which may increase the risk of accidental or unauthorized Secret access.
+
+For more details, see the upstream [tokenRef restrictions](https://argo-cd.readthedocs.io/en/latest/operator-manual/applicationset/Appset-Any-Namespace/#tokenref-restrictions) documentation. If you are upgrading from a previous operator version, see [ApplicationSet tokenRef strict mode](../upgrading.md#applicationset-tokenref-strict-mode) in the upgrade guide.
+
+If required, you can disable strict mode by setting `.spec.cmdParams` on the ArgoCD CR:
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example
+spec:
+  applicationSet:
+    sourceNamespaces:
+      - foo
+  cmdParams:
+    applicationsetcontroller.enable.tokenref.strict.mode: "false"
+```
+
+!!! important
+    Only disable strict mode temporarily during migration, or if you have compensating controls. Prefer labeling Secrets with `argocd.argoproj.io/secret-type: scm-creds` and keeping strict mode enabled.
 

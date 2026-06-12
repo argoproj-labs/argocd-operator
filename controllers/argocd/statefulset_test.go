@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -26,6 +27,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -199,6 +201,59 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_enabled(t *testing.T) {
 	assert.Errorf(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s), "not found")
 }
 
+func TestReconcileArgoCD_reconcileRedisStatefulSet_MigratesFromLegacyName(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	// Create ArgoCD with a long name that will trigger abbreviation for Redis HA
+	// redis-ha-server suffix is 16 chars, so we need CR name > 36 chars to exceed 52 char limit
+	a := makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+		cr.Name = "this-is-a-very-long-argocd-cr-name-for-testing"
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	a.Spec.HA.Enabled = true
+
+	// Create old-style StatefulSet with full unabbreviated name
+	oldStatefulSetName := nameWithSuffix("redis-ha-server", a)
+	oldSS := newStatefulSetWithSuffix("redis-ha-server", "redis", a)
+	oldSS.Name = oldStatefulSetName // Force old naming
+	err := controllerutil.SetControllerReference(a, oldSS, r.Scheme)
+	assert.NoError(t, err)
+	err = r.Create(context.TODO(), oldSS)
+	assert.NoError(t, err)
+
+	// First reconcile deletes old StatefulSet
+	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+
+	// Verify old StatefulSet is deleted
+	oldSSCheck := &appsv1.StatefulSet{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      oldStatefulSetName,
+		Namespace: a.Namespace,
+	}, oldSSCheck)
+	assert.True(t, apierrors.IsNotFound(err), "Old StatefulSet should be deleted after first reconcile")
+
+	// Second reconcile creates new StatefulSet with abbreviated name
+	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+
+	// Verify new StatefulSet exists with abbreviated name
+	newStatefulSetName := argoutil.NameWithSuffixForStatefulSet(a.ObjectMeta, "redis-ha-server")
+	newSS := &appsv1.StatefulSet{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
+		Name:      newStatefulSetName,
+		Namespace: a.Namespace,
+	}, newSS))
+
+	// Verify names are different (migration occurred)
+	assert.NotEqual(t, oldStatefulSetName, newStatefulSetName, "Old and new names should differ")
+}
+
 func TestReconcileArgoCD_reconcileApplicationController(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
@@ -216,7 +271,7 @@ func TestReconcileArgoCD_reconcileApplicationController(t *testing.T) {
 	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      "argocd-application-controller",
+			Name:      applicationControllerResourceName(a),
 			Namespace: a.Namespace,
 		},
 		ss))
@@ -262,7 +317,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withRedisTLS(t *testing.
 	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      "argocd-application-controller",
+			Name:      applicationControllerResourceName(a),
 			Namespace: a.Namespace,
 		},
 		ss))
@@ -304,7 +359,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withUpdate(t *testing.T)
 	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      "argocd-application-controller",
+			Name:      applicationControllerResourceName(a),
 			Namespace: a.Namespace,
 		},
 		ss))
@@ -373,7 +428,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withResources(t *testing
 	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      "argocd-application-controller",
+			Name:      applicationControllerResourceName(a),
 			Namespace: a.Namespace,
 		},
 		ss))
@@ -540,7 +595,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 		assert.NoError(t, r.Get(
 			context.TODO(),
 			types.NamespacedName{
-				Name:      "argocd-application-controller",
+				Name:      applicationControllerResourceName(a),
 				Namespace: a.Namespace,
 			},
 			ss))
@@ -592,7 +647,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withAppSync(t *testing.T
 	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      "argocd-application-controller",
+			Name:      applicationControllerResourceName(a),
 			Namespace: a.Namespace,
 		},
 		ss))
@@ -647,7 +702,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withEnv(t *testing.T) {
 	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      "argocd-application-controller",
+			Name:      applicationControllerResourceName(a),
 			Namespace: a.Namespace,
 		},
 		ss))
@@ -724,7 +779,7 @@ func Test_ContainsInvalidImage(t *testing.T) {
 			Name:      "argo-cd-application-controller",
 			Namespace: a.Namespace,
 			Labels: map[string]string{
-				common.ArgoCDKeyName: fmt.Sprintf("%s-%s", a.Name, "application-controller"),
+				common.ArgoCDKeyName: applicationControllerResourceName(a),
 			},
 		},
 	}
@@ -857,7 +912,7 @@ func TestReconcileAppController_Initcontainer(t *testing.T) {
 	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      "argocd-application-controller",
+			Name:      applicationControllerResourceName(a),
 			Namespace: a.Namespace,
 		},
 		ss))
@@ -874,7 +929,7 @@ func TestReconcileAppController_Initcontainer(t *testing.T) {
 	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      "argocd-application-controller",
+			Name:      applicationControllerResourceName(a),
 			Namespace: a.Namespace,
 		},
 		ss))
@@ -905,7 +960,7 @@ func TestReconcileArgoCD_sidecarcontainer(t *testing.T) {
 	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      "argocd-application-controller",
+			Name:      applicationControllerResourceName(a),
 			Namespace: a.Namespace,
 		},
 		ss))
@@ -922,7 +977,7 @@ func TestReconcileArgoCD_sidecarcontainer(t *testing.T) {
 	assert.NoError(t, r.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      "argocd-application-controller",
+			Name:      applicationControllerResourceName(a),
 			Namespace: a.Namespace,
 		},
 		ss))
@@ -1090,12 +1145,10 @@ func TestStatefulSetWithLongName(t *testing.T) {
 	}
 	assert.NotNil(t, redisStatefulset, "Redis HA statefulset should exist")
 
-	// Verify that the StatefulSet name is truncated and within limits
-	assert.LessOrEqual(t, len(redisStatefulset.Name), 63)
+	// Verify that the StatefulSet name is truncated and within limits for controller revisions
+	assert.LessOrEqual(t, len(redisStatefulset.Name), argoutil.GetMaxStatefulSetNameLength())
+	assert.LessOrEqual(t, len(redisStatefulset.Name)+11, argoutil.GetMaxLabelLength())
 	assert.Contains(t, redisStatefulset.Name, "redis")
-
-	// Verify that the StatefulSet name contains the "server" suffix (unique identifier)
-	assert.Contains(t, redisStatefulset.Name, "redis-ha-server", "StatefulSet name should contain the full suffix for uniqueness")
 
 	// Verify that the component label is set correctly
 	assert.Equal(t, "redis", redisStatefulset.Labels[common.ArgoCDKeyComponent])
@@ -1109,4 +1162,159 @@ func TestStatefulSetWithLongName(t *testing.T) {
 
 	// Verify that the service name uses the component name (our fix)
 	assert.Equal(t, expectedComponentName, redisStatefulset.Spec.ServiceName)
+}
+
+func TestApplicationControllerStatefulSetWithLongCRName(t *testing.T) {
+	longName := "long-cr-name-for-statefulset-test"
+	a := makeTestArgoCD()
+	a.Name = longName
+
+	resourceName := applicationControllerResourceName(a)
+	ss := newStatefulSetWithName(resourceName, "application-controller", a)
+
+	assert.LessOrEqual(t, len(ss.Name), argoutil.GetMaxStatefulSetNameLength())
+	assert.LessOrEqual(t, len(ss.Name)+11, argoutil.GetMaxLabelLength())
+	assert.Equal(t, resourceName, ss.Labels[common.ArgoCDKeyName])
+	assert.Equal(t, resourceName, ss.Spec.Template.Labels[common.ArgoCDKeyName])
+	assert.Equal(t, resourceName, ss.Spec.Selector.MatchLabels[common.ArgoCDKeyName])
+
+	saName := nameWithSuffix(common.ArgoCDApplicationControllerComponent, a)
+	assert.LessOrEqual(t, len(saName), argoutil.GetMaxLabelLength())
+}
+
+func TestReconcileArgoCD_reconcileApplicationControllerStatefulSet_LegacyCleanup(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	// Create ArgoCD with a long name that triggers abbreviation
+	longName := "this-name-will-push-the-char-limit"
+	a := makeTestArgoCD()
+	a.Name = longName
+
+	// Create a legacy StatefulSet with old naming (owned by this CR)
+	oldStatefulSetName := argoutil.NameWithSuffix(a.ObjectMeta, "application-controller")
+	trueVal := true
+	legacyOwnedSS := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      oldStatefulSetName,
+			Namespace: a.Namespace,
+			Labels: map[string]string{
+				common.ArgoCDKeyComponent: "application-controller",
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         "argoproj.io/v1beta1",
+					Kind:               "ArgoCD",
+					Name:               a.Name,
+					UID:                a.UID,
+					Controller:         &trueVal,
+					BlockOwnerDeletion: &trueVal,
+				},
+			},
+		},
+		Spec: appsv1.StatefulSetSpec{
+			Replicas: func() *int32 { r := int32(1); return &r }(),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					common.ArgoCDKeyName: oldStatefulSetName,
+				},
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						common.ArgoCDKeyName: oldStatefulSetName,
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "argocd-application-controller",
+							Image: "quay.io/argoproj/argocd:latest",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	resObjs := []client.Object{a, legacyOwnedSS}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	// First reconcile - should delete the old StatefulSet and return early
+	err := r.reconcileApplicationControllerStatefulSet(a, false)
+	assert.NoError(t, err)
+
+	// Verify legacy owned StatefulSet was deleted
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      legacyOwnedSS.Name,
+		Namespace: legacyOwnedSS.Namespace,
+	}, legacyOwnedSS)
+	assert.True(t, apierrors.IsNotFound(err), "Legacy owned StatefulSet should be deleted")
+
+	// Second reconcile - should create the new StatefulSet with abbreviated name
+	err = r.reconcileApplicationControllerStatefulSet(a, false)
+	assert.NoError(t, err)
+
+	// Verify new StatefulSet with abbreviated name exists
+	newStatefulSetName := argoutil.NameWithSuffixForStatefulSet(a.ObjectMeta, "application-controller")
+	newSS := &appsv1.StatefulSet{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      newStatefulSetName,
+		Namespace: a.Namespace,
+	}, newSS)
+	assert.NoError(t, err, "New StatefulSet with abbreviated name should exist")
+	assert.Contains(t, newSS.Name, "app-controller", "Should use abbreviated suffix")
+}
+
+func TestReconcileArgoCD_reconcileRedisStatefulSet_customLabelsAndAnnotations(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	a.Spec.HA.Enabled = true
+	a.Spec.Redis.Annotations = map[string]string{
+		"custom":  "annotation",
+		"custom2": "redis",
+	}
+	a.Spec.Redis.Labels = map[string]string{
+		"custom":  "label",
+		"custom2": "redis",
+	}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+
+	ss := &appsv1.StatefulSet{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: a.Name + "-redis-ha-server", Namespace: a.Namespace}, ss))
+	assert.Equal(t, "annotation", ss.Spec.Template.Annotations["custom"])
+	assert.Equal(t, "redis", ss.Spec.Template.Annotations["custom2"])
+	assert.Equal(t, "label", ss.Spec.Template.Labels["custom"])
+	assert.Equal(t, "redis", ss.Spec.Template.Labels["custom2"])
+	expectedNameLabel := nameWithSuffix("redis-ha", a)
+	assert.Equal(t, expectedNameLabel, ss.Spec.Template.Labels[common.ArgoCDKeyName])
+	assert.NotEmpty(t, ss.Spec.Template.Annotations["checksum/init-config"])
+
+	a.Spec.Redis.Labels = map[string]string{
+		common.ArgoCDKeyName: "wrong-name",
+		"custom":             "label",
+	}
+	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: a.Name + "-redis-ha-server", Namespace: a.Namespace}, ss))
+	assert.Equal(t, expectedNameLabel, ss.Spec.Template.Labels[common.ArgoCDKeyName])
+
+	a.Spec.Redis.Annotations = map[string]string{}
+	a.Spec.Redis.Labels = map[string]string{}
+	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: a.Name + "-redis-ha-server", Namespace: a.Namespace}, ss))
+	_, hasCustomAnnotation := ss.Spec.Template.Annotations["custom"]
+	_, hasCustomLabel := ss.Spec.Template.Labels["custom"]
+	assert.False(t, hasCustomAnnotation)
+	assert.False(t, hasCustomLabel)
 }

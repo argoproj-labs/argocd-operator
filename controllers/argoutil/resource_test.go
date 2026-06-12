@@ -154,6 +154,130 @@ func TestTruncateWithHashUniqueness(t *testing.T) {
 	}
 }
 
+func TestNameWithSuffixForStatefulSet(t *testing.T) {
+	tests := []struct {
+		name           string
+		crName         string
+		suffix         string
+		expectContains string
+		expectExact    string // For backward compatibility tests where we expect exact name
+	}{
+		{
+			name:           "preserves full suffix for short CR names (backward compatibility)",
+			crName:         "argocd",
+			suffix:         "application-controller",
+			expectExact:    "argocd-application-controller",
+			expectContains: "application-controller",
+		},
+		{
+			name:           "preserves full suffix for medium CR names (backward compatibility)",
+			crName:         "example-argocd",
+			suffix:         "application-controller",
+			expectExact:    "example-argocd-application-controller",
+			expectContains: "application-controller",
+		},
+		{
+			name:           "abbreviates suffix for long CR names to stay within 52 char limit",
+			crName:         "this-name-will-push-the-char-limit",
+			suffix:         "application-controller",
+			expectContains: "app-controller",
+		},
+		{
+			name:           "abbreviates suffix for very long CR names",
+			crName:         "very-long-argocd-instance-name-that-needs-truncation-and-more",
+			suffix:         "application-controller",
+			expectContains: "app-controller", // CR name truncated, suffix abbreviated to fit
+		},
+		{
+			name:           "truncates with hash for very long CR names with non-abbreviated suffix",
+			crName:         "very-long-argocd-instance-name-that-needs-truncation-and-more",
+			suffix:         "redis-ha-server",
+			expectContains: "", // No abbreviation for redis-ha-server, falls through to hash truncation
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := NameWithSuffixForStatefulSet(metav1.ObjectMeta{Name: tt.crName}, tt.suffix)
+
+			// Verify StatefulSet name stays within limit
+			assert.LessOrEqual(t, len(result), GetMaxStatefulSetNameLength(),
+				"StatefulSet name must be <= %d chars", GetMaxStatefulSetNameLength())
+
+			// Verify that after Kubernetes adds controller revision (11 chars), total stays within 63
+			assert.LessOrEqual(t, len(result)+11, GetMaxLabelLength(),
+				"StatefulSet name + controller revision must be <= %d chars", GetMaxLabelLength())
+
+			// Verify exact name for backward compatibility cases
+			if tt.expectExact != "" {
+				assert.Equal(t, tt.expectExact, result,
+					"Should preserve original naming for backward compatibility")
+			}
+
+			// Verify suffix is present when expected
+			if tt.expectContains != "" {
+				assert.Contains(t, result, tt.expectContains,
+					"Should contain expected suffix")
+			}
+
+			// Verify function is deterministic
+			result2 := NameWithSuffixForStatefulSet(metav1.ObjectMeta{Name: tt.crName}, tt.suffix)
+			assert.Equal(t, result, result2, "Function should be deterministic")
+		})
+	}
+}
+
+func TestNameWithSuffix(t *testing.T) {
+	tests := []struct {
+		name   string
+		crName string
+		suffix string
+	}{
+		{
+			name:   "returns concatenated name when both parts fit within limit",
+			crName: "argocd",
+			suffix: "redis",
+		},
+		{
+			name:   "truncates CR name when combined length exceeds limit",
+			crName: "argocd",
+			suffix: "argocd-application-controller",
+		},
+		{
+			name:   "handles long CR name with short suffix",
+			crName: "long-argocd-cr-name-exceeding-limit",
+			suffix: "server",
+		},
+		{
+			name:   "applies double truncation for service account names exceeding limit",
+			crName: "long-argocd-cr-name-exceeding-limit",
+			suffix: "argocd-application-controller",
+		},
+		{
+			name:   "truncates both CR name and suffix when extremely long",
+			crName: "extremely-long-argocd-instance-name-that-exceeds-maximum-limits",
+			suffix: "very-long-suffix-for-service-account-resource",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := NameWithSuffix(metav1.ObjectMeta{Name: tt.crName}, tt.suffix)
+
+			// Verify result stays within Kubernetes label limit
+			assert.LessOrEqual(t, len(result), GetMaxLabelLength(),
+				"Result must be <= %d chars", GetMaxLabelLength())
+
+			// Verify function is deterministic
+			result2 := NameWithSuffix(metav1.ObjectMeta{Name: tt.crName}, tt.suffix)
+			assert.Equal(t, result, result2, "Function should be deterministic")
+
+			// Verify result is not empty
+			assert.NotEmpty(t, result, "Result should not be empty")
+		})
+	}
+}
+
 func TestTruncateCRName(t *testing.T) {
 	tests := []struct {
 		name     string

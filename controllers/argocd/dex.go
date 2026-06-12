@@ -415,6 +415,18 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		if cr.Spec.SSO.Dex.VolumeMounts != nil {
 			dexVolumeMounts = append(dexVolumeMounts, cr.Spec.SSO.Dex.VolumeMounts...)
 		}
+
+		if cr.Spec.SSO.Dex.Annotations != nil {
+			for key, value := range cr.Spec.SSO.Dex.Annotations {
+				deploy.Spec.Template.Annotations[key] = value
+			}
+		}
+		if cr.Spec.SSO.Dex.Labels != nil {
+			for key, value := range cr.Spec.SSO.Dex.Labels {
+				deploy.Spec.Template.Labels[key] = value
+			}
+		}
+		deploy.Spec.Template.Labels[common.ArgoCDKeyName] = nameWithSuffix("dex-server", cr)
 	}
 
 	// Dex v2.45.0+ declares its image USER as the string "dex" rather than a numeric UID.
@@ -422,7 +434,8 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 	// otherwise it refuses to create the container (CreateContainerConfigError).
 	dexSecCtx := argoutil.DefaultSecurityContext()
 	dexImage := getDexContainerImage(cr)
-	if strings.HasPrefix(dexImage, common.ArgoCDDefaultDexImage) {
+	// Skip for OCP - let the cluster make sure it is within the range.
+	if strings.HasPrefix(dexImage, common.ArgoCDDefaultDexImage) && !IsOpenShiftCluster() {
 		dexUID := common.ArgoCDDefaultDexRunAsUser
 		dexSecCtx.RunAsUser = &dexUID
 	}
@@ -479,7 +492,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		VolumeMounts:    dexVolumeMounts,
 	}}
 
-	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDDefaultDexServiceAccountName)
+	deploy.Spec.Template.Spec.ServiceAccountName = getServiceAccountName(cr.Name, common.ArgoCDDefaultDexServiceAccountName)
 	deploy.Spec.Template.Spec.Volumes = dexVolumes
 
 	existing := newDeploymentWithSuffix("dex-server", "dex-server", cr)
@@ -572,6 +585,28 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
 			existing.Spec.Template.Spec.Volumes = deploy.Spec.Template.Spec.Volumes
 			changes = append(changes, "volumes")
+		}
+
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.ServiceAccountName, existing.Spec.Template.Spec.ServiceAccountName) {
+			existing.Spec.Template.Spec.ServiceAccountName = deploy.Spec.Template.Spec.ServiceAccountName
+			changes = append(changes, "serviceAccountName")
+		}
+
+		addKubernetesData(deploy.Spec.Template.Labels, existing.Spec.Template.Labels)
+		addKubernetesData(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations)
+
+		// Preserve image.upgraded label if set during this reconcile cycle
+		if v, ok := existing.Spec.Template.Labels["image.upgraded"]; ok {
+			deploy.Spec.Template.Labels["image.upgraded"] = v
+		}
+
+		if !reflect.DeepEqual(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
+			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
+			changes = append(changes, "annotations")
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Labels, existing.Spec.Template.Labels) {
+			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
+			changes = append(changes, "labels")
 		}
 
 		if len(changes) > 0 {

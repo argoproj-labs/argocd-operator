@@ -153,7 +153,7 @@ func Test_ReconcileArgoCD_ReconcileRepoTLSSecret(t *testing.T) {
 		if !ok {
 			t.Errorf("Expected rollout of argocd-repo-server, but it didn't happen: %v", repoDepl.Spec.Template.Labels)
 		}
-		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-application-controller", Namespace: "argocd-operator"}, ctrlSts)
+		err = r.Get(context.TODO(), types.NamespacedName{Name: applicationControllerResourceName(argocd), Namespace: "argocd-operator"}, ctrlSts)
 		assert.NoError(t, err)
 		ctrlRollout, ok := ctrlSts.Spec.Template.Labels["repo.tls.cert.changed"]
 		if !ok {
@@ -188,7 +188,7 @@ func Test_ReconcileArgoCD_ReconcileRepoTLSSecret(t *testing.T) {
 		if !ok || repoRollout != repoRolloutNew {
 			t.Errorf("Did not expect rollout of argocd-repo-server, but it did happen: %v", repoDepl.Spec.Template.Labels)
 		}
-		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-application-controller", Namespace: "argocd-operator"}, ctrlSts)
+		err = r.Get(context.TODO(), types.NamespacedName{Name: applicationControllerResourceName(argocd), Namespace: "argocd-operator"}, ctrlSts)
 		assert.NoError(t, err)
 		ctrlRolloutNew, ok := ctrlSts.Spec.Template.Labels["repo.tls.cert.changed"]
 		if !ok || ctrlRollout != ctrlRolloutNew {
@@ -234,7 +234,7 @@ func Test_ReconcileArgoCD_ReconcileRepoTLSSecret(t *testing.T) {
 		if !ok || repoRollout == repoRolloutNew {
 			t.Errorf("Expected rollout of argocd-repo-server, but it didn't happen: %v", repoDepl.Spec.Template.Labels)
 		}
-		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-application-controller", Namespace: "argocd-operator"}, ctrlSts)
+		err = r.Get(context.TODO(), types.NamespacedName{Name: applicationControllerResourceName(argocd), Namespace: "argocd-operator"}, ctrlSts)
 		assert.NoError(t, err)
 		ctrlRolloutNew, ok = ctrlSts.Spec.Template.Labels["repo.tls.cert.changed"]
 		if !ok || ctrlRollout == ctrlRolloutNew {
@@ -580,7 +580,7 @@ func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 		if !ok {
 			t.Errorf("Expected rollout of argocd-redis, but it didn't happen: %v", redisDepl.Spec.Template.Labels)
 		}
-		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-application-controller", Namespace: "argocd-operator"}, ctrlSts)
+		err = r.Get(context.TODO(), types.NamespacedName{Name: applicationControllerResourceName(argocd), Namespace: "argocd-operator"}, ctrlSts)
 		assert.NoError(t, err)
 		ctrlRollout, ok := ctrlSts.Spec.Template.Labels[certChangedLabel]
 		if !ok {
@@ -620,7 +620,7 @@ func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 		if !ok || redisRollout != redisRolloutNew {
 			t.Errorf("Did not expect rollout of argocd-redis, but it did happen: %v", redisDepl.Spec.Template.Labels)
 		}
-		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-application-controller", Namespace: "argocd-operator"}, ctrlSts)
+		err = r.Get(context.TODO(), types.NamespacedName{Name: applicationControllerResourceName(argocd), Namespace: "argocd-operator"}, ctrlSts)
 		assert.NoError(t, err)
 		ctrlRolloutNew, ok := ctrlSts.Spec.Template.Labels[certChangedLabel]
 		if !ok || ctrlRollout != ctrlRolloutNew {
@@ -671,7 +671,7 @@ func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 		if !ok || redisRollout == redisRolloutNew {
 			t.Errorf("Expected rollout of argocd-redis, but it didn't happen: %v", redisDepl.Spec.Template.Labels)
 		}
-		err = r.Get(context.TODO(), types.NamespacedName{Name: "argocd-application-controller", Namespace: "argocd-operator"}, ctrlSts)
+		err = r.Get(context.TODO(), types.NamespacedName{Name: applicationControllerResourceName(argocd), Namespace: "argocd-operator"}, ctrlSts)
 		assert.NoError(t, err)
 		ctrlRolloutNew, ok = ctrlSts.Spec.Template.Labels[certChangedLabel]
 		if !ok || ctrlRollout == ctrlRolloutNew {

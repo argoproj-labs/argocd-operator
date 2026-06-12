@@ -1420,6 +1420,11 @@ spec:
                   Deprecated field. Support dropped in v1beta1 version.
                   Dex defines the Dex server options for ArgoCD.
                 properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: Custom annotations to pods deployed by the operator
+                    type: object
                   config:
                     description: Config is the dex connector configuration.
                     type: string
@@ -1432,6 +1437,11 @@ spec:
                   image:
                     description: Image is the Dex container image.
                     type: string
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: Custom labels to pods deployed by the operator
+                    type: object
                   openShiftOAuth:
                     description: OpenShiftOAuth enables OpenShift OAuth authentication
                       for the Dex server.
@@ -2517,6 +2527,11 @@ spec:
               redis:
                 description: Redis defines the Redis server options for ArgoCD.
                 properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: Custom annotations to pods deployed by the operator
+                    type: object
                   autotls:
                     description: |-
                       AutoTLS specifies the method to use for automatic TLS configuration for the redis server
@@ -2530,6 +2545,11 @@ spec:
                   image:
                     description: Image is the Redis container image.
                     type: string
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: Custom labels to pods deployed by the operator
+                    type: object
                   resources:
                     description: Resources defines the Compute Resources required
                       by the container for Redis.
@@ -8577,6 +8597,11 @@ spec:
                   dex:
                     description: Dex contains the configuration for Argo CD dex authentication
                     properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: Custom annotations to pods deployed by the operator
+                        type: object
                       config:
                         description: Config is the dex connector configuration.
                         type: string
@@ -8589,6 +8614,11 @@ spec:
                       image:
                         description: Image is the Dex container image.
                         type: string
+                      labels:
+                        additionalProperties:
+                          type: string
+                        description: Custom labels to pods deployed by the operator
+                        type: object
                       openShiftOAuth:
                         description: OpenShiftOAuth enables OpenShift OAuth authentication
                           for the Dex server.
@@ -20799,6 +20829,11 @@ spec:
               redis:
                 description: Redis defines the Redis server options for ArgoCD.
                 properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: Custom annotations to pods deployed by the operator
+                    type: object
                   autotls:
                     description: |-
                       AutoTLS specifies the method to use for automatic TLS configuration for the redis server
@@ -20816,6 +20851,11 @@ spec:
                   image:
                     description: Image is the Redis container image.
                     type: string
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: Custom labels to pods deployed by the operator
+                    type: object
                   remote:
                     description: Remote specifies the remote URL of the Redis container.
                       (optional, by default, a local instance managed by the operator
@@ -32153,6 +32193,11 @@ spec:
                   dex:
                     description: Dex contains the configuration for Argo CD dex authentication
                     properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: Custom annotations to pods deployed by the operator
+                        type: object
                       config:
                         description: Config is the dex connector configuration.
                         type: string
@@ -32324,6 +32369,11 @@ spec:
                       image:
                         description: Image is the Dex container image.
                         type: string
+                      labels:
+                        additionalProperties:
+                          type: string
+                        description: Custom labels to pods deployed by the operator
+                        type: object
                       openShiftOAuth:
                         description: OpenShiftOAuth enables OpenShift OAuth authentication
                           for the Dex server.

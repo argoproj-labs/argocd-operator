@@ -74,7 +74,7 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 							},
 							Expr: intstr.IntOrString{
 								Type:   intstr.String,
-								StrVal: fmt.Sprintf("kube_statefulset_status_replicas{statefulset=\"%s\", namespace=\"%s\"} != kube_statefulset_status_replicas_ready{statefulset=\"%s\", namespace=\"%s\"} ", test.argocd.Name+"-application-controller", test.argocd.Namespace, test.argocd.Name+"-application-controller", test.argocd.Namespace),
+								StrVal: fmt.Sprintf("kube_statefulset_status_replicas{statefulset=\"%s\", namespace=\"%s\"} != kube_statefulset_status_replicas_ready{statefulset=\"%s\", namespace=\"%s\"} ", applicationControllerResourceName(test.argocd), test.argocd.Namespace, applicationControllerResourceName(test.argocd), test.argocd.Namespace),
 							},
 							For: ptr.To((monitoringv1.Duration)("1m")),
 							Labels: map[string]string{

@@ -29,6 +29,7 @@ import (
 	argov1alpha1api "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	argocdcontroller "github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
 	argocdFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/argocd"
 	k8sFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/k8s"
@@ -161,7 +162,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			By("verifying ClusterRole is created for notifications controller")
 			notifClusterRole := &rbacv1.ClusterRole{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "example-argocd-" + argocdNS.Name + "-argocd-notifications-controller",
+					Name: argocdcontroller.GenerateUniqueResourceName(common.ArgoCDNotificationsControllerComponent, argocd),
 				},
 			}
 			Eventually(notifClusterRole).Should(k8sFixture.ExistByName())
@@ -169,7 +170,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			By("verifying ClusterRoleBinding is created for notifications controller")
 			notifClusterRoleBinding := &rbacv1.ClusterRoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "example-argocd-" + argocdNS.Name + "-argocd-notifications-controller",
+					Name: argocdcontroller.GenerateUniqueResourceName(common.ArgoCDNotificationsControllerComponent, argocd),
 				},
 			}
 			Eventually(notifClusterRoleBinding).Should(k8sFixture.ExistByName())
@@ -615,7 +616,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			By("verifying ClusterRole is created for notifications controller")
 			notifClusterRole := &rbacv1.ClusterRole{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "example-argocd-" + argocdNS.Name + "-argocd-notifications-controller",
+					Name: argocdcontroller.GenerateUniqueResourceName(common.ArgoCDNotificationsControllerComponent, argocd),
 				},
 			}
 			Eventually(notifClusterRole, "3m", "5s").Should(k8sFixture.ExistByName())
@@ -623,7 +624,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			By("verifying ClusterRoleBinding is created for notifications controller")
 			notifClusterRoleBinding := &rbacv1.ClusterRoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "example-argocd-" + argocdNS.Name + "-argocd-notifications-controller",
+					Name: argocdcontroller.GenerateUniqueResourceName(common.ArgoCDNotificationsControllerComponent, argocd),
 				},
 			}
 			Eventually(notifClusterRoleBinding, "3m", "5s").Should(k8sFixture.ExistByName())

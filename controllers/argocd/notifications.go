@@ -153,12 +153,12 @@ func (r *ReconcileArgoCD) deleteNotificationsResources(cr *argoproj.ArgoCD) erro
 	sa := &corev1.ServiceAccount{}
 	role := &rbacv1.Role{}
 
-	if err := argoutil.FetchObject(r.Client, cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDNotificationsControllerComponent), sa); err != nil {
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, nameWithSuffix(common.ArgoCDNotificationsControllerComponent, cr), sa); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return err
 		}
 	}
-	if err := argoutil.FetchObject(r.Client, cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDNotificationsControllerComponent), role); err != nil {
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, nameWithSuffix(common.ArgoCDNotificationsControllerComponent, cr), role); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return err
 		}
@@ -606,7 +606,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsServiceMonitor(cr *argoproj.Argo
 		return nil
 	}
 
-	name := fmt.Sprintf("%s-%s", cr.Name, "notifications-controller-metrics")
+	name := nameWithSuffix("notifications-controller-metrics", cr)
 	serviceMonitor := newServiceMonitorWithName(name, cr)
 	smExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, serviceMonitor.Name, serviceMonitor)
 	if err != nil {

@@ -44,7 +44,7 @@ func newRoleForApplicationSourceNamespaces(namespace string, rules []v1.PolicyRu
 }
 
 func generateResourceName(argoComponentName string, cr *argoproj.ArgoCD) string {
-	return cr.Name + "-" + argoComponentName
+	return argoutil.NameWithSuffix(cr.ObjectMeta, argoComponentName)
 }
 
 // GenerateUniqueResourceName generates unique names for cluster scoped resources

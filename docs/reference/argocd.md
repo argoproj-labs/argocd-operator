@@ -1017,6 +1017,8 @@ Image | `redis` | The container image for Redis. This overrides the `ARGOCD_REDI
 Resources | [Empty] | The container compute resources.
 Version | 5.0.3 (SHA) | The tag to use with the Redis container image.
 Remote | "" | Specifies the remote URL of redis running in external clusters, also disables Redis component. This field is optional.
+Annotations | [Empty] | Custom annotations to pods deployed by the operator
+Labels | [Empty] | Custom labels to pods deployed by the operator
 
 ### Redis Example
 
@@ -1711,6 +1713,8 @@ Version | v2.21.0 (SHA) | The tag to use with the Dex container image.
 Env | [Empty] | Environment to set for Dex.
 Volumes | [Empty] | Configure addition volumes for the Dex component. This field is optional.
 VolumeMounts | [Empty] | Configure addition volume mounts for the Dex component. This field is optional.
+Annotations | [Empty] | Custom annotations to pods deployed by the operator
+Labels | [Empty] | Custom labels to pods deployed by the operator
 
 ### Dex Example
 
