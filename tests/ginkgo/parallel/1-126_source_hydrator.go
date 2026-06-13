@@ -189,6 +189,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Expect(ic.Command).To(Equal([]string{"echo", "init"}))
 
 			By("Annotations reconciles")
+			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCD), argoCD)).To(Succeed())
 			argoCD.Spec.CommitServer.Annotations = nil
 			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
 			Eventually(func() map[string]string {
@@ -196,6 +197,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			}, "5s", "1s").ToNot(HaveKey("example-annotation"))
 
 			By("Labels reconciles")
+			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCD), argoCD)).To(Succeed())
 			argoCD.Spec.CommitServer.Labels = nil
 			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
 			Eventually(func() map[string]string {
@@ -203,6 +205,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			}, "5s", "1s").ToNot(HaveKey("example-label"))
 
 			By("Env reconciles")
+			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCD), argoCD)).To(Succeed())
 			argoCD.Spec.CommitServer.Env = nil
 			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
 			Eventually(func() []corev1.EnvVar {
@@ -210,6 +213,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			}, "5s", "1s").ToNot(ContainElement(corev1.EnvVar{Name: "FOO", Value: "BAR"}))
 
 			By("Resources reconciles")
+			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCD), argoCD)).To(Succeed())
 			argoCD.Spec.CommitServer.Resources.Limits = nil
 			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
 			Eventually(func() corev1.ResourceRequirements {
@@ -217,6 +221,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			}, "5s", "1s").To(Equal(corev1.ResourceRequirements{Requests: resources.Requests})) // Same Requests, no Limits
 
 			By("InitContainers reconciles")
+			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCD), argoCD)).To(Succeed())
 			argoCD.Spec.CommitServer.InitContainers[0].Command = []string{"echo", "init-2"}
 			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
 			Eventually(func() []string {
@@ -224,6 +229,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			}, "5s", "1s").To(Equal([]string{"echo", "init-2"}))
 
 			By("Command reconciles")
+			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCD), argoCD)).To(Succeed())
 			argoCD.Spec.CommitServer.LogLevel = "debug"
 			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
 			Eventually(func() []string {
