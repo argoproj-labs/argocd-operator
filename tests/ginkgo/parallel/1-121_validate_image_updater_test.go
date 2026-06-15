@@ -110,15 +110,12 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			}
 			// verify network policy is created
 			networkPolicy := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-%s", argoCD.Name, "image-updater-network-policy"), Namespace: ns.Name}}
-			webhookNetworkPolicy := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-%s", argoCD.Name, "image-updater-webhook-network-policy"), Namespace: ns.Name}}
 			Eventually(networkPolicy, "1m", "5s").Should(k8sFixture.ExistByName())
-			Eventually(webhookNetworkPolicy, "1m", "5s").Should(k8sFixture.ExistByName())
 			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCD), argoCD)).To(Succeed())
 			argoCD.Spec.NetworkPolicy = argov1beta1api.ArgoCDNetworkPolicySpec{}
 			argoCD.Spec.NetworkPolicy.Enabled = ptr.To(false)
 			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
 			Eventually(networkPolicy, "1m", "5s").Should(k8sFixture.NotExistByName())
-			Eventually(webhookNetworkPolicy, "1m", "5s").Should(k8sFixture.NotExistByName())
 
 			statefulSet := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: "argocd-application-controller", Namespace: ns.Name}}
 			Eventually(statefulSet).Should(k8sFixture.ExistByName())

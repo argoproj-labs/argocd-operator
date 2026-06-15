@@ -43,13 +43,11 @@ const (
 	ArgoCDApplicationSetControllerNetworkPolicy = "applicationset-controller-network-policy"
 	// ImageUpdaterNetworkPolicy is the name of the network policy which controls Image Updater traffic
 	ImageUpdaterNetworkPolicy = "image-updater-network-policy"
-	// WebhookNetworkPolicy is the name of the network policy which controls Webhook traffic
-	ImageUpdaterWebhookNetworkPolicy = "image-updater-webhook-network-policy"
 )
 
 func (r *ReconcileArgoCD) ReconcileNetworkPolicies(cr *argoproj.ArgoCD) error {
 	if IsImageUpdaterAPIAvailable() && cr.Spec.ImageUpdater.Enabled && cr.Spec.NetworkPolicy.IsEnabled() {
-		if err := r.ReconcileImageUpdaterNetworkPolicy(cr); err != nil {
+		if err := r.reconcileImageUpdaterNetworkPolicy(ImageUpdaterNetworkPolicy, cr); err != nil {
 			return err
 		}
 	}
@@ -107,7 +105,6 @@ func (r *ReconcileArgoCD) deleteArgoCDNetworkPolicies(cr *argoproj.ArgoCD) error
 		nameWithSuffix(ArgoCDApplicationControllerNetworkPolicy, cr),
 		nameWithSuffix(ArgoCDRepoServerNetworkPolicy, cr),
 		nameWithSuffix(ImageUpdaterNetworkPolicy, cr),
-		nameWithSuffix(ImageUpdaterWebhookNetworkPolicy, cr),
 	}
 
 	for _, name := range names {
@@ -1047,8 +1044,18 @@ func (r *ReconcileArgoCD) ReconcileArgoCDRepoServerNetworkPolicy(cr *argoproj.Ar
 	return nil
 }
 
-func createImageUpdaterNetworkPolicy(cr *argoproj.ArgoCD, name string, port int32) *networkingv1.NetworkPolicy {
+func createImageUpdaterNetworkPolicy(cr *argoproj.ArgoCD, name string, ports ...int32) *networkingv1.NetworkPolicy {
 	desired := returnNetworkPolicyHeaders(cr, name)
+	var ingressPorts []networkingv1.NetworkPolicyPort
+	for _, port := range ports {
+		ingressPorts = append(ingressPorts, networkingv1.NetworkPolicyPort{
+			Protocol: TCPProtocol,
+			Port: &intstr.IntOrString{
+				Type:   intstr.Int,
+				IntVal: port,
+			},
+		})
+	}
 	desired.Spec = networkingv1.NetworkPolicySpec{
 		PodSelector: metav1.LabelSelector{
 			MatchLabels: map[string]string{
@@ -1065,27 +1072,21 @@ func createImageUpdaterNetworkPolicy(cr *argoproj.ArgoCD, name string, port int3
 						NamespaceSelector: &metav1.LabelSelector{},
 					},
 				},
-				Ports: []networkingv1.NetworkPolicyPort{
-					{
-						Protocol: TCPProtocol,
-						Port: &intstr.IntOrString{
-							Type:   intstr.Int,
-							IntVal: port,
-						},
-					},
-				},
+				Ports: ingressPorts,
 			},
 		},
 	}
+
 	return desired
 }
 
-func reconcileImageUpdaterNetworkPolicy(r *ReconcileArgoCD, cr *argoproj.ArgoCD, desired *networkingv1.NetworkPolicy) error {
+func (r *ReconcileArgoCD) reconcileImageUpdaterNetworkPolicy(name string, cr *argoproj.ArgoCD) error {
+	policy := createImageUpdaterNetworkPolicy(cr, name, 8443, 8082)
 	var changes []string
 	existing := &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      desired.Name,
-			Namespace: desired.Namespace,
+			Name:      policy.Name,
+			Namespace: policy.Namespace,
 		},
 	}
 	exists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
@@ -1093,16 +1094,16 @@ func reconcileImageUpdaterNetworkPolicy(r *ReconcileArgoCD, cr *argoproj.ArgoCD,
 		return err
 	}
 	if exists {
-		if !reflect.DeepEqual(existing.Spec.PodSelector, desired.Spec.PodSelector) {
-			existing.Spec.PodSelector = desired.Spec.PodSelector
+		if !reflect.DeepEqual(existing.Spec.PodSelector, policy.Spec.PodSelector) {
+			existing.Spec.PodSelector = policy.Spec.PodSelector
 			changes = append(changes, "pod selector")
 		}
-		if !reflect.DeepEqual(existing.Spec.PolicyTypes, desired.Spec.PolicyTypes) {
-			existing.Spec.PolicyTypes = desired.Spec.PolicyTypes
+		if !reflect.DeepEqual(existing.Spec.PolicyTypes, policy.Spec.PolicyTypes) {
+			existing.Spec.PolicyTypes = policy.Spec.PolicyTypes
 			changes = append(changes, "policy types")
 		}
-		if !reflect.DeepEqual(existing.Spec.Ingress, desired.Spec.Ingress) {
-			existing.Spec.Ingress = desired.Spec.Ingress
+		if !reflect.DeepEqual(existing.Spec.Ingress, policy.Spec.Ingress) {
+			existing.Spec.Ingress = policy.Spec.Ingress
 			changes = append(changes, "ingress rules")
 		}
 		if len(changes) > 0 {
@@ -1114,26 +1115,14 @@ func reconcileImageUpdaterNetworkPolicy(r *ReconcileArgoCD, cr *argoproj.ArgoCD,
 		}
 		return nil
 	}
-	if err := controllerutil.SetControllerReference(cr, desired, r.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(cr, policy, r.Scheme); err != nil {
 		log.Error(err, "Failed to set controller reference on network policy")
 		return fmt.Errorf("failed to set controller reference on network policy. error: %w", err)
 	}
-	argoutil.LogResourceCreation(log, desired)
-	if err := r.Create(context.TODO(), desired); err != nil {
-		log.Error(err, fmt.Sprintf("Failed to create %s network policy in namespace: %s", desired.Name, cr.Namespace))
-		return fmt.Errorf("failed to create %s network policy in namespace %s. error: %w", desired.Name, cr.Namespace, err)
-	}
-	return nil
-}
-
-func (r *ReconcileArgoCD) ReconcileImageUpdaterNetworkPolicy(cr *argoproj.ArgoCD) error {
-	metricsPolicy := createImageUpdaterNetworkPolicy(cr, ImageUpdaterNetworkPolicy, 8443)
-	webhookPolicy := createImageUpdaterNetworkPolicy(cr, ImageUpdaterWebhookNetworkPolicy, 8082)
-	if err := reconcileImageUpdaterNetworkPolicy(r, cr, metricsPolicy); err != nil {
-		return err
-	}
-	if err := reconcileImageUpdaterNetworkPolicy(r, cr, webhookPolicy); err != nil {
-		return err
+	argoutil.LogResourceCreation(log, policy)
+	if err := r.Create(context.TODO(), policy); err != nil {
+		log.Error(err, fmt.Sprintf("Failed to create %s network policy in namespace: %s", policy.Name, cr.Namespace))
+		return fmt.Errorf("failed to create %s network policy in namespace %s. error: %w", policy.Name, cr.Namespace, err)
 	}
 	return nil
 }

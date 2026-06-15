@@ -228,21 +228,17 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterControllerDisabled(cr *argoproj.A
 		clusterRole.Name = clusterRoleName
 	}
 	// delete network policies when disable
-	networkPolicies := []string{
-		generateResourceName(ImageUpdaterNetworkPolicy, cr),
-		generateResourceName(ImageUpdaterWebhookNetworkPolicy, cr),
+	// delete network policy when disabled
+	npName := generateResourceName(ImageUpdaterNetworkPolicy, cr)
+	np := &networkingv1.NetworkPolicy{}
+	_ = argoutil.FetchObject(r.Client, cr.Namespace, npName, np)
+	if np.Name == "" {
+		np.Name = npName
+		np.Namespace = cr.Namespace
 	}
-	for _, npName := range networkPolicies {
-		np := &networkingv1.NetworkPolicy{}
-		_ = argoutil.FetchObject(r.Client, cr.Namespace, npName, np)
-		if np.Name == "" {
-			np.Name = npName
-			np.Namespace = cr.Namespace
-		}
-		argoutil.LogResourceDeletion(log, np, "image updater is disabled")
-		if err := r.Delete(context.TODO(), np); err != nil && !errors.IsNotFound(err) {
-			return err
-		}
+	argoutil.LogResourceDeletion(log, np, "image updater is disabled")
+	if err := r.Delete(context.TODO(), np); err != nil && !errors.IsNotFound(err) {
+		return err
 	}
 
 	log.Info("deleting Image Updater deployment")
