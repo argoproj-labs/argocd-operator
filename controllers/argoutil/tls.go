@@ -124,13 +124,6 @@ func NewSignedCertificate(cfg *certmanagerv1.CertificateSpec, dnsNames []string,
 	return x509.ParseCertificate(certDERBytes)
 }
 
-func RedisTLSVersion(version string) string {
-	if version == "1.0" {
-		return "TLSv1"
-	}
-	return "TLSv" + version
-}
-
 // -------------------- Redis TLS Args --------------------
 
 func TLSProtocolVersionString(v configv1.TLSProtocolVersion) string {

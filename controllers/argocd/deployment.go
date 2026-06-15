@@ -242,43 +242,35 @@ func getArgoRedisArgs(useTLS bool, centralTLSConfig TLSConfigProfile) []string {
 	return args
 }
 
-// BuildRedisArgs builds arguments for redis deployment.
-// precedence will be for argoCD cr passed values
-// then for central tls config if no values are passed in argocd CR.
+// BuildRedisArgs builds arguments for redis deployment based on central tls config.
 func BuildRedisArgs(centralTLSConfig TLSConfigProfile) []string {
 	var args []string
 	var (
 		protocols []string
 		ciphers   []string
 		minVer    string
-		maxVer    string
 	)
-	// CR values take precedence
 	if centralTLSConfig.MinVersion != "" {
 		protocols = []string{argoutil.RedisTLSProtocolVersionString(centralTLSConfig.MinVersion)}
 		minVer = argoutil.RedisTLSProtocolVersionString(centralTLSConfig.MinVersion)
-		maxVer = ""
 	}
-	ciphers = argoutil.MapCipherSuites(centralTLSConfig.Ciphers)
 	// Build protocol args
 	if len(protocols) > 0 {
 		args = append(args, "--tls-protocols", strings.Join(protocols, " "))
 	}
+	ciphers = argoutil.MapCipherSuites(centralTLSConfig.Ciphers)
 	// Build cipher args
 	if len(ciphers) > 0 {
 		cipherString := strings.Join(ciphers, ":")
-		tls13Only := minVer == "TLSv1.3" && (maxVer == "" || maxVer == "TLSv1.3")
-		mixedTLS12And13 := minVer != "TLSv1.3" && maxVer == "TLSv1.3"
-		switch {
-		case tls13Only:
+		if minVer == "TLSv1.3" {
 			// TLS 1.3 only
 			args = append(args, "--tls-ciphersuites", cipherString)
-		case mixedTLS12And13:
-			// Need both for Redis/OpenSSL
-			args = append(args, "--tls-ciphers", cipherString, "--tls-ciphersuites", cipherString)
-		default:
-			// TLS 1.2 and below
-			args = append(args, "--tls-ciphers", cipherString)
+		} else {
+			// TLS 1.2 or mixed TLS 1.2/1.3
+			args = append(args,
+				"--tls-ciphers", cipherString,
+				"--tls-ciphersuites", cipherString,
+			)
 		}
 	}
 	return args
