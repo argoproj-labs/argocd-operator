@@ -28,8 +28,9 @@ import (
 
 	certmanagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 
-	"github.com/argoproj-labs/argocd-operator/common"
 	configv1 "github.com/openshift/api/config/v1"
+
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 // NewPrivateKey returns randomly generated RSA private key.
