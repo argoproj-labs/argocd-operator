@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -40,9 +41,16 @@ const (
 	ArgoCDDexServerNetworkPolicy = "dex-server-network-policy"
 	// ArgoCDApplicationSetControllerNetworkPolicy is the name of the network policy which controls Argo CD ApplicationSet Controller traffic
 	ArgoCDApplicationSetControllerNetworkPolicy = "applicationset-controller-network-policy"
+	// ImageUpdaterNetworkPolicy is the name of the network policy which controls Image Updater traffic
+	ImageUpdaterNetworkPolicy = "image-updater-network-policy"
 )
 
 func (r *ReconcileArgoCD) ReconcileNetworkPolicies(cr *argoproj.ArgoCD) error {
+	if IsImageUpdaterAPIAvailable() && cr.Spec.ImageUpdater.Enabled && cr.Spec.NetworkPolicy.IsEnabled() {
+		if err := r.reconcileImageUpdaterNetworkPolicy(ImageUpdaterNetworkPolicy, cr); err != nil {
+			return err
+		}
+	}
 
 	// Reconcile Redis network policy
 	if err := r.ReconcileRedisNetworkPolicy(cr); err != nil {
@@ -96,6 +104,7 @@ func (r *ReconcileArgoCD) deleteArgoCDNetworkPolicies(cr *argoproj.ArgoCD) error
 		nameWithSuffix(ArgoCDServerNetworkPolicy, cr),
 		nameWithSuffix(ArgoCDApplicationControllerNetworkPolicy, cr),
 		nameWithSuffix(ArgoCDRepoServerNetworkPolicy, cr),
+		nameWithSuffix(ImageUpdaterNetworkPolicy, cr),
 	}
 
 	for _, name := range names {
@@ -1032,6 +1041,89 @@ func (r *ReconcileArgoCD) ReconcileArgoCDRepoServerNetworkPolicy(cr *argoproj.Ar
 		return fmt.Errorf("failed to create %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 	}
 
+	return nil
+}
+
+func createImageUpdaterNetworkPolicy(cr *argoproj.ArgoCD, name string, ports ...int32) *networkingv1.NetworkPolicy {
+	desired := returnNetworkPolicyHeaders(cr, name)
+	var ingressPorts []networkingv1.NetworkPolicyPort
+	for _, port := range ports {
+		ingressPorts = append(ingressPorts, networkingv1.NetworkPolicyPort{
+			Protocol: TCPProtocol,
+			Port: &intstr.IntOrString{
+				Type:   intstr.Int,
+				IntVal: port,
+			},
+		})
+	}
+	desired.Spec = networkingv1.NetworkPolicySpec{
+		PodSelector: metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				"app.kubernetes.io/name": nameWithSuffix(common.ArgoCDImageUpdaterControllerComponent, cr),
+			},
+		},
+		PolicyTypes: []networkingv1.PolicyType{
+			networkingv1.PolicyTypeIngress,
+		},
+		Ingress: []networkingv1.NetworkPolicyIngressRule{
+			{
+				From: []networkingv1.NetworkPolicyPeer{
+					{
+						NamespaceSelector: &metav1.LabelSelector{},
+					},
+				},
+				Ports: ingressPorts,
+			},
+		},
+	}
+
+	return desired
+}
+
+func (r *ReconcileArgoCD) reconcileImageUpdaterNetworkPolicy(name string, cr *argoproj.ArgoCD) error {
+	policy := createImageUpdaterNetworkPolicy(cr, name, 8443, 8082)
+	var changes []string
+	existing := &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      policy.Name,
+			Namespace: policy.Namespace,
+		},
+	}
+	exists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
+	if err != nil {
+		return err
+	}
+	if exists {
+		if !reflect.DeepEqual(existing.Spec.PodSelector, policy.Spec.PodSelector) {
+			existing.Spec.PodSelector = policy.Spec.PodSelector
+			changes = append(changes, "pod selector")
+		}
+		if !reflect.DeepEqual(existing.Spec.PolicyTypes, policy.Spec.PolicyTypes) {
+			existing.Spec.PolicyTypes = policy.Spec.PolicyTypes
+			changes = append(changes, "policy types")
+		}
+		if !reflect.DeepEqual(existing.Spec.Ingress, policy.Spec.Ingress) {
+			existing.Spec.Ingress = policy.Spec.Ingress
+			changes = append(changes, "ingress rules")
+		}
+		if len(changes) > 0 {
+			argoutil.LogResourceUpdate(log, existing, "updating", strings.Join(changes, ", "))
+			if err := r.Update(context.TODO(), existing); err != nil {
+				log.Error(err, fmt.Sprintf("Failed to update %s network policy in namespace: %s", existing.Name, cr.Namespace))
+				return fmt.Errorf("failed to update %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
+			}
+		}
+		return nil
+	}
+	if err := controllerutil.SetControllerReference(cr, policy, r.Scheme); err != nil {
+		log.Error(err, "Failed to set controller reference on network policy")
+		return fmt.Errorf("failed to set controller reference on network policy. error: %w", err)
+	}
+	argoutil.LogResourceCreation(log, policy)
+	if err := r.Create(context.TODO(), policy); err != nil {
+		log.Error(err, fmt.Sprintf("Failed to create %s network policy in namespace: %s", policy.Name, cr.Namespace))
+		return fmt.Errorf("failed to create %s network policy in namespace %s. error: %w", policy.Name, cr.Namespace, err)
+	}
 	return nil
 }
 
