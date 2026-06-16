@@ -17,6 +17,7 @@ package agent
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
@@ -29,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
@@ -37,7 +39,14 @@ import (
 func ReconcileAgentRoleBinding(client client.Client, compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD, scheme *runtime.Scheme) error {
 	roleBinding := buildRoleBinding(compName, cr)
 	expectedSubjects := buildSubjects(sa, cr)
-	expectedRoleRef := buildRoleRef(generateAgentResourceName(cr.Name, compName), "Role")
+
+	var expectedRoleRef v1.RoleRef
+	customName := getCustomRoleName()
+	if customName != "" {
+		expectedRoleRef = buildRoleRef(customName, "ClusterRole")
+	} else {
+		expectedRoleRef = buildRoleRef(generateAgentResourceName(cr.Name, compName), "Role")
+	}
 
 	// Check if the RoleBinding already exists
 	exists := true
@@ -126,6 +135,13 @@ func ReconcileAgentClusterRoleBinding(client client.Client, compName string, sa 
 			return nil
 		}
 
+		if cr.Spec.DefaultClusterScopedRoleDisabled {
+			argoutil.LogResourceDeletion(log, clusterRoleBinding, "agent clusterRoleBinding is being deleted as the default cluster scoped role is disabled")
+			if err := client.Delete(context.TODO(), clusterRoleBinding); err != nil {
+				return fmt.Errorf("failed to delete agent clusterRoleBinding %s: %v", clusterRoleBinding.Name, err)
+			}
+		}
+
 		// Update ClusterRoleBinding if subjects or role ref have changed
 		if !reflect.DeepEqual(clusterRoleBinding.Subjects, expectedSubjects) ||
 			!reflect.DeepEqual(clusterRoleBinding.RoleRef, expectedRoleRef) {
@@ -142,7 +158,7 @@ func ReconcileAgentClusterRoleBinding(client client.Client, compName string, sa 
 	}
 
 	// If ClusterRoleBinding doesn't exist and agent is disabled, nothing to do
-	if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() || !allowed {
+	if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() || !allowed || cr.Spec.DefaultClusterScopedRoleDisabled {
 		return nil
 	}
 
@@ -193,4 +209,11 @@ func buildClusterRoleBinding(compName string, cr *argoproj.ArgoCD) *v1.ClusterRo
 			Labels: buildLabelsForAgent(cr.Name, compName),
 		},
 	}
+}
+
+func getCustomRoleName() string {
+	if name := os.Getenv(common.ArgoCDAgentClusterRoleEnvName); name != "" {
+		return name
+	}
+	return ""
 }

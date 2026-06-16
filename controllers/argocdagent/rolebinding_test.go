@@ -25,6 +25,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 // Test helper functions
@@ -598,6 +600,85 @@ func TestReconcilePrincipalClusterRoleBinding_ClusterRoleBindingDoesNotExist_Age
 
 	// Verify ClusterRoleBinding was not created
 	clusterRoleBinding := &v1.ClusterRoleBinding{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name: generateAgentResourceName(cr.Name+"-"+cr.Namespace, testCompName),
+	}, clusterRoleBinding)
+	assert.True(t, errors.IsNotFound(err))
+}
+
+func TestReconcilePrincipalRoleBinding_RoleBindingDoesNotExist_CustomClusterRoleSet(t *testing.T) {
+	// Test case: RoleBinding does not exist, principal is enabled, and the env variable PRINCIPAL_CLUSTER_ROLE is set
+	// Expected behavior: the role ref for the role binding should point to the custom name and be ClusterRole instead of Role
+
+	t.Setenv(common.ArgoCDPrincipalClusterRoleEnvName, "custom-role-name")
+
+	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	sa := makeTestServiceAccount()
+
+	resObjs := []client.Object{cr, sa}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	expectedSubjects := buildSubjects(sa, cr)
+	expectedRoleRef := buildRoleRef("custom-role-name", "ClusterRole")
+
+	err := ReconcilePrincipalRoleBinding(cl, testCompName, sa, cr, sch)
+	assert.NoError(t, err)
+
+	roleBinding := &v1.RoleBinding{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName),
+		Namespace: cr.Namespace,
+	}, roleBinding)
+
+	assert.NoError(t, err)
+	// Verify RoleBinding is correct
+	assert.Equal(t, expectedSubjects, roleBinding.Subjects)
+	assert.Equal(t, expectedRoleRef, roleBinding.RoleRef)
+}
+
+func TestReconcilePrincipalClusterRoleBinding_ClusterRoleBindingDoesNotExist_ClusterRoleDisabled(t *testing.T) {
+	// Test case: ClusterRoleBinding does not exist, principal, is enabled, and the default cluster role is disabled
+	// Expected behavior: the cluster role binding should not be created if the default is created
+
+	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr.Spec.DefaultClusterScopedRoleDisabled = true
+	sa := makeTestServiceAccount()
+
+	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", cr.Namespace)
+
+	resObjs := []client.Object{cr, sa}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalClusterRoleBinding(cl, testCompName, sa, cr, sch)
+	assert.NoError(t, err)
+
+	clusterRoleBinding := &v1.ClusterRoleBinding{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name: generateAgentResourceName(cr.Name+"-"+cr.Namespace, testCompName),
+	}, clusterRoleBinding)
+	assert.True(t, errors.IsNotFound(err))
+
+	// Reconcile again to see if it gets created
+	cr.Spec.DefaultClusterScopedRoleDisabled = false
+	err = cl.Update(context.TODO(), cr)
+	assert.NoError(t, err)
+	err = ReconcilePrincipalClusterRoleBinding(cl, testCompName, sa, cr, sch)
+	assert.NoError(t, err)
+
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name: generateAgentResourceName(cr.Name+"-"+cr.Namespace, testCompName),
+	}, clusterRoleBinding)
+	assert.NoError(t, err)
+
+	// Turn off to ensure that it gets deleted
+	cr.Spec.DefaultClusterScopedRoleDisabled = true
+	err = cl.Update(context.TODO(), cr)
+	assert.NoError(t, err)
+	err = ReconcilePrincipalClusterRoleBinding(cl, testCompName, sa, cr, sch)
+	assert.NoError(t, err)
+
 	err = cl.Get(context.TODO(), types.NamespacedName{
 		Name: generateAgentResourceName(cr.Name+"-"+cr.Namespace, testCompName),
 	}, clusterRoleBinding)
