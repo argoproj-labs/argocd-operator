@@ -140,6 +140,7 @@ func ReconcileAgentClusterRoleBinding(client client.Client, compName string, sa 
 			if err := client.Delete(context.TODO(), clusterRoleBinding); err != nil {
 				return fmt.Errorf("failed to delete agent clusterRoleBinding %s: %v", clusterRoleBinding.Name, err)
 			}
+			return nil
 		}
 
 		// Update ClusterRoleBinding if subjects or role ref have changed
@@ -212,8 +213,5 @@ func buildClusterRoleBinding(compName string, cr *argoproj.ArgoCD) *v1.ClusterRo
 }
 
 func getCustomRoleName() string {
-	if name := os.Getenv(common.ArgoCDAgentClusterRoleEnvName); name != "" {
-		return name
-	}
-	return ""
+	return os.Getenv(common.ArgoCDAgentClusterRoleEnvName)
 }

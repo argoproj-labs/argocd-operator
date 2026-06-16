@@ -135,6 +135,7 @@ func ReconcilePrincipalClusterRoleBinding(client client.Client, compName string,
 			if err := client.Delete(context.TODO(), clusterRoleBinding); err != nil {
 				return fmt.Errorf("failed to delete principal clusterRoleBinding %s: %v", clusterRoleBinding.Name, err)
 			}
+			return nil
 		}
 
 		if !reflect.DeepEqual(clusterRoleBinding.Subjects, expectedSubjects) ||
@@ -206,8 +207,5 @@ func buildClusterRoleBinding(compName string, cr *argoproj.ArgoCD) *v1.ClusterRo
 }
 
 func getCustomRoleName() string {
-	if name := os.Getenv(common.ArgoCDPrincipalClusterRoleEnvName); name != "" {
-		return name
-	}
-	return ""
+	return os.Getenv(common.ArgoCDPrincipalClusterRoleEnvName)
 }

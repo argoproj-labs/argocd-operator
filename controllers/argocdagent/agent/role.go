@@ -126,6 +126,7 @@ func ReconcileAgentClusterRoles(client client.Client, compName string, cr *argop
 			if err := client.Delete(context.TODO(), clusterRole); err != nil {
 				return clusterRole, fmt.Errorf("failed to delete principal clusterRole %s: %v", clusterRole.Name, err)
 			}
+			return clusterRole, nil
 		}
 
 		if !reflect.DeepEqual(expectedPolicyRule, clusterRole.Rules) {
