@@ -516,21 +516,26 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 		It("Should restore Redis Auth volume and mount if removed from principal deployment", func() {
 			By("Creating ArgoCD instance normally")
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
 			Eventually(principalDeployment).Should(k8sFixture.ExistByName())
-
-			fmt.Printf("principalDeployment.Spec.Template.Spec.Volumes: %v\n", principalDeployment.Spec.Template.Spec.Volumes)
 
 			By("Removing Redis Auth volume and mount from the deployment")
 			err := k8sClient.Get(ctx, client.ObjectKey{Name: argoCDAgentPrincipalName, Namespace: ns.Name}, principalDeployment)
 			Expect(err).ToNot(HaveOccurred())
 
-			principalDeployment.Spec.Template.Spec.Volumes = slices.DeleteFunc(principalDeployment.Spec.Template.Spec.Volumes, func(v corev1.Volume) bool {
-				return v.Name == argoutil.RedisAuthVolumeName
+			deploymentFixture.Update(principalDeployment, func(p *appsv1.Deployment) {
+				volLen := len(p.Spec.Template.Spec.Volumes)
+				mountLen := len(p.Spec.Template.Spec.Containers[0].VolumeMounts)
+				p.Spec.Template.Spec.Volumes = slices.DeleteFunc(p.Spec.Template.Spec.Volumes, func(v corev1.Volume) bool {
+					return v.Name == argoutil.RedisAuthVolumeName
+				})
+				p.Spec.Template.Spec.Containers[0].VolumeMounts = slices.DeleteFunc(p.Spec.Template.Spec.Containers[0].VolumeMounts, func(vm corev1.VolumeMount) bool {
+					return vm.Name == argoutil.RedisAuthVolumeName
+				})
+				// Double check we have actually removed the volume and mount
+				Expect(p.Spec.Template.Spec.Volumes).To(HaveLen(volLen - 1))
+				Expect(p.Spec.Template.Spec.Containers[0].VolumeMounts).To(HaveLen(mountLen - 1))
 			})
-			principalDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = slices.DeleteFunc(principalDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, func(vm corev1.VolumeMount) bool {
-				return vm.Name == argoutil.RedisAuthVolumeName
-			})
-			Expect(k8sClient.Update(ctx, principalDeployment)).To(Succeed())
 
 			By("Redis Auth volume and mount are re-added by the operator")
 			Eventually(func() bool {
