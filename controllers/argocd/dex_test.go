@@ -1500,3 +1500,64 @@ func TestReconcileArgoCD_reconcileDexLegacySATokenSecrets_IgnoresUnrelatedSecret
 		types.NamespacedName{Name: opaqueSecret.Name, Namespace: a.Namespace}, kept),
 		"Opaque Secret must not be deleted by legacy cleanup")
 }
+
+func TestReconcileArgoCD_reconcileDexDeployment_customLabelsAndAnnotations(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+		Provider: argoproj.SSOProviderTypeDex,
+		Dex: &argoproj.ArgoCDDexSpec{
+			Annotations: map[string]string{
+				"custom":  "annotation",
+				"custom2": "dex",
+			},
+			Labels: map[string]string{
+				"custom":  "label",
+				"custom2": "dex",
+			},
+		},
+	}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	assert.NoError(t, r.reconcileDexDeployment(a))
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.Get(
+		context.TODO(),
+		types.NamespacedName{Name: "argocd-dex-server", Namespace: a.Namespace},
+		deployment))
+	assert.Equal(t, "annotation", deployment.Spec.Template.Annotations["custom"])
+	assert.Equal(t, "dex", deployment.Spec.Template.Annotations["custom2"])
+	assert.Equal(t, "label", deployment.Spec.Template.Labels["custom"])
+	assert.Equal(t, "dex", deployment.Spec.Template.Labels["custom2"])
+	assert.Equal(t, nameWithSuffix("dex-server", a), deployment.Spec.Template.Labels[common.ArgoCDKeyName])
+
+	a.Spec.SSO.Dex.Labels = map[string]string{
+		common.ArgoCDKeyName: "wrong-name",
+		"custom":             "label",
+	}
+	assert.NoError(t, r.reconcileDexDeployment(a))
+	assert.NoError(t, r.Get(
+		context.TODO(),
+		types.NamespacedName{Name: "argocd-dex-server", Namespace: a.Namespace},
+		deployment))
+	assert.Equal(t, nameWithSuffix("dex-server", a), deployment.Spec.Template.Labels[common.ArgoCDKeyName])
+
+	a.Spec.SSO.Dex.Annotations = map[string]string{}
+	a.Spec.SSO.Dex.Labels = map[string]string{}
+	assert.NoError(t, r.reconcileDexDeployment(a))
+	assert.NoError(t, r.Get(
+		context.TODO(),
+		types.NamespacedName{Name: "argocd-dex-server", Namespace: a.Namespace},
+		deployment))
+	_, hasCustomAnnotation := deployment.Spec.Template.Annotations["custom"]
+	_, hasCustomLabel := deployment.Spec.Template.Labels["custom"]
+	assert.False(t, hasCustomAnnotation)
+	assert.False(t, hasCustomLabel)
+}

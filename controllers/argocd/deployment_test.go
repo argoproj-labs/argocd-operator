@@ -3088,3 +3088,49 @@ func TestDeploymentWithLongName(t *testing.T) {
 	// Verify that the pod template labels match
 	assert.Equal(t, repoDeployment.Name, repoDeployment.Spec.Template.Labels[common.ArgoCDKeyName])
 }
+
+func TestReconcileArgoCD_reconcileRedisDeployment_customLabelsAndAnnotations(t *testing.T) {
+	cr := makeTestArgoCD()
+	cr.Spec.Redis.Annotations = map[string]string{
+		"custom":  "annotation",
+		"custom2": "redis",
+	}
+	cr.Spec.Redis.Labels = map[string]string{
+		"custom":  "label",
+		"custom2": "redis",
+	}
+
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{cr}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	assert.NoError(t, r.reconcileRedisDeployment(cr, false))
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, deployment))
+	assert.Equal(t, "annotation", deployment.Spec.Template.Annotations["custom"])
+	assert.Equal(t, "redis", deployment.Spec.Template.Annotations["custom2"])
+	assert.Equal(t, "label", deployment.Spec.Template.Labels["custom"])
+	assert.Equal(t, "redis", deployment.Spec.Template.Labels["custom2"])
+	assert.Equal(t, nameWithSuffix("redis", cr), deployment.Spec.Template.Labels[common.ArgoCDKeyName])
+
+	cr.Spec.Redis.Labels = map[string]string{
+		common.ArgoCDKeyName: "wrong-name",
+		"custom":             "label",
+	}
+	assert.NoError(t, r.reconcileRedisDeployment(cr, false))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, deployment))
+	assert.Equal(t, nameWithSuffix("redis", cr), deployment.Spec.Template.Labels[common.ArgoCDKeyName])
+
+	cr.Spec.Redis.Annotations = map[string]string{}
+	cr.Spec.Redis.Labels = map[string]string{}
+	assert.NoError(t, r.reconcileRedisDeployment(cr, false))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, deployment))
+	_, hasCustomAnnotation := deployment.Spec.Template.Annotations["custom"]
+	_, hasCustomLabel := deployment.Spec.Template.Labels["custom"]
+	assert.False(t, hasCustomAnnotation)
+	assert.False(t, hasCustomLabel)
+}

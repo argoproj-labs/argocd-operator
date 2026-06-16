@@ -6,9 +6,9 @@ metadata:
     example: route
 spec:
   sso:
-   provider: dex
-   dex:
-    openShiftOAuth: true
+    provider: dex
+    dex:
+      openShiftOAuth: true
   grafana:
     enabled: true
     route:

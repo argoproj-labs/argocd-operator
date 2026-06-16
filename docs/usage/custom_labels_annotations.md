@@ -1,6 +1,6 @@
 # Custom Annotations and Labels
 
-You can add labels and annotations to the pods of the server, repo, application set controller, and application controller.
+You can add labels and annotations to the pods of the server, repo, application set controller, application controller, dex, and redis.
 
 ```yaml
 apiVersion: argoproj.io/v1beta1
@@ -36,4 +36,20 @@ spec:
     annotations:
       custom: annotation
       custom2: applicationSet
+  redis:
+    labels:
+      custom: label
+      custom2: redis
+    annotations:
+      custom: annotation
+      custom2: redis
+  sso:
+    provider: dex
+    dex:
+      labels:
+        custom: label
+        custom2: dex
+      annotations:
+        custom: annotation
+        custom2: dex
 ```

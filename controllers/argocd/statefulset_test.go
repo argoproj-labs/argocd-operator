@@ -1268,3 +1268,53 @@ func TestReconcileArgoCD_reconcileApplicationControllerStatefulSet_LegacyCleanup
 	assert.NoError(t, err, "New StatefulSet with abbreviated name should exist")
 	assert.Contains(t, newSS.Name, "app-controller", "Should use abbreviated suffix")
 }
+
+func TestReconcileArgoCD_reconcileRedisStatefulSet_customLabelsAndAnnotations(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	a.Spec.HA.Enabled = true
+	a.Spec.Redis.Annotations = map[string]string{
+		"custom":  "annotation",
+		"custom2": "redis",
+	}
+	a.Spec.Redis.Labels = map[string]string{
+		"custom":  "label",
+		"custom2": "redis",
+	}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+
+	ss := &appsv1.StatefulSet{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: a.Name + "-redis-ha-server", Namespace: a.Namespace}, ss))
+	assert.Equal(t, "annotation", ss.Spec.Template.Annotations["custom"])
+	assert.Equal(t, "redis", ss.Spec.Template.Annotations["custom2"])
+	assert.Equal(t, "label", ss.Spec.Template.Labels["custom"])
+	assert.Equal(t, "redis", ss.Spec.Template.Labels["custom2"])
+	expectedNameLabel := nameWithSuffix("redis-ha", a)
+	assert.Equal(t, expectedNameLabel, ss.Spec.Template.Labels[common.ArgoCDKeyName])
+	assert.NotEmpty(t, ss.Spec.Template.Annotations["checksum/init-config"])
+
+	a.Spec.Redis.Labels = map[string]string{
+		common.ArgoCDKeyName: "wrong-name",
+		"custom":             "label",
+	}
+	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: a.Name + "-redis-ha-server", Namespace: a.Namespace}, ss))
+	assert.Equal(t, expectedNameLabel, ss.Spec.Template.Labels[common.ArgoCDKeyName])
+
+	a.Spec.Redis.Annotations = map[string]string{}
+	a.Spec.Redis.Labels = map[string]string{}
+	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: a.Name + "-redis-ha-server", Namespace: a.Namespace}, ss))
+	_, hasCustomAnnotation := ss.Spec.Template.Annotations["custom"]
+	_, hasCustomLabel := ss.Spec.Template.Labels["custom"]
+	assert.False(t, hasCustomAnnotation)
+	assert.False(t, hasCustomLabel)
+}
