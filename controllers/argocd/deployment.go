@@ -229,7 +229,7 @@ func getArgoRedisArgs(useTLS bool, centralTLSConfig TLSConfigProfile) []string {
 
 	if useTLS {
 		if !centralTLSConfig.DisableClusterTLSProfile {
-			arguments := BuildRedisArgs(centralTLSConfig)
+			arguments := BuildRedisArgsFromClusterTLSProfile(centralTLSConfig)
 			args = append(args, arguments...)
 		}
 		args = append(args, "--tls-port", "6379")
@@ -242,8 +242,8 @@ func getArgoRedisArgs(useTLS bool, centralTLSConfig TLSConfigProfile) []string {
 	return args
 }
 
-// BuildRedisArgs builds arguments for redis deployment based on central tls config.
-func BuildRedisArgs(centralTLSConfig TLSConfigProfile) []string {
+// BuildRedisArgsFromClusterTLSProfile builds arguments for redis deployment based on central tls config.
+func BuildRedisArgsFromClusterTLSProfile(centralTLSConfig TLSConfigProfile) []string {
 	var args []string
 	var (
 		protocols []string
