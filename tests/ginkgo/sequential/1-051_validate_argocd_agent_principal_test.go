@@ -19,6 +19,7 @@ package sequential
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -35,6 +36,7 @@ import (
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdagent"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
 	agentFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/agent"
 	argocdFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/argocd"
@@ -509,6 +511,46 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			for key, value := range expectedEnvVariables {
 				Expect(container.Env).To(ContainElement(corev1.EnvVar{Name: key, Value: value}), "Environment variable %s should be set to %s", key, value)
 			}
+		})
+
+		It("Should restore Redis Auth volume and mount if removed from principal deployment", func() {
+			By("Creating ArgoCD instance normally")
+			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
+			Eventually(principalDeployment).Should(k8sFixture.ExistByName())
+
+			By("Removing Redis Auth volume and mount from the deployment")
+			err := k8sClient.Get(ctx, client.ObjectKey{Name: argoCDAgentPrincipalName, Namespace: ns.Name}, principalDeployment)
+			Expect(err).ToNot(HaveOccurred())
+
+			deploymentFixture.Update(principalDeployment, func(p *appsv1.Deployment) {
+				volLen := len(p.Spec.Template.Spec.Volumes)
+				mountLen := len(p.Spec.Template.Spec.Containers[0].VolumeMounts)
+				p.Spec.Template.Spec.Volumes = slices.DeleteFunc(p.Spec.Template.Spec.Volumes, func(v corev1.Volume) bool {
+					return v.Name == argoutil.RedisAuthVolumeName
+				})
+				p.Spec.Template.Spec.Containers[0].VolumeMounts = slices.DeleteFunc(p.Spec.Template.Spec.Containers[0].VolumeMounts, func(vm corev1.VolumeMount) bool {
+					return vm.Name == argoutil.RedisAuthVolumeName
+				})
+				// Double check we have actually removed the volume and mount
+				Expect(p.Spec.Template.Spec.Volumes).To(HaveLen(volLen - 1))
+				Expect(p.Spec.Template.Spec.Containers[0].VolumeMounts).To(HaveLen(mountLen - 1))
+			})
+
+			By("Redis Auth volume and mount are re-added by the operator")
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, client.ObjectKey{Name: argoCDAgentPrincipalName, Namespace: ns.Name}, principalDeployment)
+				if err != nil {
+					return false
+				}
+				volFound := slices.ContainsFunc(principalDeployment.Spec.Template.Spec.Volumes, func(v corev1.Volume) bool {
+					return v.Name == argoutil.RedisAuthVolumeName
+				})
+				mountFound := slices.ContainsFunc(principalDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, func(vm corev1.VolumeMount) bool {
+					return vm.Name == argoutil.RedisAuthVolumeName
+				})
+				return volFound && mountFound
+			}, "10s", "1s").Should(BeTrue(), "Redis Auth volume and mount should be restored to the principal deployment")
 		})
 
 		It("should handle route disabled configuration correctly", func() {
