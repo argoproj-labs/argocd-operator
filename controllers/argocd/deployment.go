@@ -244,25 +244,20 @@ func getArgoRedisArgs(useTLS bool, centralTLSConfig TLSConfigProfile) []string {
 
 // BuildRedisArgsFromClusterTLSProfile builds arguments for redis deployment based on central tls config.
 func BuildRedisArgsFromClusterTLSProfile(centralTLSConfig TLSConfigProfile) []string {
-	var args []string
 	var (
-		protocols []string
-		ciphers   []string
-		minVer    string
+		args     []string
+		protocol string
+		ciphers  []string
 	)
-	if centralTLSConfig.MinVersion != "" {
-		protocols = []string{argoutil.RedisTLSProtocolVersionString(centralTLSConfig.MinVersion)}
-		minVer = argoutil.RedisTLSProtocolVersionString(centralTLSConfig.MinVersion)
-	}
-	// Build protocol args
-	if len(protocols) > 0 {
-		args = append(args, "--tls-protocols", strings.Join(protocols, " "))
+	if v := argoutil.RedisTLSProtocolVersionString(centralTLSConfig.MinVersion); v != "" {
+		protocol = v
+		args = append(args, "--tls-protocols", protocol)
 	}
 	ciphers = argoutil.MapCipherSuites(centralTLSConfig.Ciphers)
 	// Build cipher args
 	if len(ciphers) > 0 {
 		cipherString := strings.Join(ciphers, ":")
-		if minVer == "TLSv1.3" {
+		if protocol == "TLSv1.3" {
 			// TLS 1.3 only
 			args = append(args, "--tls-ciphersuites", cipherString)
 		} else {

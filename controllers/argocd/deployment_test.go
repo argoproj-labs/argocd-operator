@@ -3149,7 +3149,7 @@ func TestBuildRedisArgs(t *testing.T) {
 			centralTLS: TLSConfigProfile{
 				MinVersion: configv1.TLSProtocolVersion("INVALID"),
 			},
-			expected: []string{"--tls-protocols", ""},
+			expected: nil,
 			wantErr:  false,
 		},
 		{
