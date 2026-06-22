@@ -657,6 +657,16 @@ type ArgoCDServerServiceSpec struct {
 	Type corev1.ServiceType `json:"type"`
 }
 
+type ArgoCDSourceHydratorSpec struct {
+	// Enabled defines whether the Source Hydrator is enabled.
+	Enabled *bool `json:"enabled,omitempty"`
+}
+
+func (a *ArgoCDSourceHydratorSpec) IsEnabled() bool {
+	// The feature is an opt-in, so consider disabled when sourceHydrator is missing or not explicitly enabled.
+	return a != nil && a.Enabled != nil && *a.Enabled
+}
+
 // Resource Customization for custom health check
 type ResourceHealthCheck struct {
 	Group string `json:"group,omitempty"`
@@ -914,6 +924,9 @@ type ArgoCDSpec struct {
 
 	// Server defines the options for the ArgoCD Server component.
 	Server ArgoCDServerSpec `json:"server,omitempty"`
+
+	// SourceHydrator defines the options for the ArgoCD Source Hydrator component.
+	SourceHydrator ArgoCDSourceHydratorSpec `json:"sourceHydrator,omitempty"`
 
 	// SourceNamespaces defines the namespaces application resources are allowed to be created in
 	SourceNamespaces []string `json:"sourceNamespaces,omitempty"`
