@@ -187,6 +187,30 @@ type ArgoCDCertificateSpec struct {
 	SecretName string `json:"secretName"`
 }
 
+type ArgoCDCommitServerSpec struct {
+	// InitContainers defines the list of initialization containers.
+	InitContainers []corev1.Container `json:"initContainers,omitempty"`
+
+	// LogLevel refers to the log level to be used by the component. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug, info, error, and warn.
+	LogLevel string `json:"logLevel,omitempty"`
+
+	// LogFormat refers to the log level to be used by the component. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
+	LogFormat string `json:"logFormat,omitempty"`
+
+	// Resources defines the Compute Resources required by the container for the component.
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Requirements",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server","urn:alm:descriptor:com.tectonic.ui:resourceRequirements"}
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// Env lets specifies the environment veriables for the pods.
+	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	// Custom annotations to pods deployed by the operator
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Custom labels to pods deployed by the operator
+	Labels map[string]string `json:"labels,omitempty"`
+}
+
 // ArgoCDDexSpec defines the desired state for the Dex server component.
 type ArgoCDDexSpec struct {
 	//Config is the dex connector configuration.
@@ -733,7 +757,7 @@ type ArgoCDNodePlacementSpec struct {
 
 // ArgoCDNetworkPolicySpec defines whether the operator should create NetworkPolicies for an Argo CD instance.
 type ArgoCDNetworkPolicySpec struct {
-	// Enabled defines whether NetworkPolicy resources should be created for this Argo CD instance.
+	// Enabled defines whether NetworkPolicy resources are created for this Argo CD instance.
 	// When enabled, the operator will reconcile NetworkPolicies for Argo CD components.
 	// When disabled, the operator will remove any previously-created NetworkPolicies.
 	Enabled *bool `json:"enabled,omitempty"`
@@ -764,6 +788,9 @@ type ArgoCDSpec struct {
 
 	// Controller defines the Application Controller options for ArgoCD.
 	Controller ArgoCDApplicationControllerSpec `json:"controller,omitempty"`
+
+	// CommitServer defines the options for the ArgoCD Commit Server component.
+	CommitServer ArgoCDCommitServerSpec `json:"commitServer,omitempty"`
 
 	// DisableAdmin will disable the admin user.
 	DisableAdmin bool `json:"disableAdmin,omitempty"`
