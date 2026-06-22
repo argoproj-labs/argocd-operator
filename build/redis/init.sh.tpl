@@ -266,10 +266,4 @@ echo "Setting redis auth values.."
 ESCAPED_AUTH=$(echo "${AUTH}" | sed -e 's/[\/&]/\\&/g');
 sed -i "s/__REPLACE_DEFAULT_AUTH__/${ESCAPED_AUTH}/" "${REDIS_CONF}" "${SENTINEL_CONF}"
 
-if [ "${SENTINELAUTH:-}" ]; then
-    echo "Setting sentinel auth values"
-    ESCAPED_AUTH_SENTINEL=$(echo "$SENTINELAUTH" | sed -e 's/[\/&]/\\&/g');
-    sed -i "s/__REPLACE_DEFAULT_SENTINEL_AUTH__/${ESCAPED_AUTH_SENTINEL}/" "$SENTINEL_CONF"
-fi
-
 echo "$(date) Ready..."
