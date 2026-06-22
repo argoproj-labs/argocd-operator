@@ -44,6 +44,7 @@ Name | Default | Description
 [**ResourceInclusions**](#resource-inclusions) | [Empty] | The configuration to configure which resource group/kinds are applied.
 [**ResourceTrackingMethod**](#resource-tracking-method) | `annotation` | The resource tracking method Argo CD should use.
 [**Server**](#server-options) | [Object] | Argo CD Server configuration options.
+[**SourceHydrator**](#source-hydrator-options) | [Object] | Source Hydrator configuration options.
 [**SSO**](#single-sign-on-options) | [Object] | Single sign-on options.
 [**StatusBadgeEnabled**](#status-badge-enabled) | `true` | Enable application status badge feature.
 [**TLS**](#tls-options) | [Object] | TLS configuration options.
@@ -1710,6 +1711,44 @@ spec:
         requests:
           cpu: 10m
           memory: 32Mi
+```
+
+## Source Hydrator Options
+
+The Source Hydrator is an Argo CD feature that implements the "rendered manifest pattern": it renders manifests from sources such as Helm charts or Kustomize overlays and pushes the hydrated output to a Git repository before syncing them to the cluster. See the [Argo CD Source Hydrator user guide](https://argo-cd.readthedocs.io/en/stable/user-guide/source-hydrator/) for Application-level configuration and repository credentials.
+
+The following properties are available for configuring Source Hydrator.
+
+Name | Default | Description
+--- | --- | ---
+Enabled | `false` | Enable the Source Hydrator feature.
+
+!!! note
+    The Source Hydrator is an opt-in feature and is disabled by default. The commit server will be provisioned automatically.
+
+When Source Hydrator is enabled, the operator reports commit server status in `status.commitServer` (for example, `Running`).
+
+### Source Hydrator Example
+
+The following example enables Source Hydrator and optionally configures the commit server:
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+spec:
+  sourceHydrator:
+    enabled: true
+  commitServer:
+    logLevel: info
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
 ```
 
 ## Status Badge Enabled
