@@ -14,6 +14,7 @@ Name | Default | Description
 [**ApplicationInstanceLabelKey**](#application-instance-label-key) | `mycompany.com/appname` |  The metadata.label key name where Argo CD injects the app name as a tracking label.
 [**ApplicationSet**](#applicationset-controller-options) | [Object] | ApplicationSet controller configuration options.
 [**Controller**](#controller-options) | [Object] | Argo CD Application Controller options.
+[**CommitServer**](#commitserver-controller-options) | [Object] | Argo CD CommitServer Controller options.
 [**DisableAdmin**](#disable-admin) | `false` | Disable the admin user.
 [**ExtraConfig**](#extra-config) | [Empty] | A catch-all mechanism to populate the argocd-cm configmap.
 [**GATrackingID**](#ga-tracking-id) | [Empty] | The google analytics tracking ID to use.
@@ -332,6 +333,47 @@ spec:
 !!! note
     ExtraCommandArgs will not be added, if one of these commands is already part of the command with same or different value.
 
+
+## CommitServer controller Options
+
+
+## CommitServer Controller Options
+
+The following properties are available for configuring the Argo CD CommitServer controller component.
+Note that the controller is enabled automatically, only when features needeing it are enabled.
+
+Name | Default | Description
+--- | --- | ---
+InitContainers | [Empty] | List of initialization containers
+LogLevel | info | log level to be used by the component. Valid options are debug, info, error, and warn.
+LogFormat | text | Log level to be used by the component. Valid options are text or json.
+Resources | [Empty] | Compute Resources required by the container for the component
+Env | [Empty] | Environment veriables for the pods
+Annotations | [Empty] | annotations to pods deployed by the operator
+Labels | [Empty] | Labels to pods deployed by the operator
+
+A typical usage of the CommitServer component might look like the following:
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+spec:
+  commitServer:
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+    env:
+      - name: SOME_ENV
+        value: "custom"
+```
+
+For most users, the default options are sufficient, but advanced options allow fine configuration to fit your workloads.
 
 ## Disable Admin
 
