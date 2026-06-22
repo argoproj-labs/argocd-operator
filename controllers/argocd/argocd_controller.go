@@ -37,6 +37,7 @@ import (
 
 	errs "errors"
 
+	configv1 "github.com/openshift/api/config/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -102,9 +103,19 @@ type ReconcileArgoCD struct {
 	// re-run to renew the Dex OAuth client token before it expires.
 	// Key: ArgoCD namespace, Value: time.Duration
 	dexTokenRequeueAfter sync.Map
+	// CentralTLSConfigProfile specifies the TLS configuration profile in the cluster.
+	CentralTLSConfigProfile TLSConfigProfile
 }
 
 var log = logr.Log.WithName("controller_argocd")
+
+type TLSConfigProfile struct {
+	DisableClusterTLSProfile bool
+	// MinVersion specifies the minimum TLS version configured in cluster.
+	MinVersion configv1.TLSProtocolVersion
+	// Ciphers specifies the list of supported TLS cipher suites in cluster.
+	Ciphers []string
+}
 
 // Map to keep track of running Argo CD instances using their namespaces as key and phase as value
 // This map will be used for the performance metrics purposes
