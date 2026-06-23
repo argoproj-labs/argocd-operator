@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/go-logr/logr"
+	v1 "k8s.io/api/rbac/v1"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -130,6 +131,22 @@ func IsObjectFound(client client.Client, namespace string, name string, obj clie
 // Example: If ObjectMeta.Name is "test" and suffix is "object", the value of "test-object" will be returned.
 func NameWithSuffix(meta metav1.ObjectMeta, suffix string) string {
 	return fmt.Sprintf("%s-%s", meta.Name, suffix)
+}
+
+func CheckClusterRoleOwnership(clusterRole *v1.ClusterRole, cr *argoproj.ArgoCD) bool {
+	managedByLabelValue, managedByLabelExists := clusterRole.Labels[common.ArgoCDKeyManagedBy]
+	if managedByLabelExists && managedByLabelValue != cr.Name {
+		return false
+	}
+	return true
+}
+
+func CheckClusterRoleBindingOwnership(clusterRoleBinding *v1.ClusterRoleBinding, cr *argoproj.ArgoCD) bool {
+	managedByLabelValue, managedByLabelExists := clusterRoleBinding.Labels[common.ArgoCDKeyManagedBy]
+	if managedByLabelExists && managedByLabelValue != cr.Name {
+		return false
+	}
+	return true
 }
 
 func newEvent(meta metav1.ObjectMeta) *corev1.Event {

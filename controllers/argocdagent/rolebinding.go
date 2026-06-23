@@ -114,6 +114,9 @@ func ReconcilePrincipalClusterRoleBinding(client client.Client, compName string,
 	// If ClusterRoleBinding exists, handle updates or deletion
 	if exists {
 		if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() || !allowed {
+			if !argoutil.CheckClusterRoleBindingOwnership(clusterRoleBinding, cr) {
+				return nil
+			}
 			argoutil.LogResourceDeletion(log, clusterRoleBinding, "principal clusterRoleBinding is being deleted as principal is disabled")
 			if err := client.Delete(context.TODO(), clusterRoleBinding); err != nil {
 				return fmt.Errorf("failed to delete principal clusterRoleBinding %s: %v", clusterRoleBinding.Name, err)
