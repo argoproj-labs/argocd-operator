@@ -382,6 +382,10 @@ func (r *ReconcileArgoCD) reconcileClusterRole(componentName string, policyRules
 	}
 
 	if !allowed {
+		ownedByCurrentArgoCD := argoutil.CheckClusterRoleOwnership(existingClusterRole, cr)
+		if !ownedByCurrentArgoCD {
+			return nil, nil
+		}
 		// delete existing ClusterRole as namespace can not host cluster-scoped Argo CD instance
 		argoutil.LogResourceDeletion(log, existingClusterRole, fmt.Sprintf("namespace '%s' cannot host cluster-scoped argocd instance", cr.Namespace))
 		return nil, r.Delete(context.TODO(), existingClusterRole)

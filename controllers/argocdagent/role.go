@@ -104,6 +104,9 @@ func ReconcilePrincipalClusterRoles(client client.Client, compName string, cr *a
 	// If ClusterRole exists, handle updates or deletion
 	if exists {
 		if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() || !allowed {
+			if !argoutil.CheckClusterRoleOwnership(clusterRole, cr) {
+				return clusterRole, nil
+			}
 			argoutil.LogResourceDeletion(log, clusterRole, "principal clusterRole is being deleted as principal is disabled")
 			if err := client.Delete(context.TODO(), clusterRole); err != nil {
 				return clusterRole, fmt.Errorf("failed to delete principal clusterRole %s: %v", clusterRole.Name, err)
