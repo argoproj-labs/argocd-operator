@@ -1,21 +1,23 @@
-owners:
-- jomkz
+# https://www.kubernetes.dev/docs/guide/owners/
 
 approvers:
-- iam-veeramalla
-- wtam2018
+- anandf
+- anandrkskd
+- chetan-rns
 - jannfis
-- jopit
+- jgwest
+- olivergondza
+- svghadi
+- wtam2018
 
 reviewers:
-- iam-veeramalla
-- wtam2018
-- jannfis
-- jopit
-- jaideepr97
-- ishitasequeira 
-- reginapizza
-- ciiay
-- svghadi
-- saumeya
+- jparsai
+- Rizwana777
 
+emeritus_approvers:
+- ciiay
+- iam-veeramalla
+- ishitasequeira
+- jomkz
+- reginapizza
+- saumeya
