@@ -614,6 +614,9 @@ func (r *ReconcileArgoCD) reconcileApplicationSetClusterRole(cr *argoproj.ArgoCD
 
 	// ArgoCD not cluster scoped, cleanup any existing resource and exit
 	if !allowed {
+		if !argoutil.CheckClusterRoleOwnership(existingClusterRole, cr) {
+			return existingClusterRole, nil
+		}
 		argoutil.LogResourceDeletion(log, existingClusterRole, "argocd not cluster scoped")
 		err := r.Delete(context.TODO(), existingClusterRole)
 		if err != nil {
@@ -678,6 +681,9 @@ func (r *ReconcileArgoCD) reconcileApplicationSetClusterRoleBinding(cr *argoproj
 
 	// ArgoCD not cluster scoped, cleanup any existing resource and exit
 	if !allowed {
+		if !argoutil.CheckClusterRoleBindingOwnership(existingClusterRB, cr) {
+			return nil
+		}
 		argoutil.LogResourceDeletion(log, existingClusterRB, "argocd not cluster scoped")
 		err := r.Delete(context.TODO(), existingClusterRB)
 		if err != nil {

@@ -507,6 +507,9 @@ func (r *ReconcileArgoCD) reconcileRoleHelper(cr *argoproj.ArgoCD, desiredRole c
 
 	// role exists but shouldn't, so it should be deleted
 	if !cr.Spec.ImageUpdater.Enabled {
+		if clusterRole, ok := existingRole.(*rbacv1.ClusterRole); ok && !argoutil.CheckClusterRoleOwnership(clusterRole, cr) {
+			return nil, nil
+		}
 		argoutil.LogResourceDeletion(log, existingRole, "image updater is disabled")
 		return nil, r.Delete(context.TODO(), existingRole)
 	}
@@ -585,6 +588,9 @@ func (r *ReconcileArgoCD) reconcileRoleBindingHelper(cr *argoproj.ArgoCD, desire
 
 	// roleBinding exists but shouldn't, so it should be deleted
 	if !cr.Spec.ImageUpdater.Enabled {
+		if clusterRoleBinding, ok := existingRoleBinding.(*rbacv1.ClusterRoleBinding); ok && !argoutil.CheckClusterRoleBindingOwnership(clusterRoleBinding, cr) {
+			return nil
+		}
 		argoutil.LogResourceDeletion(log, existingRoleBinding, "image updater is disabled")
 		return r.Delete(context.TODO(), existingRoleBinding)
 	}
