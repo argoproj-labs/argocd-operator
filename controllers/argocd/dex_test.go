@@ -1561,3 +1561,47 @@ func TestReconcileArgoCD_reconcileDexDeployment_customLabelsAndAnnotations(t *te
 	assert.False(t, hasCustomAnnotation)
 	assert.False(t, hasCustomLabel)
 }
+
+func TestReconcileDexDeployment_PriorityClassName(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	a := makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+		cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+			Provider: argoproj.SSOProviderTypeDex,
+			Dex: &argoproj.ArgoCDDexSpec{
+				OpenShiftOAuth:    true,
+				PriorityClassName: "high-priority",
+			},
+		}
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	err := r.reconcileDexDeployment(a)
+	assert.NoError(t, err)
+
+	deployment := &appsv1.Deployment{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-dex-server",
+		Namespace: testNamespace,
+	}, deployment)
+	assert.NoError(t, err)
+	assert.Equal(t, "high-priority", deployment.Spec.Template.Spec.PriorityClassName)
+
+	// Test update path: change priorityClassName and reconcile again
+	a.Spec.SSO.Dex.PriorityClassName = "critical-priority"
+	err = r.reconcileDexDeployment(a)
+	assert.NoError(t, err)
+
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-dex-server",
+		Namespace: testNamespace,
+	}, deployment)
+	assert.NoError(t, err)
+	assert.Equal(t, "critical-priority", deployment.Spec.Template.Spec.PriorityClassName)
+}

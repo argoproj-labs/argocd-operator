@@ -111,6 +111,11 @@ type ArgoCDApplicationControllerSpec struct {
 
 	// Metrics defines the metrics configuration for the Application Controller ServiceMonitor.
 	Metrics *ArgoCDMetricsSpec `json:"metrics,omitempty"`
+
+	// PriorityClassName is the name of the PriorityClass to assign to the Application Controller pod.
+	// The PriorityClass must already exist in the cluster.
+	// +optional
+	PriorityClassName string `json:"priorityClassName,omitempty"`
 }
 
 // ArgoCDApplicationControllerShardSpec defines the options available for enabling sharding for the Application Controller component.
@@ -170,6 +175,11 @@ type ArgoCDApplicationSet struct {
 	// LogFormat refers to the log format used by the ApplicationSet component. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
 	// +kubebuilder:validation:Enum=text;json
 	LogFormat string `json:"logFormat,omitempty"`
+
+	// PriorityClassName is the name of the PriorityClass to assign to the ApplicationSet Controller pod.
+	// The PriorityClass must already exist in the cluster.
+	// +optional
+	PriorityClassName string `json:"priorityClassName,omitempty"`
 }
 
 // ArgoCDCASpec defines the CA options for ArgCD.
@@ -217,6 +227,11 @@ type ArgoCDDexSpec struct {
 
 	// Custom labels to pods deployed by the operator
 	Labels map[string]string `json:"labels,omitempty"`
+
+	// PriorityClassName is the name of the PriorityClass to assign to the Dex server pod.
+	// The PriorityClass must already exist in the cluster.
+	// +optional
+	PriorityClassName string `json:"priorityClassName,omitempty"`
 }
 
 // ArgoCDGrafanaSpec defines the desired state for the Grafana component.
@@ -463,6 +478,11 @@ type ArgoCDRedisSpec struct {
 
 	// Custom labels to pods deployed by the operator
 	Labels map[string]string `json:"labels,omitempty"`
+
+	// PriorityClassName is the name of the PriorityClass to assign to the Redis pod.
+	// The PriorityClass must already exist in the cluster.
+	// +optional
+	PriorityClassName string `json:"priorityClassName,omitempty"`
 }
 
 // ArgoCDRepoSpec defines the desired state for the Argo CD repo server component.
@@ -528,6 +548,11 @@ type ArgoCDRepoSpec struct {
 
 	// Metrics defines the metrics configuration for the Repo Server ServiceMonitor.
 	Metrics *ArgoCDMetricsSpec `json:"metrics,omitempty"`
+
+	// PriorityClassName is the name of the PriorityClass to assign to the Repo Server pod.
+	// The PriorityClass must already exist in the cluster.
+	// +optional
+	PriorityClassName string `json:"priorityClassName,omitempty"`
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.
@@ -624,6 +649,11 @@ type ArgoCDServerSpec struct {
 
 	// Metrics defines the metrics configuration for the Server ServiceMonitor.
 	Metrics *ArgoCDMetricsSpec `json:"metrics,omitempty"`
+
+	// PriorityClassName is the name of the PriorityClass to assign to the Server pod.
+	// The PriorityClass must already exist in the cluster.
+	// +optional
+	PriorityClassName string `json:"priorityClassName,omitempty"`
 }
 
 // ArgoCDServerServiceSpec defines the Service options for Argo CD Server component.

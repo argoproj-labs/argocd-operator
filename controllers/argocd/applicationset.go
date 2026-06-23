@@ -298,6 +298,10 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 	}
 	AddSeccompProfileForOpenShift(r.Client, podSpec)
 
+	if cr.Spec.ApplicationSet.PriorityClassName != "" {
+		podSpec.PriorityClassName = cr.Spec.ApplicationSet.PriorityClassName
+	}
+
 	if deplExists {
 		// Add Kubernetes-specific labels/annotations from the live object in the source to preserve metadata.
 		addKubernetesData(deploy.Spec.Template.Labels, existing.Spec.Template.Labels)
@@ -314,6 +318,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 			existing.Spec.Selector = deploy.Spec.Selector
 			existing.Spec.Template.Spec.NodeSelector = deploy.Spec.Template.Spec.NodeSelector
 			existing.Spec.Template.Spec.Tolerations = deploy.Spec.Template.Spec.Tolerations
+			existing.Spec.Template.Spec.PriorityClassName = deploy.Spec.Template.Spec.PriorityClassName
 			existing.Spec.Template.Spec.Containers[0].SecurityContext = deploy.Spec.Template.Spec.Containers[0].SecurityContext
 			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
 
@@ -373,6 +378,10 @@ func identifyDeploymentDifference(x appsv1.Deployment, y appsv1.Deployment) stri
 
 	if !reflect.DeepEqual(xPodSpec.Tolerations, yPodSpec.Tolerations) {
 		return "Spec.Template.Spec.Tolerations"
+	}
+
+	if xPodSpec.PriorityClassName != yPodSpec.PriorityClassName {
+		return "Spec.Template.Spec.PriorityClassName"
 	}
 
 	if !reflect.DeepEqual(xPodSpec.Containers[0].SecurityContext, yPodSpec.Containers[0].SecurityContext) {

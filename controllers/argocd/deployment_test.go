@@ -3237,3 +3237,150 @@ func TestBuildRedisArgs(t *testing.T) {
 		})
 	}
 }
+
+func TestReconcileRedisDeployment_PriorityClassName(t *testing.T) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Redis.PriorityClassName = "high-priority"
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	err := r.reconcileRedisDeployment(a, false)
+	assert.NoError(t, err)
+
+	deployment := &appsv1.Deployment{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-redis",
+		Namespace: testNamespace,
+	}, deployment)
+	assert.NoError(t, err)
+	assert.Equal(t, "high-priority", deployment.Spec.Template.Spec.PriorityClassName)
+}
+
+func TestReconcileServerDeployment_PriorityClassName(t *testing.T) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Server.PriorityClassName = "high-priority"
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	err := r.reconcileServerDeployment(a, false)
+	assert.NoError(t, err)
+
+	deployment := &appsv1.Deployment{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-server",
+		Namespace: testNamespace,
+	}, deployment)
+	assert.NoError(t, err)
+	assert.Equal(t, "high-priority", deployment.Spec.Template.Spec.PriorityClassName)
+}
+
+func TestReconcileRepoDeployment_PriorityClassName(t *testing.T) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Repo.PriorityClassName = "high-priority"
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	err := r.reconcileRepoDeployment(a, false)
+	assert.NoError(t, err)
+
+	deployment := &appsv1.Deployment{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-repo-server",
+		Namespace: testNamespace,
+	}, deployment)
+	assert.NoError(t, err)
+	assert.Equal(t, "high-priority", deployment.Spec.Template.Spec.PriorityClassName)
+}
+
+func TestReconcileRedisDeployment_PriorityClassName_Update(t *testing.T) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Redis.PriorityClassName = "high-priority"
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	assert.NoError(t, r.reconcileRedisDeployment(a, false))
+
+	a.Spec.Redis.PriorityClassName = "critical-priority"
+	assert.NoError(t, r.reconcileRedisDeployment(a, false))
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-redis",
+		Namespace: testNamespace,
+	}, deployment))
+	assert.Equal(t, "critical-priority", deployment.Spec.Template.Spec.PriorityClassName)
+}
+
+func TestReconcileServerDeployment_PriorityClassName_Update(t *testing.T) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Server.PriorityClassName = "high-priority"
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
+
+	a.Spec.Server.PriorityClassName = "critical-priority"
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-server",
+		Namespace: testNamespace,
+	}, deployment))
+	assert.Equal(t, "critical-priority", deployment.Spec.Template.Spec.PriorityClassName)
+}
+
+func TestReconcileRepoDeployment_PriorityClassName_Update(t *testing.T) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Repo.PriorityClassName = "high-priority"
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	assert.NoError(t, r.reconcileRepoDeployment(a, false))
+
+	a.Spec.Repo.PriorityClassName = "critical-priority"
+	assert.NoError(t, r.reconcileRepoDeployment(a, false))
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-repo-server",
+		Namespace: testNamespace,
+	}, deployment))
+	assert.Equal(t, "critical-priority", deployment.Spec.Template.Spec.PriorityClassName)
+}
