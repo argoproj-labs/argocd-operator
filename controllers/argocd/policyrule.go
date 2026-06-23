@@ -213,6 +213,17 @@ func policyRuleForServer() []v1.PolicyRule {
 		},
 		{
 			APIGroups: []string{
+				"",
+			},
+			Resources: []string{
+				"pods/exec",
+			},
+			Verbs: []string{
+				"create",
+			},
+		},
+		{
+			APIGroups: []string{
 				"batch",
 			},
 			Resources: []string{
