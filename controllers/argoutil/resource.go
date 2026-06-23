@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/go-logr/logr"
+	v1 "k8s.io/api/rbac/v1"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -131,6 +132,22 @@ func IsObjectFound(client client.Client, namespace string, name string, obj clie
 // Example: Given a long resource name, this ensures suffixes like "redis-initial-password" remain intact.
 func NameWithSuffix(meta metav1.ObjectMeta, suffix string) string {
 	return fmt.Sprintf("%s-%s", TruncateCRName(meta.Name), suffix)
+}
+
+func CheckClusterRoleOwnership(clusterRole *v1.ClusterRole, cr *argoproj.ArgoCD) bool {
+	managedByLabelValue, managedByLabelExists := clusterRole.Labels[common.ArgoCDKeyManagedBy]
+	if managedByLabelExists && managedByLabelValue != cr.Name {
+		return false
+	}
+	return true
+}
+
+func CheckClusterRoleBindingOwnership(clusterRoleBinding *v1.ClusterRoleBinding, cr *argoproj.ArgoCD) bool {
+	managedByLabelValue, managedByLabelExists := clusterRoleBinding.Labels[common.ArgoCDKeyManagedBy]
+	if managedByLabelExists && managedByLabelValue != cr.Name {
+		return false
+	}
+	return true
 }
 
 // FqdnServiceRef will return the FQDN referencing a specific service name, as set up by the operator, with the

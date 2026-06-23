@@ -119,6 +119,9 @@ func ReconcileAgentClusterRoleBinding(client client.Client, compName string, sa 
 	// If ClusterRoleBinding exists, handle updates or deletion
 	if exists {
 		if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() || !allowed {
+			if !argoutil.CheckClusterRoleBindingOwnership(clusterRoleBinding, cr) {
+				return nil
+			}
 			argoutil.LogResourceDeletion(log, clusterRoleBinding, "agent clusterrolebinding is being deleted as agent is disabled")
 			if err := client.Delete(context.TODO(), clusterRoleBinding); err != nil {
 				return fmt.Errorf("failed to delete agent clusterrolebinding %s: %v", clusterRoleBinding.Name, err)
