@@ -134,7 +134,7 @@ func NameWithSuffix(meta metav1.ObjectMeta, suffix string) string {
 	return fmt.Sprintf("%s-%s", TruncateCRName(meta.Name), suffix)
 }
 
-unc CheckClusterRoleOwnership(clusterRole *v1.ClusterRole, cr *argoproj.ArgoCD) bool {
+func CheckClusterRoleOwnership(clusterRole *v1.ClusterRole, cr *argoproj.ArgoCD) bool {
 	managedByLabelValue, managedByLabelExists := clusterRole.Labels[common.ArgoCDKeyManagedBy]
 	if managedByLabelExists && managedByLabelValue != cr.Name {
 		return false
