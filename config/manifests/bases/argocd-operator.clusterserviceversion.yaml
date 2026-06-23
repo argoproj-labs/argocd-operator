@@ -923,6 +923,13 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Resources defines the Compute Resources required by the container
+          for the component.
+        displayName: Resource Requirements
+        path: commitServer.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       - description: 'Deprecated: ConfigManagementPlugins field is no longer supported.
           Argo CD now requires plugins to be defined as sidecar containers of repo
           server component. See ''.spec.repo.sidecarContainers''. ConfigManagementPlugins

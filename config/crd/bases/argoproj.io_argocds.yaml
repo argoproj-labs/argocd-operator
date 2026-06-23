@@ -10348,6 +10348,14 @@ spec:
                     - type
                     type: object
                 type: object
+              sourceHydrator:
+                description: SourceHydrator defines the options for the ArgoCD Source
+                  Hydrator component.
+                properties:
+                  enabled:
+                    description: Enabled defines whether the Source Hydrator is enabled.
+                    type: boolean
+                type: object
               sourceNamespaces:
                 description: SourceNamespaces defines the namespaces application resources
                   are allowed to be created in
