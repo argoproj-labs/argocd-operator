@@ -394,6 +394,9 @@ func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.Clus
 	}
 
 	if roleBindingExists && role == nil {
+		if !argoutil.CheckClusterRoleBindingOwnership(roleBinding, cr) {
+			return nil
+		}
 		argoutil.LogResourceDeletion(log, roleBinding, "role binding has no corresponding role")
 		return r.Delete(context.TODO(), roleBinding)
 	}
