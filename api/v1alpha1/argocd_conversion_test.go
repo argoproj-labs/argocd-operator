@@ -51,7 +51,6 @@ func makeTestArgoCDBeta(opts ...argoCDBetaOpt) *v1beta1.ArgoCD {
 	return a
 }
 
-
 func TestPriorityClassNameConversion(t *testing.T) {
 	t.Run("alpha->beta: priorityClassName preserved for all components", func(t *testing.T) {
 		input := makeTestArgoCDAlpha(func(cr *ArgoCD) {
