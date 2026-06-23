@@ -1890,3 +1890,36 @@ func TestReconcileApplicationSet_PriorityClassName(t *testing.T) {
 
 	assert.Equal(t, "high-priority", deployment.Spec.Template.Spec.PriorityClassName)
 }
+
+func TestReconcileApplicationSet_PriorityClassName_Update(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
+			PriorityClassName: "high-priority",
+		}
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	sa := v1.ServiceAccount{}
+	assert.NoError(t, r.reconcileApplicationSetDeployment(a, &sa))
+
+	a.Spec.ApplicationSet.PriorityClassName = "critical-priority"
+	assert.NoError(t, r.reconcileApplicationSetDeployment(a, &sa))
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Equal(t, "critical-priority", deployment.Spec.Template.Spec.PriorityClassName)
+}

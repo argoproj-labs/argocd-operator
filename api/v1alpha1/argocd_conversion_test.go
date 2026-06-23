@@ -51,6 +51,54 @@ func makeTestArgoCDBeta(opts ...argoCDBetaOpt) *v1beta1.ArgoCD {
 	return a
 }
 
+
+func TestPriorityClassNameConversion(t *testing.T) {
+	t.Run("alpha->beta: priorityClassName preserved for all components", func(t *testing.T) {
+		input := makeTestArgoCDAlpha(func(cr *ArgoCD) {
+			cr.Spec.Controller.PriorityClassName = "high-priority"
+			cr.Spec.Server.PriorityClassName = "high-priority"
+			cr.Spec.Repo.PriorityClassName = "high-priority"
+			cr.Spec.Redis.PriorityClassName = "high-priority"
+			cr.Spec.ApplicationSet = &ArgoCDApplicationSet{PriorityClassName: "high-priority"}
+			cr.Spec.SSO = &ArgoCDSSOSpec{
+				Provider: SSOProviderTypeDex,
+				Dex:      &ArgoCDDexSpec{PriorityClassName: "high-priority"},
+			}
+		})
+		result := &v1beta1.ArgoCD{}
+		assert.NoError(t, input.ConvertTo(result))
+		assert.Equal(t, "high-priority", result.Spec.Controller.PriorityClassName)
+		assert.Equal(t, "high-priority", result.Spec.Server.PriorityClassName)
+		assert.Equal(t, "high-priority", result.Spec.Repo.PriorityClassName)
+		assert.Equal(t, "high-priority", result.Spec.Redis.PriorityClassName)
+		assert.Equal(t, "high-priority", result.Spec.ApplicationSet.PriorityClassName)
+		assert.Equal(t, "high-priority", result.Spec.SSO.Dex.PriorityClassName)
+	})
+
+	t.Run("beta->alpha: priorityClassName preserved for all components", func(t *testing.T) {
+		input := makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+			cr.Spec.Controller.PriorityClassName = "high-priority"
+			cr.Spec.Server.PriorityClassName = "high-priority"
+			cr.Spec.Repo.PriorityClassName = "high-priority"
+			cr.Spec.Redis.PriorityClassName = "high-priority"
+			cr.Spec.ApplicationSet = &v1beta1.ArgoCDApplicationSet{PriorityClassName: "high-priority"}
+			cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
+				Provider: v1beta1.SSOProviderTypeDex,
+				Dex:      &v1beta1.ArgoCDDexSpec{PriorityClassName: "high-priority"},
+			}
+		})
+		result := &ArgoCD{}
+		var hub conversion.Hub = input
+		assert.NoError(t, result.ConvertFrom(hub))
+		assert.Equal(t, "high-priority", result.Spec.Controller.PriorityClassName)
+		assert.Equal(t, "high-priority", result.Spec.Server.PriorityClassName)
+		assert.Equal(t, "high-priority", result.Spec.Repo.PriorityClassName)
+		assert.Equal(t, "high-priority", result.Spec.Redis.PriorityClassName)
+		assert.Equal(t, "high-priority", result.Spec.ApplicationSet.PriorityClassName)
+		assert.Equal(t, "high-priority", result.Spec.SSO.Dex.PriorityClassName)
+	})
+}
+
 // in case of conflict, deprecated fields will have more priority during conversion to beta
 func TestAlphaToBetaConversion(t *testing.T) {
 	tests := []struct {
