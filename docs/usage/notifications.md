@@ -16,8 +16,6 @@ spec:
     enabled: True
 ```
 
-Users may also specify advanced configuration such as the number of replicas for the notifications controller, as well as the resource requirements for the same. The full list of available settings can be found in the [API spec](../reference/api.html.md#argoproj.io/v1alpha1.ArgoCDNotificationsSpec).
-
 Notifications are disabled by default. Enabling notifications results in the operator creating the following resources on the cluster:
 
 *  `<argocd-instance-name>-notifications-controller` deployment
@@ -30,6 +28,57 @@ Notifications are disabled by default. Enabling notifications results in the ope
 The operator creates the `argocd-notifications-cm` configmap which is populated with a set of default templates and triggers out of the box, in line with what is provided by the upstream Argo CD project. `argocd-notifications-cm` is editable to users, and will not be reconciled/overwritten by the operator. The `argocd-notifications-secret` is an empty secret that can be used to configure credentials for the supported notifications services.
 
 Instructions for appropriate configuration of these resources can be found within [upstream documentation](https://argo-cd.readthedocs.io/en/stable/operator-manual/notifications/).
+
+## Usage
+
+The `notifications` field in the `ArgoCD` custom resource allows you to configure the notifications controller:
+
+Name | Default | Description
+--- | --- | ---
+`enabled` | `false` | Whether to enable deployment of the notifications controller.
+`replicas` |  | Number of controller replicas.
+`sourceNamespaces` |  | List of namespaces where notifications should watch for Argo CD Application resources.
+`env` |  | Additional environment variables for the notifications pods (array of `EnvVar`).
+`image` |  | Container image for the notifications controller.
+`version` |  | The tag/version of the controller image to use.
+`resources` |  | Compute resources required by the notifications controller pod (Kubernetes resource requirements).
+`logLevel` |  | Log level for the notifications controller (`debug`, `info`, `warn`, `error`).
+`logFormat` |  | Log output format (`text` or `json`).
+`metrics` |  | Configuration for Prometheus ServiceMonitor.
+`metrics.interval` |  | Prometheus scrape interval.
+`metrics.scrapeTimeout` |  | Prometheus scrape timeout.
+
+Example configuration snippet:
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+spec:
+  notifications:
+    enabled: true
+    sourceNamespaces:
+      - my-team
+      - dev
+    image: quay.io/acme-corp/argocd-notification
+    version: stable
+    resources:
+      limits:
+        cpu: 100m
+        memory: 256Mi
+      requests:
+        cpu: 50m
+        memory: 128Mi
+    logLevel: info
+    logFormat: json
+    metrics:
+      interval: 30s
+      scrapeTimeout: 10s
+```
+
+For most users, enabling `notifications` with default options is sufficient, but these fields provide flexibility for advanced deployments.
+
 
 ## Notifications in Any Namespace
 
