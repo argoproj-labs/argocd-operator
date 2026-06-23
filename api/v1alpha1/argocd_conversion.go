@@ -191,15 +191,16 @@ func ConvertAlphaToBetaController(src *ArgoCDApplicationControllerSpec) *v1beta1
 	var dst *v1beta1.ArgoCDApplicationControllerSpec
 	if src != nil {
 		dst = &v1beta1.ArgoCDApplicationControllerSpec{
-			Processors:       v1beta1.ArgoCDApplicationControllerProcessorsSpec(src.Processors),
-			LogLevel:         src.LogLevel,
-			LogFormat:        src.LogFormat,
-			Resources:        src.Resources,
-			ParallelismLimit: src.ParallelismLimit,
-			AppSync:          src.AppSync,
-			Sharding:         v1beta1.ArgoCDApplicationControllerShardSpec(src.Sharding),
-			Env:              src.Env,
-			Metrics:          ConvertAlphaToBetaMetrics(src.Metrics),
+			Processors:        v1beta1.ArgoCDApplicationControllerProcessorsSpec(src.Processors),
+			LogLevel:          src.LogLevel,
+			LogFormat:         src.LogFormat,
+			Resources:         src.Resources,
+			ParallelismLimit:  src.ParallelismLimit,
+			AppSync:           src.AppSync,
+			Sharding:          v1beta1.ArgoCDApplicationControllerShardSpec(src.Sharding),
+			Env:               src.Env,
+			Metrics:           ConvertAlphaToBetaMetrics(src.Metrics),
+			PriorityClassName: src.PriorityClassName,
 		}
 	}
 	return dst
@@ -232,6 +233,7 @@ func ConvertAlphaToBetaRedis(src *ArgoCDRedisSpec) *v1beta1.ArgoCDRedisSpec {
 			Labels:                 src.Labels,
 			Resources:              src.Resources,
 			Version:                src.Version,
+			PriorityClassName:      src.PriorityClassName,
 		}
 	}
 	return dst
@@ -259,6 +261,7 @@ func ConvertAlphaToBetaRepo(src *ArgoCDRepoSpec) *v1beta1.ArgoCDRepoSpec {
 			VolumeMounts:         src.VolumeMounts,
 			Volumes:              src.Volumes,
 			Metrics:              ConvertAlphaToBetaMetrics(src.Metrics),
+			PriorityClassName:    src.PriorityClassName,
 		}
 	}
 	return dst
@@ -280,14 +283,15 @@ func ConvertAlphaToBetaApplicationSet(src *ArgoCDApplicationSet) *v1beta1.ArgoCD
 	var dst *v1beta1.ArgoCDApplicationSet
 	if src != nil {
 		dst = &v1beta1.ArgoCDApplicationSet{
-			Env:              src.Env,
-			ExtraCommandArgs: src.ExtraCommandArgs,
-			Image:            src.Image,
-			Version:          src.Version,
-			Resources:        src.Resources,
-			LogLevel:         src.LogLevel,
-			WebhookServer:    *ConvertAlphaToBetaWebhookServer(&src.WebhookServer),
-			LogFormat:        src.LogFormat,
+			Env:               src.Env,
+			ExtraCommandArgs:  src.ExtraCommandArgs,
+			Image:             src.Image,
+			Version:           src.Version,
+			Resources:         src.Resources,
+			LogLevel:          src.LogLevel,
+			WebhookServer:     *ConvertAlphaToBetaWebhookServer(&src.WebhookServer),
+			LogFormat:         src.LogFormat,
+			PriorityClassName: src.PriorityClassName,
 		}
 	}
 	return dst
@@ -340,15 +344,16 @@ func ConvertAlphaToBetaDex(src *ArgoCDDexSpec) *v1beta1.ArgoCDDexSpec {
 	var dst *v1beta1.ArgoCDDexSpec
 	if src != nil {
 		dst = &v1beta1.ArgoCDDexSpec{
-			Annotations:    src.Annotations,
-			Config:         src.Config,
-			Groups:         src.Groups,
-			Image:          src.Image,
-			Labels:         src.Labels,
-			OpenShiftOAuth: src.OpenShiftOAuth,
-			Resources:      src.Resources,
-			Version:        src.Version,
-			Env:            nil,
+			Annotations:       src.Annotations,
+			Config:            src.Config,
+			Groups:            src.Groups,
+			Image:             src.Image,
+			Labels:            src.Labels,
+			OpenShiftOAuth:    src.OpenShiftOAuth,
+			Resources:         src.Resources,
+			Version:           src.Version,
+			Env:               nil,
+			PriorityClassName: src.PriorityClassName,
 		}
 	}
 	return dst
@@ -382,20 +387,21 @@ func ConvertAlphaToBetaServer(src *ArgoCDServerSpec) *v1beta1.ArgoCDServerSpec {
 	var dst *v1beta1.ArgoCDServerSpec
 	if src != nil {
 		dst = &v1beta1.ArgoCDServerSpec{
-			Autoscale:        v1beta1.ArgoCDServerAutoscaleSpec(src.Autoscale),
-			GRPC:             *ConvertAlphaToBetaGRPC(&src.GRPC),
-			Host:             src.Host,
-			Ingress:          v1beta1.ArgoCDIngressSpec(src.Ingress),
-			Insecure:         src.Insecure,
-			LogLevel:         src.LogLevel,
-			LogFormat:        src.LogFormat,
-			Replicas:         src.Replicas,
-			Resources:        src.Resources,
-			Route:            v1beta1.ArgoCDRouteSpec(src.Route),
-			Service:          v1beta1.ArgoCDServerServiceSpec(src.Service),
-			Env:              src.Env,
-			ExtraCommandArgs: src.ExtraCommandArgs,
-			Metrics:          ConvertAlphaToBetaMetrics(src.Metrics),
+			Autoscale:         v1beta1.ArgoCDServerAutoscaleSpec(src.Autoscale),
+			GRPC:              *ConvertAlphaToBetaGRPC(&src.GRPC),
+			Host:              src.Host,
+			Ingress:           v1beta1.ArgoCDIngressSpec(src.Ingress),
+			Insecure:          src.Insecure,
+			LogLevel:          src.LogLevel,
+			LogFormat:         src.LogFormat,
+			Replicas:          src.Replicas,
+			Resources:         src.Resources,
+			Route:             v1beta1.ArgoCDRouteSpec(src.Route),
+			Service:           v1beta1.ArgoCDServerServiceSpec(src.Service),
+			Env:               src.Env,
+			ExtraCommandArgs:  src.ExtraCommandArgs,
+			Metrics:           ConvertAlphaToBetaMetrics(src.Metrics),
+			PriorityClassName: src.PriorityClassName,
 		}
 	}
 	return dst
@@ -479,15 +485,16 @@ func ConvertBetaToAlphaController(src *v1beta1.ArgoCDApplicationControllerSpec) 
 	var dst *ArgoCDApplicationControllerSpec
 	if src != nil {
 		dst = &ArgoCDApplicationControllerSpec{
-			Processors:       ArgoCDApplicationControllerProcessorsSpec(src.Processors),
-			LogLevel:         src.LogLevel,
-			LogFormat:        src.LogFormat,
-			Resources:        src.Resources,
-			ParallelismLimit: src.ParallelismLimit,
-			AppSync:          src.AppSync,
-			Sharding:         ArgoCDApplicationControllerShardSpec(src.Sharding),
-			Env:              src.Env,
-			Metrics:          ConvertBetaToAlphaMetrics(src.Metrics),
+			Processors:        ArgoCDApplicationControllerProcessorsSpec(src.Processors),
+			LogLevel:          src.LogLevel,
+			LogFormat:         src.LogFormat,
+			Resources:         src.Resources,
+			ParallelismLimit:  src.ParallelismLimit,
+			AppSync:           src.AppSync,
+			Sharding:          ArgoCDApplicationControllerShardSpec(src.Sharding),
+			Env:               src.Env,
+			Metrics:           ConvertBetaToAlphaMetrics(src.Metrics),
+			PriorityClassName: src.PriorityClassName,
 		}
 	}
 	return dst
@@ -509,14 +516,15 @@ func ConvertBetaToAlphaApplicationSet(src *v1beta1.ArgoCDApplicationSet) *ArgoCD
 	var dst *ArgoCDApplicationSet
 	if src != nil {
 		dst = &ArgoCDApplicationSet{
-			Env:              src.Env,
-			ExtraCommandArgs: src.ExtraCommandArgs,
-			Image:            src.Image,
-			Version:          src.Version,
-			Resources:        src.Resources,
-			LogLevel:         src.LogLevel,
-			WebhookServer:    *ConvertBetaToAlphaWebhookServer(&src.WebhookServer),
-			LogFormat:        src.LogFormat,
+			Env:               src.Env,
+			ExtraCommandArgs:  src.ExtraCommandArgs,
+			Image:             src.Image,
+			Version:           src.Version,
+			Resources:         src.Resources,
+			LogLevel:          src.LogLevel,
+			WebhookServer:     *ConvertBetaToAlphaWebhookServer(&src.WebhookServer),
+			LogFormat:         src.LogFormat,
+			PriorityClassName: src.PriorityClassName,
 		}
 	}
 	return dst
@@ -609,14 +617,15 @@ func ConvertBetaToAlphaDex(src *v1beta1.ArgoCDDexSpec) *ArgoCDDexSpec {
 	var dst *ArgoCDDexSpec
 	if src != nil {
 		dst = &ArgoCDDexSpec{
-			Annotations:    src.Annotations,
-			Config:         src.Config,
-			Groups:         src.Groups,
-			Image:          src.Image,
-			Labels:         src.Labels,
-			OpenShiftOAuth: src.OpenShiftOAuth,
-			Resources:      src.Resources,
-			Version:        src.Version,
+			Annotations:       src.Annotations,
+			Config:            src.Config,
+			Groups:            src.Groups,
+			Image:             src.Image,
+			Labels:            src.Labels,
+			OpenShiftOAuth:    src.OpenShiftOAuth,
+			Resources:         src.Resources,
+			Version:           src.Version,
+			PriorityClassName: src.PriorityClassName,
 		}
 	}
 	return dst
@@ -650,20 +659,21 @@ func ConvertBetaToAlphaServer(src *v1beta1.ArgoCDServerSpec) *ArgoCDServerSpec {
 	var dst *ArgoCDServerSpec
 	if src != nil {
 		dst = &ArgoCDServerSpec{
-			Autoscale:        ArgoCDServerAutoscaleSpec(src.Autoscale),
-			GRPC:             *ConvertBetaToAlphaGRPC(&src.GRPC),
-			Host:             src.Host,
-			Ingress:          ArgoCDIngressSpec(src.Ingress),
-			Insecure:         src.Insecure,
-			LogLevel:         src.LogLevel,
-			LogFormat:        src.LogFormat,
-			Replicas:         src.Replicas,
-			Resources:        src.Resources,
-			Route:            ArgoCDRouteSpec(src.Route),
-			Service:          ArgoCDServerServiceSpec(src.Service),
-			Env:              src.Env,
-			ExtraCommandArgs: src.ExtraCommandArgs,
-			Metrics:          ConvertBetaToAlphaMetrics(src.Metrics),
+			Autoscale:         ArgoCDServerAutoscaleSpec(src.Autoscale),
+			GRPC:              *ConvertBetaToAlphaGRPC(&src.GRPC),
+			Host:              src.Host,
+			Ingress:           ArgoCDIngressSpec(src.Ingress),
+			Insecure:          src.Insecure,
+			LogLevel:          src.LogLevel,
+			LogFormat:         src.LogFormat,
+			Replicas:          src.Replicas,
+			Resources:         src.Resources,
+			Route:             ArgoCDRouteSpec(src.Route),
+			Service:           ArgoCDServerServiceSpec(src.Service),
+			Env:               src.Env,
+			ExtraCommandArgs:  src.ExtraCommandArgs,
+			Metrics:           ConvertBetaToAlphaMetrics(src.Metrics),
+			PriorityClassName: src.PriorityClassName,
 		}
 	}
 	return dst
@@ -753,6 +763,7 @@ func ConvertBetaToAlphaRedis(src *v1beta1.ArgoCDRedisSpec) *ArgoCDRedisSpec {
 			Labels:                 src.Labels,
 			Resources:              src.Resources,
 			Version:                src.Version,
+			PriorityClassName:      src.PriorityClassName,
 		}
 	}
 	return dst
@@ -780,6 +791,7 @@ func ConvertBetaToAlphaRepo(src *v1beta1.ArgoCDRepoSpec) *ArgoCDRepoSpec {
 			VolumeMounts:         src.VolumeMounts,
 			Volumes:              src.Volumes,
 			Metrics:              ConvertBetaToAlphaMetrics(src.Metrics),
+			PriorityClassName:    src.PriorityClassName,
 		}
 	}
 	return dst

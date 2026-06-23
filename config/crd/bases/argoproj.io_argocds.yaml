@@ -239,6 +239,11 @@ spec:
                       by the ApplicationSet controller. Defaults to ArgoCDDefaultLogLevel
                       if not set.  Valid options are debug,info, error, and warn.
                     type: string
+                  priorityClassName:
+                    description: |-
+                      PriorityClassName is the name of the PriorityClass to assign to the ApplicationSet Controller pod.
+                      The PriorityClass must already exist in the cluster.
+                    type: string
                   resources:
                     description: Resources defines the Compute Resources required
                       by the container for ApplicationSet.
@@ -1281,6 +1286,11 @@ spec:
                       operations
                     format: int32
                     type: integer
+                  priorityClassName:
+                    description: |-
+                      PriorityClassName is the name of the PriorityClass to assign to the Application Controller pod.
+                      The PriorityClass must already exist in the cluster.
+                    type: string
                   processors:
                     description: Processors contains the options for the Application
                       Controller processors.
@@ -1435,6 +1445,11 @@ spec:
                     description: OpenShiftOAuth enables OpenShift OAuth authentication
                       for the Dex server.
                     type: boolean
+                  priorityClassName:
+                    description: |-
+                      PriorityClassName is the name of the PriorityClass to assign to the Dex server pod.
+                      The PriorityClass must already exist in the cluster.
+                    type: string
                   resources:
                     description: Resources defines the Compute Resources required
                       by the container for Dex.
@@ -2539,6 +2554,11 @@ spec:
                       type: string
                     description: Custom labels to pods deployed by the operator
                     type: object
+                  priorityClassName:
+                    description: |-
+                      PriorityClassName is the name of the PriorityClass to assign to the Redis pod.
+                      The PriorityClass must already exist in the cluster.
+                    type: string
                   resources:
                     description: Resources defines the Compute Resources required
                       by the container for Redis.
@@ -4346,6 +4366,11 @@ spec:
                     description: MountSAToken describes whether you would like to
                       have the Repo server mount the service account token
                     type: boolean
+                  priorityClassName:
+                    description: |-
+                      PriorityClassName is the name of the PriorityClass to assign to the Repo Server pod.
+                      The PriorityClass must already exist in the cluster.
+                    type: string
                   replicas:
                     description: Replicas defines the number of replicas for argocd-repo-server.
                       Value should be greater than or equal to 0. Default is nil.
@@ -8388,6 +8413,11 @@ spec:
                           If empty, Prometheus uses the global scrape timeout.
                         type: string
                     type: object
+                  priorityClassName:
+                    description: |-
+                      PriorityClassName is the name of the PriorityClass to assign to the Server pod.
+                      The PriorityClass must already exist in the cluster.
+                    type: string
                   replicas:
                     description: Replicas defines the number of replicas for argocd-server.
                       Default is nil. Value should be greater than or equal to 0.
@@ -8612,6 +8642,11 @@ spec:
                         description: OpenShiftOAuth enables OpenShift OAuth authentication
                           for the Dex server.
                         type: boolean
+                      priorityClassName:
+                        description: |-
+                          PriorityClassName is the name of the PriorityClass to assign to the Dex server pod.
+                          The PriorityClass must already exist in the cluster.
+                        type: string
                       resources:
                         description: Resources defines the Compute Resources required
                           by the container for Dex.
@@ -9403,6 +9438,11 @@ spec:
                     type: string
                   logformat:
                     description: 'Deprecated: use LogFormat instead.'
+                    type: string
+                  priorityClassName:
+                    description: |-
+                      PriorityClassName is the name of the PriorityClass to assign to the ApplicationSet Controller pod.
+                      The PriorityClass must already exist in the cluster.
                     type: string
                   resources:
                     description: Resources defines the Compute Resources required
@@ -14133,6 +14173,11 @@ spec:
                       operations
                     format: int32
                     type: integer
+                  priorityClassName:
+                    description: |-
+                      PriorityClassName is the name of the PriorityClass to assign to the Application Controller pod.
+                      The PriorityClass must already exist in the cluster.
+                    type: string
                   processors:
                     description: Processors contains the options for the Application
                       Controller processors.
@@ -19061,6 +19106,11 @@ spec:
                       type: string
                     description: Custom labels to pods deployed by the operator
                     type: object
+                  priorityClassName:
+                    description: |-
+                      PriorityClassName is the name of the PriorityClass to assign to the Redis pod.
+                      The PriorityClass must already exist in the cluster.
+                    type: string
                   remote:
                     description: Remote specifies the remote URL of the Redis container.
                       (optional, by default, a local instance managed by the operator
@@ -20887,6 +20937,11 @@ spec:
                     description: MountSAToken describes whether you would like to
                       have the Repo server mount the service account token
                     type: boolean
+                  priorityClassName:
+                    description: |-
+                      PriorityClassName is the name of the PriorityClass to assign to the Repo Server pod.
+                      The PriorityClass must already exist in the cluster.
+                    type: string
                   remote:
                     description: Remote specifies the remote URL of the Repo Server
                       container. (optional, by default, a local instance managed by
@@ -26705,6 +26760,11 @@ spec:
                           If empty, Prometheus uses the global scrape timeout.
                         type: string
                     type: object
+                  priorityClassName:
+                    description: |-
+                      PriorityClassName is the name of the PriorityClass to assign to the Server pod.
+                      The PriorityClass must already exist in the cluster.
+                    type: string
                   replicas:
                     description: Replicas defines the number of replicas for argocd-server.
                       Default is nil. Value should be greater than or equal to 0.
@@ -30575,6 +30635,11 @@ spec:
                         description: OpenShiftOAuth enables OpenShift OAuth authentication
                           for the Dex server.
                         type: boolean
+                      priorityClassName:
+                        description: |-
+                          PriorityClassName is the name of the PriorityClass to assign to the Dex server pod.
+                          The PriorityClass must already exist in the cluster.
+                        type: string
                       resources:
                         description: Resources defines the Compute Resources required
                           by the container for Dex.

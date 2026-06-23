@@ -495,6 +495,10 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 	deploy.Spec.Template.Spec.ServiceAccountName = getServiceAccountName(cr.Name, common.ArgoCDDefaultDexServiceAccountName)
 	deploy.Spec.Template.Spec.Volumes = dexVolumes
 
+	if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.PriorityClassName != "" {
+		deploy.Spec.Template.Spec.PriorityClassName = cr.Spec.SSO.Dex.PriorityClassName
+	}
+
 	existing := newDeploymentWithSuffix("dex-server", "dex-server", cr)
 	deplExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
 	if err != nil {
@@ -538,6 +542,11 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		}
 
 		changes = append(changes, updateNodePlacement(existing, deploy)...)
+
+		if existing.Spec.Template.Spec.PriorityClassName != deploy.Spec.Template.Spec.PriorityClassName {
+			existing.Spec.Template.Spec.PriorityClassName = deploy.Spec.Template.Spec.PriorityClassName
+			changes = append(changes, "priority class name")
+		}
 
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
 			deploy.Spec.Template.Spec.Containers[0].Env) {
