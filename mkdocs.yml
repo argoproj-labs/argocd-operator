@@ -1,0 +1,80 @@
+site_name: Argo CD Operator
+site_url: ""
+repo_url: https://github.com/argoproj-labs/argocd-operator
+strict: true
+theme:
+  name: material
+  favicon: 'assets/logo.png'
+  palette:
+  - media: '(prefers-color-scheme: light)'
+    primary: teal
+    scheme: default
+    toggle:
+      icon: material/brightness-7
+      name: Switch to dark mode
+  - media: '(prefers-color-scheme: dark)'
+    primary: teal
+    scheme: slate
+    toggle:
+      icon: material/brightness-4
+      name: Switch to light mode
+  font:
+    text: 'Work Sans'
+  logo: 'assets/logo.png'
+markdown_extensions:
+- markdown_include.include
+- codehilite:
+    css_class: highlight
+- admonition
+- toc:
+    permalink: true
+nav:
+- Overview: index.md
+- Release Process: release-process.md
+- Security: SECURITY.md
+- Install:
+  - Getting Started: install/start.md
+  - OpenShift: install/openshift.md
+  - Operator Lifecycle Manager: install/olm.md
+  - Manual Installation: install/manual.md
+- Usage:
+  - Basics: usage/basics.md
+  - Config Management: usage/config_management_2.0.md
+  - Custom Tooling: usage/customization.md
+  - Deploy Resources to Different Namespaces: usage/deploy-to-different-namespaces.md
+  - Export: usage/export.md
+  - ExtraConfig: usage/extra-config.md
+  - High Availability:
+    - Redis: usage/ha/redis.md
+    - Repo Server: usage/ha/repo-server.md
+  - Image Updater: usage/image-updater.md
+  - Ingress: usage/ingress.md
+  - Insights: usage/insights.md
+  - Dex: usage/dex.md
+  - Notifications: usage/notifications.md
+  - Notifications in Any Namespace: usage/notifications-in-any-namespace.md
+  - Resource Management: usage/resource_management.md
+  - Routes: usage/routes.md
+  - Webhook secrets: usage/webhook-secrets.md
+  - Respect RBAC: usage/respect_rbac.md
+  - Custom Roles: usage/custom_roles.md
+  - Apps in Any Namespace: usage/apps-in-any-namespace.md
+  - Appsets in Any Namespace: usage/appsets-in-any-namespace.md
+  - Custom labels and annotations: usage/custom_labels_annotations.md
+- Reference:
+  - ArgoCD: reference/argocd.md
+  - ApplicationSet:
+    - Policies: reference/applicationSet.md
+  - ArgoCDExport: reference/argocdexport.md
+  - API Docs: reference/api.html.md
+  - NotificationsConfiguration: reference/notificationsconfiguration.md
+- Contributing:
+  - Contributing: developer-guide/contributing.md
+  - Development:
+    - Setup: developer-guide/development.md
+    - E2E Testing: developer-guide/e2e-test-guide.md
+    - OLM Environment: developer-guide/olm-env.md
+    - OpenAPI: developer-guide/openapi.md
+- Releases ⧉: https://github.com/argoproj-labs/argocd-operator/releases
+- Upgrading: upgrading.md
+- Roadmap ⧉: https://github.com/argoproj-labs/argocd-operator/milestones

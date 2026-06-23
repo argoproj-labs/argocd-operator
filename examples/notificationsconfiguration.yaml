@@ -1,0 +1,13 @@
+apiVersion: argoproj.io/v1alpha1
+kind: NotificationsConfiguration
+metadata:
+ name: default-notifications-configuration
+spec:
+ triggers:
+  trigger.on-sync-status-unknown: |
+    - when: app.status.sync.status == 'Unknown'
+      send: [my-custom-template]
+ templates:
+  template.my-custom-template: |
+    message: |
+      Application details: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}.

@@ -1,0 +1,224 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: argocds.argoproj.io
+spec:
+  group: argoproj.io
+  names:
+    kind: ArgoCD
+    listKind: ArgoCDList
+    plural: argocds
+    singular: argocd
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: ArgoCD is the Schema for the argocds API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: ArgoCDSpec defines the desired state of ArgoCD
+          properties:
+            controller:
+              description: Controller defines the Application Controller options for
+                ArgoCD.
+              properties:
+                processors:
+                  description: ArgoCDApplicationControllerProcessorsSpec defines the
+                    options for the ArgoCD Application Controller processors.
+                  properties:
+                    operation:
+                      description: Operation is the number of application operation
+                        processors.
+                      format: int32
+                      type: integer
+                    status:
+                      description: Status is the number of application status processors.
+                      format: int32
+                      type: integer
+                  type: object
+              required:
+              - processors
+              type: object
+            dex:
+              description: Dex defines the Dex server options for ArgoCD.
+              properties:
+                image:
+                  description: Image is the Dex container image.
+                  type: string
+                version:
+                  description: Version is the Dex container image tag.
+                  type: string
+              type: object
+            grafana:
+              description: Grafana defines the Grafana server options for ArgoCD.
+              properties:
+                enabled:
+                  description: Enabled will toggle Grafana support globally for ArgoCD.
+                  type: boolean
+                host:
+                  description: Host is the hostname to use for Ingress/Route resources.
+                  type: string
+                image:
+                  description: Image is the Grafana container image.
+                  type: string
+                size:
+                  description: Size is the replica count for the Grafana Deployment.
+                  format: int32
+                  type: integer
+                version:
+                  description: Version is the Grafana container image tag.
+                  type: string
+              required:
+              - enabled
+              type: object
+            image:
+              description: Image is the ArgoCD container image for all ArgoCD components.
+              type: string
+            import:
+              description: Import is the import/restore options for ArgoCD.
+              properties:
+                name:
+                  description: Name of an ArgoCDExport from which to import data.
+                  type: string
+                namespace:
+                  description: Namespace for the ArgoCDExport, defaults to the same
+                    namespace as the ArgoCD.
+                  type: string
+              required:
+              - name
+              type: object
+            ingress:
+              description: Ingress defines the Ingress options for ArgoCD.
+              properties:
+                annotations:
+                  additionalProperties:
+                    type: string
+                  description: Annotations is the map of annotations to use for the
+                    Ingress resource.
+                  type: object
+                enabled:
+                  description: Enabled will toggle Ingress support globally for ArgoCD.
+                  type: boolean
+                path:
+                  description: Path is the path to use for the Ingress resource.
+                  type: string
+              required:
+              - enabled
+              type: object
+            prometheus:
+              description: Prometheus defines the Prometheus server options for ArgoCD.
+              properties:
+                enabled:
+                  description: Enabled will toggle Prometheus support globally for
+                    ArgoCD.
+                  type: boolean
+                host:
+                  description: Host is the hostname to use for Ingress/Route resources.
+                  type: string
+                size:
+                  description: Size is the replica count for the Prometheus StatefulSet.
+                  format: int32
+                  type: integer
+              required:
+              - enabled
+              type: object
+            redis:
+              description: Redis defines the Redis server options for ArgoCD.
+              properties:
+                image:
+                  description: Image is the Redis container image.
+                  type: string
+                version:
+                  description: Version is the Redis container image tag.
+                  type: string
+              type: object
+            server:
+              description: Server defines the options for the ArgoCD Server component.
+              properties:
+                grpc:
+                  description: GRPC defines the state for the Argo CD Server GRPC
+                    options.
+                  properties:
+                    host:
+                      description: Host is the hostname to use for Ingress/Route resources.
+                      type: string
+                  required:
+                  - host
+                  type: object
+                host:
+                  description: Host is the hostname to use for Ingress/Route resources.
+                  type: string
+                insecure:
+                  description: Insecure toggles the insecure flag.
+                  type: boolean
+                service:
+                  description: Service defines the options for the Service backing
+                    the ArgoCD Server component.
+                  properties:
+                    type:
+                      description: Type is the ServiceType to use for the Service
+                        resource.
+                      type: string
+                  required:
+                  - type
+                  type: object
+              type: object
+            tls:
+              description: TLS defines the TLS options for ArgoCD.
+              properties:
+                ca:
+                  description: CA defines the CA options.
+                  properties:
+                    configMapName:
+                      description: ConfigMapName is the name of the ConfigMap containing
+                        the CA Certificate.
+                      type: string
+                    secretName:
+                      description: SecretName is the name of the Secret containing
+                        the CA Certificate and Key.
+                      type: string
+                  type: object
+              required:
+              - ca
+              type: object
+            version:
+              description: Version is the tag to use with the ArgoCD container image
+                for all ArgoCD components.
+              type: string
+          type: object
+        status:
+          description: ArgoCDStatus defines the observed state of ArgoCD
+          properties:
+            phase:
+              description: 'Phase is a simple, high-level summary of where the ArgoCD
+                is in its lifecycle. There are five possible phase values: Pending:
+                The ArgoCD has been accepted by the Kubernetes system, but one or
+                more of the required resources have not been created. Running: All
+                of the containers for the ArgoCD are running, or in the process of
+                starting or restarting. Failed: At least one container has terminated
+                in failure, either exited with non-zero status or was terminated by
+                the system. Unknown: For some reason the state of the ArgoCD could
+                not be obtained.'
+              type: string
+          required:
+          - phase
+          type: object
+      type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true

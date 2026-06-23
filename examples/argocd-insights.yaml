@@ -1,0 +1,16 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: insights
+spec:
+  grafana:
+    enabled: true
+    ingress: true
+  prometheus:
+    enabled: true
+    ingress: true
+  server:
+    ingress: true
+    insecure: true

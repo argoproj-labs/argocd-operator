@@ -1,0 +1,11 @@
+## Append samples you want in your CSV to this file as resources ##
+resources:
+- argoproj.io_v1alpha1_argocd.yaml
+- argoproj.io_v1alpha1_argocdexport.yaml
+- argoproj.io_v1alpha1_application.yaml
+- argoproj.io_v1alpha1_applicationset.yaml
+- argoproj.io_v1alpha1_appproject.yaml
+- argoproj.io_v1alpha1_notificationsconfiguration.yaml
+- argoproj.io_v1beta1_argocd.yaml
+- argoproj.io_v1beta1_namespacemanagement.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples

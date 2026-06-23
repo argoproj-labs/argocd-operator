@@ -1,0 +1,23 @@
+# https://www.kubernetes.dev/docs/guide/owners/
+
+approvers:
+- anandf
+- anandrkskd
+- chetan-rns
+- jannfis
+- jgwest
+- olivergondza
+- svghadi
+- wtam2018
+
+reviewers:
+- jparsai
+- Rizwana777
+
+emeritus_approvers:
+- ciiay
+- iam-veeramalla
+- ishitasequeira
+- jomkz
+- reginapizza
+- saumeya

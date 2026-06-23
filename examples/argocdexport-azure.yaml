@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: azure-backup-secret
+  labels:
+    example: azure
+type: Opaque
+data:
+  azure.container.name: ZXhhbXBsZS1hcmdvY2RleHBvcnQ=
+  azure.service.id: c2VydmljZV9pZA==
+  azure.service.cert: |
+    # base64 encrypted combination of the client.crt and client.key of your generated certificate.
+  azure.storage.account: c3RvcmFnZV9hY2NvdW50
+  azure.tenant.id: dGVuYW50X2lk
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCDExport
+metadata:
+  name: example-argocdexport
+  labels:
+    example: azure
+spec:
+  argocd: example-argocd
+  storage:
+    backend: azure
+    secretName: azure-backup-secret

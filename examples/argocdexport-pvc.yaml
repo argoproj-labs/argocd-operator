@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCDExport
+metadata:
+  name: example-argocdexport
+  labels:
+    example: pvc
+spec:
+  argocd: example-argocd
+  storage:
+    backend: local
+    pvc:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 2Gi
+      storageClassName: standard

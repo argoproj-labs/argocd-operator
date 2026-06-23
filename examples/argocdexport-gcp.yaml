@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gcp-backup-secret
+  labels:
+    example: gcp
+type: Opaque
+data:
+  gcp.bucket.name: ZXhhbXBsZS1hcmdvY2RleHBvcnQ=
+  gcp.project.id: cHJvamVjdF9pZA==
+  gcp.key.file: a2V5X2ZpbGU=
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCDExport
+metadata:
+  name: example-argocdexport
+  labels:
+    example: gcp
+spec:
+  argocd: example-argocd
+  storage:
+    backend: gcp
+    secretName: gcp-backup-secret

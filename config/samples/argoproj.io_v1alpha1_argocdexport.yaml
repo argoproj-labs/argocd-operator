@@ -1,0 +1,6 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCDExport
+metadata:
+  name: argocdexport-sample
+spec:
+  argocd: argocd-sample

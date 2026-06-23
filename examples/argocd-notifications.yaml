@@ -1,0 +1,16 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: route
+spec:
+  notifications:
+    enabled: true
+  prometheus:
+    enabled: true
+    route:
+      enabled: true
+  server:
+    route:
+      enabled: true

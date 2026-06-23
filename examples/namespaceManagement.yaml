@@ -1,0 +1,8 @@
+apiVersion: argoproj.io/v1beta1
+kind: NamespaceManagement
+metadata: 
+  name: ui-team-namespace
+  namespace: tenant-ns # This is the namespace that will be managed by the Argo CD instance.
+
+spec: 
+  managedBy: argocd-ns # The namespace where the Argo CD instance is running, which will manage 'tenant-ns'.

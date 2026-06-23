@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: guestbook
+  namespace: agent-managed
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/argoproj/argocd-example-apps
+    targetRevision: HEAD
+    path: kustomize-guestbook
+  destination:
+    name: agent-managed
+    namespace: guestbook
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
