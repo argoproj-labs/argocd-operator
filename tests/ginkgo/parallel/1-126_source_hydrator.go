@@ -92,13 +92,15 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			assertRunning(false)
 
 			By("Running when enabled")
-			argoCD.Spec.SourceHydrator.Enabled = ptr.To(true)
-			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
+			argocdFixture.Update(argoCD, func(argoCD *argov1beta1api.ArgoCD) {
+				argoCD.Spec.SourceHydrator.Enabled = ptr.To(true)
+			})
 			assertRunning(true)
 
 			By("Not running when disabled")
-			argoCD.Spec.SourceHydrator.Enabled = ptr.To(false)
-			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
+			argocdFixture.Update(argoCD, func(argoCD *argov1beta1api.ArgoCD) {
+				argoCD.Spec.SourceHydrator.Enabled = ptr.To(false)
+			})
 			assertRunning(false)
 		})
 
@@ -189,49 +191,49 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Expect(ic.Command).To(Equal([]string{"echo", "init"}))
 
 			By("Annotations reconciles")
-			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCD), argoCD)).To(Succeed())
-			argoCD.Spec.CommitServer.Annotations = nil
-			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
+			argocdFixture.Update(argoCD, func(argoCD *argov1beta1api.ArgoCD) {
+				argoCD.Spec.CommitServer.Annotations = nil
+			})
 			Eventually(func() map[string]string {
 				return fetchDeployment().Spec.Template.Annotations
 			}, "5s", "1s").ToNot(HaveKey("example-annotation"))
 
 			By("Labels reconciles")
-			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCD), argoCD)).To(Succeed())
-			argoCD.Spec.CommitServer.Labels = nil
-			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
+			argocdFixture.Update(argoCD, func(argoCD *argov1beta1api.ArgoCD) {
+				argoCD.Spec.CommitServer.Labels = nil
+			})
 			Eventually(func() map[string]string {
 				return fetchDeployment().Spec.Template.Labels
 			}, "5s", "1s").ToNot(HaveKey("example-label"))
 
 			By("Env reconciles")
-			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCD), argoCD)).To(Succeed())
-			argoCD.Spec.CommitServer.Env = nil
-			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
+			argocdFixture.Update(argoCD, func(argoCD *argov1beta1api.ArgoCD) {
+				argoCD.Spec.CommitServer.Env = nil
+			})
 			Eventually(func() []corev1.EnvVar {
 				return fetchDeployment().Spec.Template.Spec.Containers[0].Env
 			}, "5s", "1s").ToNot(ContainElement(corev1.EnvVar{Name: "FOO", Value: "BAR"}))
 
 			By("Resources reconciles")
-			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCD), argoCD)).To(Succeed())
-			argoCD.Spec.CommitServer.Resources.Limits = nil
-			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
+			argocdFixture.Update(argoCD, func(argoCD *argov1beta1api.ArgoCD) {
+				argoCD.Spec.CommitServer.Resources.Limits = nil
+			})
 			Eventually(func() corev1.ResourceRequirements {
 				return fetchDeployment().Spec.Template.Spec.Containers[0].Resources
 			}, "5s", "1s").To(Equal(corev1.ResourceRequirements{Requests: resources.Requests})) // Same Requests, no Limits
 
 			By("InitContainers reconciles")
-			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCD), argoCD)).To(Succeed())
-			argoCD.Spec.CommitServer.InitContainers[0].Command = []string{"echo", "init-2"}
-			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
+			argocdFixture.Update(argoCD, func(argoCD *argov1beta1api.ArgoCD) {
+				argoCD.Spec.CommitServer.InitContainers[0].Command = []string{"echo", "init-2"}
+			})
 			Eventually(func() []string {
 				return fetchDeployment().Spec.Template.Spec.InitContainers[0].Command
 			}, "5s", "1s").To(Equal([]string{"echo", "init-2"}))
 
 			By("Command reconciles")
-			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCD), argoCD)).To(Succeed())
-			argoCD.Spec.CommitServer.LogLevel = "debug"
-			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
+			argocdFixture.Update(argoCD, func(argoCD *argov1beta1api.ArgoCD) {
+				argoCD.Spec.CommitServer.LogLevel = "debug"
+			})
 			Eventually(func() []string {
 				return fetchDeployment().Spec.Template.Spec.Containers[0].Command
 			}, "5s", "1s").To(ContainElement("debug"))
