@@ -105,6 +105,13 @@ func HaveServerStatus(status string) matcher.GomegaMatcher {
 	})
 }
 
+func HaveCommitServerStatus(status string) matcher.GomegaMatcher {
+	return fetchArgoCD(func(argocd *argov1beta1api.ArgoCD) bool {
+		GinkgoWriter.Println("HaveCommitServerStatus:", "expected:", status, "/ actual:", argocd.Status.CommitServer)
+		return argocd.Status.CommitServer == status
+	})
+}
+
 func HaveApplicationControllerStatus(status string) matcher.GomegaMatcher {
 	return fetchArgoCD(func(argocd *argov1beta1api.ArgoCD) bool {
 		GinkgoWriter.Println("HaveApplicationControllerStatus:", "expected:", status, "/ actual:", argocd.Status.ApplicationController)

@@ -417,6 +417,9 @@ func getPolicyRuleList(client client.Client) []struct {
 			name:       common.ArgoCDServerComponent,
 			policyRule: policyRuleForServer(),
 		}, {
+			name:       common.ArgoCDCommitServerComponent,
+			policyRule: policyRuleForCommitServer(),
+		}, {
 			name:       common.ArgoCDRedisHAComponent,
 			policyRule: policyRuleForRedisHa(client),
 		}, {

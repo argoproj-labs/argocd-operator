@@ -69,6 +69,12 @@ func (r *ReconcileArgoCD) reconcileStatus(cr *argoproj.ArgoCD, argocdStatus *arg
 		}
 	}
 
+	if argocdStatus.CommitServer == "" {
+		if err := r.reconcileStatusCommitServer(cr, argocdStatus); err != nil {
+			return err
+		}
+	}
+
 	if argocdStatus.Phase == "" { // We don't want to override a phase that was already set
 		if err := r.reconcileStatusHost(cr, argocdStatus); err != nil {
 			return err
@@ -325,6 +331,41 @@ func (r *ReconcileArgoCD) reconcileStatusServer(cr *argoproj.ArgoCD, argocdStatu
 	}
 
 	argocdStatus.Server = status
+	return nil
+}
+
+// reconcileStatusCommitServer will ensure that the Server status is updated for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileStatusCommitServer(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus) error {
+	argocdStatus.CommitServer = "Unknown"
+
+	shouldExist := UseCommitServer(cr)
+	deploy := newDeploymentWithSuffix("commit-server", "commit-server", cr)
+	deplExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy)
+	if err != nil {
+		argocdStatus.CommitServer = "Failed"
+		return err
+	}
+
+	if deplExists {
+		argocdStatus.CommitServer = "Pending"
+
+		if deploy.Spec.Replicas != nil {
+			if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
+				argocdStatus.CommitServer = "Running"
+			} else if deploy.Status.Conditions != nil {
+				for _, condition := range deploy.Status.Conditions {
+					if condition.Type == appsv1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue {
+						// Deployment has failed
+						argocdStatus.CommitServer = "Failed"
+						break
+					}
+				}
+			}
+		}
+	} else if !shouldExist {
+		argocdStatus.CommitServer = ""
+	}
+
 	return nil
 }
 

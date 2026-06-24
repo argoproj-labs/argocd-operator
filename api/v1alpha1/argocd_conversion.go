@@ -103,6 +103,7 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.NamespaceManagement = ConvertAlphaToBetaNamespaceManagement(src.Spec.NamespaceManagement)
 	dst.Spec.WebhookSecrets = ConvertAlphaToBetaWebhookSecrets(src.Spec.WebhookSecrets)
 	dst.Spec.NetworkPolicy = v1beta1.ArgoCDNetworkPolicySpec(src.Spec.NetworkPolicy)
+	dst.Spec.CommitServer = v1beta1.ArgoCDCommitServerSpec(src.Spec.CommitServer)
 
 	// Status conversion
 	dst.Status = v1beta1.ArgoCDStatus(src.Status)
@@ -179,6 +180,7 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.ArgoCDAgent = ConvertBetaToAlphaArgoCDAgent(src.Spec.ArgoCDAgent)
 	dst.Spec.NamespaceManagement = ConvertBetaToAlphaNamespaceManagement(src.Spec.NamespaceManagement)
 	dst.Spec.WebhookSecrets = ConvertBetaToAlphaWebhookSecrets(src.Spec.WebhookSecrets)
+	dst.Spec.CommitServer = ArgoCDCommitServerSpec(src.Spec.CommitServer)
 
 	// Status conversion
 	dst.Status = ArgoCDStatus(src.Status)
