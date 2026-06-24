@@ -39,6 +39,12 @@ const (
 	// ArgoCDCommitServerComponent is the name of the Commit Server component
 	ArgoCDCommitServerComponent = "argocd-commit-server"
 
+	// ArgoCDDefaultCommitServerPort is the default port for the Commit Server.
+	ArgoCDDefaultCommitServerPort = 8086
+
+	// ArgoCDDefaultCommitServerMetricsPort is the default port for the Commit Server metrics.
+	ArgoCDDefaultCommitServerMetricsPort = 8087
+
 	// ArgoCDRedisComponent is the name of the Redis control plane component
 	ArgoCDRedisComponent = "argocd-redis"
 

@@ -98,7 +98,7 @@ func (r *ReconcileArgoCD) reconcileCommitServerDeployment(cr *argoproj.ArgoCD) e
 			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
 					Path: "/healthz?full=true",
-					Port: intstr.FromInt32(8087),
+					Port: intstr.FromInt32(common.ArgoCDDefaultCommitServerMetricsPort),
 				},
 			},
 			InitialDelaySeconds: 30,
@@ -108,16 +108,16 @@ func (r *ReconcileArgoCD) reconcileCommitServerDeployment(cr *argoproj.ArgoCD) e
 		Name: "argocd-commit-server",
 		Ports: []corev1.ContainerPort{
 			{
-				ContainerPort: 8086,
+				ContainerPort: common.ArgoCDDefaultCommitServerPort,
 			}, {
-				ContainerPort: 8087,
+				ContainerPort: common.ArgoCDDefaultCommitServerMetricsPort,
 			},
 		},
 		ReadinessProbe: &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
 					Path: "/healthz",
-					Port: intstr.FromInt32(8087),
+					Port: intstr.FromInt32(common.ArgoCDDefaultCommitServerMetricsPort),
 				},
 			},
 			InitialDelaySeconds: 5,
@@ -265,7 +265,7 @@ func (r *ReconcileArgoCD) reconcileArgoCDCommitServerNetworkPolicy(cr *argoproj.
 				Ports: []networkingv1.NetworkPolicyPort{
 					{
 						Protocol: TCPProtocol,
-						Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 8086},
+						Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: common.ArgoCDDefaultCommitServerPort},
 					},
 				},
 			},
@@ -278,7 +278,7 @@ func (r *ReconcileArgoCD) reconcileArgoCDCommitServerNetworkPolicy(cr *argoproj.
 				Ports: []networkingv1.NetworkPolicyPort{
 					{
 						Protocol: TCPProtocol,
-						Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: 8087},
+						Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: common.ArgoCDDefaultCommitServerMetricsPort},
 					},
 				},
 			},
@@ -352,14 +352,14 @@ func (r *ReconcileArgoCD) reconcileCommitServerService(cr *argoproj.ArgoCD) erro
 	svc.Spec.Ports = []corev1.ServicePort{
 		{
 			Name:       "server",
-			Port:       8086,
+			Port:       common.ArgoCDDefaultCommitServerPort,
 			Protocol:   corev1.ProtocolTCP,
-			TargetPort: intstr.FromInt32(8086),
+			TargetPort: intstr.FromInt32(common.ArgoCDDefaultCommitServerPort),
 		}, {
 			Name:       "metrics",
-			Port:       8087,
+			Port:       common.ArgoCDDefaultCommitServerMetricsPort,
 			Protocol:   corev1.ProtocolTCP,
-			TargetPort: intstr.FromInt32(8087),
+			TargetPort: intstr.FromInt32(common.ArgoCDDefaultCommitServerMetricsPort),
 		},
 	}
 

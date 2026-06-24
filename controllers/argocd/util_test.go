@@ -1103,8 +1103,8 @@ func TestGetSourceNamespacesWithRegExpNamespace(t *testing.T) {
 func TestGenerateRandomString(t *testing.T) {
 
 	// verify the creation of unique strings
-	s1 := generateRandomString(20)
-	s2 := generateRandomString(20)
+	s1 := GenerateRandomString(20)
+	s2 := GenerateRandomString(20)
 	assert.NotEqual(t, s1, s2)
 
 	// verify length
