@@ -3,7 +3,7 @@ module github.com/argoproj-labs/argocd-operator
 go 1.25.9
 
 require (
-	github.com/argoproj/argo-cd/v3 v3.3.10
+	github.com/argoproj/argo-cd/v3 v3.3.12
 	github.com/argoproj/gitops-engine v0.7.1-0.20251217140045-5baed5604d2d
 	github.com/cert-manager/cert-manager v1.15.4
 	github.com/go-logr/logr v1.4.3
@@ -53,7 +53,7 @@ require (
 )
 
 require (
-	github.com/argoproj-labs/argocd-image-updater v1.1.2
+	github.com/argoproj-labs/argocd-image-updater v1.1.3
 	github.com/google/go-github/v75 v75.0.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
