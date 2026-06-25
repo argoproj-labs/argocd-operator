@@ -116,7 +116,20 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("checking if ARGOCD_CONTROLLER_SHARDING_ALGORITHM env var is not set in app controller StatefulSet")
 			Eventually(statefulSet).Should(k8sFixture.ExistByName())
-			Eventually(statefulSet, "60s", "5s").ShouldNot(statefulset.HaveContainerWithEnvVar("ARGOCD_CONTROLLER_SHARDING_ALGORITHM", "round-robin", 0), "Statefulset should not have ARGOCD_CONTROLLER_SHARDING_ALGORITHM")
+			Eventually(func() bool {
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(statefulSet), statefulSet); err != nil {
+					return false
+				}
+				if len(statefulSet.Spec.Template.Spec.Containers) == 0 {
+					return false
+				}
+				for _, env := range statefulSet.Spec.Template.Spec.Containers[0].Env {
+					if env.Name == "ARGOCD_CONTROLLER_SHARDING_ALGORITHM" {
+						return false
+					}
+				}
+				return true
+			}, "60s", "5s").Should(BeTrue(), "StatefulSet should have no env variable named ARGOCD_CONTROLLER_SHARDING_ALGORITHM")
 
 			By("disabling sharding")
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
