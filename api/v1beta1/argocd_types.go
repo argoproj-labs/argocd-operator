@@ -155,7 +155,8 @@ type ArgoCDApplicationControllerShardSpec struct {
 	// Replicas defines the number of replicas to run in the Application controller shard.
 	Replicas int32 `json:"replicas,omitempty"`
 
-	// DynamicScalingEnabled defines whether dynamic scaling should be enabled for Application Controller component
+	// Deprecated: dynamicScalingEnabled is deprecated and will be removed in a future release.
+	// DynamicScalingEnabled defines whether dynamic scaling should be enabled for Application Controller component.
 	DynamicScalingEnabled *bool `json:"dynamicScalingEnabled,omitempty"`
 
 	// MinShards defines the minimum number of shards at any given point
