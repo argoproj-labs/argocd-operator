@@ -177,3 +177,12 @@ func MapCipherSuites(names []string) []string {
 	}
 	return out
 }
+
+func AgentTLSProtocolVersionString(v configv1.TLSProtocolVersion) string {
+	version := TLSProtocolVersionString(v)
+	//Agent will not support 1.0 tls version
+	if version == "" || version == "1.0" {
+		return ""
+	}
+	return "tls" + version
+}

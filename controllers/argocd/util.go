@@ -1690,7 +1690,7 @@ func (r *ReconcileArgoCD) reconcileArgoCDAgent(cr *argoproj.ArgoCD) error {
 	}
 
 	log.Info("reconciling ArgoCD Agent's Principal deployment")
-	if err := argocdagent.ReconcilePrincipalDeployment(r.Client, compName, sa.Name, cr, r.Scheme); err != nil {
+	if err := argocdagent.ReconcilePrincipalDeployment(r.Client, compName, sa.Name, cr, r.Scheme, r.CentralTLSConfigProfile.MinVersion, r.CentralTLSConfigProfile.Ciphers, r.CentralTLSConfigProfile.DisableClusterTLSProfile); err != nil {
 		return err
 	}
 
