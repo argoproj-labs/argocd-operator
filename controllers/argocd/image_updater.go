@@ -702,6 +702,9 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterDeployment(cr *argoproj.ArgoCD, s
 
 func BuildTLSArgs(centralTLSConfig TLSConfigProfile) []string {
 	var args []string
+	if centralTLSConfig.DisableClusterTLSProfile {
+		return nil
+	}
 	if v := argoutil.TLSProtocolVersionString(centralTLSConfig.MinVersion); v != "" {
 		args = append(args, "--tlsminversion", v)
 	}
