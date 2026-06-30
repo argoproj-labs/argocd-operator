@@ -1257,11 +1257,11 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 
 func BuildTLSArgs(centralTLSConfig TLSConfigProfile) []string {
 	var args []string
-	if centralTLSConfig.MinVersion != "" {
-		args = append(args, "--tlsminversion", argoutil.TLSProtocolVersionString(centralTLSConfig.MinVersion))
+	if v := argoutil.TLSProtocolVersionString(centralTLSConfig.MinVersion); v != "" {
+		args = append(args, "--tlsminversion", v)
 	}
-	if len(centralTLSConfig.Ciphers) > 0 {
-		args = append(args, "--tlsciphers", strings.Join(argoutil.MapCipherSuites(centralTLSConfig.Ciphers), ":"))
+	if ciphers := argoutil.MapCipherSuites(centralTLSConfig.Ciphers); len(ciphers) > 0 {
+		args = append(args, "--tlsciphers", strings.Join(ciphers, ":"))
 	}
 	return args
 }
