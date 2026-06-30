@@ -550,6 +550,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 		},
 		{
 			sharding: argoproj.ArgoCDApplicationControllerShardSpec{
+				//nolint:staticcheck // SA1019: honor deprecated field for backward compatibility
 				DynamicScalingEnabled: boolPtr(true),
 				MinShards:             2,
 				MaxShards:             4,
@@ -822,8 +823,9 @@ func TestReconcileArgoCD_reconcileApplicationController_withDynamicSharding(t *t
 	}{
 		{
 			sharding: argoproj.ArgoCDApplicationControllerShardSpec{
-				Enabled:               false,
-				Replicas:              1,
+				Enabled:  false,
+				Replicas: 1,
+				//nolint:staticcheck // SA1019: honor deprecated field for backward compatibility
 				DynamicScalingEnabled: boolPtr(true),
 				MinShards:             2,
 				MaxShards:             4,
@@ -834,8 +836,9 @@ func TestReconcileArgoCD_reconcileApplicationController_withDynamicSharding(t *t
 		{
 			// Replicas less than minimum shards
 			sharding: argoproj.ArgoCDApplicationControllerShardSpec{
-				Enabled:               false,
-				Replicas:              1,
+				Enabled:  false,
+				Replicas: 1,
+				//nolint:staticcheck // SA1019: honor deprecated field for backward compatibility
 				DynamicScalingEnabled: boolPtr(true),
 				MinShards:             1,
 				MaxShards:             4,
@@ -846,8 +849,9 @@ func TestReconcileArgoCD_reconcileApplicationController_withDynamicSharding(t *t
 		{
 			// Replicas more than maximum shards
 			sharding: argoproj.ArgoCDApplicationControllerShardSpec{
-				Enabled:               false,
-				Replicas:              1,
+				Enabled:  false,
+				Replicas: 1,
+				//nolint:staticcheck // SA1019: honor deprecated field for backward compatibility
 				DynamicScalingEnabled: boolPtr(true),
 				MinShards:             1,
 				MaxShards:             2,

@@ -1375,8 +1375,9 @@ spec:
                         minimum: 1
                         type: integer
                       dynamicScalingEnabled:
-                        description: DynamicScalingEnabled defines whether dynamic
-                          scaling should be enabled for Application Controller component
+                        description: |-
+                          Deprecated: dynamicScalingEnabled is deprecated and will be removed in a future release.
+                          DynamicScalingEnabled defines whether dynamic scaling should be enabled for Application Controller component.
                         type: boolean
                       enabled:
                         description: Enabled defines whether sharding should be enabled
@@ -14232,8 +14233,9 @@ spec:
                         minimum: 1
                         type: integer
                       dynamicScalingEnabled:
-                        description: DynamicScalingEnabled defines whether dynamic
-                          scaling should be enabled for Application Controller component
+                        description: |-
+                          Deprecated: dynamicScalingEnabled is deprecated and will be removed in a future release.
+                          DynamicScalingEnabled defines whether dynamic scaling should be enabled for Application Controller component.
                         type: boolean
                       enabled:
                         description: Enabled defines whether sharding should be enabled
