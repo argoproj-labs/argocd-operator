@@ -21,3 +21,5 @@ repl-diskless-sync yes
 save ""
 protected-mode no
 aclfile /app/config/redis-auth/users.acl
+masterauth __REPLACE_DEFAULT_AUTH__
+
