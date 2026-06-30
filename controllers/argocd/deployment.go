@@ -963,7 +963,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 	if cr.Spec.Server.VolumeMounts != nil {
 		serverVolumeMounts = append(serverVolumeMounts, cr.Spec.Server.VolumeMounts...)
 	}
-	arguments := BuildTLSArgs(r.CentralTLSConfigProfile)
+	arguments := BuildTLSArgsFromClusterTLSProfile(r.CentralTLSConfigProfile)
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Args:            arguments,
 		Command:         getArgoServerCommand(cr, useTLSForRedis),
@@ -1258,7 +1258,8 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 	return r.Create(context.TODO(), deploy)
 }
 
-func BuildTLSArgs(centralTLSConfig TLSConfigProfile) []string {
+// BuildTLSArgsFromClusterTLSProfile builds the command line arguments for the ArgoCD components based on the cluster's TLS profile configuration.
+func BuildTLSArgsFromClusterTLSProfile(centralTLSConfig TLSConfigProfile) []string {
 	var args []string
 	if centralTLSConfig.DisableClusterTLSProfile {
 		return nil
