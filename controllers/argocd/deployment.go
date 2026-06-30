@@ -244,6 +244,9 @@ func getArgoRedisArgs(useTLS bool, centralTLSConfig TLSConfigProfile) []string {
 
 // BuildRedisArgsFromClusterTLSProfile builds arguments for redis deployment based on central tls config.
 func BuildRedisArgsFromClusterTLSProfile(centralTLSConfig TLSConfigProfile) []string {
+	if centralTLSConfig.DisableClusterTLSProfile {
+		return nil
+	}
 	var (
 		args     []string
 		protocol string
