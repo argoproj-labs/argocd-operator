@@ -960,8 +960,9 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 	if cr.Spec.Server.VolumeMounts != nil {
 		serverVolumeMounts = append(serverVolumeMounts, cr.Spec.Server.VolumeMounts...)
 	}
-
+	arguments := BuildTLSArgs(r.CentralTLSConfigProfile)
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
+		Args:            arguments,
 		Command:         getArgoServerCommand(cr, useTLSForRedis),
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
@@ -1151,6 +1152,10 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			changes = append(changes, "container image")
 		}
+		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Args, deploy.Spec.Template.Spec.Containers[0].Args) {
+			existing.Spec.Template.Spec.Containers[0].Args = deploy.Spec.Template.Spec.Containers[0].Args
+			changes = append(changes, "container args")
+		}
 		if actualImagePullPolicy != desiredImagePullPolicy {
 			existing.Spec.Template.Spec.Containers[0].ImagePullPolicy = desiredImagePullPolicy
 			changes = append(changes, "image pull policy")
@@ -1248,6 +1253,17 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 	}
 	argoutil.LogResourceCreation(log, deploy)
 	return r.Create(context.TODO(), deploy)
+}
+
+func BuildTLSArgs(centralTLSConfig TLSConfigProfile) []string {
+	var args []string
+	if centralTLSConfig.MinVersion != "" {
+		args = append(args, "--tlsminversion", argoutil.TLSProtocolVersionString(centralTLSConfig.MinVersion))
+	}
+	if len(centralTLSConfig.Ciphers) > 0 {
+		args = append(args, "--tlsciphers", strings.Join(argoutil.MapCipherSuites(centralTLSConfig.Ciphers), ":"))
+	}
+	return args
 }
 
 // triggerDeploymentRollout will update the label with the given key to trigger a new rollout of the Deployment.
