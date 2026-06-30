@@ -177,7 +177,7 @@ AppSync | 3m | AppSync is used to control the sync frequency of ArgoCD Applicati
 Sharding.enabled | false | Whether to enable sharding on the ArgoCD Application Controller component. Useful when managing a large number of clusters to relieve memory pressure on the controller component. | |
 Sharding.replicas | 1 | The number of replicas that will be used to support sharding of the ArgoCD Application Controller. | Must be greater than 0 |
 Env | [Empty] | Environment to set for the application controller workloads | |
-Sharding.dynamicScalingEnabled | true | Whether to enable dynamic scaling of the ArgoCD Application Controller component. This will ignore the configuration of `Sharding.enabled` and `Sharding.replicas` | |
+Sharding.dynamicScalingEnabled | true | **Deprecated**Whether to enable dynamic scaling of the ArgoCD Application Controller component. This will ignore the configuration of `Sharding.enabled` and `Sharding.replicas` | |
 Sharding.minShards | 1 | The minimum number of replicas of the ArgoCD Application Controller component. | Must be greater than 0 |
 Sharding.maxShards | 1 | The maximum number of replicas of the ArgoCD Application Controller component. | Must be greater than `Sharding.minShards` |
 Sharding.clustersPerShard | 1 | The number of clusters that need to be handles by each shard. In case the replica count has reached the maxShards, the shards will manage more than one cluster. | Must be greater than 0 |

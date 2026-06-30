@@ -66,7 +66,7 @@ func newClusterRole(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) *v1
 
 // reconcileRoles will ensure that all ArgoCD Service Accounts are configured.
 func (r *ReconcileArgoCD) reconcileRoles(cr *argoproj.ArgoCD) error {
-	params := getPolicyRuleList(r.Client)
+	params := getPolicyRuleList(r.Client, cr)
 
 	for _, param := range params {
 		if _, err := r.reconcileRole(param.name, param.policyRule, cr); err != nil {
@@ -387,6 +387,10 @@ func (r *ReconcileArgoCD) reconcileClusterRole(componentName string, policyRules
 	}
 
 	if !allowed {
+		ownedByCurrentArgoCD := argoutil.CheckClusterRoleOwnership(existingClusterRole, cr)
+		if !ownedByCurrentArgoCD {
+			return nil, nil
+		}
 		// delete existing ClusterRole as namespace can not host cluster-scoped Argo CD instance
 		argoutil.LogResourceDeletion(log, existingClusterRole, fmt.Sprintf("namespace '%s' cannot host cluster-scoped argocd instance", cr.Namespace))
 		return nil, r.Delete(context.TODO(), existingClusterRole)

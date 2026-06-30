@@ -57,7 +57,7 @@ func getServiceAccountName(crName, name string) string {
 
 // reconcileServiceAccounts will ensure that all ArgoCD Service Accounts are configured.
 func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoproj.ArgoCD) error {
-	params := getPolicyRuleList(r.Client)
+	params := getPolicyRuleList(r.Client, cr)
 
 	for _, param := range params {
 		log.Info("reconcileServiceAccountPermissions", "name", param.name)

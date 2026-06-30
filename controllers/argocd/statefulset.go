@@ -563,7 +563,8 @@ func getArgoControllerContainerEnv(cr *argoproj.ArgoCD, replicas int32) []corev1
 		Value: "/home/argocd",
 	})
 
-	if cr.Spec.Controller.Sharding.Enabled || (cr.Spec.Controller.Sharding.DynamicScalingEnabled != nil && *cr.Spec.Controller.Sharding.DynamicScalingEnabled) {
+	//lint:ignore SA1019 known to be deprecated
+	if cr.Spec.Controller.Sharding.Enabled || (cr.Spec.Controller.Sharding.DynamicScalingEnabled != nil && *cr.Spec.Controller.Sharding.DynamicScalingEnabled) { //nolint:staticcheck // SA1019: honor deprecated field for backward compatibility
 		env = append(env, corev1.EnvVar{
 			Name:  "ARGOCD_CONTROLLER_REPLICAS",
 			Value: fmt.Sprint(replicas),
@@ -619,7 +620,8 @@ func (r *ReconcileArgoCD) getApplicationControllerReplicaCount(cr *argoproj.Argo
 	var minShards = cr.Spec.Controller.Sharding.MinShards
 	var maxShards = cr.Spec.Controller.Sharding.MaxShards
 
-	if cr.Spec.Controller.Sharding.DynamicScalingEnabled != nil && *cr.Spec.Controller.Sharding.DynamicScalingEnabled {
+	//lint:ignore SA1019 known to be deprecated
+	if cr.Spec.Controller.Sharding.DynamicScalingEnabled != nil && *cr.Spec.Controller.Sharding.DynamicScalingEnabled { //nolint:staticcheck // SA1019: honor deprecated field for backward compatibility
 
 		// TODO: add the same validations to Validation Webhook once webhook has been introduced
 		if minShards < 1 {
