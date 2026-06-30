@@ -104,7 +104,7 @@ func (r *Repo) notifyArgoCDWebhook(webhookURL, host, branch, commitSHA string, c
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec G402 -- test clusters may use self-signed ingress certs
 		},
 	}
 

@@ -18,7 +18,7 @@ type Repo struct {
 	server   Server
 	repoName string
 
-	cloneDir   string
+	cloneDir   *os.Root
 	sshKeyFile string
 }
 
@@ -41,35 +41,33 @@ func (r *Repo) Clone() error {
 
 	parentDir, err := os.MkdirTemp("", "argocd-operator-gitserver-clone-*")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create temporary directory: %w", err)
 	}
 
-	out, err := r.runGit(parentDir, "clone", r.GetRepoSshURL(), "repo")
+	r.cloneDir, err = os.OpenRoot(parentDir)
+	if err != nil {
+		_ = os.RemoveAll(parentDir)
+		return fmt.Errorf("failed to open root: %w", err)
+	}
+
+	out, err := r.git("clone", r.GetRepoSshURL(), ".")
 	if err != nil {
 		_ = os.RemoveAll(parentDir)
 		return fmt.Errorf("failed to clone repo: %w: %s", err, out)
 	}
 
-	r.cloneDir = filepath.Join(parentDir, "repo")
 	return nil
-}
-
-func (r *Repo) Git(args ...string) (out string, err error) {
-	if r.cloneDir == "" {
-		return "", fmt.Errorf("repository has not been cloned")
-	}
-	return r.runGit(r.cloneDir, args...)
 }
 
 // Fetch retrieves updates from the remote repository.
 // branches can be empty, to fetch the default branch.
 func (r *Repo) Fetch(branches ...string) error {
-	if r.cloneDir == "" {
+	if r.cloneDir == nil {
 		return fmt.Errorf("repository has not been cloned")
 	}
 
 	args := append([]string{"fetch", "origin"}, branches...)
-	if out, err := r.Git(args...); err != nil {
+	if out, err := r.git(args...); err != nil {
 		if len(branches) == 0 {
 			return fmt.Errorf("failed to fetch from origin: %w: %s", err, out)
 		}
@@ -86,7 +84,7 @@ func (r *Repo) CheckoutBranch(branch string) error {
 	if err := r.Fetch(branch); err != nil {
 		return err
 	}
-	if out, err := r.Git("checkout", "-B", branch, "origin/"+branch); err != nil {
+	if out, err := r.git("checkout", "-B", branch, "origin/"+branch); err != nil {
 		return fmt.Errorf("failed to checkout branch %q: %w: %s", branch, err, out)
 	}
 	return nil
@@ -94,25 +92,20 @@ func (r *Repo) CheckoutBranch(branch string) error {
 
 // ReadFile returns the contents of a file from the checked-out clone.
 func (r *Repo) ReadFile(path string) (string, error) {
-	if r.cloneDir == "" {
-		return "", fmt.Errorf("repository has not been cloned")
-	}
-	data, err := os.ReadFile(filepath.Join(r.cloneDir, path))
+	data, err := r.cloneDir.ReadFile(path)
 	if err != nil {
 		return "", err
 	}
 	return string(data), nil
 }
 
-func (r *Repo) runGit(dir string, args ...string) (string, error) {
-	if r.sshKeyFile == "" {
-		return "", fmt.Errorf("ssh key file has not been created")
+func (r *Repo) git(args ...string) (string, error) {
+	if r.cloneDir == nil {
+		return "", fmt.Errorf("repository has not been cloned")
 	}
 
 	cmd := exec.Command("git", args...)
-	if dir != "" {
-		cmd.Dir = dir
-	}
+	cmd.Dir = r.cloneDir.Name()
 	cmd.Env = append(os.Environ(),
 		"GIT_SSH_COMMAND=ssh -i "+r.sshKeyFile+
 			" -o IdentitiesOnly=yes -o IdentityAgent=none"+
@@ -148,11 +141,11 @@ func (r *Repo) sshPrivateKeyFile() (string, error) {
 }
 
 func (r *Repo) CommitAndPush(commit Commit) error {
-	if r.cloneDir == "" {
+	if r.cloneDir == nil {
 		return fmt.Errorf("repository has not been cloned")
 	}
 
-	out, err := r.Git("status", "--porcelain")
+	out, err := r.git("status", "--porcelain")
 	if err != nil {
 		return fmt.Errorf("failed to check repository status: %w: %s", err, out)
 	}
@@ -165,15 +158,15 @@ func (r *Repo) CommitAndPush(commit Commit) error {
 	}
 
 	if commit.Branch != "" {
-		if out, err := r.Git("checkout", "-B", commit.Branch); err != nil {
+		if out, err := r.git("checkout", "-B", commit.Branch); err != nil {
 			return fmt.Errorf("failed to checkout branch %q: %w: %s", commit.Branch, err, out)
 		}
 	}
 
-	if out, err = r.Git("add", "-A"); err != nil {
+	if out, err = r.git("add", "-A"); err != nil {
 		return fmt.Errorf("failed to add changes: %w: %s", err, out)
 	}
-	if out, err = r.Git("commit", "-m", defaultCommitMessage); err != nil {
+	if out, err = r.git("commit", "-m", defaultCommitMessage); err != nil {
 		return fmt.Errorf("failed to commit changes: %w: %s", err, out)
 	}
 
@@ -181,7 +174,7 @@ func (r *Repo) CommitAndPush(commit Commit) error {
 	if commit.Branch != "" {
 		pushArgs = append(pushArgs, "-u", "origin", commit.Branch)
 	}
-	if out, err = r.runGit(r.cloneDir, pushArgs...); err != nil {
+	if out, err = r.git(pushArgs...); err != nil {
 		return fmt.Errorf("failed to push changes: %w: %s", err, out)
 	}
 
@@ -190,7 +183,7 @@ func (r *Repo) CommitAndPush(commit Commit) error {
 		if branch == "" {
 			branch = "main"
 		}
-		sha, err := r.Git("rev-parse", "HEAD")
+		sha, err := r.git("rev-parse", "HEAD")
 		if err != nil {
 			return fmt.Errorf("failed to resolve pushed commit: %w: %q", err, sha)
 		}
@@ -217,11 +210,10 @@ func (c Commit) applyChange(repo *Repo) error {
 	Expect(c.Files).NotTo(BeEmpty(), "commit must have at least one file")
 
 	for path, content := range c.Files {
-		fullPath := filepath.Join(repo.cloneDir, path)
-		if err := os.MkdirAll(filepath.Dir(fullPath), 0o755); err != nil {
+		if err := repo.cloneDir.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 			return err
 		}
-		if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
+		if err := repo.cloneDir.WriteFile(path, []byte(content), 0o600); err != nil {
 			return err
 		}
 	}
