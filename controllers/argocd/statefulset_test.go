@@ -1322,3 +1322,52 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_customLabelsAndAnnotations(t 
 	assert.False(t, hasCustomAnnotation)
 	assert.False(t, hasCustomLabel)
 }
+
+func TestReconcileApplicationControllerStatefulSet_PriorityClassName(t *testing.T) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Controller.PriorityClassName = "high-priority"
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	err := r.reconcileApplicationControllerStatefulSet(a, false)
+	assert.NoError(t, err)
+
+	ss := &appsv1.StatefulSet{}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-application-controller",
+		Namespace: testNamespace,
+	}, ss)
+	assert.NoError(t, err)
+	assert.Equal(t, "high-priority", ss.Spec.Template.Spec.PriorityClassName)
+}
+
+func TestReconcileApplicationControllerStatefulSet_PriorityClassName_Update(t *testing.T) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Controller.PriorityClassName = "high-priority"
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a, false))
+
+	a.Spec.Controller.PriorityClassName = "critical-priority"
+	assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a, false))
+
+	ss := &appsv1.StatefulSet{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-application-controller",
+		Namespace: testNamespace,
+	}, ss))
+	assert.Equal(t, "critical-priority", ss.Spec.Template.Spec.PriorityClassName)
+}
