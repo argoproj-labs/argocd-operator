@@ -7,6 +7,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"golang.org/x/crypto/ssh"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -95,6 +96,26 @@ func configureGiteaAdmin(server *Server) {
 		}
 		return err
 	}, "30s", "5s").Should(Succeed())
+}
+
+// fetchSSHKnownHosts reads Gitea's generated SSH host public key from the pod and
+// formats it for argocd-ssh-known-hosts-cm.
+func fetchSSHKnownHosts(server *Server) string {
+	const hostPublicKeyPath = "/var/lib/gitea/ssh/gitea.rsa.pub"
+
+	var knownHosts string
+	Eventually(func(g Gomega) {
+		out, err := execInGiteaPod(server.namespace, "cat", hostPublicKeyPath)
+		g.Expect(err).NotTo(HaveOccurred(), out)
+
+		pubKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(strings.TrimSpace(out)))
+		g.Expect(err).NotTo(HaveOccurred(), "parse Gitea SSH host key from %q: %q", hostPublicKeyPath, out)
+
+		knownHosts = formatSSHKnownHosts(server.domain, sshServicePort, pubKey)
+		g.Expect(knownHosts).NotTo(BeEmpty())
+	}, "2m", "5s").Should(Succeed())
+
+	return knownHosts
 }
 
 func execInGiteaPod(namespace string, args ...string) (string, error) {

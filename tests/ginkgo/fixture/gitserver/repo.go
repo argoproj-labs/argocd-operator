@@ -2,6 +2,7 @@ package gitserver
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,17 +11,37 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+type transport string
+
+const (
+	transportSSH   transport = "ssh"
+	transportHTTPS transport = "https"
+)
+
 const defaultCommitMessage = "gitserver e2e commit"
 
 type Repo struct {
 	server   *Server
 	repoName string
 
-	cloneDir *os.Root
+	cloneDir  *os.Root
+	transport transport
 }
 
-func (r Repo) getRepoHttpURL() string {
-	return fmt.Sprintf("https://%s:%d/%s/%s.git", r.server.domain, httpPort, r.server.httpUsername, r.repoName)
+// GetRepoHttpURL returns the HTTPS clone URL reachable from inside the cluster.
+// Argo CD components use this URL; it matches the Git server TLS certificate SAN.
+func (r Repo) GetRepoHttpURL() string {
+	return fmt.Sprintf("https://%s:%d/%s/%s.git", r.server.clusterDomain, httpPort, r.server.httpUsername, r.repoName)
+}
+
+func (r Repo) getRepoHttpURLWithCredentials() string {
+	repoURL := &url.URL{
+		Scheme: "https",
+		User:   url.UserPassword(r.server.httpUsername, r.server.httpPassword),
+		Host:   fmt.Sprintf("%s:%d", r.server.domain, httpPort),
+		Path:   fmt.Sprintf("/%s/%s.git", r.server.httpUsername, r.repoName),
+	}
+	return repoURL.String()
 }
 
 func (r Repo) GetRepoSshURL() string {
@@ -28,8 +49,21 @@ func (r Repo) GetRepoSshURL() string {
 }
 
 func (r *Repo) Clone() (cleanup func(), err error) {
-	if _, err := r.server.ensureSSHKeyFile(); err != nil {
-		return nil, err
+	return r.clone(transportSSH)
+}
+
+// CloneHTTPS clones the repository over HTTPS using the server's HTTP credentials.
+func (r *Repo) CloneHTTPS() (cleanup func(), err error) {
+	return r.clone(transportHTTPS)
+}
+
+func (r *Repo) clone(t transport) (cleanup func(), err error) {
+	r.transport = t
+
+	if t == transportSSH {
+		if _, err := r.server.ensureSSHKeyFile(); err != nil {
+			return nil, err
+		}
 	}
 
 	parentDir, err := os.MkdirTemp("", "argocd-operator-gitserver-clone-*")
@@ -39,11 +73,17 @@ func (r *Repo) Clone() (cleanup func(), err error) {
 
 	r.cloneDir, err = os.OpenRoot(parentDir)
 	if err != nil {
+		r.cloneDir.Close()
 		_ = os.RemoveAll(parentDir)
 		return nil, fmt.Errorf("failed to open root: %w", err)
 	}
 
-	out, err := r.git("clone", r.GetRepoSshURL(), ".")
+	cloneURL := r.GetRepoSshURL()
+	if t == transportHTTPS {
+		cloneURL = r.getRepoHttpURLWithCredentials()
+	}
+
+	out, err := r.git("clone", cloneURL, ".")
 	if err != nil {
 		_ = os.RemoveAll(parentDir)
 		return nil, fmt.Errorf("failed to clone repo: %w: %s", err, out)
@@ -97,18 +137,21 @@ func (r *Repo) git(args ...string) (string, error) {
 		return "", fmt.Errorf("repository has not been cloned")
 	}
 
-	sshKeyFile, err := r.server.ensureSSHKeyFile()
-	if err != nil {
-		return "", err
-	}
-
 	cmd := exec.Command("git", args...)
 	cmd.Dir = r.cloneDir.Name()
-	cmd.Env = append(os.Environ(),
-		"GIT_SSH_COMMAND=ssh -i "+sshKeyFile+
-			" -o IdentitiesOnly=yes -o IdentityAgent=none"+
-			" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null",
-	)
+	if r.transport == transportHTTPS {
+		cmd.Env = append(os.Environ(), "GIT_SSL_NO_VERIFY=true")
+	} else {
+		sshKeyFile, err := r.server.ensureSSHKeyFile()
+		if err != nil {
+			return "", err
+		}
+		cmd.Env = append(os.Environ(),
+			"GIT_SSH_COMMAND=ssh -i "+sshKeyFile+
+				" -o IdentitiesOnly=yes -o IdentityAgent=none"+
+				" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null",
+		)
+	}
 
 	output, err := cmd.CombinedOutput()
 	return string(output), err

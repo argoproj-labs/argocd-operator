@@ -79,7 +79,7 @@ func (r *Repo) NotifyArgoCDWebhook(argoCD *argov1beta1api.ArgoCD, commit Commit)
 			FullName:      fmt.Sprintf("%s/%s", r.server.httpUsername, r.repoName),
 			HTMLURL:       fmt.Sprintf("https://%s:%d/%s/%s", r.server.domain, httpPort, r.server.httpUsername, r.repoName),
 			SSHURL:        r.GetRepoSshURL(),
-			CloneURL:      r.getRepoHttpURL(),
+			CloneURL:      r.GetRepoHttpURL(),
 			DefaultBranch: "main",
 			Private:       false,
 		},

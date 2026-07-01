@@ -19,7 +19,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	argocdutil "github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
-	osFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/os"
 	podFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/pod"
 )
 
@@ -38,7 +37,8 @@ type Server struct {
 	namespace   string
 	serviceName string
 
-	domain        string
+	clusterDomain string // in-cluster service DNS name (matches the TLS certificate SAN)
+	domain        string // external LoadBalancer hostname or IP
 	httpURL       string
 	httpUsername  string
 	httpPassword  string
@@ -90,6 +90,17 @@ func (s *Server) getSSHPrivateKey() []byte {
 	return append([]byte(nil), s.sshPrivateKey...)
 }
 
+// TLSHostKey returns the hostname key used in argocd-tls-certs-cm and InitialCerts.
+// Use the in-cluster DNS name so it matches the Git server TLS certificate SAN.
+func (s *Server) TLSHostKey() string {
+	return s.clusterDomain
+}
+
+// GetCACert returns the PEM-encoded CA certificate used by the Git server HTTPS endpoint.
+func (s *Server) GetCACert() []byte {
+	return append([]byte(nil), s.caCert...)
+}
+
 // StartServer deploys a functional Git instance with HTTPS and SSH enabled in the given namespace.
 func StartServer(ctx context.Context, k8sClient client.Client, ns *corev1.Namespace) (server *Server, cleanup func()) {
 	Expect(ns).ToNot(BeNil())
@@ -105,6 +116,7 @@ func StartServer(ctx context.Context, k8sClient client.Client, ns *corev1.Namesp
 	server = &Server{
 		namespace:     ns.Name,
 		serviceName:   serverName,
+		clusterDomain: clusterDomain,
 		httpUsername:  gitUsername,
 		httpPassword:  httpPassword,
 		sshPrivateKey: sshKeys.privateKeyPEM,
@@ -276,8 +288,8 @@ func StartServer(ctx context.Context, k8sClient client.Client, ns *corev1.Namesp
 
 	configureGiteaAdmin(server)
 
-	By("waiting for Git server SSH endpoint")
-	server.sshKnownHosts = discoverSSHKnownHosts(server.domain)
+	By("collecting Gitea SSH host key for Argo CD known_hosts")
+	server.sshKnownHosts = fetchSSHKnownHosts(server)
 
 	cleanup = func() {
 		server.removeSSHKeyFile()
@@ -293,6 +305,8 @@ func StartServer(ctx context.Context, k8sClient client.Client, ns *corev1.Namesp
 	By("registering repository credentials for Argo CD to use")
 	Expect(k8sClient.Create(ctx, server.sshRepoPullCredentialsSecret(ns.Name))).To(Succeed())
 	Expect(k8sClient.Create(ctx, server.sshRepoPushCredentialsSecret(ns.Name))).To(Succeed())
+	Expect(k8sClient.Create(ctx, server.httpRepoPullCredentialsSecret(ns.Name))).To(Succeed())
+	Expect(k8sClient.Create(ctx, server.httpRepoPushCredentialsSecret(ns.Name))).To(Succeed())
 
 	return server, cleanup
 }
@@ -301,44 +315,52 @@ func (s *Server) sshRepoURLPrefix() string {
 	return fmt.Sprintf("ssh://%s@%s:%d/%s/", giteaSSHLogin, s.domain, sshServicePort, s.httpUsername)
 }
 
-// SSHKnownHosts returns ssh-keyscan output collected while starting the server.
+// SSHKnownHosts returns the known_hosts entry for the server's SSH host key.
 func (s *Server) SSHKnownHosts() string {
 	Expect(s.sshKnownHosts).NotTo(BeEmpty())
 	return s.sshKnownHosts
 }
 
-func discoverSSHKnownHosts(domain string) string {
-	var knownHosts string
-	Eventually(func(g Gomega) {
-		out, err := osFixture.ExecCommandWithOutputParam(false, false,
-			"ssh-keyscan",
-			"-p", fmt.Sprintf("%d", sshServicePort),
-			"-T", "5",
-			domain,
-		)
-		g.Expect(err).NotTo(HaveOccurred(), out)
-		parsed := parseSSHKnownHosts(out)
-		g.Expect(parsed).NotTo(BeEmpty(), "ssh-keyscan returned no host keys for %s: %q", domain, out)
-		knownHosts = parsed
-	}, "2m", "5s").Should(Succeed())
-	return knownHosts
+func (s *Server) httpRepoURLPrefix() string {
+	return fmt.Sprintf("https://%s:%d/%s/", s.clusterDomain, httpPort, s.httpUsername)
 }
 
-func parseSSHKnownHosts(output string) string {
-	var hosts []string
-	for _, line := range strings.Split(output, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		if len(strings.Fields(line)) >= 3 {
-			hosts = append(hosts, line)
-		}
+func (s *Server) httpRepoPullCredentialsSecret(namespace string) *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      serverName + "-argocd-http-repo-creds",
+			Namespace: namespace,
+			Labels: map[string]string{
+				common.ArgoCDSecretTypeLabel: "repo-creds",
+			},
+		},
+		StringData: map[string]string{
+			"type":     "git",
+			"url":      s.httpRepoURLPrefix(),
+			"username": s.httpUsername,
+			"password": s.httpPassword,
+			"insecure": "true",
+		},
 	}
-	if len(hosts) == 0 {
-		return ""
+}
+
+func (s *Server) httpRepoPushCredentialsSecret(namespace string) *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      serverName + "-argocd-http-repo-write-creds",
+			Namespace: namespace,
+			Labels: map[string]string{
+				common.ArgoCDSecretTypeLabel: "repo-write-creds",
+			},
+		},
+		StringData: map[string]string{
+			"type":     "git",
+			"url":      s.httpRepoURLPrefix(),
+			"username": s.httpUsername,
+			"password": s.httpPassword,
+			"insecure": "true",
+		},
 	}
-	return strings.Join(hosts, "\n") + "\n"
 }
 
 func (s *Server) sshRepoPullCredentialsSecret(namespace string) *corev1.Secret {
@@ -378,10 +400,13 @@ func (s *Server) sshRepoPushCredentialsSecret(namespace string) *corev1.Secret {
 }
 
 func (s *Server) CreateRepo(repoName string) Repo {
-	if _, err := giteaAPIPost(s.namespace, s.httpPassword,
+	_, err := giteaAPIPost(
+		s.namespace,
+		s.httpPassword,
 		fmt.Sprintf("/api/v1/admin/users/%s/repos", gitUsername),
 		fmt.Sprintf(`{"name":"%s","private":false}`, repoName),
-	); err != nil {
+	)
+	if err != nil {
 		GinkgoWriter.Println("gitea repo create returned error (may already exist):", err)
 	}
 

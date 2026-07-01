@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/pem"
 	"fmt"
+	"strings"
 
 	certmanagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	. "github.com/onsi/gomega"
@@ -32,6 +33,18 @@ func generateSSHKeyPair() sshKeyPair {
 		privateKeyPEM: pem.EncodeToMemory(privateKeyBlock),
 		publicKey:     string(ssh.MarshalAuthorizedKey(sshPublicKey)),
 	}
+}
+
+func formatSSHKnownHosts(host string, port int32, publicKey ssh.PublicKey) string {
+	keyLine := strings.TrimSpace(string(ssh.MarshalAuthorizedKey(publicKey)))
+	parts := strings.SplitN(keyLine, " ", 3)
+	Expect(len(parts)).To(BeNumerically(">=", 2))
+
+	hostPort := host
+	if port != 22 {
+		hostPort = fmt.Sprintf("[%s]:%d", host, port)
+	}
+	return fmt.Sprintf("%s %s %s\n", hostPort, parts[0], parts[1])
 }
 
 func generateTLSSecretData(domain string, podName string, namespace string) map[string][]byte {
