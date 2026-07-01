@@ -55,7 +55,7 @@ func giteaEnvVars(domain, internalToken string) []corev1.EnvVar {
 	}
 }
 
-func configureGiteaAdmin(server Server) {
+func configureGiteaAdmin(server *Server) {
 	By("configuring Gitea admin user and SSH key")
 
 	Eventually(func() error {

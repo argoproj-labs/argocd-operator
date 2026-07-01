@@ -2,11 +2,9 @@ package gitserver
 
 import (
 	"fmt"
-	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	. "github.com/onsi/gomega"
@@ -15,14 +13,13 @@ import (
 const defaultCommitMessage = "gitserver e2e commit"
 
 type Repo struct {
-	server   Server
+	server   *Server
 	repoName string
 
-	cloneDir   *os.Root
-	sshKeyFile string
+	cloneDir *os.Root
 }
 
-func (r Repo) GetRepoHttpURL() string {
+func (r Repo) getRepoHttpURL() string {
 	return fmt.Sprintf("https://%s:%d/%s/%s.git", r.server.domain, httpPort, r.server.httpUsername, r.repoName)
 }
 
@@ -30,38 +27,34 @@ func (r Repo) GetRepoSshURL() string {
 	return fmt.Sprintf("ssh://%s@%s:%d/%s/%s.git", giteaSSHLogin, r.server.domain, sshServicePort, r.server.httpUsername, r.repoName)
 }
 
-func (r *Repo) Clone() error {
-	if r.sshKeyFile == "" {
-		keyFile, err := r.sshPrivateKeyFile()
-		if err != nil {
-			return err
-		}
-		r.sshKeyFile = keyFile
+func (r *Repo) Clone() (cleanup func(), err error) {
+	if _, err := r.server.ensureSSHKeyFile(); err != nil {
+		return nil, err
 	}
 
 	parentDir, err := os.MkdirTemp("", "argocd-operator-gitserver-clone-*")
 	if err != nil {
-		return fmt.Errorf("failed to create temporary directory: %w", err)
+		return nil, fmt.Errorf("failed to create temporary directory: %w", err)
 	}
 
 	r.cloneDir, err = os.OpenRoot(parentDir)
 	if err != nil {
 		_ = os.RemoveAll(parentDir)
-		return fmt.Errorf("failed to open root: %w", err)
+		return nil, fmt.Errorf("failed to open root: %w", err)
 	}
 
 	out, err := r.git("clone", r.GetRepoSshURL(), ".")
 	if err != nil {
 		_ = os.RemoveAll(parentDir)
-		return fmt.Errorf("failed to clone repo: %w: %s", err, out)
+		return nil, fmt.Errorf("failed to clone repo: %w: %s", err, out)
 	}
 
-	return nil
+	return func() {
+		_ = os.RemoveAll(parentDir)
+	}, nil
 }
 
-// Fetch retrieves updates from the remote repository.
-// branches can be empty, to fetch the default branch.
-func (r *Repo) Fetch(branches ...string) error {
+func (r *Repo) fetch(branches ...string) error {
 	if r.cloneDir == nil {
 		return fmt.Errorf("repository has not been cloned")
 	}
@@ -81,7 +74,7 @@ func (r *Repo) CheckoutBranch(branch string) error {
 	if branch == "" {
 		return fmt.Errorf("branch is required")
 	}
-	if err := r.Fetch(branch); err != nil {
+	if err := r.fetch(branch); err != nil {
 		return err
 	}
 	if out, err := r.git("checkout", "-B", branch, "origin/"+branch); err != nil {
@@ -104,40 +97,21 @@ func (r *Repo) git(args ...string) (string, error) {
 		return "", fmt.Errorf("repository has not been cloned")
 	}
 
+	sshKeyFile, err := r.server.ensureSSHKeyFile()
+	if err != nil {
+		return "", err
+	}
+
 	cmd := exec.Command("git", args...)
 	cmd.Dir = r.cloneDir.Name()
 	cmd.Env = append(os.Environ(),
-		"GIT_SSH_COMMAND=ssh -i "+r.sshKeyFile+
+		"GIT_SSH_COMMAND=ssh -i "+sshKeyFile+
 			" -o IdentitiesOnly=yes -o IdentityAgent=none"+
 			" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null",
 	)
 
 	output, err := cmd.CombinedOutput()
 	return string(output), err
-}
-
-func (r *Repo) sshPrivateKeyFile() (string, error) {
-	f, err := os.CreateTemp("", "gitserver-ssh-key-")
-	if err != nil {
-		return "", err
-	}
-
-	if _, err := f.Write(r.server.GetSSHPrivateKey()); err != nil {
-		_ = f.Close()
-		_ = os.Remove(f.Name())
-		return "", err
-	}
-	if err := f.Chmod(0o600); err != nil {
-		_ = f.Close()
-		_ = os.Remove(f.Name())
-		return "", err
-	}
-	if err := f.Close(); err != nil {
-		_ = os.Remove(f.Name())
-		return "", err
-	}
-
-	return f.Name(), nil
 }
 
 func (r *Repo) CommitAndPush(commit Commit) error {
@@ -178,32 +152,12 @@ func (r *Repo) CommitAndPush(commit Commit) error {
 		return fmt.Errorf("failed to push changes: %w: %s", err, out)
 	}
 
-	if commit.NotifyWebhookURL != "" {
-		branch := commit.Branch
-		if branch == "" {
-			branch = "main"
-		}
-		sha, err := r.git("rev-parse", "HEAD")
-		if err != nil {
-			return fmt.Errorf("failed to resolve pushed commit: %w: %q", err, sha)
-		}
-
-		changedFiles := slices.Collect(maps.Keys(commit.Files))
-		if err := r.notifyArgoCDWebhook(commit.NotifyWebhookURL, commit.NotifyWebhookHost, branch, sha, changedFiles); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
 type Commit struct {
 	Branch string
 	Files  map[string]string
-	// NotifyWebhookURL, when set, posts a Gogs-compatible push webhook to Argo CD after a successful push.
-	NotifyWebhookURL string
-	// NotifyWebhookHost is sent as the HTTP Host header when posting NotifyWebhookURL (required for ingress routing).
-	NotifyWebhookHost string
 }
 
 func (c Commit) applyChange(repo *Repo) error {

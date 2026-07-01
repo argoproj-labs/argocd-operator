@@ -3,6 +3,7 @@ package gitserver
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -40,27 +41,56 @@ type Server struct {
 	httpURL       string
 	httpUsername  string
 	httpPassword  string
-	internalToken string
 	sshPrivateKey []byte
 	sshPublicKey  string
 	sshKnownHosts string
+	sshKeyFile    string
 	caCert        []byte
 }
 
-func (s Server) GetSSHPrivateKey() []byte {
+func (s *Server) ensureSSHKeyFile() (string, error) {
+	if s.sshKeyFile != "" {
+		return s.sshKeyFile, nil
+	}
+
+	f, err := os.CreateTemp("", "argocd-operator-gitserver-ssh-key-")
+	if err != nil {
+		return "", err
+	}
+
+	if _, err := f.Write(s.getSSHPrivateKey()); err != nil {
+		_ = f.Close()
+		_ = os.Remove(f.Name())
+		return "", err
+	}
+	if err := f.Chmod(0o600); err != nil {
+		_ = f.Close()
+		_ = os.Remove(f.Name())
+		return "", err
+	}
+	if err := f.Close(); err != nil {
+		_ = os.Remove(f.Name())
+		return "", err
+	}
+
+	s.sshKeyFile = f.Name()
+	return s.sshKeyFile, nil
+}
+
+func (s *Server) removeSSHKeyFile() {
+	if s.sshKeyFile == "" {
+		return
+	}
+	_ = os.Remove(s.sshKeyFile)
+	s.sshKeyFile = ""
+}
+
+func (s *Server) getSSHPrivateKey() []byte {
 	return append([]byte(nil), s.sshPrivateKey...)
 }
 
-func (s Server) GetSSHPublicKey() string {
-	return s.sshPublicKey
-}
-
-func (s Server) GetCACert() []byte {
-	return append([]byte(nil), s.caCert...)
-}
-
 // StartServer deploys a functional Git instance with HTTPS and SSH enabled in the given namespace.
-func StartServer(ctx context.Context, k8sClient client.Client, ns *corev1.Namespace) (server Server, cleanup func()) {
+func StartServer(ctx context.Context, k8sClient client.Client, ns *corev1.Namespace) (server *Server, cleanup func()) {
 	Expect(ns).ToNot(BeNil())
 
 	By("Deploying Git server")
@@ -71,12 +101,11 @@ func StartServer(ctx context.Context, k8sClient client.Client, ns *corev1.Namesp
 	internalToken := argocdutil.GenerateRandomString(24)
 	sshKeys := generateSSHKeyPair()
 
-	server = Server{
+	server = &Server{
 		namespace:     ns.Name,
 		serviceName:   serverName,
 		httpUsername:  gitUsername,
 		httpPassword:  httpPassword,
-		internalToken: internalToken,
 		sshPrivateKey: sshKeys.privateKeyPEM,
 		sshPublicKey:  strings.TrimSpace(sshKeys.publicKey),
 		caCert:        tls["ca.crt"],
@@ -250,6 +279,8 @@ func StartServer(ctx context.Context, k8sClient client.Client, ns *corev1.Namesp
 	server.sshKnownHosts = discoverSSHKnownHosts(server.domain)
 
 	cleanup = func() {
+		server.removeSSHKeyFile()
+
 		for _, obj := range []client.Object{service, pod, sshCredentialsSecret, httpCredentialsSecret, tlsSecret} {
 			err := k8sClient.Delete(ctx, obj)
 			if err != nil && !apierrors.IsNotFound(err) {
@@ -259,18 +290,19 @@ func StartServer(ctx context.Context, k8sClient client.Client, ns *corev1.Namesp
 	}
 
 	By("registering repository credentials for Argo CD to use")
-	Expect(k8sClient.Create(ctx, server.SSHRepoPullCredentialsSecret(ns.Name))).To(Succeed())
-	Expect(k8sClient.Create(ctx, server.SSHRepoPushCredentialsSecret(ns.Name))).To(Succeed())
+	Expect(k8sClient.Create(ctx, server.sshRepoPullCredentialsSecret(ns.Name))).To(Succeed())
+	Expect(k8sClient.Create(ctx, server.sshRepoPushCredentialsSecret(ns.Name))).To(Succeed())
 
 	return server, cleanup
 }
 
-func (s Server) sshRepoURLPrefix() string {
+func (s *Server) sshRepoURLPrefix() string {
 	return fmt.Sprintf("ssh://%s@%s:%d/%s/", giteaSSHLogin, s.domain, sshServicePort, s.httpUsername)
 }
 
 // SSHKnownHosts returns ssh-keyscan output collected while starting the server.
-func (s Server) SSHKnownHosts() string {
+func (s *Server) SSHKnownHosts() string {
+	Expect(s.sshKnownHosts).NotTo(BeEmpty())
 	return s.sshKnownHosts
 }
 
@@ -308,8 +340,7 @@ func parseSSHKnownHosts(output string) string {
 	return strings.Join(hosts, "\n") + "\n"
 }
 
-// SSHRepoPullCredentialsSecret returns an Argo CD repo-creds Secret template for SSH access to any repository on this server.
-func (s Server) SSHRepoPullCredentialsSecret(namespace string) *corev1.Secret {
+func (s *Server) sshRepoPullCredentialsSecret(namespace string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      serverName + "-argocd-ssh-repo-creds",
@@ -321,14 +352,13 @@ func (s Server) SSHRepoPullCredentialsSecret(namespace string) *corev1.Secret {
 		StringData: map[string]string{
 			"type":          "git",
 			"url":           s.sshRepoURLPrefix(),
-			"sshPrivateKey": string(s.GetSSHPrivateKey()),
+			"sshPrivateKey": string(s.getSSHPrivateKey()),
 			"insecure":      "true",
 		},
 	}
 }
 
-// SSHRepoPushCredentialsSecret returns an Argo CD repo-write-creds Secret for SSH write access.
-func (s Server) SSHRepoPushCredentialsSecret(namespace string) *corev1.Secret {
+func (s *Server) sshRepoPushCredentialsSecret(namespace string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      serverName + "-argocd-ssh-repo-write-creds",
@@ -340,13 +370,13 @@ func (s Server) SSHRepoPushCredentialsSecret(namespace string) *corev1.Secret {
 		StringData: map[string]string{
 			"type":          "git",
 			"url":           s.sshRepoURLPrefix(),
-			"sshPrivateKey": string(s.GetSSHPrivateKey()),
+			"sshPrivateKey": string(s.getSSHPrivateKey()),
 			"insecure":      "true",
 		},
 	}
 }
 
-func (s Server) CreateRepo(repoName string) Repo {
+func (s *Server) CreateRepo(repoName string) Repo {
 	if _, err := giteaAPIPost(s.namespace, s.httpPassword,
 		fmt.Sprintf("/api/v1/admin/users/%s/repos", gitUsername),
 		fmt.Sprintf(`{"name":"%s","private":false}`, repoName),

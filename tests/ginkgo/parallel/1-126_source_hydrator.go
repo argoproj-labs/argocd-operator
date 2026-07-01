@@ -36,7 +36,10 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			ctx       context.Context
 			k8sClient client.Client
 			ns        *corev1.Namespace
-			cleanup   func()
+
+			nsCleanup        func()
+			gitServerCleanup func()
+			gitRepoCleanup   func()
 		)
 
 		BeforeEach(func() {
@@ -47,11 +50,18 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 		AfterEach(func() {
 			fixture.OutputDebugOnFail(ns)
-			cleanup()
+
+			if gitRepoCleanup != nil {
+				gitRepoCleanup()
+			}
+			if gitServerCleanup != nil {
+				gitServerCleanup()
+			}
+			nsCleanup()
 		})
 
 		It("activate commit server by Source Hydrator config", func() {
-			ns, cleanup = fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
+			ns, nsCleanup = fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 
 			csService := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "example-commit-server", Namespace: ns.Name}}
 			csNetPol := &v1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: "example-commit-server-network-policy", Namespace: ns.Name}}
@@ -109,7 +119,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 		})
 
 		It("apply CommitServer configuration options to the running CommitServer deployment", func() {
-			ns, cleanup = fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
+			ns, nsCleanup = fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 
 			expectedCommand := []string{"/usr/local/bin/argocd-commit-server", "--loglevel", "info", "--logformat", "json"}
 			deploymentObjectKey := client.ObjectKey{Namespace: ns.Name, Name: "cs-options-commit-server"}
@@ -244,12 +254,10 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 		})
 
 		It("hydrate kustomize to another branch via ssh", func() {
-			ns, cleanup = fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
+			ns, nsCleanup = fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 
-			server, gitCleanup := gitserver.StartServer(ctx, k8sClient, ns)
-			defer gitCleanup()
-			knownHosts := server.SSHKnownHosts()
-			Expect(knownHosts).NotTo(BeEmpty())
+			server, cleanup := gitserver.StartServer(ctx, k8sClient, ns)
+			gitServerCleanup = cleanup
 
 			argoCD := &argov1beta1api.ArgoCD{
 				ObjectMeta: metav1.ObjectMeta{
@@ -259,7 +267,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				Spec: argov1beta1api.ArgoCDSpec{
 					InitialSSHKnownHosts: argov1beta1api.SSHHostsSpec{
 						ExcludeDefaultHosts: true,
-						Keys:                knownHosts,
+						Keys:                server.SSHKnownHosts(),
 					},
 					SourceHydrator: argov1beta1api.ArgoCDSourceHydratorSpec{
 						Enabled: ptr.To(true),
@@ -311,11 +319,11 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Expect(k8sClient.Create(ctx, app)).To(Succeed())
 
 			By("pushing dry source to trigger Source Hydrator")
-			Expect(repo.Clone()).To(Succeed())
-			Expect(repo.CommitAndPush(gitserver.Commit{
-				Branch:            "dry",
-				NotifyWebhookURL:  gitserver.ArgoCDWebhookURL(argoCD.Status.Host, argoCD.Spec.Server.Insecure),
-				NotifyWebhookHost: argoCD.Name,
+			cleanup, err := repo.Clone()
+			Expect(err).NotTo(HaveOccurred())
+			gitRepoCleanup = cleanup
+			dryCommit := gitserver.Commit{
+				Branch: "dry",
 				Files: map[string]string{
 					"app/base/kustomization.yaml": `
 apiVersion: kustomize.config.k8s.io/v1beta1
@@ -346,7 +354,9 @@ patches:
       value: prod
 `,
 				},
-			})).To(Succeed())
+			}
+			Expect(repo.CommitAndPush(dryCommit)).To(Succeed())
+			Expect(repo.NotifyArgoCDWebhook(argoCD, dryCommit)).To(Succeed())
 
 			By("waiting for Source Hydrator to hydrate and sync the application")
 			Eventually(func(g Gomega) {

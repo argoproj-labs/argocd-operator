@@ -5,10 +5,13 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
+	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -39,30 +42,27 @@ type gogsPushWebhookRepository struct {
 	Private       bool   `json:"private"`
 }
 
-// ArgoCDWebhookURL builds the Argo CD git push webhook URL from a status host value.
-func ArgoCDWebhookURL(host string, insecure bool) string {
-	host = strings.TrimSpace(host)
-	if idx := strings.Index(host, ","); idx >= 0 {
-		host = strings.TrimSpace(host[:idx])
-	}
-	if host == "" {
-		return ""
-	}
-	scheme := "https"
-	if insecure {
-		scheme = "http"
-	}
-	return fmt.Sprintf("%s://%s/api/webhook", scheme, host)
-}
+// NotifyArgoCDWebhook posts a push webhook to Argo CD for the current HEAD commit.
+func (r *Repo) NotifyArgoCDWebhook(argoCD *argov1beta1api.ArgoCD, commit Commit) error {
+	Expect(argoCD).NotTo(BeNil())
+	Expect(argoCD.Status.Host).NotTo(BeEmpty())
 
-func (r *Repo) notifyArgoCDWebhook(webhookURL, host, branch, commitSHA string, changedFiles []string) error {
-	Expect(webhookURL).NotTo(BeEmpty(), "webhook URL is required")
+	branch := commit.Branch
+	if branch == "" {
+		branch = "main"
+	}
+
+	commitSHA, err := r.git("rev-parse", "HEAD")
+	if err != nil {
+		return fmt.Errorf("failed to resolve pushed commit: %w: %q", err, commitSHA)
+	}
 
 	ref := branch
 	if !strings.HasPrefix(ref, "refs/") {
 		ref = "refs/heads/" + branch
 	}
 
+	changedFiles := slices.Collect(maps.Keys(commit.Files))
 	commitSHA = strings.TrimSpace(commitSHA)
 	payload := gogsPushWebhookPayload{
 		Ref:    ref,
@@ -78,7 +78,7 @@ func (r *Repo) notifyArgoCDWebhook(webhookURL, host, branch, commitSHA string, c
 			FullName:      fmt.Sprintf("%s/%s", r.server.httpUsername, r.repoName),
 			HTMLURL:       fmt.Sprintf("https://%s:%d/%s/%s", r.server.domain, httpPort, r.server.httpUsername, r.repoName),
 			SSHURL:        r.GetRepoSshURL(),
-			CloneURL:      r.GetRepoHttpURL(),
+			CloneURL:      r.getRepoHttpURL(),
 			DefaultBranch: "main",
 			Private:       false,
 		},
@@ -89,13 +89,14 @@ func (r *Repo) notifyArgoCDWebhook(webhookURL, host, branch, commitSHA string, c
 		return err
 	}
 
+	webhookURL := fmt.Sprintf("http://%s/api/webhook", argoCD.Status.Host)
 	req, err := http.NewRequest(http.MethodPost, webhookURL, bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
-	if host != "" {
-		req.Host = host
-		req.Header.Set("Host", host)
+	if argoCD.Name != "" {
+		req.Host = argoCD.Name
+		req.Header.Set("Host", argoCD.Name)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Gogs-Event", "push")
