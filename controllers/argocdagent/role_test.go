@@ -24,6 +24,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 // TestReconcilePrincipalRole tests
@@ -421,5 +423,75 @@ func TestReconcilePrincipalClusterRoles_ClusterRoleExists_PrincipalNotSet(t *tes
 	err = cl.Get(context.TODO(), types.NamespacedName{
 		Name: generateAgentResourceName(cr.Name+"-"+cr.Namespace, testCompName),
 	}, retrievedClusterRole)
+	assert.True(t, errors.IsNotFound(err))
+}
+
+func TestReconcilePrincipalRole_RoleDoesNotExist_CustomClusterRoleSet(t *testing.T) {
+	// Test case: Role does not exist and custom role is set
+	// Expected behavior: Role is not created
+
+	cr := makeTestArgoCD(withPrincipalEnabled(true))
+
+	t.Setenv(common.ArgoCDPrincipalClusterRoleEnvName, "custom-role")
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	_, err := ReconcilePrincipalRole(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	role := &v1.Role{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName),
+		Namespace: cr.Namespace,
+	}, role)
+	assert.True(t, errors.IsNotFound(err))
+}
+
+func TestReconcilePrincipalClusterRoles_ClusterRoleDoesNotExist_ClusterRoleDisabled(t *testing.T) {
+	// Test case: Cluster role does not exist and default cluster scoped role is disabled
+	// Expected behavior: Cluster role is not created
+
+	cr := makeTestArgoCD(withPrincipalEnabled(true))
+	cr.Spec.DefaultClusterScopedRoleDisabled = true
+
+	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", cr.Namespace)
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	_, err := ReconcilePrincipalClusterRoles(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	clusterRole := &v1.ClusterRole{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name: generateAgentResourceName(cr.Name+"-"+cr.Namespace, testCompName),
+	}, clusterRole)
+	assert.True(t, errors.IsNotFound(err))
+
+	// Reconcile again to see if it gets created
+	cr.Spec.DefaultClusterScopedRoleDisabled = false
+	err = cl.Update(context.TODO(), cr)
+	assert.NoError(t, err)
+	_, err = ReconcilePrincipalClusterRoles(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name: generateAgentResourceName(cr.Name+"-"+cr.Namespace, testCompName),
+	}, clusterRole)
+	assert.NoError(t, err)
+
+	// Turn off to ensure that it gets deleted
+	cr.Spec.DefaultClusterScopedRoleDisabled = true
+	err = cl.Update(context.TODO(), cr)
+	assert.NoError(t, err)
+	_, err = ReconcilePrincipalClusterRoles(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name: generateAgentResourceName(cr.Name+"-"+cr.Namespace, testCompName),
+	}, clusterRole)
 	assert.True(t, errors.IsNotFound(err))
 }
