@@ -49,7 +49,7 @@ type Server struct {
 	caCert        []byte
 }
 
-func (s *Server) ensureSSHKeyFile() (string, error) {
+func (s *Server) getSSHKeyFile() (string, error) {
 	if s.sshKeyFile != "" {
 		return s.sshKeyFile, nil
 	}

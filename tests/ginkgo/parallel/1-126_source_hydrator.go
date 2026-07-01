@@ -370,7 +370,7 @@ patches:
 			Expect(k8sClient.Create(ctx, app)).To(Succeed())
 
 			By("pushing dry source to trigger Source Hydrator")
-			cleanup, err := repo.Clone()
+			cleanup, err := repo.Clone(gitserver.TransportSSH)
 			Expect(err).NotTo(HaveOccurred())
 			gitRepoCleanup = cleanup
 			dryCommit := gitserver.Commit{
@@ -477,7 +477,7 @@ patches:
 			Expect(k8sClient.Create(ctx, app)).To(Succeed())
 
 			By("pushing dry source to trigger Source Hydrator")
-			cleanup, err := repo.CloneHTTPS()
+			cleanup, err := repo.Clone(gitserver.TransportHTTPS)
 			Expect(err).NotTo(HaveOccurred())
 			gitRepoCleanup = cleanup
 			dryCommit := gitserver.Commit{
