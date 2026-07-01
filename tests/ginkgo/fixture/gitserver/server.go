@@ -9,17 +9,18 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/argoproj-labs/argocd-operator/common"
-	argocdutil "github.com/argoproj-labs/argocd-operator/controllers/argocd"
-	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
-	osFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/os"
-	podFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/pod"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/argoproj-labs/argocd-operator/common"
+	argocdutil "github.com/argoproj-labs/argocd-operator/controllers/argocd"
+	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
+	osFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/os"
+	podFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/pod"
 )
 
 const (

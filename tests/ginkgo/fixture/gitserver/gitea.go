@@ -8,9 +8,10 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	corev1 "k8s.io/api/core/v1"
+
 	argocdutil "github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	osFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/os"
-	corev1 "k8s.io/api/core/v1"
 )
 
 const (
