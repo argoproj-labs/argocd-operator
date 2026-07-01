@@ -60,6 +60,7 @@ func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoproj.ArgoCD) error {
 	params := getPolicyRuleList(r.Client, cr)
 
 	for _, param := range params {
+		log.Info("reconcileServiceAccountPermissions", "name", param.name)
 		if err := r.reconcileServiceAccountPermissions(param.name, param.policyRule, cr); err != nil {
 			return err
 		}
@@ -68,6 +69,7 @@ func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoproj.ArgoCD) error {
 	clusterParams := getPolicyRuleClusterRoleList()
 
 	for _, clusterParam := range clusterParams {
+		log.Info("reconcileServiceAccountClusterPermissions", "name", clusterParam.name)
 		if err := r.reconcileServiceAccountClusterPermissions(clusterParam.name, clusterParam.policyRule, cr); err != nil {
 			return err
 		}
@@ -105,6 +107,12 @@ func (r *ReconcileArgoCD) reconcileServiceAccountPermissions(name string, rules 
 func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoproj.ArgoCD) (*corev1.ServiceAccount, error) {
 	sa := newServiceAccountWithName(name, cr)
 
+	shouldExist := name != common.ArgoCDDexServerComponent || UseDex(cr)
+
+	if name == common.ArgoCDCommitServerComponent && !UseCommitServer(cr) {
+		shouldExist = false
+	}
+
 	// Attempt to retrieve the ServiceAccount
 	exists := true
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
@@ -112,15 +120,16 @@ func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoproj.Argo
 			return nil, err
 		}
 
-		if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
-			return sa, nil // Dex installation not requested, do nothing
+		if !shouldExist {
+			return sa, nil // Installation not requested, do nothing
 		}
 		exists = false
 	}
+
 	if exists {
-		if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
-			// Delete any existing Service Account created for Dex since dex is disabled
-			argoutil.LogResourceDeletion(log, sa, "dex is being uninstalled")
+		if !shouldExist {
+			// Delete any existing Service Account as no longer needed
+			argoutil.LogResourceDeletion(log, sa, "component is being uninstalled")
 			return sa, r.Delete(context.TODO(), sa)
 		}
 		return sa, nil

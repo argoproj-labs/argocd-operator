@@ -33,8 +33,17 @@ const (
 	// ArgoCDDefaultLogFormat is the default log format to be used by all ArgoCD components.
 	ArgoCDDefaultLogFormat = "text"
 
-	// ArgoCDServerComponent is the name of the Dex server control plane component
+	// ArgoCDServerComponent is the name of the server component
 	ArgoCDServerComponent = "argocd-server"
+
+	// ArgoCDCommitServerComponent is the name of the Commit Server component
+	ArgoCDCommitServerComponent = "argocd-commit-server"
+
+	// ArgoCDDefaultCommitServerPort is the default port for the Commit Server.
+	ArgoCDDefaultCommitServerPort = 8086
+
+	// ArgoCDDefaultCommitServerMetricsPort is the default port for the Commit Server metrics.
+	ArgoCDDefaultCommitServerMetricsPort = 8087
 
 	// ArgoCDRedisComponent is the name of the Redis control plane component
 	ArgoCDRedisComponent = "argocd-redis"
