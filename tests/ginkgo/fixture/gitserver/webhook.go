@@ -2,7 +2,6 @@ package gitserver
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"maps"
@@ -105,9 +104,6 @@ func (r *Repo) NotifyArgoCDWebhook(argoCD *argov1beta1api.ArgoCD, commit Commit)
 
 	client := &http.Client{
 		Timeout: 30 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec G402 -- test clusters may use self-signed ingress certs
-		},
 	}
 
 	resp, err := client.Do(req)

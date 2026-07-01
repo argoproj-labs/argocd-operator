@@ -343,7 +343,6 @@ func (s *Server) repoCredentialsSecrets(namespace string) []*corev1.Secret {
 				"type":          "git",
 				"url":           s.sshRepoURLPrefix(),
 				"sshPrivateKey": string(s.getSSHPrivateKey()),
-				"insecure":      "true",
 			},
 		},
 		{
@@ -358,7 +357,6 @@ func (s *Server) repoCredentialsSecrets(namespace string) []*corev1.Secret {
 				"type":          "git",
 				"url":           s.sshRepoURLPrefix(),
 				"sshPrivateKey": string(s.getSSHPrivateKey()),
-				"insecure":      "true",
 			},
 		},
 		{
@@ -374,7 +372,6 @@ func (s *Server) repoCredentialsSecrets(namespace string) []*corev1.Secret {
 				"url":      s.httpRepoURLPrefix(),
 				"username": s.httpUsername,
 				"password": s.httpPassword,
-				"insecure": "true",
 			},
 		},
 		{
@@ -390,7 +387,6 @@ func (s *Server) repoCredentialsSecrets(namespace string) []*corev1.Secret {
 				"url":      s.httpRepoURLPrefix(),
 				"username": s.httpUsername,
 				"password": s.httpPassword,
-				"insecure": "true",
 			},
 		},
 	}
