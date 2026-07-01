@@ -287,26 +287,30 @@ func StartServer(ctx context.Context, k8sClient client.Client, ns *corev1.Namesp
 	GinkgoWriter.Printf("Git server public endpoint: %s\n", server.httpURL)
 
 	configureGiteaAdmin(server)
-
-	By("collecting Gitea SSH host key for Argo CD known_hosts")
 	server.sshKnownHosts = fetchSSHKnownHosts(server)
+
+	By("registering repository credentials for Argo CD to use")
+	repoCredentialsSecrets := server.repoCredentialsSecrets(ns.Name)
+	for _, secret := range repoCredentialsSecrets {
+		Expect(k8sClient.Create(ctx, secret)).To(Succeed())
+	}
 
 	cleanup = func() {
 		server.removeSSHKeyFile()
 
-		for _, obj := range []client.Object{service, pod, sshCredentialsSecret, httpCredentialsSecret, tlsSecret} {
+		resources := []client.Object{
+			service, pod, sshCredentialsSecret, httpCredentialsSecret, tlsSecret,
+		}
+		for _, secret := range repoCredentialsSecrets {
+			resources = append(resources, secret)
+		}
+		for _, obj := range resources {
 			err := k8sClient.Delete(ctx, obj)
 			if err != nil && !apierrors.IsNotFound(err) {
 				GinkgoWriter.Println("gitserver cleanup:", client.ObjectKeyFromObject(obj), err)
 			}
 		}
 	}
-
-	By("registering repository credentials for Argo CD to use")
-	Expect(k8sClient.Create(ctx, server.sshRepoPullCredentialsSecret(ns.Name))).To(Succeed())
-	Expect(k8sClient.Create(ctx, server.sshRepoPushCredentialsSecret(ns.Name))).To(Succeed())
-	Expect(k8sClient.Create(ctx, server.httpRepoPullCredentialsSecret(ns.Name))).To(Succeed())
-	Expect(k8sClient.Create(ctx, server.httpRepoPushCredentialsSecret(ns.Name))).To(Succeed())
 
 	return server, cleanup
 }
@@ -325,76 +329,69 @@ func (s *Server) httpRepoURLPrefix() string {
 	return fmt.Sprintf("https://%s:%d/%s/", s.clusterDomain, httpPort, s.httpUsername)
 }
 
-func (s *Server) httpRepoPullCredentialsSecret(namespace string) *corev1.Secret {
-	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      serverName + "-argocd-http-repo-creds",
-			Namespace: namespace,
-			Labels: map[string]string{
-				common.ArgoCDSecretTypeLabel: "repo-creds",
+func (s *Server) repoCredentialsSecrets(namespace string) []*corev1.Secret {
+	return []*corev1.Secret{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      serverName + "-argocd-ssh-repo-creds",
+				Namespace: namespace,
+				Labels: map[string]string{
+					common.ArgoCDSecretTypeLabel: "repo-creds",
+				},
+			},
+			StringData: map[string]string{
+				"type":          "git",
+				"url":           s.sshRepoURLPrefix(),
+				"sshPrivateKey": string(s.getSSHPrivateKey()),
+				"insecure":      "true",
 			},
 		},
-		StringData: map[string]string{
-			"type":     "git",
-			"url":      s.httpRepoURLPrefix(),
-			"username": s.httpUsername,
-			"password": s.httpPassword,
-			"insecure": "true",
-		},
-	}
-}
-
-func (s *Server) httpRepoPushCredentialsSecret(namespace string) *corev1.Secret {
-	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      serverName + "-argocd-http-repo-write-creds",
-			Namespace: namespace,
-			Labels: map[string]string{
-				common.ArgoCDSecretTypeLabel: "repo-write-creds",
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      serverName + "-argocd-ssh-repo-write-creds",
+				Namespace: namespace,
+				Labels: map[string]string{
+					common.ArgoCDSecretTypeLabel: "repo-write-creds",
+				},
+			},
+			StringData: map[string]string{
+				"type":          "git",
+				"url":           s.sshRepoURLPrefix(),
+				"sshPrivateKey": string(s.getSSHPrivateKey()),
+				"insecure":      "true",
 			},
 		},
-		StringData: map[string]string{
-			"type":     "git",
-			"url":      s.httpRepoURLPrefix(),
-			"username": s.httpUsername,
-			"password": s.httpPassword,
-			"insecure": "true",
-		},
-	}
-}
-
-func (s *Server) sshRepoPullCredentialsSecret(namespace string) *corev1.Secret {
-	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      serverName + "-argocd-ssh-repo-creds",
-			Namespace: namespace,
-			Labels: map[string]string{
-				common.ArgoCDSecretTypeLabel: "repo-creds",
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      serverName + "-argocd-http-repo-creds",
+				Namespace: namespace,
+				Labels: map[string]string{
+					common.ArgoCDSecretTypeLabel: "repo-creds",
+				},
+			},
+			StringData: map[string]string{
+				"type":     "git",
+				"url":      s.httpRepoURLPrefix(),
+				"username": s.httpUsername,
+				"password": s.httpPassword,
+				"insecure": "true",
 			},
 		},
-		StringData: map[string]string{
-			"type":          "git",
-			"url":           s.sshRepoURLPrefix(),
-			"sshPrivateKey": string(s.getSSHPrivateKey()),
-			"insecure":      "true",
-		},
-	}
-}
-
-func (s *Server) sshRepoPushCredentialsSecret(namespace string) *corev1.Secret {
-	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      serverName + "-argocd-ssh-repo-write-creds",
-			Namespace: namespace,
-			Labels: map[string]string{
-				common.ArgoCDSecretTypeLabel: "repo-write-creds",
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      serverName + "-argocd-http-repo-write-creds",
+				Namespace: namespace,
+				Labels: map[string]string{
+					common.ArgoCDSecretTypeLabel: "repo-write-creds",
+				},
 			},
-		},
-		StringData: map[string]string{
-			"type":          "git",
-			"url":           s.sshRepoURLPrefix(),
-			"sshPrivateKey": string(s.getSSHPrivateKey()),
-			"insecure":      "true",
+			StringData: map[string]string{
+				"type":     "git",
+				"url":      s.httpRepoURLPrefix(),
+				"username": s.httpUsername,
+				"password": s.httpPassword,
+				"insecure": "true",
+			},
 		},
 	}
 }
