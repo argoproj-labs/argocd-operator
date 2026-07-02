@@ -54,7 +54,7 @@ func (s *Server) getSSHKeyFile() (string, error) {
 		return s.sshKeyFile, nil
 	}
 
-	f, err := os.CreateTemp("", "argocd-operator-gitserver-ssh-key-")
+	f, err := os.CreateTemp("", "operator-gitserver-ssh-key-")
 	if err != nil {
 		return "", err
 	}

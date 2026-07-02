@@ -57,20 +57,20 @@ func (r *Repo) Clone(t Transport) (cleanup func(), err error) {
 		}
 	}
 
-	fsDir, err := os.MkdirTemp("", "argocd-operator-gitserver-clone-*")
+	fsDir, err := os.MkdirTemp("", "operator-gitserver-clone-*")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temporary directory: %w", err)
 	}
 
 	r.cloneDir, err = os.OpenRoot(fsDir)
+	if err != nil {
+		_ = os.RemoveAll(fsDir)
+		return nil, fmt.Errorf("failed to open root: %w", err)
+	}
 	cleanup = func() {
 		_ = r.cloneDir.Close()
 		r.cloneDir = nil
 		_ = os.RemoveAll(fsDir)
-	}
-	if err != nil {
-		cleanup()
-		return nil, fmt.Errorf("failed to open root: %w", err)
 	}
 
 	cloneURL := r.GetRepoSshURL()
@@ -82,6 +82,15 @@ func (r *Repo) Clone(t Transport) (cleanup func(), err error) {
 	if err != nil {
 		cleanup()
 		return nil, fmt.Errorf("failed to clone repo: %w: %s", err, out)
+	}
+
+	if out, err := r.git("config", "user.name", "E2E test"); err != nil {
+		cleanup()
+		return nil, fmt.Errorf("failed to set git user.name: %w: %s", err, out)
+	}
+	if out, err := r.git("config", "user.email", "e2e-test@example.com"); err != nil {
+		cleanup()
+		return nil, fmt.Errorf("failed to set git user.email: %w: %s", err, out)
 	}
 
 	return cleanup, nil
