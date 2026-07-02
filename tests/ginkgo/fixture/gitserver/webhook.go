@@ -45,7 +45,8 @@ type gogsPushWebhookRepository struct {
 // NotifyArgoCDWebhook posts a push webhook to Argo CD for the current HEAD commit.
 func (r *Repo) NotifyArgoCDWebhook(argoCD *argov1beta1api.ArgoCD, commit Commit) error {
 	Expect(argoCD).NotTo(BeNil())
-	Expect(argoCD.Status.Host).NotTo(BeEmpty())
+	hosts := strings.Split(argoCD.Status.Host, ", ")
+	Expect(hosts).NotTo(BeEmpty())
 
 	branch := commit.Branch
 	if branch == "" {
@@ -89,7 +90,7 @@ func (r *Repo) NotifyArgoCDWebhook(argoCD *argov1beta1api.ArgoCD, commit Commit)
 		return err
 	}
 
-	webhookURL := fmt.Sprintf("http://%s/api/webhook", argoCD.Status.Host)
+	webhookURL := fmt.Sprintf("http://%s/api/webhook", hosts[0])
 	req, err := http.NewRequest(http.MethodPost, webhookURL, bytes.NewReader(body))
 	if err != nil {
 		return err
