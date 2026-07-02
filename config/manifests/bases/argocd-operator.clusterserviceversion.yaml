@@ -923,12 +923,28 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: LogFormat refers to the log level to be used by the component.
+          Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are
+          text or json.
+        displayName: Log Format
+        path: commitServer.logFormat
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:CommitServer
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: LogLevel refers to the log level to be used by the component.
+          Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug,
+          info, error, and warn.
+        displayName: Log Level
+        path: commitServer.logLevel
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:CommitServer
+        - urn:alm:descriptor:com.tectonic.ui:text
       - description: Resources defines the Compute Resources required by the container
           for the component.
         displayName: Resource Requirements
         path: commitServer.resources
         x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:CommitServer
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       - description: 'Deprecated: ConfigManagementPlugins field is no longer supported.
           Argo CD now requires plugins to be defined as sidecar containers of repo
@@ -1332,6 +1348,12 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Enabled defines whether the Source Hydrator is enabled.
+        displayName: Enabled
+        path: sourceHydrator.enabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:SourceHydrator
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       - description: Config is the dex connector configuration.
         displayName: Configuration
         path: sso.dex.config
