@@ -631,7 +631,7 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterDeployment(cr *argoproj.ArgoCD, s
 		image = argoutil.CombineImageTag(DefaultImageUpdaterImage, DefaultImageUpdaterTag)
 	}
 	args := []string{"run"}
-	imageUpdaterTLSProfileArguments := BuildTLSArgs(r.CentralTLSConfigProfile)
+	imageUpdaterTLSProfileArguments := BuildTLSArgsFromClusterTLSProfile(r.CentralTLSConfigProfile)
 	args = append(args, imageUpdaterTLSProfileArguments...)
 
 	podSpec.Containers = []corev1.Container{{
@@ -698,20 +698,6 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterDeployment(cr *argoproj.ArgoCD, s
 	}}
 
 	return r.reconcileDeploymentHelper(cr, desiredDeployment, "image updater", cr.Spec.ImageUpdater.Enabled)
-}
-
-func BuildTLSArgs(centralTLSConfig TLSConfigProfile) []string {
-	var args []string
-	if centralTLSConfig.DisableClusterTLSProfile {
-		return nil
-	}
-	if v := argoutil.TLSProtocolVersionString(centralTLSConfig.MinVersion); v != "" {
-		args = append(args, "--tlsminversion", v)
-	}
-	if ciphers := argoutil.MapCipherSuites(centralTLSConfig.Ciphers); len(ciphers) > 0 {
-		args = append(args, "--tlsciphers", strings.Join(ciphers, ":"))
-	}
-	return args
 }
 
 // ========================= Helpers =========================
