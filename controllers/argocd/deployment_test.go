@@ -3326,7 +3326,7 @@ func TestArgoCDServerAndRepoServerDeploymentArgs(t *testing.T) {
 	deployment := &appsv1.Deployment{}
 	assert.NoError(t, r.reconcileServerDeployment(a, false))
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: a.Namespace}, deployment))
-	args := append([]string{"--tlsminversion", "1.2", "--tlsciphers", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"})
+	args := []string{"--tlsminversion", "1.2", "--tlsciphers", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"}
 	assert.Equal(t, args, deployment.Spec.Template.Spec.Containers[0].Args)
 	assert.NoError(t, r.reconcileRepoDeployment(a, false))
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: "argocd-repo-server", Namespace: a.Namespace}, deployment))
