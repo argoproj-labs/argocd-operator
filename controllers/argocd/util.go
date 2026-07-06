@@ -2036,6 +2036,11 @@ func (r *ReconcileArgoCD) reconcileDeploymentHelper(cr *argoproj.ArgoCD, desired
 		changes = append(changes, "service account name")
 	}
 
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Args, desiredDeployment.Spec.Template.Spec.Containers[0].Args) {
+		existingDeployment.Spec.Template.Spec.Containers[0].Args = desiredDeployment.Spec.Template.Spec.Containers[0].Args
+		changes = append(changes, "container args")
+	}
+
 	if !reflect.DeepEqual(existingDeployment.Labels, desiredDeployment.Labels) {
 		existingDeployment.Labels = desiredDeployment.Labels
 		changes = append(changes, "labels")
