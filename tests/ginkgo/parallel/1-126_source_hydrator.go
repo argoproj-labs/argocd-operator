@@ -111,7 +111,7 @@ patches:
 			nsCleanup()
 		})
 
-		It("activate commit server by Source Hydrator config", func() {
+		It("activate Commit Server by Source Hydrator config", func() {
 			ns, nsCleanup = fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 
 			csService := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "example-commit-server", Namespace: ns.Name}}

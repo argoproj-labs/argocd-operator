@@ -90,10 +90,21 @@ func (r *ReconcileArgoCD) reconcileCommitServerDeployment(cr *argoproj.ArgoCD) e
 	}
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
+		Name: "argocd-commit-server",
 		Command:         getCommitServerCommand(cr),
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Env:             env,
+		Resources:       *resources,
+		SecurityContext: argoutil.DefaultSecurityContext(),
+		VolumeMounts:    commitServerVolumeMounts,
+		Ports: []corev1.ContainerPort{
+			{
+				ContainerPort: common.ArgoCDDefaultCommitServerPort,
+			}, {
+				ContainerPort: common.ArgoCDDefaultCommitServerMetricsPort,
+			},
+		},
 		LivenessProbe: &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
@@ -105,14 +116,6 @@ func (r *ReconcileArgoCD) reconcileCommitServerDeployment(cr *argoproj.ArgoCD) e
 			PeriodSeconds:       30,
 			TimeoutSeconds:      5,
 		},
-		Name: "argocd-commit-server",
-		Ports: []corev1.ContainerPort{
-			{
-				ContainerPort: common.ArgoCDDefaultCommitServerPort,
-			}, {
-				ContainerPort: common.ArgoCDDefaultCommitServerMetricsPort,
-			},
-		},
 		ReadinessProbe: &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
@@ -123,9 +126,6 @@ func (r *ReconcileArgoCD) reconcileCommitServerDeployment(cr *argoproj.ArgoCD) e
 			InitialDelaySeconds: 5,
 			PeriodSeconds:       10,
 		},
-		Resources:       *resources,
-		SecurityContext: argoutil.DefaultSecurityContext(),
-		VolumeMounts:    commitServerVolumeMounts,
 	}}
 	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "argocd-commit-server")
 
@@ -294,6 +294,11 @@ func (r *ReconcileArgoCD) reconcileArgoCDCommitServerNetworkPolicy(cr *argoproj.
 		},
 	}
 
+	if err := controllerutil.SetControllerReference(cr, desired, r.Scheme); err != nil {
+		log.Error(err, "Failed to set controller reference on argocd commit server network policy")
+		return fmt.Errorf("failed to set controller reference on argocd commit server network policy. error: %w", err)
+	}
+
 	npExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
 	if err != nil {
 		return err
@@ -330,12 +335,6 @@ func (r *ReconcileArgoCD) reconcileArgoCDCommitServerNetworkPolicy(cr *argoproj.
 	}
 
 	if shouldExist {
-
-		if err := controllerutil.SetControllerReference(cr, desired, r.Scheme); err != nil {
-			log.Error(err, "Failed to set controller reference on argocd commit server network policy")
-			return fmt.Errorf("failed to set controller reference on argocd commit server network policy. error: %w", err)
-		}
-
 		argoutil.LogResourceCreation(log, desired)
 		if err := r.Create(context.TODO(), desired); err != nil {
 			log.Error(err, "Failed to create %s network policy in namespace %s", existing.Name, cr.Namespace)
@@ -380,12 +379,12 @@ func (r *ReconcileArgoCD) reconcileCommitServerService(cr *argoproj.ArgoCD) erro
 	shouldExist := UseCommitServer(cr)
 
 	if svcExists {
-		var changes []string
 		if !shouldExist {
 			argoutil.LogResourceDeletion(log, svc, "disabled")
 			return r.Delete(context.TODO(), svc)
 		}
-
+		
+		var changes []string
 		if !reflect.DeepEqual(svc.Spec.Type, existingSVC.Spec.Type) {
 			existingSVC.Spec.Type = svc.Spec.Type
 			changes = append(changes, "service type")

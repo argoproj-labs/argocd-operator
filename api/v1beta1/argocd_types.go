@@ -257,9 +257,11 @@ type ArgoCDCommitServerSpec struct {
 	InitContainers []corev1.Container `json:"initContainers,omitempty"`
 
 	// LogLevel refers to the log level to be used by the component. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug, info, error, and warn.
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Log Level",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:CommitServer","urn:alm:descriptor:com.tectonic.ui:text"}
 	LogLevel string `json:"logLevel,omitempty"`
 
 	// LogFormat refers to the log level to be used by the component. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Log Format",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:CommitServer","urn:alm:descriptor:com.tectonic.ui:text"}
 	LogFormat string `json:"logFormat,omitempty"`
 
 	// Resources defines the Compute Resources required by the container for the component.

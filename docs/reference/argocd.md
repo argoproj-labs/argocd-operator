@@ -334,10 +334,6 @@ spec:
 !!! note
     ExtraCommandArgs will not be added, if one of these commands is already part of the command with same or different value.
 
-
-## CommitServer controller Options
-
-
 ## CommitServer Controller Options
 
 The following properties are available for configuring the Argo CD CommitServer controller component.
@@ -375,6 +371,8 @@ spec:
 ```
 
 For most users, the default options are sufficient, but advanced options allow fine configuration to fit your workloads.
+
+When Commit Server is enabled, the operator reports its status in `status.commitServer` (for example, `Running`).
 
 ## Disable Admin
 
@@ -1725,8 +1723,6 @@ Enabled | `false` | Enable the Source Hydrator feature.
 
 !!! note
     The Source Hydrator is an opt-in feature and is disabled by default. The commit server will be provisioned automatically.
-
-When Source Hydrator is enabled, the operator reports commit server status in `status.commitServer` (for example, `Running`).
 
 ### Source Hydrator Example
 
