@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	configv1 "github.com/openshift/api/config/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -12,6 +13,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	testclient "k8s.io/client-go/kubernetes/fake"
 
 	v1 "k8s.io/api/core/v1"
@@ -20,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -961,4 +964,64 @@ func TestReconcileImageUpdaterControllerEnabled_PrunesStaleNamespaceRBAC(t *test
 		Namespace: "ns2",
 	}, &rbacv1.RoleBinding{})
 	assert.True(t, errors.IsNotFound(err), "stale role binding in ns2 should have been pruned")
+}
+
+func TestReconcileImageUpdaterDeployment_TLSArgs(t *testing.T) {
+	tests := []struct {
+		name         string
+		centralTLS   TLSConfigProfile
+		expectedArgs []string
+	}{
+		{
+			name: "central tls profile",
+			centralTLS: TLSConfigProfile{
+				DisableClusterTLSProfile: false,
+				MinVersion:               configv1.VersionTLS12,
+				Ciphers: []string{
+					"ECDHE-RSA-AES128-GCM-SHA256",
+					"ECDHE-RSA-AES256-GCM-SHA384",
+				},
+			},
+			expectedArgs: []string{
+				"--tlsminversion",
+				"1.2",
+				"--tlsciphers",
+				"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+			},
+		},
+		{
+			name: "Disable cluster tls profile",
+			centralTLS: TLSConfigProfile{
+				DisableClusterTLSProfile: true,
+			},
+			expectedArgs: []string{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			scheme := runtime.NewScheme()
+
+			_ = appsv1.AddToScheme(scheme)
+			_ = v1.AddToScheme(scheme)
+			_ = argoproj.AddToScheme(scheme)
+			cr := makeTestArgoCD()
+			cr.Spec.ImageUpdater.Enabled = true
+			sa := &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "test-sa", Namespace: cr.Namespace}}
+			client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cr, sa).Build()
+			r := &ReconcileArgoCD{
+				Client:                  client,
+				Scheme:                  scheme,
+				CentralTLSConfigProfile: tt.centralTLS,
+			}
+			err := r.reconcileImageUpdaterDeployment(cr, sa)
+			require.NoError(t, err)
+			deployment := &appsv1.Deployment{}
+			err = client.Get(context.TODO(), types.NamespacedName{Name: nameWithSuffix(common.ArgoCDImageUpdaterControllerComponent, cr), Namespace: cr.Namespace}, deployment)
+			require.NoError(t, err)
+			args := deployment.Spec.Template.Spec.Containers[0].Args
+			for _, expected := range tt.expectedArgs {
+				assert.Contains(t, args, expected)
+			}
+		})
+	}
 }
