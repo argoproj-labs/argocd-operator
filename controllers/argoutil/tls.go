@@ -17,6 +17,7 @@ package argoutil
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -24,11 +25,13 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"sync"
 	"time"
 
 	certmanagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 
 	configv1 "github.com/openshift/api/config/v1"
+	"github.com/openshift/library-go/pkg/crypto"
 
 	"github.com/argoproj-labs/argocd-operator/common"
 )
@@ -153,27 +156,42 @@ func RedisTLSProtocolVersionString(v configv1.TLSProtocolVersion) string {
 	return "TLSv" + version
 }
 
-func MapCipherSuites(names []string) []string {
-	m := map[string]string{
-		"TLS_AES_128_GCM_SHA256":        "TLS_AES_128_GCM_SHA256",                        // 0x13,0x01
-		"TLS_AES_256_GCM_SHA384":        "TLS_AES_256_GCM_SHA384",                        // 0x13,0x02
-		"TLS_CHACHA20_POLY1305_SHA256":  "TLS_CHACHA20_POLY1305_SHA256",                  // 0x13,0x03
-		"ECDHE-ECDSA-AES128-GCM-SHA256": "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",       // 0xC0,0x2B
-		"ECDHE-RSA-AES128-GCM-SHA256":   "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",         // 0xC0,0x2F
-		"ECDHE-ECDSA-AES256-GCM-SHA384": "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",       // 0xC0,0x2C
-		"ECDHE-RSA-AES256-GCM-SHA384":   "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",         // 0xC0,0x30
-		"ECDHE-ECDSA-CHACHA20-POLY1305": "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256", // 0xCC,0xA9
-		"ECDHE-RSA-CHACHA20-POLY1305":   "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256",   // 0xCC,0xA8
-		// Go's crypto/tls does not support CBC mode and DHE ciphers, so we don't want to include them here.
-		// See:
-		//   - https://github.com/golang/go/issues/26652
-		//   - https://github.com/golang/go/issues/7758
-	}
-	out := make([]string, 0, len(names))
-	for _, name := range names {
-		if mapped, ok := m[name]; ok {
-			out = append(out, mapped)
+var (
+	goSupportedIANACiphersCache map[string]struct{}
+	goSupportedIANACiphersOnce  sync.Once
+)
+
+// goSupportedIANACiphers is built dynamically from Go's crypto/tls package,
+// so it automatically tracks whatever cipher suites the Go runtime actually
+// supports — no manual list to keep in sync as Go versions change.
+// Only tls.CipherSuites() (secure suites) are included; InsecureCipherSuites()
+// are intentionally excluded so weak ciphers are never accepted, even if Go
+// is technically capable of negotiating them.
+func goSupportedIANACiphers() map[string]struct{} {
+	goSupportedIANACiphersOnce.Do(func() {
+		goSupportedIANACiphersCache = make(map[string]struct{})
+		for _, cs := range tls.CipherSuites() {
+			goSupportedIANACiphersCache[cs.Name] = struct{}{}
 		}
+	})
+	return goSupportedIANACiphersCache
+}
+
+// MapCipherSuites converts OpenSSL-style cipher names to their IANA
+// equivalents (via library-go's canonical mapping), keeping only ciphers
+// that Go's crypto/tls considers secure and can actually negotiate.
+// TLS 1.3 ciphers are always included since Go negotiates them
+// automatically and they aren't independently configurable.
+func MapCipherSuites(names []string) []string {
+	supported := goSupportedIANACiphers()
+	// library-go does the OpenSSL -> IANA name translation for the whole batch
+	ianaNames := crypto.OpenSSLToIANACipherSuites(names)
+	out := make([]string, 0, len(ianaNames))
+	for _, iana := range ianaNames {
+		if _, ok := supported[iana]; !ok {
+			continue
+		}
+		out = append(out, iana)
 	}
 	return out
 }
