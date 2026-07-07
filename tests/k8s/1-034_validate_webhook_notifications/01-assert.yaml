@@ -1,0 +1,9 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example
+status:
+  phase: Available
+  notificationsController: Running 
+  applicationController: Running 
+  server: Running 
