@@ -27,6 +27,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	tlsProfile "github.com/argoproj-labs/argocd-operator/pkg/tlsprofile"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -220,7 +221,7 @@ func getArgoImportVolumes(cr *argoprojv1alpha1.ArgoCDExport) []corev1.Volume {
 	return volumes
 }
 
-func getArgoRedisArgs(useTLS bool, centralTLSConfig TLSConfigProfile) []string {
+func getArgoRedisArgs(useTLS bool, centralTLSConfig tlsProfile.TLSConfigProfile) []string {
 	args := make([]string, 0)
 
 	args = append(args, "--save", "")
@@ -243,7 +244,7 @@ func getArgoRedisArgs(useTLS bool, centralTLSConfig TLSConfigProfile) []string {
 }
 
 // BuildRedisArgsFromClusterTLSProfile builds arguments for redis deployment based on central tls config.
-func BuildRedisArgsFromClusterTLSProfile(centralTLSConfig TLSConfigProfile) []string {
+func BuildRedisArgsFromClusterTLSProfile(centralTLSConfig tlsProfile.TLSConfigProfile) []string {
 	if centralTLSConfig.DisableClusterTLSProfile {
 		return nil
 	}
@@ -1259,7 +1260,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 }
 
 // BuildTLSArgsFromClusterTLSProfile builds the command line arguments for the ArgoCD components based on the cluster's TLS profile configuration.
-func BuildTLSArgsFromClusterTLSProfile(centralTLSConfig TLSConfigProfile) []string {
+func BuildTLSArgsFromClusterTLSProfile(centralTLSConfig tlsProfile.TLSConfigProfile) []string {
 	var args []string
 	if centralTLSConfig.DisableClusterTLSProfile {
 		return nil

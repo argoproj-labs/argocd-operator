@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	tlsProfile "github.com/argoproj-labs/argocd-operator/pkg/tlsprofile"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -969,12 +970,12 @@ func TestReconcileImageUpdaterControllerEnabled_PrunesStaleNamespaceRBAC(t *test
 func TestReconcileImageUpdaterDeployment_TLSArgs(t *testing.T) {
 	tests := []struct {
 		name         string
-		centralTLS   TLSConfigProfile
+		centralTLS   tlsProfile.TLSConfigProfile
 		expectedArgs []string
 	}{
 		{
 			name: "central tls profile",
-			centralTLS: TLSConfigProfile{
+			centralTLS: tlsProfile.TLSConfigProfile{
 				DisableClusterTLSProfile: false,
 				MinVersion:               configv1.VersionTLS12,
 				Ciphers: []string{
@@ -991,7 +992,7 @@ func TestReconcileImageUpdaterDeployment_TLSArgs(t *testing.T) {
 		},
 		{
 			name: "Disable cluster tls profile",
-			centralTLS: TLSConfigProfile{
+			centralTLS: tlsProfile.TLSConfigProfile{
 				DisableClusterTLSProfile: true,
 			},
 			expectedArgs: []string{},
