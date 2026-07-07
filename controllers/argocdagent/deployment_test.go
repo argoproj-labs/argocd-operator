@@ -33,6 +33,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/tlsprofile"
 )
 
 // Helper function to create a test deployment
@@ -43,7 +44,7 @@ func makeTestDeployment(cr *argoproj.ArgoCD) *appsv1.Deployment {
 			Namespace: cr.Namespace,
 			Labels:    buildLabelsForAgentPrincipal(cr.Name, testCompName),
 		},
-		Spec: buildPrincipalSpec(testCompName, generateAgentResourceName(cr.Name, testCompName), cr, "", nil, false),
+		Spec: buildPrincipalSpec(testCompName, generateAgentResourceName(cr.Name, testCompName), cr, tlsprofile.TLSConfigProfile{}),
 	}
 }
 
@@ -92,7 +93,7 @@ func TestReconcilePrincipalDeployment_DeploymentDoesNotExist_PrincipalDisabled(t
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil, false)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, tlsprofile.TLSConfigProfile{})
 	assert.NoError(t, err)
 
 	// Verify Deployment was not created
@@ -115,7 +116,7 @@ func TestReconcilePrincipalDeployment_DeploymentDoesNotExist_PrincipalEnabled(t 
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil, false)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, tlsprofile.TLSConfigProfile{})
 	assert.NoError(t, err)
 
 	// Verify Deployment was created
@@ -132,7 +133,7 @@ func TestReconcilePrincipalDeployment_DeploymentDoesNotExist_PrincipalEnabled(t 
 	assert.Equal(t, buildLabelsForAgentPrincipal(cr.Name, testCompName), deployment.Labels)
 
 	// Verify Deployment has expected spec
-	expectedSpec := buildPrincipalSpec(testCompName, saName, cr, "", nil, false)
+	expectedSpec := buildPrincipalSpec(testCompName, saName, cr, tlsprofile.TLSConfigProfile{})
 	assert.Equal(t, expectedSpec.Selector, deployment.Spec.Selector)
 	assert.Equal(t, expectedSpec.Template.Labels, deployment.Spec.Template.Labels)
 	assert.Equal(t, expectedSpec.Template.Spec.ServiceAccountName, deployment.Spec.Template.Spec.ServiceAccountName)
@@ -143,7 +144,7 @@ func TestReconcilePrincipalDeployment_DeploymentDoesNotExist_PrincipalEnabled(t 
 	assert.Equal(t, generateAgentResourceName(cr.Name, testCompName), container.Name)
 	assert.Equal(t, buildPrincipalImage(cr), container.Image)
 	assert.Equal(t, buildArgs(testCompName), container.Args)
-	assert.Equal(t, buildPrincipalContainerEnv(cr, "", nil, false), container.Env)
+	assert.Equal(t, buildPrincipalContainerEnv(cr, tlsprofile.TLSConfigProfile{}), container.Env)
 	assert.Equal(t, buildSecurityContext(), container.SecurityContext)
 	assert.Equal(t, buildPorts(testCompName), container.Ports)
 
@@ -167,7 +168,7 @@ func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalDisabled(t *test
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil, false)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, tlsprofile.TLSConfigProfile{})
 	assert.NoError(t, err)
 
 	// Verify Deployment was deleted
@@ -193,7 +194,7 @@ func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalEnabled_NoChange
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil, false)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, tlsprofile.TLSConfigProfile{})
 	assert.NoError(t, err)
 
 	// Verify Deployment still exists with same spec
@@ -221,7 +222,7 @@ func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalEnabled_ImageCha
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil, false)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, tlsprofile.TLSConfigProfile{})
 	assert.NoError(t, err)
 
 	// Verify Deployment was updated with new image
@@ -250,7 +251,7 @@ func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalEnabled_ServiceA
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, newSAName, cr, sch, "", nil, false)
+	err := ReconcilePrincipalDeployment(cl, testCompName, newSAName, cr, sch, tlsprofile.TLSConfigProfile{})
 	assert.NoError(t, err)
 
 	// Verify Deployment was updated with new service account
@@ -277,7 +278,7 @@ func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalNotSet(t *testin
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil, false)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, tlsprofile.TLSConfigProfile{})
 	assert.NoError(t, err)
 
 	// Verify Deployment was deleted
@@ -300,7 +301,7 @@ func TestReconcilePrincipalDeployment_DeploymentDoesNotExist_AgentNotSet(t *test
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil, false)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, tlsprofile.TLSConfigProfile{})
 	assert.NoError(t, err)
 
 	// Verify Deployment was not created
@@ -326,7 +327,7 @@ func TestReconcilePrincipalDeployment_DeploymentExists_AgentNotSet(t *testing.T)
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil, false)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, tlsprofile.TLSConfigProfile{})
 	assert.NoError(t, err)
 
 	// Verify Deployment was deleted
@@ -349,7 +350,7 @@ func TestReconcilePrincipalDeployment_VerifyDeploymentSpec(t *testing.T) {
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil, false)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, tlsprofile.TLSConfigProfile{})
 	assert.NoError(t, err)
 
 	// Verify Deployment was created
@@ -459,7 +460,7 @@ func TestReconcilePrincipalDeployment_CustomImage(t *testing.T) {
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil, false)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, tlsprofile.TLSConfigProfile{})
 	assert.NoError(t, err)
 
 	// Verify Deployment was created with custom image
@@ -483,7 +484,7 @@ func TestReconcilePrincipalDeployment_DefaultImage(t *testing.T) {
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil, false)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, tlsprofile.TLSConfigProfile{})
 	assert.NoError(t, err)
 
 	// Verify Deployment was created with default image
@@ -507,7 +508,7 @@ func TestReconcilePrincipalDeployment_VolumeMountsAndVolumes(t *testing.T) {
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil, false)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, tlsprofile.TLSConfigProfile{})
 	assert.NoError(t, err)
 
 	// Verify Deployment was created
@@ -641,7 +642,7 @@ func TestReconcilePrincipalDeployment_ResourceRequirements(t *testing.T) {
 	sch := makeTestReconcilerScheme()
 	cl := makeTestReconcilerClient(sch, resObjs)
 
-	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil, false)
+	err := ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, tlsprofile.TLSConfigProfile{})
 	assert.NoError(t, err)
 
 	deployment := &appsv1.Deployment{}
@@ -672,7 +673,7 @@ func TestReconcilePrincipalDeployment_ResourceRequirements(t *testing.T) {
 	}
 	cr.Spec.ArgoCDAgent.Principal.Resources = &updatedResources
 
-	err = ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, "", nil, false)
+	err = ReconcilePrincipalDeployment(cl, testCompName, saName, cr, sch, tlsprofile.TLSConfigProfile{})
 	assert.NoError(t, err)
 
 	err = cl.Get(context.TODO(), types.NamespacedName{
@@ -685,26 +686,29 @@ func TestReconcilePrincipalDeployment_ResourceRequirements(t *testing.T) {
 }
 
 func TestGetPrincipalTlsConfig(t *testing.T) {
+
 	tests := []struct {
-		name                     string
-		centralMinVersion        configv1.TLSProtocolVersion
-		centralCiphers           []string
-		disableCentralTLSProfile bool
-		expected                 map[string]string
-		wantErr                  bool
+		name       string
+		tlsProfile tlsprofile.TLSConfigProfile
+		expected   map[string]string
+		wantErr    bool
 	}{
 		{
-			name:                     "disableCentralTLSProfile for argocd agent",
-			disableCentralTLSProfile: true,
-			expected:                 nil,
-			wantErr:                  false,
+			name: "disableClusterTLSProfile for argocd agent",
+			tlsProfile: tlsprofile.TLSConfigProfile{
+				DisableClusterTLSProfile: true,
+			},
+			expected: nil,
+			wantErr:  false,
 		},
 		{
-			name:              "central tls profile with tls 1.2",
-			centralMinVersion: configv1.VersionTLS12,
-			centralCiphers: []string{
-				"ECDHE-RSA-AES128-GCM-SHA256",
-				"TLS_AES_128_GCM_SHA256",
+			name: "central tls profile with tls 1.2",
+			tlsProfile: tlsprofile.TLSConfigProfile{
+				MinVersion: configv1.VersionTLS12,
+				Ciphers: []string{
+					"ECDHE-RSA-AES128-GCM-SHA256",
+					"TLS_AES_128_GCM_SHA256",
+				},
 			},
 			expected: map[string]string{
 				"--tlsminversion": "tls1.2",
@@ -713,11 +717,13 @@ func TestGetPrincipalTlsConfig(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:              "central tls profile with tls 1.3",
-			centralMinVersion: configv1.VersionTLS13,
-			centralCiphers: []string{
-				"TLS_AES_128_GCM_SHA256",
-				"ECDHE-RSA-AES128-GCM-SHA256",
+			name: "central tls profile with tls 1.3",
+			tlsProfile: tlsprofile.TLSConfigProfile{
+				MinVersion: configv1.VersionTLS13,
+				Ciphers: []string{
+					"TLS_AES_128_GCM_SHA256",
+					"ECDHE-RSA-AES128-GCM-SHA256",
+				},
 			},
 			expected: map[string]string{
 				"--tlsminversion": "tls1.3",
@@ -726,11 +732,13 @@ func TestGetPrincipalTlsConfig(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:              "central tls with only tls13 ciphers filtered",
-			centralMinVersion: configv1.VersionTLS12,
-			centralCiphers: []string{
-				"TLS_AES_128_GCM_SHA256",
-				"TLS_AES_256_GCM_SHA384",
+			name: "central tls with only tls13 ciphers filtered",
+			tlsProfile: tlsprofile.TLSConfigProfile{
+				MinVersion: configv1.VersionTLS12,
+				Ciphers: []string{
+					"TLS_AES_128_GCM_SHA256",
+					"TLS_AES_256_GCM_SHA384",
+				},
 			},
 			expected: map[string]string{
 				"--tlsminversion": "tls1.2",
@@ -738,10 +746,12 @@ func TestGetPrincipalTlsConfig(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:              "central tls with mapped non tls13 ciphers",
-			centralMinVersion: configv1.VersionTLS12,
-			centralCiphers: []string{
-				"ECDHE-RSA-AES256-GCM-SHA384",
+			name: "central tls with mapped non tls13 ciphers",
+			tlsProfile: tlsprofile.TLSConfigProfile{
+				MinVersion: configv1.VersionTLS12,
+				Ciphers: []string{
+					"ECDHE-RSA-AES256-GCM-SHA384",
+				},
 			},
 			expected: map[string]string{
 				"--tlsminversion": "tls1.2",
@@ -750,10 +760,12 @@ func TestGetPrincipalTlsConfig(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:              "central tls with empty cipher mapping",
-			centralMinVersion: configv1.VersionTLS12,
-			centralCiphers: []string{
-				"INVALID",
+			name: "central tls with empty cipher mapping",
+			tlsProfile: tlsprofile.TLSConfigProfile{
+				MinVersion: configv1.VersionTLS12,
+				Ciphers: []string{
+					"INVALID",
+				},
 			},
 			expected: map[string]string{
 				"--tlsminversion": "tls1.2",
@@ -765,9 +777,7 @@ func TestGetPrincipalTlsConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := getPrincipalTlsConfig(
-				tt.centralMinVersion,
-				tt.centralCiphers,
-				tt.disableCentralTLSProfile,
+				tt.tlsProfile,
 			)
 			if !reflect.DeepEqual(got, tt.expected) {
 				t.Fatalf("expected %#v got %#v", tt.expected, got)

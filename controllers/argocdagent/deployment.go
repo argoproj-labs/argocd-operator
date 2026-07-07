@@ -31,16 +31,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	configv1 "github.com/openshift/api/config/v1"
-
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+
+	tlsProfile "github.com/argoproj-labs/argocd-operator/pkg/tlsprofile"
 )
 
 // ReconcilePrincipalDeployment reconciles the ArgoCD agent principal deployment.
 // It creates, updates, or deletes the deployment based on the ArgoCD CR configuration.
-func ReconcilePrincipalDeployment(client client.Client, compName, saName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme, centralTLSProfileMinVersion configv1.TLSProtocolVersion, centralTLSProfileCiphers []string, DisableCentralTLSProfile bool) error {
+func ReconcilePrincipalDeployment(client client.Client, compName, saName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme, centralTLSProfile tlsProfile.TLSConfigProfile) error {
 	deployment := buildDeployment(compName, cr)
 
 	// Check if deployment already exists
@@ -62,7 +62,7 @@ func ReconcilePrincipalDeployment(client client.Client, compName, saName string,
 			return nil
 		}
 
-		deployment, changed := updateDeploymentIfChanged(compName, saName, cr, deployment, centralTLSProfileMinVersion, centralTLSProfileCiphers, DisableCentralTLSProfile)
+		deployment, changed := updateDeploymentIfChanged(compName, saName, cr, deployment, centralTLSProfile)
 		if changed {
 			argoutil.LogResourceUpdate(log, deployment, "principal deployment is being updated")
 			if err := client.Update(context.TODO(), deployment); err != nil {
@@ -82,7 +82,7 @@ func ReconcilePrincipalDeployment(client client.Client, compName, saName string,
 	}
 
 	argoutil.LogResourceCreation(log, deployment)
-	deployment.Spec = buildPrincipalSpec(compName, saName, cr, centralTLSProfileMinVersion, centralTLSProfileCiphers, DisableCentralTLSProfile)
+	deployment.Spec = buildPrincipalSpec(compName, saName, cr, centralTLSProfile)
 	if err := client.Create(context.TODO(), deployment); err != nil {
 		return fmt.Errorf("failed to create principal deployment %s in namespace %s: %v", deployment.Name, cr.Namespace, err)
 	}
@@ -99,9 +99,9 @@ func buildDeployment(compName string, cr *argoproj.ArgoCD) *appsv1.Deployment {
 	}
 }
 
-func buildPrincipalSpec(compName, saName string, cr *argoproj.ArgoCD, centralTLSProfileMinVersion configv1.TLSProtocolVersion, centralTLSProfileCiphers []string, DisableCentralTLSProfile bool) appsv1.DeploymentSpec {
+func buildPrincipalSpec(compName, saName string, cr *argoproj.ArgoCD, centralTLSProfile tlsProfile.TLSConfigProfile) appsv1.DeploymentSpec {
 	redisAuthVolume, redisAuthMount := argoutil.MountRedisAuthToArgo(cr)
-	envParams := buildPrincipalContainerEnv(cr, centralTLSProfileMinVersion, centralTLSProfileCiphers, DisableCentralTLSProfile)
+	envParams := buildPrincipalContainerEnv(cr, centralTLSProfile)
 	return appsv1.DeploymentSpec{
 		Selector: buildSelector(compName, cr),
 		Template: corev1.PodTemplateSpec{
@@ -253,7 +253,7 @@ func buildVolumes() []corev1.Volume {
 // updateDeploymentIfChanged compares the current deployment with the desired state
 // and updates it if any changes are detected. Returns the updated deployment and a boolean
 // indicating whether any changes were made.
-func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, deployment *appsv1.Deployment, centralTLSProfileMinVersion configv1.TLSProtocolVersion, centralTLSProfileCiphers []string, DisableCentralTLSProfile bool) (*appsv1.Deployment, bool) {
+func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, deployment *appsv1.Deployment, centralTLSProfile tlsProfile.TLSConfigProfile) (*appsv1.Deployment, bool) {
 	changed := false
 
 	if !reflect.DeepEqual(deployment.Spec.Selector, buildSelector(compName, cr)) {
@@ -279,7 +279,7 @@ func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, dep
 		changed = true
 		deployment.Spec.Template.Spec.Containers[0].Name = generateAgentResourceName(cr.Name, compName)
 	}
-	envParams := buildPrincipalContainerEnv(cr, centralTLSProfileMinVersion, centralTLSProfileCiphers, DisableCentralTLSProfile)
+	envParams := buildPrincipalContainerEnv(cr, centralTLSProfile)
 	if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Env, envParams) {
 		log.Info("deployment container env is being updated")
 		changed = true
@@ -335,8 +335,8 @@ func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, dep
 	return deployment, changed
 }
 
-func buildPrincipalContainerEnv(cr *argoproj.ArgoCD, centralTLSProfileMinVersion configv1.TLSProtocolVersion, centralTLSProfileCiphers []string, DisableCentralTLSProfile bool) []corev1.EnvVar {
-	arguments := getPrincipalTlsConfig(centralTLSProfileMinVersion, centralTLSProfileCiphers, DisableCentralTLSProfile)
+func buildPrincipalContainerEnv(cr *argoproj.ArgoCD, centralTLSProfile tlsProfile.TLSConfigProfile) []corev1.EnvVar {
+	arguments := getPrincipalTlsConfig(centralTLSProfile)
 	env := []corev1.EnvVar{
 		{
 			Name:  EnvArgoCDPrincipalLogLevel,
@@ -449,18 +449,18 @@ const (
 	EnvArgoCDPrincipalCipherSuites              = "ARGOCD_PRINCIPAL_TLS_CIPHERSUITES"
 )
 
-func getPrincipalTlsConfig(centralTLSProfileMinVersion configv1.TLSProtocolVersion, centralTLSProfileCiphers []string, disableCentralTLSProfile bool) map[string]string {
-	if disableCentralTLSProfile {
+func getPrincipalTlsConfig(centralTLSProfile tlsProfile.TLSConfigProfile) map[string]string {
+	if centralTLSProfile.DisableClusterTLSProfile {
 		return nil
 	}
 	arguments := make(map[string]string)
-	if v := argoutil.AgentTLSProtocolVersionString(centralTLSProfileMinVersion); v != "" {
+	if v := argoutil.AgentTLSProtocolVersionString(centralTLSProfile.MinVersion); v != "" {
 		arguments["--tlsminversion"] = v
 	}
-	if ciphers := argoutil.MapCipherSuites(centralTLSProfileCiphers); len(ciphers) > 0 {
+	if ciphers := argoutil.MapCipherSuites(centralTLSProfile.Ciphers); len(ciphers) > 0 {
 		// Go does not allow configuring TLS 1.3 cipher suites.
 		// Only filter them when TLS versions below 1.3 are used.
-		if centralTLSProfileMinVersion != "VersionTLS13" {
+		if centralTLSProfile.MinVersion != "VersionTLS13" {
 			tls13Ciphers := map[string]bool{
 				"TLS_AES_128_GCM_SHA256":       true,
 				"TLS_AES_256_GCM_SHA384":       true,
