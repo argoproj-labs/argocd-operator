@@ -53,7 +53,7 @@ To override the name of the bundle image, specify the `BUNDLE_IMG` tag, for exam
 make bundle-build bundle-push BUNDLE_IMG=quay.io/my-org/argocd-operator-bundle:latest
 ```
 
-### [WIP] Development Process
+### Development Process
 
 This is the basic process for development. First, create a branch for the new feature or bug fix.
 
@@ -148,11 +148,24 @@ kubectl apply -f <path_to_yaml_file>
 
 For configuring specific properties based on the use case, you can look at the entire list of the configurable properties [here.](https://argocd-operator.readthedocs.io/en/latest/reference/argocd/)
 
-### Build and Verify Argo CD Operator Docs
+### Build and Serve Argo CD Operator Docs
+
+To run the docs locally.
 
 ```bash
 make serve-docs
 ```
+
+#### Developing the ReadTheDocs.org build
+
+The documentation build spec is in `.readthedocs.yml`.
+Since it is not part of the CI verification and there does not seem to be a way to interpret the file locally, this is a process to make non-trivial changes to the procedure.
+
+- Create a fork of this repository on github.
+- On https://app.readthedocs.org/, add new personal project referencing the forked repository.
+  - You may need to install the "Community" app for your org/user. Make sure to restrict to the forked repo only.
+- Push changes to the forked repo's branch configured in the previous step.
+- Check the build log on app.readthedocs.org, resulting documentation on https://MY_RTD_PROJECT_NAME.readthedocs.io/
 
 ### Default Argo CD Version
 
