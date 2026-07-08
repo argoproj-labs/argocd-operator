@@ -265,10 +265,10 @@ type ArgoCDCommitServerSpec struct {
 	LogFormat string `json:"logFormat,omitempty"`
 
 	// Resources defines the Compute Resources required by the container for the component.
-	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Requirements",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server","urn:alm:descriptor:com.tectonic.ui:resourceRequirements"}
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Requirements",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:CommitServer","urn:alm:descriptor:com.tectonic.ui:resourceRequirements"}
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 
-	// Env lets specifies the environment veriables for the pods.
+	// Env lets specifies the environment variables for the pods.
 	Env []corev1.EnvVar `json:"env,omitempty"`
 
 	// Custom annotations to pods deployed by the operator

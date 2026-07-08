@@ -60,7 +60,6 @@ func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoproj.ArgoCD) error {
 	params := getPolicyRuleList(r.Client, cr)
 
 	for _, param := range params {
-		log.Info("reconcileServiceAccountPermissions", "name", param.name)
 		if err := r.reconcileServiceAccountPermissions(param.name, param.policyRule, cr); err != nil {
 			return err
 		}
@@ -69,7 +68,6 @@ func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoproj.ArgoCD) error {
 	clusterParams := getPolicyRuleClusterRoleList()
 
 	for _, clusterParam := range clusterParams {
-		log.Info("reconcileServiceAccountClusterPermissions", "name", clusterParam.name)
 		if err := r.reconcileServiceAccountClusterPermissions(clusterParam.name, clusterParam.policyRule, cr); err != nil {
 			return err
 		}

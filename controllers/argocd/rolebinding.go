@@ -103,7 +103,6 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 	var sa *corev1.ServiceAccount
 	var error error
 
-	log.Info("reconcileRoleBinding", "name", name, "rules", rules)
 	if sa, error = r.reconcileServiceAccount(name, cr); error != nil {
 		return error
 	}
