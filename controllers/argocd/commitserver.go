@@ -90,7 +90,7 @@ func (r *ReconcileArgoCD) reconcileCommitServerDeployment(cr *argoproj.ArgoCD) e
 	}
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
-		Name: "argocd-commit-server",
+		Name:            "argocd-commit-server",
 		Command:         getCommitServerCommand(cr),
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
@@ -383,7 +383,7 @@ func (r *ReconcileArgoCD) reconcileCommitServerService(cr *argoproj.ArgoCD) erro
 			argoutil.LogResourceDeletion(log, svc, "disabled")
 			return r.Delete(context.TODO(), svc)
 		}
-		
+
 		var changes []string
 		if !reflect.DeepEqual(svc.Spec.Type, existingSVC.Spec.Type) {
 			existingSVC.Spec.Type = svc.Spec.Type
