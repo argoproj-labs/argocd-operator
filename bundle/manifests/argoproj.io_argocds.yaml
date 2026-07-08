@@ -1094,7 +1094,7 @@ spec:
                     description: Custom annotations to pods deployed by the operator
                     type: object
                   env:
-                    description: Env lets specifies the environment veriables for
+                    description: Env lets specifies the environment variables for
                       the pods.
                     items:
                       description: EnvVar represents an environment variable present
@@ -14186,7 +14186,7 @@ spec:
                     description: Custom annotations to pods deployed by the operator
                     type: object
                   env:
-                    description: Env lets specifies the environment veriables for
+                    description: Env lets specifies the environment variables for
                       the pods.
                     items:
                       description: EnvVar represents an environment variable present

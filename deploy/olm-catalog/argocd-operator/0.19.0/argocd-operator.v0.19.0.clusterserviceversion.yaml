@@ -257,7 +257,7 @@ metadata:
     capabilities: Deep Insights
     categories: Integration & Delivery
     certified: "false"
-    createdAt: "2026-07-07T13:26:08Z"
+    createdAt: "2026-07-08T07:59:27Z"
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v1.35.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
@@ -1169,7 +1169,7 @@ spec:
         displayName: Resource Requirements
         path: commitServer.resources
         x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:CommitServer
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       - description: 'Deprecated: ConfigManagementPlugins field is no longer supported.
           Argo CD now requires plugins to be defined as sidecar containers of repo
