@@ -946,9 +946,15 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			argoCD.Spec.DefaultClusterScopedRoleDisabled = true
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 
+			By("Verify Argo CD CR is reconciled")
+			Eventually(principalDeployment).Should(k8sFixture.ExistByName())
+
 			By("Verify ClusterRole and ClusterRoleBinding do not exist")
 			Eventually(clusterRole, "60s", "2s").Should(k8sFixture.NotExistByName())
 			Eventually(clusterRoleBinding, "60s", "2s").Should(k8sFixture.NotExistByName())
+
+			Consistently(clusterRole, "15s", "2s").Should(k8sFixture.NotExistByName())
+			Consistently(clusterRoleBinding, "15s", "2s").Should(k8sFixture.NotExistByName())
 
 			By("Namespaced RBAC objects should still exist")
 			Eventually(role, "60s", "2s").Should(k8sFixture.ExistByName())
@@ -967,6 +973,8 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			})
 			Eventually(clusterRole, "60s", "2s").Should(k8sFixture.NotExistByName())
 			Eventually(clusterRoleBinding, "60s", "2s").Should(k8sFixture.NotExistByName())
+			Consistently(clusterRole, "10s", "2s").Should(k8sFixture.NotExistByName())
+			Consistently(clusterRoleBinding, "10s", "2s").Should(k8sFixture.NotExistByName())
 		})
 	})
 })
