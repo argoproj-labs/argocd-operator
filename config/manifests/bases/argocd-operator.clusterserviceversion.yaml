@@ -312,6 +312,22 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: LogFormat refers to the log level to be used by the component.
+          Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are
+          text or json.
+        displayName: Log Format
+        path: commitServer.logFormat
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:CommitServer
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: LogLevel refers to the log level to be used by the component.
+          Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug,
+          info, error, and warn.
+        displayName: Log Level
+        path: commitServer.logLevel
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:CommitServer
+        - urn:alm:descriptor:com.tectonic.ui:text
       - description: Resources defines the Compute Resources required by the container
           for the component.
         displayName: Resource Requirements

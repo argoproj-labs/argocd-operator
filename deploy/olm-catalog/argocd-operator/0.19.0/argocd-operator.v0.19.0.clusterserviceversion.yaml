@@ -257,7 +257,7 @@ metadata:
     capabilities: Deep Insights
     categories: Integration & Delivery
     certified: "false"
-    createdAt: "2026-07-02T09:18:34Z"
+    createdAt: "2026-07-07T13:26:08Z"
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v1.35.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
@@ -1148,6 +1148,22 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: LogFormat refers to the log level to be used by the component.
+          Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are
+          text or json.
+        displayName: Log Format
+        path: commitServer.logFormat
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:CommitServer
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: LogLevel refers to the log level to be used by the component.
+          Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug,
+          info, error, and warn.
+        displayName: Log Level
+        path: commitServer.logLevel
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:CommitServer
+        - urn:alm:descriptor:com.tectonic.ui:text
       - description: Resources defines the Compute Resources required by the container
           for the component.
         displayName: Resource Requirements
