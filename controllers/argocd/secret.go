@@ -942,7 +942,7 @@ func (r *ReconcileArgoCD) reconcileSecrets(cr *argoproj.ArgoCD) error {
 
 func (r *ReconcileArgoCD) reconcileDexTokenRequestSecret(cr *argoproj.ArgoCD) error {
 	secret := argoutil.NewSecretWithSuffix(cr, common.ArgoCDDefaultDexServiceAccountName+"-token")
-	err := r.Client.Get(context.TODO(), client.ObjectKey{Namespace: cr.Namespace, Name: secret.Name}, secret)
+	err := r.Get(context.TODO(), client.ObjectKey{Namespace: cr.Namespace, Name: secret.Name}, secret)
 	if apierrors.IsNotFound(err) {
 		return nil
 	}

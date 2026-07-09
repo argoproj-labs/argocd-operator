@@ -91,8 +91,9 @@ func TestReconcileArgoCD_DexWorkloads(t *testing.T) {
 	a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 		Provider: argoproj.SSOProviderTypeDex,
 		Dex: &argoproj.ArgoCDDexSpec{
-			Config:         "test-config",
-			OpenShiftOAuth: false,
+			Config:               "test-config",
+			OpenShiftOAuth:       false,
+			EnableDexTokenExpiry: boolPtr(true),
 		},
 	}
 
