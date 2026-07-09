@@ -17793,6 +17793,12 @@ spec:
               disableAdmin:
                 description: DisableAdmin will disable the admin user.
                 type: boolean
+              enableDexTokenExpiry:
+                description: |-
+                  EnableDexTokenExpiry enables the short-lived Dex token renewal feature.
+                  When true, the operator uses TokenRequest API for time-limited tokens.
+                  When false (default), the operator uses the legacy non-expiring token approach.
+                type: boolean
               extraConfig:
                 additionalProperties:
                   type: string

@@ -924,6 +924,11 @@ func (a *ArgoCDNetworkPolicySpec) IsEnabled() bool {
 // +k8s:openapi-gen=true
 // +kubebuilder:validation:XValidation:rule="!(has(self.sso) && has(self.oidcConfig))",message="spec.sso and spec.oidcConfig cannot both be set"
 type ArgoCDSpec struct {
+	// EnableDexTokenExpiry enables the short-lived Dex token renewal feature.
+	// When true, the operator uses TokenRequest API for time-limited tokens.
+	// When false (default), the operator uses the legacy non-expiring token approach.
+	// +kubebuilder:validation:Optional
+	EnableDexTokenExpiry *bool `json:"enableDexTokenExpiry,omitempty"`
 
 	// ArgoCDApplicationSet defines whether the Argo CD ApplicationSet controller should be installed.
 	ApplicationSet *ArgoCDApplicationSet `json:"applicationSet,omitempty"`

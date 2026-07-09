@@ -376,7 +376,7 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 
 	// If Dex is in use, requeue before the token reaches its renewal threshold so
 	// the operator proactively renews it without waiting for an external event.
-	if UseDex(argocd) {
+	if UseDex(argocd) && isDexTokenExpiryFeatureEnabled(argocd) {
 		if v, ok := r.dexTokenRequeueAfter.Load(argocd.Namespace); ok {
 			if d, ok := v.(time.Duration); ok {
 				return reconcile.Result{RequeueAfter: d}, argocd, argoCDStatus, nil

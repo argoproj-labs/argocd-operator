@@ -76,8 +76,27 @@ func needsDexTokenRenewal(secret *corev1.Secret) bool {
 	return time.Until(expiry) < dexServerTokenRenewalThreshold()
 }
 
+// isDexTokenExpiryFeatureEnabled returns true if Dex token renewal expiry is enabled.
+// Users can set enableDexTokenExpiry: false (default) in the ArgoCD CR to use the legacy non-expiring token approach.
+func isDexTokenExpiryFeatureEnabled(cr *argoproj.ArgoCD) bool {
+	if cr.Spec.EnableDexTokenExpiry == nil {
+		return false // Enabled by default (old behavior with non-expiring tokens)
+	}
+	return *cr.Spec.EnableDexTokenExpiry
+}
+
 // getDexOAuthClientSecret returns a time-limited Dex OAuth client token via the TokenRequest API.
+// If token renewal is disabled via the feature flag, it falls back to the legacy approach.
 func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string, error) {
+	// Check if token expiry feature is enabled, by default it is false, so we use the non-expiry legacy approach
+	if !isDexTokenExpiryFeatureEnabled(cr) {
+		// Use legacy approach (non-expiring tokens)
+		log.Info("Dex token renewal feature is disabled, using legacy non-expiring token approach")
+		return r.getDexOAuthClientSecretLegacy(cr)
+	}
+
+	// Use new TokenRequest API approach (PR #2163)
+	log.Info("Dex token renewal feature is enabled, using TokenRequest API for short-lived tokens")
 	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr)
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
 		return nil, err
@@ -156,6 +175,76 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string,
 	}
 
 	token := tokenRequest.Status.Token
+	return &token, nil
+}
+
+// getDexOAuthClientSecretLegacy returns the legacy non-expiring Dex OAuth client secret.
+// This is the original implementation before PR #2163.
+// It uses persistent service account token secrets without automatic renewal.
+func (r *ReconcileArgoCD) getDexOAuthClientSecretLegacy(cr *argoproj.ArgoCD) (*string, error) {
+	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr)
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
+		return nil, err
+	}
+
+	// Find the token secret
+	var tokenSecret *corev1.ObjectReference
+	for _, saSecret := range sa.Secrets {
+		if strings.Contains(saSecret.Name, "token") {
+			tokenSecret = &saSecret
+			break
+		}
+	}
+
+	if tokenSecret == nil {
+		// This change of creating secret for dex service account is due to
+		// the change in Kubernetes v1.24 that reduces secret-based service account tokens.
+		// From k8s v1.24 onwards, no default secret for service account is created.
+		// However, for dex to work we need to provide the token of the secret used
+		// by the dex service account as an OAuth token. This change helps achieve that.
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				GenerateName: "argocd-dex-server-token-",
+				Namespace:    cr.Namespace,
+				Annotations: map[string]string{
+					corev1.ServiceAccountNameKey: sa.Name,
+				},
+			},
+			Type: corev1.SecretTypeServiceAccountToken,
+		}
+		argoutil.AddTrackedByOperatorLabel(&secret.ObjectMeta)
+		argoutil.LogResourceCreation(log, secret)
+
+		err := r.Create(context.TODO(), secret)
+		if err != nil {
+			return nil, errors.New("unable to locate and create ServiceAccount token for OAuth client secret")
+		}
+
+		err = controllerutil.SetControllerReference(cr, secret, r.Scheme)
+		if err != nil {
+			return nil, err
+		}
+
+		tokenSecret = &corev1.ObjectReference{
+			Name:      secret.Name,
+			Namespace: cr.Namespace,
+		}
+		sa.Secrets = append(sa.Secrets, *tokenSecret)
+
+		argoutil.LogResourceUpdate(log, sa, "adding ServiceAccount token for OAuth client secret")
+		err = r.Update(context.TODO(), sa)
+		if err != nil {
+			return nil, errors.New("failed to add ServiceAccount token for OAuth client secret")
+		}
+	}
+
+	// Fetch the secret to obtain the token
+	secret := argoutil.NewSecretWithName(cr, tokenSecret.Name)
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, secret.Name, secret); err != nil {
+		return nil, err
+	}
+
+	token := string(secret.Data["token"])
 	return &token, nil
 }
 
