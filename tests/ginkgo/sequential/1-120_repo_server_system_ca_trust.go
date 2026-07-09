@@ -110,7 +110,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 
 			Eventually(argoCD, "5m", "5s").Should(argocdFixture.HaveServerStatus("Running"))
-			Consistently(argoCD, "20s", "5s").Should(argocdFixture.HaveRepoStatus("Pending"))
+			Consistently(argoCD, "10s", "5s").Should(argocdFixture.HaveRepoStatus("Pending"))
 			Expect(argoCD).ShouldNot(argocdFixture.BeAvailable())
 		})
 
@@ -748,7 +748,7 @@ func expectReconcile(k8sClient client.Client, ns *corev1.Namespace, reconcile bo
 			WithOffset(1).
 			Should(Not(Equal(oldPodName)), "expected pod to reconcile")
 	} else {
-		Consistently(podNameFunc, "30s", "5s").
+		Consistently(podNameFunc, "10s", "2s").
 			WithOffset(1).
 			Should(Equal(oldPodName), "expected pod not to reconcile")
 	}
