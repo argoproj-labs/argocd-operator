@@ -1287,7 +1287,7 @@ func TestReconcileArgocd_reconcileRepoServerRedisTLS(t *testing.T) {
 		wantCmd := []string{
 			"uid_entrypoint.sh",
 			"argocd-repo-server",
-			"--redis", "argocd-redis.argocd.svc.cluster.local:6379",
+			"--redis", "argocd-redis.argocd.svc.cluster.local.:6379",
 			"--redis-use-tls",
 			"--redis-ca-certificate", "/app/config/reposerver/tls/redis/tls.crt",
 			"--loglevel", "info",
@@ -1323,7 +1323,7 @@ func TestReconcileArgocd_reconcileRepoServerRedisTLS(t *testing.T) {
 		wantCmd := []string{
 			"uid_entrypoint.sh",
 			"argocd-repo-server",
-			"--redis", "argocd-redis.argocd.svc.cluster.local:6379",
+			"--redis", "argocd-redis.argocd.svc.cluster.local.:6379",
 			"--redis-use-tls",
 			"--redis-insecure-skip-tls-verify",
 			"--loglevel", "info",
@@ -1365,11 +1365,11 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 					"--staticassets",
 					"/shared/app",
 					"--dex-server",
-					"https://argocd-dex-server.argocd.svc.cluster.local:5556",
+					"https://argocd-dex-server.argocd.svc.cluster.local.:5556",
 					"--repo-server",
-					"argocd-repo-server.argocd.svc.cluster.local:8081",
+					"argocd-repo-server.argocd.svc.cluster.local.:8081",
 					"--redis",
-					"argocd-redis.argocd.svc.cluster.local:6379",
+					"argocd-redis.argocd.svc.cluster.local.:6379",
 					"--loglevel",
 					"info",
 					"--logformat",
@@ -1425,11 +1425,11 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 		"--staticassets",
 		"/shared/app",
 		"--dex-server",
-		"https://argocd-dex-server.argocd.svc.cluster.local:5556",
+		"https://argocd-dex-server.argocd.svc.cluster.local.:5556",
 		"--repo-server",
-		"argocd-repo-server.argocd.svc.cluster.local:8081",
+		"argocd-repo-server.argocd.svc.cluster.local.:8081",
 		"--redis",
-		"argocd-redis.argocd.svc.cluster.local:6379",
+		"argocd-redis.argocd.svc.cluster.local.:6379",
 		"--redis-use-tls",
 		"--redis-ca-certificate",
 		"/app/config/server/tls/redis/tls.crt",
@@ -1456,11 +1456,11 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 		"--staticassets",
 		"/shared/app",
 		"--dex-server",
-		"https://argocd-dex-server.argocd.svc.cluster.local:5556",
+		"https://argocd-dex-server.argocd.svc.cluster.local.:5556",
 		"--repo-server",
-		"argocd-repo-server.argocd.svc.cluster.local:8081",
+		"argocd-repo-server.argocd.svc.cluster.local.:8081",
 		"--redis",
-		"argocd-redis.argocd.svc.cluster.local:6379",
+		"argocd-redis.argocd.svc.cluster.local.:6379",
 		"--loglevel",
 		"info",
 		"--logformat",
@@ -1511,7 +1511,7 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 	// When one of the ExtraCommandArgs already exists in cmd with same or different value
 	a.Spec.Server.ExtraCommandArgs = []string{
 		"--redis",
-		"foo.scv.cluster.local:6379",
+		"foo.scv.cluster.local.:6379",
 	}
 
 	wantCmd := []string{
@@ -1519,15 +1519,15 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 		"--staticassets",
 		"/shared/app",
 		"--dex-server",
-		"https://argocd-dex-server.argocd.svc.cluster.local:5556",
+		"https://argocd-dex-server.argocd.svc.cluster.local.:5556",
 		"--repo-server",
-		"argocd-repo-server.argocd.svc.cluster.local:8081",
+		"argocd-repo-server.argocd.svc.cluster.local.:8081",
 		"--loglevel",
 		"info",
 		"--logformat",
 		"text",
 		"--redis",
-		"foo.scv.cluster.local:6379",
+		"foo.scv.cluster.local.:6379",
 	}
 
 	assert.NoError(t, r.reconcileServerDeployment(a, false))
@@ -1856,11 +1856,11 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 					"--staticassets",
 					"/shared/app",
 					"--dex-server",
-					"https://argocd-dex-server.argocd.svc.cluster.local:5556",
+					"https://argocd-dex-server.argocd.svc.cluster.local.:5556",
 					"--repo-server",
-					"argocd-repo-server.argocd.svc.cluster.local:8081",
+					"argocd-repo-server.argocd.svc.cluster.local.:8081",
 					"--redis",
-					"argocd-redis.argocd.svc.cluster.local:6379",
+					"argocd-redis.argocd.svc.cluster.local.:6379",
 					"--loglevel",
 					"info",
 					"--logformat",
@@ -1941,11 +1941,11 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 					"--staticassets",
 					"/shared/app",
 					"--dex-server",
-					"https://argocd-dex-server.argocd.svc.cluster.local:5556",
+					"https://argocd-dex-server.argocd.svc.cluster.local.:5556",
 					"--repo-server",
-					"argocd-repo-server.argocd.svc.cluster.local:8081",
+					"argocd-repo-server.argocd.svc.cluster.local.:8081",
 					"--redis",
-					"argocd-redis.argocd.svc.cluster.local:6379",
+					"argocd-redis.argocd.svc.cluster.local.:6379",
 					"--loglevel",
 					"info",
 					"--logformat",
@@ -2675,7 +2675,7 @@ func TestArgoCDRepoServerDeploymentCommand(t *testing.T) {
 	// When one of the ExtraCommandArgs already exists in cmd with same or different value
 	a.Spec.Repo.ExtraRepoCommandArgs = []string{
 		"--redis",
-		"foo.scv.cluster.local:6379",
+		"foo.scv.cluster.local.:6379",
 	}
 
 	wantCmd := []string{
@@ -2686,7 +2686,7 @@ func TestArgoCDRepoServerDeploymentCommand(t *testing.T) {
 		"--logformat",
 		"text",
 		"--redis",
-		"foo.scv.cluster.local:6379",
+		"foo.scv.cluster.local.:6379",
 	}
 
 	assert.NoError(t, r.reconcileRepoDeployment(a, false))
