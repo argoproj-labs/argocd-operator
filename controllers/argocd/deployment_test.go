@@ -22,6 +22,7 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	tlsProfile "github.com/argoproj-labs/argocd-operator/pkg/tlsprofile"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
@@ -3140,13 +3141,13 @@ func TestReconcileArgoCD_reconcileRedisDeployment_customLabelsAndAnnotations(t *
 func TestBuildRedisArgs(t *testing.T) {
 	tests := []struct {
 		name       string
-		centralTLS TLSConfigProfile
+		centralTLS tlsProfile.TLSConfigProfile
 		expected   []string
 		wantErr    bool
 	}{
 		{
 			name: "central TLS config with invalid min version",
-			centralTLS: TLSConfigProfile{
+			centralTLS: tlsProfile.TLSConfigProfile{
 				MinVersion: configv1.TLSProtocolVersion("INVALID"),
 			},
 			expected: nil,
@@ -3154,7 +3155,7 @@ func TestBuildRedisArgs(t *testing.T) {
 		},
 		{
 			name: "central TLS config with tls 1.2",
-			centralTLS: TLSConfigProfile{
+			centralTLS: tlsProfile.TLSConfigProfile{
 				MinVersion: configv1.VersionTLS12,
 				Ciphers: []string{
 					"ECDHE-RSA-AES128-GCM-SHA256",
@@ -3172,7 +3173,7 @@ func TestBuildRedisArgs(t *testing.T) {
 		},
 		{
 			name: "central TLS config with tls 1.3",
-			centralTLS: TLSConfigProfile{
+			centralTLS: tlsProfile.TLSConfigProfile{
 				MinVersion: configv1.VersionTLS13,
 				Ciphers: []string{
 					"TLS_AES_128_GCM_SHA256",
@@ -3188,7 +3189,7 @@ func TestBuildRedisArgs(t *testing.T) {
 		},
 		{
 			name: "central TLS config only version",
-			centralTLS: TLSConfigProfile{
+			centralTLS: tlsProfile.TLSConfigProfile{
 				MinVersion: configv1.VersionTLS12,
 			},
 			expected: []string{
@@ -3199,7 +3200,7 @@ func TestBuildRedisArgs(t *testing.T) {
 		},
 		{
 			name: "central TLS config only ciphers",
-			centralTLS: TLSConfigProfile{
+			centralTLS: tlsProfile.TLSConfigProfile{
 				Ciphers: []string{
 					"ECDHE-RSA-AES256-GCM-SHA384",
 				},
@@ -3214,7 +3215,7 @@ func TestBuildRedisArgs(t *testing.T) {
 		},
 		{
 			name: "central TLS config with unmapped cipher",
-			centralTLS: TLSConfigProfile{
+			centralTLS: tlsProfile.TLSConfigProfile{
 				MinVersion: configv1.VersionTLS12,
 				Ciphers: []string{
 					"INVALID",
@@ -3236,4 +3237,99 @@ func TestBuildRedisArgs(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestBuildTLSArgs(t *testing.T) {
+	tests := []struct {
+		name       string
+		centralTLS tlsProfile.TLSConfigProfile
+		expected   []string
+		wantErr    bool
+	}{
+		{
+			name: "disable central tls config",
+			centralTLS: tlsProfile.TLSConfigProfile{
+				DisableClusterTLSProfile: true,
+			},
+			expected: nil,
+			wantErr:  false,
+		},
+		{
+			name: "central TLS config with min version only",
+			centralTLS: tlsProfile.TLSConfigProfile{
+				MinVersion: configv1.VersionTLS12,
+			},
+			expected: []string{
+				"--tlsminversion",
+				"1.2",
+			},
+			wantErr: false,
+		},
+		{
+			name: "central TLS config with ciphers only",
+			centralTLS: tlsProfile.TLSConfigProfile{
+				Ciphers: []string{
+					"ECDHE-RSA-AES128-GCM-SHA256",
+				},
+			},
+			expected: []string{
+				"--tlsciphers",
+				"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+			},
+			wantErr: false,
+		},
+		{
+			name: "central TLS config with version and ciphers",
+			centralTLS: tlsProfile.TLSConfigProfile{
+				MinVersion: configv1.VersionTLS13,
+				Ciphers: []string{
+					"TLS_AES_128_GCM_SHA256",
+					"ECDHE-RSA-AES256-GCM-SHA384",
+				},
+			},
+			expected: []string{
+				"--tlsminversion",
+				"1.3",
+				"--tlsciphers",
+				"TLS_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := BuildTLSArgsFromClusterTLSProfile(tt.centralTLS)
+			if !reflect.DeepEqual(got, tt.expected) {
+				t.Fatalf("expected %#v got %#v", tt.expected, got)
+			}
+		})
+	}
+}
+
+func TestArgoCDServerAndRepoServerDeploymentArgs(t *testing.T) {
+	a := makeTestArgoCD()
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r.CentralTLSConfigProfile = tlsProfile.TLSConfigProfile{
+		DisableClusterTLSProfile: false,
+		MinVersion:               configv1.VersionTLS12,
+		Ciphers: []string{
+			"ECDHE-RSA-AES128-GCM-SHA256",
+			"ECDHE-RSA-AES256-GCM-SHA384",
+		},
+	}
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: a.Namespace}, deployment))
+	args := []string{"--tlsminversion", "1.2", "--tlsciphers", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"}
+	assert.Equal(t, args, deployment.Spec.Template.Spec.Containers[0].Args)
+	assert.NoError(t, r.reconcileRepoDeployment(a, false))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: "argocd-repo-server", Namespace: a.Namespace}, deployment))
+	assert.Equal(t, args, deployment.Spec.Template.Spec.Containers[0].Args)
 }

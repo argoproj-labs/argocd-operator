@@ -1697,7 +1697,7 @@ func (r *ReconcileArgoCD) reconcileArgoCDAgent(cr *argoproj.ArgoCD) error {
 	}
 
 	log.Info("reconciling ArgoCD Agent's Principal deployment")
-	if err := argocdagent.ReconcilePrincipalDeployment(r.Client, compName, sa.Name, cr, r.Scheme); err != nil {
+	if err := argocdagent.ReconcilePrincipalDeployment(r.Client, compName, sa.Name, cr, r.Scheme, r.CentralTLSConfigProfile); err != nil {
 		return err
 	}
 
@@ -2041,6 +2041,11 @@ func (r *ReconcileArgoCD) reconcileDeploymentHelper(cr *argoproj.ArgoCD, desired
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.ServiceAccountName, desiredDeployment.Spec.Template.Spec.ServiceAccountName) {
 		existingDeployment.Spec.Template.Spec.ServiceAccountName = desiredDeployment.Spec.Template.Spec.ServiceAccountName
 		changes = append(changes, "service account name")
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Args, desiredDeployment.Spec.Template.Spec.Containers[0].Args) {
+		existingDeployment.Spec.Template.Spec.Containers[0].Args = desiredDeployment.Spec.Template.Spec.Containers[0].Args
+		changes = append(changes, "container args")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Labels, desiredDeployment.Labels) {

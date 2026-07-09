@@ -95,3 +95,23 @@ func TestMapCipherSuites(t *testing.T) {
 		})
 	}
 }
+
+func TestAgentTLSProtocolVersionString(t *testing.T) {
+	tests := []struct {
+		input    configv1.TLSProtocolVersion
+		expected string
+	}{
+		{configv1.VersionTLS10, ""},
+		{configv1.VersionTLS11, "tls1.1"},
+		{configv1.VersionTLS12, "tls1.2"},
+		{configv1.VersionTLS13, "tls1.3"},
+	}
+
+	for _, tt := range tests {
+		got := AgentTLSProtocolVersionString(tt.input)
+
+		if got != tt.expected {
+			t.Fatalf("expected %s got %s", tt.expected, got)
+		}
+	}
+}

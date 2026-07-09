@@ -416,6 +416,8 @@ spec:
                                   chain. Do not include a CA certificate. The secret referenced should
                                   be present in the same namespace as that of the Route.
                                   Forbidden when `certificate` is set.
+                                  The router service account needs to be granted with read-only access to this secret,
+                                  please refer to openshift docs for additional details.
                                 properties:
                                   name:
                                     description: |-
@@ -429,8 +431,12 @@ spec:
                                   insecureEdgeTerminationPolicy indicates the desired behavior for insecure connections to a route. While
                                   each router may make its own decisions on which ports to expose, this is normally port 80.
 
-                                  * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only) (default).
-                                  * None - no traffic is allowed on the insecure port.
+                                  If a route does not specify insecureEdgeTerminationPolicy, then the default behavior is "None".
+
+                                  * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only).
+
+                                  * None - no traffic is allowed on the insecure port (default).
+
                                   * Redirect - clients are redirected to the secure port.
                                 enum:
                                 - Allow
@@ -443,10 +449,12 @@ spec:
                                 type: string
                               termination:
                                 description: |-
-                                  termination indicates termination type.
+                                  termination indicates the TLS termination type.
 
                                   * edge - TLS termination is done by the router and http is used to communicate with the backend (default)
+
                                   * passthrough - Traffic is sent straight to the destination without the router providing TLS termination
+
                                   * reencrypt - TLS termination is done by the router and https is used to communicate with the backend
 
                                   Note: passthrough termination is incompatible with httpHeader actions
@@ -3475,6 +3483,8 @@ spec:
                               chain. Do not include a CA certificate. The secret referenced should
                               be present in the same namespace as that of the Route.
                               Forbidden when `certificate` is set.
+                              The router service account needs to be granted with read-only access to this secret,
+                              please refer to openshift docs for additional details.
                             properties:
                               name:
                                 description: |-
@@ -3488,8 +3498,12 @@ spec:
                               insecureEdgeTerminationPolicy indicates the desired behavior for insecure connections to a route. While
                               each router may make its own decisions on which ports to expose, this is normally port 80.
 
-                              * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only) (default).
-                              * None - no traffic is allowed on the insecure port.
+                              If a route does not specify insecureEdgeTerminationPolicy, then the default behavior is "None".
+
+                              * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only).
+
+                              * None - no traffic is allowed on the insecure port (default).
+
                               * Redirect - clients are redirected to the secure port.
                             enum:
                             - Allow
@@ -3502,10 +3516,12 @@ spec:
                             type: string
                           termination:
                             description: |-
-                              termination indicates termination type.
+                              termination indicates the TLS termination type.
 
                               * edge - TLS termination is done by the router and http is used to communicate with the backend (default)
+
                               * passthrough - Traffic is sent straight to the destination without the router providing TLS termination
+
                               * reencrypt - TLS termination is done by the router and https is used to communicate with the backend
 
                               Note: passthrough termination is incompatible with httpHeader actions
@@ -4196,6 +4212,8 @@ spec:
                               chain. Do not include a CA certificate. The secret referenced should
                               be present in the same namespace as that of the Route.
                               Forbidden when `certificate` is set.
+                              The router service account needs to be granted with read-only access to this secret,
+                              please refer to openshift docs for additional details.
                             properties:
                               name:
                                 description: |-
@@ -4209,8 +4227,12 @@ spec:
                               insecureEdgeTerminationPolicy indicates the desired behavior for insecure connections to a route. While
                               each router may make its own decisions on which ports to expose, this is normally port 80.
 
-                              * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only) (default).
-                              * None - no traffic is allowed on the insecure port.
+                              If a route does not specify insecureEdgeTerminationPolicy, then the default behavior is "None".
+
+                              * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only).
+
+                              * None - no traffic is allowed on the insecure port (default).
+
                               * Redirect - clients are redirected to the secure port.
                             enum:
                             - Allow
@@ -4223,10 +4245,12 @@ spec:
                             type: string
                           termination:
                             description: |-
-                              termination indicates termination type.
+                              termination indicates the TLS termination type.
 
                               * edge - TLS termination is done by the router and http is used to communicate with the backend (default)
+
                               * passthrough - Traffic is sent straight to the destination without the router providing TLS termination
+
                               * reencrypt - TLS termination is done by the router and https is used to communicate with the backend
 
                               Note: passthrough termination is incompatible with httpHeader actions
@@ -10282,6 +10306,8 @@ spec:
                               chain. Do not include a CA certificate. The secret referenced should
                               be present in the same namespace as that of the Route.
                               Forbidden when `certificate` is set.
+                              The router service account needs to be granted with read-only access to this secret,
+                              please refer to openshift docs for additional details.
                             properties:
                               name:
                                 description: |-
@@ -10295,8 +10321,12 @@ spec:
                               insecureEdgeTerminationPolicy indicates the desired behavior for insecure connections to a route. While
                               each router may make its own decisions on which ports to expose, this is normally port 80.
 
-                              * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only) (default).
-                              * None - no traffic is allowed on the insecure port.
+                              If a route does not specify insecureEdgeTerminationPolicy, then the default behavior is "None".
+
+                              * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only).
+
+                              * None - no traffic is allowed on the insecure port (default).
+
                               * Redirect - clients are redirected to the secure port.
                             enum:
                             - Allow
@@ -10309,10 +10339,12 @@ spec:
                             type: string
                           termination:
                             description: |-
-                              termination indicates termination type.
+                              termination indicates the TLS termination type.
 
                               * edge - TLS termination is done by the router and http is used to communicate with the backend (default)
+
                               * passthrough - Traffic is sent straight to the destination without the router providing TLS termination
+
                               * reencrypt - TLS termination is done by the router and https is used to communicate with the backend
 
                               Note: passthrough termination is incompatible with httpHeader actions
@@ -13348,6 +13380,8 @@ spec:
                                   chain. Do not include a CA certificate. The secret referenced should
                                   be present in the same namespace as that of the Route.
                                   Forbidden when `certificate` is set.
+                                  The router service account needs to be granted with read-only access to this secret,
+                                  please refer to openshift docs for additional details.
                                 properties:
                                   name:
                                     description: |-
@@ -13361,8 +13395,12 @@ spec:
                                   insecureEdgeTerminationPolicy indicates the desired behavior for insecure connections to a route. While
                                   each router may make its own decisions on which ports to expose, this is normally port 80.
 
-                                  * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only) (default).
-                                  * None - no traffic is allowed on the insecure port.
+                                  If a route does not specify insecureEdgeTerminationPolicy, then the default behavior is "None".
+
+                                  * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only).
+
+                                  * None - no traffic is allowed on the insecure port (default).
+
                                   * Redirect - clients are redirected to the secure port.
                                 enum:
                                 - Allow
@@ -13375,10 +13413,12 @@ spec:
                                 type: string
                               termination:
                                 description: |-
-                                  termination indicates termination type.
+                                  termination indicates the TLS termination type.
 
                                   * edge - TLS termination is done by the router and http is used to communicate with the backend (default)
+
                                   * passthrough - Traffic is sent straight to the destination without the router providing TLS termination
+
                                   * reencrypt - TLS termination is done by the router and https is used to communicate with the backend
 
                                   Note: passthrough termination is incompatible with httpHeader actions
@@ -21517,6 +21557,8 @@ spec:
                               chain. Do not include a CA certificate. The secret referenced should
                               be present in the same namespace as that of the Route.
                               Forbidden when `certificate` is set.
+                              The router service account needs to be granted with read-only access to this secret,
+                              please refer to openshift docs for additional details.
                             properties:
                               name:
                                 description: |-
@@ -21530,8 +21572,12 @@ spec:
                               insecureEdgeTerminationPolicy indicates the desired behavior for insecure connections to a route. While
                               each router may make its own decisions on which ports to expose, this is normally port 80.
 
-                              * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only) (default).
-                              * None - no traffic is allowed on the insecure port.
+                              If a route does not specify insecureEdgeTerminationPolicy, then the default behavior is "None".
+
+                              * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only).
+
+                              * None - no traffic is allowed on the insecure port (default).
+
                               * Redirect - clients are redirected to the secure port.
                             enum:
                             - Allow
@@ -21544,10 +21590,12 @@ spec:
                             type: string
                           termination:
                             description: |-
-                              termination indicates termination type.
+                              termination indicates the TLS termination type.
 
                               * edge - TLS termination is done by the router and http is used to communicate with the backend (default)
+
                               * passthrough - Traffic is sent straight to the destination without the router providing TLS termination
+
                               * reencrypt - TLS termination is done by the router and https is used to communicate with the backend
 
                               Note: passthrough termination is incompatible with httpHeader actions
@@ -22507,6 +22555,8 @@ spec:
                               chain. Do not include a CA certificate. The secret referenced should
                               be present in the same namespace as that of the Route.
                               Forbidden when `certificate` is set.
+                              The router service account needs to be granted with read-only access to this secret,
+                              please refer to openshift docs for additional details.
                             properties:
                               name:
                                 description: |-
@@ -22520,8 +22570,12 @@ spec:
                               insecureEdgeTerminationPolicy indicates the desired behavior for insecure connections to a route. While
                               each router may make its own decisions on which ports to expose, this is normally port 80.
 
-                              * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only) (default).
-                              * None - no traffic is allowed on the insecure port.
+                              If a route does not specify insecureEdgeTerminationPolicy, then the default behavior is "None".
+
+                              * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only).
+
+                              * None - no traffic is allowed on the insecure port (default).
+
                               * Redirect - clients are redirected to the secure port.
                             enum:
                             - Allow
@@ -22534,10 +22588,12 @@ spec:
                             type: string
                           termination:
                             description: |-
-                              termination indicates termination type.
+                              termination indicates the TLS termination type.
 
                               * edge - TLS termination is done by the router and http is used to communicate with the backend (default)
+
                               * passthrough - Traffic is sent straight to the destination without the router providing TLS termination
+
                               * reencrypt - TLS termination is done by the router and https is used to communicate with the backend
 
                               Note: passthrough termination is incompatible with httpHeader actions
@@ -30392,6 +30448,8 @@ spec:
                               chain. Do not include a CA certificate. The secret referenced should
                               be present in the same namespace as that of the Route.
                               Forbidden when `certificate` is set.
+                              The router service account needs to be granted with read-only access to this secret,
+                              please refer to openshift docs for additional details.
                             properties:
                               name:
                                 description: |-
@@ -30405,8 +30463,12 @@ spec:
                               insecureEdgeTerminationPolicy indicates the desired behavior for insecure connections to a route. While
                               each router may make its own decisions on which ports to expose, this is normally port 80.
 
-                              * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only) (default).
-                              * None - no traffic is allowed on the insecure port.
+                              If a route does not specify insecureEdgeTerminationPolicy, then the default behavior is "None".
+
+                              * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only).
+
+                              * None - no traffic is allowed on the insecure port (default).
+
                               * Redirect - clients are redirected to the secure port.
                             enum:
                             - Allow
@@ -30419,10 +30481,12 @@ spec:
                             type: string
                           termination:
                             description: |-
-                              termination indicates termination type.
+                              termination indicates the TLS termination type.
 
                               * edge - TLS termination is done by the router and http is used to communicate with the backend (default)
+
                               * passthrough - Traffic is sent straight to the destination without the router providing TLS termination
+
                               * reencrypt - TLS termination is done by the router and https is used to communicate with the backend
 
                               Note: passthrough termination is incompatible with httpHeader actions
