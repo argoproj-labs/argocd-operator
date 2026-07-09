@@ -482,10 +482,10 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			By("Verify ClusterRole and ClusterRoleBinding are not created")
 
-			Consistently(clusterRole, "30s", "1s").Should(k8sFixture.NotExistByName(),
+			Consistently(clusterRole, "10s", "1s").Should(k8sFixture.NotExistByName(),
 				"ClusterRole '%s' should not exist for namespace-scoped ArgoCD instance", clusterRole.Name)
 
-			Consistently(clusterRoleBinding, "30s", "1s").Should(k8sFixture.NotExistByName(),
+			Consistently(clusterRoleBinding, "10s", "1s").Should(k8sFixture.NotExistByName(),
 				"ClusterRoleBinding '%s' should not exist for namespace-scoped ArgoCD instance", clusterRoleBinding.Name)
 
 			By("Delete ArgoCD instance")
@@ -634,8 +634,8 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			By("Verify ClusterRole and ClusterRoleBinding do not exist")
 			Eventually(clusterRole, "60s", "2s").Should(k8sFixture.NotExistByName())
 			Eventually(clusterRoleBinding, "60s", "2s").Should(k8sFixture.NotExistByName())
-			Consistently(clusterRole, "15s", "2s").Should(k8sFixture.NotExistByName())
-			Consistently(clusterRoleBinding, "15s", "2s").Should(k8sFixture.NotExistByName())
+			Consistently(clusterRole, "10s", "2s").Should(k8sFixture.NotExistByName())
+			Consistently(clusterRoleBinding, "10s", "2s").Should(k8sFixture.NotExistByName())
 
 			By("Namespaced RBAC objects should still exist")
 			Eventually(role, "60s", "2s").Should(k8sFixture.ExistByName())
