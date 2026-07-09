@@ -80,13 +80,13 @@ func needsDexTokenRenewal(secret *corev1.Secret) bool {
 // Users can set enableDexTokenExpiry: false (default) in the ArgoCD CR to use the legacy non-expiring token approach.
 func isDexTokenExpiryFeatureEnabled(cr *argoproj.ArgoCD) bool {
 	if cr.Spec.EnableDexTokenExpiry == nil {
-		return false // Enabled by default (old behavior with non-expiring tokens)
+		return false // Disabled by default (old behavior with non-expiring tokens)
 	}
 	return *cr.Spec.EnableDexTokenExpiry
 }
 
 // getDexOAuthClientSecret returns a time-limited Dex OAuth client token via the TokenRequest API.
-// If token renewal is disabled via the feature flag, it falls back to the legacy approach.
+// If token renewal is enabled via the feature flag, it falls back to the legacy approach, else non-expiring tokens are used.
 func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string, error) {
 	// Check if token expiry feature is enabled, by default it is false, so we use the non-expiry legacy approach
 	if !isDexTokenExpiryFeatureEnabled(cr) {
