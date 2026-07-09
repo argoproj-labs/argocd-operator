@@ -568,11 +568,12 @@ func TestAlphaToBetaConversion(t *testing.T) {
 				allowGenerate := true
 				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
 					Principal: &PrincipalSpec{
-						Enabled:   &enabled,
-						Auth:      "mtls:CN=([^,]+)",
-						LogLevel:  "info",
-						LogFormat: "text",
-						Image:     "quay.io/user/argocd-agent:v1",
+						Enabled:       &enabled,
+						Auth:          "mtls:CN=([^,]+)",
+						LogLevel:      "info",
+						LogFormat:     "text",
+						Image:         "quay.io/user/argocd-agent:v1",
+						LabelSelector: "argocd-agent=true",
 						Server: &PrincipalServerSpec{
 							EnableWebSocket:      &enableWebSocket,
 							KeepAliveMinInterval: "30s",
@@ -617,11 +618,12 @@ func TestAlphaToBetaConversion(t *testing.T) {
 				insecureGenerate := true
 				cr.Spec.ArgoCDAgent = &v1beta1.ArgoCDAgentSpec{
 					Principal: &v1beta1.PrincipalSpec{
-						Enabled:   &enabled,
-						Auth:      "mtls:CN=([^,]+)",
-						LogLevel:  "info",
-						LogFormat: "text",
-						Image:     "quay.io/user/argocd-agent:v1",
+						Enabled:       &enabled,
+						Auth:          "mtls:CN=([^,]+)",
+						LogLevel:      "info",
+						LogFormat:     "text",
+						Image:         "quay.io/user/argocd-agent:v1",
+						LabelSelector: "argocd-agent=true",
 						Server: &v1beta1.PrincipalServerSpec{
 							EnableWebSocket:      &enableWebSocket,
 							KeepAliveMinInterval: "30s",
@@ -718,11 +720,12 @@ func TestAlphaToBetaConversion(t *testing.T) {
 				insecure := true
 				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
 					Agent: &AgentSpec{
-						Enabled:   &enabled,
-						Creds:     "mtls:any",
-						LogLevel:  "info",
-						LogFormat: "text",
-						Image:     "quay.io/user/argocd-agent:v1",
+						Enabled:       &enabled,
+						Creds:         "mtls:any",
+						LogLevel:      "info",
+						LogFormat:     "text",
+						Image:         "quay.io/user/argocd-agent:v1",
+						LabelSelector: "argocd-agent=true",
 						Client: &AgentClientSpec{
 							PrincipalServerAddress: "argocd-agent-principal.example.com",
 							PrincipalServerPort:    "443",
@@ -749,11 +752,12 @@ func TestAlphaToBetaConversion(t *testing.T) {
 				insecure := true
 				cr.Spec.ArgoCDAgent = &v1beta1.ArgoCDAgentSpec{
 					Agent: &v1beta1.AgentSpec{
-						Enabled:   &enabled,
-						Creds:     "mtls:any",
-						LogLevel:  "info",
-						LogFormat: "text",
-						Image:     "quay.io/user/argocd-agent:v1",
+						Enabled:       &enabled,
+						Creds:         "mtls:any",
+						LogLevel:      "info",
+						LogFormat:     "text",
+						Image:         "quay.io/user/argocd-agent:v1",
+						LabelSelector: "argocd-agent=true",
 						Client: &v1beta1.AgentClientSpec{
 							PrincipalServerAddress: "argocd-agent-principal.example.com",
 							PrincipalServerPort:    "443",
@@ -973,11 +977,12 @@ func TestBetaToAlphaConversion(t *testing.T) {
 				insecureGenerate := true
 				cr.Spec.ArgoCDAgent = &v1beta1.ArgoCDAgentSpec{
 					Principal: &v1beta1.PrincipalSpec{
-						Enabled:   &enabled,
-						Auth:      "mtls:CN=([^,]+)",
-						LogLevel:  "info",
-						LogFormat: "text",
-						Image:     "quay.io/user/argocd-agent:v1",
+						Enabled:       &enabled,
+						Auth:          "mtls:CN=([^,]+)",
+						LogLevel:      "info",
+						LogFormat:     "text",
+						Image:         "quay.io/user/argocd-agent:v1",
+						LabelSelector: "argocd-agent=true",
 						Env: []corev1.EnvVar{
 							{Name: "TEST_ENV", Value: "test-value"},
 						},
@@ -1025,11 +1030,12 @@ func TestBetaToAlphaConversion(t *testing.T) {
 				insecureGenerate := true
 				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
 					Principal: &PrincipalSpec{
-						Enabled:   &enabled,
-						Auth:      "mtls:CN=([^,]+)",
-						LogLevel:  "info",
-						LogFormat: "text",
-						Image:     "quay.io/user/argocd-agent:v1",
+						Enabled:       &enabled,
+						Auth:          "mtls:CN=([^,]+)",
+						LogLevel:      "info",
+						LogFormat:     "text",
+						Image:         "quay.io/user/argocd-agent:v1",
+						LabelSelector: "argocd-agent=true",
 						Env: []corev1.EnvVar{
 							{Name: "TEST_ENV", Value: "test-value"},
 						},
@@ -1129,11 +1135,12 @@ func TestBetaToAlphaConversion(t *testing.T) {
 				insecure := true
 				cr.Spec.ArgoCDAgent = &v1beta1.ArgoCDAgentSpec{
 					Agent: &v1beta1.AgentSpec{
-						Enabled:   &enabled,
-						Creds:     "mtls:any",
-						LogLevel:  "info",
-						LogFormat: "text",
-						Image:     "quay.io/user/argocd-agent:v1",
+						Enabled:       &enabled,
+						Creds:         "mtls:any",
+						LogLevel:      "info",
+						LogFormat:     "text",
+						Image:         "quay.io/user/argocd-agent:v1",
+						LabelSelector: "argocd-agent=true",
 						Env: []corev1.EnvVar{
 							{Name: "TEST_ENV", Value: "test-value"},
 						},
@@ -1163,11 +1170,12 @@ func TestBetaToAlphaConversion(t *testing.T) {
 				insecure := true
 				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
 					Agent: &AgentSpec{
-						Enabled:   &enabled,
-						Creds:     "mtls:any",
-						LogLevel:  "info",
-						LogFormat: "text",
-						Image:     "quay.io/user/argocd-agent:v1",
+						Enabled:       &enabled,
+						Creds:         "mtls:any",
+						LogLevel:      "info",
+						LogFormat:     "text",
+						Image:         "quay.io/user/argocd-agent:v1",
+						LabelSelector: "argocd-agent=true",
 						Env: []corev1.EnvVar{
 							{Name: "TEST_ENV", Value: "test-value"},
 						},

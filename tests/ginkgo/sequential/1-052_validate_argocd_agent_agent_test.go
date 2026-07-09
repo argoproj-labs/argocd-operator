@@ -88,10 +88,11 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					},
 					ArgoCDAgent: &argov1beta1api.ArgoCDAgentSpec{
 						Agent: &argov1beta1api.AgentSpec{
-							Enabled:   ptr.To(true),
-							Creds:     "mtls:any",
-							LogLevel:  "info",
-							LogFormat: "text",
+							Enabled:       ptr.To(true),
+							Creds:         "mtls:any",
+							LogLevel:      "info",
+							LogFormat:     "text",
+							LabelSelector: "argocd-agent=true",
 							Client: &argov1beta1api.AgentClientSpec{
 								PrincipalServerAddress: "argocd-agent-principal.example.com",
 								PrincipalServerPort:    "443",
@@ -185,6 +186,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				agent.EnvArgoCDAgentKeepAliveInterval:   "30s",
 				agent.EnvArgoCDAgentRedisAddress:        fmt.Sprintf("%s-%s:%d", argoCDName, "redis", common.ArgoCDDefaultRedisPort),
 				agent.EnvArgoCDAgentEnableResourceProxy: "true",
+				agent.EnvArgoCDAgentLabelSelector:       "argocd-agent=true",
 			}
 		})
 
@@ -399,6 +401,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				ac.Spec.ArgoCDAgent.Agent.LogLevel = "trace"
 				ac.Spec.ArgoCDAgent.Agent.LogFormat = "json"
 				ac.Spec.ArgoCDAgent.Agent.Image = "quay.io/argoprojlabs/argocd-agent:v0.5.1"
+				ac.Spec.ArgoCDAgent.Agent.LabelSelector = "env=staging"
 
 				ac.Spec.ArgoCDAgent.Agent.Client.KeepAliveInterval = "60s"
 				ac.Spec.ArgoCDAgent.Agent.Client.EnableWebSocket = ptr.To(true)
@@ -444,6 +447,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			expectedEnvVariables[agent.EnvArgoCDAgentTLSInsecure] = "true"
 			expectedEnvVariables[agent.EnvArgoCDAgentTLSSecretName] = "argocd-agent-client-tls-v2"
 			expectedEnvVariables[agent.EnvArgoCDAgentTLSRootCASecretName] = "argocd-agent-ca-v2"
+			expectedEnvVariables[agent.EnvArgoCDAgentLabelSelector] = "env=staging"
 
 			for key, value := range expectedEnvVariables {
 				Expect(container.Env).To(ContainElement(corev1.EnvVar{Name: key, Value: value}), "Environment variable %s should be set to %s", key, value)

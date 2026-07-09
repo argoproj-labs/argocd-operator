@@ -816,6 +816,7 @@ func ConvertAlphaToBetaPrincipal(src *PrincipalSpec) *v1beta1.PrincipalSpec {
 			LogLevel:      src.LogLevel,
 			LogFormat:     src.LogFormat,
 			Image:         src.Image,
+			LabelSelector: src.LabelSelector,
 			Env:           src.Env,
 			Server:        ConvertAlphaToBetaPrincipalServer(src.Server),
 			Redis:         ConvertAlphaToBetaPrincipalRedis(src.Redis),
@@ -849,6 +850,7 @@ func ConvertBetaToAlphaPrincipal(src *v1beta1.PrincipalSpec) *PrincipalSpec {
 			LogLevel:      src.LogLevel,
 			LogFormat:     src.LogFormat,
 			Image:         src.Image,
+			LabelSelector: src.LabelSelector,
 			Env:           src.Env,
 			Server:        ConvertBetaToAlphaPrincipalServer(src.Server),
 			Redis:         ConvertBetaToAlphaPrincipalRedis(src.Redis),
@@ -1008,16 +1010,17 @@ func ConvertAlphaToBetaAgent(src *AgentSpec) *v1beta1.AgentSpec {
 	var dst *v1beta1.AgentSpec
 	if src != nil {
 		dst = &v1beta1.AgentSpec{
-			Enabled:   src.Enabled,
-			Creds:     src.Creds,
-			LogLevel:  src.LogLevel,
-			LogFormat: src.LogFormat,
-			Image:     src.Image,
-			Env:       src.Env,
-			Client:    ConvertAlphaToBetaAgentClient(src.Client),
-			Redis:     ConvertAlphaToBetaAgentRedis(src.Redis),
-			TLS:       ConvertAlphaToBetaAgentTLS(src.TLS),
-			Metrics:   ConvertAlphaToBetaMetrics(src.Metrics),
+			Enabled:       src.Enabled,
+			Creds:         src.Creds,
+			LogLevel:      src.LogLevel,
+			LogFormat:     src.LogFormat,
+			Image:         src.Image,
+			LabelSelector: src.LabelSelector,
+			Env:           src.Env,
+			Client:        ConvertAlphaToBetaAgentClient(src.Client),
+			Redis:         ConvertAlphaToBetaAgentRedis(src.Redis),
+			TLS:           ConvertAlphaToBetaAgentTLS(src.TLS),
+			Metrics:       ConvertAlphaToBetaMetrics(src.Metrics),
 		}
 	}
 	return dst
@@ -1027,16 +1030,17 @@ func ConvertBetaToAlphaAgent(src *v1beta1.AgentSpec) *AgentSpec {
 	var dst *AgentSpec
 	if src != nil {
 		dst = &AgentSpec{
-			Enabled:   src.Enabled,
-			Creds:     src.Creds,
-			LogLevel:  src.LogLevel,
-			LogFormat: src.LogFormat,
-			Image:     src.Image,
-			Env:       src.Env,
-			Client:    ConvertBetaToAlphaAgentClient(src.Client),
-			Redis:     ConvertBetaToAlphaAgentRedis(src.Redis),
-			TLS:       ConvertBetaToAlphaAgentTLS(src.TLS),
-			Metrics:   ConvertBetaToAlphaMetrics(src.Metrics),
+			Enabled:       src.Enabled,
+			Creds:         src.Creds,
+			LogLevel:      src.LogLevel,
+			LogFormat:     src.LogFormat,
+			Image:         src.Image,
+			LabelSelector: src.LabelSelector,
+			Env:           src.Env,
+			Client:        ConvertBetaToAlphaAgentClient(src.Client),
+			Redis:         ConvertBetaToAlphaAgentRedis(src.Redis),
+			TLS:           ConvertBetaToAlphaAgentTLS(src.TLS),
+			Metrics:       ConvertBetaToAlphaMetrics(src.Metrics),
 		}
 	}
 	return dst
