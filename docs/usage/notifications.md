@@ -16,7 +16,8 @@ spec:
     enabled: True
 ```
 
-Users may also specify advanced configuration such as the number of replicas for the notifications controller, as well as the resource requirements for the same. The full list of available settings can be found in the [API spec](../reference/api.html.md#argoproj.io/v1alpha1.ArgoCDNotificationsSpec).
+Users may also specify advanced configuration such as the number of replicas for the notifications controller, as well as the resource requirements for the same. The full list of available settings can be 
+found in the [API spec](/reference/api/#argocdnotifications).
 
 Notifications are disabled by default. Enabling notifications results in the operator creating the following resources on the cluster:
 

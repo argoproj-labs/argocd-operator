@@ -27,6 +27,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	tlsProfile "github.com/argoproj-labs/argocd-operator/pkg/tlsprofile"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -220,7 +221,7 @@ func getArgoImportVolumes(cr *argoprojv1alpha1.ArgoCDExport) []corev1.Volume {
 	return volumes
 }
 
-func getArgoRedisArgs(useTLS bool, centralTLSConfig TLSConfigProfile) []string {
+func getArgoRedisArgs(useTLS bool, centralTLSConfig tlsProfile.TLSConfigProfile) []string {
 	args := make([]string, 0)
 
 	args = append(args, "--save", "")
@@ -243,7 +244,10 @@ func getArgoRedisArgs(useTLS bool, centralTLSConfig TLSConfigProfile) []string {
 }
 
 // BuildRedisArgsFromClusterTLSProfile builds arguments for redis deployment based on central tls config.
-func BuildRedisArgsFromClusterTLSProfile(centralTLSConfig TLSConfigProfile) []string {
+func BuildRedisArgsFromClusterTLSProfile(centralTLSConfig tlsProfile.TLSConfigProfile) []string {
+	if centralTLSConfig.DisableClusterTLSProfile {
+		return nil
+	}
 	var (
 		args     []string
 		protocol string
@@ -960,8 +964,9 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 	if cr.Spec.Server.VolumeMounts != nil {
 		serverVolumeMounts = append(serverVolumeMounts, cr.Spec.Server.VolumeMounts...)
 	}
-
+	arguments := BuildTLSArgsFromClusterTLSProfile(r.CentralTLSConfigProfile)
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
+		Args:            arguments,
 		Command:         getArgoServerCommand(cr, useTLSForRedis),
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
@@ -1151,6 +1156,10 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			changes = append(changes, "container image")
 		}
+		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Args, deploy.Spec.Template.Spec.Containers[0].Args) {
+			existing.Spec.Template.Spec.Containers[0].Args = deploy.Spec.Template.Spec.Containers[0].Args
+			changes = append(changes, "container args")
+		}
 		if actualImagePullPolicy != desiredImagePullPolicy {
 			existing.Spec.Template.Spec.Containers[0].ImagePullPolicy = desiredImagePullPolicy
 			changes = append(changes, "image pull policy")
@@ -1248,6 +1257,21 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 	}
 	argoutil.LogResourceCreation(log, deploy)
 	return r.Create(context.TODO(), deploy)
+}
+
+// BuildTLSArgsFromClusterTLSProfile builds the command line arguments for the ArgoCD components based on the cluster's TLS profile configuration.
+func BuildTLSArgsFromClusterTLSProfile(centralTLSConfig tlsProfile.TLSConfigProfile) []string {
+	var args []string
+	if centralTLSConfig.DisableClusterTLSProfile {
+		return nil
+	}
+	if v := argoutil.TLSProtocolVersionString(centralTLSConfig.MinVersion); v != "" {
+		args = append(args, "--tlsminversion", v)
+	}
+	if ciphers := argoutil.MapCipherSuites(centralTLSConfig.Ciphers); len(ciphers) > 0 {
+		args = append(args, "--tlsciphers", strings.Join(ciphers, ":"))
+	}
+	return args
 }
 
 // triggerDeploymentRollout will update the label with the given key to trigger a new rollout of the Deployment.

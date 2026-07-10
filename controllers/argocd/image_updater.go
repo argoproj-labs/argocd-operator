@@ -630,10 +630,13 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterDeployment(cr *argoproj.ArgoCD, s
 	if image == "" {
 		image = argoutil.CombineImageTag(DefaultImageUpdaterImage, DefaultImageUpdaterTag)
 	}
+	args := []string{"run"}
+	imageUpdaterTLSProfileArguments := BuildTLSArgsFromClusterTLSProfile(r.CentralTLSConfigProfile)
+	args = append(args, imageUpdaterTLSProfileArguments...)
 
 	podSpec.Containers = []corev1.Container{{
 		Command:         []string{"/manager"},
-		Args:            []string{"run"},
+		Args:            args,
 		Image:           image,
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            common.ArgoCDImageUpdaterControllerComponent,

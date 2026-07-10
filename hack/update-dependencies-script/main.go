@@ -534,19 +534,16 @@ func cloneArgoCDRepoIntoTempDir(latestReleaseVersionTag string) (string, error) 
 		return "", err
 	}
 
-	if _, _, err := runCommandWithWorkDir(tmpDir, "git", "clone", "https://github.com/argoproj/argo-cd"); err != nil {
+	if _, _, err := runCommandWithWorkDir(tmpDir, "git", "clone",
+		"--depth", "1",
+		"--branch", latestReleaseVersionTag,
+		"--single-branch",
+		"--no-tags",
+		"https://github.com/argoproj/argo-cd"); err != nil {
 		return "", err
 	}
 
 	newWorkDir := filepath.Join(tmpDir, "argo-cd")
-
-	commands := [][]string{
-		{"git", "checkout", latestReleaseVersionTag},
-	}
-
-	if err := runCommandListWithWorkDir(newWorkDir, commands); err != nil {
-		return "", err
-	}
 
 	return newWorkDir, nil
 }
@@ -554,7 +551,7 @@ func cloneArgoCDRepoIntoTempDir(latestReleaseVersionTag string) (string, error) 
 // retrieveSHA256DigestUsingSkopeo determines the SHA256 digest value for a given container image
 func retrieveSHA256DigestUsingSkopeo(url string) *processedContainerImage {
 
-	stdout, _, err := runCommandWithWorkDir("", "skopeo", "inspect", "--no-tags", "docker://"+url)
+	stdout, _, err := runCommandWithWorkDir("", "skopeo", "inspect", "--no-tags", "--override-os", "linux", "--override-arch", "amd64", "docker://"+url)
 	if err != nil {
 		exitWithError(fmt.Errorf("unexpected skopeo error: %v", err))
 		return nil

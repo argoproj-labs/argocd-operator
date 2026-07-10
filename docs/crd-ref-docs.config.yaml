@@ -1,0 +1,9 @@
+# Configuration for https://github.com/elastic/crd-ref-docs
+
+processor:
+ ignoreGroupVersions:
+   - "k8s.io/apimachinery"
+
+render:
+  # Interpolated by `make crd-ref-docs`
+  kubernetesVersion: __OPERATOR_SDK_VERSION__
