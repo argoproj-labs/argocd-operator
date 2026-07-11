@@ -2,4 +2,4 @@
 
 render:
   # Interpolated by `make crd-ref-docs`
-  kubernetesVersion: __OPERATOR_SDK_VERSION__
+  kubernetesVersion: __KUBERNETES_API_VERSION__

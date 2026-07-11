@@ -390,7 +390,7 @@ update-dependencies:
 apidocs-gen: ## Generate API documentation.
 	# The config have the k8s version injected so it does not have to be updated there
 	go run github.com/elastic/crd-ref-docs@v0.3.0 \
-		--config=<(sed 's/__OPERATOR_SDK_VERSION__/$(KUBERNETES_API_VERSION)/' ./docs/crd-ref-docs.config.yaml) \
+		--config=<(sed 's/__KUBERNETES_API_VERSION__/$(KUBERNETES_API_VERSION)/' ./docs/crd-ref-docs.config.yaml) \
 		--source-path=./api/v1beta1/ \
 		--log-level=info \
 		--renderer=markdown \
