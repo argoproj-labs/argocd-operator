@@ -216,18 +216,16 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecretLegacy(cr *argoproj.ArgoCD) (*s
 			Type: corev1.SecretTypeServiceAccountToken,
 		}
 		argoutil.AddTrackedByOperatorLabel(&secret.ObjectMeta)
-		argoutil.LogResourceCreation(log, secret)
-
-		err := r.Create(context.TODO(), secret)
-		if err != nil {
-			return nil, errors.New("unable to locate and create ServiceAccount token for OAuth client secret")
-		}
-
-		err = controllerutil.SetControllerReference(cr, secret, r.Scheme)
+		err := controllerutil.SetControllerReference(cr, secret, r.Scheme)
 		if err != nil {
 			return nil, err
 		}
+		argoutil.LogResourceCreation(log, secret)
 
+		err = r.Create(context.TODO(), secret)
+		if err != nil {
+			return nil, errors.New("unable to locate and create ServiceAccount token for OAuth client secret")
+		}
 		tokenSecret = &corev1.ObjectReference{
 			Name:      secret.Name,
 			Namespace: cr.Namespace,
