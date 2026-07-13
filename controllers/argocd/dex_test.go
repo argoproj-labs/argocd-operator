@@ -1329,7 +1329,7 @@ func TestReconcileArgoCD_getDexOAuthClientSecret_ReturnsCachedToken(t *testing.T
 	a := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
 		ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 			Provider: argoproj.SSOProviderTypeDex,
-			Dex:      &argoproj.ArgoCDDexSpec{OpenShiftOAuth: true},
+			Dex:      &argoproj.ArgoCDDexSpec{OpenShiftOAuth: true, EnableSATokenRenewal: boolPtr(true)},
 		}
 	})
 
@@ -1365,7 +1365,7 @@ func TestReconcileArgoCD_getDexOAuthClientSecret_RenewsExpiredToken(t *testing.T
 	a := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
 		ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 			Provider: argoproj.SSOProviderTypeDex,
-			Dex:      &argoproj.ArgoCDDexSpec{OpenShiftOAuth: true},
+			Dex:      &argoproj.ArgoCDDexSpec{OpenShiftOAuth: true, EnableSATokenRenewal: boolPtr(true)},
 		}
 	})
 
