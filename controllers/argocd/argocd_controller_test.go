@@ -93,7 +93,7 @@ func TestReconcileArgoCD_DexWorkloads(t *testing.T) {
 		Dex: &argoproj.ArgoCDDexSpec{
 			Config:               "test-config",
 			OpenShiftOAuth:       false,
-			EnableDexTokenExpiry: boolPtr(true),
+			EnableSATokenRenewal: boolPtr(true),
 		},
 	}
 

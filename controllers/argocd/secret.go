@@ -923,7 +923,7 @@ func (r *ReconcileArgoCD) reconcileSecrets(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
-	if isDexTokenExpiryFeatureEnabled(cr) {
+	if isDexSATokenExpiryFeatureEnabled(cr) {
 		if err := r.reconcileDexLegacySATokenSecrets(cr); err != nil {
 			return err
 		}
