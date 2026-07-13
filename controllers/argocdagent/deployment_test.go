@@ -785,3 +785,81 @@ func TestGetPrincipalTlsConfig(t *testing.T) {
 		})
 	}
 }
+
+func withPrincipalLabelSelector(selector string) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		if a.Spec.ArgoCDAgent == nil {
+			a.Spec.ArgoCDAgent = &argoproj.ArgoCDAgentSpec{}
+		}
+		if a.Spec.ArgoCDAgent.Principal == nil {
+			a.Spec.ArgoCDAgent.Principal = &argoproj.PrincipalSpec{}
+		}
+		a.Spec.ArgoCDAgent.Principal.LabelSelector = selector
+	}
+}
+
+func TestGetPrincipalLabelSelector(t *testing.T) {
+	tests := []struct {
+		name     string
+		cr       *argoproj.ArgoCD
+		expected string
+	}{
+		{
+			name:     "principal not configured",
+			cr:       makeTestArgoCD(),
+			expected: "",
+		},
+		{
+			name:     "principal enabled without label selector",
+			cr:       makeTestArgoCD(withPrincipalEnabled(true)),
+			expected: "",
+		},
+		{
+			name:     "label selector set",
+			cr:       makeTestArgoCD(withPrincipalEnabled(true), withPrincipalLabelSelector("argocd-agent=true")),
+			expected: "argocd-agent=true",
+		},
+		{
+			name:     "empty label selector",
+			cr:       makeTestArgoCD(withPrincipalEnabled(true), withPrincipalLabelSelector("")),
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, getPrincipalLabelSelector(tt.cr))
+		})
+	}
+}
+
+func TestBuildPrincipalContainerEnv_LabelSelector(t *testing.T) {
+	tests := []struct {
+		name     string
+		cr       *argoproj.ArgoCD
+		expected string
+	}{
+		{
+			name:     "default empty label selector",
+			cr:       makeTestArgoCD(withPrincipalEnabled(true)),
+			expected: "",
+		},
+		{
+			name:     "custom label selector",
+			cr:       makeTestArgoCD(withPrincipalEnabled(true), withPrincipalLabelSelector("argocd-agent=true")),
+			expected: "argocd-agent=true",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			envVars := buildPrincipalContainerEnv(tt.cr, tlsprofile.TLSConfigProfile{})
+			envMap := make(map[string]string)
+			for _, e := range envVars {
+				envMap[e.Name] = e.Value
+			}
+			assert.Equal(t, tt.expected, envMap[EnvArgoCDPrincipalLabelSelector],
+				"ARGOCD_PRINCIPAL_LABEL_SELECTOR mismatch")
+		})
+	}
+}

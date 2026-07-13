@@ -1427,6 +1427,10 @@ type PrincipalSpec struct {
 	// DestinationBasedMapping is the flag to enable destination based mapping for the Principal component.
 	DestinationBasedMapping *bool `json:"destinationBasedMapping,omitempty"`
 
+	// LabelSelector is a Kubernetes label selector that restricts which resources the principal watches.
+	// Only resources matching this selector will be listed, watched, and processed by the principal.
+	LabelSelector string `json:"labelSelector,omitempty"`
+
 	// Metrics defines the metrics configuration for the Principal ServiceMonitor.
 	Metrics *ArgoCDMetricsSpec `json:"metrics,omitempty"`
 }
@@ -1558,6 +1562,10 @@ type AgentSpec struct {
 
 	// DestinationBasedMapping defines the options for destination based mapping for the Agent component.
 	DestinationBasedMapping *DestinationBasedMappingSpec `json:"destinationBasedMapping,omitempty"`
+
+	// LabelSelector is a Kubernetes label selector that restricts which resources the agent watches.
+	// Only resources matching this selector will be listed, watched, and processed by the agent.
+	LabelSelector string `json:"labelSelector,omitempty"`
 
 	// Metrics defines the metrics configuration for the Agent ServiceMonitor.
 	Metrics *ArgoCDMetricsSpec `json:"metrics,omitempty"`

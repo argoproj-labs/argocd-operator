@@ -103,6 +103,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 									"*",
 								},
 							},
+							LabelSelector: "argocd-agent=true",
 							TLS: &argov1beta1api.PrincipalTLSSpec{
 								InsecureGenerate: ptr.To(true),
 							},
@@ -220,6 +221,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				argocdagent.EnvArgoCDPrincipalResourceProxySecretName:   agentResourceProxyTLSSecretName,
 				argocdagent.EnvArgoCDPrincipalResourceProxyCaSecretName: agentRootCASecretName,
 				argocdagent.EnvArgoCDPrincipalJwtSecretName:             agentJWTSecretName,
+				argocdagent.EnvArgoCDPrincipalLabelSelector:             "argocd-agent=true",
 			}
 
 			principalResources = agentFixture.PrincipalResources{
@@ -432,6 +434,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				ac.Spec.ArgoCDAgent.Principal.Server.KeepAliveMinInterval = "60s"
 				ac.Spec.ArgoCDAgent.Principal.Server.EnableWebSocket = ptr.To(true)
 				ac.Spec.ArgoCDAgent.Principal.Image = "quay.io/argoprojlabs/argocd-agent:v0.5.1"
+				ac.Spec.ArgoCDAgent.Principal.LabelSelector = "env=staging"
 
 				ac.Spec.ArgoCDAgent.Principal.Namespace.AllowedNamespaces = []string{"agent-managed", "agent-autonomous"}
 				ac.Spec.ArgoCDAgent.Principal.Namespace.EnableNamespaceCreate = ptr.To(true)
@@ -501,6 +504,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			expectedEnvVariables[argocdagent.EnvArgoCDPrincipalTLSSecretName] = "argocd-agent-principal-tls-v2"
 			expectedEnvVariables[argocdagent.EnvArgoCDPrincipalTLSServerRootCASecretName] = "argocd-agent-ca-v2"
 			expectedEnvVariables[argocdagent.EnvArgoCDPrincipalJwtSecretName] = "argocd-agent-jwt-v2"
+			expectedEnvVariables[argocdagent.EnvArgoCDPrincipalLabelSelector] = "env=staging"
 
 			for key, value := range expectedEnvVariables {
 				Expect(container.Env).To(ContainElement(corev1.EnvVar{Name: key, Value: value}), "Environment variable %s should be set to %s", key, value)

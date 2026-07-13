@@ -366,6 +366,10 @@ func buildAgentContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
 			Name:  EnvArgoCDAgentAllowedNamespaces,
 			Value: getAgentAllowedNamespaces(cr),
 		},
+		{
+			Name:  EnvArgoCDAgentLabelSelector,
+			Value: getAgentLabelSelector(cr),
+		},
 	}
 
 	env = append(env, argoutil.GetRedisAuthEnv()...)
@@ -400,6 +404,7 @@ const (
 	EnvArgoCDAgentDestinationBasedMap = "ARGOCD_AGENT_DESTINATION_BASED_MAPPING"
 	EnvArgoCDAgentCreateNamespace     = "ARGOCD_AGENT_CREATE_NAMESPACE"
 	EnvArgoCDAgentAllowedNamespaces   = "ARGOCD_AGENT_ALLOWED_NAMESPACES"
+	EnvArgoCDAgentLabelSelector       = "ARGOCD_AGENT_LABEL_SELECTOR"
 )
 
 // Logging Configuration
@@ -433,6 +438,13 @@ func getAgentCreateNamespace(cr *argoproj.ArgoCD) string {
 func getAgentAllowedNamespaces(cr *argoproj.ArgoCD) string {
 	if hasAgent(cr) && len(cr.Spec.ArgoCDAgent.Agent.AllowedNamespaces) > 0 {
 		return strings.Join(cr.Spec.ArgoCDAgent.Agent.AllowedNamespaces, ",")
+	}
+	return ""
+}
+
+func getAgentLabelSelector(cr *argoproj.ArgoCD) string {
+	if hasAgent(cr) && cr.Spec.ArgoCDAgent.Agent.LabelSelector != "" {
+		return cr.Spec.ArgoCDAgent.Agent.LabelSelector
 	}
 	return ""
 }
