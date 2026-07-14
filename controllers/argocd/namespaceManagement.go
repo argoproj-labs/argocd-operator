@@ -121,6 +121,47 @@ func isNamespaceManagementEnabled() bool {
 	return os.Getenv(common.EnableManagedNamespace) == "true"
 }
 
+// validateNamespaceManagementConfiguration checks if NamespaceManagement CRs exist for an ArgoCD instance
+// when the ALLOW_NAMESPACE_MANAGEMENT_IN_NAMESPACE_SCOPED_INSTANCES feature flag is not enabled.
+func (r *ReconcileArgoCD) validateNamespaceManagementConfiguration(argocd *argoproj.ArgoCD) error {
+	ctx := context.TODO()
+
+	// List all NamespaceManagement CRs
+	nmList := &argoproj.NamespaceManagementList{}
+	if err := r.List(ctx, nmList); err != nil {
+		return fmt.Errorf("failed to list NamespaceManagement resources: %w", err)
+	}
+
+	// Check if any NamespaceManagement CRs target this ArgoCD instance
+	var affectedNamespaces []string
+	for _, nm := range nmList.Items {
+		if nm.Spec.ManagedBy == argocd.Namespace {
+			affectedNamespaces = append(affectedNamespaces, nm.Namespace)
+		}
+	}
+
+	if len(affectedNamespaces) > 0 {
+		// NamespaceManagement CRs exist for this ArgoCD instance, but the feature flag is not enabled.
+		// This causes an infinite reconciliation loop where the operator continuously tries to disable
+		// namespace management while the CRs keep triggering reconciliation.
+		return fmt.Errorf(
+			"NamespaceManagement misconfiguration detected for ArgoCD instance '%s/%s': "+
+				"NamespaceManagement CRs exist but ALLOW_NAMESPACE_MANAGEMENT_IN_NAMESPACE_SCOPED_INSTANCES is not enabled. "+
+				"This causes an infinite reconciliation loop. "+
+				"Affected namespaces: %v. "+
+				"To resolve, choose ONE of: "+
+				"(1) Enable the feature by setting ALLOW_NAMESPACE_MANAGEMENT_IN_NAMESPACE_SCOPED_INSTANCES=true in the operator deployment environment, OR "+
+				"(2) Delete the NamespaceManagement CRs: kubectl delete namespacemanagement --all-namespaces --field-selector spec.managedBy=%s",
+			argocd.Namespace,
+			argocd.Name,
+			affectedNamespaces,
+			argocd.Namespace,
+		)
+	}
+
+	return nil
+}
+
 // If the EnableManagedNamespace feature is disabled, clean up the RBACs associated with the managed namespaces
 // and remove the corresponding fields from the ArgoCD and NamespaceManagement CRs.
 func (r *ReconcileArgoCD) disableNamespaceManagement(argocd *argoproj.ArgoCD, k8sClient kubernetes.Interface) error {

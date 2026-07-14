@@ -417,6 +417,111 @@ func TestReconcileNamespaceManagement_ExplicitlyDisallowed(t *testing.T) {
 	assert.Contains(t, err.Error(), "Namespace deny-ns is not permitted for management by ArgoCD instance argocd based on NamespaceManagement rules")
 }
 
+func TestValidateNamespaceManagementConfiguration_FeatureDisabled_WithNMCRs(t *testing.T) {
+	// validate that we detect misconfiguration when NamespaceManagement CRs exist but the feature flag is not enabled
+	logf.SetLogger(ZapLogger(true))
+
+	a := makeTestArgoCD()
+
+	// Create NamespaceManagement CR targeting this ArgoCD instance
+	nm := &argoproj.NamespaceManagement{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-nm",
+			Namespace: "managed-ns-1",
+		},
+		Spec: argoproj.NamespaceManagementSpec{
+			ManagedBy: a.Namespace, // Points to 'argocd' namespace
+		},
+	}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a, nm}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	// Create the NamespaceManagement CR
+	err := r.Create(context.Background(), nm)
+	assert.NoError(t, err)
+
+	// Feature flag is NOT set (simulating the bug scenario)
+	os.Unsetenv(common.EnableManagedNamespace)
+
+	// Call validation - should return error with clear message
+	err = r.validateNamespaceManagementConfiguration(a)
+
+	// Should return an error
+	assert.Error(t, err)
+
+	// Error should contain key information
+	assert.Contains(t, err.Error(), "NamespaceManagement misconfiguration detected")
+	assert.Contains(t, err.Error(), "ALLOW_NAMESPACE_MANAGEMENT_IN_NAMESPACE_SCOPED_INSTANCES")
+	assert.Contains(t, err.Error(), "managed-ns-1") // The affected namespace
+	assert.Contains(t, err.Error(), "infinite reconciliation loop")
+}
+
+func TestValidateNamespaceManagementConfiguration_FeatureDisabled_NoNMCRs(t *testing.T) {
+	// Test that validation passes when no NamespaceManagement CRs exist
+	logf.SetLogger(ZapLogger(true))
+
+	a := makeTestArgoCD()
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	// Feature flag is NOT set
+	os.Unsetenv(common.EnableManagedNamespace)
+
+	// Call validation - should NOT return error (no NM CRs exist)
+	err := r.validateNamespaceManagementConfiguration(a)
+
+	// Should NOT return an error
+	assert.NoError(t, err)
+}
+
+func TestValidateNamespaceManagementConfiguration_NMCRsForDifferentInstance(t *testing.T) {
+	// Test that validation passes when NamespaceManagement CRs exist but target a different ArgoCD instance
+	logf.SetLogger(ZapLogger(true))
+
+	a := makeTestArgoCD()
+
+	// Create NamespaceManagement CR targeting a DIFFERENT ArgoCD instance
+	nm := &argoproj.NamespaceManagement{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-nm",
+			Namespace: "managed-ns-1",
+		},
+		Spec: argoproj.NamespaceManagementSpec{
+			ManagedBy: "different-argocd", // Different instance
+		},
+	}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a, nm}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	// Create the NamespaceManagement CR
+	err := r.Create(context.Background(), nm)
+	assert.NoError(t, err)
+
+	// Feature flag is NOT set
+	os.Unsetenv(common.EnableManagedNamespace)
+
+	// Call validation - should NOT return error (NM CR targets different instance)
+	err = r.validateNamespaceManagementConfiguration(a)
+
+	// Should NOT return an error
+	assert.NoError(t, err)
+}
+
 func TestReconcileNamespaceManagement_DeduplicateNamespaces(t *testing.T) {
 	// Duplicate namespaces in status should not be added multiple times
 	// duplicates are not added to r.ManagedNamespaces.
