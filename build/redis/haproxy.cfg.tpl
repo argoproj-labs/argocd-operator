@@ -1,6 +1,27 @@
 {{- if eq .UseTLS "true"}}
 global
     ca-base /app/config/redis/tls
+
+{{- if .tlsMinVersion}}
+    ssl-default-bind-options ssl-min-ver TLSv{{.tlsMinVersion}}
+    ssl-default-server-options ssl-min-ver TLSv{{.tlsMinVersion}}
+{{- end}}
+
+{{- if .tlsCiphers}}
+{{- if eq .tlsMinVersion "1.3"}}
+    # TLS 1.3 cipher suites
+    ssl-default-bind-ciphersuites {{.tlsCiphers}}
+    ssl-default-server-ciphersuites {{.tlsCiphers}}
+{{- else}}
+    # TLS 1.2 and below cipher lists
+    ssl-default-bind-ciphers {{.tlsCiphers}}
+    ssl-default-server-ciphers {{.tlsCiphers}}
+
+    # Also configure TLS 1.3 cipher suites when TLS 1.3 is negotiated
+    ssl-default-bind-ciphersuites {{.tlsCiphers}}
+    ssl-default-server-ciphersuites {{.tlsCiphers}}
+{{- end}}
+{{- end}}
 {{- end}}
 
 defaults REDIS
@@ -37,9 +58,9 @@ backend check_if_redis_is_master_0
     server R1 {{.ServiceName}}-announce-1:26379 check inter 3s
     server R2 {{.ServiceName}}-announce-2:26379 check inter 3s
 {{- else}}
-    server R0 {{.ServiceName}}-announce-0:26379 verify required ca-file tls.crt check inter 3s
-    server R1 {{.ServiceName}}-announce-1:26379 verify required ca-file tls.crt check inter 3s
-    server R2 {{.ServiceName}}-announce-2:26379 verify required ca-file tls.crt check inter 3s
+    server R0 {{.ServiceName}}-announce-0:26379 ssl verify required ca-file tls.crt check inter 3s
+    server R1 {{.ServiceName}}-announce-1:26379 ssl verify required ca-file tls.crt check inter 3s
+    server R2 {{.ServiceName}}-announce-2:26379 ssl verify required ca-file tls.crt check inter 3s
 {{- end}}
 # Check Sentinel and whether they are nominated master
 backend check_if_redis_is_master_1
@@ -63,9 +84,9 @@ backend check_if_redis_is_master_1
     server R1 {{.ServiceName}}-announce-1:26379 check inter 3s
     server R2 {{.ServiceName}}-announce-2:26379 check inter 3s
 {{- else}}
-    server R0 {{.ServiceName}}-announce-0:26379 verify required ca-file tls.crt check inter 3s
-    server R1 {{.ServiceName}}-announce-1:26379 verify required ca-file tls.crt check inter 3s
-    server R2 {{.ServiceName}}-announce-2:26379 verify required ca-file tls.crt check inter 3s
+    server R0 {{.ServiceName}}-announce-0:26379 ssl verify required ca-file tls.crt check inter 3s
+    server R1 {{.ServiceName}}-announce-1:26379 ssl verify required ca-file tls.crt check inter 3s
+    server R2 {{.ServiceName}}-announce-2:26379 ssl verify required ca-file tls.crt check inter 3s
 {{- end}}
 # Check Sentinel and whether they are nominated master
 backend check_if_redis_is_master_2
@@ -89,9 +110,9 @@ backend check_if_redis_is_master_2
     server R1 {{.ServiceName}}-announce-1:26379 check inter 3s
     server R2 {{.ServiceName}}-announce-2:26379 check inter 3s
 {{- else}}
-    server R0 {{.ServiceName}}-announce-0:26379 verify required ca-file tls.crt check inter 3s
-    server R1 {{.ServiceName}}-announce-1:26379 verify required ca-file tls.crt check inter 3s
-    server R2 {{.ServiceName}}-announce-2:26379 verify required ca-file tls.crt check inter 3s
+    server R0 {{.ServiceName}}-announce-0:26379 ssl verify required ca-file tls.crt check inter 3s
+    server R1 {{.ServiceName}}-announce-1:26379 ssl verify required ca-file tls.crt check inter 3s
+    server R2 {{.ServiceName}}-announce-2:26379 ssl verify required ca-file tls.crt check inter 3s
 {{- end}}
 
 # decide redis backend to use
@@ -125,9 +146,9 @@ backend bk_redis_master
     server R2 {{.ServiceName}}-announce-2:6379 check inter 3s fall 1 rise 1
 {{- else}}
     use-server R0 if { srv_is_up(R0) } { nbsrv(check_if_redis_is_master_0) ge 2 }
-    server R0 {{.ServiceName}}-announce-0:6379 verify required ca-file tls.crt check inter 3s fall 1 rise 1
+    server R0 {{.ServiceName}}-announce-0:6379 ssl verify required ca-file tls.crt check inter 3s fall 1 rise 1
     use-server R1 if { srv_is_up(R1) } { nbsrv(check_if_redis_is_master_1) ge 2 }
-    server R1 {{.ServiceName}}-announce-1:6379 verify required ca-file tls.crt check inter 3s fall 1 rise 1
+    server R1 {{.ServiceName}}-announce-1:6379 ssl verify required ca-file tls.crt check inter 3s fall 1 rise 1
     use-server R2 if { srv_is_up(R2) } { nbsrv(check_if_redis_is_master_2) ge 2 }
-    server R2 {{.ServiceName}}-announce-2:6379 verify required ca-file tls.crt check inter 3s fall 1 rise 1
+    server R2 {{.ServiceName}}-announce-2:6379 ssl verify required ca-file tls.crt check inter 3s fall 1 rise 1
 {{- end}}

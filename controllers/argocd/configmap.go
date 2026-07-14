@@ -782,10 +782,12 @@ func (r *ReconcileArgoCD) reconcileRedisHAHealthConfigMap(cr *argoproj.ArgoCD, u
 
 // reconcileRedisHAConfigMap ensures the Redis HA ConfigMap is correctly reconciled.
 func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
+	tlsMinVersion := string(r.CentralTLSConfigProfile.MinVersion)
+	tlsCiphers := r.CentralTLSConfigProfile.Ciphers
 	ctx := context.TODO()
 	desired := newConfigMapWithName(common.ArgoCDRedisHAConfigMapName, cr)
 	desired.Data = map[string]string{
-		"haproxy.cfg":     argoutil.GetRedisHAProxyConfig(cr, useTLSForRedis),
+		"haproxy.cfg":     argoutil.GetRedisHAProxyConfig(cr, useTLSForRedis, tlsMinVersion, tlsCiphers),
 		"haproxy_init.sh": argoutil.GetRedisHAProxyScript(cr),
 		"init.sh":         argoutil.GetRedisInitScript(cr, useTLSForRedis),
 		"redis.conf":      argoutil.GetRedisConf(useTLSForRedis),
