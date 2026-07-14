@@ -46,10 +46,20 @@ func ReconcilePrincipalRole(client client.Client, compName string, cr *argoproj.
 		exists = false
 	}
 
+	customName := getCustomRoleName()
+
 	// If Role exists, handle updates or deletion
 	if exists {
 		if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
 			argoutil.LogResourceDeletion(log, role, "principal role is being deleted as principal is disabled")
+			if err := client.Delete(context.TODO(), role); err != nil {
+				return role, fmt.Errorf("failed to delete principal role %s: %w", role.Name, err)
+			}
+			return role, nil
+		}
+
+		if customName != "" {
+			argoutil.LogResourceDeletion(log, role, "principal role is being deleted as custom cluster role is wanted")
 			if err := client.Delete(context.TODO(), role); err != nil {
 				return role, fmt.Errorf("failed to delete principal role %s: %w", role.Name, err)
 			}
@@ -67,7 +77,7 @@ func ReconcilePrincipalRole(client client.Client, compName string, cr *argoproj.
 	}
 
 	// If Role doesn't exist and principal is disabled, nothing to do
-	if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() {
+	if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() || customName != "" {
 		return role, nil
 	}
 
@@ -114,6 +124,14 @@ func ReconcilePrincipalClusterRoles(client client.Client, compName string, cr *a
 			return clusterRole, nil
 		}
 
+		if cr.Spec.DefaultClusterScopedRoleDisabled {
+			argoutil.LogResourceDeletion(log, clusterRole, "principal clusterRole is being deleted as the default cluster scoped role is disabled")
+			if err := client.Delete(context.TODO(), clusterRole); err != nil {
+				return clusterRole, fmt.Errorf("failed to delete principal clusterRole %s: %v", clusterRole.Name, err)
+			}
+			return clusterRole, nil
+		}
+
 		if !reflect.DeepEqual(expectedPolicyRule, clusterRole.Rules) {
 			clusterRole.Rules = expectedPolicyRule
 			argoutil.LogResourceUpdate(log, clusterRole, "principal clusterRole rules are being updated")
@@ -125,7 +143,7 @@ func ReconcilePrincipalClusterRoles(client client.Client, compName string, cr *a
 	}
 
 	// If ClusterRole doesn't exist and principal is disabled, nothing to do
-	if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() || !allowed {
+	if cr.Spec.ArgoCDAgent == nil || cr.Spec.ArgoCDAgent.Principal == nil || !cr.Spec.ArgoCDAgent.Principal.IsEnabled() || !allowed || cr.Spec.DefaultClusterScopedRoleDisabled {
 		return clusterRole, nil
 	}
 

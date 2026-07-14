@@ -407,6 +407,9 @@ func buildPrincipalContainerEnv(cr *argoproj.ArgoCD, centralTLSProfile tlsProfil
 		}, {
 			Name:  EnvArgoCDPrincipalDestinationBasedMapping,
 			Value: getPrincipalDestinationBasedMapping(cr),
+		}, {
+			Name:  EnvArgoCDPrincipalLabelSelector,
+			Value: getPrincipalLabelSelector(cr),
 		},
 	}
 
@@ -445,6 +448,7 @@ const (
 	EnvArgoCDPrincipalJwtSecretName             = "ARGOCD_PRINCIPAL_JWT_SECRET_NAME"
 	EnvArgoCDPrincipalImage                     = "ARGOCD_PRINCIPAL_IMAGE"
 	EnvArgoCDPrincipalDestinationBasedMapping   = "ARGOCD_PRINCIPAL_DESTINATION_BASED_MAPPING"
+	EnvArgoCDPrincipalLabelSelector             = "ARGOCD_PRINCIPAL_LABEL_SELECTOR"
 	EnvArgoCDPrincipalTlsMinVersion             = "ARGOCD_PRINCIPAL_TLS_MIN_VERSION"
 	EnvArgoCDPrincipalCipherSuites              = "ARGOCD_PRINCIPAL_TLS_CIPHERSUITES"
 )
@@ -501,6 +505,13 @@ func getPrincipalDestinationBasedMapping(cr *argoproj.ArgoCD) string {
 		return strconv.FormatBool(*cr.Spec.ArgoCDAgent.Principal.DestinationBasedMapping)
 	}
 	return "false"
+}
+
+func getPrincipalLabelSelector(cr *argoproj.ArgoCD) string {
+	if hasPrincipal(cr) && cr.Spec.ArgoCDAgent.Principal.LabelSelector != "" {
+		return cr.Spec.ArgoCDAgent.Principal.LabelSelector
+	}
+	return ""
 }
 
 func getPrincipalAllowedNamespaces(cr *argoproj.ArgoCD) string {

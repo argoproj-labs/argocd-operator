@@ -98,7 +98,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				// The operator's own default annotation should be present
 				Eventually(roleBinding).Should(k8sFixture.HaveAnnotationWithValue(common.AnnotationName, argoCD.Name))
 				// Central Argo CD's tracking annotations are not present.
-				Consistently(roleBinding, "15s", "3s").Should(k8sFixture.NotHaveAnnotation(trackingIDAnnotation))
+				Consistently(roleBinding, "10s", "3s").Should(k8sFixture.NotHaveAnnotation(trackingIDAnnotation))
 				Consistently(roleBinding, "5s", "1s").Should(k8sFixture.NotHaveAnnotation(installationIDAnnotation))
 			}
 

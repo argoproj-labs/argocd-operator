@@ -688,6 +688,11 @@ spec:
                       image:
                         description: Image is the name of Argo CD Agent image
                         type: string
+                      labelSelector:
+                        description: |-
+                          LabelSelector is a Kubernetes label selector that restricts which resources the agent watches.
+                          Only resources matching this selector will be listed, watched, and processed by the agent.
+                        type: string
                       logFormat:
                         description: LogFormat refers to the log format used by the
                           Agent component.
@@ -926,6 +931,11 @@ spec:
                               the JWT signing key.
                             type: string
                         type: object
+                      labelSelector:
+                        description: |-
+                          LabelSelector is a Kubernetes label selector that restricts which resources the principal watches.
+                          Only resources matching this selector will be listed, watched, and processed by the principal.
+                        type: string
                       logFormat:
                         description: LogFormat refers to the log format used by the
                           Principal component.
@@ -11881,6 +11891,11 @@ spec:
                       image:
                         description: Image is the name of Argo CD Agent image
                         type: string
+                      labelSelector:
+                        description: |-
+                          LabelSelector is a Kubernetes label selector that restricts which resources the agent watches.
+                          Only resources matching this selector will be listed, watched, and processed by the agent.
+                        type: string
                       logFormat:
                         description: LogFormat refers to the log format used by the
                           Agent component.
@@ -12183,6 +12198,11 @@ spec:
                               the JWT signing key.
                             type: string
                         type: object
+                      labelSelector:
+                        description: |-
+                          LabelSelector is a Kubernetes label selector that restricts which resources the principal watches.
+                          Only resources matching this selector will be listed, watched, and processed by the principal.
+                        type: string
                       logFormat:
                         description: LogFormat refers to the log format used by the
                           Principal component.
