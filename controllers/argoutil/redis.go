@@ -185,7 +185,7 @@ func GetRedisInitScript(cr *argoproj.ArgoCD, useTLSForRedis bool) string {
 	return script
 }
 
-func tlsVersionToHAProxy(tlsVersion string) string {
+func TLSVersionToHAProxy(tlsVersion string) string {
 	versionMap := map[string]string{
 		"VersionTLS12": "1.2",
 		"VersionTLS13": "1.3",
@@ -206,7 +206,7 @@ func GetRedisHAProxyConfig(cr *argoproj.ArgoCD, useTLSForRedis bool, tlsMinVersi
 		"ServiceName": NameWithSuffix(cr.ObjectMeta, "redis-ha"),
 		"UseTLS":      strconv.FormatBool(useTLSForRedis),
 	}
-	tlsVersion := tlsVersionToHAProxy(tlsMinVersion)
+	tlsVersion := TLSVersionToHAProxy(tlsMinVersion)
 	if tlsVersion != "" {
 		vars["tlsMinVersion"] = tlsVersion
 	}
@@ -341,8 +341,7 @@ func GetRedisServerAddress(cr *argoproj.ArgoCD) string {
 	return FqdnServiceRef(common.ArgoCDDefaultRedisSuffix, common.ArgoCDDefaultRedisPort, cr)
 }
 
-// loadTemplateFile will parse a template with the given path and execute it with the given params.
-func loadTemplateFile(path string, params map[string]string) (string, error) {
+var loadTemplateFile = func(path string, params map[string]string) (string, error) {
 	tmpl, err := template.ParseFiles(path)
 	if err != nil {
 		log.Error(err, "unable to parse template")
@@ -350,11 +349,11 @@ func loadTemplateFile(path string, params map[string]string) (string, error) {
 	}
 
 	buf := new(bytes.Buffer)
-	err = tmpl.Execute(buf, params)
-	if err != nil {
+	if err := tmpl.Execute(buf, params); err != nil {
 		log.Error(err, "unable to execute template")
 		return "", fmt.Errorf("unable to execute template. error: %w", err)
 	}
+
 	return buf.String(), nil
 }
 
