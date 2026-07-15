@@ -193,7 +193,7 @@ func TestReconcileArgoCD_reconcileRedisHAConfigMap(t *testing.T) {
 	exists, err = argoutil.IsObjectFound(cl, cr.Namespace, common.ArgoCDRedisHAConfigMapName, existingCMAfter)
 	assert.Nil(t, err)
 	assert.True(t, exists)
-	assert.Equal(t, argoutil.GetRedisHAProxyConfig(cr, false), existingCMAfter.Data["haproxy.cfg"])
+	assert.Equal(t, argoutil.GetRedisHAProxyConfig(cr, false, "", nil), existingCMAfter.Data["haproxy.cfg"])
 
 	// Disable HA and ensure ConfigMap is deleted
 	cr.Spec.HA.Enabled = false
