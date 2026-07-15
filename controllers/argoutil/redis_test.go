@@ -8,9 +8,10 @@ import (
 	"testing"
 	"text/template"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 // TestTLSVersionToHAProxy tests the TLS version mapping function
