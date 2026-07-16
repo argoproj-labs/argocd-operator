@@ -239,6 +239,13 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 				return err
 			}
 
+			// Creating content in a terminating namespace is forbidden and should not
+			// prevent reconciliation of the remaining source namespaces.
+			if namespace.DeletionTimestamp != nil {
+				log.Info(fmt.Sprintf("Skipping terminating namespace %s", namespace.Name))
+				continue
+			}
+
 			// do not reconcile rolebindings for namespaces already containing managed-by label
 			// as it already contains rolebindings with permissions to manipulate application resources
 			// reconciled during reconcilation of ManagedNamespaces
