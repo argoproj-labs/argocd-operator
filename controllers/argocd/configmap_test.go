@@ -2002,14 +2002,14 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_sensitiveAnnotations(t *testing.
 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		err := r.reconcileArgoConfigMap(a)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		cm := &corev1.ConfigMap{}
 		err = r.Get(context.TODO(), types.NamespacedName{
 			Name:      common.ArgoCDConfigMapName,
 			Namespace: testNamespace,
 		}, cm)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		_, exists := cm.Data[common.ArgoCDKeyResourceSensitiveMaskAnnotations]
 		assert.False(t, exists, "resource.sensitive.mask.annotations should not be set on non-OpenShift clusters")
 	})
@@ -2028,14 +2028,14 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_sensitiveAnnotations(t *testing.
 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		err := r.reconcileArgoConfigMap(a)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		cm := &corev1.ConfigMap{}
 		err = r.Get(context.TODO(), types.NamespacedName{
 			Name:      common.ArgoCDConfigMapName,
 			Namespace: testNamespace,
 		}, cm)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "openshift.io/token-secret.value", cm.Data[common.ArgoCDKeyResourceSensitiveMaskAnnotations])
 	})
 
@@ -2065,17 +2065,17 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_sensitiveAnnotations(t *testing.
 		}
 		argoutil.AddTrackedByOperatorLabel(&existingCM.ObjectMeta)
 		err := r.Create(context.TODO(), existingCM)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = r.reconcileArgoConfigMap(a)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		cm := &corev1.ConfigMap{}
 		err = r.Get(context.TODO(), types.NamespacedName{
 			Name:      common.ArgoCDConfigMapName,
 			Namespace: testNamespace,
 		}, cm)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "openshift.io/token-secret.value", cm.Data[common.ArgoCDKeyResourceSensitiveMaskAnnotations])
 	})
 
@@ -2096,14 +2096,14 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_sensitiveAnnotations(t *testing.
 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		err := r.reconcileArgoConfigMap(a)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		cm := &corev1.ConfigMap{}
 		err = r.Get(context.TODO(), types.NamespacedName{
 			Name:      common.ArgoCDConfigMapName,
 			Namespace: testNamespace,
 		}, cm)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "some.other/annotation,openshift.io/token-secret.value",
 			cm.Data[common.ArgoCDKeyResourceSensitiveMaskAnnotations])
 	})
@@ -2125,14 +2125,14 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_sensitiveAnnotations(t *testing.
 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 		err := r.reconcileArgoConfigMap(a)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		cm := &corev1.ConfigMap{}
 		err = r.Get(context.TODO(), types.NamespacedName{
 			Name:      common.ArgoCDConfigMapName,
 			Namespace: testNamespace,
 		}, cm)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "some.other/annotation,openshift.io/token-secret.value",
 			cm.Data[common.ArgoCDKeyResourceSensitiveMaskAnnotations],
 			"token annotation should not be duplicated")
