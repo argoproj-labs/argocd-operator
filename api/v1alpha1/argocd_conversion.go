@@ -104,6 +104,7 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.WebhookSecrets = ConvertAlphaToBetaWebhookSecrets(src.Spec.WebhookSecrets)
 	dst.Spec.NetworkPolicy = v1beta1.ArgoCDNetworkPolicySpec(src.Spec.NetworkPolicy)
 	dst.Spec.CommitServer = v1beta1.ArgoCDCommitServerSpec(src.Spec.CommitServer)
+	dst.Spec.SourceHydrator = v1beta1.ArgoCDSourceHydratorSpec(src.Spec.SourceHydrator)
 
 	// Status conversion
 	dst.Status = v1beta1.ArgoCDStatus(src.Status)

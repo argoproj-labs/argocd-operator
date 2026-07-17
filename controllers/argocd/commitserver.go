@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -212,6 +213,33 @@ func (r *ReconcileArgoCD) reconcileCommitServerDeployment(cr *argoproj.ArgoCD) e
 			existing.Spec.Template.Spec.InitContainers = deploy.Spec.Template.Spec.InitContainers
 			changes = append(changes, "init containers")
 		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
+			existing.Spec.Template.Spec.Volumes = deploy.Spec.Template.Spec.Volumes
+			changes = append(changes, "volumes")
+		}
+		if existing.Spec.Template.Spec.ServiceAccountName != deploy.Spec.Template.Spec.ServiceAccountName {
+			existing.Spec.Template.Spec.ServiceAccountName = deploy.Spec.Template.Spec.ServiceAccountName
+			changes = append(changes, "serviceAccountName")
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.SecurityContext, existing.Spec.Template.Spec.SecurityContext) {
+			existing.Spec.Template.Spec.SecurityContext = deploy.Spec.Template.Spec.SecurityContext
+			changes = append(changes, "pod security context")
+		}
+		actualImage := existing.Spec.Template.Spec.Containers[0].Image
+		desiredImage := deploy.Spec.Template.Spec.Containers[0].Image
+		if actualImage != desiredImage {
+			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
+			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			changes = append(changes, "container image")
+		}
+		if existing.Spec.Template.Spec.Containers[0].ImagePullPolicy != deploy.Spec.Template.Spec.Containers[0].ImagePullPolicy {
+			existing.Spec.Template.Spec.Containers[0].ImagePullPolicy = deploy.Spec.Template.Spec.Containers[0].ImagePullPolicy
+			changes = append(changes, "image pull policy")
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Command, existing.Spec.Template.Spec.Containers[0].Command) {
+			existing.Spec.Template.Spec.Containers[0].Command = deploy.Spec.Template.Spec.Containers[0].Command
+			changes = append(changes, "container command")
+		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Env, existing.Spec.Template.Spec.Containers[0].Env) {
 			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
 			changes = append(changes, "container env")
@@ -220,9 +248,13 @@ func (r *ReconcileArgoCD) reconcileCommitServerDeployment(cr *argoproj.ArgoCD) e
 			existing.Spec.Template.Spec.Containers[0].Resources = deploy.Spec.Template.Spec.Containers[0].Resources
 			changes = append(changes, "container resources")
 		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Command, existing.Spec.Template.Spec.Containers[0].Command) {
-			existing.Spec.Template.Spec.Containers[0].Command = deploy.Spec.Template.Spec.Containers[0].Command
-			changes = append(changes, "container command")
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].SecurityContext, existing.Spec.Template.Spec.Containers[0].SecurityContext) {
+			existing.Spec.Template.Spec.Containers[0].SecurityContext = deploy.Spec.Template.Spec.Containers[0].SecurityContext
+			changes = append(changes, "container security context")
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].VolumeMounts, existing.Spec.Template.Spec.Containers[0].VolumeMounts) {
+			existing.Spec.Template.Spec.Containers[0].VolumeMounts = deploy.Spec.Template.Spec.Containers[0].VolumeMounts
+			changes = append(changes, "container volume mounts")
 		}
 
 		if len(changes) > 0 {

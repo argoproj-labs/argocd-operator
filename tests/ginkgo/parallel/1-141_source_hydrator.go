@@ -32,7 +32,7 @@ import (
 
 var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
-	Context("1-126_source_hydrator", func() {
+	Context("1-141_source_hydrator", func() {
 
 		var (
 			ctx       context.Context
