@@ -1129,7 +1129,7 @@ func TestArgoCDApplicationSetCommand(t *testing.T) {
 		"entrypoint.sh",
 		"argocd-applicationset-controller",
 		"--argocd-repo-server",
-		"argocd-repo-server.argocd.svc.cluster.local:8081",
+		"argocd-repo-server.argocd.svc.cluster.local.:8081",
 		"--loglevel",
 		"info",
 		"--logformat",
@@ -1150,7 +1150,7 @@ func TestArgoCDApplicationSetCommand(t *testing.T) {
 		"--logformat",
 		"text",
 		"--argocd-repo-server",
-		"foo.scv.cluster.local:6379",
+		"foo.scv.cluster.local.:6379",
 	}
 
 	deployment := &appsv1.Deployment{}
@@ -1191,7 +1191,7 @@ func TestArgoCDApplicationSetCommand(t *testing.T) {
 	// When one of the ExtraCommandArgs already exists in cmd with same or different value
 	a.Spec.ApplicationSet.ExtraCommandArgs = []string{
 		"--argocd-repo-server",
-		"foo.scv.cluster.local:6379",
+		"foo.scv.cluster.local.:6379",
 	}
 
 	assert.NoError(t, r.reconcileApplicationSetController(a))

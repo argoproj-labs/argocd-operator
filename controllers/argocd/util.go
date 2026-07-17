@@ -200,7 +200,7 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 	}
 
 	cmd = append(cmd, "--status-processors", fmt.Sprint(getArgoServerStatusProcessors(cr)))
-	cmd = append(cmd, "--kubectl-parallelism-limit", fmt.Sprint(getArgoControllerParellismLimit(cr)))
+	cmd = append(cmd, "--kubectl-parallelism-limit", fmt.Sprint(getArgoControllerParallelismLimit(cr)))
 
 	if len(cr.Spec.SourceNamespaces) > 0 && allowed {
 		cmd = append(cmd, "--application-namespaces", fmt.Sprint(strings.Join(cr.Spec.SourceNamespaces, ",")))
@@ -404,8 +404,8 @@ func getArgoServerStatusProcessors(cr *argoproj.ArgoCD) int32 {
 	return sp
 }
 
-// getArgoControllerParellismLimit returns the parallelism limit for the application controller
-func getArgoControllerParellismLimit(cr *argoproj.ArgoCD) int32 {
+// getArgoControllerParallelismLimit returns the parallelism limit for the application controller
+func getArgoControllerParallelismLimit(cr *argoproj.ArgoCD) int32 {
 	pl := common.ArgoCDDefaultControllerParallelismLimit
 	if cr.Spec.Controller.ParallelismLimit > 0 {
 		pl = cr.Spec.Controller.ParallelismLimit

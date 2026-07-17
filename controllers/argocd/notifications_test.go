@@ -362,7 +362,7 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.Name)
 
 	want := []v1.Container{{
-		Command:         []string{"argocd-notifications", "--loglevel", "info", "--logformat", "text", "--argocd-repo-server", "argocd-repo-server.argocd.svc.cluster.local:8081"},
+		Command:         []string{"argocd-notifications", "--loglevel", "info", "--logformat", "text", "--argocd-repo-server", "argocd-repo-server.argocd.svc.cluster.local.:8081"},
 		Image:           argoutil.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion),
 		ImagePullPolicy: v1.PullIfNotPresent,
 		Name:            "argocd-notifications-controller",
@@ -760,7 +760,7 @@ func TestReconcileNotifications_testLogLevel(t *testing.T) {
 		"--logformat",
 		"text",
 		"--argocd-repo-server",
-		"argocd-repo-server.argocd.svc.cluster.local:8081",
+		"argocd-repo-server.argocd.svc.cluster.local.:8081",
 	}
 
 	if diff := cmp.Diff(expectedCMD, deployment.Spec.Template.Spec.Containers[0].Command); diff != "" {
@@ -827,7 +827,7 @@ func TestReconcileNotifications_testLogFormat(t *testing.T) {
 		"--logformat",
 		"json",
 		"--argocd-repo-server",
-		"argocd-repo-server.argocd.svc.cluster.local:8081",
+		"argocd-repo-server.argocd.svc.cluster.local.:8081",
 	}
 
 	if diff := cmp.Diff(expectedCMD, deployment.Spec.Template.Spec.Containers[0].Command); diff != "" {
