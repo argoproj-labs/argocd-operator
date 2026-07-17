@@ -515,6 +515,27 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 		cm.Data[common.ArgoCDServerRBACDisableFineGrainedInheritance] = "false"
 	}
 
+	// On OpenShift, mask the token value annotation in the ArgoCD UI/CLI to
+	// prevent accidental exposure of service account token secrets.
+	// Appends to any value already set via ExtraConfig; skips if already present.
+	if IsOpenShiftCluster() {
+		const tokenAnnotation = "openshift.io/token-secret.value"
+		if existing, ok := cm.Data[common.ArgoCDKeyResourceSensitiveMaskAnnotations]; ok && existing != "" {
+			alreadyPresent := false
+			for _, entry := range strings.Split(existing, ",") {
+				if strings.TrimSpace(entry) == tokenAnnotation {
+					alreadyPresent = true
+					break
+				}
+			}
+			if !alreadyPresent {
+				cm.Data[common.ArgoCDKeyResourceSensitiveMaskAnnotations] = existing + "," + tokenAnnotation
+			}
+		} else {
+			cm.Data[common.ArgoCDKeyResourceSensitiveMaskAnnotations] = tokenAnnotation
+		}
+	}
+
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
 		return err
 	}

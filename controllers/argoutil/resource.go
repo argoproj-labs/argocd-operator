@@ -186,7 +186,7 @@ func NameWithSuffixForStatefulSet(meta metav1.ObjectMeta, suffix string) string 
 // FqdnServiceRef will return the FQDN referencing a specific service name, as set up by the operator, with the
 // given port.
 func FqdnServiceRef(service string, port int, cr *argoproj.ArgoCD) string {
-	return fmt.Sprintf("%s.%s.svc.%s:%d", NameWithSuffix(cr.ObjectMeta, service), cr.Namespace, GetClusterDomain(cr), port)
+	return fmt.Sprintf("%s.%s.svc.%s.:%d", NameWithSuffix(cr.ObjectMeta, service), cr.Namespace, GetClusterDomain(cr), port)
 }
 
 // GetClusterDomain returns the cluster domain suffix for the given ArgoCD instance.

@@ -802,3 +802,81 @@ func TestReconcileAgentDeployment_ResourceRequirements(t *testing.T) {
 
 	assert.Equal(t, updatedResources, deployment.Spec.Template.Spec.Containers[0].Resources)
 }
+
+func withAgentLabelSelector(selector string) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		if a.Spec.ArgoCDAgent == nil {
+			a.Spec.ArgoCDAgent = &argoproj.ArgoCDAgentSpec{}
+		}
+		if a.Spec.ArgoCDAgent.Agent == nil {
+			a.Spec.ArgoCDAgent.Agent = &argoproj.AgentSpec{}
+		}
+		a.Spec.ArgoCDAgent.Agent.LabelSelector = selector
+	}
+}
+
+func TestGetAgentLabelSelector(t *testing.T) {
+	tests := []struct {
+		name     string
+		cr       *argoproj.ArgoCD
+		expected string
+	}{
+		{
+			name:     "agent not configured",
+			cr:       makeTestArgoCD(),
+			expected: "",
+		},
+		{
+			name:     "agent enabled without label selector",
+			cr:       makeTestArgoCD(withAgentEnabled(true)),
+			expected: "",
+		},
+		{
+			name:     "label selector set",
+			cr:       makeTestArgoCD(withAgentEnabled(true), withAgentLabelSelector("argocd-agent=true")),
+			expected: "argocd-agent=true",
+		},
+		{
+			name:     "empty label selector",
+			cr:       makeTestArgoCD(withAgentEnabled(true), withAgentLabelSelector("")),
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, getAgentLabelSelector(tt.cr))
+		})
+	}
+}
+
+func TestBuildAgentContainerEnv_LabelSelector(t *testing.T) {
+	tests := []struct {
+		name     string
+		cr       *argoproj.ArgoCD
+		expected string
+	}{
+		{
+			name:     "default empty label selector",
+			cr:       makeTestArgoCD(withAgentEnabled(true)),
+			expected: "",
+		},
+		{
+			name:     "custom label selector",
+			cr:       makeTestArgoCD(withAgentEnabled(true), withAgentLabelSelector("argocd-agent=true")),
+			expected: "argocd-agent=true",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			envVars := buildAgentContainerEnv(tt.cr)
+			envMap := make(map[string]string)
+			for _, e := range envVars {
+				envMap[e.Name] = e.Value
+			}
+			assert.Equal(t, tt.expected, envMap[EnvArgoCDAgentLabelSelector],
+				"ARGOCD_AGENT_LABEL_SELECTOR mismatch")
+		})
+	}
+}

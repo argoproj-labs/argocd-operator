@@ -46,10 +46,20 @@ func ReconcileAgentRole(client client.Client, compName string, cr *argoproj.Argo
 		exists = false
 	}
 
+	customName := getCustomRoleName()
+
 	// If Role exists, handle updates or deletion
 	if exists {
 		if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
 			argoutil.LogResourceDeletion(log, role, "agent role is being deleted as agent is disabled")
+			if err := client.Delete(context.TODO(), role); err != nil {
+				return role, fmt.Errorf("failed to delete agent role %s: %w", role.Name, err)
+			}
+			return role, nil
+		}
+
+		if customName != "" {
+			argoutil.LogResourceDeletion(log, role, "agent role is being deleted as custom cluster role is wanted")
 			if err := client.Delete(context.TODO(), role); err != nil {
 				return role, fmt.Errorf("failed to delete agent role %s: %w", role.Name, err)
 			}
@@ -67,7 +77,7 @@ func ReconcileAgentRole(client client.Client, compName string, cr *argoproj.Argo
 	}
 
 	// If Role doesn't exist and agent is disabled, nothing to do
-	if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() {
+	if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() || customName != "" {
 		return role, nil
 	}
 
@@ -114,6 +124,14 @@ func ReconcileAgentClusterRoles(client client.Client, compName string, cr *argop
 			return clusterRole, nil
 		}
 
+		if cr.Spec.DefaultClusterScopedRoleDisabled {
+			argoutil.LogResourceDeletion(log, clusterRole, "principal clusterRole is being deleted as the default cluster scoped role is disabled")
+			if err := client.Delete(context.TODO(), clusterRole); err != nil {
+				return clusterRole, fmt.Errorf("failed to delete principal clusterRole %s: %v", clusterRole.Name, err)
+			}
+			return clusterRole, nil
+		}
+
 		if !reflect.DeepEqual(expectedPolicyRule, clusterRole.Rules) {
 			clusterRole.Rules = expectedPolicyRule
 			argoutil.LogResourceUpdate(log, clusterRole, "agent clusterRole rules are being updated")
@@ -125,7 +143,7 @@ func ReconcileAgentClusterRoles(client client.Client, compName string, cr *argop
 	}
 
 	// If ClusterRole doesn't exist and agent is disabled, nothing to do
-	if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() || !allowed {
+	if !hasAgent(cr) || !cr.Spec.ArgoCDAgent.Agent.IsEnabled() || !allowed || cr.Spec.DefaultClusterScopedRoleDisabled {
 		return clusterRole, nil
 	}
 

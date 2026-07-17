@@ -1260,6 +1260,10 @@ type PrincipalSpec struct {
 	// Image is the name of Argo CD Agent image
 	Image string `json:"image,omitempty"`
 
+	// LabelSelector is a Kubernetes label selector that restricts which resources the principal watches.
+	// Only resources matching this selector will be listed, watched, and processed by the principal.
+	LabelSelector string `json:"labelSelector,omitempty"`
+
 	// Env lets you specify environment for principal pods
 	Env []corev1.EnvVar `json:"env,omitempty"`
 
@@ -1389,6 +1393,10 @@ type AgentSpec struct {
 
 	// Image is the name of Argo CD Agent image
 	Image string `json:"image,omitempty"`
+
+	// LabelSelector is a Kubernetes label selector that restricts which resources the agent watches.
+	// Only resources matching this selector will be listed, watched, and processed by the agent.
+	LabelSelector string `json:"labelSelector,omitempty"`
 
 	// Env lets you specify environment for agent pods
 	Env []corev1.EnvVar `json:"env,omitempty"`

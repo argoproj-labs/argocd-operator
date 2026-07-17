@@ -204,21 +204,21 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Eventually(repoServerDepl).Should(k8sFixture.ExistByName())
 
 			By("expecting repo-server to have desired container process command/arguments")
-			Expect(repoServerDepl).To(deplFixture.HaveContainerCommandSubstring("uid_entrypoint.sh argocd-repo-server --redis argocd-redis-ha-haproxy."+ns.Name+".svc.cluster.local:6379 --redis-use-tls --redis-ca-certificate /app/config/reposerver/tls/redis/tls.crt --loglevel info --logformat text", 0),
+			Expect(repoServerDepl).To(deplFixture.HaveContainerCommandSubstring("uid_entrypoint.sh argocd-repo-server --redis argocd-redis-ha-haproxy."+ns.Name+".svc.cluster.local.:6379 --redis-use-tls --redis-ca-certificate /app/config/reposerver/tls/redis/tls.crt --loglevel info --logformat text", 0),
 				"TLS .spec.template.spec.containers.command for argocd-repo-server deployment is wrong")
 
 			argocdServerDepl := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "argocd-server", Namespace: ns.Name}}
 			Eventually(argocdServerDepl).Should(k8sFixture.ExistByName())
 
 			By("expecting argocd-server to have desired container process command/arguments")
-			Expect(argocdServerDepl).To(deplFixture.HaveContainerCommandSubstring("argocd-server --staticassets /shared/app --dex-server https://argocd-dex-server."+ns.Name+".svc.cluster.local:5556 --repo-server argocd-repo-server."+ns.Name+".svc.cluster.local:8081 --redis argocd-redis-ha-haproxy."+ns.Name+".svc.cluster.local:6379 --redis-use-tls --redis-ca-certificate /app/config/server/tls/redis/tls.crt --loglevel info --logformat text", 0),
+			Expect(argocdServerDepl).To(deplFixture.HaveContainerCommandSubstring("argocd-server --staticassets /shared/app --dex-server https://argocd-dex-server."+ns.Name+".svc.cluster.local.:5556 --repo-server argocd-repo-server."+ns.Name+".svc.cluster.local.:8081 --redis argocd-redis-ha-haproxy."+ns.Name+".svc.cluster.local.:6379 --redis-use-tls --redis-ca-certificate /app/config/server/tls/redis/tls.crt --loglevel info --logformat text", 0),
 				"TLS .spec.template.spec.containers.command for argocd-server deployment is wrong")
 
 			By("expecting application-controller to have desired container process command/arguments")
 			applicationControllerSS := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: "argocd-application-controller", Namespace: ns.Name}}
 			Eventually(applicationControllerSS).Should(k8sFixture.ExistByName())
 
-			Expect(applicationControllerSS).To(statefulsetFixture.HaveContainerCommandSubstring("argocd-application-controller --operation-processors 10 --redis argocd-redis-ha-haproxy."+ns.Name+".svc.cluster.local:6379 --redis-use-tls --redis-ca-certificate /app/config/controller/tls/redis/tls.crt --repo-server argocd-repo-server."+ns.Name+".svc.cluster.local:8081 --status-processors 20 --kubectl-parallelism-limit 10 --loglevel info --logformat text", 0),
+			Expect(applicationControllerSS).To(statefulsetFixture.HaveContainerCommandSubstring("argocd-application-controller --operation-processors 10 --redis argocd-redis-ha-haproxy."+ns.Name+".svc.cluster.local.:6379 --redis-use-tls --redis-ca-certificate /app/config/controller/tls/redis/tls.crt --repo-server argocd-repo-server."+ns.Name+".svc.cluster.local.:8081 --status-processors 20 --kubectl-parallelism-limit 10 --loglevel info --logformat text", 0),
 				"TLS .spec.template.spec.containers.command for argocd-application-controller statefulsets is wrong")
 		})
 

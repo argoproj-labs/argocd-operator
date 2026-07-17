@@ -1984,3 +1984,157 @@ func TestReconcileArgoCD_reconcileArgoCmdParamsConfigMap_tokenRefStrictDefault(t
 		})
 	}
 }
+
+func TestReconcileArgoCD_reconcileArgoConfigMap_sensitiveAnnotations(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	t.Run("non-openshift: key absent", func(t *testing.T) {
+		original := versionAPIFound
+		versionAPIFound = false
+		defer func() { versionAPIFound = original }()
+
+		a := makeTestArgoCD()
+		resObjs := []client.Object{a}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		err := r.reconcileArgoConfigMap(a)
+		require.NoError(t, err)
+
+		cm := &corev1.ConfigMap{}
+		err = r.Get(context.TODO(), types.NamespacedName{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: testNamespace,
+		}, cm)
+		require.NoError(t, err)
+		_, exists := cm.Data[common.ArgoCDKeyResourceSensitiveMaskAnnotations]
+		assert.False(t, exists, "resource.sensitive.mask.annotations should not be set on non-OpenShift clusters")
+	})
+
+	t.Run("openshift: key present on create", func(t *testing.T) {
+		original := versionAPIFound
+		versionAPIFound = true
+		defer func() { versionAPIFound = original }()
+
+		a := makeTestArgoCD()
+		resObjs := []client.Object{a}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		err := r.reconcileArgoConfigMap(a)
+		require.NoError(t, err)
+
+		cm := &corev1.ConfigMap{}
+		err = r.Get(context.TODO(), types.NamespacedName{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: testNamespace,
+		}, cm)
+		require.NoError(t, err)
+		assert.Equal(t, "openshift.io/token-secret.value", cm.Data[common.ArgoCDKeyResourceSensitiveMaskAnnotations])
+	})
+
+	t.Run("openshift: key added via update when cm already exists without it", func(t *testing.T) {
+		original := versionAPIFound
+		versionAPIFound = true
+		defer func() { versionAPIFound = original }()
+
+		a := makeTestArgoCD()
+		resObjs := []client.Object{a}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		// Pre-create the ConfigMap without the sensitive key, simulating an
+		// existing deployment being upgraded to an operator version that adds this key.
+		existingCM := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      common.ArgoCDConfigMapName,
+				Namespace: a.Namespace,
+			},
+			Data: map[string]string{
+				"admin.enabled": "true",
+			},
+		}
+		argoutil.AddTrackedByOperatorLabel(&existingCM.ObjectMeta)
+		err := r.Create(context.TODO(), existingCM)
+		require.NoError(t, err)
+
+		err = r.reconcileArgoConfigMap(a)
+		require.NoError(t, err)
+
+		cm := &corev1.ConfigMap{}
+		err = r.Get(context.TODO(), types.NamespacedName{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: testNamespace,
+		}, cm)
+		require.NoError(t, err)
+		assert.Equal(t, "openshift.io/token-secret.value", cm.Data[common.ArgoCDKeyResourceSensitiveMaskAnnotations])
+	})
+
+	t.Run("openshift: ExtraConfig has different annotation, token annotation is appended", func(t *testing.T) {
+		original := versionAPIFound
+		versionAPIFound = true
+		defer func() { versionAPIFound = original }()
+
+		a := makeTestArgoCD()
+		a.Spec.ExtraConfig = map[string]string{
+			common.ArgoCDKeyResourceSensitiveMaskAnnotations: "some.other/annotation",
+		}
+		resObjs := []client.Object{a}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		err := r.reconcileArgoConfigMap(a)
+		require.NoError(t, err)
+
+		cm := &corev1.ConfigMap{}
+		err = r.Get(context.TODO(), types.NamespacedName{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: testNamespace,
+		}, cm)
+		require.NoError(t, err)
+		assert.Equal(t, "some.other/annotation,openshift.io/token-secret.value",
+			cm.Data[common.ArgoCDKeyResourceSensitiveMaskAnnotations])
+	})
+
+	t.Run("openshift: ExtraConfig already contains token annotation, no duplicate added", func(t *testing.T) {
+		original := versionAPIFound
+		versionAPIFound = true
+		defer func() { versionAPIFound = original }()
+
+		a := makeTestArgoCD()
+		a.Spec.ExtraConfig = map[string]string{
+			common.ArgoCDKeyResourceSensitiveMaskAnnotations: "some.other/annotation,openshift.io/token-secret.value",
+		}
+		resObjs := []client.Object{a}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		err := r.reconcileArgoConfigMap(a)
+		require.NoError(t, err)
+
+		cm := &corev1.ConfigMap{}
+		err = r.Get(context.TODO(), types.NamespacedName{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: testNamespace,
+		}, cm)
+		require.NoError(t, err)
+		assert.Equal(t, "some.other/annotation,openshift.io/token-secret.value",
+			cm.Data[common.ArgoCDKeyResourceSensitiveMaskAnnotations],
+			"token annotation should not be duplicated")
+	})
+}

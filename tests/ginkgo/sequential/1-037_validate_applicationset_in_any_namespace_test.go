@@ -726,7 +726,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			}
 
 			By("verifying ApplicationSet deployment is not created while namespace list fails (blocked reconcile)")
-			Consistently(appsetDeployment, "30s", "2s").Should(k8sFixture.NotExistByName())
+			Consistently(appsetDeployment, "10s", "2s").Should(k8sFixture.NotExistByName())
 
 			By("restoring operator list namespaces permission")
 			clusterroleFixture.Update(operatorClusterRole, func(cr *rbacv1.ClusterRole) { cr.Rules = originalRules })

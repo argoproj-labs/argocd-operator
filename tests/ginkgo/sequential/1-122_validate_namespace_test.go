@@ -151,7 +151,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				},
 			}
 			Eventually(serverDeployment, "30s", "3s").Should(k8sFixture.ExistByName())
-			Consistently(serverDeployment, "30s", "3s").ShouldNot(deploymentFixture.HaveContainerCommandSubstring("--application-namespaces", 0))
+			Consistently(serverDeployment, "10s", "3s").ShouldNot(deploymentFixture.HaveContainerCommandSubstring("--application-namespaces", 0))
 
 			appControllerStatefulSet := &appsv1.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{
@@ -160,7 +160,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				},
 			}
 			Eventually(appControllerStatefulSet).Should(k8sFixture.ExistByName())
-			Consistently(appControllerStatefulSet, "30s", "3s").ShouldNot(statefulsetFixture.HaveContainerCommandSubstring("--application-namespaces", 0))
+			Consistently(appControllerStatefulSet, "10s", "3s").ShouldNot(statefulsetFixture.HaveContainerCommandSubstring("--application-namespaces", 0))
 
 		})
 
@@ -254,7 +254,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				},
 			}
 			Eventually(serverDeployment, "30s", "3s").Should(k8sFixture.ExistByName())
-			Consistently(serverDeployment, "30s", "3s").ShouldNot(deploymentFixture.HaveContainerCommandSubstring("--application-namespaces", 0))
+			Consistently(serverDeployment, "10s", "3s").ShouldNot(deploymentFixture.HaveContainerCommandSubstring("--application-namespaces", 0))
 
 			appControllerStatefulSet := &appsv1.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{
@@ -263,7 +263,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				},
 			}
 			Eventually(appControllerStatefulSet).Should(k8sFixture.ExistByName())
-			Consistently(appControllerStatefulSet, "30s", "3s").ShouldNot(statefulsetFixture.HaveContainerCommandSubstring("--application-namespaces", 0))
+			Consistently(appControllerStatefulSet, "10s", "3s").ShouldNot(statefulsetFixture.HaveContainerCommandSubstring("--application-namespaces", 0))
 
 		})
 	})

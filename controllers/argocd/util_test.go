@@ -367,9 +367,9 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 		"--operation-processors",
 		"10",
 		"--redis",
-		"argocd-redis.argocd.svc.cluster.local:6379",
+		"argocd-redis.argocd.svc.cluster.local.:6379",
 		"--repo-server",
-		"argocd-repo-server.argocd.svc.cluster.local:8081",
+		"argocd-repo-server.argocd.svc.cluster.local.:8081",
 		"--status-processors",
 		"20",
 		"--kubectl-parallelism-limit",
@@ -381,15 +381,15 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 		"--persist-resource-health",
 	}
 
-	controllerProcesorsChangedResult := func(n string) []string {
+	controllerProcessorsChangedResult := func(n string) []string {
 		return []string{
 			"argocd-application-controller",
 			"--operation-processors",
 			"10",
 			"--redis",
-			"argocd-redis.argocd.svc.cluster.local:6379",
+			"argocd-redis.argocd.svc.cluster.local.:6379",
 			"--repo-server",
-			"argocd-repo-server.argocd.svc.cluster.local:8081",
+			"argocd-repo-server.argocd.svc.cluster.local.:8081",
 			"--status-processors",
 			n,
 			"--kubectl-parallelism-limit",
@@ -402,15 +402,15 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 		}
 	}
 
-	operationProcesorsChangedResult := func(n string) []string {
+	operationProcessorsChangedResult := func(n string) []string {
 		return []string{
 			"argocd-application-controller",
 			"--operation-processors",
 			n,
 			"--redis",
-			"argocd-redis.argocd.svc.cluster.local:6379",
+			"argocd-redis.argocd.svc.cluster.local.:6379",
 			"--repo-server",
-			"argocd-repo-server.argocd.svc.cluster.local:8081",
+			"argocd-repo-server.argocd.svc.cluster.local.:8081",
 			"--status-processors",
 			"20",
 			"--kubectl-parallelism-limit",
@@ -423,13 +423,13 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 		}
 	}
 
-	operationProcesorsChangedResult2 := func(n string) []string {
+	operationProcessorsChangedResult2 := func(n string) []string {
 		return []string{
 			"argocd-application-controller",
 			"--redis",
-			"argocd-redis.argocd.svc.cluster.local:6379",
+			"argocd-redis.argocd.svc.cluster.local.:6379",
 			"--repo-server",
-			"argocd-repo-server.argocd.svc.cluster.local:8081",
+			"argocd-repo-server.argocd.svc.cluster.local.:8081",
 			"--status-processors",
 			"20",
 			"--kubectl-parallelism-limit",
@@ -450,9 +450,9 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 			"--operation-processors",
 			"10",
 			"--redis",
-			"argocd-redis.argocd.svc.cluster.local:6379",
+			"argocd-redis.argocd.svc.cluster.local.:6379",
 			"--repo-server",
-			"argocd-repo-server.argocd.svc.cluster.local:8081",
+			"argocd-repo-server.argocd.svc.cluster.local.:8081",
 			"--status-processors",
 			"20",
 			"--kubectl-parallelism-limit",
@@ -471,9 +471,9 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 			"--operation-processors",
 			"10",
 			"--redis",
-			"argocd-redis.argocd.svc.cluster.local:6379",
+			"argocd-redis.argocd.svc.cluster.local.:6379",
 			"--repo-server",
-			"argocd-repo-server.argocd.svc.cluster.local:8081",
+			"argocd-repo-server.argocd.svc.cluster.local.:8081",
 			"--status-processors",
 			"20",
 			"--kubectl-parallelism-limit",
@@ -492,9 +492,9 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 			"--operation-processors",
 			"10",
 			"--redis",
-			"argocd-redis.argocd.svc.cluster.local:6379",
+			"argocd-redis.argocd.svc.cluster.local.:6379",
 			"--repo-server",
-			"argocd-repo-server.argocd.svc.cluster.local:8081",
+			"argocd-repo-server.argocd.svc.cluster.local.:8081",
 			"--status-processors",
 			"20",
 			"--kubectl-parallelism-limit",
@@ -524,7 +524,7 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 		{
 			"configured status processors",
 			[]argoCDOpt{controllerProcessors(30)},
-			controllerProcesorsChangedResult("30"),
+			controllerProcessorsChangedResult("30"),
 		},
 		{
 			"configured status processors to zero",
@@ -534,12 +534,12 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 		{
 			"configured status processors to be between zero and default",
 			[]argoCDOpt{controllerProcessors(10)},
-			controllerProcesorsChangedResult("10"),
+			controllerProcessorsChangedResult("10"),
 		},
 		{
 			"configured operation processors",
 			[]argoCDOpt{operationProcessors(15)},
-			operationProcesorsChangedResult("15"),
+			operationProcessorsChangedResult("15"),
 		},
 		{
 			"configured operation processors to zero",
@@ -549,7 +549,7 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 		{
 			"configured operation processors to be between zero and ten",
 			[]argoCDOpt{operationProcessors(5)},
-			operationProcesorsChangedResult("5"),
+			operationProcessorsChangedResult("5"),
 		},
 		{
 			"configured parallelism limit",
@@ -609,7 +609,7 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 		{
 			"overriding default argument using extraCommandArgs",
 			[]argoCDOpt{extraCommandArgs([]string{"--operation-processors", "15"})},
-			operationProcesorsChangedResult2("15"),
+			operationProcessorsChangedResult2("15"),
 		},
 		{
 			"configured empty extraCommandArgs",
@@ -1762,21 +1762,21 @@ func TestFqdnServiceRefWithCustomDomain(t *testing.T) {
 			service:       "redis",
 			port:          6379,
 			clusterDomain: "",
-			expectedFQDN:  "argocd-redis.argocd.svc.cluster.local:6379",
+			expectedFQDN:  "argocd-redis.argocd.svc.cluster.local.:6379",
 		},
 		{
 			name:          "custom cluster domain",
 			service:       "redis",
 			port:          6379,
 			clusterDomain: "CLUSTER_ID.cluster.local",
-			expectedFQDN:  "argocd-redis.argocd.svc.CLUSTER_ID.cluster.local:6379",
+			expectedFQDN:  "argocd-redis.argocd.svc.CLUSTER_ID.cluster.local.:6379",
 		},
 		{
 			name:          "repo server with custom domain",
 			service:       "repo-server",
 			port:          8081,
 			clusterDomain: "eks.amazonaws.com",
-			expectedFQDN:  "argocd-repo-server.argocd.svc.eks.amazonaws.com:8081",
+			expectedFQDN:  "argocd-repo-server.argocd.svc.eks.amazonaws.com.:8081",
 		},
 	}
 
@@ -1803,19 +1803,19 @@ func TestGetRedisServerAddressWithCustomDomain(t *testing.T) {
 			name:          "default cluster domain - standalone redis",
 			clusterDomain: "",
 			haEnabled:     false,
-			expectedAddr:  "argocd-redis.argocd.svc.cluster.local:6379",
+			expectedAddr:  "argocd-redis.argocd.svc.cluster.local.:6379",
 		},
 		{
 			name:          "custom cluster domain - standalone redis",
 			clusterDomain: "CLUSTER_ID.cluster.local",
 			haEnabled:     false,
-			expectedAddr:  "argocd-redis.argocd.svc.CLUSTER_ID.cluster.local:6379",
+			expectedAddr:  "argocd-redis.argocd.svc.CLUSTER_ID.cluster.local.:6379",
 		},
 		{
 			name:          "custom cluster domain - HA redis",
 			clusterDomain: "eks.amazonaws.com",
 			haEnabled:     true,
-			expectedAddr:  "argocd-redis-ha-haproxy.argocd.svc.eks.amazonaws.com:6379",
+			expectedAddr:  "argocd-redis-ha-haproxy.argocd.svc.eks.amazonaws.com.:6379",
 		},
 		{
 			name:         "remote redis - custom domain ignored",
@@ -1846,12 +1846,12 @@ func TestGetDexServerAddressWithCustomDomain(t *testing.T) {
 		{
 			name:          "default cluster domain",
 			clusterDomain: "",
-			expectedAddr:  "https://argocd-dex-server.argocd.svc.cluster.local:5556",
+			expectedAddr:  "https://argocd-dex-server.argocd.svc.cluster.local.:5556",
 		},
 		{
 			name:          "custom cluster domain",
 			clusterDomain: "CLUSTER_ID.cluster.local",
-			expectedAddr:  "https://argocd-dex-server.argocd.svc.CLUSTER_ID.cluster.local:5556",
+			expectedAddr:  "https://argocd-dex-server.argocd.svc.CLUSTER_ID.cluster.local.:5556",
 		},
 	}
 
@@ -1876,12 +1876,12 @@ func TestGetRepoServerAddressWithCustomDomain(t *testing.T) {
 		{
 			name:          "default cluster domain",
 			clusterDomain: "",
-			expectedAddr:  "argocd-repo-server.argocd.svc.cluster.local:8081",
+			expectedAddr:  "argocd-repo-server.argocd.svc.cluster.local.:8081",
 		},
 		{
 			name:          "custom cluster domain",
 			clusterDomain: "CLUSTER_ID.cluster.local",
-			expectedAddr:  "argocd-repo-server.argocd.svc.CLUSTER_ID.cluster.local:8081",
+			expectedAddr:  "argocd-repo-server.argocd.svc.CLUSTER_ID.cluster.local.:8081",
 		},
 		{
 			name:         "remote repo server - custom domain ignored",
