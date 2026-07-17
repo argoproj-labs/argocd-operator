@@ -182,6 +182,7 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.NamespaceManagement = ConvertBetaToAlphaNamespaceManagement(src.Spec.NamespaceManagement)
 	dst.Spec.WebhookSecrets = ConvertBetaToAlphaWebhookSecrets(src.Spec.WebhookSecrets)
 	dst.Spec.CommitServer = ArgoCDCommitServerSpec(src.Spec.CommitServer)
+	dst.Spec.SourceHydrator = ArgoCDSourceHydratorSpec(src.Spec.SourceHydrator)
 
 	// Status conversion
 	dst.Status = ArgoCDStatus(src.Status)
