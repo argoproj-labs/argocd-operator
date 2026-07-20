@@ -12,6 +12,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	configv1 "github.com/openshift/api/config/v1"
 )
 
 const (
@@ -185,28 +186,15 @@ func GetRedisInitScript(cr *argoproj.ArgoCD, useTLSForRedis bool) string {
 	return script
 }
 
-func TLSVersionToHAProxy(tlsVersion string) string {
-	versionMap := map[string]string{
-		"VersionTLS12": "1.2",
-		"VersionTLS13": "1.3",
-		"VersionTLS11": "1.1",
-		"VersionTLS10": "1.0",
-	}
-	if v, ok := versionMap[tlsVersion]; ok {
-		return v
-	}
-	return "" // default fallback
-}
-
 // GetRedisHAProxyConfig will load the Redis HA Proxy configuration from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func GetRedisHAProxyConfig(cr *argoproj.ArgoCD, useTLSForRedis bool, tlsMinVersion string, tlsCiphers []string) string {
+func GetRedisHAProxyConfig(cr *argoproj.ArgoCD, useTLSForRedis bool, tlsMinVersion configv1.TLSProtocolVersion, tlsCiphers []string) string {
 	path := fmt.Sprintf("%s/haproxy.cfg.tpl", getRedisConfigPath())
 	vars := map[string]string{
 		"ServiceName": NameWithSuffix(cr.ObjectMeta, "redis-ha"),
 		"UseTLS":      strconv.FormatBool(useTLSForRedis),
 	}
-	tlsVersion := TLSVersionToHAProxy(tlsMinVersion)
+	tlsVersion := TLSProtocolVersionString(tlsMinVersion)
 	if tlsVersion != "" {
 		vars["tlsMinVersion"] = tlsVersion
 	}
