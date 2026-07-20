@@ -10,8 +10,9 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	configv1 "github.com/openshift/api/config/v1"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 // TestGetRedisHAProxyConfigRenderedTLSValues verifies that TLS minVersion and ciphers

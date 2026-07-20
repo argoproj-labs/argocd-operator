@@ -10,9 +10,10 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
+	configv1 "github.com/openshift/api/config/v1"
+
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	configv1 "github.com/openshift/api/config/v1"
 )
 
 const (
