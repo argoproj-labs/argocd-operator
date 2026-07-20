@@ -688,7 +688,6 @@ type ArgoCDNetworkPolicySpec struct {
 	// Enabled defines whether NetworkPolicy resources should be created for this Argo CD instance.
 	// When enabled, the operator will reconcile NetworkPolicies for Argo CD components.
 	// When disabled, the operator will remove any previously-created NetworkPolicies.
-	// +kubebuilder:default=true
 	Enabled *bool `json:"enabled,omitempty"`
 }
 

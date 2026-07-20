@@ -1753,7 +1753,6 @@ spec:
                   NetworkPolicy resources for this Argo CD instance.
                 properties:
                   enabled:
-                    default: true
                     description: |-
                       Enabled defines whether NetworkPolicy resources should be created for this Argo CD instance.
                       When enabled, the operator will reconcile NetworkPolicies for Argo CD components.
@@ -16874,7 +16873,6 @@ spec:
                   NetworkPolicy resources for this Argo CD instance.
                 properties:
                   enabled:
-                    default: true
                     description: |-
                       Enabled defines whether NetworkPolicy resources are created for this Argo CD instance.
                       When enabled, the operator will reconcile NetworkPolicies for Argo CD components.
