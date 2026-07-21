@@ -1041,12 +1041,6 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 
 	// Watch for changes to ConfigMap sub-resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.ConfigMap{})
-	bldr.Owns(&corev1.Secret{})
-	bldr.Owns(&corev1.Service{})
-	bldr.Owns(&appsv1.Deployment{})
-	bldr.Owns(&networkingv1.Ingress{})
-	bldr.Owns(&appsv1.StatefulSet{})
-
 	// Watch for changes to NetworkPolicy sub-resources owned by ArgoCD instances.
 	// This ensures that if a NetworkPolicy is deleted, the controller reconciles and recreates it.
 	bldr.Owns(&networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{
@@ -1054,10 +1048,6 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 			common.ArgoCDKeyPartOf: common.ArgoCDAppName,
 		},
 	}})
-
-	bldr.Owns(&v1.Role{})
-	bldr.Owns(&v1.RoleBinding{})
-	bldr.Owns(&v1alpha1.NotificationsConfiguration{})
 
 	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.Secret{})
