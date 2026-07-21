@@ -7,7 +7,7 @@ require (
 	// Update in Makefile and run `make update-dependencies`
 	github.com/argoproj/argo-cd/v3 v3.4.2
 	github.com/cert-manager/cert-manager v1.20.3
-	github.com/go-logr/logr v1.4.3
+	github.com/go-logr/logr v1.4.4
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.1-0.20241114170450-2d3c2a9cc518
 	github.com/onsi/ginkgo/v2 v2.32.0
