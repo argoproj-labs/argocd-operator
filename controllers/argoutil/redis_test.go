@@ -10,8 +10,9 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/argoproj-labs/argocd-operator/pkg/tlsprofile"
 	configv1 "github.com/openshift/api/config/v1"
+
+	"github.com/argoproj-labs/argocd-operator/pkg/tlsprofile"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
