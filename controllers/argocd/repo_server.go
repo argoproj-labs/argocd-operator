@@ -129,19 +129,15 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 			return err
 		}
 		if fipsEnabled {
-			repoEnv = append(repoEnv, corev1.EnvVar{
-				Name:  "GODEBUG",
-				Value: "fips140=on",
-			},
-				// GOLANG_FIPS and GODEBUG=fips140=on are both mutaully exclusive.
-				// GOLANG_FIPS=1 is set by default but it causes issues
-				// since we are explicitly setting GODEBUG=fips140=on to skip unsupported fips ssh algorithms in Argo CD.
-				// See https://github.com/argoproj/argo-cd/issues/24155,
-				// so we need to set GOLANG_FIPS=0 to avoid the conflict.
-				corev1.EnvVar{
-					Name:  "GOLANG_FIPS",
-					Value: "0",
-				})
+			repoEnv = argoutil.EnvMerge(repoEnv, argoutil.GetFIPSGoDebugEnv(), false)
+			for _, env := range repoEnv {
+				if env.Name == "GODEBUG" {
+					if strings.Contains(env.Value, "fips140=on") {
+						repoEnv = argoutil.EnvMerge(repoEnv, argoutil.GetFIPSGoLangFipsEnv(), false)
+					}
+					break
+				}
+			}
 		}
 	}
 
@@ -211,12 +207,10 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 	}
 
 	if !volumeMountOverridesTmpVolume {
-
 		repoServerVolumeMounts = append(repoServerVolumeMounts, corev1.VolumeMount{
 			Name:      "tmp",
 			MountPath: "/tmp",
 		})
-
 	}
 
 	if cr.Spec.Repo.VolumeMounts != nil {
