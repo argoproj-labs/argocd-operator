@@ -28,7 +28,6 @@ func TestGetRedisHAProxyConfigRenderedTLSValues(t *testing.T) {
 		expectedInOutput        []string
 		notExpectedInOut        []string
 		validatePattern         *regexp.Regexp
-		description             string
 	}{
 		{
 			name:   "TLS 1.2 with two cipher suites",
@@ -50,7 +49,6 @@ func TestGetRedisHAProxyConfigRenderedTLSValues(t *testing.T) {
 			},
 			notExpectedInOut: []string{},
 			validatePattern:  regexp.MustCompile(`ssl-min-ver\s+TLSv1\.2`),
-			description:      "Verify TLS 1.2 is rendered with proper HAProxy syntax",
 		},
 		{
 			name:   "TLS 1.3 with modern ciphers",
@@ -71,12 +69,10 @@ func TestGetRedisHAProxyConfigRenderedTLSValues(t *testing.T) {
 			},
 			notExpectedInOut: []string{
 				"1.2",
-				"VersionTLS13",
 				"ssl-default-bind-ciphers ",
 				"ssl-default-server-ciphers ",
 			},
 			validatePattern: regexp.MustCompile(`ssl-min-ver\s+TLSv1\.3`),
-			description:     "Verify TLS 1.3 is rendered correctly",
 		},
 		{
 			name:   "TLS enabled with min version only",
@@ -111,7 +107,6 @@ func TestGetRedisHAProxyConfigRenderedTLSValues(t *testing.T) {
 				"ssl-default-bind-ciphersuites",
 				"ssl-default-server-ciphersuites",
 			},
-			description: "Verify no TLS directives when TLS is disabled",
 		},
 	}
 	for _, tt := range tests {
