@@ -10,6 +10,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/argoproj-labs/argocd-operator/pkg/tlsprofile"
 	configv1 "github.com/openshift/api/config/v1"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -19,22 +20,23 @@ import (
 // are correctly rendered in the final HAProxy configuration template output
 func TestGetRedisHAProxyConfigRenderedTLSValues(t *testing.T) {
 	tests := []struct {
-		name             string
-		useTLS           bool
-		tlsMinVersion    configv1.TLSProtocolVersion
-		tlsCiphers       []string
-		expectedInOutput []string
-		notExpectedInOut []string
-		validatePattern  *regexp.Regexp
-		description      string
+		name                    string
+		useTLS                  bool
+		centralTLSConfigProfile tlsprofile.TLSConfigProfile
+		expectedInOutput        []string
+		notExpectedInOut        []string
+		validatePattern         *regexp.Regexp
+		description             string
 	}{
 		{
-			name:          "TLS 1.2 with two cipher suites",
-			useTLS:        true,
-			tlsMinVersion: configv1.VersionTLS12,
-			tlsCiphers: []string{
-				"ECDHE-RSA-AES256-GCM-SHA384",
-				"ECDHE-RSA-AES128-GCM-SHA256",
+			name:   "TLS 1.2 with two cipher suites",
+			useTLS: true,
+			centralTLSConfigProfile: tlsprofile.TLSConfigProfile{
+				MinVersion: configv1.VersionTLS12,
+				Ciphers: []string{
+					"ECDHE-RSA-AES256-GCM-SHA384",
+					"ECDHE-RSA-AES128-GCM-SHA256",
+				},
 			},
 			expectedInOutput: []string{
 				"ssl-default-bind-options ssl-min-ver TLSv1.2",
@@ -49,13 +51,15 @@ func TestGetRedisHAProxyConfigRenderedTLSValues(t *testing.T) {
 			description:      "Verify TLS 1.2 is rendered with proper HAProxy syntax",
 		},
 		{
-			name:          "TLS 1.3 with modern ciphers",
-			useTLS:        true,
-			tlsMinVersion: configv1.VersionTLS13,
-			tlsCiphers: []string{
-				"TLS_AES_256_GCM_SHA384",
-				"TLS_CHACHA20_POLY1305_SHA256",
-				"TLS_AES_128_GCM_SHA256",
+			name:   "TLS 1.3 with modern ciphers",
+			useTLS: true,
+			centralTLSConfigProfile: tlsprofile.TLSConfigProfile{
+				MinVersion: configv1.VersionTLS13,
+				Ciphers: []string{
+					"TLS_AES_256_GCM_SHA384",
+					"TLS_CHACHA20_POLY1305_SHA256",
+					"TLS_AES_128_GCM_SHA256",
+				},
 			},
 			expectedInOutput: []string{
 				"ssl-default-bind-options ssl-min-ver TLSv1.3",
@@ -73,10 +77,12 @@ func TestGetRedisHAProxyConfigRenderedTLSValues(t *testing.T) {
 			description:     "Verify TLS 1.3 is rendered correctly",
 		},
 		{
-			name:          "TLS enabled with min version only",
-			useTLS:        true,
-			tlsMinVersion: "VersionTLS13",
-			tlsCiphers:    nil,
+			name:   "TLS enabled with min version only",
+			useTLS: true,
+			centralTLSConfigProfile: tlsprofile.TLSConfigProfile{
+				MinVersion: configv1.VersionTLS13,
+				Ciphers:    nil,
+			},
 			expectedInOutput: []string{
 				"ssl-default-bind-options ssl-min-ver TLSv1.3",
 				"ssl-default-server-options ssl-min-ver TLSv1.3",
@@ -87,10 +93,12 @@ func TestGetRedisHAProxyConfigRenderedTLSValues(t *testing.T) {
 			},
 		},
 		{
-			name:             "TLS disabled - no TLS configuration",
-			useTLS:           false,
-			tlsMinVersion:    "",
-			tlsCiphers:       nil,
+			name:   "TLS disabled - no TLS configuration",
+			useTLS: false,
+			centralTLSConfigProfile: tlsprofile.TLSConfigProfile{
+				MinVersion: "",
+				Ciphers:    nil,
+			},
 			expectedInOutput: []string{},
 			notExpectedInOut: []string{
 				"ca-base",
@@ -104,14 +112,16 @@ func TestGetRedisHAProxyConfigRenderedTLSValues(t *testing.T) {
 			description: "Verify no TLS directives when TLS is disabled",
 		},
 		{
-			name:          "Multiple ciphers are colon-separated",
-			useTLS:        true,
-			tlsMinVersion: configv1.VersionTLS12,
-			tlsCiphers: []string{
-				"CIPHER1",
-				"CIPHER2",
-				"CIPHER3",
-				"CIPHER4",
+			name:   "Multiple ciphers are colon-separated",
+			useTLS: true,
+			centralTLSConfigProfile: tlsprofile.TLSConfigProfile{
+				MinVersion: configv1.VersionTLS12,
+				Ciphers: []string{
+					"CIPHER1",
+					"CIPHER2",
+					"CIPHER3",
+					"CIPHER4",
+				},
 			},
 			expectedInOutput: []string{
 				"CIPHER1:CIPHER2:CIPHER3:CIPHER4",
@@ -147,7 +157,7 @@ func TestGetRedisHAProxyConfigRenderedTLSValues(t *testing.T) {
 			}
 
 			// Call the function
-			result := GetRedisHAProxyConfig(cr, tt.useTLS, tt.tlsMinVersion, tt.tlsCiphers)
+			result := GetRedisHAProxyConfig(cr, tt.useTLS, tt.centralTLSConfigProfile)
 
 			// Validate captured variables exist as expected
 			t.Logf("Test: %s\nCaptured vars: %+v\nRendered output:\n%s\n", tt.name, capturedVars, result)
@@ -175,14 +185,14 @@ func TestGetRedisHAProxyConfigRenderedTLSValues(t *testing.T) {
 
 			// Validate vars structure
 			if tt.useTLS {
-				if tlsVersion := capturedVars["tlsMinVersion"]; tt.tlsMinVersion != "" && TLSProtocolVersionString(tt.tlsMinVersion) != "" {
-					if tlsVersion != TLSProtocolVersionString(tt.tlsMinVersion) {
-						t.Errorf("tlsMinVersion var = %q, want %q", tlsVersion, TLSProtocolVersionString(tt.tlsMinVersion))
+				if tlsVersion := capturedVars["tlsMinVersion"]; tt.centralTLSConfigProfile.MinVersion != "" && TLSProtocolVersionString(tt.centralTLSConfigProfile.MinVersion) != "" {
+					if tlsVersion != TLSProtocolVersionString(tt.centralTLSConfigProfile.MinVersion) {
+						t.Errorf("tlsMinVersion var = %q, want %q", tlsVersion, TLSProtocolVersionString(tt.centralTLSConfigProfile.MinVersion))
 					}
 				}
 
-				if len(tt.tlsCiphers) > 0 {
-					expectedCiphers := strings.Join(tt.tlsCiphers, ":")
+				if len(tt.centralTLSConfigProfile.Ciphers) > 0 {
+					expectedCiphers := strings.Join(tt.centralTLSConfigProfile.Ciphers, ":")
 					if ciphers := capturedVars["tlsCiphers"]; ciphers != expectedCiphers {
 						t.Errorf("tlsCiphers var = %q, want %q", ciphers, expectedCiphers)
 					}

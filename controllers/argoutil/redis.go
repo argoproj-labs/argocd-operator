@@ -10,10 +10,9 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	configv1 "github.com/openshift/api/config/v1"
-
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/tlsprofile"
 )
 
 const (
@@ -189,19 +188,19 @@ func GetRedisInitScript(cr *argoproj.ArgoCD, useTLSForRedis bool) string {
 
 // GetRedisHAProxyConfig will load the Redis HA Proxy configuration from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func GetRedisHAProxyConfig(cr *argoproj.ArgoCD, useTLSForRedis bool, tlsMinVersion configv1.TLSProtocolVersion, tlsCiphers []string) string {
+func GetRedisHAProxyConfig(cr *argoproj.ArgoCD, useTLSForRedis bool, centralTLSConfigProfile tlsprofile.TLSConfigProfile) string {
 	path := fmt.Sprintf("%s/haproxy.cfg.tpl", getRedisConfigPath())
 	vars := map[string]string{
 		"ServiceName": NameWithSuffix(cr.ObjectMeta, "redis-ha"),
 		"UseTLS":      strconv.FormatBool(useTLSForRedis),
 	}
-	tlsVersion := TLSProtocolVersionString(tlsMinVersion)
+	tlsVersion := TLSProtocolVersionString(centralTLSConfigProfile.MinVersion)
 	if tlsVersion != "" {
 		vars["tlsMinVersion"] = tlsVersion
 	}
 
-	if len(tlsCiphers) > 0 {
-		vars["tlsCiphers"] = strings.Join(tlsCiphers, ":")
+	if len(centralTLSConfigProfile.Ciphers) > 0 {
+		vars["tlsCiphers"] = strings.Join(centralTLSConfigProfile.Ciphers, ":")
 	}
 
 	script, err := loadTemplateFile(path, vars)
