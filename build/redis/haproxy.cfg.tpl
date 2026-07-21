@@ -2,24 +2,24 @@
 global
     ca-base /app/config/redis/tls
 
-{{- if .tlsMinVersion}}
-    ssl-default-bind-options ssl-min-ver TLSv{{.tlsMinVersion}}
-    ssl-default-server-options ssl-min-ver TLSv{{.tlsMinVersion}}
+{{- if .TLSMinVersion}}
+    ssl-default-bind-options ssl-min-ver TLSv{{.TLSMinVersion}}
+    ssl-default-server-options ssl-min-ver TLSv{{.TLSMinVersion}}
 {{- end}}
 
-{{- if .tlsCiphers}}
-{{- if eq .tlsMinVersion "1.3"}}
+{{- if .TLSCiphers}}
+{{- if eq .TLSMinVersion "1.3"}}
     # TLS 1.3 cipher suites
-    ssl-default-bind-ciphersuites {{.tlsCiphers}}
-    ssl-default-server-ciphersuites {{.tlsCiphers}}
+    ssl-default-bind-ciphersuites {{.TLSCiphers}}
+    ssl-default-server-ciphersuites {{.TLSCiphers}}
 {{- else}}
     # TLS 1.2 and below cipher lists
-    ssl-default-bind-ciphers {{.tlsCiphers}}
-    ssl-default-server-ciphers {{.tlsCiphers}}
+    ssl-default-bind-ciphers {{.TLSCiphers}}
+    ssl-default-server-ciphers {{.TLSCiphers}}
 
     # Also configure TLS 1.3 cipher suites when TLS 1.3 is negotiated
-    ssl-default-bind-ciphersuites {{.tlsCiphers}}
-    ssl-default-server-ciphersuites {{.tlsCiphers}}
+    ssl-default-bind-ciphersuites {{.TLSCiphers}}
+    ssl-default-server-ciphersuites {{.TLSCiphers}}
 {{- end}}
 {{- end}}
 {{- end}}

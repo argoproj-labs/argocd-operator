@@ -196,11 +196,11 @@ func GetRedisHAProxyConfig(cr *argoproj.ArgoCD, useTLSForRedis bool, centralTLSC
 	}
 	tlsVersion := TLSProtocolVersionString(centralTLSConfigProfile.MinVersion)
 	if tlsVersion != "" {
-		vars["tlsMinVersion"] = tlsVersion
+		vars["TLSMinVersion"] = tlsVersion
 	}
 
 	if len(centralTLSConfigProfile.Ciphers) > 0 {
-		vars["tlsCiphers"] = strings.Join(centralTLSConfigProfile.Ciphers, ":")
+		vars["TLSCiphers"] = strings.Join(centralTLSConfigProfile.Ciphers, ":")
 	}
 
 	script, err := loadTemplateFile(path, vars)

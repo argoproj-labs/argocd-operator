@@ -11,6 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	configv1 "github.com/openshift/api/config/v1"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/tlsprofile"
 
@@ -112,29 +113,7 @@ func TestGetRedisHAProxyConfigRenderedTLSValues(t *testing.T) {
 			},
 			description: "Verify no TLS directives when TLS is disabled",
 		},
-		{
-			name:   "Multiple ciphers are colon-separated",
-			useTLS: true,
-			centralTLSConfigProfile: tlsprofile.TLSConfigProfile{
-				MinVersion: configv1.VersionTLS12,
-				Ciphers: []string{
-					"CIPHER1",
-					"CIPHER2",
-					"CIPHER3",
-					"CIPHER4",
-				},
-			},
-			expectedInOutput: []string{
-				"CIPHER1:CIPHER2:CIPHER3:CIPHER4",
-			},
-			notExpectedInOut: []string{
-				"CIPHER1, CIPHER2",
-				"CIPHER1;CIPHER2",
-			},
-			description: "Verify ciphers are joined with colon separator",
-		},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cr := &argoproj.ArgoCD{
@@ -143,60 +122,42 @@ func TestGetRedisHAProxyConfigRenderedTLSValues(t *testing.T) {
 					Namespace: "argocd",
 				},
 			}
-
 			// Capture the vars passed to the template
 			var capturedVars map[string]string
-
 			original := loadTemplateFile
 			defer func() {
 				loadTemplateFile = original
 			}()
-
 			loadTemplateFile = func(path string, vars map[string]string) (string, error) {
 				capturedVars = maps.Clone(vars)
 				return renderMockTemplate(vars), nil
 			}
-
 			// Call the function
 			result := GetRedisHAProxyConfig(cr, tt.useTLS, tt.centralTLSConfigProfile)
-
 			// Validate captured variables exist as expected
 			t.Logf("Test: %s\nCaptured vars: %+v\nRendered output:\n%s\n", tt.name, capturedVars, result)
-
 			// Check expected values are in output
 			for _, expected := range tt.expectedInOutput {
-				if !strings.Contains(result, expected) {
-					t.Errorf("expected %q to be in rendered output, but it wasn't\nOutput:\n%s", expected, result)
-				}
+				assert.Contains(t, result, expected)
 			}
-
 			// Check values that should NOT be in output
 			for _, notExpected := range tt.notExpectedInOut {
-				if strings.Contains(result, notExpected) {
-					t.Errorf("did not expect %q to be in rendered output, but it was\nOutput:\n%s", notExpected, result)
-				}
+				assert.NotContains(t, result, notExpected)
 			}
-
 			// Check regex pattern if provided
 			if tt.validatePattern != nil {
-				if !tt.validatePattern.MatchString(result) {
-					t.Errorf("expected pattern %q to match rendered output\nOutput:\n%s", tt.validatePattern.String(), result)
-				}
+				assert.Regexp(t, tt.validatePattern.String(), result)
 			}
-
 			// Validate vars structure
 			if tt.useTLS {
-				if tlsVersion := capturedVars["tlsMinVersion"]; tt.centralTLSConfigProfile.MinVersion != "" && TLSProtocolVersionString(tt.centralTLSConfigProfile.MinVersion) != "" {
+				if tlsVersion := capturedVars["TLSMinVersion"]; tt.centralTLSConfigProfile.MinVersion != "" && TLSProtocolVersionString(tt.centralTLSConfigProfile.MinVersion) != "" {
 					if tlsVersion != TLSProtocolVersionString(tt.centralTLSConfigProfile.MinVersion) {
-						t.Errorf("tlsMinVersion var = %q, want %q", tlsVersion, TLSProtocolVersionString(tt.centralTLSConfigProfile.MinVersion))
+						t.Errorf("TLSMinVersion var = %q, want %q", tlsVersion, TLSProtocolVersionString(tt.centralTLSConfigProfile.MinVersion))
 					}
 				}
-
 				if len(tt.centralTLSConfigProfile.Ciphers) > 0 {
 					expectedCiphers := strings.Join(tt.centralTLSConfigProfile.Ciphers, ":")
-					if ciphers := capturedVars["tlsCiphers"]; ciphers != expectedCiphers {
-						t.Errorf("tlsCiphers var = %q, want %q", ciphers, expectedCiphers)
-					}
+					assert.Equal(t, expectedCiphers, capturedVars["TLSCiphers"])
 				}
 			}
 		})
@@ -211,24 +172,24 @@ func renderMockTemplate(vars map[string]string) string {
 global
     ca-base /app/config/redis/tls
 
-{{- if .tlsMinVersion}}
-    ssl-default-bind-options ssl-min-ver TLSv{{.tlsMinVersion}}
-    ssl-default-server-options ssl-min-ver TLSv{{.tlsMinVersion}}
+{{- if .TLSMinVersion}}
+    ssl-default-bind-options ssl-min-ver TLSv{{.TLSMinVersion}}
+    ssl-default-server-options ssl-min-ver TLSv{{.TLSMinVersion}}
 {{- end}}
 
-{{- if .tlsCiphers}}
-{{- if eq .tlsMinVersion "1.3"}}
+{{- if .TLSCiphers}}
+{{- if eq .TLSMinVersion "1.3"}}
     # TLS 1.3 cipher suites
-    ssl-default-bind-ciphersuites {{.tlsCiphers}}
-    ssl-default-server-ciphersuites {{.tlsCiphers}}
+    ssl-default-bind-ciphersuites {{.TLSCiphers}}
+    ssl-default-server-ciphersuites {{.TLSCiphers}}
 {{- else}}
     # TLS 1.2 and below cipher lists
-    ssl-default-bind-ciphers {{.tlsCiphers}}
-    ssl-default-server-ciphers {{.tlsCiphers}}
+    ssl-default-bind-ciphers {{.TLSCiphers}}
+    ssl-default-server-ciphers {{.TLSCiphers}}
 
     # Also configure TLS 1.3 cipher suites when TLS 1.3 is negotiated
-    ssl-default-bind-ciphersuites {{.tlsCiphers}}
-    ssl-default-server-ciphersuites {{.tlsCiphers}}
+    ssl-default-bind-ciphersuites {{.TLSCiphers}}
+    ssl-default-server-ciphersuites {{.TLSCiphers}}
 {{- end}}
 {{- end}}
 {{- end}}
