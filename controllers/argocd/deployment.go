@@ -525,6 +525,10 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 	}
 	deploy.Spec.Template.Labels[common.ArgoCDKeyName] = nameWithSuffix("redis", cr)
 
+	if cr.Spec.PriorityClassName != "" {
+		deploy.Spec.Template.Spec.PriorityClassName = cr.Spec.PriorityClassName
+	}
+
 	if err := applyReconcilerHook(cr, deploy, ""); err != nil {
 		return err
 	}
@@ -565,6 +569,11 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 		}
 
 		changes = append(changes, updateNodePlacement(existing, deploy)...)
+
+		if existing.Spec.Template.Spec.PriorityClassName != deploy.Spec.Template.Spec.PriorityClassName {
+			existing.Spec.Template.Spec.PriorityClassName = deploy.Spec.Template.Spec.PriorityClassName
+			changes = append(changes, "priority class name")
+		}
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Args, existing.Spec.Template.Spec.Containers[0].Args) {
 			existing.Spec.Template.Spec.Containers[0].Args = deploy.Spec.Template.Spec.Containers[0].Args
@@ -818,6 +827,10 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 
 	deploy.Spec.Template.Spec.ServiceAccountName = getServiceAccountName(cr.Name, common.ArgoCDRedisHAComponent)
 
+	if cr.Spec.PriorityClassName != "" {
+		deploy.Spec.Template.Spec.PriorityClassName = cr.Spec.PriorityClassName
+	}
+
 	version, err := getClusterVersion(r.Client)
 	if err != nil {
 		log.Error(err, "error getting cluster version")
@@ -855,6 +868,11 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 		}
 
 		changes = append(changes, updateNodePlacement(existing, deploy)...)
+
+		if existing.Spec.Template.Spec.PriorityClassName != deploy.Spec.Template.Spec.PriorityClassName {
+			existing.Spec.Template.Spec.PriorityClassName = deploy.Spec.Template.Spec.PriorityClassName
+			changes = append(changes, "priority class name")
+		}
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
 			existing.Spec.Template.Spec.Volumes = deploy.Spec.Template.Spec.Volumes
@@ -1131,6 +1149,11 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			deploy.Spec.Template.Labels[key] = value
 		}
 	}
+
+	if cr.Spec.PriorityClassName != "" {
+		deploy.Spec.Template.Spec.PriorityClassName = cr.Spec.PriorityClassName
+	}
+
 	if err := applyReconcilerHook(cr, deploy, ""); err != nil {
 		return err
 	}
@@ -1166,6 +1189,11 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		}
 
 		changes = append(changes, updateNodePlacement(existing, deploy)...)
+
+		if existing.Spec.Template.Spec.PriorityClassName != deploy.Spec.Template.Spec.PriorityClassName {
+			existing.Spec.Template.Spec.PriorityClassName = deploy.Spec.Template.Spec.PriorityClassName
+			changes = append(changes, "priority class name")
+		}
 
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
 			deploy.Spec.Template.Spec.Containers[0].Env) {

@@ -77,6 +77,7 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.OIDCConfig = src.Spec.OIDCConfig
 	dst.Spec.Monitoring = v1beta1.ArgoCDMonitoringSpec(src.Spec.Monitoring)
 	dst.Spec.NodePlacement = (*v1beta1.ArgoCDNodePlacementSpec)(src.Spec.NodePlacement)
+	dst.Spec.PriorityClassName = src.Spec.PriorityClassName
 	dst.Spec.Notifications = *ConvertAlphaToBetaNotifications(&src.Spec.Notifications)
 	dst.Spec.Prometheus = *ConvertAlphaToBetaPrometheus(&src.Spec.Prometheus)
 	dst.Spec.RBAC = v1beta1.ArgoCDRBACSpec(src.Spec.RBAC)
@@ -154,6 +155,7 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.OIDCConfig = src.Spec.OIDCConfig
 	dst.Spec.Monitoring = ArgoCDMonitoringSpec(src.Spec.Monitoring)
 	dst.Spec.NodePlacement = (*ArgoCDNodePlacementSpec)(src.Spec.NodePlacement)
+	dst.Spec.PriorityClassName = src.Spec.PriorityClassName
 	dst.Spec.Notifications = *ConvertBetaToAlphaNotifications(&src.Spec.Notifications)
 	dst.Spec.Prometheus = *ConvertBetaToAlphaPrometheus(&src.Spec.Prometheus)
 	dst.Spec.RBAC = ArgoCDRBACSpec(src.Spec.RBAC)

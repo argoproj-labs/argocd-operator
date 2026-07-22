@@ -1270,3 +1270,25 @@ func TestBetaToAlphaConversion(t *testing.T) {
 		})
 	}
 }
+
+func TestPriorityClassNameConversion(t *testing.T) {
+	t.Run("alpha to beta", func(t *testing.T) {
+		cr := &ArgoCD{}
+		cr.Spec.PriorityClassName = "high-priority"
+
+		dst := &v1beta1.ArgoCD{}
+		err := cr.ConvertTo(dst)
+		assert.NoError(t, err)
+		assert.Equal(t, "high-priority", dst.Spec.PriorityClassName)
+	})
+
+	t.Run("beta to alpha", func(t *testing.T) {
+		cr := &v1beta1.ArgoCD{}
+		cr.Spec.PriorityClassName = "high-priority"
+
+		dst := &ArgoCD{}
+		err := dst.ConvertFrom(cr)
+		assert.NoError(t, err)
+		assert.Equal(t, "high-priority", dst.Spec.PriorityClassName)
+	})
+}

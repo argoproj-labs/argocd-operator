@@ -384,6 +384,10 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 		}
 	}
 
+	if cr.Spec.PriorityClassName != "" {
+		deploy.Spec.Template.Spec.PriorityClassName = cr.Spec.PriorityClassName
+	}
+
 	log.Info("Applying ArgoCD Repo Server reconciler hook")
 	if err := applyReconcilerHook(cr, deploy, ""); err != nil {
 		log.Error(err, "ArgoCD Repo Server reconciler hook failed")
@@ -431,6 +435,11 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 		}
 
 		changes = append(changes, updateNodePlacement(existing, deploy)...)
+
+		if existing.Spec.Template.Spec.PriorityClassName != deploy.Spec.Template.Spec.PriorityClassName {
+			existing.Spec.Template.Spec.PriorityClassName = deploy.Spec.Template.Spec.PriorityClassName
+			changes = append(changes, "priority class name")
+		}
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
 			existing.Spec.Template.Spec.Volumes = deploy.Spec.Template.Spec.Volumes
