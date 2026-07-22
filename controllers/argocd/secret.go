@@ -923,8 +923,14 @@ func (r *ReconcileArgoCD) reconcileSecrets(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
-	if err := r.reconcileDexLegacySATokenSecrets(cr); err != nil {
-		return err
+	if isDexSATokenExpiryFeatureEnabled(cr) {
+		if err := r.reconcileDexLegacySATokenSecrets(cr); err != nil {
+			return err
+		}
+	} else {
+		if err := r.reconcileDexTokenRequestSecret(cr); err != nil {
+			return err
+		}
 	}
 
 	if err := r.reconcileArgoSecret(cr); err != nil {
@@ -932,6 +938,23 @@ func (r *ReconcileArgoCD) reconcileSecrets(cr *argoproj.ArgoCD) error {
 	}
 
 	return nil
+}
+
+func (r *ReconcileArgoCD) reconcileDexTokenRequestSecret(cr *argoproj.ArgoCD) error {
+	secret := argoutil.NewSecretWithSuffix(cr, common.ArgoCDDefaultDexServiceAccountName+"-token")
+	err := r.Get(context.TODO(), client.ObjectKey{Namespace: cr.Namespace, Name: secret.Name}, secret)
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	if secret.Type != corev1.SecretTypeOpaque {
+		return nil
+	}
+	argoutil.LogResourceDeletion(log, secret, "removing TokenRequest token secret")
+	return r.Delete(context.TODO(), secret)
 }
 
 func (r *ReconcileArgoCD) getClusterSecrets(cr *argoproj.ArgoCD) (*corev1.SecretList, error) {

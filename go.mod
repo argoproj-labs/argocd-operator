@@ -7,7 +7,7 @@ require (
 	// Update in Makefile and run `make update-dependencies`
 	github.com/argoproj/argo-cd/v3 v3.4.2
 	github.com/cert-manager/cert-manager v1.20.3
-	github.com/go-logr/logr v1.4.3
+	github.com/go-logr/logr v1.4.4
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.1-0.20241114170450-2d3c2a9cc518
 	github.com/onsi/ginkgo/v2 v2.32.0
@@ -16,7 +16,7 @@ require (
 	github.com/operator-framework/api v0.17.5
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.74.0
 	github.com/prometheus/client_golang v1.23.2
-	github.com/sethvargo/go-password v0.3.1
+	github.com/sethvargo/go-password v0.4.0
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/zap v1.28.0
 	golang.org/x/mod v0.38.0
