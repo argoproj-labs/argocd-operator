@@ -30484,6 +30484,12 @@ spec:
                       config:
                         description: Config is the dex connector configuration.
                         type: string
+                      enableSATokenRenewal:
+                        description: |-
+                          EnableSATokenRenewal enables the short-lived Dex token renewal feature.
+                          When true, the operator uses TokenRequest API for time-limited tokens.
+                          When false (default), the operator uses the legacy non-expiring token approach.
+                        type: boolean
                       env:
                         description: Env lets you specify environment variables for
                           Dex.

@@ -1329,7 +1329,7 @@ func TestReconcileArgoCD_getDexOAuthClientSecret_ReturnsCachedToken(t *testing.T
 	a := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
 		ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 			Provider: argoproj.SSOProviderTypeDex,
-			Dex:      &argoproj.ArgoCDDexSpec{OpenShiftOAuth: true},
+			Dex:      &argoproj.ArgoCDDexSpec{OpenShiftOAuth: true, EnableSATokenRenewal: boolPtr(true)},
 		}
 	})
 
@@ -1365,7 +1365,7 @@ func TestReconcileArgoCD_getDexOAuthClientSecret_RenewsExpiredToken(t *testing.T
 	a := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
 		ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 			Provider: argoproj.SSOProviderTypeDex,
-			Dex:      &argoproj.ArgoCDDexSpec{OpenShiftOAuth: true},
+			Dex:      &argoproj.ArgoCDDexSpec{OpenShiftOAuth: true, EnableSATokenRenewal: boolPtr(true)},
 		}
 	})
 
@@ -1560,4 +1560,105 @@ func TestReconcileArgoCD_reconcileDexDeployment_customLabelsAndAnnotations(t *te
 	_, hasCustomLabel := deployment.Spec.Template.Labels["custom"]
 	assert.False(t, hasCustomAnnotation)
 	assert.False(t, hasCustomLabel)
+}
+
+func TestIsDexSATokenExpiryFeatureEnabled(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+		Provider: argoproj.SSOProviderTypeDex,
+		Dex: &argoproj.ArgoCDDexSpec{
+			EnableSATokenRenewal: boolPtr(true),
+		},
+	}
+	assert.True(t, isDexSATokenExpiryFeatureEnabled(a))
+	a.Spec.SSO.Dex.EnableSATokenRenewal = boolPtr(false)
+	assert.False(t, isDexSATokenExpiryFeatureEnabled(a))
+	a.Spec.SSO.Dex.EnableSATokenRenewal = nil
+	assert.False(t, isDexSATokenExpiryFeatureEnabled(a))
+}
+
+// TestReconcileArgoCD_getDexOAuthClientSecretLegacy_WithExistingTokenSecret tests fetching token from existing SA secret
+func TestReconcileArgoCD_getDexOAuthClientSecretLegacy_WithExistingTokenSecret(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		name            string
+		cr              *argoproj.ArgoCD
+		setupSecretFunc func(*testing.T, client.Client, *argoproj.ArgoCD) *corev1.Secret
+		expectedToken   string
+		wantErr         bool
+		wantErrContains string
+	}{
+		{
+			name: "successfully retrieve token from existing ServiceAccount token secret",
+			cr:   makeTestArgoCD(),
+			setupSecretFunc: func(t *testing.T, cl client.Client, cr *argoproj.ArgoCD) *corev1.Secret {
+				// Create the Dex ServiceAccount with token secret reference
+				sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr)
+				assert.NoError(t, cl.Create(context.TODO(), sa))
+
+				// Create a token secret
+				tokenSecret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "argocd-dex-server-token-xyz123",
+						Namespace: cr.Namespace,
+						Annotations: map[string]string{
+							corev1.ServiceAccountNameKey: sa.Name,
+						},
+					},
+					Type: corev1.SecretTypeServiceAccountToken,
+					Data: map[string][]byte{
+						"token": []byte("legacy-sa-token-data"),
+					},
+				}
+				argoutil.AddTrackedByOperatorLabel(&tokenSecret.ObjectMeta)
+				assert.NoError(t, cl.Create(context.TODO(), tokenSecret))
+
+				// Add the secret reference to SA
+				sa.Secrets = []corev1.ObjectReference{
+					{
+						Name:      tokenSecret.Name,
+						Namespace: cr.Namespace,
+					},
+				}
+				assert.NoError(t, cl.Update(context.TODO(), sa))
+
+				return tokenSecret
+			},
+			expectedToken: "legacy-sa-token-data",
+			wantErr:       false,
+		}}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			resObjs := []client.Object{test.cr}
+			subresObjs := []client.Object{test.cr}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			assert.NoError(t, createNamespace(r, test.cr.Namespace, ""))
+
+			// Setup: Create SA and token secret
+			if test.setupSecretFunc != nil {
+				test.setupSecretFunc(t, cl, test.cr)
+			}
+
+			token, err := r.getDexOAuthClientSecretLegacy(test.cr)
+
+			if test.wantErr {
+				assert.Error(t, err)
+				if test.wantErrContains != "" {
+					assert.Contains(t, err.Error(), test.wantErrContains)
+				}
+				assert.Nil(t, token)
+			} else {
+				assert.NoError(t, err)
+				require.NotNil(t, token)
+				assert.Equal(t, test.expectedToken, *token)
+			}
+		})
+	}
 }

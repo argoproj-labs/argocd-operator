@@ -1137,7 +1137,8 @@ func TestReconcileArgoCD_reconcileDexOAuthClientSecret(t *testing.T) {
 		ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 			Provider: argoproj.SSOProviderTypeDex,
 			Dex: &argoproj.ArgoCDDexSpec{
-				OpenShiftOAuth: true,
+				OpenShiftOAuth:       true,
+				EnableSATokenRenewal: boolPtr(true),
 			},
 		}
 	})
