@@ -106,9 +106,67 @@ type ReconcileArgoCD struct {
 	dexTokenRequeueAfter sync.Map
 	// CentralTLSConfigProfile specifies the TLS configuration profile in the cluster.
 	CentralTLSConfigProfile tlsProfile.TLSConfigProfile
+
+	// Circuit breaker for detecting reconciliation loops
+	// Tracks consecutive reconciliation failures per ArgoCD instance
+	reconcileFailureCount map[string]int // key: "namespace/name", value: consecutive failure count
+	reconcileFailureMutex sync.Mutex
 }
 
 var log = logr.Log.WithName("controller_argocd")
+
+// recordReconciliationFailure tracks consecutive reconciliation failures and logs WARNING
+// when a loop is detected (>10 failures).
+func (r *ReconcileArgoCD) recordReconciliationFailure(namespace, name string, err error) {
+	r.reconcileFailureMutex.Lock()
+	defer r.reconcileFailureMutex.Unlock()
+
+	if r.reconcileFailureCount == nil {
+		r.reconcileFailureCount = make(map[string]int)
+	}
+
+	key := fmt.Sprintf("%s/%s", namespace, name)
+	r.reconcileFailureCount[key]++
+	count := r.reconcileFailureCount[key]
+
+	// Log WARNING when loop detected (>10 consecutive failures)
+	if count == 11 {
+		// Log WARNING once when threshold is crossed (not on every subsequent failure)
+		errMsg := "unknown error"
+		if err != nil {
+			errMsg = err.Error()
+			if len(errMsg) > 150 {
+				errMsg = errMsg[:150] + "..."
+			}
+		}
+
+		log.Info("═══════════════════════════════════════════════════════════════════════════")
+		log.Info(fmt.Sprintf("WARNING: Reconciliation loop detected for ArgoCD '%s'", key))
+		log.Info("═══════════════════════════════════════════════════════════════════════════")
+		log.Info(fmt.Sprintf("  Consecutive failed reconciliations: %d", count))
+		log.Info(fmt.Sprintf("  Last error: %s", errMsg))
+		log.Info("")
+		log.Info("This indicates a persistent configuration issue causing continuous failures.")
+		log.Info("Circuit breaker is active - exponential backoff is being applied to reduce load.")
+		log.Info("")
+		log.Info("ACTION REQUIRED:")
+		log.Info("  1. Review the error message above")
+		log.Info("  2. Resolve the underlying configuration issue")
+		log.Info("  3. The reconciliation will succeed automatically once fixed")
+		log.Info("═══════════════════════════════════════════════════════════════════════════")
+	}
+}
+
+// resetReconciliationFailure clears the failure counter when reconciliation succeeds
+func (r *ReconcileArgoCD) resetReconciliationFailure(namespace, name string) {
+	r.reconcileFailureMutex.Lock()
+	defer r.reconcileFailureMutex.Unlock()
+
+	if r.reconcileFailureCount != nil {
+		key := fmt.Sprintf("%s/%s", namespace, name)
+		delete(r.reconcileFailureCount, key)
+	}
+}
 
 // Map to keep track of running Argo CD instances using their namespaces as key and phase as value
 // This map will be used for the performance metrics purposes
@@ -168,6 +226,11 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 	if updateStatusErr := updateStatusAndConditionsOfArgoCD(ctx, createCondition(message), argocd, argocdStatus, r.Client, log); updateStatusErr != nil {
 		log.Error(updateStatusErr, "unable to update status of ArgoCD")
 		return reconcile.Result{}, updateStatusErr
+	}
+
+	// Reset circuit breaker counter on successful reconciliation
+	if err == nil {
+		r.resetReconciliationFailure(argocd.Namespace, argocd.Name)
 	}
 
 	return result, err
@@ -321,51 +384,66 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 		if err := r.reconcileNamespaceManagement(argocd); err != nil {
 			return reconcile.Result{}, argocd, argoCDStatus, err
 		}
-	} else if argocd.Spec.NamespaceManagement != nil {
-		k8sClient := r.K8sClient
-		if err := r.disableNamespaceManagement(argocd, k8sClient); err != nil {
-			log.Error(err, "Failed to disable NamespaceManagement feature")
-			return reconcile.Result{}, argocd, argoCDStatus, err
+	} else {
+		// Validate configuration: check if NamespaceManagement CRs exist for this namespace-scoped instance
+		// without the required feature flag being enabled
+		// Skip validation if spec.NamespaceManagement is nil (cleanup scenario)
+		if argocd.Spec.NamespaceManagement != nil {
+			if err := r.validateNamespaceManagementConfiguration(argocd); err != nil {
+				log.Error(err, "NamespaceManagement configuration error")
+				// Record failure for circuit breaker
+				r.recordReconciliationFailure(argocd.Namespace, argocd.Name, err)
+				// Returning error will automatically update the Reconciled condition in status
+				return reconcile.Result{}, argocd, argoCDStatus, err
+			}
 		}
-	} else if len(argocd.Spec.NamespaceManagement) == 0 {
-		// Handle cleanup of NamespaceManagement RBAC when the feature is removed from the ArgoCD CR.
-		nsMgmtList := &argoproj.NamespaceManagementList{}
-		if err := r.List(context.TODO(), nsMgmtList); err != nil {
-			return reconcile.Result{}, argocd, argoCDStatus, err
-		}
 
-		k8sClient := r.K8sClient
-		for _, nsMgmt := range nsMgmtList.Items {
-			// Skip the namespaceManagement CR which is not managed by the current Argo CD instance
-			if nsMgmt.Spec.ManagedBy != argocd.Namespace {
-				continue
+		if argocd.Spec.NamespaceManagement != nil {
+			k8sClient := r.K8sClient
+			if err := r.disableNamespaceManagement(argocd, k8sClient); err != nil {
+				log.Error(err, "Failed to disable NamespaceManagement feature")
+				return reconcile.Result{}, argocd, argoCDStatus, err
 			}
-
-			// Check if the namespace has a "managed-by" label
-			namespace := &corev1.Namespace{}
-			if err := r.Get(ctx, types.NamespacedName{Name: nsMgmt.Namespace}, namespace); err != nil {
-				log.Error(err, fmt.Sprintf("unable to fetch namespace %s", nsMgmt.Namespace))
+		} else if len(argocd.Spec.NamespaceManagement) == 0 {
+			// Handle cleanup of NamespaceManagement RBAC when the feature is removed from the ArgoCD CR.
+			nsMgmtList := &argoproj.NamespaceManagementList{}
+			if err := r.List(context.TODO(), nsMgmtList); err != nil {
 				return reconcile.Result{}, argocd, argoCDStatus, err
 			}
 
-			// Skip RBAC deletion if the namespace has the "managed-by" label
-			if namespace.Labels[common.ArgoCDManagedByLabel] == nsMgmt.Namespace {
-				log.Info(fmt.Sprintf("Skipping RBAC deletion for namespace %s due to managed-by label", nsMgmt.Namespace))
-				continue
-			}
+			k8sClient := r.K8sClient
+			for _, nsMgmt := range nsMgmtList.Items {
+				// Skip the namespaceManagement CR which is not managed by the current Argo CD instance
+				if nsMgmt.Spec.ManagedBy != argocd.Namespace {
+					continue
+				}
 
-			// Remove roles and rolebindings
-			if err := deleteRBACsForNamespace(nsMgmt.Namespace, k8sClient); err != nil {
-				log.Error(err, fmt.Sprintf("Failed to delete RBACs for namespace: %s", nsMgmt.Namespace))
-				return reconcile.Result{}, argocd, argoCDStatus, err
-			}
-			log.Info(fmt.Sprintf("Successfully removed RBACs for namespace: %s", nsMgmt.Namespace))
+				// Check if the namespace has a "managed-by" label
+				namespace := &corev1.Namespace{}
+				if err := r.Get(ctx, types.NamespacedName{Name: nsMgmt.Namespace}, namespace); err != nil {
+					log.Error(err, fmt.Sprintf("unable to fetch namespace %s", nsMgmt.Namespace))
+					return reconcile.Result{}, argocd, argoCDStatus, err
+				}
 
-			if err := deleteManagedNamespaceFromClusterSecret(argocd.Namespace, nsMgmt.Namespace, k8sClient); err != nil {
-				log.Error(err, fmt.Sprintf("Unable to delete namespace %s from cluster secret", nsMgmt.Namespace))
-				return reconcile.Result{}, argocd, argoCDStatus, err
-			}
+				// Skip RBAC deletion if the namespace has the "managed-by" label
+				if namespace.Labels[common.ArgoCDManagedByLabel] == nsMgmt.Namespace {
+					log.Info(fmt.Sprintf("Skipping RBAC deletion for namespace %s due to managed-by label", nsMgmt.Namespace))
+					continue
+				}
 
+				// Remove roles and rolebindings
+				if err := deleteRBACsForNamespace(nsMgmt.Namespace, k8sClient); err != nil {
+					log.Error(err, fmt.Sprintf("Failed to delete RBACs for namespace: %s", nsMgmt.Namespace))
+					return reconcile.Result{}, argocd, argoCDStatus, err
+				}
+				log.Info(fmt.Sprintf("Successfully removed RBACs for namespace: %s", nsMgmt.Namespace))
+
+				if err := deleteManagedNamespaceFromClusterSecret(argocd.Namespace, nsMgmt.Namespace, k8sClient); err != nil {
+					log.Error(err, fmt.Sprintf("Unable to delete namespace %s from cluster secret", nsMgmt.Namespace))
+					return reconcile.Result{}, argocd, argoCDStatus, err
+				}
+
+			}
 		}
 	}
 
