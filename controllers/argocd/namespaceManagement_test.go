@@ -38,7 +38,7 @@ func TestReconcileNamespaceManagement_FeatureEnabled(t *testing.T) {
 		},
 	}
 
-	// Disallowed NamespaceManagement (should trigger error)
+	// Disallowed NamespaceManagement
 	nmDisallowed := &argoproj.NamespaceManagement{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "namespace-mgmt-disallowed",
@@ -69,8 +69,17 @@ func TestReconcileNamespaceManagement_FeatureEnabled(t *testing.T) {
 
 	// Reconcile
 	err = r.reconcileNamespaceManagement(a)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Namespace disallowed-ns is not permitted for management by ArgoCD instance argocd based on NamespaceManagement rules")
+	assert.NoError(t, err)
+
+	// Allowed namespace is tracked; disallowed namespace is not
+	assert.Len(t, r.ManagedNamespaces.Items, 2)
+	managedNames := map[string]bool{}
+	for _, ns := range r.ManagedNamespaces.Items {
+		managedNames[ns.Name] = true
+	}
+	assert.True(t, managedNames["managed-ns"])
+	assert.True(t, managedNames["argocd"])
+	assert.False(t, managedNames["disallowed-ns"])
 
 	// Verify success status on allowed namespace
 	err = r.Get(context.TODO(), types.NamespacedName{
@@ -108,6 +117,7 @@ func TestReconcileNamespaceManagement_FeatureEnabled(t *testing.T) {
 	assert.NotNil(t, reconciledCondition)
 	assert.Equal(t, metav1.ConditionFalse, reconciledCondition.Status)
 	assert.Equal(t, "ErrorOccurred", reconciledCondition.Reason)
+	assert.Contains(t, reconciledCondition.Message, "Namespace disallowed-ns is not permitted for management")
 }
 
 func TestHandleFeatureDisable_NoNamespaceManagement(t *testing.T) {
@@ -413,8 +423,28 @@ func TestReconcileNamespaceManagement_ExplicitlyDisallowed(t *testing.T) {
 	defer os.Unsetenv(common.EnableManagedNamespace)
 
 	err = r.reconcileNamespaceManagement(a)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Namespace deny-ns is not permitted for management by ArgoCD instance argocd based on NamespaceManagement rules")
+	assert.NoError(t, err)
+
+	assert.Len(t, r.ManagedNamespaces.Items, 1)
+	assert.Equal(t, "argocd", r.ManagedNamespaces.Items[0].Name)
+
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Name:      nm.Name,
+		Namespace: nm.Namespace,
+	}, nm)
+	assert.NoError(t, err)
+
+	var reconciledCondition *metav1.Condition
+	for _, cond := range nm.Status.Conditions {
+		if cond.Type == "Reconciled" {
+			reconciledCondition = &cond
+			break
+		}
+	}
+	assert.NotNil(t, reconciledCondition)
+	assert.Equal(t, metav1.ConditionFalse, reconciledCondition.Status)
+	assert.Equal(t, "ErrorOccurred", reconciledCondition.Reason)
+	assert.Contains(t, reconciledCondition.Message, "Namespace deny-ns is not permitted for management")
 }
 
 func TestReconcileNamespaceManagement_DeduplicateNamespaces(t *testing.T) {
