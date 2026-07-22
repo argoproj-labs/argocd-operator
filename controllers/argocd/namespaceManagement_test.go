@@ -2,6 +2,7 @@ package argocd
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -445,6 +446,60 @@ func TestReconcileNamespaceManagement_ExplicitlyDisallowed(t *testing.T) {
 	assert.Equal(t, metav1.ConditionFalse, reconciledCondition.Status)
 	assert.Equal(t, "ErrorOccurred", reconciledCondition.Reason)
 	assert.Contains(t, reconciledCondition.Message, "Namespace deny-ns is not permitted for management")
+}
+
+func TestReconcileNamespaceManagement_StatusUpdateFailure(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.NamespaceManagement = []argoproj.ManagedNamespaces{
+			{Name: "managed-ns", AllowManagedBy: true},
+		}
+	})
+	nm := &argoproj.NamespaceManagement{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "namespace-mgmt",
+			Namespace: "managed-ns",
+		},
+		Spec: argoproj.NamespaceManagementSpec{
+			ManagedBy: a.Namespace,
+		},
+	}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a, nm}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	baseClient := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	cl := &statusUpdateFailClient{Client: baseClient}
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	err := r.Create(context.Background(), nm)
+	assert.NoError(t, err)
+
+	os.Setenv(common.EnableManagedNamespace, "true")
+	defer os.Unsetenv(common.EnableManagedNamespace)
+
+	err = r.reconcileNamespaceManagement(a)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "status update failed for namespace managed-ns")
+	assert.Contains(t, err.Error(), "simulated status update failure")
+}
+
+// statusUpdateFailClient forces Status().Update to fail.
+type statusUpdateFailClient struct {
+	client.Client
+}
+
+func (c *statusUpdateFailClient) Status() client.StatusWriter {
+	return &statusUpdateFailWriter{StatusWriter: c.Client.Status()}
+}
+
+type statusUpdateFailWriter struct {
+	client.StatusWriter
+}
+
+func (w *statusUpdateFailWriter) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+	return fmt.Errorf("simulated status update failure")
 }
 
 func TestReconcileNamespaceManagement_DeduplicateNamespaces(t *testing.T) {
