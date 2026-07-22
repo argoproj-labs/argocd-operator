@@ -1,0 +1,318 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+  name: argocdcommitstatuses.promoter.argoproj.io
+spec:
+  group: promoter.argoproj.io
+  names:
+    kind: ArgoCDCommitStatus
+    listKind: ArgoCDCommitStatusList
+    plural: argocdcommitstatuses
+    singular: argocdcommitstatus
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.promotionStrategyRef.name
+      name: PromotionStrategy
+      priority: 1
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: ArgoCDCommitStatus is the Schema for the argocdcommitstatuses
+          API.
+        externalDocs:
+          description: CRD reference (examples and behavior)
+          url: https://gitops-promoter.readthedocs.io/en/stable/crd-specs/#argocdcommitstatus
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ArgoCDCommitStatusSpec defines the desired state of ArgoCDCommitStatus.
+            properties:
+              applicationSelector:
+                description: ApplicationSelector is a label selector that selects
+                  the Argo CD applications to which this commit status applies.
+                properties:
+                  matchExpressions:
+                    description: matchExpressions is a list of label selector requirements.
+                      The requirements are ANDed.
+                    items:
+                      description: |-
+                        A label selector requirement is a selector that contains values, a key, and an operator that
+                        relates the key and values.
+                      properties:
+                        key:
+                          description: key is the label key that the selector applies
+                            to.
+                          type: string
+                        operator:
+                          description: |-
+                            operator represents a key's relationship to a set of values.
+                            Valid operators are In, NotIn, Exists and DoesNotExist.
+                          type: string
+                        values:
+                          description: |-
+                            values is an array of string values. If the operator is In or NotIn,
+                            the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                            the values array must be empty. This array is replaced during a strategic
+                            merge patch.
+                          items:
+                            type: string
+                          type: array
+                          x-kubernetes-list-type: atomic
+                      required:
+                      - key
+                      - operator
+                      type: object
+                    type: array
+                    x-kubernetes-list-type: atomic
+                  matchLabels:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                      map is equivalent to an element of matchExpressions, whose key field is "key", the
+                      operator is "In", and the values array contains only "value". The requirements are ANDed.
+                    type: object
+                type: object
+                x-kubernetes-map-type: atomic
+              key:
+                default: argocd-health
+                description: |-
+                  Key is the gate name referenced in the PromotionStrategy's activeCommitStatuses.
+                  When omitted, the CRD default is argocd-health. Set Key explicitly, even if you use the CRD default.
+                  Must be lowercase alphanumeric with hyphens, 1–63 characters (pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$).
+                maxLength: 63
+                minLength: 1
+                pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                type: string
+              promotionStrategyRef:
+                description: PromotionStrategyRef is a reference to the promotion
+                  strategy that this commit status applies to.
+                properties:
+                  name:
+                    description: Name is the name of the object to refer to.
+                    maxLength: 253
+                    minLength: 1
+                    pattern: ^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$
+                    type: string
+                required:
+                - name
+                type: object
+              url:
+                description: URL generates the URL to use in the CommitStatus, for
+                  example a link to the Argo CD UI.
+                properties:
+                  options:
+                    description: "Options sets options for the template. Options are
+                      described by\nstrings, either a simple string or \"key=value\".
+                      There can be at\nmost one equals sign in an option string. If
+                      the option string\nis unrecognized or otherwise invalid, Option
+                      panics.\n\nKnown options:\n\nmissingkey: Control the behavior
+                      during execution if a map is\nindexed with a key that is not
+                      present in the map.\n\n\t\"missingkey=default\" or \"missingkey=invalid\"\n\t\tThe
+                      default behavior: Do nothing and continue execution.\n\t\tIf
+                      printed, the result of the index operation is the string\n\t\t\"<no
+                      value>\".\n\t\"missingkey=zero\"\n\t\tThe operation returns
+                      the zero value for the map type's element.\n\t\"missingkey=error\"\n\t\tExecution
+                      stops immediately with an error."
+                    items:
+                      type: string
+                    type: array
+                  template:
+                    description: |-
+                      Template is a go text template and receives .Environment and .ArgoCDCommitStatus variables. A function called urlQueryEscape
+                      is available to escape url query parameters. The template can be configured with options to control the behavior
+                      during execution if a variable is not present.
+
+                      Example:
+
+                        {{- $baseURL := "https://dev.argocd.local" -}}
+                        {{- if eq .Environment "environment/development" -}}
+                        {{- $baseURL = "https://dev.argocd.local" -}}
+                        {{- else if eq .Environment "environment/staging" -}}
+                        {{- $baseURL = "https://staging.argocd.local" -}}
+                        {{- else if eq .Environment "environment/production" -}}
+                        {{- $baseURL = "https://prod.argocd.local" -}}
+                        {{- end -}}
+                        {{- $labels := "" -}}
+                        {{- range $key, $value := .ArgoCDCommitStatus.Spec.ApplicationSelector.MatchLabels -}}
+                        {{- $labels = printf "%s%s=%s," $labels $key $value -}}
+                        {{- end -}}
+                        {{ printf "%s/applications?labels=%s" $baseURL (urlQueryEscape $labels) }}
+                    type: string
+                type: object
+            required:
+            - applicationSelector
+            - promotionStrategyRef
+            type: object
+          status:
+            description: ArgoCDCommitStatusStatus defines the observed state of ArgoCDCommitStatus.
+            properties:
+              applicationsSelected:
+                description: |-
+                  ApplicationsSelected represents the Argo CD applications that are selected by the commit status.
+                  This field is sorted by environment (same order as the referenced PromotionStrategy), then namespace, then name.
+                items:
+                  description: |-
+                    ApplicationsSelected represents the Argo CD applications that are selected by the commit status. The fields in this
+                    struct are all required, since the controller should always fully construct this information.
+                  properties:
+                    clusterName:
+                      description: |-
+                        ClusterName is the name of the cluster that the application manifest is deployed to. An empty string indicates
+                        the local cluster. There is no minimum length, since the local cluster is represented by an empty string.
+                      type: string
+                    environment:
+                      description: Environment is the syncSource.targetBranch of the
+                        Argo CD application (in effect, its environment).
+                      minLength: 1
+                      type: string
+                    lastTransitionTime:
+                      description: LastTransitionTime is the last time the phase transitioned.
+                      format: date-time
+                      type: string
+                    name:
+                      description: Name is the name of the Argo CD application.
+                      maxLength: 253
+                      minLength: 1
+                      pattern: ^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$
+                      type: string
+                    namespace:
+                      description: Namespace is the namespace of the Argo CD application.
+                      maxLength: 63
+                      minLength: 1
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                      type: string
+                    phase:
+                      description: Phase is the current phase of the commit status.
+                      enum:
+                      - pending
+                      - success
+                      - failure
+                      type: string
+                    sha:
+                      description: |-
+                        Sha is the commit SHA that the application is synced to.
+                        This field is only populated when the application's sync status is Synced.
+                        When the sync status is OutOfSync or Unknown, this field will be empty because
+                        Status.Sync.Revision may contain a branch name instead of a SHA.
+                        Supports both SHA-1 (40 chars) and SHA-256 (64 chars) Git hash formats.
+                      maxLength: 64
+                      pattern: ^(|[a-f0-9]{40}|[a-f0-9]{64})$
+                      type: string
+                  required:
+                  - clusterName
+                  - environment
+                  - name
+                  - namespace
+                  - phase
+                  - sha
+                  type: object
+                type: array
+              conditions:
+                description: Conditions Represents the observations of the current
+                  state.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              instanceID:
+                description: |-
+                  InstanceID mirrors metadata.labels[promoter.argoproj.io/instance-id] stamped on each
+                  reconcile attempt by this install's controller, including when Ready=False; omitted
+                  when the resource has no instance-id label (default install).
+                maxLength: 63
+                minLength: 1
+                pattern: ^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?$
+                type: string
+              observedGeneration:
+                description: |-
+                  ObservedGeneration is the .metadata.generation that this status was reconciled from.
+                  Because status is written via Server-Side Apply with ForceOwnership (which has no
+                  optimistic-concurrency check), this field is the canonical way to detect stale
+                  status writes: compare status.observedGeneration with metadata.generation.
+                format: int64
+                type: integer
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

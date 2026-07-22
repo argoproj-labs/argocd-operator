@@ -1,0 +1,286 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+  name: pullrequests.promoter.argoproj.io
+spec:
+  group: promoter.argoproj.io
+  names:
+    kind: PullRequest
+    listKind: PullRequestList
+    plural: pullrequests
+    singular: pullrequest
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.state
+      name: State
+      type: string
+    - jsonPath: .status.id
+      name: ID
+      type: string
+    - jsonPath: .spec.sourceBranch
+      name: Source
+      priority: 1
+      type: string
+    - jsonPath: .spec.targetBranch
+      name: Target
+      priority: 1
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    - jsonPath: .status.url
+      name: URL
+      priority: 1
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: PullRequest is the Schema for the pullrequests API
+        externalDocs:
+          description: CRD reference (examples and behavior)
+          url: https://gitops-promoter.readthedocs.io/en/stable/crd-specs/#pullrequest
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: PullRequestSpec defines the desired state of PullRequest
+            properties:
+              commit:
+                description: Commit contains configuration for how we will merge/squash/etc
+                  the pull request.
+                properties:
+                  message:
+                    description: Message is the commit message that will be written
+                      for the commit that's made when merging the PR.
+                    type: string
+                required:
+                - message
+                type: object
+              description:
+                description: Description is the description body of the pull/merge
+                  request
+                type: string
+              gitRepositoryRef:
+                description: RepositoryReference indicates what repository to open
+                  the PR on.
+                properties:
+                  name:
+                    description: Name is the name of the object to refer to.
+                    maxLength: 253
+                    minLength: 1
+                    pattern: ^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$
+                    type: string
+                required:
+                - name
+                type: object
+              mergeSha:
+                description: |-
+                  MergeSha is the commit SHA that the head branch must match before the PR can be merged.
+                  This prevents a race condition where a PR is merged with a different commit than intended.
+                  Supports both SHA-1 (40 chars) and SHA-256 (64 chars) Git hash formats.
+                maxLength: 64
+                minLength: 40
+                pattern: ^([a-f0-9]{40}|[a-f0-9]{64})$
+                type: string
+              sourceBranch:
+                description: |-
+                  SourceBranch is the base the git reference that we are merging into Head ---> Base
+                  Must not start with '-', contain ':', or contain '..'.
+                maxLength: 100
+                minLength: 1
+                type: string
+                x-kubernetes-validations:
+                - message: field is immutable
+                  rule: self == oldSelf
+                - message: branch must not start with '-'
+                  rule: '!self.startsWith(''-'')'
+                - message: branch must not contain ':'
+                  rule: '!self.contains('':'')'
+                - message: branch must not contain '..'
+                  rule: '!self.contains(''..'')'
+              state:
+                default: open
+                description: |-
+                  State of the pull request (closed, merged, or open). Must always be "open" when creating a new pull request.
+                  This value may not be changed to "closed" or "merged" unless the pull request status.id is set.
+                enum:
+                - closed
+                - merged
+                - open
+                type: string
+              targetBranch:
+                description: |-
+                  TargetBranch is the head the git reference we are merging from Head ---> Base
+                  Must not start with '-', contain ':', or contain '..'.
+                maxLength: 100
+                minLength: 1
+                type: string
+                x-kubernetes-validations:
+                - message: field is immutable
+                  rule: self == oldSelf
+                - message: branch must not start with '-'
+                  rule: '!self.startsWith(''-'')'
+                - message: branch must not contain ':'
+                  rule: '!self.contains('':'')'
+                - message: branch must not contain '..'
+                  rule: '!self.contains(''..'')'
+              title:
+                description: Title is the title of the pull request.
+                minLength: 1
+                type: string
+            required:
+            - gitRepositoryRef
+            - mergeSha
+            - sourceBranch
+            - state
+            - targetBranch
+            - title
+            type: object
+          status:
+            description: PullRequestStatus defines the observed state of PullRequest
+            properties:
+              conditions:
+                description: Conditions Represents the observations of the current
+                  state.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              externallyMergedOrClosed:
+                description: |-
+                  ExternallyMergedOrClosed indicates that the pull request is no longer open on the SCM while the
+                  resource still desired it open (spec.state is "open"): either it was merged or closed outside the
+                  controller, or it was closed on the SCM because the PullRequest resource was deleted (finalizer)
+                  and a subsequent sync observed it missing. The controller does not distinguish those cases here.
+                  When true, the State field will be empty ("") since we cannot tell merge vs. close from the provider.
+                  The PullRequest resource will be deleted after this flag is set when possible, but the status is
+                  preserved in the owning ChangeTransferPolicy to maintain a record.
+                type: boolean
+              id:
+                description: ID the id of the pull request
+                type: string
+              instanceID:
+                description: |-
+                  InstanceID mirrors metadata.labels[promoter.argoproj.io/instance-id] stamped on each
+                  reconcile attempt by this install's controller, including when Ready=False; omitted
+                  when the resource has no instance-id label (default install).
+                maxLength: 63
+                minLength: 1
+                pattern: ^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?$
+                type: string
+              observedGeneration:
+                description: |-
+                  ObservedGeneration is the .metadata.generation that this status was reconciled from.
+                  Because status is written via Server-Side Apply with ForceOwnership (which has no
+                  optimistic-concurrency check), this field is the canonical way to detect stale
+                  status writes: compare status.observedGeneration with metadata.generation.
+                format: int64
+                type: integer
+              prCreationTime:
+                description: PRCreationTime the time the PR was created
+                format: date-time
+                type: string
+              scmSyncedSpecDigest:
+                description: |-
+                  SCMSyncedSpecDigest fingerprints title and description last successfully synced
+                  to the SCM via provider.Update on an open pull request.
+                type: string
+              state:
+                description: State of the merge request closed/merged/open
+                enum:
+                - ""
+                - closed
+                - merged
+                - open
+                type: string
+              url:
+                description: Url is the URL of the pull request.
+                pattern: ^(https?://.*)?$
+                type: string
+                x-kubernetes-validations:
+                - message: must be a valid URL
+                  rule: self == '' || isURL(self)
+            type: object
+        type: object
+        x-kubernetes-validations:
+        - message: Cannot transition to 'closed' or 'merged' state when status.id
+            is empty
+          rule: self.spec.state == 'open' || has(self.status.id) && self.status.id
+            != ""
+    served: true
+    storage: true
+    subresources:
+      status: {}

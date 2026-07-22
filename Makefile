@@ -391,6 +391,11 @@ update-dependencies:
 update-dependencies-argocd:
 	hack/update-dependencies-script/argocd/run.sh
 
+# Updates only Argo CD dependencies
+.PHONY: update-dependencies-gitops-promoter
+update-dependencies-gitops-promoter:
+	hack/update-dependencies-script/gitops-promoter/run.sh
+
 .PHONY: apidocs-gen
 apidocs-gen: ## Generate API documentation.
 	$(call crd-ref-docs,./api/v1alpha1/,./docs/reference/api-v1alpha1.md)

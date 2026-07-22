@@ -1,0 +1,856 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+  name: webrequestcommitstatuses.promoter.argoproj.io
+spec:
+  group: promoter.argoproj.io
+  names:
+    kind: WebRequestCommitStatus
+    listKind: WebRequestCommitStatusList
+    plural: webrequestcommitstatuses
+    singular: webrequestcommitstatus
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.key
+      name: Key
+      type: string
+    - jsonPath: .spec.promotionStrategyRef.name
+      name: PromotionStrategy
+      type: string
+    - jsonPath: .spec.reportOn
+      name: ReportOn
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: WebRequestCommitStatus is the Schema for the webrequestcommitstatuses
+          API
+        externalDocs:
+          description: CRD reference (examples and behavior)
+          url: https://gitops-promoter.readthedocs.io/en/stable/crd-specs/#webrequestcommitstatus
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: spec defines the desired state of WebRequestCommitStatus
+            properties:
+              descriptionTemplate:
+                description: |-
+                  DescriptionTemplate is the human-readable commit status description in the SCM provider (GitHub, GitLab, etc.).
+                  Uses Go templates; variable list and Sprig rules match HTTPRequestSpec (spec.httpRequest). Rendered with the latest
+                  data after the most recent HTTP request and trigger evaluation (unlike spec.httpRequest URL/body/headers, which use pre-request data — see HTTPRequestSpec).
+                  How spec.mode.context restricts template data: see ModeSpec.
+
+                  Additional template variables (not in HTTPRequestSpec):
+                    - {{ index .TriggerVariables "key" }}: result of trigger.when.variables.expression this reconcile (nil if not configured)
+                    - {{ index .SuccessVariables "key" }}: result of success.when.variables.expression this reconcile (nil if not configured)
+
+                  Examples: "External approval for {{ .Branch }}", "{{ .Phase }} - waiting for external approval".
+
+                  If not specified, defaults to empty string.
+                type: string
+              httpRequest:
+                description: HTTPRequest configures the outbound HTTP call. See HTTPRequestSpec.
+                properties:
+                  authentication:
+                    description: |-
+                      Authentication specifies authentication configuration for the HTTP request.
+
+                      Supports multiple authentication methods:
+                      - Basic Auth: HTTP Basic Authentication with username/password
+                      - Bearer Token: Bearer token authentication (e.g., API keys, JWTs)
+                      - OAuth2: OAuth2 client credentials flow for obtaining access tokens
+                      - TLS: Mutual TLS (mTLS) with client certificates
+                      - SCM: Reuses credentials from the ScmProvider referenced by the PromotionStrategy (no extra secret needed)
+
+                      For Basic, Bearer, OAuth2, and TLS, credentials must be stored in Kubernetes secrets and referenced via secretRef fields.
+                      For SCM, credentials are obtained automatically from the SCM provider; just set scm: {}.
+
+                      Examples:
+                        # Basic Auth
+                        authentication:
+                          basic:
+                            secretRef:
+                              name: my-creds
+
+                        # Bearer Token
+                        authentication:
+                          bearer:
+                            secretRef:
+                              name: api-token
+
+                        # OAuth2 Client Credentials
+                        authentication:
+                          oauth2:
+                            tokenURL: "https://auth.example.com/oauth/token"
+                            secretRef:
+                              name: oauth-creds
+
+                        # TLS Client Certificate
+                        authentication:
+                          tls:
+                            secretRef:
+                              name: my-tls-cert
+
+                        # SCM Provider Credentials
+                        authentication:
+                          scm: {}
+                    properties:
+                      basic:
+                        description: |-
+                          Basic specifies HTTP Basic Authentication.
+                          Credentials can be provided inline (with secret references) or via secretRef.
+                        properties:
+                          secretRef:
+                            description: |-
+                              SecretRef references a secret containing username and password.
+                              The secret must contain keys "username" and "password".
+                            properties:
+                              name:
+                                default: ""
+                                description: |-
+                                  Name of the referent.
+                                  This field is effectively required, but due to backwards compatibility is
+                                  allowed to be empty. Instances of this type with an empty value here are
+                                  almost certainly wrong.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                type: string
+                            type: object
+                            x-kubernetes-map-type: atomic
+                        required:
+                        - secretRef
+                        type: object
+                      bearer:
+                        description: |-
+                          Bearer specifies Bearer token authentication.
+                          Token can be provided inline (with secret reference) or via secretRef.
+                        properties:
+                          secretRef:
+                            description: |-
+                              SecretRef references a secret containing the bearer token.
+                              The secret must contain key "token".
+                            properties:
+                              name:
+                                default: ""
+                                description: |-
+                                  Name of the referent.
+                                  This field is effectively required, but due to backwards compatibility is
+                                  allowed to be empty. Instances of this type with an empty value here are
+                                  almost certainly wrong.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                type: string
+                            type: object
+                            x-kubernetes-map-type: atomic
+                        required:
+                        - secretRef
+                        type: object
+                      oauth2:
+                        description: |-
+                          OAuth2 specifies OAuth2 client credentials authentication.
+                          The controller will automatically obtain access tokens from the specified tokenURL.
+                        properties:
+                          scopes:
+                            description: |-
+                              Scopes to request from the OAuth2 provider.
+                              Optional - some providers don't require scopes for client credentials.
+                              Example: ["read:api", "write:api"]
+                            items:
+                              type: string
+                            type: array
+                          secretRef:
+                            description: |-
+                              SecretRef references a secret containing clientID and clientSecret.
+                              The secret must contain keys "clientID" and "clientSecret".
+                            properties:
+                              name:
+                                default: ""
+                                description: |-
+                                  Name of the referent.
+                                  This field is effectively required, but due to backwards compatibility is
+                                  allowed to be empty. Instances of this type with an empty value here are
+                                  almost certainly wrong.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                type: string
+                            type: object
+                            x-kubernetes-map-type: atomic
+                          tokenURL:
+                            description: |-
+                              TokenURL is the OAuth2 token endpoint where access tokens are obtained.
+                              Example: "https://auth.example.com/oauth/token"
+                            type: string
+                        required:
+                        - secretRef
+                        - tokenURL
+                        type: object
+                      scm:
+                        description: |-
+                          Scm specifies authentication using credentials from the SCM provider.
+                          This uses the credentials configured in the ScmProvider referenced by the PromotionStrategy,
+                          applying the appropriate authentication method based on the SCM provider type
+                          (GitHub App, GitLab token, Azure DevOps PAT, etc.).
+                          To use this auth type, just set it to an empty object, i.e. scm: {}.
+                        type: object
+                      tls:
+                        description: |-
+                          TLS specifies TLS client certificate authentication (mutual TLS).
+                          Requires a secret containing the client certificate and private key.
+                        properties:
+                          secretRef:
+                            description: |-
+                              SecretRef references a secret containing TLS certificate and key.
+                              The secret should be of type kubernetes.io/tls or contain keys "tls.crt" and "tls.key", and optionally "ca.crt".
+                            properties:
+                              name:
+                                default: ""
+                                description: |-
+                                  Name of the referent.
+                                  This field is effectively required, but due to backwards compatibility is
+                                  allowed to be empty. Instances of this type with an empty value here are
+                                  almost certainly wrong.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                type: string
+                            type: object
+                            x-kubernetes-map-type: atomic
+                        required:
+                        - secretRef
+                        type: object
+                    type: object
+                    x-kubernetes-validations:
+                    - message: at most one of the fields in [basic bearer oauth2 tls
+                        scm] may be set
+                      rule: '[has(self.basic),has(self.bearer),has(self.oauth2),has(self.tls),has(self.scm)].filter(x,x==true).size()
+                        <= 1'
+                  bodyTemplate:
+                    description: |-
+                      BodyTemplate is the request body to send.
+                      Supports Go templates (see HTTPRequestSpec for available variables).
+                    type: string
+                  headerTemplates:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      HeaderTemplates are additional HTTP headers to include in the request.
+                      The map key is the header name and the value is the header value (supports Go templates).
+                      See HTTPRequestSpec for available template variables.
+                    type: object
+                  method:
+                    description: |-
+                      Method is the static HTTP method to use. Mutually exclusive with MethodTemplate.
+
+                      Deprecated: Use MethodTemplate instead. A literal value such as `methodTemplate: GET` behaves
+                      identically to `method: GET` and avoids needing two separate fields. Existing resources that
+                      set Method continue to work, but new resources should set MethodTemplate. Method may be
+                      removed in a future release.
+                    enum:
+                    - GET
+                    - POST
+                    - PUT
+                    - PATCH
+                    - DELETE
+                    type: string
+                  methodTemplate:
+                    description: |-
+                      MethodTemplate is the HTTP method, rendered as a Go template with the same variables and
+                      Sprig functions as URLTemplate/BodyTemplate/HeaderTemplates. The rendered string is trimmed
+                      of surrounding whitespace and uppercased; the final value must be one of GET/POST/PUT/PATCH/DELETE
+                      or the reconcile returns an error. A literal value such as `methodTemplate: GET` works
+                      identically to a static method; use templating when the method must vary by reconcile
+                      state (e.g. issuing a search GET on one reconcile and a close POST on the next).
+                      Mutually exclusive with Method (deprecated).
+                    type: string
+                  timeout:
+                    default: 30s
+                    description: Timeout is the maximum time to wait for the HTTP
+                      request to complete.
+                    type: string
+                  urlTemplate:
+                    description: |-
+                      URLTemplate is the HTTP endpoint to request.
+                      Supports Go templates (see HTTPRequestSpec for available variables).
+                    type: string
+                required:
+                - urlTemplate
+                type: object
+                x-kubernetes-validations:
+                - message: exactly one of method or methodTemplate must be set
+                  rule: (has(self.method) && self.method.size() > 0) != (has(self.methodTemplate)
+                    && self.methodTemplate.size() > 0)
+              key:
+                description: |-
+                  Key is the unique identifier for this validation rule.
+                  It is used as the commit status key and in status messages.
+                  This key is matched against PromotionStrategy's proposedCommitStatuses or activeCommitStatuses
+                  to determine which environments this validation applies to.
+                  Must be lowercase alphanumeric with hyphens, 1–63 characters (pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$).
+                maxLength: 63
+                minLength: 1
+                pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                type: string
+              mode:
+                description: Mode selects polling vs trigger and request scope (context).
+                  See ModeSpec.
+                properties:
+                  context:
+                    default: environments
+                    description: Context is "environments" (default) or "promotionstrategy".
+                      See the ModeSpec type documentation for behavior, template limits,
+                      and success expression rules.
+                    enum:
+                    - environments
+                    - promotionstrategy
+                    type: string
+                  polling:
+                    description: |-
+                      Polling enables interval-based polling mode.
+                      The controller will poll the HTTP endpoint at the specified interval.
+                    properties:
+                      interval:
+                        default: 1m
+                        description: |-
+                          Interval controls how often to retry the HTTP request while in pending state.
+                          When reportOn is "proposed": stops polling after success for a given SHA.
+                          When reportOn is "active": always polls at this interval.
+                        type: string
+                    type: object
+                  trigger:
+                    description: |-
+                      Trigger enables expression-based triggering mode.
+                      The controller will evaluate the expression to determine when to make HTTP requests.
+                    properties:
+                      requeueDuration:
+                        default: 1m
+                        description: RequeueDuration specifies how long to wait before
+                          requeuing to re-evaluate the trigger expression.
+                        type: string
+                      response:
+                        description: Response optionally configures an expression
+                          that extracts data from the HTTP response into ResponseOutput.
+                        properties:
+                          output:
+                            description: |-
+                              Output is evaluated after the HTTP request completes (any status). Response variables are the same as for spec.success.when.expression — see WhenWithOutputSpec.Expression.
+                              The result is stored in status (environments[].responseOutput or promotionStrategyContext.responseOutput) and exposed on the next reconcile as ResponseOutput in trigger expressions and templates.
+                              Must return a map/object.
+                            properties:
+                              expression:
+                                description: Expression is an expr expression that
+                                  must return a map/object.
+                                type: string
+                            required:
+                            - expression
+                            type: object
+                        required:
+                        - output
+                        type: object
+                      when:
+                        description: When configures the boolean guard and optional
+                          output expression that control whether the HTTP request
+                          is made.
+                        properties:
+                          expression:
+                            description: |-
+                              Expression is a boolean expr expression that decides whether the HTTP request should be made.
+                              It is evaluated BEFORE each potential HTTP request. When it returns true the request is made;
+                              when false the controller keeps the previous phase and skips the request.
+
+                              Available variables:
+                                - Branch (string): the environment branch currently being processed (empty for the shared HTTP request in promotionstrategy context)
+                                - Phase (string): previous reconcile's phase — per-environment in environments context; aggregate of all branches in promotionstrategy context (success only if all succeeded, failure if any failed, pending otherwise)
+                                - PromotionStrategy (PromotionStrategy): the full PromotionStrategy spec and status
+                                - WebRequestCommitStatus (WebRequestCommitStatus): the full WebRequestCommitStatus spec and status (snapshot from the previous reconcile)
+                                - TriggerOutput (map[string]any): custom data from the previous when.output.expression evaluation
+                                - ResponseOutput (map[string]any): response data from the previous HTTP request (if any)
+                                - SuccessOutput (map[string]any): custom data from the previous success.when.output.expression evaluation
+                                - Variables (map[string]any): when spec.variables is set, the map returned by variables.expression this reconcile; omitted otherwise
+
+                              Note: PromotionStrategy.Status.Environments is an ordered array representing the promotion sequence.
+                              Use Branch + filter/find to look up environment-specific data:
+                                find(PromotionStrategy.Status.Environments, {.Branch == Branch}).Proposed.Hydrated.Sha
+
+                              Examples:
+                                # Always trigger (equivalent to polling mode)
+                                - "true"
+
+                                # Only trigger when SHA changes from what we last tracked
+                                - "find(PromotionStrategy.Status.Environments, {.Branch == Branch}).Proposed.Hydrated.Sha != (TriggerOutput['lastCheckedSha'] ?? '')"
+
+                                # Only trigger when a particular commit status is success (e.g. argocd-health)
+                                - "let env = find(PromotionStrategy.Status.Environments, {.Branch == Branch}); any(env.Proposed.CommitStatuses, {.Key == 'argocd-health' && .Phase == 'success'})"
+
+                                # Only retry if the previous response indicated we should
+                                - "ResponseOutput == nil || ResponseOutput.status == 'retry'"
+                            type: string
+                          output:
+                            description: |-
+                              Output optionally holds an expression that produces a map of data to persist across reconcile cycles.
+                              The expression runs on every reconcile (whether or not the HTTP request is made). Its result is stored in
+                              status (per-environment under environments[].triggerOutput, or under promotionStrategyContext.triggerOutput when context is promotionstrategy)
+                              and is available in the next reconcile as TriggerOutput in when.expression, when.output.expression, and in templates.
+                              Use it to track state such as attempt counts, last-seen SHAs, or timestamps.
+
+                              Delivery semantics caveat: persisted output is read from the controller's informer cache at the start of the next
+                              reconcile. Under cache-propagation lag, controller restarts, or status-write retries, the next reconcile may not
+                              see the most recently persisted output and may re-fire the HTTP request. Treat this as AT-LEAST-ONCE delivery —
+                              counters built on TriggerOutput are eventually-consistent (a stale read can cause a duplicate increment), so use
+                              them for backoff hints, not for hard "fail after N attempts" gates.
+
+                              Variables are the same as for Expression (see above). The expression must return a map/object; every key is stored in TriggerOutput.
+
+                              Examples:
+                                # Track SHA to detect changes (idempotent: replays produce the same trackedSha for the same input)
+                                - "{ trackedSha: find(PromotionStrategy.Status.Environments, {.Branch == Branch}).Proposed.Hydrated.Sha }"
+
+                                # Increment attempt counter (eventually-consistent; may briefly under-count under cache lag)
+                                - "{ attemptCount: (TriggerOutput[\"attemptCount\"] ?? 0) + 1 }"
+                            properties:
+                              expression:
+                                description: Expression is an expr expression that
+                                  must return a map/object.
+                                type: string
+                            required:
+                            - expression
+                            type: object
+                          variables:
+                            description: |-
+                              Variables optionally holds an expression that runs before Expression and Output.Expression.
+                              It receives the same variables as Expression (see Expression documentation below) and must return a map/object.
+                              The result is injected as top-level binding Variables (map) for Expression and Output.Expression only — use Variables.<key> in those expressions.
+                              The Variables binding is not set when spec.variables is omitted. It is not available to response.output.expression.
+                              The result is also available in Go templates for DescriptionTemplate and UrlTemplate:
+                                - trigger.when.variables result → {{ index .TriggerVariables "key" }}
+                                - success.when.variables result → {{ index .SuccessVariables "key" }}
+                            properties:
+                              expression:
+                                description: Expression is an expr expression that
+                                  must return a map/object.
+                                type: string
+                            required:
+                            - expression
+                            type: object
+                        required:
+                        - expression
+                        type: object
+                    required:
+                    - when
+                    type: object
+                type: object
+                x-kubernetes-validations:
+                - message: exactly one of the fields in [polling trigger] must be
+                    set
+                  rule: '[has(self.polling),has(self.trigger)].filter(x,x==true).size()
+                    == 1'
+              promotionStrategyRef:
+                description: |-
+                  PromotionStrategyRef references the PromotionStrategy this applies to.
+                  The controller will check commits from ALL environments in the referenced PromotionStrategy
+                  where this WebRequestCommitStatus.Spec.Key matches an entry in either:
+                    - PromotionStrategy.Spec.ProposedCommitStatuses (applies to all environments), OR
+                    - PromotionStrategy.Spec.ActiveCommitStatuses (applies to all environments), OR
+                    - Environment.ProposedCommitStatuses (applies to specific environment), OR
+                    - Environment.ActiveCommitStatuses (applies to specific environment)
+                properties:
+                  name:
+                    description: Name is the name of the object to refer to.
+                    maxLength: 253
+                    minLength: 1
+                    pattern: ^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$
+                    type: string
+                required:
+                - name
+                type: object
+              reportOn:
+                default: proposed
+                description: |-
+                  ReportOn specifies which commit SHA to report the CommitStatus on.
+                  - "proposed": Reports on the proposed hydrated commit SHA (default)
+                  - "active": Reports on the active hydrated commit SHA
+
+                  When "proposed": Polls until success, then stops polling for that SHA.
+                  Use "proposed" for checks that need to run just once before a change is promoted, like an approval step.
+
+                  When "active": Polls forever, even after success (active state can change).
+                  Use "active" for checks that monitor the change after it's released, for example a metrics monitoring service.
+                enum:
+                - proposed
+                - active
+                type: string
+              success:
+                description: Success defines when the commit status phase is success.
+                  Evaluated every reconcile. See SuccessSpec.
+                properties:
+                  when:
+                    description: When is evaluated every reconcile. See WhenWithOutputSpec.Expression.
+                    properties:
+                      expression:
+                        description: |-
+                          Expression is a boolean expr expression that decides whether the HTTP request should be made.
+                          It is evaluated BEFORE each potential HTTP request. When it returns true the request is made;
+                          when false the controller keeps the previous phase and skips the request.
+
+                          Available variables:
+                            - Branch (string): the environment branch currently being processed (empty for the shared HTTP request in promotionstrategy context)
+                            - Phase (string): previous reconcile's phase — per-environment in environments context; aggregate of all branches in promotionstrategy context (success only if all succeeded, failure if any failed, pending otherwise)
+                            - PromotionStrategy (PromotionStrategy): the full PromotionStrategy spec and status
+                            - WebRequestCommitStatus (WebRequestCommitStatus): the full WebRequestCommitStatus spec and status (snapshot from the previous reconcile)
+                            - TriggerOutput (map[string]any): custom data from the previous when.output.expression evaluation
+                            - ResponseOutput (map[string]any): response data from the previous HTTP request (if any)
+                            - SuccessOutput (map[string]any): custom data from the previous success.when.output.expression evaluation
+                            - Variables (map[string]any): when spec.variables is set, the map returned by variables.expression this reconcile; omitted otherwise
+
+                          Note: PromotionStrategy.Status.Environments is an ordered array representing the promotion sequence.
+                          Use Branch + filter/find to look up environment-specific data:
+                            find(PromotionStrategy.Status.Environments, {.Branch == Branch}).Proposed.Hydrated.Sha
+
+                          Examples:
+                            # Always trigger (equivalent to polling mode)
+                            - "true"
+
+                            # Only trigger when SHA changes from what we last tracked
+                            - "find(PromotionStrategy.Status.Environments, {.Branch == Branch}).Proposed.Hydrated.Sha != (TriggerOutput['lastCheckedSha'] ?? '')"
+
+                            # Only trigger when a particular commit status is success (e.g. argocd-health)
+                            - "let env = find(PromotionStrategy.Status.Environments, {.Branch == Branch}); any(env.Proposed.CommitStatuses, {.Key == 'argocd-health' && .Phase == 'success'})"
+
+                            # Only retry if the previous response indicated we should
+                            - "ResponseOutput == nil || ResponseOutput.status == 'retry'"
+                        type: string
+                      output:
+                        description: |-
+                          Output optionally holds an expression that produces a map of data to persist across reconcile cycles.
+                          The expression runs on every reconcile (whether or not the HTTP request is made). Its result is stored in
+                          status (per-environment under environments[].triggerOutput, or under promotionStrategyContext.triggerOutput when context is promotionstrategy)
+                          and is available in the next reconcile as TriggerOutput in when.expression, when.output.expression, and in templates.
+                          Use it to track state such as attempt counts, last-seen SHAs, or timestamps.
+
+                          Delivery semantics caveat: persisted output is read from the controller's informer cache at the start of the next
+                          reconcile. Under cache-propagation lag, controller restarts, or status-write retries, the next reconcile may not
+                          see the most recently persisted output and may re-fire the HTTP request. Treat this as AT-LEAST-ONCE delivery —
+                          counters built on TriggerOutput are eventually-consistent (a stale read can cause a duplicate increment), so use
+                          them for backoff hints, not for hard "fail after N attempts" gates.
+
+                          Variables are the same as for Expression (see above). The expression must return a map/object; every key is stored in TriggerOutput.
+
+                          Examples:
+                            # Track SHA to detect changes (idempotent: replays produce the same trackedSha for the same input)
+                            - "{ trackedSha: find(PromotionStrategy.Status.Environments, {.Branch == Branch}).Proposed.Hydrated.Sha }"
+
+                            # Increment attempt counter (eventually-consistent; may briefly under-count under cache lag)
+                            - "{ attemptCount: (TriggerOutput[\"attemptCount\"] ?? 0) + 1 }"
+                        properties:
+                          expression:
+                            description: Expression is an expr expression that must
+                              return a map/object.
+                            type: string
+                        required:
+                        - expression
+                        type: object
+                      variables:
+                        description: |-
+                          Variables optionally holds an expression that runs before Expression and Output.Expression.
+                          It receives the same variables as Expression (see Expression documentation below) and must return a map/object.
+                          The result is injected as top-level binding Variables (map) for Expression and Output.Expression only — use Variables.<key> in those expressions.
+                          The Variables binding is not set when spec.variables is omitted. It is not available to response.output.expression.
+                          The result is also available in Go templates for DescriptionTemplate and UrlTemplate:
+                            - trigger.when.variables result → {{ index .TriggerVariables "key" }}
+                            - success.when.variables result → {{ index .SuccessVariables "key" }}
+                        properties:
+                          expression:
+                            description: Expression is an expr expression that must
+                              return a map/object.
+                            type: string
+                        required:
+                        - expression
+                        type: object
+                    required:
+                    - expression
+                    type: object
+                required:
+                - when
+                type: object
+              urlTemplate:
+                description: |-
+                  UrlTemplate is the commit status target URL in the SCM provider. Same Go templates, variables (including .TriggerVariables and .SuccessVariables), timing, and context rules as DescriptionTemplate.
+                  Typical uses: approval UI, dashboard, API, or runbook links.
+                  To include the reported SHA, walk PromotionStrategy.Status.Environments by Branch:
+                    "https://approvals.example.com/{{ range .PromotionStrategy.Status.Environments }}{{ if eq .Branch $.Branch }}{{ .Proposed.Hydrated.Sha }}{{ end }}{{ end }}"
+                  For branch-only links: "https://dashboard.example.com/{{ .Branch }}/status".
+
+                  If not specified, defaults to empty string (no URL shown).
+                type: string
+            required:
+            - httpRequest
+            - key
+            - mode
+            - promotionStrategyRef
+            - success
+            type: object
+          status:
+            description: status defines the observed state of WebRequestCommitStatus
+            properties:
+              conditions:
+                description: Conditions represent the latest available observations
+                  of an object's state
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              environments:
+                description: |-
+                  Environments holds the status of each environment when context is "environments".
+                  When context is "promotionstrategy", this slice is empty and PromotionStrategyContext is used instead.
+                items:
+                  description: |-
+                    WebRequestCommitStatusEnvironmentStatus defines the observed status for a specific environment.
+
+                    TriggerOutput, ResponseOutput, and SuccessOutput hold JSON maps written by their respective output expressions.
+                    They are surfaced on the next reconcile as TriggerOutput, ResponseOutput, and SuccessOutput in expr and templates (see WhenWithOutputSpec and HTTPRequestSpec).
+                  properties:
+                    branch:
+                      description: Branch is the name of the branch/environment.
+                      minLength: 1
+                      type: string
+                    lastRequestTime:
+                      description: LastRequestTime is when the last HTTP request was
+                        made.
+                      format: date-time
+                      type: string
+                    lastResponseStatusCode:
+                      description: LastResponseStatusCode is the HTTP status code
+                        from the last request.
+                      type: integer
+                    lastSuccessfulSha:
+                      description: |-
+                        LastSuccessfulSha is the last commit SHA that achieved success status for this environment.
+                        Supports both SHA-1 (40 chars) and SHA-256 (64 chars) Git hash formats.
+                      maxLength: 64
+                      pattern: ^([a-f0-9]{40}|[a-f0-9]{64})?$
+                      type: string
+                    phase:
+                      description: |-
+                        Phase represents the current phase of the validation.
+                        This controller sets only "pending" or "success"; it never sets "failure" (failure is allowed by the enum for API consistency).
+                      enum:
+                      - pending
+                      - success
+                      - failure
+                      type: string
+                    reportedSha:
+                      description: |-
+                        ReportedSha is the commit SHA being reported on for this environment.
+                        This is determined by the reportOn field (proposed or active).
+                        Supports both SHA-1 (40 chars) and SHA-256 (64 chars) Git hash formats.
+                      maxLength: 64
+                      pattern: ^([a-f0-9]{40}|[a-f0-9]{64})?$
+                      type: string
+                    responseOutput:
+                      description: ResponseOutput is the map from spec.mode.trigger.response.output.expression
+                        when spec.mode.trigger.response is set; otherwise nil.
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    successOutput:
+                      description: |-
+                        SuccessOutput is the map from spec.success.when.output.expression (arbitrary JSON keys).
+                        Evaluated every reconcile (whether or not an HTTP request was made). The result is stored here and
+                        exposed on the next reconcile as SuccessOutput in trigger/success expressions and templates.
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    triggerOutput:
+                      description: TriggerOutput is the map from spec.mode.trigger.when.output.expression
+                        (arbitrary JSON keys).
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                  required:
+                  - branch
+                  - phase
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - branch
+                x-kubernetes-list-type: map
+              instanceID:
+                description: |-
+                  InstanceID mirrors metadata.labels[promoter.argoproj.io/instance-id] stamped on each
+                  reconcile attempt by this install's controller, including when Ready=False; omitted
+                  when the resource has no instance-id label (default install).
+                maxLength: 63
+                minLength: 1
+                pattern: ^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?$
+                type: string
+              observedGeneration:
+                description: |-
+                  ObservedGeneration is the .metadata.generation that this status was reconciled from.
+                  Because status is written via Server-Side Apply with ForceOwnership (which has no
+                  optimistic-concurrency check), this field is the canonical way to detect stale
+                  status writes: compare status.observedGeneration with metadata.generation.
+                format: int64
+                type: integer
+              promotionStrategyContext:
+                description: |-
+                  PromotionStrategyContext holds the result of the one HTTP run when context is "promotionstrategy".
+                  At most one request is made per WebRequestCommitStatus; phase(s) are reported on each environment's CommitStatus.
+                properties:
+                  lastRequestTime:
+                    description: LastRequestTime is when the last HTTP request was
+                      made.
+                    format: date-time
+                    type: string
+                  lastResponseStatusCode:
+                    description: LastResponseStatusCode is the HTTP status code from
+                      the last request.
+                    type: integer
+                  lastSuccessfulShas:
+                    description: |-
+                      LastSuccessfulShas tracks the last SHA that achieved success for each branch.
+                      Used with reportOn "proposed" + polling to skip HTTP requests when all environments
+                      have already succeeded for their current SHAs.
+                    items:
+                      description: WebRequestCommitStatusLastSuccessfulShaItem records
+                        the last successful SHA for one branch in promotionstrategy
+                        context status.
+                      properties:
+                        branch:
+                          description: Branch is the environment branch name (merge
+                            key for lastSuccessfulShas list).
+                          minLength: 1
+                          type: string
+                        lastSuccessfulSha:
+                          description: LastSuccessfulSha is the SHA that last achieved
+                            success for this branch.
+                          maxLength: 64
+                          pattern: ^([a-f0-9]{40}|[a-f0-9]{64})?$
+                          type: string
+                      required:
+                      - branch
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - branch
+                    x-kubernetes-list-type: map
+                  phasePerBranch:
+                    description: |-
+                      PhasePerBranch holds the resolved phase for each applicable branch.
+                      Every applicable branch is always present after reconciliation.
+                    items:
+                      description: WebRequestCommitStatusPhasePerBranchItem is one
+                        branch's resolved phase in promotionstrategy context status.
+                      properties:
+                        branch:
+                          description: Branch is the environment branch name (merge
+                            key for phasePerBranch list).
+                          minLength: 1
+                          type: string
+                        phase:
+                          description: Phase is "pending", "success", or "failure".
+                          enum:
+                          - pending
+                          - success
+                          - failure
+                          type: string
+                      required:
+                      - branch
+                      - phase
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - branch
+                    x-kubernetes-list-type: map
+                  responseOutput:
+                    description: 'ResponseOutput: same semantics as WebRequestCommitStatusEnvironmentStatus.ResponseOutput,
+                      one shared map for context=promotionstrategy.'
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  successOutput:
+                    description: 'SuccessOutput: same semantics as WebRequestCommitStatusEnvironmentStatus.SuccessOutput,
+                      one shared map for context=promotionstrategy.'
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  triggerOutput:
+                    description: 'TriggerOutput: same semantics as WebRequestCommitStatusEnvironmentStatus.TriggerOutput,
+                      one shared map for context=promotionstrategy.'
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                type: object
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
