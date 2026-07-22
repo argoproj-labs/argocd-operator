@@ -199,6 +199,13 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 		log.Info("Repo Server is disabled. This would affect the functioning of Application Controller.")
 	}
 
+	if cr.Spec.SourceHydrator.IsEnabled() {
+		cmd = append(cmd, "--hydrator-enabled")
+	}
+	if UseCommitServer(cr) {
+		cmd = append(cmd, "--commit-server", argoutil.FqdnServiceRef("commit-server", common.ArgoCDDefaultCommitServerPort, cr))
+	}
+
 	cmd = append(cmd, "--status-processors", fmt.Sprint(getArgoServerStatusProcessors(cr)))
 	cmd = append(cmd, "--kubectl-parallelism-limit", fmt.Sprint(getArgoControllerParallelismLimit(cr)))
 
@@ -1319,8 +1326,8 @@ func getClusterVersion(client client.Client) (string, error) {
 	return clusterVersion.Status.Desired.Version, nil
 }
 
-// generateRandomBytes returns a securely generated random bytes.
-func generateRandomBytes(n int) []byte {
+// GenerateRandomBytes returns a securely generated random bytes.
+func GenerateRandomBytes(n int) []byte {
 	b := make([]byte, n)
 	_, err := rand.Read(b)
 	if err != nil {
@@ -1329,9 +1336,9 @@ func generateRandomBytes(n int) []byte {
 	return b
 }
 
-// generateRandomString returns a securely generated random string.
-func generateRandomString(s int) string {
-	b := generateRandomBytes(s)
+// GenerateRandomString returns a securely generated random string.
+func GenerateRandomString(s int) string {
+	b := GenerateRandomBytes(s)
 	return base64.URLEncoding.EncodeToString(b)
 }
 

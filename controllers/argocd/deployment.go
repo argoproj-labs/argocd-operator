@@ -442,6 +442,11 @@ func (r *ReconcileArgoCD) reconcileDeployments(cr *argoproj.ArgoCD, useTLSForRed
 		return err
 	}
 
+	err = r.reconcileCommitServerDeployment(cr)
+	if err != nil {
+		return err
+	}
+
 	err = r.reconcileGrafanaDeployment(cr)
 	if err != nil {
 		return err
