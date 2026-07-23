@@ -26,6 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -45,7 +46,8 @@ func newArgoCDForDexOpenShiftOAuthE2E(namespace string) *argov1beta1api.ArgoCD {
 			SSO: &argov1beta1api.ArgoCDSSOSpec{
 				Provider: argov1beta1api.SSOProviderTypeDex,
 				Dex: &argov1beta1api.ArgoCDDexSpec{
-					OpenShiftOAuth: true,
+					OpenShiftOAuth:       true,
+					EnableSATokenRenewal: ptr.To(true),
 				},
 			},
 			Server: argov1beta1api.ArgoCDServerSpec{
