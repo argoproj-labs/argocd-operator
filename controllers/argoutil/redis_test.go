@@ -24,7 +24,9 @@ import (
 // TestGetRedisHAProxyConfigRenderedTLSValues verifies that TLS minVersion and ciphers
 // are correctly rendered in the final HAProxy configuration template output
 func TestGetRedisHAProxyConfigRenderedTLSValues(t *testing.T) {
-	t.Setenv("REDIS_CONFIG_PATH", filepath.Join("/Users/akhilnittala/argocd-operator/build/redis"))
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	t.Setenv("REDIS_CONFIG_PATH", filepath.Join(wd, "../../build", "redis"))
 	tests := []struct {
 		name                    string
 		useTLS                  bool
