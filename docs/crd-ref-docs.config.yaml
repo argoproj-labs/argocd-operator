@@ -1,0 +1,5 @@
+# Configuration for https://github.com/elastic/crd-ref-docs
+
+render:
+  # Interpolated by `make crd-ref-docs`
+  kubernetesVersion: __KUBERNETES_API_VERSION__

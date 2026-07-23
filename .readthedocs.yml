@@ -13,3 +13,7 @@ build:
   os: "ubuntu-22.04"
   tools:
     python: "3.12"
+    golang: "1.26"
+  jobs:
+    pre_build:
+      - make apidocs-gen
