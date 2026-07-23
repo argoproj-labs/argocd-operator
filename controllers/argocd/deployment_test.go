@@ -3068,18 +3068,20 @@ func TestReconcileArgoCD_reconcileRepoServerWithFipsEnabledAndCustomGoDebugEnv(t
 
 	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d))
-	foundEnv := false
+	foundGoDebug := false
+	foundGoLangFips := false
 	for _, env := range d.Spec.Template.Spec.Containers[0].Env {
 		if env.Name == "GODEBUG" {
-			foundEnv = true
-			assert.Equal(t, env.Value, "fips140=on,tlsmlkem=0", "GODEBUG environment must be set to user provided value when fips is enabled")
+			foundGoDebug = true
+			assert.Equal(t, "fips140=on,tlsmlkem=0", env.Value, "GODEBUG environment must be set to user provided value when fips is enabled")
 		}
 		if env.Name == "GOLANG_FIPS" {
-			foundEnv = true
-			assert.Equal(t, env.Value, "0", "GOLANG_FIPS environment must be set to 0 when fips is enabled")
+			foundGoLangFips = true
+			assert.Equal(t, "0", env.Value, "GOLANG_FIPS environment must be set to 0 when fips is enabled")
 		}
 	}
-	assert.True(t, foundEnv, "environment GODEBUG must be set to user provided value when FIPS is enabled, and GOLANG_FIPS env var should be set to 0 when fips is enabled in GODEBUG")
+	assert.True(t, foundGoDebug, "environment GODEBUG must be set to user provided value when FIPS is enabled")
+	assert.True(t, foundGoLangFips, "GOLANG_FIPS env var should be set to 0 when fips140=on is present in GODEBUG")
 }
 
 func TestReconcileArgoCD_reconcileRepoServerWithFipsEnabledAndCustomGoDebugEnvFipsOff(t *testing.T) {
@@ -3112,18 +3114,19 @@ func TestReconcileArgoCD_reconcileRepoServerWithFipsEnabledAndCustomGoDebugEnvFi
 
 	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d))
-	foundEnv := false
+	foundGoDebug := false
+	foundGoLangFips := false
 	for _, env := range d.Spec.Template.Spec.Containers[0].Env {
 		if env.Name == "GODEBUG" {
-			foundEnv = true
-			assert.Equal(t, env.Value, "fips140=off,tlsmlkem=0", "GODEBUG environment must be set to user provided value when fips is enabled")
+			foundGoDebug = true
+			assert.Equal(t, "fips140=off,tlsmlkem=0", env.Value, "GODEBUG environment must be set to user provided value when fips is enabled")
 		}
 		if env.Name == "GOLANG_FIPS" {
-			foundGoLangFipsEnv := false
-			assert.False(t, foundGoLangFipsEnv, "1", "environment GODEBUG must be set to user provided value when FIPS is enabled, and no GOLANG_FIPS env var should be set when fips is switched off in GODEBUG")
+			foundGoLangFips = true
 		}
 	}
-	assert.True(t, foundEnv, "environment GODEBUG must be set to user provided value when FIPS is enabled, and no GOLANG_FIPS env var should be set when fips is switched off in GODEBUG")
+	assert.True(t, foundGoDebug, "environment GODEBUG must be set to user provided value when FIPS is enabled")
+	assert.False(t, foundGoLangFips, "GOLANG_FIPS env var should not be set when fips140=off is present in GODEBUG")
 }
 
 func TestReconcileArgoCD_reconcileRepoServerWithFipsEnabledAndCustomGoDebugEnvFipsMissing(t *testing.T) {
@@ -3156,18 +3159,92 @@ func TestReconcileArgoCD_reconcileRepoServerWithFipsEnabledAndCustomGoDebugEnvFi
 
 	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d))
-	foundEnv := false
+	foundGoDebug := false
+	foundGoLangFips := false
 	for _, env := range d.Spec.Template.Spec.Containers[0].Env {
 		if env.Name == "GODEBUG" {
-			foundEnv = true
-			assert.Equal(t, env.Value, "tlsmlkem=0", "GODEBUG environment must be set to user provided value when fips is enabled")
+			foundGoDebug = true
+			assert.Equal(t, "tlsmlkem=0", env.Value, "GODEBUG environment must be set to user provided value when fips is enabled")
 		}
 		if env.Name == "GOLANG_FIPS" {
-			foundGoLangFipsEnv := false
-			assert.False(t, foundGoLangFipsEnv, "environment GODEBUG must be set to user provided value when FIPS is enabled, and no GOLANG_FIPS env var should be set when fips is setting is missing in GODEBUG")
+			foundGoLangFips = true
 		}
 	}
-	assert.True(t, foundEnv, "environment GODEBUG must be set to user provided value when FIPS is enabled, and no GOLANG_FIPS env var should be set when fips is switched off in GODEBUG")
+	assert.True(t, foundGoDebug, "environment GODEBUG must be set to user provided value when FIPS is enabled")
+	assert.False(t, foundGoLangFips, "GOLANG_FIPS env var should not be set when fips140 setting is missing from GODEBUG")
+}
+
+func TestReconcileArgoCD_reconcileRepoServerWithFipsEnabledAndCustomGolangFipsEnv(t *testing.T) {
+	cr := makeTestArgoCD()
+	cr.Spec.Repo.Env = []corev1.EnvVar{
+		{
+			Name:  "GOLANG_FIPS",
+			Value: "1",
+		},
+	}
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{cr}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r.FipsConfigChecker = &MockTrueFipsChecker{}
+
+	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
+
+	d := &appsv1.Deployment{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d))
+
+	foundGoDebug := false
+	foundGoLangFips := false
+	for _, env := range d.Spec.Template.Spec.Containers[0].Env {
+		if env.Name == "GODEBUG" {
+			foundGoDebug = true
+			assert.Equal(t, "fips140=on", env.Value, "GODEBUG must be set to fips140=on when fips is enabled")
+		}
+		if env.Name == "GOLANG_FIPS" {
+			foundGoLangFips = true
+			assert.Equal(t, "1", env.Value, "user provided GOLANG_FIPS value must be preserved")
+		}
+	}
+	assert.True(t, foundGoDebug, "environment GODEBUG must be set when FIPS is enabled")
+	assert.True(t, foundGoLangFips, "GOLANG_FIPS env var must be present")
+}
+
+func TestReconcileArgoCD_reconcileRepoServerWithFipsDisabledAndCustomGoDebugEnv(t *testing.T) {
+	cr := makeTestArgoCD()
+	cr.Spec.Repo.Env = []corev1.EnvVar{
+		{
+			Name:  "GODEBUG",
+			Value: "http2debug=1",
+		},
+	}
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{cr}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r.FipsConfigChecker = &MockFalseFipsChecker{}
+
+	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
+
+	d := &appsv1.Deployment{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d))
+
+	foundGoDebug := false
+	foundGoLangFips := false
+	for _, env := range d.Spec.Template.Spec.Containers[0].Env {
+		if env.Name == "GODEBUG" {
+			foundGoDebug = true
+			assert.Equal(t, "http2debug=1", env.Value, "user provided GODEBUG must be preserved when FIPS is disabled")
+		}
+		if env.Name == "GOLANG_FIPS" {
+			foundGoLangFips = true
+		}
+	}
+	assert.True(t, foundGoDebug, "user provided GODEBUG must be preserved when FIPS is disabled")
+	assert.False(t, foundGoLangFips, "GOLANG_FIPS env var should not be set when FIPS is disabled")
 }
 
 func TestDeploymentWithLongName(t *testing.T) {

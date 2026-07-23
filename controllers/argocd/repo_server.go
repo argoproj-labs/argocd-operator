@@ -129,15 +129,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 			return err
 		}
 		if fipsEnabled {
-			repoEnv = argoutil.EnvMerge(repoEnv, argoutil.GetFIPSGoDebugEnv(), false)
-			for _, env := range repoEnv {
-				if env.Name == "GODEBUG" {
-					if strings.Contains(env.Value, "fips140=on") {
-						repoEnv = argoutil.EnvMerge(repoEnv, argoutil.GetFIPSGoLangFipsEnv(), false)
-					}
-					break
-				}
-			}
+			repoEnv = argoutil.DecorateWithFIPSEnv(repoEnv)
 		}
 	}
 

@@ -2,6 +2,7 @@ package argoutil
 
 import (
 	"os"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -51,27 +52,42 @@ func fileExists(path string) (bool, error) {
 	return !info.IsDir(), nil
 }
 
-// GetFIPSGoDebugEnv returns the environment variable GODEBUG set to fips140=on.
-func GetFIPSGoDebugEnv() []corev1.EnvVar {
-	return []corev1.EnvVar{
-		{
-			Name:  "GODEBUG",
-			Value: "fips140=on",
-		},
+// DecorateWithFIPSEnv adds environment variables required to enable FIPS in go runtime.
+// If user has set this value already, this method does not override it. If the environment variable
+// GODEBUG contains fips140=on, it will also set GOLANG_FIPS=0 as these two environments are
+// mutually exclusive.
+func DecorateWithFIPSEnv(in []corev1.EnvVar) []corev1.EnvVar {
+	mergedEnv := EnvMerge(in, []corev1.EnvVar{{
+		Name:  "GODEBUG",
+		Value: "fips140=on",
+	}}, false)
+	for _, env := range mergedEnv {
+		if env.Name == "GODEBUG" {
+			if hasGodebugEntry(env.Value, "fips140=on") {
+				// GOLANG_FIPS and GODEBUG=fips140=on are both mutually exclusive.
+				// GOLANG_FIPS=1 is set by default, but it causes issues
+				// since we are explicitly setting GODEBUG=fips140=on to skip
+				// unsupported fips ssh algorithms in Argo CD.
+				// See https://github.com/argoproj/argo-cd/issues/24155,
+				// so we need to set GOLANG_FIPS=0 to avoid the conflict.
+				mergedEnv = EnvMerge(mergedEnv, []corev1.EnvVar{{
+					Name:  "GOLANG_FIPS",
+					Value: "0",
+				}}, false)
+			}
+			break
+		}
 	}
+	return mergedEnv
 }
 
-// GetFIPSGoLangEnv returns the environment variable GOLANG_FIPS set to 0. This must be added only if the GODEBUG environment variable contains fips140=on.
-func GetFIPSGoLangFipsEnv() []corev1.EnvVar {
-	// GOLANG_FIPS and GODEBUG=fips140=on are both mutaully exclusive.
-	// GOLANG_FIPS=1 is set by default but it causes issues
-	// since we are explicitly setting GODEBUG=fips140=on to skip unsupported fips ssh algorithms in Argo CD.
-	// See https://github.com/argoproj/argo-cd/issues/24155,
-	// so we need to set GOLANG_FIPS=0 to avoid the conflict.
-	return []corev1.EnvVar{
-		{
-			Name:  "GOLANG_FIPS",
-			Value: "0",
-		},
+// hasGodebugEntry checks whether a comma-separated GODEBUG value contains an
+// exact entry (e.g. "fips140=on").
+func hasGodebugEntry(godebugValue, entry string) bool {
+	for _, e := range strings.Split(godebugValue, ",") {
+		if e == entry {
+			return true
+		}
 	}
+	return false
 }
