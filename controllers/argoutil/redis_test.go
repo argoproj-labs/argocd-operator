@@ -1,14 +1,12 @@
 package argoutil
 
 import (
-	"bytes"
 	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
-	"text/template"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -16,13 +14,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/argoproj-labs/argocd-operator/pkg/tlsprofile"
-
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/pkg/tlsprofile"
 )
 
 // TestGetRedisHAProxyConfigRenderedTLSValues verifies that TLS minVersion and ciphers
-// are correctly rendered in the final HAProxy configuration template output
+// are correctly rendered in the final HAProxy configuration template output.
 func TestGetRedisHAProxyConfigRenderedTLSValues(t *testing.T) {
 	wd, err := os.Getwd()
 	require.NoError(t, err)
@@ -127,15 +124,7 @@ func TestGetRedisHAProxyConfigRenderedTLSValues(t *testing.T) {
 			}()
 			loadTemplateFile = func(path string, vars map[string]string) (string, error) {
 				capturedVars = maps.Clone(vars)
-				data, err := os.ReadFile(path)
-				require.NoError(t, err)
-				tmpl, err := template.New(filepath.Base(path)).Parse(string(data))
-				require.NoError(t, err)
-				var buf bytes.Buffer
-				err = tmpl.Execute(&buf, vars)
-				require.NoError(t, err)
-
-				return buf.String(), nil
+				return original(path, vars)
 			}
 			result := GetRedisHAProxyConfig(cr, tt.useTLS, tt.centralTLSConfigProfile)
 			t.Logf("Rendered HAProxy config:\n%s", result)
@@ -154,7 +143,8 @@ func TestGetRedisHAProxyConfigRenderedTLSValues(t *testing.T) {
 					assert.Equal(t, expectedVersion, capturedVars["TLSMinVersion"])
 				}
 				if len(tt.centralTLSConfigProfile.Ciphers) > 0 {
-					assert.Equal(t,
+					assert.Equal(
+						t,
 						strings.Join(tt.centralTLSConfigProfile.Ciphers, ":"),
 						capturedVars["TLSCiphers"],
 					)
