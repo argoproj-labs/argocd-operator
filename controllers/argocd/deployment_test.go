@@ -2996,10 +2996,10 @@ func TestReconcileArgoCD_reconcileRepoServerWithFipsEnabled(t *testing.T) {
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d))
 	env := d.Spec.Template.Spec.Containers[0].Env
 	godebug := argoutil.EnvGet(env, "GODEBUG")
-	assert.NotNil(t, godebug, "environment GODEBUG must be set when FIPS is enabled")
+	require.NotNil(t, godebug, "environment GODEBUG must be set when FIPS is enabled")
 	assert.Equal(t, "fips140=on", godebug.Value, "GODEBUG environment must be set to fips140=on when fips is enabled")
 	golangFips := argoutil.EnvGet(env, "GOLANG_FIPS")
-	assert.NotNil(t, golangFips, "environment GOLANG_FIPS must be set when FIPS is enabled")
+	require.NotNil(t, golangFips, "environment GOLANG_FIPS must be set when FIPS is enabled")
 	assert.Equal(t, "0", golangFips.Value, "GOLANG_FIPS environment must be set to 0 when fips is enabled")
 }
 
