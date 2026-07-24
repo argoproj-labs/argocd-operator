@@ -42,6 +42,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdagent"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdagent/agent"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj-labs/argocd-operator/controllers/gitopspromoter"
 
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -171,7 +172,6 @@ func getArgoApplicationControllerResources(cr *argoproj.ArgoCD) corev1.ResourceR
 
 // getArgoApplicationControllerCommand will return the command for the ArgoCD Application Controller component.
 func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
-
 	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
 
 	cmd := []string{
@@ -529,7 +529,6 @@ func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoproj.ArgoCD) bool {
 
 // reconcileResources will reconcile common ArgoCD resources.
 func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *argoproj.ArgoCDStatus) error {
-
 	if err := r.ensureSourceNamespacesAllowed(cr); err != nil {
 		return err
 	}
@@ -780,7 +779,6 @@ func removeString(slice []string, s string) []string {
 
 // setResourceWatches will register Watches for each of the supported Resources.
 func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, clusterSecretResourceMapper, applicationSetGitlabSCMTLSConfigMapMapper, nmMapper, systemCATrustMapper handler.MapFunc) *builder.Builder {
-
 	// Add new predicate to delete Notifications Resources. The predicate watches the Argo CD CR for changes to the `.spec.Notifications.Enabled`
 	// field. When a change is detected that results in notifications being disabled, we trigger deletion of notifications resources
 	deleteNotificationsPred := predicate.Funcs{
@@ -1021,7 +1019,6 @@ func deleteRBACsForNamespace(sourceNS string, k8sClient kubernetes.Interface) er
 }
 
 func deleteManagedNamespaceFromClusterSecret(ownerNS, sourceNS string, k8sClient kubernetes.Interface) error {
-
 	// Get the cluster secret used for configuring ArgoCD
 	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}}
 	secrets, err := k8sClient.CoreV1().Secrets(ownerNS).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.Set(labelSelector.MatchLabels).String()})
@@ -1034,7 +1031,6 @@ func deleteManagedNamespaceFromClusterSecret(ownerNS, sourceNS string, k8sClient
 	// Find the cluster secret in the list that points to  common.ArgoCDDefaultServer (default server address)
 	var localClusterSecret *corev1.Secret
 	for x, clusterSecret := range secrets.Items {
-
 		// check if cluster secret with default server address exists
 		if string(clusterSecret.Data["server"]) == common.ArgoCDDefaultServer {
 			localClusterSecret = &secrets.Items[x]
@@ -1084,12 +1080,8 @@ func deleteManagedNamespaceFromClusterSecret(ownerNS, sourceNS string, k8sClient
 
 // getLogLevel returns the log level for a specified component if it is set or returns the default log level if it is not set
 func getLogLevel(logField string) string {
-
 	switch strings.ToLower(logField) {
-	case "debug",
-		"info",
-		"warn",
-		"error":
+	case "debug", "info", "warn", "error":
 		return logField
 	}
 	return common.ArgoCDDefaultLogLevel
@@ -1098,8 +1090,7 @@ func getLogLevel(logField string) string {
 // getLogFormat returns the log format for a specified component if it is set or returns the default log format if it is not set
 func getLogFormat(logField string) string {
 	switch strings.ToLower(logField) {
-	case "text",
-		"json":
+	case "text", "json":
 		return logField
 	}
 	return common.ArgoCDDefaultLogFormat
@@ -1124,7 +1115,6 @@ func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
 // getSourceNamespaces retrieves a list of namespaces that match the sourceNamespaces
 // pattern specified in the given ArgoCD
 func (r *ReconcileArgoCD) getSourceNamespaces(cr *argoproj.ArgoCD) ([]string, error) {
-
 	if err := r.ensureSourceNamespacesAllowed(cr); err != nil {
 		return nil, err
 	}
@@ -1167,7 +1157,6 @@ func (r *ReconcileArgoCD) setManagedSourceNamespaces(cr *argoproj.ArgoCD) error 
 // removeUnmanagedSourceNamespaceResources cleansup resources from SourceNamespaces if namespace is not managed by argocd instance.
 // It also removes the managed-by-cluster-argocd label from the namespace
 func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(cr *argoproj.ArgoCD) error {
-
 	for ns := range r.ManagedSourceNamespaces {
 		managedNamespace := false
 		if cr.GetDeletionTimestamp() == nil {
@@ -1378,7 +1367,6 @@ func UseServer(name string, cr *argoproj.ArgoCD) bool {
 // (like scheduling, topology, or lifecycle information) is retained.
 // This helps avoid loss of important Kubernetes-managed metadata during updates.
 func addKubernetesData(source map[string]string, live map[string]string) {
-
 	// List of Kubernetes-specific substrings (wildcard match)
 	patterns := []string{
 		"*kubernetes.io*",
@@ -1433,7 +1421,6 @@ func updateStatusAndConditionsOfArgoCD(ctx context.Context, condition metav1.Con
 
 // insertOrUpdateConditionsInSlice is a generic function for inserting/updating metav1.Condition into a slice of []metav1.Condition
 func insertOrUpdateConditionsInSlice(newCondition metav1.Condition, existingConditions []metav1.Condition) (bool, []metav1.Condition) {
-
 	// Check if condition with same type is already set, if Yes then check if content is same,
 	// If content is not same update LastTransitionTime
 	index := -1
@@ -2056,6 +2043,32 @@ func (r *ReconcileArgoCD) reconcileDeploymentHelper(cr *argoproj.ArgoCD, desired
 	if len(changes) > 0 {
 		argoutil.LogResourceUpdate(log, existingDeployment, "updating", strings.Join(changes, ", "))
 		return r.Update(context.TODO(), existingDeployment)
+	}
+
+	return nil
+}
+
+// reconcileGitOpsPromoter will reconcile all GitOps Promoter resources
+func (r *ReconcileArgoCD) reconcileGitOpsPromoter(cr *argoproj.ArgoCD) error {
+	log.Info("reconciling GitOps Promoter resources")
+
+	controllerCompName := string(argoproj.PromoterComponentTypeControllerManager)
+	var sa *corev1.ServiceAccount
+	var err error
+
+	log.Info("reconciling GitOps Promoter's Controller Manager ServiceAccount")
+	if sa, err = gitopspromoter.ReconcilePromoterServiceAccount(r.Client, controllerCompName, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("reconciling GitOps Promoter's Controller Manager ClusterRole")
+	if _, err = gitopspromoter.ReconcilePromoterControllerClusterRole(r.Client, controllerCompName, cr); err != nil {
+		return err
+	}
+
+	log.Info("reconciling GitOps Promoter's Controller Manager ClusterRole Binding")
+	if _, err = gitopspromoter.ReconcilePromoterControllerClusterRoleBinding(r.Client, controllerCompName, sa, cr); err != nil {
+		return err
 	}
 
 	return nil

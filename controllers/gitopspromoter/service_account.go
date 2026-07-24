@@ -1,0 +1,105 @@
+// Copyright 2026 ArgoCD Operator Developers
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package gitopspromoter
+
+import (
+	"context"
+	"fmt"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	logr "sigs.k8s.io/controller-runtime/pkg/log"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+)
+
+var log = logr.Log.WithName("controller_promoter")
+
+// generatePromoterResourceName generates a resource name for a resource that adheres to length constraints.
+func generatePromoterResourceName(compName string, cr *argoproj.ArgoCD) string {
+	return argoutil.NameWithSuffix(cr.ObjectMeta, compName)
+}
+
+// generatePromoterResourceNameWithNamespace generates a resource name for the resource with namespace included.
+// Useful for cluster scoped resources.
+func generatePromoterResourceNameWithNamespace(compName string, cr *argoproj.ArgoCD) string {
+	return fmt.Sprintf("%s-%s-%s", cr.Name, cr.Namespace, compName)
+}
+
+func ReconcilePromoterServiceAccount(client client.Client, compName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme) (*corev1.ServiceAccount, error) {
+	sa := buildPromoterServiceAccount(compName, cr)
+
+	exists := true
+	if err := argoutil.FetchObject(client, cr.Namespace, sa.Name, sa); err != nil {
+		if !errors.IsNotFound(err) {
+			return nil, fmt.Errorf("failed to get existing promoter service account %s in namespace %s: %v", sa.Name, sa.Namespace, err)
+		}
+		exists = false
+	}
+
+	componentCondition := false
+	if argoproj.PromoterComponentType(compName) == argoproj.PromoterComponentTypeAPIServer {
+		componentCondition = !cr.Spec.Promoter.IsAPIServerEnabled()
+	}
+
+	if exists {
+		if !cr.Spec.Promoter.IsEnabled() || componentCondition {
+			argoutil.LogResourceDeletion(log, sa, fmt.Sprintf("promoter service account for component %s is being deleted due to being disabled", compName))
+			if err := client.Delete(context.Background(), sa); err != nil {
+				return nil, fmt.Errorf("failed to delete promoter service account %s: %v", sa.Name, err)
+			}
+			return sa, nil
+		}
+		return sa, nil
+	}
+
+	if !cr.Spec.Promoter.IsEnabled() || componentCondition {
+		return sa, nil
+	}
+
+	if err := controllerutil.SetControllerReference(cr, sa, scheme); err != nil {
+		return nil, fmt.Errorf("failed to set ArgoCD CR %s as owner for service account %s: %v", cr.Name, sa.Name, err)
+	}
+
+	argoutil.LogResourceCreation(log, sa)
+	if err := client.Create(context.Background(), sa); err != nil {
+		return nil, fmt.Errorf("failed to create promoter service account %s: %v", sa.Name, err)
+	}
+	return sa, nil
+}
+
+func buildPromoterServiceAccount(compName string, cr *argoproj.ArgoCD) *corev1.ServiceAccount {
+	return &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      generatePromoterResourceName(compName, cr),
+			Namespace: cr.Namespace,
+			Labels:    buildLabelsForPromoterResources(compName, cr),
+		},
+	}
+}
+
+func buildLabelsForPromoterResources(compName string, cr *argoproj.ArgoCD) map[string]string {
+	return map[string]string{
+		"app.kubernetes.io/name":       generatePromoterResourceName(compName, cr),
+		"app.kubernetes.io/component":  compName,
+		"app.kubernetes.io/part-of":    "promoter",
+		"app.kubernetes.io/managed-by": cr.Name,
+	}
+}
