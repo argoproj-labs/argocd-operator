@@ -806,7 +806,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSF
 	ctx := context.TODO()
 	desired := newConfigMapWithName(common.ArgoCDRedisHAConfigMapName, cr)
 	desired.Data = map[string]string{
-		"haproxy.cfg":     argoutil.GetRedisHAProxyConfig(cr, useTLSForRedis),
+		"haproxy.cfg":     argoutil.GetRedisHAProxyConfig(cr, useTLSForRedis, r.CentralTLSConfigProfile),
 		"haproxy_init.sh": argoutil.GetRedisHAProxyScript(cr),
 		"init.sh":         argoutil.GetRedisInitScript(cr, useTLSForRedis),
 		"redis.conf":      argoutil.GetRedisConf(useTLSForRedis),
