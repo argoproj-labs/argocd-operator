@@ -22,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	schedulingv1 "k8s.io/api/scheduling/v1"
 	crdv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 
 	imageUpdater "github.com/argoproj-labs/argocd-image-updater/api/v1alpha1"
@@ -129,6 +130,10 @@ func getKubeClient(config *rest.Config) (client.Client, *runtime.Scheme, error) 
 	}
 
 	if err := certificatesv1beta1.AddToScheme(scheme); err != nil {
+		return nil, nil, err
+	}
+
+	if err := schedulingv1.AddToScheme(scheme); err != nil {
 		return nil, nil, err
 	}
 

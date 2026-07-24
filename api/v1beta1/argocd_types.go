@@ -1027,6 +1027,10 @@ type ArgoCDSpec struct {
 	// NodePlacement defines NodeSelectors and Taints for Argo CD workloads
 	NodePlacement *ArgoCDNodePlacementSpec `json:"nodePlacement,omitempty"`
 
+	// PriorityClassName is the name of the PriorityClass resource to be assigned to all ArgoCD component pods.
+	// +optional
+	PriorityClassName string `json:"priorityClassName,omitempty"`
+
 	// Notifications defines whether the Argo CD Notifications controller should be installed.
 	Notifications ArgoCDNotifications `json:"notifications,omitempty"`
 

@@ -2325,6 +2325,10 @@ spec:
                 description: OIDCConfig is the OIDC configuration as an alternative
                   to dex.
                 type: string
+              priorityClassName:
+                description: PriorityClassName is the name of the PriorityClass resource
+                  to be assigned to all ArgoCD component pods.
+                type: string
               prometheus:
                 description: Prometheus defines the Prometheus server options for
                   ArgoCD.
@@ -18885,6 +18889,10 @@ spec:
               oidcConfig:
                 description: OIDCConfig is the OIDC configuration as an alternative
                   to dex.
+                type: string
+              priorityClassName:
+                description: PriorityClassName is the name of the PriorityClass resource
+                  to be assigned to all ArgoCD component pods.
                 type: string
               prometheus:
                 description: Prometheus defines the Prometheus server options for

@@ -1949,6 +1949,7 @@ func getNamespacesToDelete(oldList, newList []argoproj.ManagedNamespaces, allNam
 // It can be used for various components by passing in the desired deployment,
 // the component's name, and a boolean indicating if the component is enabled.
 func (r *ReconcileArgoCD) reconcileDeploymentHelper(cr *argoproj.ArgoCD, desiredDeployment *appsv1.Deployment, componentName string, enabled bool) error {
+	desiredDeployment.Spec.Template.Spec.PriorityClassName = cr.Spec.PriorityClassName
 	// fetch existing deployment by name
 	existingDeployment := &appsv1.Deployment{}
 	if err := r.Get(context.TODO(), types.NamespacedName{Name: desiredDeployment.Name, Namespace: cr.Namespace}, existingDeployment); err != nil {
@@ -2039,6 +2040,11 @@ func (r *ReconcileArgoCD) reconcileDeploymentHelper(cr *argoproj.ArgoCD, desired
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Args, desiredDeployment.Spec.Template.Spec.Containers[0].Args) {
 		existingDeployment.Spec.Template.Spec.Containers[0].Args = desiredDeployment.Spec.Template.Spec.Containers[0].Args
 		changes = append(changes, "container args")
+	}
+
+	if existingDeployment.Spec.Template.Spec.PriorityClassName != desiredDeployment.Spec.Template.Spec.PriorityClassName {
+		existingDeployment.Spec.Template.Spec.PriorityClassName = desiredDeployment.Spec.Template.Spec.PriorityClassName
+		changes = append(changes, "priority class name")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Labels, desiredDeployment.Labels) {
