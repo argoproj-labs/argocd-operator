@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 )
@@ -45,26 +46,21 @@ const (
 // --- Local Helpers (kept inline for reuse in this test) ---
 
 func ensureEnv(ctx context.Context, c client.Client, d *appsv1.Deployment) (string, bool) {
-	for _, env := range d.Spec.Template.Spec.Containers[0].Env {
-		if env.Name == "ARGOCD_IMAGE" {
-			return env.Value, false
-		}
+	if env := argoutil.EnvGet(d.Spec.Template.Spec.Containers[0].Env, "ARGOCD_IMAGE"); env != nil {
+		return env.Value, false
 	}
-	d.Spec.Template.Spec.Containers[0].Env =
-		append(d.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_IMAGE", Value: defaultImage})
+	d.Spec.Template.Spec.Containers[0].Env = argoutil.EnvSet(
+		d.Spec.Template.Spec.Containers[0].Env,
+		corev1.EnvVar{Name: "ARGOCD_IMAGE", Value: defaultImage},
+	)
 	Expect(c.Update(ctx, d)).To(Succeed())
 	waitForDeploymentReady(ctx, c, d)
 	return defaultImage, true
 }
 
 func removeEnv(ctx context.Context, c client.Client, d *appsv1.Deployment) {
-	var newEnvs []corev1.EnvVar
-	for _, env := range d.Spec.Template.Spec.Containers[0].Env {
-		if env.Name != "ARGOCD_IMAGE" {
-			newEnvs = append(newEnvs, env)
-		}
-	}
-	d.Spec.Template.Spec.Containers[0].Env = newEnvs
+	d.Spec.Template.Spec.Containers[0].Env = argoutil.EnvRemove(
+		d.Spec.Template.Spec.Containers[0].Env, "ARGOCD_IMAGE")
 	Expect(c.Update(ctx, d)).To(Succeed())
 	waitForDeploymentReady(ctx, c, d)
 }

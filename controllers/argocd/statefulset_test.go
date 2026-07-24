@@ -1019,14 +1019,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_RevertDrift(t *testing.T) {
 	assert.NoError(t, r.reconcileRedisStatefulSet(a))
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
 
-	envVarFound := false
-	for _, env := range s.Spec.Template.Spec.Containers[0].Env {
-		if env.Name == "NEW_ENV_VAR" {
-			envVarFound = true
-			break
-		}
-	}
-	assert.False(t, envVarFound, "NEW_ENV_VAR should not be present")
+	assert.Nil(t, argoutil.EnvGet(s.Spec.Template.Spec.Containers[0].Env, "NEW_ENV_VAR"), "NEW_ENV_VAR should not be present")
 
 	// Modify the SecurityContext
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
@@ -1053,14 +1046,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_RevertDrift(t *testing.T) {
 	assert.NoError(t, r.reconcileRedisStatefulSet(a))
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
 
-	envVarFound = false
-	for _, env := range s.Spec.Template.Spec.InitContainers[0].Env {
-		if env.Name == "NEW_ENV_VAR" {
-			envVarFound = true
-			break
-		}
-	}
-	assert.False(t, envVarFound, "NEW_ENV_VAR should not be present")
+	assert.Nil(t, argoutil.EnvGet(s.Spec.Template.Spec.InitContainers[0].Env, "NEW_ENV_VAR"), "NEW_ENV_VAR should not be present")
 
 	// Modify the container volume and volume mount
 	s.Spec.Template.Spec.Containers[0].VolumeMounts = append(s.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{

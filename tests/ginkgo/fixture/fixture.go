@@ -29,6 +29,7 @@ import (
 	apierr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	osFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/os"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 )
@@ -347,14 +348,9 @@ func waitForAllEnvVarsToBeRemovedFromDeployments(ns string, envVarKeys []string,
 
 				// For each env var we are looking for
 				for _, envVarKey := range envVarKeys {
-
-					for _, containerEnvKey := range container.Env {
-
-						if containerEnvKey.Name == envVarKey {
-							GinkgoWriter.Println("Waiting:", containerEnvKey, "is still present in Deployment ", depl.Name)
-							return false
-						}
-
+					if env := argoutil.EnvGet(container.Env, envVarKey); env != nil {
+						GinkgoWriter.Println("Waiting:", env, "is still present in Deployment ", depl.Name)
+						return false
 					}
 				}
 			}

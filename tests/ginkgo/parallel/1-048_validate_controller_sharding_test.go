@@ -27,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
 	argocdFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/argocd"
 	k8sFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/k8s"
@@ -84,14 +85,9 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			statefulSet := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: "argocd-application-controller", Namespace: ns.Name}}
 			Eventually(statefulSet).Should(k8sFixture.ExistByName())
-			var match bool
-			for _, env := range statefulSet.Spec.Template.Spec.Containers[0].Env {
-				if env.Name == "ARGOCD_CONTROLLER_REPLICAS" && env.Value == "3" {
-					match = true
-					break
-				}
-			}
-			Expect(match).To(BeTrue(), "StatefulSet should have expected ARGOCD_CONTROLLER_REPLICAS")
+			env := argoutil.EnvGet(statefulSet.Spec.Template.Spec.Containers[0].Env, "ARGOCD_CONTROLLER_REPLICAS")
+			Expect(env).NotTo(BeNil(), "StatefulSet should have ARGOCD_CONTROLLER_REPLICAS")
+			Expect(env.Value).To(Equal("3"), "StatefulSet should have expected ARGOCD_CONTROLLER_REPLICAS")
 
 			By("ensuring algorithm can be set")
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
@@ -116,20 +112,15 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("checking if ARGOCD_CONTROLLER_SHARDING_ALGORITHM env var is not set in app controller StatefulSet")
 			Eventually(statefulSet).Should(k8sFixture.ExistByName())
-			Eventually(func() bool {
+			Eventually(func() *corev1.EnvVar {
 				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(statefulSet), statefulSet); err != nil {
-					return false
+					return &corev1.EnvVar{} // keep polling until Get succeeds
 				}
 				if len(statefulSet.Spec.Template.Spec.Containers) == 0 {
-					return false
+					return &corev1.EnvVar{}
 				}
-				for _, env := range statefulSet.Spec.Template.Spec.Containers[0].Env {
-					if env.Name == "ARGOCD_CONTROLLER_SHARDING_ALGORITHM" {
-						return false
-					}
-				}
-				return true
-			}, "60s", "5s").Should(BeTrue(), "StatefulSet should have no env variable named ARGOCD_CONTROLLER_SHARDING_ALGORITHM")
+				return argoutil.EnvGet(statefulSet.Spec.Template.Spec.Containers[0].Env, "ARGOCD_CONTROLLER_SHARDING_ALGORITHM")
+			}, "60s", "5s").Should(BeNil(), "StatefulSet should have no env variable named ARGOCD_CONTROLLER_SHARDING_ALGORITHM")
 
 			By("disabling sharding")
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
@@ -147,15 +138,8 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("verifying ARGOCD_CONTROLLER_REPLICAS is no longer present in StatefulSet")
 			Eventually(statefulSet).Should(k8sFixture.ExistByName())
-			var replicasVarFound bool
-			for _, env := range statefulSet.Spec.Template.Spec.Containers[0].Env {
-				GinkgoWriter.Println(env)
-				if env.Name == "ARGOCD_CONTROLLER_REPLICAS" {
-					replicasVarFound = true
-					break
-				}
-			}
-			Expect(replicasVarFound).To(BeFalse(), "If sharding is disabled then the ARGOCD_CONTROLLER_REPLICAS var is not set")
+			Expect(argoutil.EnvGet(statefulSet.Spec.Template.Spec.Containers[0].Env, "ARGOCD_CONTROLLER_REPLICAS")).
+				To(BeNil(), "If sharding is disabled then the ARGOCD_CONTROLLER_REPLICAS var is not set")
 		})
 	})
 })

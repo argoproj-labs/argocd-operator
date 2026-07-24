@@ -60,11 +60,8 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterControllerEnabled(cr *argoproj.Ar
 	//   - "ns1,ns2,...": watches specific namespaces.
 	//     Base role in cr.Namespace + manager Role in each listed namespace.
 	watchNamespaces := ""
-	for _, env := range cr.Spec.ImageUpdater.Env {
-		if env.Name == "IMAGE_UPDATER_WATCH_NAMESPACES" {
-			watchNamespaces = strings.TrimSpace(env.Value)
-			break
-		}
+	if env := argoutil.EnvGet(cr.Spec.ImageUpdater.Env, "IMAGE_UPDATER_WATCH_NAMESPACES"); env != nil {
+		watchNamespaces = strings.TrimSpace(env.Value)
 	}
 
 	// When the mode is not cluster-scoped, remove any ClusterRole/ClusterRoleBinding that may

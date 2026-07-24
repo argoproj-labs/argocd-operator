@@ -12,6 +12,7 @@ import (
 	matcher "github.com/onsi/gomega/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -255,13 +256,9 @@ func HaveContainerWithEnvVar(envKey string, envValue string, containerIndex int)
 
 		container := containers[containerIndex]
 
-		for _, env := range container.Env {
-			if env.Name == envKey {
-				GinkgoWriter.Println("HaveContainerWithEnvVar - Key ", envKey, " Expected:", envValue, "Actual:", env.Value)
-				if env.Value == envValue {
-					return true
-				}
-			}
+		if env := argoutil.EnvGet(container.Env, envKey); env != nil {
+			GinkgoWriter.Println("HaveContainerWithEnvVar - Key ", envKey, " Expected:", envValue, "Actual:", env.Value)
+			return env.Value == envValue
 		}
 
 		return false
@@ -281,15 +278,13 @@ func HaveContainerWithEnvVarFromConfigMap(envKey string, configMapName string, c
 
 		container := containers[containerIndex]
 
-		for _, env := range container.Env {
-			if env.Name == envKey {
-				if env.ValueFrom != nil && env.ValueFrom.ConfigMapKeyRef != nil {
-					ref := env.ValueFrom.ConfigMapKeyRef
-					GinkgoWriter.Println("HaveContainerWithEnvVarFromConfigMap - Key:", envKey,
-						"Expected ConfigMap:", configMapName, "Key:", configMapKey,
-						"Actual ConfigMap:", ref.Name, "Key:", ref.Key)
-					return ref.Name == configMapName && ref.Key == configMapKey
-				}
+		if env := argoutil.EnvGet(container.Env, envKey); env != nil {
+			if env.ValueFrom != nil && env.ValueFrom.ConfigMapKeyRef != nil {
+				ref := env.ValueFrom.ConfigMapKeyRef
+				GinkgoWriter.Println("HaveContainerWithEnvVarFromConfigMap - Key:", envKey,
+					"Expected ConfigMap:", configMapName, "Key:", configMapKey,
+					"Actual ConfigMap:", ref.Name, "Key:", ref.Key)
+				return ref.Name == configMapName && ref.Key == configMapKey
 			}
 		}
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -2295,17 +2294,16 @@ func refuteDeploymentHasProxyVars(t *testing.T, c client.Client, name string) {
 	}, deployment)
 	assert.NoError(t, err)
 
-	names := []string{"http_proxy", "https_proxy", "no_proxy"}
-	for _, name := range names {
+	proxyNames := []string{
+		"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY",
+		"http_proxy", "https_proxy", "no_proxy",
+	}
+	for _, proxyName := range proxyNames {
 		for _, c := range deployment.Spec.Template.Spec.Containers {
-			for _, envVar := range c.Env {
-				assert.NotEqual(t, strings.ToLower(envVar.Name), name)
-			}
+			assert.Nil(t, argoutil.EnvGet(c.Env, proxyName), "container %q should not have %s", c.Name, proxyName)
 		}
 		for _, c := range deployment.Spec.Template.Spec.InitContainers {
-			for _, envVar := range c.Env {
-				assert.NotEqual(t, strings.ToLower(envVar.Name), name)
-			}
+			assert.Nil(t, argoutil.EnvGet(c.Env, proxyName), "init container %q should not have %s", c.Name, proxyName)
 		}
 	}
 }
@@ -2996,18 +2994,13 @@ func TestReconcileArgoCD_reconcileRepoServerWithFipsEnabled(t *testing.T) {
 
 	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d))
-	foundEnv := false
-	for _, env := range d.Spec.Template.Spec.Containers[0].Env {
-		if env.Name == "GODEBUG" {
-			foundEnv = true
-			assert.Equal(t, env.Value, "fips140=on", "GODEBUG environment must be set to fips140=on when fips is enabled")
-		}
-		if env.Name == "GOLANG_FIPS" {
-			foundEnv = true
-			assert.Equal(t, env.Value, "0", "GOLANG_FIPS environment must be set to 0 when fips is enabled")
-		}
-	}
-	assert.True(t, foundEnv, "environment GODEBUG must be set when FIPS is enabled")
+	env := d.Spec.Template.Spec.Containers[0].Env
+	godebug := argoutil.EnvGet(env, "GODEBUG")
+	assert.NotNil(t, godebug, "environment GODEBUG must be set when FIPS is enabled")
+	assert.Equal(t, "fips140=on", godebug.Value, "GODEBUG environment must be set to fips140=on when fips is enabled")
+	golangFips := argoutil.EnvGet(env, "GOLANG_FIPS")
+	assert.NotNil(t, golangFips, "environment GOLANG_FIPS must be set when FIPS is enabled")
+	assert.Equal(t, "0", golangFips.Value, "GOLANG_FIPS environment must be set to 0 when fips is enabled")
 }
 
 func TestReconcileArgoCD_reconcileRepoServerWithFipsDisabled(t *testing.T) {
@@ -3035,13 +3028,7 @@ func TestReconcileArgoCD_reconcileRepoServerWithFipsDisabled(t *testing.T) {
 
 	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d))
-	foundEnv := false
-	for _, env := range d.Spec.Template.Spec.Containers[0].Env {
-		if env.Name == "GODEBUG" {
-			foundEnv = true
-		}
-	}
-	assert.False(t, foundEnv, "environment GODEBUG must NOT be set when FIPS is disabled")
+	assert.Nil(t, argoutil.EnvGet(d.Spec.Template.Spec.Containers[0].Env, "GODEBUG"), "environment GODEBUG must NOT be set when FIPS is disabled")
 }
 
 func TestDeploymentWithLongName(t *testing.T) {

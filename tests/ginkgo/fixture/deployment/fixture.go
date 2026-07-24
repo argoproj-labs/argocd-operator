@@ -11,6 +11,7 @@ import (
 	matcher "github.com/onsi/gomega/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -29,19 +30,12 @@ func GetEnv(d *appsv1.Deployment, container string, key string) (*string, error)
 		return nil, err
 	}
 
-	containers := d.Spec.Template.Spec.Containers
-
-	for idc := range containers {
-
-		if containers[idc].Name == container {
-			for idx := range containers[idc].Env {
-
-				currEnv := containers[idc].Env[idx]
-
-				if currEnv.Name == key {
-					return &currEnv.Value, nil
-				}
-			}
+	for idc := range d.Spec.Template.Spec.Containers {
+		if d.Spec.Template.Spec.Containers[idc].Name != container {
+			continue
+		}
+		if env := argoutil.EnvGet(d.Spec.Template.Spec.Containers[idc].Env, key); env != nil {
+			return &env.Value, nil
 		}
 	}
 	return nil, nil
@@ -51,32 +45,12 @@ func GetEnv(d *appsv1.Deployment, container string, key string) (*string, error)
 func SetEnv(depl *appsv1.Deployment, container string, key string, value string) {
 
 	Update(depl, func(d *appsv1.Deployment) {
-		containers := d.Spec.Template.Spec.Containers
-
-		newEnvVars := []corev1.EnvVar{}
-
-		match := false
-		for idc := range containers {
-
-			if containers[idc].Name == container {
-				for idx := range containers[idc].Env {
-
-					currEnv := containers[idc].Env[idx]
-
-					if currEnv.Name == key {
-						// replace with the value from the param
-						newEnvVars = append(newEnvVars, corev1.EnvVar{Name: key, Value: value})
-						match = true
-					} else {
-						newEnvVars = append(newEnvVars, currEnv)
-					}
-				}
-
-				if !match {
-					newEnvVars = append(newEnvVars, corev1.EnvVar{Name: key, Value: value})
-				}
-
-				containers[idc].Env = newEnvVars
+		for idc := range d.Spec.Template.Spec.Containers {
+			if d.Spec.Template.Spec.Containers[idc].Name == container {
+				d.Spec.Template.Spec.Containers[idc].Env = argoutil.EnvSet(
+					d.Spec.Template.Spec.Containers[idc].Env,
+					corev1.EnvVar{Name: key, Value: value},
+				)
 			}
 		}
 	})
@@ -86,23 +60,10 @@ func SetEnv(depl *appsv1.Deployment, container string, key string, value string)
 func RemoveEnv(depl *appsv1.Deployment, container string, key string) {
 
 	Update(depl, func(d *appsv1.Deployment) {
-		containers := d.Spec.Template.Spec.Containers
-
-		for idc := range containers {
-			if containers[idc].Name == container {
-				newEnvVars := []corev1.EnvVar{}
-				for idx := range containers[idc].Env {
-
-					currEnv := containers[idc].Env[idx]
-
-					if currEnv.Name == key {
-						// don't add, thus causing it to be removed
-					} else {
-						newEnvVars = append(newEnvVars, currEnv)
-					}
-				}
-
-				containers[idc].Env = newEnvVars
+		for idc := range d.Spec.Template.Spec.Containers {
+			if d.Spec.Template.Spec.Containers[idc].Name == container {
+				d.Spec.Template.Spec.Containers[idc].Env = argoutil.EnvRemove(
+					d.Spec.Template.Spec.Containers[idc].Env, key)
 			}
 		}
 	})
@@ -343,13 +304,9 @@ func HaveContainerWithEnvVar(envKey string, envValue string, containerIndex int)
 
 		container := containers[containerIndex]
 
-		for _, env := range container.Env {
-			if env.Name == envKey {
-				GinkgoWriter.Println("HaveContainerWithEnvVar - Key ", envKey, " Expected:", envValue, "Actual:", env.Value)
-				if env.Value == envValue {
-					return true
-				}
-			}
+		if env := argoutil.EnvGet(container.Env, envKey); env != nil {
+			GinkgoWriter.Println("HaveContainerWithEnvVar - Key ", envKey, " Expected:", envValue, "Actual:", env.Value)
+			return env.Value == envValue
 		}
 
 		return false
