@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -334,6 +335,66 @@ func TestReconcileArgoCD_reconcileRoleBinding_forSourceNamespaces(t *testing.T) 
 
 	// Verify the RoleBinding name is exactly maxLabelLength characters
 	assert.Equal(t, argoutil.GetMaxLabelLength(), len(roleBinding.Name), "RoleBinding name should be exactly maxLabelLength characters")
+}
+
+func TestReconcileArgoCD_reconcileRoleBinding_skipsTerminatingSourceNamespaces(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	terminatingSourceNamespace := "terminating-source-ns"
+	activeSourceNamespace := "active-source-ns"
+	a := makeTestArgoCD()
+	allowClusterConfigNamespaces(t, a.Namespace)
+	a.Spec = argoproj.ArgoCDSpec{
+		SourceNamespaces: []string{
+			terminatingSourceNamespace,
+			activeSourceNamespace,
+		},
+	}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	assert.NoError(t, createNamespaceManagedByClusterArgoCDLabel(r, terminatingSourceNamespace, a.Namespace))
+	assert.NoError(t, createNamespaceManagedByClusterArgoCDLabel(r, activeSourceNamespace, a.Namespace))
+
+	terminatingNamespace := &corev1.Namespace{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: terminatingSourceNamespace}, terminatingNamespace))
+	terminatingNamespace.Finalizers = []string{"test.argoproj.io/finalizer"}
+	assert.NoError(t, r.Update(context.TODO(), terminatingNamespace))
+	assert.NoError(t, r.Delete(context.TODO(), terminatingNamespace))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: terminatingSourceNamespace}, terminatingNamespace))
+	assert.NotNil(t, terminatingNamespace.DeletionTimestamp)
+
+	assert.NoError(t, r.reconcileRoleBinding(common.ArgoCDServerComponent, policyRuleForApplicationController(), a))
+
+	roleBinding := &rbacv1.RoleBinding{}
+	terminatingRoleBindingName := getRoleBindingNameForSourceNamespaces(a.Name, terminatingSourceNamespace)
+	err := r.Get(context.TODO(), types.NamespacedName{Name: terminatingRoleBindingName, Namespace: terminatingSourceNamespace}, roleBinding)
+	assert.True(t, errors.IsNotFound(err), "expected no rolebinding to be reconciled in terminating namespace")
+
+	activeRoleBindingName := getRoleBindingNameForSourceNamespaces(a.Name, activeSourceNamespace)
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: activeRoleBindingName, Namespace: activeSourceNamespace}, roleBinding))
+	assert.Equal(t, rbacv1.RoleRef{
+		APIGroup: rbacv1.GroupName,
+		Kind:     "Role",
+		Name:     getRoleNameForApplicationSourceNamespaces(activeSourceNamespace, a),
+	}, roleBinding.RoleRef)
+	assert.Equal(t, []rbacv1.Subject{
+		{
+			Kind:      rbacv1.ServiceAccountKind,
+			Name:      getServiceAccountName(a.Name, common.ArgoCDServerComponent),
+			Namespace: a.Namespace,
+		},
+		{
+			Kind:      rbacv1.ServiceAccountKind,
+			Name:      getServiceAccountName(a.Name, common.ArgoCDApplicationControllerComponent),
+			Namespace: a.Namespace,
+		},
+	}, roleBinding.Subjects)
 }
 
 func TestTruncateWithHash(t *testing.T) {
