@@ -673,6 +673,10 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *
 		return err
 	}
 
+	if err := r.reconcileGitOpsPromoter(cr); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -2068,6 +2072,11 @@ func (r *ReconcileArgoCD) reconcileGitOpsPromoter(cr *argoproj.ArgoCD) error {
 
 	log.Info("reconciling GitOps Promoter's Controller Manager ClusterRole Binding")
 	if _, err = gitopspromoter.ReconcilePromoterControllerClusterRoleBinding(r.Client, controllerCompName, sa, cr); err != nil {
+		return err
+	}
+
+	log.Info("reconciling GitOps Promoter's Controller Manger ControllerConfiguration")
+	if _, err = gitopspromoter.ReconcilePromoterControllerConfiguration(r.Client, controllerCompName, cr); err != nil {
 		return err
 	}
 

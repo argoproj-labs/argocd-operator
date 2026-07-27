@@ -17,6 +17,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
 )
 
 func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
@@ -62,7 +63,6 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-
 			desiredRuleGroup := []monitoringv1.RuleGroup{
 				{
 					Name: "ArgoCDComponentStatus",
@@ -172,7 +172,7 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 			resObjs := []client.Object{test.argocd}
 			subresObjs := []client.Object{test.argocd}
 			runtimeObjs := []runtime.Object{}
-			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -260,7 +260,7 @@ func TestReconcilePrometheus_Deleted(t *testing.T) {
 			resObjs := []client.Object{test.argocd}
 			subresObjs := []client.Object{test.argocd}
 			runtimeObjs := []runtime.Object{}
-			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -334,7 +334,7 @@ func TestReconcileMetricsServiceMonitor(t *testing.T) {
 			resObjs := []client.Object{test.argocd}
 			subresObjs := []client.Object{test.argocd}
 			runtimeObjs := []runtime.Object{}
-			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -403,7 +403,7 @@ func TestReconcileRepoServerServiceMonitor(t *testing.T) {
 			resObjs := []client.Object{test.argocd}
 			subresObjs := []client.Object{test.argocd}
 			runtimeObjs := []runtime.Object{}
-			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -472,7 +472,7 @@ func TestReconcileServerMetricsServiceMonitor(t *testing.T) {
 			resObjs := []client.Object{test.argocd}
 			subresObjs := []client.Object{test.argocd}
 			runtimeObjs := []runtime.Object{}
-			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -510,7 +510,7 @@ func TestServiceMonitorEndpointUpdate(t *testing.T) {
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 

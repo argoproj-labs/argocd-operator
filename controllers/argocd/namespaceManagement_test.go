@@ -17,6 +17,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
 )
 
 func TestReconcileNamespaceManagement_FeatureEnabled(t *testing.T) {
@@ -53,7 +54,7 @@ func TestReconcileNamespaceManagement_FeatureEnabled(t *testing.T) {
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a, nm, nmDisallowed}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -127,7 +128,7 @@ func TestHandleFeatureDisable_NoNamespaceManagement(t *testing.T) {
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -151,7 +152,7 @@ func TestHandleFeatureDisable_NamespaceCRsExistButNoMatch(t *testing.T) {
 	}
 
 	resObjs := []client.Object{a, nm}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, nil, nil)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -188,7 +189,7 @@ func TestHandleFeatureDisable_NamespaceMatchesPattern_RBACDeleted(t *testing.T) 
 	}
 
 	resObjs := []client.Object{a, nm, ns}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, nil, nil)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset(ns))
 
@@ -225,7 +226,7 @@ func TestHandleFeatureDisable_SkipManagedByLabel(t *testing.T) {
 	}
 
 	resObjs := []client.Object{a, nm, ns}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, nil, nil)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset(ns))
 
@@ -253,7 +254,7 @@ func TestHandleFeatureDisable_NoPatternMatch(t *testing.T) {
 	}
 
 	resObjs := []client.Object{a, nm}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, nil, nil)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -330,7 +331,7 @@ func TestReconcileNamespaceManagement_FeatureEnabled_NoCRs(t *testing.T) {
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a} // no NamespaceManagement CRs
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -374,7 +375,7 @@ func TestReconcileNamespaceManagement_DifferentManagedBy(t *testing.T) {
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a, nmOther}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -412,7 +413,7 @@ func TestReconcileNamespaceManagement_ExplicitlyDisallowed(t *testing.T) {
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a, nm}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 	logf.SetLogger(ZapLogger(true))
@@ -525,7 +526,7 @@ func TestReconcileNamespaceManagement_DeduplicateNamespaces(t *testing.T) {
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a, nm}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 

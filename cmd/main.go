@@ -66,6 +66,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/cacheutils"
 	cw "github.com/argoproj-labs/argocd-operator/pkg/clientwrapper"
 	"github.com/argoproj-labs/argocd-operator/version"
+	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -79,6 +80,7 @@ func init() {
 
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
 	utilruntime.Must(v1beta1.AddToScheme(scheme))
+	utilruntime.Must(promoter.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -94,9 +96,9 @@ func main() {
 	var probeAddr string
 	var labelSelectorFlag string
 
-	var secureMetrics = false
-	var enableHTTP2 = false
-	var skipControllerNameValidation = true
+	secureMetrics := false
+	enableHTTP2 := false
+	skipControllerNameValidation := true
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", fmt.Sprintf(":%d", common.OperatorMetricsPort), "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
@@ -107,7 +109,7 @@ func main() {
 	flag.BoolVar(&enableHTTP2, "enable-http2", enableHTTP2, "If HTTP/2 should be enabled for the metrics and webhook servers.")
 	flag.BoolVar(&secureMetrics, "metrics-secure", secureMetrics, "If the metrics endpoint should be served securely.")
 
-	//Configure log level
+	// Configure log level
 	logLevelStr := strings.ToLower(os.Getenv("LOG_LEVEL"))
 	logLevel := zapcore.InfoLevel
 	switch logLevelStr {
@@ -343,7 +345,7 @@ func getWatchNamespace() (string, error) {
 	// WatchNamespaceEnvVar is the constant for env variable WATCH_NAMESPACE
 	// which specifies the Namespace to watch.
 	// An empty value means the operator is running with cluster scope.
-	var watchNamespaceEnvVar = "WATCH_NAMESPACE"
+	watchNamespaceEnvVar := "WATCH_NAMESPACE"
 
 	ns, found := os.LookupEnv(watchNamespaceEnvVar)
 	if !found {

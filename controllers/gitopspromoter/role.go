@@ -31,7 +31,7 @@ import (
 
 func ReconcilePromoterControllerClusterRole(client client.Client, compName string, cr *argoproj.ArgoCD) (*rbacv1.ClusterRole, error) {
 	clusterRole := buildClusterRole(compName, cr)
-	expectedPolicyRule := buildPolicyRuleForControllerClusterRole()
+	expectedPolicyRule := buildPolicyRuleForControllerClusterRole(compName, cr)
 
 	exists := true
 	if err := client.Get(context.Background(), types.NamespacedName{Name: clusterRole.Name}, clusterRole); err != nil {
@@ -90,7 +90,7 @@ func buildClusterRole(compName string, cr *argoproj.ArgoCD) *rbacv1.ClusterRole 
 	}
 }
 
-func buildPolicyRuleForControllerClusterRole() []rbacv1.PolicyRule {
+func buildPolicyRuleForControllerClusterRole(compName string, cr *argoproj.ArgoCD) []rbacv1.PolicyRule {
 	return []rbacv1.PolicyRule{
 		{
 			APIGroups: []string{
@@ -263,11 +263,10 @@ func buildPolicyRuleForControllerClusterRole() []rbacv1.PolicyRule {
 		},
 		{
 			APIGroups: []string{
-				// FIXME: THIS WILL PROBABLY NEED TO BE UPDATED TO MATCH WHAT THE CONTROLLER WITH CREATE!!!!!!
 				"promoter.argoproj.io",
 			},
 			ResourceNames: []string{
-				"promoter-controller-configuration",
+				generatePromoterResourceName(compName, cr),
 			},
 			Resources: []string{
 				"controllerconfigurations",
@@ -280,11 +279,10 @@ func buildPolicyRuleForControllerClusterRole() []rbacv1.PolicyRule {
 		},
 		{
 			APIGroups: []string{
-				// FIXME: THIS WILL PROBABLY NEED TO BE UPDATED TO MATCH WHAT THE CONTROLLER WITH CREATE!!!!!!
 				"promoter.argoproj.io",
 			},
 			ResourceNames: []string{
-				"promoter-controller-configuration",
+				generatePromoterResourceName(compName, cr),
 			},
 			Resources: []string{
 				"controllerconfigurations/status",

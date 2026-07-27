@@ -30,6 +30,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
 )
 
 func Test_newCASecret(t *testing.T) {
@@ -116,18 +117,22 @@ func Test_ReconcileArgoCD_ReconcileRepoTLSSecret(t *testing.T) {
 		repoDepl := newDeploymentWithSuffix("repo-server", "repo-server", argocd)
 		ctrlSts := newStatefulSetWithSuffix("application-controller", "application-controller", argocd)
 
-		resObjs := []client.Object{argocd,
+		resObjs := []client.Object{
+			argocd,
 			secret,
 			service,
 			serverDepl,
 			repoDepl,
-			ctrlSts}
-		subresObjs := []client.Object{argocd,
+			ctrlSts,
+		}
+		subresObjs := []client.Object{
+			argocd,
 			serverDepl,
 			repoDepl,
-			ctrlSts}
+			ctrlSts,
+		}
 		runtimeObjs := []runtime.Object{}
-		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -167,7 +172,6 @@ func Test_ReconcileArgoCD_ReconcileRepoTLSSecret(t *testing.T) {
 
 		// Second run - no change
 		err = r.reconcileRepoServerTLSSecret(argocd, &argocdStatus)
-
 		if err != nil {
 			t.Errorf("Error should be nil, but is %v", err)
 		}
@@ -240,9 +244,7 @@ func Test_ReconcileArgoCD_ReconcileRepoTLSSecret(t *testing.T) {
 		if !ok || ctrlRollout == ctrlRolloutNew {
 			t.Errorf("Expected rollout of argocd-application-controller, but it didn't happen: %v", ctrlSts.Spec.Template.Labels)
 		}
-
 	})
-
 }
 
 func Test_ReconcileArgoCD_ReconcileExistingArgoSecret(t *testing.T) {
@@ -260,7 +262,7 @@ func Test_ReconcileArgoCD_ReconcileExistingArgoSecret(t *testing.T) {
 	resObjs := []client.Object{argocd}
 	subresObjs := []client.Object{argocd}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -322,7 +324,7 @@ func Test_ReconcileArgoSecret_CreateIncludesDeclarativeWebhookSecrets(t *testing
 	resObjs := []client.Object{argocd}
 	subresObjs := []client.Object{argocd}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -353,7 +355,7 @@ func Test_ReconcileArgoCD_ReconcileShouldNotChangeWhenUpdatedAdminPass(t *testin
 	resObjs := []client.Object{argocd}
 	subresObjs := []client.Object{argocd}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -422,7 +424,7 @@ func Test_ReconcileArgoCD_ReconcileRedisInitialPasswordSecret(t *testing.T) {
 	resObjs := []client.Object{argocd}
 	subresObjs := []client.Object{argocd}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -533,20 +535,24 @@ func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 		redisDepl := newDeploymentWithSuffix("redis", "redis", argocd)
 		ctrlSts := newStatefulSetWithSuffix("application-controller", "application-controller", argocd)
 
-		resObjs := []client.Object{argocd,
+		resObjs := []client.Object{
+			argocd,
 			secret,
 			service,
 			serverDepl,
 			repoDepl,
 			ctrlSts,
-			redisDepl}
-		subresObjs := []client.Object{argocd,
+			redisDepl,
+		}
+		subresObjs := []client.Object{
+			argocd,
 			serverDepl,
 			repoDepl,
 			ctrlSts,
-			redisDepl}
+			redisDepl,
+		}
 		runtimeObjs := []runtime.Object{}
-		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -687,15 +693,15 @@ func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	testSecret := argoutil.NewSecretWithSuffix(a, "default-cluster-config")
-	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
-	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
+	// assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
+	// TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
 	assert.Error(t, r.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
 	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret).Error(), "not found")
 
@@ -723,8 +729,8 @@ func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
 
 	assert.NoError(t, r.reconcileClusterPermissionsSecret(a))
-	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
-	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
+	// assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
+	// TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
 	assert.Nil(t, r.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
 	assert.True(t, argoutil.IsTrackedByOperator(testSecret.Labels))
@@ -748,7 +754,7 @@ func TestGenerateSortedManagedNamespaceListForArgoCDCR(t *testing.T) {
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -860,7 +866,7 @@ func TestCombineClusterSecretNamespacesWithManagedNamespaces(t *testing.T) {
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -905,7 +911,6 @@ func TestCombineClusterSecretNamespacesWithManagedNamespaces(t *testing.T) {
 		},
 	}, []string{"c", "d", "e", "c", "d"})
 	assert.Equal(t, "a,b,c,d,e", res)
-
 }
 
 // Test_applyWebhookSecretFromRef covers applyWebhookSecretFromRef for all single-ref webhook provider
