@@ -26,6 +26,7 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -90,9 +91,10 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					},
 				}
 				err := k8sClient.Get(ctx, client.ObjectKeyFromObject(operatorDeployment), operatorDeployment)
-				if err != nil {
-					Skip("Operator deployment not found - test requires operator running in cluster: " + err.Error())
+				if apierrors.IsNotFound(err) {
+					Skip("Operator deployment not found - test requires operator running in cluster")
 				}
+				Expect(err).NotTo(HaveOccurred())
 
 				originalEnvValue, _ := deploymentFixture.GetEnv(operatorDeployment, "manager", common.EnableManagedNamespace)
 				restoreOperatorEnv = func() {
@@ -102,12 +104,10 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					} else {
 						deploymentFixture.RemoveEnv(operatorDeployment, "manager", common.EnableManagedNamespace)
 					}
-					time.Sleep(30 * time.Second)
 					Eventually(operatorDeployment, "3m", "5s").Should(deploymentFixture.HaveReadyReplicas(1))
 				}
 
 				deploymentFixture.SetEnv(operatorDeployment, "manager", common.EnableManagedNamespace, "true")
-				time.Sleep(30 * time.Second)
 				Eventually(operatorDeployment, "3m", "5s").Should(deploymentFixture.HaveReadyReplicas(1))
 			}
 
