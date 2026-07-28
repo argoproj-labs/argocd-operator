@@ -27,6 +27,7 @@ import (
 	logr "sigs.k8s.io/controller-runtime/pkg/log"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
@@ -75,7 +76,7 @@ func ReconcilePromoterServiceAccount(client client.Client, compName string, cr *
 	}
 
 	if err := controllerutil.SetControllerReference(cr, sa, scheme); err != nil {
-		return nil, fmt.Errorf("failed to set ArgoCD CR %s as owner for service account %s: %v", cr.Name, sa.Name, err)
+		return nil, fmt.Errorf("failed to set argocd cr %s as owner for service account %s: %v", cr.Name, sa.Name, err)
 	}
 
 	argoutil.LogResourceCreation(log, sa)
@@ -97,9 +98,9 @@ func buildPromoterServiceAccount(compName string, cr *argoproj.ArgoCD) *corev1.S
 
 func buildLabelsForPromoterResources(compName string, cr *argoproj.ArgoCD) map[string]string {
 	return map[string]string{
-		"app.kubernetes.io/name":       generatePromoterResourceName(compName, cr),
-		"app.kubernetes.io/component":  compName,
-		"app.kubernetes.io/part-of":    "promoter",
-		"app.kubernetes.io/managed-by": cr.Name,
+		common.ArgoCDKeyName:      generatePromoterResourceName(compName, cr),
+		common.ArgoCDKeyComponent: compName,
+		common.ArgoCDKeyPartOf:    "promoter",
+		common.ArgoCDKeyManagedBy: cr.Name,
 	}
 }

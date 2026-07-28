@@ -1783,6 +1783,9 @@ type PromoterSpec struct {
 	// Enabled defines whether gitops promoter controller should be deployed or not
 	Enabled *bool `json:"enabled"`
 
+	// Image is the image to be used for the GitOps Promoter
+	Image string `json:"image,omitempty"`
+
 	// Env lets you specify the environment variables for the pods that run the controller
 	Env []corev1.EnvVar `json:"env,omitempty"`
 

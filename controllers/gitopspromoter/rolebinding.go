@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
@@ -85,7 +86,7 @@ func ReconcilePromoterControllerClusterRoleBinding(client client.Client, compNam
 
 func buildClusterRoleBinding(compName string, cr *argoproj.ArgoCD) *rbacv1.ClusterRoleBinding {
 	labels := buildLabelsForPromoterResources(compName, cr)
-	labels["app.kubernetes.io/name"] = generatePromoterResourceNameWithNamespace(compName, cr)
+	labels[common.ArgoCDKeyName] = generatePromoterResourceNameWithNamespace(compName, cr)
 
 	return &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{

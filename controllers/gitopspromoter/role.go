@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
@@ -80,7 +81,7 @@ func ReconcilePromoterAPIServerClusterRole(client client.Client, compName string
 
 func buildClusterRole(compName string, cr *argoproj.ArgoCD) *rbacv1.ClusterRole {
 	labels := buildLabelsForPromoterResources(compName, cr)
-	labels["app.kubernetes.io/name"] = generatePromoterResourceNameWithNamespace(compName, cr)
+	labels[common.ArgoCDKeyName] = generatePromoterResourceNameWithNamespace(compName, cr)
 
 	return &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
@@ -265,9 +266,6 @@ func buildPolicyRuleForControllerClusterRole(compName string, cr *argoproj.ArgoC
 			APIGroups: []string{
 				"promoter.argoproj.io",
 			},
-			ResourceNames: []string{
-				generatePromoterResourceName(compName, cr),
-			},
 			Resources: []string{
 				"controllerconfigurations",
 			},
@@ -280,9 +278,6 @@ func buildPolicyRuleForControllerClusterRole(compName string, cr *argoproj.ArgoC
 		{
 			APIGroups: []string{
 				"promoter.argoproj.io",
-			},
-			ResourceNames: []string{
-				generatePromoterResourceName(compName, cr),
 			},
 			Resources: []string{
 				"controllerconfigurations/status",

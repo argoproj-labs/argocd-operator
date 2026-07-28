@@ -22825,6 +22825,9 @@ spec:
                       - name
                       type: object
                     type: array
+                  image:
+                    description: Image is the image to be used for the GitOps Promoter
+                    type: string
                   resources:
                     description: Resources defines the compute resources that are
                       required for the pods running the controller

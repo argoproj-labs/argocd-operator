@@ -68,7 +68,9 @@ func ReconcilePromoterControllerConfiguration(client client.Client, compName str
 func buildControllerConfiguration(compName string, cr *argoproj.ArgoCD) *promoter.ControllerConfiguration {
 	return &promoter.ControllerConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      generatePromoterResourceName(compName, cr),
+			// At the current moment, the controller fetches a configuration with the hard coded name of promoter-controller-configuration
+			// https://github.com/argoproj-labs/gitops-promoter/blob/1f41d319c802c593ac91247ffe30b822680cfdd5/internal/settings/manager.go#L17
+			Name:      "promoter-controller-configuration",
 			Namespace: cr.Namespace,
 			Labels:    buildLabelsForPromoterResources(compName, cr),
 		},
