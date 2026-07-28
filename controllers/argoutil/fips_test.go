@@ -1,12 +1,12 @@
 package argoutil
 
-// Assisted by : Gemini 2.5 Pro
-// The unit tests in this file were generated with the assistance of Google's Gemini 2.5 Pro.
-
 import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // TestIsHostRunningInFipsMode validates the FIPS check function that checks if the host is running in FIPS mode.
@@ -96,6 +96,97 @@ func TestIsHostRunningInFipsMode(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDecorateWithFIPSEnv(t *testing.T) {
+	t.Run("Empty input adds GODEBUG and GOLANG_FIPS", func(t *testing.T) {
+		result := DecorateWithFIPSEnv(nil)
+		assert.Len(t, result, 2)
+		assert.Contains(t, result, corev1.EnvVar{Name: "GODEBUG", Value: "fips140=on"})
+		assert.Contains(t, result, corev1.EnvVar{Name: "GOLANG_FIPS", Value: "0"})
+	})
+
+	t.Run("No GODEBUG in input adds both vars and preserves existing", func(t *testing.T) {
+		input := []corev1.EnvVar{
+			{Name: "HOME", Value: "/home/argocd"},
+		}
+		result := DecorateWithFIPSEnv(input)
+		assert.Len(t, result, 3)
+		assert.Contains(t, result, corev1.EnvVar{Name: "GODEBUG", Value: "fips140=on"})
+		assert.Contains(t, result, corev1.EnvVar{Name: "GOLANG_FIPS", Value: "0"})
+		assert.Contains(t, result, corev1.EnvVar{Name: "HOME", Value: "/home/argocd"})
+	})
+
+	t.Run("Custom GODEBUG without fips140=on is preserved and GOLANG_FIPS not added", func(t *testing.T) {
+		input := []corev1.EnvVar{
+			{Name: "GODEBUG", Value: "http2debug=1"},
+		}
+		result := DecorateWithFIPSEnv(input)
+		assert.Len(t, result, 1)
+		assert.Contains(t, result, corev1.EnvVar{Name: "GODEBUG", Value: "http2debug=1"})
+		assert.NotContains(t, result, corev1.EnvVar{Name: "GOLANG_FIPS", Value: "0"})
+	})
+
+	t.Run("Custom GODEBUG with fips140=off is preserved and GOLANG_FIPS not added", func(t *testing.T) {
+		input := []corev1.EnvVar{
+			{Name: "GODEBUG", Value: "fips140=off"},
+		}
+		result := DecorateWithFIPSEnv(input)
+		assert.Len(t, result, 1)
+		assert.Contains(t, result, corev1.EnvVar{Name: "GODEBUG", Value: "fips140=off"})
+		assert.NotContains(t, result, corev1.EnvVar{Name: "GOLANG_FIPS", Value: "0"})
+	})
+
+	t.Run("Custom GODEBUG with fips140=on adds GOLANG_FIPS", func(t *testing.T) {
+		input := []corev1.EnvVar{
+			{Name: "GODEBUG", Value: "fips140=on"},
+		}
+		result := DecorateWithFIPSEnv(input)
+		assert.Len(t, result, 2)
+		assert.Contains(t, result, corev1.EnvVar{Name: "GODEBUG", Value: "fips140=on"})
+		assert.Contains(t, result, corev1.EnvVar{Name: "GOLANG_FIPS", Value: "0"})
+	})
+
+	t.Run("Custom GODEBUG with fips140=on among other settings adds GOLANG_FIPS", func(t *testing.T) {
+		input := []corev1.EnvVar{
+			{Name: "GODEBUG", Value: "http2debug=1,fips140=on,tls13=1"},
+		}
+		result := DecorateWithFIPSEnv(input)
+		assert.Len(t, result, 2)
+		assert.Contains(t, result, corev1.EnvVar{Name: "GODEBUG", Value: "http2debug=1,fips140=on,tls13=1"})
+		assert.Contains(t, result, corev1.EnvVar{Name: "GOLANG_FIPS", Value: "0"})
+	})
+
+	t.Run("Existing GOLANG_FIPS is not overridden", func(t *testing.T) {
+		input := []corev1.EnvVar{
+			{Name: "GOLANG_FIPS", Value: "1"},
+		}
+		result := DecorateWithFIPSEnv(input)
+		assert.Len(t, result, 2)
+		assert.Contains(t, result, corev1.EnvVar{Name: "GODEBUG", Value: "fips140=on"})
+		assert.Contains(t, result, corev1.EnvVar{Name: "GOLANG_FIPS", Value: "1"})
+	})
+
+	t.Run("Custom GODEBUG without fips140 and existing GOLANG_FIPS both preserved", func(t *testing.T) {
+		input := []corev1.EnvVar{
+			{Name: "GODEBUG", Value: "http2debug=1"},
+			{Name: "GOLANG_FIPS", Value: "1"},
+		}
+		result := DecorateWithFIPSEnv(input)
+		assert.Len(t, result, 2)
+		assert.Contains(t, result, corev1.EnvVar{Name: "GODEBUG", Value: "http2debug=1"})
+		assert.Contains(t, result, corev1.EnvVar{Name: "GOLANG_FIPS", Value: "1"})
+	})
+
+	t.Run("Substring fips140=onward does not trigger GOLANG_FIPS", func(t *testing.T) {
+		input := []corev1.EnvVar{
+			{Name: "GODEBUG", Value: "fips140=onward"},
+		}
+		result := DecorateWithFIPSEnv(input)
+		assert.Len(t, result, 1)
+		assert.Contains(t, result, corev1.EnvVar{Name: "GODEBUG", Value: "fips140=onward"})
+		assert.NotContains(t, result, corev1.EnvVar{Name: "GOLANG_FIPS", Value: "0"})
+	})
 }
 
 // TestFileExists runs a series of table-driven tests to validate the fileExists function.
