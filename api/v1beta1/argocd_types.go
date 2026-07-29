@@ -1427,9 +1427,9 @@ type PromoterComponentType string
 // Possible gitops-promoter component types
 const (
 	// PromoterComponentTypeControllerManager indicates that the component is the controller manager
-	PromoterComponentTypeControllerManager PromoterComponentType = "controller-manager"
+	PromoterComponentTypeControllerManager PromoterComponentType = "promoter-controller-manager"
 	// PromoterComponentTypeAPIServer indicates that the component is the api server
-	PromoterComponentTypeAPIServer PromoterComponentType = "api-server"
+	PromoterComponentTypeAPIServer PromoterComponentType = "promoter-api-server"
 )
 
 type ArgoCDAgentSpec struct {
