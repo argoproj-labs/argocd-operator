@@ -208,9 +208,9 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				Spec: argocdv1alpha1.ApplicationSpec{
 					Project: destMapAppProjectName,
 					Source: &argocdv1alpha1.ApplicationSource{
-						RepoURL:        "https://github.com/redhat-developer/openshift-gitops-getting-started",
+						RepoURL:        "https://github.com/argoproj/argocd-example-apps",
 						TargetRevision: "HEAD",
-						Path:           "app",
+						Path:           "guestbook",
 					},
 					Destination: argocdv1alpha1.ApplicationDestination{
 						Name:      destMapManagedClusterName,
