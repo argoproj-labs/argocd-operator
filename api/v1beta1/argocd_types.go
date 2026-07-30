@@ -1429,7 +1429,7 @@ const (
 	// PromoterComponentTypeControllerManager indicates that the component is the controller manager
 	PromoterComponentTypeControllerManager PromoterComponentType = "promoter-controller-manager"
 	// PromoterComponentTypeAPIServer indicates that the component is the api server
-	PromoterComponentTypeAPIServer PromoterComponentType = "promoter-api-server"
+	PromoterComponentTypeAPIServer PromoterComponentType = "promoter-apiserver"
 )
 
 type ArgoCDAgentSpec struct {
@@ -1792,14 +1792,29 @@ type PromoterSpec struct {
 	// Resources defines the compute resources that are required for the pods running the controller
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 
-	// APIServerEnabled defines whether the gitops promoter API server is enabled (optional, defaults to true)
-	APIServerEnabled *bool `json:"apiServerEnabled,omitempty"`
+	// APIServer defines the configuration for the promoter's API server
+	APIServer *PromoterAPIServerSpec `json:"apiserver,omitempty"`
 }
+
+// PromoterAPIServerSpec defines the desired state for the GitOps Promoter's API server
+type PromoterAPIServerSpec struct {
+	// Enabled defines whether or not the API server should be deployed or not (will default to true if the promoter is enabled)
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// Insecure defines whether the API server is launched without TLS enabled
+	Insecure *bool `json:"insecure,omitempty"`
+
+	// TLS defines the TLS settings for the API server
+	TLS *PromoterAPIServerTLSSpec `json:"tls,omitempty"`
+}
+
+// PromoterAPIServerTLSSpec defines the TLS options for the GitOps Promoter's API server
+type PromoterAPIServerTLSSpec struct{}
 
 func (p *PromoterSpec) IsEnabled() bool {
 	return p != nil && p.Enabled != nil && *p.Enabled
 }
 
-func (p *PromoterSpec) IsAPIServerEnabled() bool {
-	return p != nil && (p.APIServerEnabled == nil || *p.APIServerEnabled)
+func (p *PromoterAPIServerSpec) IsEnabled() bool {
+	return p == nil || p.Enabled == nil || (p.Enabled != nil && *p.Enabled)
 }

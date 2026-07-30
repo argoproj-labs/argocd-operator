@@ -30,9 +30,39 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
-func ReconcilePromoterControllerClusterRole(client client.Client, compName string, cr *argoproj.ArgoCD) (*rbacv1.ClusterRole, error) {
-	clusterRole := buildClusterRole(compName, cr)
-	expectedPolicyRule := buildPolicyRuleForControllerClusterRole(compName, cr)
+func ReconcilePromoterControllerClusterRoles(client client.Client, compName string, cr *argoproj.ArgoCD) ([]*rbacv1.ClusterRole, error) {
+	clusterRolesToReconcile := buildPolicyRulesForControllerClusterRoles(compName, cr)
+	reconciledClusterRoles := []*rbacv1.ClusterRole{}
+
+	for _, clusterRole := range clusterRolesToReconcile {
+		resultClusterRole, err := ReconcilePromoterClusterRole(client, compName, clusterRole.name, clusterRole.policyRule, cr, true)
+		if err != nil {
+			return nil, err
+		}
+		reconciledClusterRoles = append(reconciledClusterRoles, resultClusterRole)
+	}
+
+	return reconciledClusterRoles, nil
+}
+
+func ReconcilePromoterAPIServerClusterRoles(client client.Client, compName string, cr *argoproj.ArgoCD) ([]*rbacv1.ClusterRole, error) {
+	clusterRolesToReconcile := buildPolicyRulesForAPIServerClusterRoles(compName, cr)
+	reconciledClusterRoles := []*rbacv1.ClusterRole{}
+
+	enabled := cr.Spec.Promoter == nil || cr.Spec.Promoter.APIServer.IsEnabled()
+	for _, clusterRole := range clusterRolesToReconcile {
+		resultClusterRole, err := ReconcilePromoterClusterRole(client, compName, clusterRole.name, clusterRole.policyRule, cr, enabled)
+		if err != nil {
+			return nil, err
+		}
+		reconciledClusterRoles = append(reconciledClusterRoles, resultClusterRole)
+	}
+
+	return reconciledClusterRoles, nil
+}
+
+func ReconcilePromoterClusterRole(client client.Client, compName, name string, expectedPolicyRule []rbacv1.PolicyRule, cr *argoproj.ArgoCD, enabled bool) (*rbacv1.ClusterRole, error) {
+	clusterRole := buildClusterRole(compName, name, cr)
 
 	exists := true
 	if err := client.Get(context.Background(), types.NamespacedName{Name: clusterRole.Name}, clusterRole); err != nil {
@@ -44,8 +74,8 @@ func ReconcilePromoterControllerClusterRole(client client.Client, compName strin
 
 	if exists {
 		// TODO: Need to add in some custom rbac functionality
-		if !cr.Spec.Promoter.IsEnabled() {
-			argoutil.LogResourceDeletion(log, clusterRole, fmt.Sprintf("promoter cluster role for component %s is being deleted due to being disabled", compName))
+		if !cr.Spec.Promoter.IsEnabled() || !enabled {
+			argoutil.LogResourceDeletion(log, clusterRole, fmt.Sprintf("promoter cluster role, %s, is being deleted due to being disabled", clusterRole.Name))
 			if err := client.Delete(context.Background(), clusterRole); err != nil {
 				return nil, fmt.Errorf("failed to delete promoter cluster role %s: %v", clusterRole.Name, err)
 			}
@@ -54,7 +84,7 @@ func ReconcilePromoterControllerClusterRole(client client.Client, compName strin
 
 		if !reflect.DeepEqual(clusterRole.Rules, expectedPolicyRule) {
 			clusterRole.Rules = expectedPolicyRule
-			argoutil.LogResourceUpdate(log, clusterRole, fmt.Sprintf("rules are not expected value for promoter cluster role for component %s", compName))
+			argoutil.LogResourceUpdate(log, clusterRole, fmt.Sprintf("rules are not expected value for promoter cluster role: %s", clusterRole.Name))
 			if err := client.Update(context.Background(), clusterRole); err != nil {
 				return nil, fmt.Errorf("failed to update promoter cluster role %s: %v", clusterRole.Name, err)
 			}
@@ -63,243 +93,26 @@ func ReconcilePromoterControllerClusterRole(client client.Client, compName strin
 		return clusterRole, nil
 	}
 
-	if !cr.Spec.Promoter.IsEnabled() {
+	if !cr.Spec.Promoter.IsEnabled() || !enabled {
 		return clusterRole, nil
 	}
 
 	clusterRole.Rules = expectedPolicyRule
 	argoutil.LogResourceCreation(log, clusterRole)
 	if err := client.Create(context.Background(), clusterRole); err != nil {
-		return nil, fmt.Errorf("failed to create promoter %s cluster role %s: %v", compName, clusterRole.Name, err)
+		return nil, fmt.Errorf("failed to create promoter cluster role %s: %v", clusterRole.Name, err)
 	}
 	return clusterRole, nil
 }
 
-func ReconcilePromoterAPIServerClusterRole(client client.Client, compName string, cr *argoproj.ArgoCD) (*rbacv1.ClusterRole, error) {
-	return nil, nil
-}
-
-func buildClusterRole(compName string, cr *argoproj.ArgoCD) *rbacv1.ClusterRole {
+func buildClusterRole(compName, name string, cr *argoproj.ArgoCD) *rbacv1.ClusterRole {
 	labels := buildLabelsForPromoterResources(compName, cr)
-	labels[common.ArgoCDKeyName] = generatePromoterResourceNameWithNamespace(compName, cr)
+	labels[common.ArgoCDKeyName] = argoutil.TruncateWithHash(name, argoutil.GetMaxLabelLength())
 
 	return &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   generatePromoterResourceNameWithNamespace(compName, cr),
+			Name:   name,
 			Labels: labels,
-		},
-	}
-}
-
-func buildPolicyRuleForControllerClusterRole(compName string, cr *argoproj.ArgoCD) []rbacv1.PolicyRule {
-	return []rbacv1.PolicyRule{
-		{
-			APIGroups: []string{
-				"",
-			},
-			Resources: []string{
-				"namespaces",
-			},
-			Verbs: []string{
-				"get",
-				"list",
-				"watch",
-			},
-		},
-		{
-			APIGroups: []string{
-				"",
-				"events.k8s.io",
-			},
-			Resources: []string{
-				"events",
-			},
-			Verbs: []string{
-				"create",
-				"patch",
-			},
-		},
-		{
-			APIGroups: []string{
-				"",
-			},
-			Resources: []string{
-				"secrets",
-			},
-			Verbs: []string{
-				"get",
-				"list",
-				"watch",
-				"update",
-			},
-		},
-		{
-			APIGroups: []string{
-				"argoproj.io",
-			},
-			Resources: []string{
-				"applications",
-			},
-			Verbs: []string{
-				"get",
-				"list",
-				"watch",
-			},
-		},
-		{
-			APIGroups: []string{
-				"promoter.argoproj.io",
-			},
-			Resources: []string{
-				"argocdcommitstatuses",
-				"gitcommitstatuses",
-				"promotionstrategies",
-				"revertcommits",
-				"scheduledcommitstatuses",
-				"timedcommitstatuses",
-				"webrequestcommitstatuses",
-			},
-			Verbs: []string{
-				"get",
-				"list",
-				"watch",
-			},
-		},
-		{
-			APIGroups: []string{
-				"promoter.argoproj.io",
-			},
-			Resources: []string{
-				"argocdcommitstatuses/finalizers",
-				"changetransferpolicies/finalizers",
-				"clusterscmproviders/finalizers",
-				"gitcommitstatuses/finalizers",
-				"gitrepositories/finalizers",
-				"promotionstrategies/finalizers",
-				"pullrequests/finalizers",
-				"scheduledcommitstatuses/finalizers",
-				"scmproviders/finalizers",
-				"timedcommitstatuses/finalizers",
-				"webrequestcommitstatuses/finalizers",
-			},
-			Verbs: []string{
-				"update",
-			},
-		},
-		{
-			APIGroups: []string{
-				"promoter.argoproj.io",
-			},
-			Resources: []string{
-				"argocdcommitstatuses/status",
-				"changetransferpolicies/status",
-				"clusterscmproviders/status",
-				"gitcommitstatuses/status",
-				"gitrepositories/status",
-				"promotionstrategies/status",
-				"pullrequests/status",
-				"scheduledcommitstatuses/status",
-				"scmproviders/status",
-				"timedcommitstatuses/status",
-				"webrequestcommitstatuses/status",
-			},
-			Verbs: []string{
-				"get",
-				"patch",
-				"update",
-			},
-		},
-		{
-			APIGroups: []string{
-				"promoter.argoproj.io",
-			},
-			Resources: []string{
-				"changetransferpolicies",
-				"pullrequests",
-			},
-			Verbs: []string{
-				"create",
-				"delete",
-				"get",
-				"list",
-				"patch",
-				"update",
-				"watch",
-			},
-		},
-		{
-			APIGroups: []string{
-				"promoter.argoproj.io",
-			},
-			Resources: []string{
-				"clusterscmproviders",
-				"gitrepositories",
-				"scmproviders",
-			},
-			Verbs: []string{
-				"get",
-				"list",
-				"update",
-				"watch",
-			},
-		},
-		{
-			APIGroups: []string{
-				"promoter.argoproj.io",
-			},
-			Resources: []string{
-				"clusterscmproviders",
-				"gitrepositories",
-				"scmproviders",
-			},
-			Verbs: []string{
-				"get",
-				"list",
-				"update",
-				"watch",
-			},
-		},
-		{
-			APIGroups: []string{
-				"promoter.argoproj.io",
-			},
-			Resources: []string{
-				"commitstatuses",
-			},
-			Verbs: []string{
-				"create",
-				"delete",
-				"get",
-				"list",
-				"patch",
-				"watch",
-			},
-		},
-		{
-			APIGroups: []string{
-				"promoter.argoproj.io",
-			},
-			Resources: []string{
-				"controllerconfigurations",
-			},
-			Verbs: []string{
-				"get",
-				"list",
-				"watch",
-			},
-		},
-		{
-			APIGroups: []string{
-				"promoter.argoproj.io",
-			},
-			Resources: []string{
-				"controllerconfigurations/status",
-			},
-			Verbs: []string{
-				"get",
-				"patch",
-				"update",
-			},
 		},
 	}
 }

@@ -44,7 +44,7 @@ func generatePromoterResourceNameWithNamespace(compName string, cr *argoproj.Arg
 	return fmt.Sprintf("%s-%s-%s", cr.Name, cr.Namespace, compName)
 }
 
-func ReconcilePromoterServiceAccount(client client.Client, compName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme) (*corev1.ServiceAccount, error) {
+func ReconcilePromoterServiceAccount(client client.Client, compName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme, enabled bool) (*corev1.ServiceAccount, error) {
 	sa := buildPromoterServiceAccount(compName, cr)
 
 	exists := true
@@ -55,13 +55,8 @@ func ReconcilePromoterServiceAccount(client client.Client, compName string, cr *
 		exists = false
 	}
 
-	componentCondition := false
-	if argoproj.PromoterComponentType(compName) == argoproj.PromoterComponentTypeAPIServer {
-		componentCondition = !cr.Spec.Promoter.IsAPIServerEnabled()
-	}
-
 	if exists {
-		if !cr.Spec.Promoter.IsEnabled() || componentCondition {
+		if !cr.Spec.Promoter.IsEnabled() || !enabled {
 			argoutil.LogResourceDeletion(log, sa, fmt.Sprintf("promoter service account for component %s is being deleted due to being disabled", compName))
 			if err := client.Delete(context.Background(), sa); err != nil {
 				return nil, fmt.Errorf("failed to delete promoter service account %s: %v", sa.Name, err)
@@ -71,7 +66,7 @@ func ReconcilePromoterServiceAccount(client client.Client, compName string, cr *
 		return sa, nil
 	}
 
-	if !cr.Spec.Promoter.IsEnabled() || componentCondition {
+	if !cr.Spec.Promoter.IsEnabled() || !enabled {
 		return sa, nil
 	}
 
@@ -98,7 +93,7 @@ func buildPromoterServiceAccount(compName string, cr *argoproj.ArgoCD) *corev1.S
 
 func buildLabelsForPromoterResources(compName string, cr *argoproj.ArgoCD) map[string]string {
 	return map[string]string{
-		common.ArgoCDKeyName:      generatePromoterResourceName(compName, cr),
+		common.ArgoCDKeyName:      argoutil.TruncateWithHash(generatePromoterResourceName(compName, cr), argoutil.GetMaxLabelLength()),
 		common.ArgoCDKeyComponent: compName,
 		common.ArgoCDKeyPartOf:    "promoter",
 		common.ArgoCDKeyManagedBy: cr.Name,

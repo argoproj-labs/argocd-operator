@@ -31,10 +31,41 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
-func ReconcilePromoterControllerClusterRoleBinding(client client.Client, compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD) (*rbacv1.ClusterRoleBinding, error) {
-	clusterRoleBinding := buildClusterRoleBinding(compName, cr)
+func ReconcilePromoterControllerClusterRoleBindings(client client.Client, compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD) ([]*rbacv1.ClusterRoleBinding, error) {
+	clusterRoleBindingsToReconcile := buildPolicyRulesForControllerClusterRoles(compName, cr)
+	reconciledClusterRoleBindings := []*rbacv1.ClusterRoleBinding{}
+
+	for _, clusterRole := range clusterRoleBindingsToReconcile {
+		resultClusterRoleBinding, err := ReconcilePromoterClusterRoleBinding(client, compName, clusterRole.name, clusterRole.name, sa, cr, true)
+		if err != nil {
+			return nil, err
+		}
+		reconciledClusterRoleBindings = append(reconciledClusterRoleBindings, resultClusterRoleBinding)
+	}
+
+	return reconciledClusterRoleBindings, nil
+}
+
+func ReconcilePromoterAPIServerClusterRoleBindings(client client.Client, compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD) ([]*rbacv1.ClusterRoleBinding, error) {
+	clusterRoleBindingsToReconcile := buildPolicyRulesForAPIServerClusterRoles(compName, cr)
+	reconciledClusterRoleBindings := []*rbacv1.ClusterRoleBinding{}
+
+	enabled := cr.Spec.Promoter == nil || cr.Spec.Promoter.APIServer.IsEnabled()
+	for _, clusterRole := range clusterRoleBindingsToReconcile {
+		resultClusterRoleBinding, err := ReconcilePromoterClusterRoleBinding(client, compName, clusterRole.name, clusterRole.name, sa, cr, enabled)
+		if err != nil {
+			return nil, err
+		}
+		reconciledClusterRoleBindings = append(reconciledClusterRoleBindings, resultClusterRoleBinding)
+	}
+
+	return reconciledClusterRoleBindings, nil
+}
+
+func ReconcilePromoterClusterRoleBinding(client client.Client, compName, bindingName, roleRefName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD, enabled bool) (*rbacv1.ClusterRoleBinding, error) {
+	clusterRoleBinding := buildClusterRoleBinding(compName, bindingName, cr)
 	expectedSubjects := buildSubject(sa)
-	expectedRoleRef := buildRoleRef(generatePromoterResourceNameWithNamespace(compName, cr))
+	expectedRoleRef := buildRoleRef(roleRefName, "ClusterRole")
 
 	exists := true
 	if err := client.Get(context.Background(), types.NamespacedName{Name: clusterRoleBinding.Name}, clusterRoleBinding); err != nil {
@@ -45,8 +76,8 @@ func ReconcilePromoterControllerClusterRoleBinding(client client.Client, compNam
 	}
 
 	if exists {
-		if !cr.Spec.Promoter.IsEnabled() {
-			argoutil.LogResourceDeletion(log, clusterRoleBinding, fmt.Sprintf("promoter cluster role binding for component %s is being deleted due to being disabled", compName))
+		if !cr.Spec.Promoter.IsEnabled() || !enabled {
+			argoutil.LogResourceDeletion(log, clusterRoleBinding, fmt.Sprintf("promoter cluster role binding %s is being deleted due to being disabled", bindingName))
 			if err := client.Delete(context.Background(), clusterRoleBinding); err != nil {
 				return nil, fmt.Errorf("failed to delete promoter cluster role %s: %v", clusterRoleBinding.Name, err)
 			}
@@ -59,7 +90,7 @@ func ReconcilePromoterControllerClusterRoleBinding(client client.Client, compNam
 			clusterRoleBinding.Subjects = expectedSubjects
 			clusterRoleBinding.RoleRef = expectedRoleRef
 
-			argoutil.LogResourceUpdate(log, clusterRoleBinding, fmt.Sprintf("promoter cluster role binding for component %s has the wrong subject or role ref", compName))
+			argoutil.LogResourceUpdate(log, clusterRoleBinding, fmt.Sprintf("promoter cluster role binding %s has the wrong subject or role ref", bindingName))
 			if err := client.Update(context.Background(), clusterRoleBinding); err != nil {
 				return nil, fmt.Errorf("failed to update promoter cluster role %s: %v", clusterRoleBinding.Name, err)
 			}
@@ -68,29 +99,29 @@ func ReconcilePromoterControllerClusterRoleBinding(client client.Client, compNam
 		return clusterRoleBinding, nil
 	}
 
-	if !cr.Spec.Promoter.IsEnabled() {
+	if !cr.Spec.Promoter.IsEnabled() || !enabled {
 		return clusterRoleBinding, nil
 	}
 
 	// create a new ClusterRoleBinding to avoid resourceVersion issues
-	newClusterRoleBinding := buildClusterRoleBinding(compName, cr)
+	newClusterRoleBinding := buildClusterRoleBinding(compName, bindingName, cr)
 	newClusterRoleBinding.Subjects = buildSubject(sa)
-	newClusterRoleBinding.RoleRef = buildRoleRef(generatePromoterResourceNameWithNamespace(compName, cr))
+	newClusterRoleBinding.RoleRef = buildRoleRef(roleRefName, "ClusterRole")
 
 	argoutil.LogResourceCreation(log, newClusterRoleBinding)
 	if err := client.Create(context.Background(), newClusterRoleBinding); err != nil {
-		return nil, fmt.Errorf("failed to create promoter %s cluster role binding %s: %v", compName, newClusterRoleBinding.Name, err)
+		return nil, fmt.Errorf("failed to create promoter cluster role binding %s: %v", newClusterRoleBinding.Name, err)
 	}
 	return newClusterRoleBinding, nil
 }
 
-func buildClusterRoleBinding(compName string, cr *argoproj.ArgoCD) *rbacv1.ClusterRoleBinding {
+func buildClusterRoleBinding(compName, name string, cr *argoproj.ArgoCD) *rbacv1.ClusterRoleBinding {
 	labels := buildLabelsForPromoterResources(compName, cr)
-	labels[common.ArgoCDKeyName] = generatePromoterResourceNameWithNamespace(compName, cr)
+	labels[common.ArgoCDKeyName] = argoutil.TruncateWithHash(name, argoutil.GetMaxLabelLength())
 
 	return &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   generatePromoterResourceNameWithNamespace(compName, cr),
+			Name:   name,
 			Labels: labels,
 		},
 	}
@@ -106,10 +137,10 @@ func buildSubject(sa *corev1.ServiceAccount) []rbacv1.Subject {
 	}
 }
 
-func buildRoleRef(name string) rbacv1.RoleRef {
+func buildRoleRef(name, refType string) rbacv1.RoleRef {
 	return rbacv1.RoleRef{
 		APIGroup: rbacv1.GroupName,
-		Kind:     "ClusterRole",
+		Kind:     refType,
 		Name:     name,
 	}
 }

@@ -22658,10 +22658,23 @@ spec:
               promoter:
                 description: Promoter defines the spec for the GitOps Promoter component
                 properties:
-                  apiServerEnabled:
-                    description: APIServerEnabled defines whether the gitops promoter
-                      API server is enabled (optional, defaults to true)
-                    type: boolean
+                  apiserver:
+                    description: APIServer defines the configuration for the promoter's
+                      API server
+                    properties:
+                      enabled:
+                        description: Enabled defines whether or not the API server
+                          should be deployed or not (will default to true if the promoter
+                          is enabled)
+                        type: boolean
+                      insecure:
+                        description: Insecure defines whether the API server is launched
+                          without TLS enabled
+                        type: boolean
+                      tls:
+                        description: TLS defines the TLS settings for the API server
+                        type: object
+                    type: object
                   enabled:
                     description: Enabled defines whether gitops promoter controller
                       should be deployed or not

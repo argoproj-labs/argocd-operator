@@ -2061,17 +2061,17 @@ func (r *ReconcileArgoCD) reconcileGitOpsPromoter(cr *argoproj.ArgoCD) error {
 	var err error
 
 	log.Info("reconciling GitOps Promoter's Controller Manager ServiceAccount")
-	if sa, err = gitopspromoter.ReconcilePromoterServiceAccount(r.Client, controllerCompName, cr, r.Scheme); err != nil {
+	if sa, err = gitopspromoter.ReconcilePromoterServiceAccount(r.Client, controllerCompName, cr, r.Scheme, true); err != nil {
 		return err
 	}
 
 	log.Info("reconciling GitOps Promoter's Controller Manager ClusterRole")
-	if _, err = gitopspromoter.ReconcilePromoterControllerClusterRole(r.Client, controllerCompName, cr); err != nil {
+	if _, err = gitopspromoter.ReconcilePromoterControllerClusterRoles(r.Client, controllerCompName, cr); err != nil {
 		return err
 	}
 
-	log.Info("reconciling GitOps Promoter's Controller Manager ClusterRole Binding")
-	if _, err = gitopspromoter.ReconcilePromoterControllerClusterRoleBinding(r.Client, controllerCompName, sa, cr); err != nil {
+	log.Info("reconciling GitOps Promoter's Controller Manager ClusterRoleBinding")
+	if _, err = gitopspromoter.ReconcilePromoterControllerClusterRoleBindings(r.Client, controllerCompName, sa, cr); err != nil {
 		return err
 	}
 
@@ -2082,6 +2082,24 @@ func (r *ReconcileArgoCD) reconcileGitOpsPromoter(cr *argoproj.ArgoCD) error {
 
 	log.Info("reconciling GitOps Promoter's Controller Deployment")
 	if _, err = gitopspromoter.ReconcilePromoterControllerDeployment(r.Client, controllerCompName, sa, cr, r.Scheme); err != nil {
+		return err
+	}
+
+	apiServerCompName := string(argoproj.PromoterComponentTypeAPIServer)
+
+	log.Info("reconciling GitOps Promoter's API Server ServiceAccount")
+	enabled := cr.Spec.Promoter == nil || cr.Spec.Promoter.APIServer.IsEnabled()
+	if sa, err = gitopspromoter.ReconcilePromoterServiceAccount(r.Client, apiServerCompName, cr, r.Scheme, enabled); err != nil {
+		return err
+	}
+
+	log.Info("reconciling GitOps Promoter's API Server ClusterRoles")
+	if _, err = gitopspromoter.ReconcilePromoterAPIServerClusterRoles(r.Client, apiServerCompName, cr); err != nil {
+		return err
+	}
+
+	log.Info("reconciling GitOps Promoter's API Server ClusterRoleBindings")
+	if _, err = gitopspromoter.ReconcilePromoterAPIServerClusterRoleBindings(r.Client, apiServerCompName, sa, cr); err != nil {
 		return err
 	}
 
