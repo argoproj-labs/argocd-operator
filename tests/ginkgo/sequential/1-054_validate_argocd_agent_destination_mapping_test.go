@@ -35,6 +35,7 @@ import (
 	appFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/application"
 	deploymentFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/deployment"
 	k8sFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/k8s"
+	statefulsetFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/statefulset"
 	fixtureUtils "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 
 	"github.com/argoproj/argo-cd/gitops-engine/pkg/health"
@@ -335,6 +336,16 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Eventually(&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{
 				Name:      destMapDeploymentAgent,
 				Namespace: nsAgent.Name}}, "120s", "5s").Should(deploymentFixture.HaveReadyReplicas(1))
+
+			By("Verify repo-server deployment is in Ready state")
+			Eventually(&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{
+				Name:      destMapArgoCDAgentName + "-repo-server",
+				Namespace: nsAgent.Name}}, "120s", "5s").Should(deploymentFixture.HaveReadyReplicas(1))
+
+			By("Verify application-controller is in Ready state")
+			Eventually(&appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{
+				Name:      destMapArgoCDAgentName + "-application-controller",
+				Namespace: nsAgent.Name}}, "120s", "5s").Should(statefulsetFixture.HaveReadyReplicas(1))
 
 			By("Verify managed agent logs contain expected messages")
 			agentFixture.VerifyLogs(destMapDeploymentAgent, nsAgent.Name, agentStartupLogs)
