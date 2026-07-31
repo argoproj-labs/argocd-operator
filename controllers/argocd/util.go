@@ -24,6 +24,7 @@ import (
 	"hash"
 	"os"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -877,18 +878,9 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 	return bldr
 }
 
-// boolPtr returns a pointer to val
-func boolPtr(val bool) *bool {
-	return &val
-}
-
-func int64Ptr(val int64) *int64 {
-	return &val
-}
-
 // triggerRollout will trigger a rollout of a Kubernetes resource specified as
 // obj. It currently supports Deployment and StatefulSet resources.
-func (r *ReconcileArgoCD) triggerRollout(obj interface{}, key string) error {
+func (r *ReconcileArgoCD) triggerRollout(obj any, key string) error {
 	switch res := obj.(type) {
 	case *appsv1.Deployment:
 		return r.triggerDeploymentRollout(res, key)
@@ -1176,11 +1168,8 @@ func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(cr *argoproj.A
 			if err != nil {
 				return err
 			}
-			for _, namespace := range sourceNamespaces {
-				if namespace == ns {
-					managedNamespace = true
-					break
-				}
+			if slices.Contains(sourceNamespaces, ns) {
+				managedNamespace = true
 			}
 		}
 
@@ -1337,12 +1326,7 @@ func generateRandomString(s int) string {
 
 // contains returns true if a string is part of the given slice.
 func contains(s []string, g string) bool {
-	for _, a := range s {
-		if a == g {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(s, g)
 }
 
 // getApplicationSetHTTPServerHost will return the host for the given ArgoCD.

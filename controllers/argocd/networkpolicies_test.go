@@ -26,7 +26,7 @@ func TestReconcileNetworkPolicies(t *testing.T) {
 		Dex:      &argoproj.ArgoCDDexSpec{},
 	}
 	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
-		Enabled: boolPtr(true),
+		Enabled: new(true),
 	}
 	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
 
@@ -42,7 +42,7 @@ func TestReconcileNetworkPolicies_DisabledDeletesExisting(t *testing.T) {
 		Dex:      &argoproj.ArgoCDDexSpec{},
 	}
 	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
-		Enabled: boolPtr(true),
+		Enabled: new(true),
 	}
 	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
 
@@ -51,7 +51,7 @@ func TestReconcileNetworkPolicies_DisabledDeletesExisting(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Disable and ensure policies are deleted
-	a.Spec.NetworkPolicy.Enabled = boolPtr(false)
+	a.Spec.NetworkPolicy.Enabled = new(false)
 	err = r.ReconcileNetworkPolicies(a)
 	assert.NoError(t, err)
 
@@ -78,7 +78,7 @@ func TestReconcileNetworkPolicies_RecreatesDeletedNetworkPolicy(t *testing.T) {
 		Dex:      &argoproj.ArgoCDDexSpec{},
 	}
 	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
-		Enabled: boolPtr(true),
+		Enabled: new(true),
 	}
 
 	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
@@ -342,7 +342,7 @@ func TestDexServerNetworkPolicyWithLongName(t *testing.T) {
 func TestApplicationSetControllerNetworkPolicy(t *testing.T) {
 	a := makeTestArgoCD()
 	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
-		Enabled: boolPtr(true),
+		Enabled: new(true),
 	}
 	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
 
@@ -370,7 +370,7 @@ func TestApplicationSetControllerNetworkPolicy(t *testing.T) {
 func TestApplicationSetControllerNetworkPolicyDisabledDeletesExisting(t *testing.T) {
 	a := makeTestArgoCD()
 	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
-		Enabled: boolPtr(true),
+		Enabled: new(true),
 	}
 	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
 

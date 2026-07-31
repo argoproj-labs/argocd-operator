@@ -24,7 +24,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -253,8 +252,8 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 						{
 							APIVersion:         "argoproj.io/v1beta1",
 							Kind:               "ArgoCD",
-							BlockOwnerDeletion: ptr.To(true),
-							Controller:         ptr.To(true),
+							BlockOwnerDeletion: new(true),
+							Controller:         new(true),
 							Name:               argoCD.Name,
 							UID:                argoCD.UID,
 						},

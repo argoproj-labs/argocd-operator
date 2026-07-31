@@ -23,7 +23,6 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
@@ -68,7 +67,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("setting execTimeout on repo server via ArgoCD CR")
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
-				ac.Spec.Repo.ExecTimeout = ptr.To(300)
+				ac.Spec.Repo.ExecTimeout = new(300)
 			})
 
 			By("verifying that argocd-repo-server has execTimeout value we set on ArgoCD CR")

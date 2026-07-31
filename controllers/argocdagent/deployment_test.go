@@ -26,7 +26,6 @@ import (
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	configv1 "github.com/openshift/api/config/v1"
@@ -363,9 +362,9 @@ func TestReconcilePrincipalDeployment_VerifyDeploymentSpec(t *testing.T) {
 
 	// Verify security context
 	container := deployment.Spec.Template.Spec.Containers[0]
-	assert.Equal(t, ptr.To(false), container.SecurityContext.AllowPrivilegeEscalation)
-	assert.Equal(t, ptr.To(true), container.SecurityContext.ReadOnlyRootFilesystem)
-	assert.Equal(t, ptr.To(true), container.SecurityContext.RunAsNonRoot)
+	assert.Equal(t, new(false), container.SecurityContext.AllowPrivilegeEscalation)
+	assert.Equal(t, new(true), container.SecurityContext.ReadOnlyRootFilesystem)
+	assert.Equal(t, new(true), container.SecurityContext.RunAsNonRoot)
 	assert.Equal(t, []corev1.Capability{"ALL"}, container.SecurityContext.Capabilities.Drop)
 	assert.Equal(t, corev1.SeccompProfileType("RuntimeDefault"), container.SecurityContext.SeccompProfile.Type)
 
@@ -426,7 +425,7 @@ func TestReconcilePrincipalDeployment_VerifyDeploymentSpec(t *testing.T) {
 	assert.Equal(t, "jwt-secret", jwtVolume.Name)
 	assert.NotNil(t, jwtVolume.Secret)
 	assert.Equal(t, "argocd-agent-jwt", jwtVolume.Secret.SecretName)
-	assert.Equal(t, ptr.To(true), jwtVolume.Secret.Optional)
+	assert.Equal(t, new(true), jwtVolume.Secret.Optional)
 	assert.Len(t, jwtVolume.Secret.Items, 1)
 	assert.Equal(t, "jwt.key", jwtVolume.VolumeSource.Secret.Items[0].Key)
 	assert.Equal(t, "jwt.key", jwtVolume.VolumeSource.Secret.Items[0].Path)
@@ -435,7 +434,7 @@ func TestReconcilePrincipalDeployment_VerifyDeploymentSpec(t *testing.T) {
 	assert.Equal(t, "userpass-passwd", userpassVolume.Name)
 	assert.NotNil(t, userpassVolume.Secret)
 	assert.Equal(t, "argocd-agent-principal-userpass", userpassVolume.Secret.SecretName)
-	assert.Equal(t, ptr.To(true), userpassVolume.Secret.Optional)
+	assert.Equal(t, new(true), userpassVolume.Secret.Optional)
 	assert.Len(t, userpassVolume.Secret.Items, 1)
 	assert.Equal(t, "passwd", userpassVolume.VolumeSource.Secret.Items[0].Key)
 	assert.Equal(t, "passwd", userpassVolume.VolumeSource.Secret.Items[0].Path)
@@ -444,7 +443,7 @@ func TestReconcilePrincipalDeployment_VerifyDeploymentSpec(t *testing.T) {
 	assert.Equal(t, "redis-initial-pass", redisAuthVolume.Name)
 	assert.NotNil(t, redisAuthVolume.Secret)
 	assert.Equal(t, "argocd-redis-initial-password", redisAuthVolume.Secret.SecretName)
-	assert.NotEqual(t, ptr.To(true), redisAuthVolume.Secret.Optional)
+	assert.NotEqual(t, new(true), redisAuthVolume.Secret.Optional)
 	assert.Len(t, redisAuthVolume.Secret.Items, 2)
 }
 
@@ -540,12 +539,12 @@ func TestReconcilePrincipalDeployment_VolumeMountsAndVolumes(t *testing.T) {
 	jwtVolume := deployment.Spec.Template.Spec.Volumes[0]
 	assert.Equal(t, "jwt-secret", jwtVolume.Name)
 	assert.Equal(t, "argocd-agent-jwt", jwtVolume.Secret.SecretName)
-	assert.Equal(t, ptr.To(true), jwtVolume.Secret.Optional)
+	assert.Equal(t, new(true), jwtVolume.Secret.Optional)
 
 	userpassVolume := deployment.Spec.Template.Spec.Volumes[1]
 	assert.Equal(t, "userpass-passwd", userpassVolume.Name)
 	assert.Equal(t, "argocd-agent-principal-userpass", userpassVolume.Secret.SecretName)
-	assert.Equal(t, ptr.To(true), userpassVolume.Secret.Optional)
+	assert.Equal(t, new(true), userpassVolume.Secret.Optional)
 
 	redisAuthVolume := deployment.Spec.Template.Spec.Volumes[2]
 	assert.Equal(t, "redis-initial-pass", redisAuthVolume.Name)

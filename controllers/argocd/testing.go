@@ -16,6 +16,7 @@ package argocd
 
 import (
 	"context"
+	"maps"
 	"sort"
 	"strings"
 	"testing"
@@ -335,12 +336,8 @@ func createNamespaceManagedByClusterArgoCDLabel(r *ReconcileArgoCD, n string, ma
 func merge(base map[string]string, diff map[string]string) map[string]string {
 	result := make(map[string]string)
 
-	for k, v := range base {
-		result[k] = v
-	}
-	for k, v := range diff {
-		result[k] = v
-	}
+	maps.Copy(result, base)
+	maps.Copy(result, diff)
 
 	return result
 }

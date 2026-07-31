@@ -14,7 +14,7 @@ import (
 // handles both resource types in a single transform. This is useful for reducing memory usage
 // when caching Secrets and ConfigMaps that are not managed/used by the operator.
 func StripDataFromSecretOrConfigMapTransform() clientgotools.TransformFunc {
-	return func(in interface{}) (interface{}, error) {
+	return func(in any) (any, error) {
 		if s, ok := in.(*v1.Secret); ok {
 			// Keep full secret for operator-managed resources
 			if IsTrackedByOperator(s) {

@@ -410,7 +410,7 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 			VolumeSource: v1.VolumeSource{
 				Secret: &v1.SecretVolumeSource{
 					SecretName: "argocd-repo-server-tls",
-					Optional:   boolPtr(true),
+					Optional:   new(true),
 				},
 			},
 		},

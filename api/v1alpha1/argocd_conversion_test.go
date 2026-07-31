@@ -9,7 +9,6 @@ import (
 	v1 "k8s.io/api/networking/v1"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
 
 	v1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -534,7 +533,7 @@ func TestAlphaToBetaConversion(t *testing.T) {
 								Type: corev1.ServiceTypeClusterIP,
 							},
 							Route: ArgoCDAgentPrincipalRouteSpec{
-								Enabled: ptr.To(true),
+								Enabled: new(true),
 							},
 						},
 					},
@@ -551,7 +550,7 @@ func TestAlphaToBetaConversion(t *testing.T) {
 								Type: corev1.ServiceTypeClusterIP,
 							},
 							Route: v1beta1.ArgoCDAgentPrincipalRouteSpec{
-								Enabled: ptr.To(true),
+								Enabled: new(true),
 							},
 						},
 					},
@@ -581,7 +580,7 @@ func TestAlphaToBetaConversion(t *testing.T) {
 								Type: corev1.ServiceTypeLoadBalancer,
 							},
 							Route: ArgoCDAgentPrincipalRouteSpec{
-								Enabled: ptr.To(false),
+								Enabled: new(false),
 							},
 						},
 						Redis: &PrincipalRedisSpec{
@@ -631,7 +630,7 @@ func TestAlphaToBetaConversion(t *testing.T) {
 								Type: corev1.ServiceTypeLoadBalancer,
 							},
 							Route: v1beta1.ArgoCDAgentPrincipalRouteSpec{
-								Enabled: ptr.To(false),
+								Enabled: new(false),
 							},
 						},
 						Redis: &v1beta1.PrincipalRedisSpec{
@@ -943,7 +942,7 @@ func TestBetaToAlphaConversion(t *testing.T) {
 								Type: corev1.ServiceTypeNodePort,
 							},
 							Route: v1beta1.ArgoCDAgentPrincipalRouteSpec{
-								Enabled: ptr.To(true),
+								Enabled: new(true),
 							},
 						},
 					},
@@ -960,7 +959,7 @@ func TestBetaToAlphaConversion(t *testing.T) {
 								Type: corev1.ServiceTypeNodePort,
 							},
 							Route: ArgoCDAgentPrincipalRouteSpec{
-								Enabled: ptr.To(true),
+								Enabled: new(true),
 							},
 						},
 					},
@@ -993,7 +992,7 @@ func TestBetaToAlphaConversion(t *testing.T) {
 								Type: corev1.ServiceTypeExternalName,
 							},
 							Route: v1beta1.ArgoCDAgentPrincipalRouteSpec{
-								Enabled: ptr.To(false),
+								Enabled: new(false),
 							},
 						},
 						Redis: &v1beta1.PrincipalRedisSpec{
@@ -1046,7 +1045,7 @@ func TestBetaToAlphaConversion(t *testing.T) {
 								Type: corev1.ServiceTypeExternalName,
 							},
 							Route: ArgoCDAgentPrincipalRouteSpec{
-								Enabled: ptr.To(false),
+								Enabled: new(false),
 							},
 						},
 						Redis: &PrincipalRedisSpec{

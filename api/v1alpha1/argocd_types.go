@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"slices"
 	"strings"
 
 	routev1 "github.com/openshift/api/route/v1"
@@ -1411,12 +1412,7 @@ func (a *AgentSpec) IsEnabled() bool {
 
 // IsDeletionFinalizerPresent checks if the instance has deletion finalizer
 func (argocd *ArgoCD) IsDeletionFinalizerPresent() bool {
-	for _, finalizer := range argocd.GetFinalizers() {
-		if finalizer == common.ArgoCDDeletionFinalizer {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(argocd.GetFinalizers(), common.ArgoCDDeletionFinalizer)
 }
 
 // WantsAutoTLS returns true if:

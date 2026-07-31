@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 	"sort"
 	"strings"
@@ -278,15 +279,11 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 	}
 
 	if cr.Spec.ApplicationSet.Annotations != nil {
-		for key, value := range cr.Spec.ApplicationSet.Annotations {
-			deploy.Spec.Template.Annotations[key] = value
-		}
+		maps.Copy(deploy.Spec.Template.Annotations, cr.Spec.ApplicationSet.Annotations)
 	}
 
 	if cr.Spec.ApplicationSet.Labels != nil {
-		for key, value := range cr.Spec.ApplicationSet.Labels {
-			deploy.Spec.Template.Labels[key] = value
-		}
+		maps.Copy(deploy.Spec.Template.Labels, cr.Spec.ApplicationSet.Labels)
 	}
 
 	appSetContainer, err := r.applicationSetContainer(cr, addSCMGitlabVolumeMount)
@@ -414,7 +411,7 @@ func (r *ReconcileArgoCD) applicationSetContainer(cr *argoproj.ArgoCD, addSCMGit
 						Name: common.ArgoCDCmdParamsConfigMapName,
 					},
 					Key:      common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey,
-					Optional: boolPtr(true),
+					Optional: new(true),
 				},
 			},
 		},

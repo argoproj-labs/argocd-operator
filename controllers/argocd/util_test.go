@@ -20,7 +20,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	testclient "k8s.io/client-go/kubernetes/fake"
-	"k8s.io/utils/ptr"
 )
 
 const (
@@ -1819,7 +1818,7 @@ func TestGetRedisServerAddressWithCustomDomain(t *testing.T) {
 		},
 		{
 			name:         "remote redis - custom domain ignored",
-			remoteRedis:  ptr.To("remote-redis:6379"),
+			remoteRedis:  new("remote-redis:6379"),
 			expectedAddr: "remote-redis:6379",
 		},
 	}
@@ -1885,7 +1884,7 @@ func TestGetRepoServerAddressWithCustomDomain(t *testing.T) {
 		},
 		{
 			name:         "remote repo server - custom domain ignored",
-			remoteRepo:   ptr.To("remote-repo:8081"),
+			remoteRepo:   new("remote-repo:8081"),
 			expectedAddr: "remote-repo:8081",
 		},
 	}

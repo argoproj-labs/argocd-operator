@@ -327,8 +327,8 @@ func StreamFromArgoCDEventSourceURL(ctx context.Context, eventSourceAPIURL strin
 					return strings.Contains(err.Error(), "context canceled")
 				}
 
-				if strings.HasPrefix(line, "data:") {
-					data := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+				if after, ok := strings.CutPrefix(line, "data:"); ok {
+					data := strings.TrimSpace(after)
 					select {
 					case <-ctx.Done():
 						GinkgoWriter.Println("Context is complete")

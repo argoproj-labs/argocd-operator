@@ -43,7 +43,7 @@ func controllerDefaultVolumes() []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   new(true),
 				},
 			},
 		},
@@ -52,7 +52,7 @@ func controllerDefaultVolumes() []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   new(true),
 				},
 			},
 		},
@@ -69,7 +69,7 @@ func controllerDefaultVolumes() []corev1.Volume {
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: "argocd-cmd-params-cm",
 					},
-					Optional: boolPtr(true),
+					Optional: new(true),
 					Items: []corev1.KeyToPath{
 						{
 							Key:  "controller.profile.enabled",
@@ -491,7 +491,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDConfigMapName},
 						Key:                  common.ArgoCDKeyTimeout,
-						Optional:             boolPtr(true),
+						Optional:             new(true),
 					},
 				}},
 				{Name: "HOME", Value: "/home/argocd"},
@@ -516,7 +516,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDConfigMapName},
 						Key:                  common.ArgoCDKeyTimeout,
-						Optional:             boolPtr(true),
+						Optional:             new(true),
 					},
 				}},
 				{Name: "HOME", Value: "/home/argocd"},
@@ -541,7 +541,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDConfigMapName},
 						Key:                  common.ArgoCDKeyTimeout,
-						Optional:             boolPtr(true),
+						Optional:             new(true),
 					},
 				}},
 				{Name: "HOME", Value: "/home/argocd"},
@@ -551,7 +551,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 		{
 			sharding: argoproj.ArgoCDApplicationControllerShardSpec{
 				//nolint:staticcheck // SA1019: honor deprecated field for backward compatibility
-				DynamicScalingEnabled: boolPtr(true),
+				DynamicScalingEnabled: new(true),
 				MinShards:             2,
 				MaxShards:             4,
 				ClustersPerShard:      1,
@@ -569,7 +569,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDConfigMapName},
 						Key:                  common.ArgoCDKeyTimeout,
-						Optional:             boolPtr(true),
+						Optional:             new(true),
 					},
 				}},
 				{Name: "HOME", Value: "/home/argocd"},
@@ -675,7 +675,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withEnv(t *testing.T) {
 			ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDConfigMapName},
 				Key:                  common.ArgoCDKeyTimeout,
-				Optional:             boolPtr(true),
+				Optional:             new(true),
 			},
 		}},
 		{Name: "CUSTOM_ENV_VAR", Value: "custom-value"},
@@ -826,7 +826,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withDynamicSharding(t *t
 				Enabled:  false,
 				Replicas: 1,
 				//nolint:staticcheck // SA1019: honor deprecated field for backward compatibility
-				DynamicScalingEnabled: boolPtr(true),
+				DynamicScalingEnabled: new(true),
 				MinShards:             2,
 				MaxShards:             4,
 				ClustersPerShard:      1,
@@ -839,7 +839,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withDynamicSharding(t *t
 				Enabled:  false,
 				Replicas: 1,
 				//nolint:staticcheck // SA1019: honor deprecated field for backward compatibility
-				DynamicScalingEnabled: boolPtr(true),
+				DynamicScalingEnabled: new(true),
 				MinShards:             1,
 				MaxShards:             4,
 				ClustersPerShard:      3,
@@ -852,7 +852,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withDynamicSharding(t *t
 				Enabled:  false,
 				Replicas: 1,
 				//nolint:staticcheck // SA1019: honor deprecated field for backward compatibility
-				DynamicScalingEnabled: boolPtr(true),
+				DynamicScalingEnabled: new(true),
 				MinShards:             1,
 				MaxShards:             2,
 				ClustersPerShard:      1,

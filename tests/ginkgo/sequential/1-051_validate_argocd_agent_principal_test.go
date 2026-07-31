@@ -30,7 +30,6 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -91,11 +90,11 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				},
 				Spec: argov1beta1api.ArgoCDSpec{
 					Controller: argov1beta1api.ArgoCDApplicationControllerSpec{
-						Enabled: ptr.To(false),
+						Enabled: new(false),
 					},
 					ArgoCDAgent: &argov1beta1api.ArgoCDAgentSpec{
 						Principal: &argov1beta1api.PrincipalSpec{
-							Enabled:  ptr.To(true),
+							Enabled:  new(true),
 							Auth:     "mtls:CN=([^,]+)",
 							LogLevel: "info",
 							Namespace: &argov1beta1api.PrincipalNamespaceSpec{
@@ -105,10 +104,10 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 							},
 							LabelSelector: "argocd-agent=true",
 							TLS: &argov1beta1api.PrincipalTLSSpec{
-								InsecureGenerate: ptr.To(true),
+								InsecureGenerate: new(true),
 							},
 							JWT: &argov1beta1api.PrincipalJWTSpec{
-								InsecureGenerate: ptr.To(true),
+								InsecureGenerate: new(true),
 							},
 							Server: &argov1beta1api.PrincipalServerSpec{
 								KeepAliveMinInterval: "30s",
@@ -273,7 +272,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 		verifyExpectedResourcesExist := func(namespace *corev1.Namespace, expectRoute ...bool) {
 			var expectRoutePtr *bool
 			if len(expectRoute) > 0 {
-				expectRoutePtr = ptr.To(expectRoute[0])
+				expectRoutePtr = new(expectRoute[0])
 			}
 
 			agentFixture.VerifyExpectedResourcesExist(agentFixture.VerifyExpectedResourcesExistParams{
@@ -332,7 +331,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: argoCDName, Namespace: ns.Name}, argoCD)).To(Succeed())
 
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
-				ac.Spec.ArgoCDAgent.Principal.Enabled = ptr.To(false)
+				ac.Spec.ArgoCDAgent.Principal.Enabled = new(false)
 			})
 
 			By("Verify principal resources are deleted")
@@ -432,20 +431,20 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				ac.Spec.ArgoCDAgent.Principal.LogLevel = "trace"
 				ac.Spec.ArgoCDAgent.Principal.LogFormat = "json"
 				ac.Spec.ArgoCDAgent.Principal.Server.KeepAliveMinInterval = "60s"
-				ac.Spec.ArgoCDAgent.Principal.Server.EnableWebSocket = ptr.To(true)
+				ac.Spec.ArgoCDAgent.Principal.Server.EnableWebSocket = new(true)
 				ac.Spec.ArgoCDAgent.Principal.Image = "quay.io/argoprojlabs/argocd-agent:v0.5.1"
 				ac.Spec.ArgoCDAgent.Principal.LabelSelector = "env=staging"
 
 				ac.Spec.ArgoCDAgent.Principal.Namespace.AllowedNamespaces = []string{"agent-managed", "agent-autonomous"}
-				ac.Spec.ArgoCDAgent.Principal.Namespace.EnableNamespaceCreate = ptr.To(true)
+				ac.Spec.ArgoCDAgent.Principal.Namespace.EnableNamespaceCreate = new(true)
 				ac.Spec.ArgoCDAgent.Principal.Namespace.NamespaceCreatePattern = "agent-.*"
 				ac.Spec.ArgoCDAgent.Principal.Namespace.NamespaceCreateLabels = []string{"environment=agent"}
 
-				ac.Spec.ArgoCDAgent.Principal.TLS.InsecureGenerate = ptr.To(false)
+				ac.Spec.ArgoCDAgent.Principal.TLS.InsecureGenerate = new(false)
 				ac.Spec.ArgoCDAgent.Principal.TLS.SecretName = "argocd-agent-principal-tls-v2"
 				ac.Spec.ArgoCDAgent.Principal.TLS.RootCASecretName = "argocd-agent-ca-v2"
 
-				ac.Spec.ArgoCDAgent.Principal.JWT.InsecureGenerate = ptr.To(false)
+				ac.Spec.ArgoCDAgent.Principal.JWT.InsecureGenerate = new(false)
 				ac.Spec.ArgoCDAgent.Principal.JWT.SecretName = "argocd-agent-jwt-v2"
 
 				ac.Spec.ArgoCDAgent.Principal.ResourceProxy = &argov1beta1api.PrincipalResourceProxySpec{
@@ -555,7 +554,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			By("Create ArgoCD instance with route disabled")
 
 			argoCD.Spec.ArgoCDAgent.Principal.Server.Route = argov1beta1api.ArgoCDAgentPrincipalRouteSpec{
-				Enabled: ptr.To(false),
+				Enabled: new(false),
 			}
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 
@@ -574,7 +573,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			By("Create ArgoCD instance with route enabled")
 
 			argoCD.Spec.ArgoCDAgent.Principal.Server.Route = argov1beta1api.ArgoCDAgentPrincipalRouteSpec{
-				Enabled: ptr.To(true),
+				Enabled: new(true),
 			}
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 
@@ -593,7 +592,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			By("Create ArgoCD instance with route enabled")
 
 			argoCD.Spec.ArgoCDAgent.Principal.Server.Route = argov1beta1api.ArgoCDAgentPrincipalRouteSpec{
-				Enabled: ptr.To(true),
+				Enabled: new(true),
 			}
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 
@@ -611,7 +610,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: argoCDName, Namespace: ns.Name}, argoCD)).To(Succeed())
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
-				ac.Spec.ArgoCDAgent.Principal.Server.Route.Enabled = ptr.To(false)
+				ac.Spec.ArgoCDAgent.Principal.Server.Route.Enabled = new(false)
 			})
 
 			By("Verify Route for principal is deleted")
@@ -644,7 +643,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: argoCDName, Namespace: ns.Name}, argoCD)).To(Succeed())
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
-				ac.Spec.ArgoCDAgent.Principal.Server.Route.Enabled = ptr.To(true)
+				ac.Spec.ArgoCDAgent.Principal.Server.Route.Enabled = new(true)
 			})
 
 			By("Verify Route for principal is recreated")
@@ -879,7 +878,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 		It("should create principal NetworkPolicy if principal is enabled", func() {
 			By("Create ArgoCD instance with principal enabled")
 
-			argoCD.Spec.ArgoCDAgent.Principal.Enabled = ptr.To(true)
+			argoCD.Spec.ArgoCDAgent.Principal.Enabled = new(true)
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 
 			verifyExpectedResourcesExist(ns)
@@ -925,15 +924,15 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			By("Verify principal NetworkPolicy is created when principal instance is enabled and network policy is enabled")
 
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
-				ac.Spec.ArgoCDAgent.Principal.Enabled = ptr.To(true)
-				ac.Spec.NetworkPolicy.Enabled = ptr.To(true)
+				ac.Spec.ArgoCDAgent.Principal.Enabled = new(true)
+				ac.Spec.NetworkPolicy.Enabled = new(true)
 			})
 			Eventually(principalNetworkPolicy).Should(k8sFixture.ExistByName())
 
 			By("Verify principal NetworkPolicy is not created when network policy is disabled")
 
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
-				ac.Spec.NetworkPolicy.Enabled = ptr.To(false)
+				ac.Spec.NetworkPolicy.Enabled = new(false)
 			})
 
 			Eventually(principalNetworkPolicy).Should(k8sFixture.NotExistByName())
@@ -981,7 +980,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: argoCDName, Namespace: ns.Name}, argoCD)).To(Succeed())
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
-				ac.Spec.ArgoCDAgent.Principal.Enabled = ptr.To(false)
+				ac.Spec.ArgoCDAgent.Principal.Enabled = new(false)
 			})
 
 			Eventually(principalServiceMonitor, "2m", "2s").Should(k8sFixture.NotExistByName())

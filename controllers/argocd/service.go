@@ -132,7 +132,7 @@ func (r *ReconcileArgoCD) reconcileMetricsService(cr *argoproj.ArgoCD) error {
 
 // reconcileRedisHAAnnounceServices will ensure that the announce Services are present for Redis when running in HA mode.
 func (r *ReconcileArgoCD) reconcileRedisHAAnnounceServices(cr *argoproj.ArgoCD) error {
-	for i := int32(0); i < common.ArgoCDDefaultRedisHAReplicas; i++ {
+	for i := range common.ArgoCDDefaultRedisHAReplicas {
 		svc := newServiceWithSuffix(fmt.Sprintf("redis-ha-announce-%d", i), "redis", cr)
 		svcExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc)
 		if err != nil {

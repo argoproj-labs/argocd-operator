@@ -27,7 +27,6 @@ import (
 	apiError "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -135,14 +134,14 @@ func buildSelector(compName string, cr *argoproj.ArgoCD) *metav1.LabelSelector {
 
 func buildSecurityContext() *corev1.SecurityContext {
 	return &corev1.SecurityContext{
-		AllowPrivilegeEscalation: ptr.To(false),
+		AllowPrivilegeEscalation: new(false),
 		Capabilities: &corev1.Capabilities{
 			Drop: []corev1.Capability{
 				"ALL",
 			},
 		},
-		ReadOnlyRootFilesystem: ptr.To(true),
-		RunAsNonRoot:           ptr.To(true),
+		ReadOnlyRootFilesystem: new(true),
+		RunAsNonRoot:           new(true),
 		SeccompProfile: &corev1.SeccompProfile{
 			Type: "RuntimeDefault",
 		},
@@ -207,7 +206,7 @@ func buildVolumes() []corev1.Volume {
 							Path: "userpass.creds",
 						},
 					},
-					Optional: ptr.To(true),
+					Optional: new(true),
 				},
 			},
 		},

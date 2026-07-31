@@ -19,6 +19,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"hash"
+	"maps"
 	"reflect"
 	"strings"
 	"time"
@@ -33,7 +34,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -309,7 +309,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   new(true),
 				},
 			},
 		},
@@ -318,7 +318,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   new(true),
 				},
 			},
 		},
@@ -359,15 +359,11 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 	}
 
 	if cr.Spec.Repo.Annotations != nil {
-		for key, value := range cr.Spec.Repo.Annotations {
-			deploy.Spec.Template.Annotations[key] = value
-		}
+		maps.Copy(deploy.Spec.Template.Annotations, cr.Spec.Repo.Annotations)
 	}
 
 	if cr.Spec.Repo.Labels != nil {
-		for key, value := range cr.Spec.Repo.Labels {
-			deploy.Spec.Template.Labels[key] = value
-		}
+		maps.Copy(deploy.Spec.Template.Labels, cr.Spec.Repo.Labels)
 	}
 
 	if cr.Spec.PriorityClassName != "" {
@@ -562,7 +558,7 @@ func (r *ReconcileArgoCD) injectCATrustToContainers(cr *argocdoperatorv1beta1.Ar
 			VolumeSource: corev1.VolumeSource{
 				Projected: &corev1.ProjectedVolumeSource{
 					Sources:     sources,
-					DefaultMode: ptr.To(int32(0o444)),
+					DefaultMode: new(int32(0o444)),
 				},
 			},
 		}, {
@@ -1074,7 +1070,7 @@ func (och *objectChecksum) writeObject(obj runtime.Object) {
 	}
 }
 
-func (och *objectChecksum) sprintf(format string, a ...interface{}) {
+func (och *objectChecksum) sprintf(format string, a ...any) {
 	_, err := och.Write(fmt.Appendf([]byte{}, format, a...))
 	if err != nil {
 		log.Error(err, "unable to fingerprint string", "format", format)

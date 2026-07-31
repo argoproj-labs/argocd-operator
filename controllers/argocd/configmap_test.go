@@ -30,7 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	testclient "k8s.io/client-go/kubernetes/fake"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -464,7 +463,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 			SigningKeys string `yaml:"signingKeys"`
 		}
 
-		dexCfg := map[string]interface{}{
+		dexCfg := map[string]any{
 			"expiry": expiry{
 				IdTokens:    "1hr",
 				SigningKeys: "12hr",
@@ -551,7 +550,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 				t.Fatal("reconcileArgoConfigMap with dex failed")
 			}
 
-			m := make(map[string]interface{})
+			m := make(map[string]any)
 			err = yaml.Unmarshal([]byte(dex), &m)
 			assert.NoError(t, err, fmt.Sprintf("failed to unmarshal %s", dex))
 
@@ -559,13 +558,13 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 			if !ok {
 				t.Fatal("no connectors found in dex.config")
 			}
-			dexConnector := connectors.([]interface{})[0].(map[interface{}]interface{})
+			dexConnector := connectors.([]any)[0].(map[any]any)
 			config := dexConnector["config"]
-			assert.Equal(t, config.(map[interface{}]interface{})["clientID"], "system:serviceaccount:argocd:argocd-argocd-dex-server")
+			assert.Equal(t, config.(map[any]any)["clientID"], "system:serviceaccount:argocd:argocd-argocd-dex-server")
 
 			// verify that the dex config in the CR matches the config from the argocd-cm
 			if a.Spec.SSO.Dex.Config != "" {
-				expectedCfg := make(map[string]interface{})
+				expectedCfg := make(map[string]any)
 				expectedCfgStr, err := r.getOpenShiftDexConfig(a)
 				assert.NoError(t, err)
 
@@ -1177,7 +1176,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withLocalUsers(t *testing.T) {
 	a.Spec.LocalUsers = []argoproj.LocalUserSpec{
 		{
 			Name:    "alice",
-			Enabled: boolPtr(false),
+			Enabled: new(false),
 		},
 	}
 
@@ -1208,9 +1207,9 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withLocalUsers_extraConfigOverri
 	a.Spec.LocalUsers = []argoproj.LocalUserSpec{
 		{
 			Name:    "alice",
-			ApiKey:  boolPtr(true),
+			ApiKey:  new(true),
 			Login:   false,
-			Enabled: boolPtr(false),
+			Enabled: new(false),
 		},
 	}
 
@@ -1234,9 +1233,9 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withLocalUsers_extraConfigOverri
 	a.Spec.LocalUsers = []argoproj.LocalUserSpec{
 		{
 			Name:    "alice",
-			ApiKey:  boolPtr(true),
+			ApiKey:  new(true),
 			Login:   false,
-			Enabled: boolPtr(false),
+			Enabled: new(false),
 		},
 	}
 
@@ -1428,7 +1427,7 @@ func Test_modifyOwnerReferenceIfNeeded(t *testing.T) {
 				Kind:       "ConfigMap",
 				Name:       "something",
 				UID:        "123",
-				Controller: ptr.To(false),
+				Controller: new(false),
 			},
 		}
 

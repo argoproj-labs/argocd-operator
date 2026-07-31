@@ -27,7 +27,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argov1alpha1api "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
@@ -102,7 +101,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 					},
 				},
 				Spec: appsv1.DeploymentSpec{
-					Replicas: ptr.To(int32(1)),
+					Replicas: new(int32(1)),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{"app": "smtp4dev"},
 					},

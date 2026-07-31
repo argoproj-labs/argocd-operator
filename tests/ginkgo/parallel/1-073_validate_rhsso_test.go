@@ -28,7 +28,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -113,9 +112,9 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 						corev1.ResourceMemory: resource.MustParse("256Mi"),
 					},
 				},
-				RecreateParams:        &openshiftappsv1.RecreateDeploymentStrategyParams{TimeoutSeconds: ptr.To(int64(600))},
+				RecreateParams:        &openshiftappsv1.RecreateDeploymentStrategyParams{TimeoutSeconds: new(int64(600))},
 				Type:                  openshiftappsv1.DeploymentStrategyTypeRecreate,
-				ActiveDeadlineSeconds: ptr.To(int64(21600)),
+				ActiveDeadlineSeconds: new(int64(21600)),
 			}))
 
 			Expect(dc.Spec.Template.ObjectMeta).Should(Equal(metav1.ObjectMeta{
@@ -149,7 +148,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				{
 					Name: "sso-x509-https-volume", VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{
-							DefaultMode: ptr.To(int32(420)),
+							DefaultMode: new(int32(420)),
 							SecretName:  "sso-x509-https-secret",
 						},
 					},
@@ -157,7 +156,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				{
 					Name: "service-ca", VolumeSource: corev1.VolumeSource{
 						ConfigMap: &corev1.ConfigMapVolumeSource{
-							DefaultMode: ptr.To(int32(420)),
+							DefaultMode: new(int32(420)),
 							LocalObjectReference: corev1.LocalObjectReference{
 								Name: "keycloak-service-ca",
 							},
@@ -187,7 +186,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Expect(keycloakRoute.Spec.To).Should(Equal(routev1.RouteTargetReference{
 				Kind:   "Service",
 				Name:   "keycloak",
-				Weight: ptr.To(int32(100)),
+				Weight: new(int32(100)),
 			}))
 			Expect(keycloakRoute.Spec.WildcardPolicy).Should(Equal(routev1.WildcardPolicyNone))
 
@@ -207,7 +206,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				// input format: "clientid: argocd\n\n"
 				// output format, for 'clientid': "argocd"
 
-				for _, line := range strings.Split(output, "\n") {
+				for line := range strings.SplitSeq(output, "\n") {
 					if strings.Contains(line, key) {
 						return strings.TrimSpace(line[strings.Index(line, ":")+1:])
 					}

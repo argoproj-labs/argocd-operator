@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"reflect"
 	"strings"
@@ -473,7 +474,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 
 	if !IsOpenShiftCluster() {
 		deploy.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
-			RunAsUser: int64Ptr(1000),
+			RunAsUser: new(int64(1000)),
 		}
 	}
 	arguments := getArgoRedisArgs(useTLS, r.CentralTLSConfigProfile)
@@ -506,7 +507,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   new(true),
 				},
 			},
 		},
@@ -514,14 +515,10 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 	}
 
 	if cr.Spec.Redis.Annotations != nil {
-		for key, value := range cr.Spec.Redis.Annotations {
-			deploy.Spec.Template.Annotations[key] = value
-		}
+		maps.Copy(deploy.Spec.Template.Annotations, cr.Spec.Redis.Annotations)
 	}
 	if cr.Spec.Redis.Labels != nil {
-		for key, value := range cr.Spec.Redis.Labels {
-			deploy.Spec.Template.Labels[key] = value
-		}
+		maps.Copy(deploy.Spec.Template.Labels, cr.Spec.Redis.Labels)
 	}
 	deploy.Spec.Template.Labels[common.ArgoCDKeyName] = nameWithSuffix("redis", cr)
 
@@ -799,7 +796,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   new(true),
 				},
 			},
 		},
@@ -808,16 +805,16 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 
 	if IsOpenShiftCluster() {
 		deploy.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
-			RunAsNonRoot: boolPtr(true),
+			RunAsNonRoot: new(true),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
 		}
 	} else {
 		deploy.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
-			RunAsNonRoot: boolPtr(true),
-			RunAsUser:    int64Ptr(1000),
-			FSGroup:      int64Ptr(1000),
+			RunAsNonRoot: new(true),
+			RunAsUser:    new(int64(1000)),
+			FSGroup:      new(int64(1000)),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
@@ -1049,7 +1046,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   new(true),
 				},
 			},
 		},
@@ -1058,7 +1055,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   new(true),
 				},
 			},
 		},
@@ -1075,7 +1072,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: "argocd-cmd-params-cm",
 					},
-					Optional: boolPtr(true),
+					Optional: new(true),
 					Items: []corev1.KeyToPath{
 						{
 							Key:  "server.profile.enabled",
@@ -1139,15 +1136,11 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 	}
 
 	if cr.Spec.Server.Annotations != nil {
-		for key, value := range cr.Spec.Server.Annotations {
-			deploy.Spec.Template.Annotations[key] = value
-		}
+		maps.Copy(deploy.Spec.Template.Annotations, cr.Spec.Server.Annotations)
 	}
 
 	if cr.Spec.Server.Labels != nil {
-		for key, value := range cr.Spec.Server.Labels {
-			deploy.Spec.Template.Labels[key] = value
-		}
+		maps.Copy(deploy.Spec.Template.Labels, cr.Spec.Server.Labels)
 	}
 
 	if cr.Spec.PriorityClassName != "" {

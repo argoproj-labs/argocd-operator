@@ -26,7 +26,6 @@ import (
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -367,9 +366,9 @@ func TestReconcileAgentDeployment_VerifyDeploymentSpec(t *testing.T) {
 
 	// Verify security context
 	container := deployment.Spec.Template.Spec.Containers[0]
-	assert.Equal(t, ptr.To(false), container.SecurityContext.AllowPrivilegeEscalation)
-	assert.Equal(t, ptr.To(true), container.SecurityContext.ReadOnlyRootFilesystem)
-	assert.Equal(t, ptr.To(true), container.SecurityContext.RunAsNonRoot)
+	assert.Equal(t, new(false), container.SecurityContext.AllowPrivilegeEscalation)
+	assert.Equal(t, new(true), container.SecurityContext.ReadOnlyRootFilesystem)
+	assert.Equal(t, new(true), container.SecurityContext.RunAsNonRoot)
 	assert.Equal(t, []corev1.Capability{"ALL"}, container.SecurityContext.Capabilities.Drop)
 	assert.Equal(t, corev1.SeccompProfileType("RuntimeDefault"), container.SecurityContext.SeccompProfile.Type)
 
@@ -488,7 +487,7 @@ func TestReconcileAgentDeployment_VolumeMountsAndVolumes(t *testing.T) {
 	userpassVolume := deployment.Spec.Template.Spec.Volumes[0]
 	assert.Equal(t, "userpass-passwd", userpassVolume.Name)
 	assert.Equal(t, "argocd-agent-agent-userpass", userpassVolume.Secret.SecretName)
-	assert.Equal(t, ptr.To(true), userpassVolume.Secret.Optional)
+	assert.Equal(t, new(true), userpassVolume.Secret.Optional)
 
 	assert.Equal(t, "redis-initial-pass", deployment.Spec.Template.Spec.Volumes[1].Name)
 }

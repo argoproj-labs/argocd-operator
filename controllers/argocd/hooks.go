@@ -15,7 +15,7 @@ var (
 )
 
 // Hook changes resources as they are created or updated by the reconciler.
-type Hook func(*argoproj.ArgoCD, interface{}, string) error
+type Hook func(*argoproj.ArgoCD, any, string) error
 
 // Register adds a modifier for updating resources during reconciliation.
 func Register(h ...Hook) {
@@ -25,7 +25,7 @@ func Register(h ...Hook) {
 }
 
 // nolint:unparam
-func applyReconcilerHook(cr *argoproj.ArgoCD, i interface{}, hint string) error {
+func applyReconcilerHook(cr *argoproj.ArgoCD, i any, hint string) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 	for _, v := range hooks {

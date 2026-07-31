@@ -24,7 +24,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -88,9 +87,9 @@ connectors:
 						},
 					},
 					RBAC: argov1beta1api.ArgoCDRBACSpec{
-						DefaultPolicy:     ptr.To("role:readonly"),
-						PolicyMatcherMode: ptr.To("glob"),
-						Policy: ptr.To(`
+						DefaultPolicy:     new("role:readonly"),
+						PolicyMatcherMode: new("glob"),
+						Policy: new(`
 # Legacy policies using encoded sub claims (simulating Argo CD 2.x)
 g, ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA, role:test-role
 p, ChdleGFtcGxlQGFyZ29wcm9qLmlvEgJkZXhfY29ubl9pZA, applications, get, */*, allow
@@ -147,7 +146,7 @@ g, admin-group, role:admin`))
 
 			By("modifying the ArgoCD CR .spec.rbac.policy field to a new value")
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
-				ac.Spec.RBAC.Policy = ptr.To(`
+				ac.Spec.RBAC.Policy = new(`
 # Migrated policies using federated_claims.user_id (Argo CD 3.0+)
 g, test@example.com, role:test-role
 p, test@example.com, applications, get, */*, allow

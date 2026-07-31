@@ -14,7 +14,7 @@ import (
 
 var errMsg = errors.New("this is a test error")
 
-func testDeploymentHook(cr *argoproj.ArgoCD, v interface{}, s string) error {
+func testDeploymentHook(cr *argoproj.ArgoCD, v any, s string) error {
 	switch o := v.(type) {
 	case *appsv1.Deployment:
 		var replicas int32 = 3
@@ -23,7 +23,7 @@ func testDeploymentHook(cr *argoproj.ArgoCD, v interface{}, s string) error {
 	return nil
 }
 
-func testClusterRoleHook(cr *argoproj.ArgoCD, v interface{}, s string) error {
+func testClusterRoleHook(cr *argoproj.ArgoCD, v any, s string) error {
 	switch o := v.(type) {
 	case *v1.ClusterRole:
 		o.Rules = append(o.Rules, policyRuleForApplicationController()...)
@@ -31,7 +31,7 @@ func testClusterRoleHook(cr *argoproj.ArgoCD, v interface{}, s string) error {
 	return nil
 }
 
-func testRoleHook(cr *argoproj.ArgoCD, v interface{}, s string) error {
+func testRoleHook(cr *argoproj.ArgoCD, v any, s string) error {
 	switch o := v.(type) {
 	case *v1.Role:
 		if o.Name == cr.Name+"-"+common.ArgoCDApplicationControllerComponent {
@@ -41,7 +41,7 @@ func testRoleHook(cr *argoproj.ArgoCD, v interface{}, s string) error {
 	return nil
 }
 
-func testErrorHook(cr *argoproj.ArgoCD, v interface{}, s string) error {
+func testErrorHook(cr *argoproj.ArgoCD, v any, s string) error {
 	return errMsg
 }
 

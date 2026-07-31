@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"maps"
 	"reflect"
 	"strconv"
 	"strings"
@@ -116,14 +117,10 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 	}
 
 	if cr.Spec.Redis.Annotations != nil {
-		for key, value := range cr.Spec.Redis.Annotations {
-			ss.Spec.Template.Annotations[key] = value
-		}
+		maps.Copy(ss.Spec.Template.Annotations, cr.Spec.Redis.Annotations)
 	}
 	if cr.Spec.Redis.Labels != nil {
-		for key, value := range cr.Spec.Redis.Labels {
-			ss.Spec.Template.Labels[key] = value
-		}
+		maps.Copy(ss.Spec.Template.Labels, cr.Spec.Redis.Labels)
 	}
 	ss.Spec.Template.Labels[common.ArgoCDKeyName] = nameWithSuffix("redis-ha", cr)
 
@@ -402,7 +399,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   new(true),
 				},
 			},
 		},
@@ -602,7 +599,7 @@ func getArgoControllerContainerEnv(cr *argoproj.ArgoCD, replicas int32) []corev1
 						Name: common.ArgoCDConfigMapName,
 					},
 					Key:      common.ArgoCDKeyTimeout,
-					Optional: boolPtr(true),
+					Optional: new(true),
 				},
 			},
 		})
@@ -761,7 +758,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   new(true),
 				},
 			},
 		},
@@ -770,7 +767,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   new(true),
 				},
 			},
 		},
@@ -787,7 +784,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: "argocd-cmd-params-cm",
 					},
-					Optional: boolPtr(true),
+					Optional: new(true),
 					Items: []corev1.KeyToPath{
 						{
 							Key:  "controller.profile.enabled",
@@ -882,15 +879,11 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 	}
 
 	if cr.Spec.Controller.Annotations != nil {
-		for key, value := range cr.Spec.Controller.Annotations {
-			ss.Spec.Template.Annotations[key] = value
-		}
+		maps.Copy(ss.Spec.Template.Annotations, cr.Spec.Controller.Annotations)
 	}
 
 	if cr.Spec.Controller.Labels != nil {
-		for key, value := range cr.Spec.Controller.Labels {
-			ss.Spec.Template.Labels[key] = value
-		}
+		maps.Copy(ss.Spec.Template.Labels, cr.Spec.Controller.Labels)
 	}
 
 	if cr.Spec.PriorityClassName != "" {

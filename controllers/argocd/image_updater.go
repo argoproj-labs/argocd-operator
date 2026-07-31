@@ -133,7 +133,7 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterControllerEnabled(cr *argoproj.Ar
 				return err
 			}
 		}
-		for _, ns := range strings.Split(watchNamespaces, ",") {
+		for ns := range strings.SplitSeq(watchNamespaces, ",") {
 			ns = strings.TrimSpace(ns)
 			if ns == "" {
 				continue
@@ -155,7 +155,7 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterControllerEnabled(cr *argoproj.Ar
 	// Remove per-namespace Roles/RoleBindings for namespaces no longer in the watch list.
 	desiredNamespaces := map[string]struct{}{}
 	if watchNamespaces != "" && watchNamespaces != "*" {
-		for _, ns := range strings.Split(watchNamespaces, ",") {
+		for ns := range strings.SplitSeq(watchNamespaces, ",") {
 			if ns = strings.TrimSpace(ns); ns != "" {
 				desiredNamespaces[ns] = struct{}{}
 			}
@@ -551,7 +551,7 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterDeployment(cr *argoproj.ArgoCD, s
 
 	podSpec := &desiredDeployment.Spec.Template.Spec
 	podSpec.SecurityContext = &corev1.PodSecurityContext{
-		RunAsNonRoot: boolPtr(true),
+		RunAsNonRoot: new(true),
 	}
 	AddSeccompProfileForOpenShift(r.Client, podSpec)
 	podSpec.ServiceAccountName = sa.Name
@@ -570,7 +570,7 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterDeployment(cr *argoproj.ArgoCD, s
 			Name: "image-updater-conf",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
-					Optional: boolPtr(true),
+					Optional: new(true),
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: ArgocdImageUpdaterConfigCM,
 					},
@@ -591,7 +591,7 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterDeployment(cr *argoproj.ArgoCD, s
 			Name: "ssh-known-hosts",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
-					Optional: boolPtr(true),
+					Optional: new(true),
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: "argocd-ssh-known-hosts-cm",
 					},
@@ -602,7 +602,7 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterDeployment(cr *argoproj.ArgoCD, s
 			Name: "ssh-config",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
-					Optional: boolPtr(true),
+					Optional: new(true),
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: ArgocdImageUpdaterSSHConfigCM,
 					},
@@ -614,7 +614,7 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterDeployment(cr *argoproj.ArgoCD, s
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: "ssh-git-creds",
-					Optional:   boolPtr(true),
+					Optional:   new(true),
 				},
 			},
 		},
