@@ -704,6 +704,16 @@ func (r *ReconcileArgoCD) deleteClusterResources(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
+	// At the current moment the only role binding that will be cleaned up in the GitOps promoted kube-system located one
+	roleBindingList := &v1.RoleBindingList{}
+	if err := filterObjectsBySelector(r.Client, roleBindingList, selector); err != nil {
+		return fmt.Errorf("failed to filter RoleBindings for %s: %w", cr.Name, err)
+	}
+
+	if err := deleteRoleBindings(r.Client, roleBindingList); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -2100,6 +2110,11 @@ func (r *ReconcileArgoCD) reconcileGitOpsPromoter(cr *argoproj.ArgoCD) error {
 
 	log.Info("reconciling GitOps Promoter's API Server ClusterRoleBindings")
 	if _, err = gitopspromoter.ReconcilePromoterAPIServerClusterRoleBindings(r.Client, apiServerCompName, sa, cr); err != nil {
+		return err
+	}
+
+	log.Info("reconciling GitOps's Promoter's API Server RoleBindings")
+	if _, err = gitopspromoter.ReconcilePromoterAPIServerRoleBindings(r.Client, apiServerCompName, sa, cr); err != nil {
 		return err
 	}
 

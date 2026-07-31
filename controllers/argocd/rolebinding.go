@@ -447,3 +447,13 @@ func deleteClusterRoleBindings(c client.Client, clusterBindingList *v1.ClusterRo
 	}
 	return nil
 }
+
+func deleteRoleBindings(c client.Client, roleBindingList *v1.RoleBindingList) error {
+	for _, roleBinding := range roleBindingList.Items {
+		argoutil.LogResourceDeletion(log, &roleBinding, "cleaning up cluster resources")
+		if err := c.Delete(context.TODO(), &roleBinding); err != nil {
+			return fmt.Errorf("failed to delete RoleBinding %q during cleanup: %w", roleBinding.Name, err)
+		}
+	}
+	return nil
+}
