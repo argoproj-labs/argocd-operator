@@ -12,6 +12,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/tlsprofile"
 )
 
 const (
@@ -187,11 +188,19 @@ func GetRedisInitScript(cr *argoproj.ArgoCD, useTLSForRedis bool) string {
 
 // GetRedisHAProxyConfig will load the Redis HA Proxy configuration from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func GetRedisHAProxyConfig(cr *argoproj.ArgoCD, useTLSForRedis bool) string {
+func GetRedisHAProxyConfig(cr *argoproj.ArgoCD, useTLSForRedis bool, centralTLSConfigProfile tlsprofile.TLSConfigProfile) string {
 	path := fmt.Sprintf("%s/haproxy.cfg.tpl", getRedisConfigPath())
 	vars := map[string]string{
 		"ServiceName": NameWithSuffix(cr.ObjectMeta, "redis-ha"),
 		"UseTLS":      strconv.FormatBool(useTLSForRedis),
+	}
+	tlsVersion := TLSProtocolVersionString(centralTLSConfigProfile.MinVersion)
+	if tlsVersion != "" {
+		vars["TLSMinVersion"] = tlsVersion
+	}
+
+	if len(centralTLSConfigProfile.Ciphers) > 0 {
+		vars["TLSCiphers"] = strings.Join(centralTLSConfigProfile.Ciphers, ":")
 	}
 
 	script, err := loadTemplateFile(path, vars)
@@ -320,8 +329,7 @@ func GetRedisServerAddress(cr *argoproj.ArgoCD) string {
 	return FqdnServiceRef(common.ArgoCDDefaultRedisSuffix, common.ArgoCDDefaultRedisPort, cr)
 }
 
-// loadTemplateFile will parse a template with the given path and execute it with the given params.
-func loadTemplateFile(path string, params map[string]string) (string, error) {
+var loadTemplateFile = func(path string, params map[string]string) (string, error) {
 	tmpl, err := template.ParseFiles(path)
 	if err != nil {
 		log.Error(err, "unable to parse template")
@@ -329,11 +337,11 @@ func loadTemplateFile(path string, params map[string]string) (string, error) {
 	}
 
 	buf := new(bytes.Buffer)
-	err = tmpl.Execute(buf, params)
-	if err != nil {
+	if err := tmpl.Execute(buf, params); err != nil {
 		log.Error(err, "unable to execute template")
 		return "", fmt.Errorf("unable to execute template. error: %w", err)
 	}
+
 	return buf.String(), nil
 }
 

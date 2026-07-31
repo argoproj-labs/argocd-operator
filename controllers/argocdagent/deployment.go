@@ -124,6 +124,7 @@ func buildPrincipalSpec(compName, saName string, cr *argoproj.ArgoCD, centralTLS
 				},
 				ServiceAccountName: saName,
 				Volumes:            append(buildVolumes(), redisAuthVolume),
+				PriorityClassName:  cr.Spec.PriorityClassName,
 			},
 		},
 	}
@@ -330,6 +331,12 @@ func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, dep
 		log.Info("deployment resource requirements is being updated")
 		changed = true
 		deployment.Spec.Template.Spec.Containers[0].Resources = principalResources
+	}
+
+	if deployment.Spec.Template.Spec.PriorityClassName != cr.Spec.PriorityClassName {
+		log.Info("deployment priority class name is being updated")
+		changed = true
+		deployment.Spec.Template.Spec.PriorityClassName = cr.Spec.PriorityClassName
 	}
 
 	return deployment, changed

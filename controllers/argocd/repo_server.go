@@ -129,19 +129,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 			return err
 		}
 		if fipsEnabled {
-			repoEnv = append(repoEnv, corev1.EnvVar{
-				Name:  "GODEBUG",
-				Value: "fips140=on",
-			},
-				// GOLANG_FIPS and GODEBUG=fips140=on are both mutaully exclusive.
-				// GOLANG_FIPS=1 is set by default but it causes issues
-				// since we are explicitly setting GODEBUG=fips140=on to skip unsupported fips ssh algorithms in Argo CD.
-				// See https://github.com/argoproj/argo-cd/issues/24155,
-				// so we need to set GOLANG_FIPS=0 to avoid the conflict.
-				corev1.EnvVar{
-					Name:  "GOLANG_FIPS",
-					Value: "0",
-				})
+			repoEnv = argoutil.DecorateWithFIPSEnv(repoEnv)
 		}
 	}
 
@@ -211,12 +199,10 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 	}
 
 	if !volumeMountOverridesTmpVolume {
-
 		repoServerVolumeMounts = append(repoServerVolumeMounts, corev1.VolumeMount{
 			Name:      "tmp",
 			MountPath: "/tmp",
 		})
-
 	}
 
 	if cr.Spec.Repo.VolumeMounts != nil {
@@ -384,6 +370,10 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 		}
 	}
 
+	if cr.Spec.PriorityClassName != "" {
+		deploy.Spec.Template.Spec.PriorityClassName = cr.Spec.PriorityClassName
+	}
+
 	log.Info("Applying ArgoCD Repo Server reconciler hook")
 	if err := applyReconcilerHook(cr, deploy, ""); err != nil {
 		log.Error(err, "ArgoCD Repo Server reconciler hook failed")
@@ -431,6 +421,11 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 		}
 
 		changes = append(changes, updateNodePlacement(existing, deploy)...)
+
+		if existing.Spec.Template.Spec.PriorityClassName != deploy.Spec.Template.Spec.PriorityClassName {
+			existing.Spec.Template.Spec.PriorityClassName = deploy.Spec.Template.Spec.PriorityClassName
+			changes = append(changes, "priority class name")
+		}
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
 			existing.Spec.Template.Spec.Volumes = deploy.Spec.Template.Spec.Volumes

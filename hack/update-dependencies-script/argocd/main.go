@@ -8,19 +8,22 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/argoproj-labs/argocd-operator/dependency-upgrade/utils"
 )
 
-func main() {
+const ArgoCDGitHubRepoURL = "https://github.com/argoproj/argo-cd"
 
+func main() {
 	wd, err := os.Getwd()
 	if err != nil {
-		exitWithError(fmt.Errorf("unable to get working dir: %v", err))
+		utils.ExitWithError(fmt.Errorf("unable to get working dir: %v", err))
 		return
 	}
 
-	argocdOperatorRoot, err := filepath.Abs(wd + "/../..")
+	argocdOperatorRoot, err := filepath.Abs(wd + "/../../..")
 	if err != nil {
-		exitWithError(fmt.Errorf("unable to get absolute dir: %v", err))
+		utils.ExitWithError(fmt.Errorf("unable to get absolute dir: %v", err))
 		return
 	}
 
@@ -32,17 +35,17 @@ func main() {
 	fmt.Println()
 
 	// Clone Argo CD into a temporary directory
-	argoCDRepoRoot, err := cloneArgoCDRepoIntoTempDir(targetArgoCDVersion)
+	argoCDRepoRoot, err := utils.CloneRepoIntoTempDir(ArgoCDGitHubRepoURL, targetArgoCDVersion)
 	if err != nil {
-		exitWithError(fmt.Errorf("unable to checkout Argo CD: %v", err))
+		utils.ExitWithError(fmt.Errorf("unable to checkout Argo CD: %v", err))
 		return
 	}
 
 	fmt.Println("Using Argo CD temporary directory:", argoCDRepoRoot)
 
 	// Sanity test that that we have the correct root path for argocd-operator repo
-	if rootGoModExists, err := fileExists(filepath.Join(argocdOperatorRoot, "go.mod")); err != nil || !rootGoModExists {
-		exitWithError(fmt.Errorf("script should be run from 'hack/update-dependencies-script' directory: %v", err))
+	if rootGoModExists, err := utils.FileExists(filepath.Join(argocdOperatorRoot, "go.mod")); err != nil || !rootGoModExists {
+		utils.ExitWithError(fmt.Errorf("script should be run from 'hack/update-dependencies-script/argo-cd' directory: %v", err))
 		return
 	}
 
@@ -66,7 +69,6 @@ func main() {
 	fmt.Println("- You may wish to use a comparison tool to compare the 'manifests/install.yaml' file from the old and new versions of argo-cd, to verify no additional operator changes are required. ")
 	fmt.Println("- You may wish to run 'make test' to verify the dependencies are in a consistent state.")
 	fmt.Println()
-
 }
 
 func readTargetVersionFromMakefile(argocdOperatorRoot string) string {
@@ -77,21 +79,21 @@ func readTargetVersionFromMakefile(argocdOperatorRoot string) string {
 
 	bytes, err := os.ReadFile(fileToRead)
 	if err != nil {
-		exitWithError(fmt.Errorf("unable to read %s: %v", fileToRead, err))
+		utils.ExitWithError(fmt.Errorf("unable to read %s: %v", fileToRead, err))
 		return ""
 	}
 
-	matches := grepForString(string(bytes), "ARGO_CD_TARGET_VERSION ?= ")
+	matches := utils.GrepForString(string(bytes), "ARGO_CD_TARGET_VERSION ?= ")
 
 	if len(matches) != 1 {
-		exitWithError(fmt.Errorf("unexpected number of matches for ARGO_CD_TARGET_VERSION: %v", matches))
+		utils.ExitWithError(fmt.Errorf("unexpected number of matches for ARGO_CD_TARGET_VERSION: %v", matches))
 		return ""
 	}
 
 	line := matches[0]
 
 	if strings.Contains(line, "#") {
-		exitWithError(fmt.Errorf("version line should not contain any comments"))
+		utils.ExitWithError(fmt.Errorf("version line should not contain any comments"))
 		return ""
 	}
 
@@ -104,13 +106,12 @@ func readTargetVersionFromMakefile(argocdOperatorRoot string) string {
 	}
 
 	return res
-
 }
 
 func replaceDexImageReferenceInDexTest(argocdOperatorRoot string, dexContainerImage *processedContainerImage) {
 	fileToUpdate := filepath.Join(argocdOperatorRoot, "controllers", "argocd", "dex_test.go")
 
-	lines := getFileContentsAsLines(fileToUpdate)
+	lines := utils.GetFileContentsAsLines(fileToUpdate)
 
 	// Entry to replace looks like this:
 	// Name:  "dex",
@@ -135,24 +136,22 @@ func replaceDexImageReferenceInDexTest(argocdOperatorRoot string, dexContainerIm
 	}
 
 	if !match {
-		exitWithError(fmt.Errorf("unable to locate reference to dex image in dex_test.go"))
+		utils.ExitWithError(fmt.Errorf("unable to locate reference to dex image in dex_test.go"))
 		return
 	}
 
 	newContent = strings.TrimSpace(newContent) + "\n"
 
-	if err := os.WriteFile(fileToUpdate, []byte(newContent), 0600); err != nil {
-		exitWithError(fmt.Errorf("unable to update %s: %v", fileToUpdate, err))
+	if err := os.WriteFile(fileToUpdate, []byte(newContent), 0o600); err != nil {
+		utils.ExitWithError(fmt.Errorf("unable to update %s: %v", fileToUpdate, err))
 		return
 	}
-
 }
 
 func updateBuildUtilDockerfile(argocdOperatorRoot string, argocdContainerImage *processedContainerImage) {
-
 	fileToUpdate := filepath.Join(argocdOperatorRoot, "build", "util", "Dockerfile")
 
-	lines := getFileContentsAsLines(fileToUpdate)
+	lines := utils.GetFileContentsAsLines(fileToUpdate)
 
 	// Entry to replace in Dockerfile looks like this:
 
@@ -176,60 +175,58 @@ func updateBuildUtilDockerfile(argocdOperatorRoot string, argocdContainerImage *
 	}
 
 	if !match {
-		exitWithError(fmt.Errorf("unable to locate reference to Argo CD container image in build/util/Dockerfile"))
+		utils.ExitWithError(fmt.Errorf("unable to locate reference to Argo CD container image in build/util/Dockerfile"))
 		return
 	}
 
 	newContent = strings.TrimSpace(newContent) + "\n"
 
-	if err := os.WriteFile(fileToUpdate, []byte(newContent), 0600); err != nil {
-		exitWithError(fmt.Errorf("unable to update build/util/Dockerfile: %v", err))
+	if err := os.WriteFile(fileToUpdate, []byte(newContent), 0o600); err != nil {
+		utils.ExitWithError(fmt.Errorf("unable to update build/util/Dockerfile: %v", err))
 		return
 	}
-
 }
 
 // upgrade common/defaults.go
 func upgradeCommonDefaultsGo(argoCDRepoRoot string, argocdOperatorRoot string) (*processedContainerImage, *processedContainerImage) {
-
 	// Parse install YAML
 	fileToParse := filepath.Join(argoCDRepoRoot, "manifests/ha/install.yaml")
 
 	installYamlBytes, err := os.ReadFile(fileToParse)
 	if err != nil {
-		exitWithError(fmt.Errorf("unable to read Argo CD install yaml"))
+		utils.ExitWithError(fmt.Errorf("unable to read Argo CD install yaml"))
 		return nil, nil
 	}
 
 	installYAMLContents := string(installYamlBytes)
 
-	targetDexImageLine := grepForString(installYAMLContents, "ghcr.io/dexidp/dex:")
+	targetDexImageLine := utils.GrepForString(installYAMLContents, "ghcr.io/dexidp/dex:")
 	if len(targetDexImageLine) != 1 {
-		exitWithError(fmt.Errorf("unexpected target dex image value: %v", targetDexImageLine))
+		utils.ExitWithError(fmt.Errorf("unexpected target dex image value: %v", targetDexImageLine))
 		return nil, nil
 	}
-	targetDexImage := stripImagePrefix(targetDexImageLine[0])
+	targetDexImage := utils.StripImagePrefix(targetDexImageLine[0])
 
-	targetRedisImageLine := removeDuplicateLines(grepForString(installYAMLContents, "public.ecr.aws/docker/library/redis:"))
+	targetRedisImageLine := utils.RemoveDuplicateLines(utils.GrepForString(installYAMLContents, "public.ecr.aws/docker/library/redis:"))
 	if len(targetRedisImageLine) != 1 {
-		exitWithError(fmt.Errorf("unexpected target redis image value: %v", targetRedisImageLine))
+		utils.ExitWithError(fmt.Errorf("unexpected target redis image value: %v", targetRedisImageLine))
 		return nil, nil
 	}
-	targetRedisImage := stripImagePrefix(targetRedisImageLine[0])
+	targetRedisImage := utils.StripImagePrefix(targetRedisImageLine[0])
 
-	targetHAProxyImageLine := removeDuplicateLines(grepForString(installYAMLContents, "public.ecr.aws/docker/library/haproxy:"))
+	targetHAProxyImageLine := utils.RemoveDuplicateLines(utils.GrepForString(installYAMLContents, "public.ecr.aws/docker/library/haproxy:"))
 	if len(targetHAProxyImageLine) != 1 {
-		exitWithError(fmt.Errorf("unexpected target haproxy image value: %v", targetHAProxyImageLine))
+		utils.ExitWithError(fmt.Errorf("unexpected target haproxy image value: %v", targetHAProxyImageLine))
 		return nil, nil
 	}
-	targetHAProxyImage := stripImagePrefix(targetHAProxyImageLine[0])
+	targetHAProxyImage := utils.StripImagePrefix(targetHAProxyImageLine[0])
 
-	targetArgoCDImageLine := removeDuplicateLines(grepForString(installYAMLContents, "quay.io/argoproj/argocd:"))
+	targetArgoCDImageLine := utils.RemoveDuplicateLines(utils.GrepForString(installYAMLContents, "quay.io/argoproj/argocd:"))
 	if len(targetArgoCDImageLine) != 1 {
-		exitWithError(fmt.Errorf("unexpected target argo cd image value: %v", targetArgoCDImageLine))
+		utils.ExitWithError(fmt.Errorf("unexpected target argo cd image value: %v", targetArgoCDImageLine))
 		return nil, nil
 	}
-	targetArgoCDImage := stripImagePrefix(targetArgoCDImageLine[0])
+	targetArgoCDImage := utils.StripImagePrefix(targetArgoCDImageLine[0])
 
 	fmt.Println()
 	fmt.Println("Found the following images in Argo CD manifests:")
@@ -244,27 +241,27 @@ func upgradeCommonDefaultsGo(argoCDRepoRoot string, argocdOperatorRoot string) (
 	argoCDContainerInfo := retrieveSHA256DigestUsingSkopeo(targetArgoCDImage)
 
 	if err := replaceLineInCommonDefaultGo(argocdOperatorRoot, "ArgoCDDefaultArgoVersion", *argoCDContainerInfo); err != nil {
-		exitWithError(fmt.Errorf("unable to replace dex version: %v", err))
+		utils.ExitWithError(fmt.Errorf("unable to replace dex version: %v", err))
 		return nil, nil
 	}
 
 	if err := replaceLineInCommonDefaultGo(argocdOperatorRoot, "ArgoCDDefaultDexVersion", *dexContainerInfo); err != nil {
-		exitWithError(fmt.Errorf("unable to replace dex version: %v", err))
+		utils.ExitWithError(fmt.Errorf("unable to replace dex version: %v", err))
 		return nil, nil
 	}
 
 	if err := replaceLineInCommonDefaultGo(argocdOperatorRoot, "ArgoCDDefaultRedisVersionHA", *redisContainerInfo); err != nil {
-		exitWithError(fmt.Errorf("unable to replace redis HA version: %v", err))
+		utils.ExitWithError(fmt.Errorf("unable to replace redis HA version: %v", err))
 		return nil, nil
 	}
 
 	if err := replaceLineInCommonDefaultGo(argocdOperatorRoot, "ArgoCDDefaultRedisVersion", *redisContainerInfo); err != nil {
-		exitWithError(fmt.Errorf("unable to replace redis version: %v", err))
+		utils.ExitWithError(fmt.Errorf("unable to replace redis version: %v", err))
 		return nil, nil
 	}
 
 	if err := replaceLineInCommonDefaultGo(argocdOperatorRoot, "ArgoCDDefaultRedisHAProxyVersion", *haProxyContainerInfo); err != nil {
-		exitWithError(fmt.Errorf("unable to replace redis HA proxy version: %v", err))
+		utils.ExitWithError(fmt.Errorf("unable to replace redis HA proxy version: %v", err))
 		return nil, nil
 	}
 
@@ -272,12 +269,11 @@ func upgradeCommonDefaultsGo(argoCDRepoRoot string, argocdOperatorRoot string) (
 }
 
 func updateArgoCDCRDs(argoCDRepoRoot string, argocdOperatorRoot string) {
-
 	argoCDCRDSourcePath := filepath.Join(argoCDRepoRoot, "manifests", "crds")
 
 	entries, err := os.ReadDir(argoCDCRDSourcePath)
 	if err != nil {
-		exitWithError(fmt.Errorf("unable to list Argo CD CRDS: %v", err))
+		utils.ExitWithError(fmt.Errorf("unable to list Argo CD CRDS: %v", err))
 		return
 	}
 
@@ -302,7 +298,7 @@ func updateArgoCDCRDs(argoCDRepoRoot string, argocdOperatorRoot string) {
 
 	// Sanity test: The CRDs found in Argo CD directory should match the values in the map above
 	if len(filesToCopy) != count {
-		exitWithError(fmt.Errorf("unexpected number of YAML files found in Argo CD CRD directory '%s': %d", argoCDCRDSourcePath, count))
+		utils.ExitWithError(fmt.Errorf("unexpected number of YAML files found in Argo CD CRD directory '%s': %d", argoCDCRDSourcePath, count))
 		return
 	}
 
@@ -310,13 +306,12 @@ func updateArgoCDCRDs(argoCDRepoRoot string, argocdOperatorRoot string) {
 		srcFile := filepath.Join(argoCDCRDSourcePath, k)
 		destFile := filepath.Join(argocdOperatorRoot, "config", "crd", "bases", v)
 
-		if err := copyFile(srcFile, destFile); err != nil {
-			exitWithError(fmt.Errorf("unable to copy %s to %s: %v", srcFile, destFile, err))
+		if err := utils.CopyFile(srcFile, destFile); err != nil {
+			utils.ExitWithError(fmt.Errorf("unable to copy %s to %s: %v", srcFile, destFile, err))
 			return
 		}
 
 	}
-
 }
 
 // readReplaceBlockFromGoMod will read the following block from a go.mod:
@@ -337,7 +332,7 @@ func updateArgoCDCRDs(argoCDRepoRoot string, argocdOperatorRoot string) {
 //
 // This function expects only one replace block to exist, and will fail if 0 or >1 are found.
 func readReplaceBlockFromGoMod(pathToGoMod string) ([]string, int, int) {
-	lines := getFileContentsAsLines(pathToGoMod)
+	lines := utils.GetFileContentsAsLines(pathToGoMod)
 
 	replaceBlockStart := -1
 	replaceBlockEnd := -1
@@ -347,7 +342,7 @@ func readReplaceBlockFromGoMod(pathToGoMod string) ([]string, int, int) {
 		if strings.HasPrefix(line, "replace (") {
 
 			if replaceBlockStart != -1 {
-				exitWithError(fmt.Errorf("multiple replace blocks detected in argocd go.mod"))
+				utils.ExitWithError(fmt.Errorf("multiple replace blocks detected in argocd go.mod"))
 				return nil, replaceBlockStart, replaceBlockEnd
 			}
 
@@ -360,12 +355,12 @@ func readReplaceBlockFromGoMod(pathToGoMod string) ([]string, int, int) {
 	}
 
 	if replaceBlockStart == -1 {
-		exitWithError(fmt.Errorf("replace block start not found"))
+		utils.ExitWithError(fmt.Errorf("replace block start not found"))
 		return nil, replaceBlockStart, replaceBlockEnd
 	}
 
 	if replaceBlockEnd == -1 {
-		exitWithError(fmt.Errorf("replace block end not found"))
+		utils.ExitWithError(fmt.Errorf("replace block end not found"))
 		return nil, replaceBlockStart, replaceBlockEnd
 	}
 
@@ -376,7 +371,6 @@ func readReplaceBlockFromGoMod(pathToGoMod string) ([]string, int, int) {
 // - This code assumes that only 1 replace ( ... ) block exists in both argocd go.mod and argocd-operator go.mod
 // - It also assumes that no other non-argo-cd values have been inserted into argocd-operator go.mod
 func copyGoModReplaceBlockFromArgoCDToArgoCDOperator(argoCDRepoRoot string, argocdOperatorRoot string, targetArgoCDVersion string) {
-
 	argoCDRepoRootGoModPath := filepath.Join(argoCDRepoRoot, "go.mod")
 
 	replaceBlockFromArgoCDLines, replaceBlockStart, replaceBlockEnd := readReplaceBlockFromGoMod(argoCDRepoRootGoModPath)
@@ -403,7 +397,7 @@ func copyGoModReplaceBlockFromArgoCDToArgoCDOperator(argoCDRepoRoot string, argo
 			// monorepo. Downstream consumers must pin it to the actual argo-cd commit instead.
 			gitopsEngineLine, err := buildGitopsEngineReplaceLine(argoCDRepoRoot, targetArgoCDVersion)
 			if err != nil {
-				exitWithError(fmt.Errorf("unable to build gitops-engine replace line: %v", err))
+				utils.ExitWithError(fmt.Errorf("unable to build gitops-engine replace line: %v", err))
 				return
 			}
 			newArgoCDOperatorGoModFileContents += gitopsEngineLine + "\n"
@@ -415,8 +409,8 @@ func copyGoModReplaceBlockFromArgoCDToArgoCDOperator(argoCDRepoRoot string, argo
 			newArgoCDOperatorGoModFileContents += line + "\n"
 		}
 	}
-	if err := os.WriteFile(argocdOperatorGoModPath, ([]byte)(newArgoCDOperatorGoModFileContents), 0600); err != nil {
-		exitWithError(fmt.Errorf("unable to write to file: %s %v", argocdOperatorGoModPath, err))
+	if err := os.WriteFile(argocdOperatorGoModPath, ([]byte)(newArgoCDOperatorGoModFileContents), 0o600); err != nil {
+		utils.ExitWithError(fmt.Errorf("unable to write to file: %s %v", argocdOperatorGoModPath, err))
 		return
 	}
 }
@@ -431,7 +425,7 @@ func copyGoModReplaceBlockFromArgoCDToArgoCDOperator(argoCDRepoRoot string, argo
 func buildGitopsEngineReplaceLine(argoCDRepoRoot string, targetArgoCDVersion string) (string, error) {
 	// Fetch hash and Unix timestamp in one call. %ct is timezone-agnostic (seconds since epoch),
 	// which we then convert to UTC — pseudo-versions must use UTC timestamps.
-	out, _, err := runCommandWithWorkDir(argoCDRepoRoot, "git", "log", "-1", "--format=%H %ct")
+	out, _, err := utils.RunCommandWithWorkDir(argoCDRepoRoot, "git", "log", "-1", "--format=%H %ct")
 	if err != nil {
 		return "", fmt.Errorf("unable to get git commit info: %v", err)
 	}
@@ -458,18 +452,18 @@ func buildGitopsEngineReplaceLine(argoCDRepoRoot string, targetArgoCDVersion str
 
 // updateGoModAndRegenBundle ensures that argocd-operator go.mod is update to date with latest from upstream argocd-operator
 func updateGoModAndRegenBundle(targetArgoCDVersion string, argocdOperatorRoot string, argoCDRepoRoot string) {
-	err := runCommandListWithWorkDir(argocdOperatorRoot,
+	err := utils.RunCommandListWithWorkDir(argocdOperatorRoot,
 		[][]string{
 			{"go", "get", "github.com/argoproj/argo-cd/v3@" + targetArgoCDVersion},
 		})
 	if err != nil {
-		exitWithError(fmt.Errorf("unable to update argocd-operator go.mod"))
+		utils.ExitWithError(fmt.Errorf("unable to update argocd-operator go.mod"))
 		return
 	}
 
 	copyGoModReplaceBlockFromArgoCDToArgoCDOperator(argoCDRepoRoot, argocdOperatorRoot, targetArgoCDVersion)
 
-	err = runCommandListWithWorkDir(argocdOperatorRoot,
+	err = utils.RunCommandListWithWorkDir(argocdOperatorRoot,
 		[][]string{
 			{"go", "mod", "tidy"},
 			{"rm", "-f", argocdOperatorRoot + "/bin/controller-gen"}, // Erase the controller-gen binary to ensure it is re-downloaded to the correct version
@@ -478,9 +472,8 @@ func updateGoModAndRegenBundle(targetArgoCDVersion string, argocdOperatorRoot st
 			{"make", "fmt"},
 		})
 	if err != nil {
-		exitWithError(fmt.Errorf("unable to update argocd-operator go.mod"))
+		utils.ExitWithError(fmt.Errorf("unable to update argocd-operator go.mod"))
 	}
-
 }
 
 // replaceLineInCommonDefaultGo updates a line in 'common/defaults.go' beginning with 'variableToReplace' with a different container image digest and version comment
@@ -491,16 +484,14 @@ func updateGoModAndRegenBundle(targetArgoCDVersion string, argocdOperatorRoot st
 //   - To:
 //     ArgoCDDefaultArgoVersion = "sha256:a36ab0c0860c77159c16e04c7e786e7a282f04889ba9318052f0b8897d6d2040" // v3.1.1
 func replaceLineInCommonDefaultGo(pathToArgoCDGitRepoRoot string, variableToReplace string, toReplace processedContainerImage) error {
-
 	path := filepath.Join(pathToArgoCDGitRepoRoot, "common/defaults.go")
 
-	lines := getFileContentsAsLines(path)
+	lines := utils.GetFileContentsAsLines(path)
 
 	var res string
 
 	var match bool
 	for _, line := range lines {
-
 		if strings.Contains(line, "\t"+variableToReplace+" ") {
 			match = true
 
@@ -509,7 +500,6 @@ func replaceLineInCommonDefaultGo(pathToArgoCDGitRepoRoot string, variableToRepl
 		} else {
 			res += line + "\n"
 		}
-
 	}
 
 	if !match {
@@ -518,42 +508,18 @@ func replaceLineInCommonDefaultGo(pathToArgoCDGitRepoRoot string, variableToRepl
 
 	res = strings.TrimSpace(res) + "\n"
 
-	if err := os.WriteFile(path, []byte(res), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(res), 0o600); err != nil {
 		return err
 	}
 
 	return nil
-
-}
-
-// cloneArgoCDRepoIntoTempDir clones a specific argo-cd version into a temp dir
-func cloneArgoCDRepoIntoTempDir(latestReleaseVersionTag string) (string, error) {
-
-	tmpDir, err := os.MkdirTemp("", "argo-cd-src")
-	if err != nil {
-		return "", err
-	}
-
-	if _, _, err := runCommandWithWorkDir(tmpDir, "git", "clone",
-		"--depth", "1",
-		"--branch", latestReleaseVersionTag,
-		"--single-branch",
-		"--no-tags",
-		"https://github.com/argoproj/argo-cd"); err != nil {
-		return "", err
-	}
-
-	newWorkDir := filepath.Join(tmpDir, "argo-cd")
-
-	return newWorkDir, nil
 }
 
 // retrieveSHA256DigestUsingSkopeo determines the SHA256 digest value for a given container image
 func retrieveSHA256DigestUsingSkopeo(url string) *processedContainerImage {
-
-	stdout, _, err := runCommandWithWorkDir("", "skopeo", "inspect", "--no-tags", "--override-os", "linux", "--override-arch", "amd64", "docker://"+url)
+	stdout, _, err := utils.RunCommandWithWorkDir("", "skopeo", "inspect", "--no-tags", "--override-os", "linux", "--override-arch", "amd64", "docker://"+url)
 	if err != nil {
-		exitWithError(fmt.Errorf("unexpected skopeo error: %v", err))
+		utils.ExitWithError(fmt.Errorf("unexpected skopeo error: %v", err))
 		return nil
 	}
 
@@ -571,19 +537,19 @@ func retrieveSHA256DigestUsingSkopeo(url string) *processedContainerImage {
 	// Extract Digest value from JSON
 	var jsonMap map[string]any
 	if err := json.Unmarshal([]byte(stdout), &jsonMap); err != nil {
-		exitWithError(fmt.Errorf("unexpected unmarshal error: %v", err))
+		utils.ExitWithError(fmt.Errorf("unexpected unmarshal error: %v", err))
 		return nil
 	}
 
 	digestVal, ok := jsonMap["Digest"]
 	if !ok || digestVal == nil {
-		exitWithError(fmt.Errorf("unable to extract digest val for %s: key missing or nil", url))
+		utils.ExitWithError(fmt.Errorf("unable to extract digest val for %s: key missing or nil", url))
 		return nil
 	}
 
 	sha256Digest, ok := digestVal.(string)
 	if !ok || sha256Digest == "" {
-		exitWithError(fmt.Errorf("unable to extract digest val for %s: not a valid string", url))
+		utils.ExitWithError(fmt.Errorf("unable to extract digest val for %s: not a valid string", url))
 		return nil
 	}
 

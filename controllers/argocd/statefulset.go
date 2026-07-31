@@ -361,6 +361,10 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 
 	ss.Spec.Template.Spec.ServiceAccountName = nameWithSuffix("argocd-redis-ha", cr)
 
+	if cr.Spec.PriorityClassName != "" {
+		ss.Spec.Template.Spec.PriorityClassName = cr.Spec.PriorityClassName
+	}
+
 	var terminationGracePeriodSeconds int64 = 60
 	ss.Spec.Template.Spec.TerminationGracePeriodSeconds = &terminationGracePeriodSeconds
 
@@ -507,6 +511,10 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 		if !reflect.DeepEqual(ss.Spec.Template.Spec.InitContainers, existing.Spec.Template.Spec.InitContainers) {
 			existing.Spec.Template.Spec.InitContainers = ss.Spec.Template.Spec.InitContainers
 			changes = append(changes, "init containers")
+		}
+		if existing.Spec.Template.Spec.PriorityClassName != ss.Spec.Template.Spec.PriorityClassName {
+			existing.Spec.Template.Spec.PriorityClassName = ss.Spec.Template.Spec.PriorityClassName
+			changes = append(changes, "priority class name")
 		}
 
 		addKubernetesData(ss.Spec.Template.Labels, existing.Spec.Template.Labels)
@@ -885,6 +893,10 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		}
 	}
 
+	if cr.Spec.PriorityClassName != "" {
+		ss.Spec.Template.Spec.PriorityClassName = cr.Spec.PriorityClassName
+	}
+
 	existing := newStatefulSetWithName(applicationControllerResourceName(cr), "application-controller", cr)
 	ssExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing)
 	if err != nil {
@@ -950,6 +962,11 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		}
 
 		changes = append(changes, updateNodePlacementStateful(existing, ss)...)
+
+		if existing.Spec.Template.Spec.PriorityClassName != ss.Spec.Template.Spec.PriorityClassName {
+			existing.Spec.Template.Spec.PriorityClassName = ss.Spec.Template.Spec.PriorityClassName
+			changes = append(changes, "priority class name")
+		}
 
 		if !reflect.DeepEqual(desiredCommand, existing.Spec.Template.Spec.Containers[0].Command) {
 			existing.Spec.Template.Spec.Containers[0].Command = desiredCommand

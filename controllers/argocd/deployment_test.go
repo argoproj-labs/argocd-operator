@@ -38,13 +38,12 @@ const (
 	testNoProxy    = ".example.com"
 )
 
-var (
-	deploymentNames = []string{
-		"argocd-repo-server",
-		"argocd-dex-server",
-		"argocd-redis",
-		"argocd-server"}
-)
+var deploymentNames = []string{
+	"argocd-repo-server",
+	"argocd-dex-server",
+	"argocd-redis",
+	"argocd-server",
+}
 
 type MockTrueFipsChecker struct{}
 
@@ -77,7 +76,6 @@ func TestReconcileArgoCD_reconcileRepoDeployment_replicas(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-
 			a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 				a.Spec.Repo.Replicas = &test.replicas
 			})
@@ -333,7 +331,6 @@ func TestReconcileArgoCD_reconcile_ServerDeployment_env(t *testing.T) {
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "FOO", Value: "BAR"})
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "BAR", Value: "FOO"})
 	})
-
 }
 
 func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
@@ -547,7 +544,6 @@ func TestReconcileArgoCD_reconcileRepoDeployment_mounts(t *testing.T) {
 		containsDefaultMount := false
 
 		for _, volumeMount := range container.VolumeMounts {
-
 			if volumeMount.Name == testMount.Name {
 				containsTestMount = true
 			} else if volumeMount.MountPath == "/tmp" {
@@ -571,7 +567,6 @@ func TestReconcileArgoCD_reconcileRepoDeployment_mounts(t *testing.T) {
 
 		assert.True(t, containsTestMountVolume, "should contain test-mount molume")
 		assert.False(t, containsDefaultVolume, "should not contain default tmp volume")
-
 	})
 }
 
@@ -645,6 +640,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_missingInitContainers(t *testin
 	assert.Len(t, deployment.Spec.Template.Spec.InitContainers, 1)
 	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].Name, "copyutil")
 }
+
 func TestReconcileArgoCD_reconcileRepoDeployment_unexpectedInitContainer(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
@@ -724,7 +720,6 @@ func TestReconcileArgoCD_reconcileRepoDeployment_command(t *testing.T) {
 // reconcileRepoDeployments creates a Deployment with the proxy settings from the
 // environment propagated.
 func TestReconcileArgoCD_reconcileDeployments_proxy(t *testing.T) {
-
 	t.Setenv("HTTP_PROXY", testHTTPProxy)
 	t.Setenv("HTTPS_PROXY", testHTTPSProxy)
 	t.Setenv("no_proxy", testNoProxy)
@@ -900,8 +895,8 @@ func TestReconcileArgoCD_reconcileDeployments_HA_proxy_with_resources(t *testing
 	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Resources, newResources)
 	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].Resources, newResources)
 	assert.Equal(t, deployment.Spec.Strategy.RollingUpdate.MaxSurge, &intstr.IntOrString{IntVal: 0})
-
 }
+
 func TestReconcileArgoCD_reconcileRedisHAProxyDeployment_ModifyContainerSpec(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
@@ -1217,7 +1212,7 @@ func TestReconcileArgoCD_reconcileDeployment_nodePlacement(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	err := r.reconcileRepoDeployment(a, false) //can use other deployments as well
+	err := r.reconcileRepoDeployment(a, false) // can use other deployments as well
 	assert.NoError(t, err)
 	deployment := &appsv1.Deployment{}
 	err = r.Get(context.TODO(), types.NamespacedName{
@@ -1244,6 +1239,7 @@ func deploymentDefaultNodeSelector() map[string]string {
 	}
 	return nodeSelector
 }
+
 func deploymentDefaultTolerations() []corev1.Toleration {
 	toleration := []corev1.Toleration{
 		{
@@ -2205,7 +2201,6 @@ func operationProcessors(n int32) argoCDOpt {
 }
 
 func Test_UpdateNodePlacement(t *testing.T) {
-
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "argocd-sample-server",
@@ -2518,13 +2513,16 @@ func serverDefaultVolumeMounts() []corev1.VolumeMount {
 		{
 			Name:      "ssh-known-hosts",
 			MountPath: "/app/config/ssh",
-		}, {
+		},
+		{
 			Name:      "tls-certs",
 			MountPath: "/app/config/tls",
-		}, {
+		},
+		{
 			Name:      "argocd-repo-server-tls",
 			MountPath: "/app/config/server/tls",
-		}, {
+		},
+		{
 			Name:      common.ArgoCDRedisServerTLSSecretName,
 			MountPath: "/app/config/server/tls/redis",
 		},
@@ -2570,7 +2568,6 @@ func TestReconcileArgoCD_reconcile_RepoServerChanges(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-
 			a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 				a.Spec.Repo.MountSAToken = test.mountSAToken
 				a.Spec.Repo.ServiceAccount = test.serviceAccount
@@ -2756,7 +2753,6 @@ func TestReconcileArgoCD_reconcileRepoDeployment_serviceAccount(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
-
 			a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 				a.Spec.Repo.ServiceAccount = test.serviceAccountName
 			})
@@ -2935,7 +2931,6 @@ func Test_getRolloutInitContainer(t *testing.T) {
 
 			assert.Equalf(t, tt.wantImage, containers[0].Image, "Image check")
 			assert.Equalf(t, tt.wantEnv, containers[0].Env, "Env check")
-
 		})
 	}
 }
@@ -2968,7 +2963,6 @@ func TestSetReplicasAndEnvVar_WhenServerReplicasIsDefined(t *testing.T) {
 		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 2)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_API_SERVER_REPLICAS", Value: "2"})
 	})
-
 }
 
 func TestReconcileArgoCD_reconcileRepoServerWithFipsEnabled(t *testing.T) {
@@ -3042,6 +3036,215 @@ func TestReconcileArgoCD_reconcileRepoServerWithFipsDisabled(t *testing.T) {
 		}
 	}
 	assert.False(t, foundEnv, "environment GODEBUG must NOT be set when FIPS is disabled")
+}
+
+func TestReconcileArgoCD_reconcileRepoServerWithFipsEnabledAndCustomGoDebugEnv(t *testing.T) {
+	cr := makeTestArgoCD()
+	cr.Spec.Repo.Env = []corev1.EnvVar{
+		{
+			Name:  "GODEBUG",
+			Value: "fips140=on,tlsmlkem=0",
+		},
+	}
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{cr}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r.FipsConfigChecker = &MockTrueFipsChecker{}
+	repoServerRemote := "https://remote.repo-server.instance"
+
+	cr.Spec.Repo.Remote = &repoServerRemote
+	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
+
+	d := &appsv1.Deployment{}
+
+	assert.ErrorContains(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d),
+		"deployments.apps \""+cr.Name+"-repo-server\" not found")
+
+	// once remote is set to nil, reconciliation should trigger deployment resource creation
+	cr.Spec.Repo.Remote = nil
+
+	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d))
+	foundGoDebug := false
+	foundGoLangFips := false
+	for _, env := range d.Spec.Template.Spec.Containers[0].Env {
+		if env.Name == "GODEBUG" {
+			foundGoDebug = true
+			assert.Equal(t, "fips140=on,tlsmlkem=0", env.Value, "GODEBUG environment must be set to user provided value when fips is enabled")
+		}
+		if env.Name == "GOLANG_FIPS" {
+			foundGoLangFips = true
+			assert.Equal(t, "0", env.Value, "GOLANG_FIPS environment must be set to 0 when fips is enabled")
+		}
+	}
+	assert.True(t, foundGoDebug, "environment GODEBUG must be set to user provided value when FIPS is enabled")
+	assert.True(t, foundGoLangFips, "GOLANG_FIPS env var should be set to 0 when fips140=on is present in GODEBUG")
+}
+
+func TestReconcileArgoCD_reconcileRepoServerWithFipsEnabledAndCustomGoDebugEnvFipsOff(t *testing.T) {
+	cr := makeTestArgoCD()
+	cr.Spec.Repo.Env = []corev1.EnvVar{
+		{
+			Name:  "GODEBUG",
+			Value: "fips140=off,tlsmlkem=0",
+		},
+	}
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{cr}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r.FipsConfigChecker = &MockTrueFipsChecker{}
+	repoServerRemote := "https://remote.repo-server.instance"
+
+	cr.Spec.Repo.Remote = &repoServerRemote
+	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
+
+	d := &appsv1.Deployment{}
+
+	assert.ErrorContains(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d),
+		"deployments.apps \""+cr.Name+"-repo-server\" not found")
+
+	// once remote is set to nil, reconciliation should trigger deployment resource creation
+	cr.Spec.Repo.Remote = nil
+
+	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d))
+	foundGoDebug := false
+	foundGoLangFips := false
+	for _, env := range d.Spec.Template.Spec.Containers[0].Env {
+		if env.Name == "GODEBUG" {
+			foundGoDebug = true
+			assert.Equal(t, "fips140=off,tlsmlkem=0", env.Value, "GODEBUG environment must be set to user provided value when fips is enabled")
+		}
+		if env.Name == "GOLANG_FIPS" {
+			foundGoLangFips = true
+		}
+	}
+	assert.True(t, foundGoDebug, "environment GODEBUG must be set to user provided value when FIPS is enabled")
+	assert.False(t, foundGoLangFips, "GOLANG_FIPS env var should not be set when fips140=off is present in GODEBUG")
+}
+
+func TestReconcileArgoCD_reconcileRepoServerWithFipsEnabledAndCustomGoDebugEnvFipsMissing(t *testing.T) {
+	cr := makeTestArgoCD()
+	cr.Spec.Repo.Env = []corev1.EnvVar{
+		{
+			Name:  "GODEBUG",
+			Value: "tlsmlkem=0",
+		},
+	}
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{cr}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r.FipsConfigChecker = &MockTrueFipsChecker{}
+	repoServerRemote := "https://remote.repo-server.instance"
+
+	cr.Spec.Repo.Remote = &repoServerRemote
+	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
+
+	d := &appsv1.Deployment{}
+
+	assert.ErrorContains(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d),
+		"deployments.apps \""+cr.Name+"-repo-server\" not found")
+
+	// once remote is set to nil, reconciliation should trigger deployment resource creation
+	cr.Spec.Repo.Remote = nil
+
+	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d))
+	foundGoDebug := false
+	foundGoLangFips := false
+	for _, env := range d.Spec.Template.Spec.Containers[0].Env {
+		if env.Name == "GODEBUG" {
+			foundGoDebug = true
+			assert.Equal(t, "tlsmlkem=0", env.Value, "GODEBUG environment must be set to user provided value when fips is enabled")
+		}
+		if env.Name == "GOLANG_FIPS" {
+			foundGoLangFips = true
+		}
+	}
+	assert.True(t, foundGoDebug, "environment GODEBUG must be set to user provided value when FIPS is enabled")
+	assert.False(t, foundGoLangFips, "GOLANG_FIPS env var should not be set when fips140 setting is missing from GODEBUG")
+}
+
+func TestReconcileArgoCD_reconcileRepoServerWithFipsEnabledAndCustomGolangFipsEnv(t *testing.T) {
+	cr := makeTestArgoCD()
+	cr.Spec.Repo.Env = []corev1.EnvVar{
+		{
+			Name:  "GOLANG_FIPS",
+			Value: "1",
+		},
+	}
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{cr}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r.FipsConfigChecker = &MockTrueFipsChecker{}
+
+	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
+
+	d := &appsv1.Deployment{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d))
+
+	foundGoDebug := false
+	foundGoLangFips := false
+	for _, env := range d.Spec.Template.Spec.Containers[0].Env {
+		if env.Name == "GODEBUG" {
+			foundGoDebug = true
+			assert.Equal(t, "fips140=on", env.Value, "GODEBUG must be set to fips140=on when fips is enabled")
+		}
+		if env.Name == "GOLANG_FIPS" {
+			foundGoLangFips = true
+			assert.Equal(t, "1", env.Value, "user provided GOLANG_FIPS value must be preserved")
+		}
+	}
+	assert.True(t, foundGoDebug, "environment GODEBUG must be set when FIPS is enabled")
+	assert.True(t, foundGoLangFips, "GOLANG_FIPS env var must be present")
+}
+
+func TestReconcileArgoCD_reconcileRepoServerWithFipsDisabledAndCustomGoDebugEnv(t *testing.T) {
+	cr := makeTestArgoCD()
+	cr.Spec.Repo.Env = []corev1.EnvVar{
+		{
+			Name:  "GODEBUG",
+			Value: "http2debug=1",
+		},
+	}
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{cr}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	r.FipsConfigChecker = &MockFalseFipsChecker{}
+
+	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
+
+	d := &appsv1.Deployment{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d))
+
+	foundGoDebug := false
+	foundGoLangFips := false
+	for _, env := range d.Spec.Template.Spec.Containers[0].Env {
+		if env.Name == "GODEBUG" {
+			foundGoDebug = true
+			assert.Equal(t, "http2debug=1", env.Value, "user provided GODEBUG must be preserved when FIPS is disabled")
+		}
+		if env.Name == "GOLANG_FIPS" {
+			foundGoLangFips = true
+		}
+	}
+	assert.True(t, foundGoDebug, "user provided GODEBUG must be preserved when FIPS is disabled")
+	assert.False(t, foundGoLangFips, "GOLANG_FIPS env var should not be set when FIPS is disabled")
 }
 
 func TestDeploymentWithLongName(t *testing.T) {

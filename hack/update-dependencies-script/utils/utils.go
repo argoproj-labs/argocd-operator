@@ -1,20 +1,23 @@
-package main
+// Package utils contains common shared functions between dependencies to update
+package utils
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"os/exec"
+	"path"
+	"path/filepath"
 	"strings"
 )
 
-func runCommandListWithWorkDir(workingDir string, commands [][]string) error {
-
+func RunCommandListWithWorkDir(workingDir string, commands [][]string) error {
 	for _, command := range commands {
 
-		_, _, err := runCommandWithWorkDir(workingDir, command...)
+		_, _, err := RunCommandWithWorkDir(workingDir, command...)
 		if err != nil {
 			return err
 		}
@@ -22,8 +25,7 @@ func runCommandListWithWorkDir(workingDir string, commands [][]string) error {
 	return nil
 }
 
-func runCommandWithWorkDir(workingDir string, cmdList ...string) (string, string, error) {
-
+func RunCommandWithWorkDir(workingDir string, cmdList ...string) (string, string, error) {
 	fmt.Printf("%v:\n", cmdList)
 
 	cmd := exec.Command(cmdList[0], cmdList[1:]...)
@@ -42,44 +44,37 @@ func runCommandWithWorkDir(workingDir string, cmdList ...string) (string, string
 	fmt.Println()
 
 	return stdoutStr, stderrStr, err
-
 }
 
-func exitWithError(err error) {
+func ExitWithError(err error) {
 	fmt.Println("ERROR:", err)
 	os.Exit(1)
 }
 
-func stripImagePrefix(line string) string {
+func StripImagePrefix(line string) string {
 	line = strings.TrimSpace(line)
 
 	if !strings.HasPrefix(line, "image:") {
-		exitWithError(fmt.Errorf("unexpected image format on line: %s", line))
+		ExitWithError(fmt.Errorf("unexpected image format on line: %s", line))
 		return ""
 	}
 
 	return strings.TrimPrefix(line, "image: ")
-
 }
 
-func grepForString(contents string, str string) []string {
-
+func GrepForString(contents string, str string) []string {
 	var res []string
 
 	for _, line := range strings.Split(contents, "\n") {
-
 		if strings.Contains(line, str) {
-
 			res = append(res, line)
 		}
-
 	}
 
 	return res
 }
 
-func removeDuplicateLines(in []string) []string {
-
+func RemoveDuplicateLines(in []string) []string {
 	mapRes := map[string]any{}
 
 	for _, inVal := range in {
@@ -95,7 +90,7 @@ func removeDuplicateLines(in []string) []string {
 	return res
 }
 
-func copyFile(srcParam, dstParam string) (err error) {
+func CopyFile(srcParam, dstParam string) (err error) {
 	srcFile, err := os.Open(srcParam)
 	if err != nil {
 		return fmt.Errorf("could not open source file %s: %w", srcParam, err)
@@ -120,7 +115,7 @@ func copyFile(srcParam, dstParam string) (err error) {
 	return nil
 }
 
-func fileExists(filename string) (bool, error) {
+func FileExists(filename string) (bool, error) {
 	info, err := os.Stat(filename)
 	if err == nil {
 		if info.IsDir() {
@@ -136,13 +131,41 @@ func fileExists(filename string) (bool, error) {
 	return false, err
 }
 
-func getFileContentsAsLines(filePath string) []string {
+func GetFileContentsAsLines(filePath string) []string {
 	bytes, err := os.ReadFile(filePath)
 	if err != nil {
-		exitWithError(fmt.Errorf("unable to get "+filePath+": %v", err))
+		ExitWithError(fmt.Errorf("unable to get "+filePath+": %v", err))
 		return nil
 	}
 
 	return strings.Split(string(bytes), "\n")
+}
 
+// CloneRepoIntoTempDir clones a specific repo into a temp directory
+func CloneRepoIntoTempDir(repoURL, latestReleaseVersionTag string) (string, error) {
+	url, err := url.Parse(repoURL)
+	if err != nil {
+		return "", err
+	}
+	cleanPath := strings.TrimRight(url.Path, "/")
+	outputDir := path.Base(cleanPath)
+
+	tmpDir, err := os.MkdirTemp("", "temp-repo")
+	if err != nil {
+		return "", err
+	}
+
+	if _, _, err := RunCommandWithWorkDir(tmpDir, "git", "clone",
+		"--depth", "1",
+		"--branch", latestReleaseVersionTag,
+		"--single-branch",
+		"--no-tags",
+		repoURL,
+		outputDir); err != nil {
+		return "", err
+	}
+
+	newWorkDir := filepath.Join(tmpDir, outputDir)
+
+	return newWorkDir, nil
 }
