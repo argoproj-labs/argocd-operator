@@ -38,10 +38,54 @@ import (
 
 const (
 	EnvGitOpsPromoterImage = "GITOPS_PROMOTER_IMAGE"
+	binaryControllerCmd    = "controller"
+	binaryAPIServerCmd     = "apiserver"
 )
 
+// deploymentReconciler represents the functions to fill in spots in the deployment spec that
+// differ between the components
+type deploymentConfig struct {
+	command         []string
+	args            []string
+	securityContext *corev1.SecurityContext
+	livenessProbe   *corev1.Probe
+	readinessProbe  *corev1.Probe
+}
+
 func ReconcilePromoterControllerDeployment(client client.Client, compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD, scheme *runtime.Scheme) (*appsv1.Deployment, error) {
-	deployment := buildControllerDeployment(cr, compName)
+	config := deploymentConfig{
+		command:         buildContainerCommand(binaryControllerCmd),
+		securityContext: buildControllerSecurityContext(),
+		livenessProbe:   buildControllerLivenessProbe(),
+		readinessProbe:  buildControllerReadinessProbe(),
+	}
+
+	deployment, err := ReconcilePromoterDeployment(client, compName, sa, cr, scheme, config, true)
+	if err != nil {
+		return nil, err
+	}
+	return deployment, nil
+}
+
+func ReconcilePromoterAPIServerDeployment(client client.Client, compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD, scheme *runtime.Scheme) (*appsv1.Deployment, error) {
+	config := deploymentConfig{
+		command:         buildContainerCommand(binaryAPIServerCmd),
+		args:            buildAPIServerArgs(),
+		securityContext: buildAPIServerSecurityContext(),
+		livenessProbe:   buildAPIServerLivenessProbe(),
+		readinessProbe:  buildAPIServerReadinessProbe(),
+	}
+
+	enabled := cr.Spec.Promoter == nil || cr.Spec.Promoter.APIServer.IsEnabled()
+	deployment, err := ReconcilePromoterDeployment(client, compName, sa, cr, scheme, config, enabled)
+	if err != nil {
+		return nil, err
+	}
+	return deployment, nil
+}
+
+func ReconcilePromoterDeployment(client client.Client, compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD, scheme *runtime.Scheme, config deploymentConfig, enabled bool) (*appsv1.Deployment, error) {
+	deployment := buildDeployment(cr, compName)
 
 	exists := true
 	if err := argoutil.FetchObject(client, deployment.Namespace, deployment.Name, deployment); err != nil {
@@ -51,9 +95,10 @@ func ReconcilePromoterControllerDeployment(client client.Client, compName string
 		exists = false
 	}
 
+	// TODO: add reconcilation logic for the args and also custom settings of the args because the promoter has no env args ATM
 	if exists {
-		if !cr.Spec.Promoter.IsEnabled() {
-			argoutil.LogResourceDeletion(log, deployment, "promoter controller deployment is being deleted due to being disabled")
+		if !cr.Spec.Promoter.IsEnabled() || !enabled {
+			argoutil.LogResourceDeletion(log, deployment, "promoter deployment is being deleted due to being disabled")
 			if err := client.Delete(context.Background(), deployment); err != nil {
 				return nil, fmt.Errorf("failed to delete deployment %s: %v", deployment.Name, err)
 			}
@@ -66,13 +111,13 @@ func ReconcilePromoterControllerDeployment(client client.Client, compName string
 			changed = true
 		}
 
-		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Command, buildContainerCommand()) {
-			deployment.Spec.Template.Spec.Containers[0].Command = buildContainerCommand()
-			changed = true
-		}
+		// if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Command, config.command) {
+		// 	deployment.Spec.Template.Spec.Containers[0].Command = config.command
+		// 	changed = true
+		// }
 
-		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Image, selectControllerImage(cr)) {
-			deployment.Spec.Template.Spec.Containers[0].Image = selectControllerImage(cr)
+		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Image, selectImage(cr)) {
+			deployment.Spec.Template.Spec.Containers[0].Image = selectImage(cr)
 			changed = true
 		}
 
@@ -91,23 +136,23 @@ func ReconcilePromoterControllerDeployment(client client.Client, compName string
 			changed = true
 		}
 
-		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].SecurityContext, buildSecurityContext()) {
-			deployment.Spec.Template.Spec.Containers[0].SecurityContext = buildSecurityContext()
+		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].SecurityContext, config.securityContext) {
+			deployment.Spec.Template.Spec.Containers[0].SecurityContext = config.securityContext
 			changed = true
 		}
 
-		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Resources, getControllerResources(cr)) {
-			deployment.Spec.Template.Spec.Containers[0].Resources = getControllerResources(cr)
+		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Resources, getResources(cr)) {
+			deployment.Spec.Template.Spec.Containers[0].Resources = getResources(cr)
 			changed = true
 		}
 
-		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].LivenessProbe, buildLivenessProbe()) {
-			deployment.Spec.Template.Spec.Containers[0].LivenessProbe = buildLivenessProbe()
+		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].LivenessProbe, config.livenessProbe) {
+			deployment.Spec.Template.Spec.Containers[0].LivenessProbe = config.livenessProbe
 			changed = true
 		}
 
-		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].ReadinessProbe, buildReadinessProbe()) {
-			deployment.Spec.Template.Spec.Containers[0].ReadinessProbe = buildReadinessProbe()
+		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].ReadinessProbe, config.livenessProbe) {
+			deployment.Spec.Template.Spec.Containers[0].ReadinessProbe = config.readinessProbe
 			changed = true
 		}
 
@@ -131,22 +176,22 @@ func ReconcilePromoterControllerDeployment(client client.Client, compName string
 		return deployment, nil
 	}
 
-	if !cr.Spec.Promoter.IsEnabled() {
+	if !cr.Spec.Promoter.IsEnabled() || !enabled {
 		return deployment, nil
 	}
-	deployment.Spec = buildControllerDeploymentSpec(compName, sa, cr)
+	deployment.Spec = buildDeploymentSpec(compName, sa, cr, config)
 	if err := controllerutil.SetControllerReference(cr, deployment, scheme); err != nil {
-		return nil, fmt.Errorf("failed to set argocd cr %s as owner for service account %s: %v", cr.Name, sa.Name, err)
+		return nil, fmt.Errorf("failed to set argocd cr %s as owner for deployment %s: %v", cr.Name, sa.Name, err)
 	}
 
 	argoutil.LogResourceCreation(log, deployment)
 	if err := client.Create(context.Background(), deployment); err != nil {
-		return nil, fmt.Errorf("failed to create controller configuration %s: %v", deployment.Name, err)
+		return nil, fmt.Errorf("failed to create deployment %s: %v", deployment.Name, err)
 	}
 	return deployment, nil
 }
 
-func buildControllerDeployment(cr *argoproj.ArgoCD, compName string) *appsv1.Deployment {
+func buildDeployment(cr *argoproj.ArgoCD, compName string) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      generatePromoterResourceName(compName, cr),
@@ -156,7 +201,7 @@ func buildControllerDeployment(cr *argoproj.ArgoCD, compName string) *appsv1.Dep
 	}
 }
 
-func buildControllerDeploymentSpec(compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD) appsv1.DeploymentSpec {
+func buildDeploymentSpec(compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD, config deploymentConfig) appsv1.DeploymentSpec {
 	return appsv1.DeploymentSpec{
 		Selector: buildSelector(compName, cr),
 		Template: corev1.PodTemplateSpec{
@@ -166,15 +211,16 @@ func buildControllerDeploymentSpec(compName string, sa *corev1.ServiceAccount, c
 			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{
 					{
-						Command:         buildContainerCommand(),
-						Image:           selectControllerImage(cr),
+						Command:         config.command,
+						Image:           selectImage(cr),
 						ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 						Name:            generatePromoterResourceName(compName, cr),
+						Args:            config.args,
 						Env:             cr.Spec.Promoter.Env,
-						SecurityContext: buildSecurityContext(),
-						Resources:       getControllerResources(cr),
-						LivenessProbe:   buildLivenessProbe(),
-						ReadinessProbe:  buildReadinessProbe(),
+						SecurityContext: config.securityContext,
+						Resources:       getResources(cr),
+						LivenessProbe:   config.livenessProbe,
+						ReadinessProbe:  config.readinessProbe,
 					},
 				},
 				ServiceAccountName:            sa.Name,
@@ -190,11 +236,11 @@ func buildSelector(compName string, cr *argoproj.ArgoCD) *metav1.LabelSelector {
 	}
 }
 
-func buildContainerCommand() []string {
-	return []string{"/usr/bin/tini", "--", "/gitops-promoter", "controller"}
+func buildContainerCommand(cmd string) []string {
+	return []string{"/usr/bin/tini", "--", "/gitops-promoter", cmd}
 }
 
-func selectControllerImage(cr *argoproj.ArgoCD) string {
+func selectImage(cr *argoproj.ArgoCD) string {
 	if cr.Spec.Promoter.Image != "" {
 		return cr.Spec.Promoter.Image
 	}
@@ -206,7 +252,7 @@ func selectControllerImage(cr *argoproj.ArgoCD) string {
 	return common.GitOpsPromoterDefaultImageName
 }
 
-func buildSecurityContext() *corev1.SecurityContext {
+func buildControllerSecurityContext() *corev1.SecurityContext {
 	return &corev1.SecurityContext{
 		AllowPrivilegeEscalation: ptr.To(false),
 		Capabilities: &corev1.Capabilities{
@@ -215,7 +261,16 @@ func buildSecurityContext() *corev1.SecurityContext {
 	}
 }
 
-func getControllerResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
+func buildAPIServerSecurityContext() *corev1.SecurityContext {
+	return &corev1.SecurityContext{
+		RunAsNonRoot: ptr.To(true),
+		SeccompProfile: &corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault,
+		},
+	}
+}
+
+func getResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
 	resources := corev1.ResourceRequirements{}
 	if cr.Spec.Promoter != nil && cr.Spec.Promoter.Resources != nil {
 		resources = *cr.Spec.Promoter.Resources
@@ -223,7 +278,7 @@ func getControllerResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
 	return resources
 }
 
-func buildLivenessProbe() *corev1.Probe {
+func buildControllerLivenessProbe() *corev1.Probe {
 	return &corev1.Probe{
 		ProbeHandler: corev1.ProbeHandler{
 			HTTPGet: &corev1.HTTPGetAction{
@@ -236,7 +291,7 @@ func buildLivenessProbe() *corev1.Probe {
 	}
 }
 
-func buildReadinessProbe() *corev1.Probe {
+func buildControllerReadinessProbe() *corev1.Probe {
 	return &corev1.Probe{
 		ProbeHandler: corev1.ProbeHandler{
 			HTTPGet: &corev1.HTTPGetAction{
@@ -246,5 +301,40 @@ func buildReadinessProbe() *corev1.Probe {
 		},
 		InitialDelaySeconds: 5,
 		PeriodSeconds:       10,
+	}
+}
+
+func buildAPIServerLivenessProbe() *corev1.Probe {
+	return &corev1.Probe{
+		ProbeHandler: corev1.ProbeHandler{
+			HTTPGet: &corev1.HTTPGetAction{
+				Path:   "/healthz",
+				Port:   intstr.FromString("https"),
+				Scheme: corev1.URISchemeHTTPS,
+			},
+		},
+		InitialDelaySeconds: 15,
+		PeriodSeconds:       20,
+	}
+}
+
+func buildAPIServerReadinessProbe() *corev1.Probe {
+	return &corev1.Probe{
+		ProbeHandler: corev1.ProbeHandler{
+			HTTPGet: &corev1.HTTPGetAction{
+				Path:   "/readyz",
+				Port:   intstr.FromString("https"),
+				Scheme: corev1.URISchemeHTTPS,
+			},
+		},
+		InitialDelaySeconds: 5,
+		PeriodSeconds:       10,
+	}
+}
+
+// #TODO: Allow for custom args through cr it seems that
+func buildAPIServerArgs() []string {
+	return []string{
+		"--insecure-skip-tls-verify",
 	}
 }

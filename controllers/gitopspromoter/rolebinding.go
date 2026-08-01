@@ -143,7 +143,7 @@ func ReconcilePromoterRoleBinding(client client.Client, compName, bindingName, r
 	expectedRoleRef := buildRoleRef(roleRefName, "Role")
 
 	exists := true
-	if err := argoutil.FetchObject(client, cr.Namespace, cr.Name, roleBinding); err != nil {
+	if err := argoutil.FetchObject(client, roleBinding.Namespace, roleBinding.Name, roleBinding); err != nil {
 		if !errors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to get existing promoter cluster role binding %s: %v", roleBinding.Name, err)
 		}
