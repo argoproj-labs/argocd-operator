@@ -104,7 +104,7 @@ func (r *ReconcileArgoCD) getArgoApplicationSetCommand(cr *argoproj.ArgoCD) ([]s
 		// appset in any ns is enabled and no scmProviders allow list is specified,
 		// disables scm & PR generators to prevent potential security issues
 		// https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/Appset-Any-Namespace/#scm-providers-secrets-consideration
-		if len(appsetsSourceNamespaces) > 0 && (len(cr.Spec.ApplicationSet.SCMProviders) <= 0) {
+		if len(appsetsSourceNamespaces) > 0 && len(cr.Spec.ApplicationSet.SCMProviders) == 0 {
 			cmd = append(cmd, "--enable-scm-providers=false")
 		}
 	}
