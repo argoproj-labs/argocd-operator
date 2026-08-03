@@ -233,7 +233,7 @@ func (r *ReconcileArgoCD) ReconcileDexServerNetworkPolicy(cr *argoproj.ArgoCD) e
 		if modified {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			if err := r.Update(context.TODO(), existing); err != nil {
-				log.Error(err, "Failed to update %s network policy in namespace %s", existing.Name, cr.Namespace)
+				log.Error(err, "Failed to update %s network policy in namespace %s", "S", existing.Name, "S", cr.Namespace)
 				return fmt.Errorf("failed to update %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 			}
 		}
@@ -247,7 +247,7 @@ func (r *ReconcileArgoCD) ReconcileDexServerNetworkPolicy(cr *argoproj.ArgoCD) e
 
 	argoutil.LogResourceCreation(log, desired)
 	if err := r.Create(context.TODO(), desired); err != nil {
-		log.Error(err, "Failed to create %s network policy in namespace %s", existing.Name, cr.Namespace)
+		log.Error(err, "Failed to create %s network policy in namespace %s", "S", existing.Name, "S", cr.Namespace)
 		return fmt.Errorf("failed to create %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 	}
 
@@ -338,7 +338,7 @@ func (r *ReconcileArgoCD) ReconcileApplicationSetControllerNetworkPolicy(cr *arg
 		if modified {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			if err := r.Update(context.TODO(), existing); err != nil {
-				log.Error(err, "Failed to update %s network policy in namespace %s", existing.Name, cr.Namespace)
+				log.Error(err, "Failed to update %s network policy in namespace %s", "S", existing.Name, "S", cr.Namespace)
 				return fmt.Errorf("failed to update %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 			}
 		}
@@ -352,7 +352,7 @@ func (r *ReconcileArgoCD) ReconcileApplicationSetControllerNetworkPolicy(cr *arg
 
 	argoutil.LogResourceCreation(log, desired)
 	if err := r.Create(context.TODO(), desired); err != nil {
-		log.Error(err, "Failed to create %s network policy in namespace %s", existing.Name, cr.Namespace)
+		log.Error(err, "Failed to create %s network policy in namespace %s", "S", existing.Name, "S", cr.Namespace)
 		return fmt.Errorf("failed to create %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 	}
 
@@ -706,7 +706,7 @@ func (r *ReconcileArgoCD) ReconcileNotificationsControllerNetworkPolicy(cr *argo
 		if modified {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			if err := r.Update(context.TODO(), existing); err != nil {
-				log.Error(err, "Failed to update %s network policy in namespace %s", existing.Name, cr.Namespace)
+				log.Error(err, "Failed to update %s network policy in namespace %s", "S", existing.Name, "S", cr.Namespace)
 				return fmt.Errorf("failed to update %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 			}
 		}
@@ -720,7 +720,7 @@ func (r *ReconcileArgoCD) ReconcileNotificationsControllerNetworkPolicy(cr *argo
 
 	argoutil.LogResourceCreation(log, desired)
 	if err := r.Create(context.TODO(), desired); err != nil {
-		log.Error(err, "Failed to create %s network policy in namespace %s", existing.Name, cr.Namespace)
+		log.Error(err, "Failed to create %s network policy in namespace %s", "S", existing.Name, "S", cr.Namespace)
 		return fmt.Errorf("failed to create %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 	}
 
@@ -786,7 +786,7 @@ func (r *ReconcileArgoCD) ReconcileArgoCDServerNetworkPolicy(cr *argoproj.ArgoCD
 		if modified {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			if err := r.Update(context.TODO(), existing); err != nil {
-				log.Error(err, "Failed to update %s network policy in namespace %s", existing.Name, cr.Namespace)
+				log.Error(err, "Failed to update %s network policy in namespace %s", "S", existing.Name, "S", cr.Namespace)
 				return fmt.Errorf("failed to update %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 			}
 		}
@@ -800,7 +800,7 @@ func (r *ReconcileArgoCD) ReconcileArgoCDServerNetworkPolicy(cr *argoproj.ArgoCD
 
 	argoutil.LogResourceCreation(log, desired)
 	if err := r.Create(context.TODO(), desired); err != nil {
-		log.Error(err, "Failed to create %s network policy in namespace %s", existing.Name, cr.Namespace)
+		log.Error(err, "Failed to create %s network policy in namespace %s", "S", existing.Name, "S", cr.Namespace)
 		return fmt.Errorf("failed to create %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 	}
 
@@ -881,7 +881,7 @@ func (r *ReconcileArgoCD) ReconcileArgoCDApplicationControllerNetworkPolicy(cr *
 		if modified {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			if err := r.Update(context.TODO(), existing); err != nil {
-				log.Error(err, "Failed to update %s network policy in namespace %s", existing.Name, cr.Namespace)
+				log.Error(err, "Failed to update %s network policy in namespace %s", "S", existing.Name, "S", cr.Namespace)
 				return fmt.Errorf("failed to update %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 			}
 		}
@@ -895,7 +895,7 @@ func (r *ReconcileArgoCD) ReconcileArgoCDApplicationControllerNetworkPolicy(cr *
 
 	argoutil.LogResourceCreation(log, desired)
 	if err := r.Create(context.TODO(), desired); err != nil {
-		log.Error(err, "Failed to create %s network policy in namespace %s", existing.Name, cr.Namespace)
+		log.Error(err, "Failed to create %s network policy in namespace %s", "S", existing.Name, "S", cr.Namespace)
 		return fmt.Errorf("failed to create %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 	}
 
@@ -1023,7 +1023,7 @@ func (r *ReconcileArgoCD) ReconcileArgoCDRepoServerNetworkPolicy(cr *argoproj.Ar
 		if modified {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			if err := r.Update(context.TODO(), existing); err != nil {
-				log.Error(err, "Failed to update %s network policy in namespace %s", existing.Name, cr.Namespace)
+				log.Error(err, "Failed to update %s network policy in namespace %s", "S", existing.Name, "S", cr.Namespace)
 				return fmt.Errorf("failed to update %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 			}
 		}
@@ -1037,7 +1037,7 @@ func (r *ReconcileArgoCD) ReconcileArgoCDRepoServerNetworkPolicy(cr *argoproj.Ar
 
 	argoutil.LogResourceCreation(log, desired)
 	if err := r.Create(context.TODO(), desired); err != nil {
-		log.Error(err, "Failed to create %s network policy in namespace %s", existing.Name, cr.Namespace)
+		log.Error(err, "Failed to create %s network policy in namespace %s", "S", existing.Name, "S", cr.Namespace)
 		return fmt.Errorf("failed to create %s network policy in namespace %s. error: %w", existing.Name, cr.Namespace, err)
 	}
 
