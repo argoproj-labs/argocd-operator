@@ -29,7 +29,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
 	argocdFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/argocd"
 	k8sFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/k8s"
@@ -97,7 +96,6 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				}
 				for _, s := range secretList.Items {
 					if s.Type == corev1.SecretTypeServiceAccountToken &&
-						strings.HasPrefix(s.Name, dexSAName+"-token-") &&
 						s.Annotations[corev1.ServiceAccountNameKey] == dexSAName {
 						return false
 					}
@@ -186,15 +184,12 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			dexSA := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: dexSAName, Namespace: ns.Name}}
 			Eventually(dexSA).Should(k8sFixture.ExistByName())
 
-			legacyName := dexSAName + "-token-e2elegacy"
-			By("creating a legacy non-expiring kubernetes.io/service-account-token Secret for the Dex SA (operator-tracked label required for cleanup list)")
+			legacyName := "argocd-dex-server-token-e2elegacy"
+			By("creating a legacy non-expiring kubernetes.io/service-account-token Secret for the Dex SA (simulates Kubernetes auto-generated secret without operator label)")
 			legacySecret := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      legacyName,
 					Namespace: ns.Name,
-					Labels: map[string]string{
-						common.ArgoCDTrackedByOperatorLabel: common.ArgoCDAppName,
-					},
 					Annotations: map[string]string{
 						corev1.ServiceAccountNameKey: dexSAName,
 					},

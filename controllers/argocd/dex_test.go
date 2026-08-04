@@ -2,7 +2,6 @@ package argocd
 
 import (
 	"context"
-	"strings"
 	"testing"
 	"time"
 
@@ -1414,16 +1413,70 @@ func TestReconcileArgoCD_reconcileDexLegacySATokenSecrets(t *testing.T) {
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
-	// Create the Dex SA so the function can fetch it.
 	_, err := r.reconcileServiceAccount(common.ArgoCDDefaultDexServiceAccountName, a)
 	assert.NoError(t, err)
 
 	dexSAName := a.Name + "-" + common.ArgoCDDefaultDexServiceAccountName
 
-	// Create a legacy kubernetes.io/service-account-token Secret.
+	// Kubernetes auto-generated SA token secret: no operator label, uses SA name in the name.
 	legacySecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      dexSAName + "-token-abc12",
+			Name:      "argocd-dex-server-token-abc12",
+			Namespace: a.Namespace,
+			Annotations: map[string]string{
+				corev1.ServiceAccountNameKey: dexSAName,
+			},
+		},
+		Type: corev1.SecretTypeServiceAccountToken,
+	}
+	assert.NoError(t, r.Create(context.TODO(), legacySecret))
+
+	sa := &corev1.ServiceAccount{}
+	assert.NoError(t, r.Get(context.TODO(),
+		types.NamespacedName{Name: dexSAName, Namespace: a.Namespace}, sa))
+	sa.Secrets = append(sa.Secrets, corev1.ObjectReference{Name: legacySecret.Name})
+	assert.NoError(t, r.Update(context.TODO(), sa))
+
+	assert.NoError(t, r.reconcileDexLegacySATokenSecrets(a))
+
+	deleted := &corev1.Secret{}
+	err = r.Get(context.TODO(),
+		types.NamespacedName{Name: legacySecret.Name, Namespace: a.Namespace}, deleted)
+	assert.True(t, apierrors.IsNotFound(err), "legacy SA token Secret must be deleted")
+
+	updatedSA := &corev1.ServiceAccount{}
+	assert.NoError(t, r.Get(context.TODO(),
+		types.NamespacedName{Name: dexSAName, Namespace: a.Namespace}, updatedSA))
+	for _, ref := range updatedSA.Secrets {
+		assert.NotEqual(t, legacySecret.Name, ref.Name,
+			"SA.secrets must not contain legacy token reference")
+	}
+}
+
+func TestReconcileArgoCD_reconcileDexLegacySATokenSecrets_OperatorCreatedSecret(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	a := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+		ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+			Provider: argoproj.SSOProviderTypeDex,
+			Dex:      &argoproj.ArgoCDDexSpec{OpenShiftOAuth: true},
+		}
+	})
+
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, []client.Object{a}, []client.Object{a}, nil)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+
+	_, err := r.reconcileServiceAccount(common.ArgoCDDefaultDexServiceAccountName, a)
+	assert.NoError(t, err)
+
+	dexSAName := a.Name + "-" + common.ArgoCDDefaultDexServiceAccountName
+
+	// Operator-created SA token secret has operator label.
+	legacySecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dexSAName + "-token-op123",
 			Namespace: a.Namespace,
 			Labels: map[string]string{
 				common.ArgoCDTrackedByOperatorLabel: common.ArgoCDAppName,
@@ -1436,29 +1489,25 @@ func TestReconcileArgoCD_reconcileDexLegacySATokenSecrets(t *testing.T) {
 	}
 	assert.NoError(t, r.Create(context.TODO(), legacySecret))
 
-	// Also add a reference to that Secret in the SA.secrets list.
 	sa := &corev1.ServiceAccount{}
 	assert.NoError(t, r.Get(context.TODO(),
 		types.NamespacedName{Name: dexSAName, Namespace: a.Namespace}, sa))
 	sa.Secrets = append(sa.Secrets, corev1.ObjectReference{Name: legacySecret.Name})
 	assert.NoError(t, r.Update(context.TODO(), sa))
 
-	// Run the cleanup.
 	assert.NoError(t, r.reconcileDexLegacySATokenSecrets(a))
 
-	// Legacy Secret must be deleted.
 	deleted := &corev1.Secret{}
 	err = r.Get(context.TODO(),
 		types.NamespacedName{Name: legacySecret.Name, Namespace: a.Namespace}, deleted)
-	assert.True(t, apierrors.IsNotFound(err), "legacy SA token Secret must be deleted")
+	assert.True(t, apierrors.IsNotFound(err), "operator-created legacy SA token Secret must be deleted")
 
-	// SA.secrets must no longer reference the legacy token.
 	updatedSA := &corev1.ServiceAccount{}
 	assert.NoError(t, r.Get(context.TODO(),
 		types.NamespacedName{Name: dexSAName, Namespace: a.Namespace}, updatedSA))
 	for _, ref := range updatedSA.Secrets {
-		assert.False(t, strings.HasPrefix(ref.Name, dexSAName+"-token-"),
-			"SA.secrets must not contain legacy token reference %q", ref.Name)
+		assert.NotEqual(t, legacySecret.Name, ref.Name,
+			"SA.secrets must not contain operator-created legacy token reference")
 	}
 }
 
@@ -1479,26 +1528,39 @@ func TestReconcileArgoCD_reconcileDexLegacySATokenSecrets_IgnoresUnrelatedSecret
 	_, err := r.reconcileServiceAccount(common.ArgoCDDefaultDexServiceAccountName, a)
 	assert.NoError(t, err)
 
-	// Opaque Secret with a similar name must not be deleted.
+	// Opaque Secret with a similar name must not be deleted (wrong type).
 	opaqueSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "argocd-dex-server-token-opaque",
 			Namespace: a.Namespace,
-			Labels: map[string]string{
-				common.ArgoCDTrackedByOperatorLabel: common.ArgoCDAppName,
-			},
 		},
 		Type: corev1.SecretTypeOpaque,
 	}
 	assert.NoError(t, r.Create(context.TODO(), opaqueSecret))
 
+	// SA token secret for a different SA must not be deleted (wrong annotation).
+	otherSATokenSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "other-sa-token-xyz",
+			Namespace: a.Namespace,
+			Annotations: map[string]string{
+				corev1.ServiceAccountNameKey: "some-other-sa",
+			},
+		},
+		Type: corev1.SecretTypeServiceAccountToken,
+	}
+	assert.NoError(t, r.Create(context.TODO(), otherSATokenSecret))
+
 	assert.NoError(t, r.reconcileDexLegacySATokenSecrets(a))
 
-	// Opaque Secret must still exist.
 	kept := &corev1.Secret{}
 	assert.NoError(t, r.Get(context.TODO(),
 		types.NamespacedName{Name: opaqueSecret.Name, Namespace: a.Namespace}, kept),
 		"Opaque Secret must not be deleted by legacy cleanup")
+
+	assert.NoError(t, r.Get(context.TODO(),
+		types.NamespacedName{Name: otherSATokenSecret.Name, Namespace: a.Namespace}, kept),
+		"SA token secret for a different SA must not be deleted by legacy cleanup")
 }
 
 func TestReconcileArgoCD_reconcileDexDeployment_customLabelsAndAnnotations(t *testing.T) {

@@ -164,15 +164,13 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string,
 func (r *ReconcileArgoCD) reconcileDexLegacySATokenSecrets(cr *argoproj.ArgoCD) error {
 	dexSAName := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr).Name
 	secretList := &corev1.SecretList{}
-	if err := r.List(context.TODO(), secretList,
-		client.InNamespace(cr.Namespace),
-		client.MatchingLabels(map[string]string{
-			common.ArgoCDTrackedByOperatorLabel: common.ArgoCDAppName,
-		}),
-	); err != nil {
+	if err := r.List(context.TODO(), secretList, client.InNamespace(cr.Namespace)); err != nil {
 		return err
 	}
-	var deleteErrs []error
+	var (
+		deleteErrs         []error
+		deletedSecretNames = map[string]struct{}{}
+	)
 	for i := range secretList.Items {
 		s := &secretList.Items[i]
 		if s.Type != corev1.SecretTypeServiceAccountToken {
@@ -181,14 +179,14 @@ func (r *ReconcileArgoCD) reconcileDexLegacySATokenSecrets(cr *argoproj.ArgoCD) 
 		if s.Annotations[corev1.ServiceAccountNameKey] != dexSAName {
 			continue
 		}
-
-		if !strings.HasPrefix(s.Name, dexSAName+"-token-") {
-			continue
-		}
 		argoutil.LogResourceDeletion(log, s, "removing legacy Dex service account token secret")
-		if err := r.Delete(context.TODO(), s); err != nil && !apierrors.IsNotFound(err) {
-			deleteErrs = append(deleteErrs, fmt.Errorf("delete legacy dex token secret %s/%s: %w", s.Namespace, s.Name, err))
+		if err := r.Delete(context.TODO(), s); err != nil {
+			if !apierrors.IsNotFound(err) {
+				deleteErrs = append(deleteErrs, fmt.Errorf("delete legacy dex token secret %s/%s: %w", s.Namespace, s.Name, err))
+				continue
+			}
 		}
+		deletedSecretNames[s.Name] = struct{}{}
 	}
 	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr)
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
@@ -197,10 +195,9 @@ func (r *ReconcileArgoCD) reconcileDexLegacySATokenSecrets(cr *argoproj.ArgoCD) 
 		}
 		return errors.Join(append([]error{err}, deleteErrs...)...)
 	}
-	var filtered []corev1.ObjectReference
+	filtered := make([]corev1.ObjectReference, 0, len(sa.Secrets))
 	for _, ref := range sa.Secrets {
-		// Legacy auto token refs only (matches delete loop).
-		if strings.HasPrefix(ref.Name, dexSAName+"-token-") {
+		if _, deleted := deletedSecretNames[ref.Name]; deleted {
 			continue
 		}
 		filtered = append(filtered, ref)
