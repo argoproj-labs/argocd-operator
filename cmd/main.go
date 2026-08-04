@@ -67,6 +67,7 @@ import (
 	cw "github.com/argoproj-labs/argocd-operator/pkg/clientwrapper"
 	"github.com/argoproj-labs/argocd-operator/version"
 	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
+	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -81,6 +82,7 @@ func init() {
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
 	utilruntime.Must(v1beta1.AddToScheme(scheme))
 	utilruntime.Must(promoter.AddToScheme(scheme))
+	utilruntime.Must(apiregistrationv1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 

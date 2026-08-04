@@ -16,6 +16,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
+	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 )
 
 func TestReconcileNetworkPolicies(t *testing.T) {
@@ -28,7 +29,7 @@ func TestReconcileNetworkPolicies(t *testing.T) {
 	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
 		Enabled: new(true),
 	}
-	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
+	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
 
 	err := r.ReconcileNetworkPolicies(a)
 	assert.NoError(t, err)
@@ -44,7 +45,7 @@ func TestReconcileNetworkPolicies_DisabledDeletesExisting(t *testing.T) {
 	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
 		Enabled: new(true),
 	}
-	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
+	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
 
 	// Create all policies
 	err := r.ReconcileNetworkPolicies(a)
@@ -81,7 +82,7 @@ func TestReconcileNetworkPolicies_RecreatesDeletedNetworkPolicy(t *testing.T) {
 		Enabled: new(true),
 	}
 
-	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
+	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
 
 	// Create policies
 	err := r.ReconcileNetworkPolicies(a)
@@ -107,7 +108,7 @@ func TestReconcileNetworkPolicies_RecreatesDeletedNetworkPolicy(t *testing.T) {
 
 func TestRedisNetworkPolicy(t *testing.T) {
 	a := makeTestArgoCD()
-	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
+	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
 
 	err := r.ReconcileRedisNetworkPolicy(a)
 	assert.NoError(t, err)
@@ -134,7 +135,7 @@ func TestRedisNetworkPolicy(t *testing.T) {
 
 func TestRedisHANetworkPolicy(t *testing.T) {
 	a := makeTestArgoCD()
-	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
+	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
 
 	err := r.ReconcileRedisHANetworkPolicy(a)
 	assert.NoError(t, err)
@@ -166,7 +167,7 @@ func TestRedisNetworkPolicyWithLongName(t *testing.T) {
 	a := makeTestArgoCD()
 	a.Name = longName
 
-	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
+	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
 
 	err := r.ReconcileRedisNetworkPolicy(a)
 	assert.NoError(t, err)
@@ -190,7 +191,7 @@ func TestRedisHANetworkPolicyWithLongName(t *testing.T) {
 	a := makeTestArgoCD()
 	a.Name = longName
 
-	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
+	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
 
 	err := r.ReconcileRedisHANetworkPolicy(a)
 	assert.NoError(t, err)
@@ -211,7 +212,7 @@ func TestRedisHANetworkPolicyWithLongName(t *testing.T) {
 func TestNotificationsControllerNetworkPolicy(t *testing.T) {
 	a := makeTestArgoCD()
 	a.Spec.Notifications.Enabled = true
-	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
+	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
 
 	err := r.ReconcileNotificationsControllerNetworkPolicy(a)
 	assert.NoError(t, err)
@@ -242,7 +243,7 @@ func TestNotificationsControllerNetworkPolicyWithLongName(t *testing.T) {
 	a.Name = longName
 	a.Spec.Notifications.Enabled = true
 
-	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
+	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
 
 	err := r.ReconcileNotificationsControllerNetworkPolicy(a)
 	assert.NoError(t, err)
@@ -263,7 +264,7 @@ func TestDexServerNetworkPolicy(t *testing.T) {
 		Provider: argoproj.SSOProviderTypeDex,
 		Dex:      &argoproj.ArgoCDDexSpec{},
 	}
-	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
+	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
 
 	err := r.ReconcileDexServerNetworkPolicy(a)
 	assert.NoError(t, err)
@@ -301,7 +302,7 @@ func TestDexServerNetworkPolicyDisabledDeletesExisting(t *testing.T) {
 		Provider: argoproj.SSOProviderTypeDex,
 		Dex:      &argoproj.ArgoCDDexSpec{},
 	}
-	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
+	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
 
 	// create NP
 	err := r.ReconcileDexServerNetworkPolicy(a)
@@ -325,7 +326,7 @@ func TestDexServerNetworkPolicyWithLongName(t *testing.T) {
 		Provider: argoproj.SSOProviderTypeDex,
 		Dex:      &argoproj.ArgoCDDexSpec{},
 	}
-	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
+	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
 
 	err := r.ReconcileDexServerNetworkPolicy(a)
 	assert.NoError(t, err)
@@ -344,7 +345,7 @@ func TestApplicationSetControllerNetworkPolicy(t *testing.T) {
 	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
 		Enabled: new(true),
 	}
-	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
+	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
 
 	err := r.ReconcileApplicationSetControllerNetworkPolicy(a)
 	assert.NoError(t, err)
@@ -372,7 +373,7 @@ func TestApplicationSetControllerNetworkPolicyDisabledDeletesExisting(t *testing
 	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
 		Enabled: new(true),
 	}
-	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
+	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
 
 	// create NP
 	err := r.ReconcileApplicationSetControllerNetworkPolicy(a)
@@ -390,7 +391,7 @@ func TestApplicationSetControllerNetworkPolicyDisabledDeletesExisting(t *testing
 
 func TestArgoCDServerNetworkPolicy(t *testing.T) {
 	a := makeTestArgoCD()
-	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
+	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
 
 	err := r.ReconcileArgoCDServerNetworkPolicy(a)
 	assert.NoError(t, err)
@@ -410,7 +411,7 @@ func TestArgoCDServerNetworkPolicy(t *testing.T) {
 
 func TestArgoCDApplicationControllerNetworkPolicy(t *testing.T) {
 	a := makeTestArgoCD()
-	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
+	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
 
 	err := r.ReconcileArgoCDApplicationControllerNetworkPolicy(a)
 	assert.NoError(t, err)
@@ -432,7 +433,7 @@ func TestArgoCDApplicationControllerNetworkPolicy(t *testing.T) {
 
 func TestArgoCDRepoServerNetworkPolicy(t *testing.T) {
 	a := makeTestArgoCD()
-	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
+	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
 
 	err := r.ReconcileArgoCDRepoServerNetworkPolicy(a)
 	assert.NoError(t, err)
@@ -504,11 +505,11 @@ func TestArgoCDRepoServerNetworkPolicyUpdatesExisting(t *testing.T) {
 	}
 
 	r := makeTestReconciler(makeTestReconcilerClient(
-		makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme),
+		makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme),
 		[]client.Object{a, existing},
 		[]client.Object{a},
 		[]runtime.Object{},
-	), makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme), testclient.NewSimpleClientset())
+	), makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme), testclient.NewSimpleClientset())
 
 	// Reconcile should update it to the desired spec
 	err := r.ReconcileArgoCDRepoServerNetworkPolicy(a)

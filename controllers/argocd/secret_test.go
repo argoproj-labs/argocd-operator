@@ -31,6 +31,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
+	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 )
 
 func Test_newCASecret(t *testing.T) {
@@ -132,7 +133,7 @@ func Test_ReconcileArgoCD_ReconcileRepoTLSSecret(t *testing.T) {
 			ctrlSts,
 		}
 		runtimeObjs := []runtime.Object{}
-		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -262,7 +263,7 @@ func Test_ReconcileArgoCD_ReconcileExistingArgoSecret(t *testing.T) {
 	resObjs := []client.Object{argocd}
 	subresObjs := []client.Object{argocd}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -324,7 +325,7 @@ func Test_ReconcileArgoSecret_CreateIncludesDeclarativeWebhookSecrets(t *testing
 	resObjs := []client.Object{argocd}
 	subresObjs := []client.Object{argocd}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -355,7 +356,7 @@ func Test_ReconcileArgoCD_ReconcileShouldNotChangeWhenUpdatedAdminPass(t *testin
 	resObjs := []client.Object{argocd}
 	subresObjs := []client.Object{argocd}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -424,7 +425,7 @@ func Test_ReconcileArgoCD_ReconcileRedisInitialPasswordSecret(t *testing.T) {
 	resObjs := []client.Object{argocd}
 	subresObjs := []client.Object{argocd}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -552,7 +553,7 @@ func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 			redisDepl,
 		}
 		runtimeObjs := []runtime.Object{}
-		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -693,7 +694,7 @@ func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -754,7 +755,7 @@ func TestGenerateSortedManagedNamespaceListForArgoCDCR(t *testing.T) {
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -866,7 +867,7 @@ func TestCombineClusterSecretNamespacesWithManagedNamespaces(t *testing.T) {
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 

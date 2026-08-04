@@ -25,6 +25,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
+	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 )
 
 func TestReconcileRouteSetLabels(t *testing.T) {
@@ -41,7 +42,7 @@ func TestReconcileRouteSetLabels(t *testing.T) {
 	resObjs := []client.Object{argoCD}
 	subresObjs := []client.Object{argoCD}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -77,7 +78,7 @@ func TestReconcileRouteSetsInsecure(t *testing.T) {
 	resObjs := []client.Object{argoCD}
 	subresObjs := []client.Object{argoCD}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -153,7 +154,7 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 	resObjs := []client.Object{argoCD}
 	subresObjs := []client.Object{argoCD}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -235,7 +236,7 @@ func TestReconcileRouteApplicationSetHost(t *testing.T) {
 	resObjs := []client.Object{argoCD}
 	subresObjs := []client.Object{argoCD}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -290,7 +291,7 @@ func TestReconcileRouteApplicationSetTlsTermination(t *testing.T) {
 	resObjs := []client.Object{argoCD}
 	subresObjs := []client.Object{argoCD}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -362,7 +363,7 @@ func TestReconcileRouteApplicationSetTls(t *testing.T) {
 	resObjs := []client.Object{argoCD, ingressConfig}
 	subresObjs := []client.Object{argoCD}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -470,7 +471,7 @@ func TestReconcileRouteForShorteningHostname(t *testing.T) {
 			resObjs := []client.Object{argoCD}
 			subresObjs := []client.Object{argoCD}
 			runtimeObjs := []runtime.Object{}
-			sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -544,7 +545,7 @@ func TestReconcileRouteForShorteningRoutename(t *testing.T) {
 	resObjs := []client.Object{argoCD, ingressConfig}
 	subresObjs := []client.Object{argoCD}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -663,7 +664,7 @@ func TestReconcileRouteTLSConfig(t *testing.T) {
 			resObjs := []client.Object{argoCD}
 			subresObjs := []client.Object{argoCD}
 			runtimeObjs := []runtime.Object{}
-			sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
 			fakeClient := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 			reconciler := makeTestReconciler(fakeClient, sch, testclient.NewSimpleClientset())
 
@@ -781,7 +782,7 @@ func TestOverrideRouteTLSData(t *testing.T) {
 	resObjs := []client.Object{argoCD}
 	subresObjs := []client.Object{argoCD}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
 	fakeClient := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(fakeClient, sch, testclient.NewSimpleClientset())
 
@@ -913,7 +914,7 @@ func TestReconcileRouteServerPath(t *testing.T) {
 			resObjs := []client.Object{argoCD}
 			subresObjs := []client.Object{argoCD}
 			runtimeObjs := []runtime.Object{}
-			sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 

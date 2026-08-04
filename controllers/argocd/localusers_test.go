@@ -35,6 +35,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
+	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 )
 
 func createResources(cr *argoproj.ArgoCD, expect *assert.Assertions) *ReconcileArgoCD {
@@ -43,7 +44,7 @@ func createResources(cr *argoproj.ArgoCD, expect *assert.Assertions) *ReconcileA
 	resObjs := []client.Object{cr}
 	subresObjs := []client.Object{}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())

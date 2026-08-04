@@ -2118,6 +2118,16 @@ func (r *ReconcileArgoCD) reconcileGitOpsPromoter(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
+	log.Info("reconciling GitOps Promoter's API Server Service")
+	if _, err = gitopspromoter.ReconcilePromoterAPIServerService(r.Client, apiServerCompName, cr); err != nil {
+		return err
+	}
+
+	log.Info("reconciling GitOps Promoter's API Server APIService")
+	if _, err = gitopspromoter.ReconcilePromoterAPIServerAPIService(r.Client, apiServerCompName, cr); err != nil {
+		return err
+	}
+
 	log.Info("reconciling GitOps Promoter's API Server Deployment")
 	if _, err = gitopspromoter.ReconcilePromoterAPIServerDeployment(r.Client, apiServerCompName, sa, cr, r.Scheme); err != nil {
 		return err

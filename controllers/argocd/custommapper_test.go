@@ -21,6 +21,7 @@ import (
 	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -154,7 +155,7 @@ func TestReconcileArgoCD_tlsSecretMapperRepoServer(t *testing.T) {
 		resObjs := []client.Object{argocd, secret, service}
 		subresObjs := []client.Object{argocd}
 		runtimeObjs := []runtime.Object{}
-		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -211,7 +212,7 @@ func TestReconcileArgoCD_tlsSecretMapperRepoServer(t *testing.T) {
 		resObjs := []client.Object{argocd, secret}
 		subresObjs := []client.Object{argocd}
 		runtimeObjs := []runtime.Object{}
-		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -261,7 +262,7 @@ func TestReconcileArgoCD_tlsSecretMapperRepoServer(t *testing.T) {
 		resObjs := []client.Object{argocd, secret, service}
 		subresObjs := []client.Object{argocd}
 		runtimeObjs := []runtime.Object{}
-		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -291,7 +292,7 @@ func TestReconcileArgoCD_tlsSecretMapperRepoServer(t *testing.T) {
 		resObjs := []client.Object{argocd, secret}
 		subresObjs := []client.Object{argocd}
 		runtimeObjs := []runtime.Object{}
-		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -325,7 +326,7 @@ func TestReconcileArgoCD_tlsSecretMapperRepoServer(t *testing.T) {
 		resObjs := []client.Object{argocd, secret}
 		subresObjs := []client.Object{argocd}
 		runtimeObjs := []runtime.Object{}
-		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -385,7 +386,7 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 		resObjs := []client.Object{argocd, secret, service}
 		subresObjs := []client.Object{argocd}
 		runtimeObjs := []runtime.Object{}
-		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -442,7 +443,7 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 		resObjs := []client.Object{argocd, secret}
 		subresObjs := []client.Object{argocd}
 		runtimeObjs := []runtime.Object{}
-		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -492,7 +493,7 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 		resObjs := []client.Object{argocd, secret, service}
 		subresObjs := []client.Object{argocd}
 		runtimeObjs := []runtime.Object{}
-		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -522,7 +523,7 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 		resObjs := []client.Object{argocd, secret}
 		subresObjs := []client.Object{argocd}
 		runtimeObjs := []runtime.Object{}
-		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -556,7 +557,7 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 		resObjs := []client.Object{argocd, secret}
 		subresObjs := []client.Object{argocd}
 		runtimeObjs := []runtime.Object{}
-		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -574,7 +575,7 @@ func TestReconcileArgoCD_namespaceResourceMapperWithManagedByLabel(t *testing.T)
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -636,7 +637,7 @@ func TestReconcileArgoCD_namespaceResourceMapperForSpecificNamespaceWithoutManag
 	resObjs := []client.Object{argocd1}
 	subresObjs := []client.Object{argocd1}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -696,7 +697,7 @@ func TestReconcileArgoCD_namespaceResourceMapperForWildCardPatternNamespaceWitho
 	resObjs := []client.Object{argocd1}
 	subresObjs := []client.Object{argocd1}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -772,7 +773,7 @@ func TestReconcileArgoCD_namespaceResourceMapperForMultipleSourceNamespacesWitho
 	resObjs := []client.Object{argocd1}
 	subresObjs := []client.Object{argocd1}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -864,7 +865,7 @@ func TestReconcileArgoCD_namespaceResourceMapperForWildCardNamespaceWithoutManag
 	resObjs := []client.Object{argocd1}
 	subresObjs := []client.Object{argocd1}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -1004,7 +1005,7 @@ func TestReconcileArgoCD_tlsSecretMapperUserManagedSecret(t *testing.T) {
 			resObjs := []client.Object{test.argocd}
 			subresObjs := []client.Object{test.argocd}
 			runtimeObjs := []runtime.Object{}
-			sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, configv1.Install, routev1.Install)
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -1032,7 +1033,7 @@ func TestReconcileArgoCD_nmMapper(t *testing.T) {
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
