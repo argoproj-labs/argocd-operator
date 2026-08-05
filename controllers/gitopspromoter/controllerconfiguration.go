@@ -139,3 +139,13 @@ func buildDefaultWorkQueueSettings() promoter.WorkQueue {
 		},
 	}
 }
+
+func DeleteControllerConfigurations(c client.Client, controllerConfigList *promoter.ControllerConfigurationList) error {
+	for _, config := range controllerConfigList.Items {
+		argoutil.LogResourceDeletion(log, &config, "cleaning up cluster resources")
+		if err := c.Delete(context.TODO(), &config); err != nil {
+			return fmt.Errorf("failed to delete ControllerConfiguration %s during cleanup: %w", config.Name, err)
+		}
+	}
+	return nil
+}

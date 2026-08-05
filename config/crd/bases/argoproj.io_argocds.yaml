@@ -22915,6 +22915,10 @@ spec:
                     description: WebhookEnabled controls whether the controllers webhook
                       functionality is enabled
                     type: boolean
+                  webhookServiceType:
+                    description: WebhookServiceType defines what service type the
+                      webhook service will be. If none is provided defaults to ClusterIP
+                    type: string
                 required:
                 - enabled
                 type: object

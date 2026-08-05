@@ -44,6 +44,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	"github.com/argoproj-labs/argocd-operator/controllers/gitopspromoter"
 
+	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -53,6 +54,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	v1 "k8s.io/api/rbac/v1"
+	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
@@ -711,6 +713,26 @@ func (r *ReconcileArgoCD) deleteClusterResources(cr *argoproj.ArgoCD) error {
 	}
 
 	if err := deleteRoleBindings(r.Client, roleBindingList); err != nil {
+		return err
+	}
+
+	// The GitOps promoter also has two other cluster scoped resources that need to be deleted
+	// These resources are an APIService and the ClusterConfiguration CR
+	apiSvcList := &apiregistrationv1.APIServiceList{}
+	if err := filterObjectsBySelector(r.Client, apiSvcList, selector); err != nil {
+		return fmt.Errorf("failed to filter APIServices for %s: %w", cr.Name, err)
+	}
+
+	if err := gitopspromoter.DeleteAPIServices(r.Client, apiSvcList); err != nil {
+		return err
+	}
+
+	controllerConfigList := &promoter.ControllerConfigurationList{}
+	if err := filterObjectsBySelector(r.Client, controllerConfigList, selector); err != nil {
+		return fmt.Errorf("failed to filter ControllerConfigurations for %s: %w", cr.Name, err)
+	}
+
+	if err := gitopspromoter.DeleteControllerConfigurations(r.Client, controllerConfigList); err != nil {
 		return err
 	}
 

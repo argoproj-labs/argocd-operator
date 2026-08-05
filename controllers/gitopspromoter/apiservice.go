@@ -139,3 +139,13 @@ func buildAPIServiceSpec(client client.Client, compName string, cr *argoproj.Arg
 
 	return apiSvc, nil
 }
+
+func DeleteAPIServices(c client.Client, apiSvcList *apiregistrationv1.APIServiceList) error {
+	for _, apiSvc := range apiSvcList.Items {
+		argoutil.LogResourceDeletion(log, &apiSvc, "cleaning up cluster resources")
+		if err := c.Delete(context.TODO(), &apiSvc); err != nil {
+			return fmt.Errorf("failed to delete APIService %s during cleanup: %w", apiSvc.Name, err)
+		}
+	}
+	return nil
+}
