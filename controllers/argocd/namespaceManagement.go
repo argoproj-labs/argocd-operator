@@ -65,8 +65,7 @@ func (r *ReconcileArgoCD) reconcileNamespaceManagement(argocd *argoproj.ArgoCD) 
 			})
 		} else {
 			message = fmt.Sprintf("Namespace %s is not permitted for management by ArgoCD instance %s based on NamespaceManagement rules", namespace, argocd.Namespace)
-			errorMessages = append(errorMessages, message)
-			statusUpdates = append(statusUpdates, nmStatus{nm: nm, message: message})
+			log.Info(message)
 		}
 
 		statusUpdates = append(statusUpdates, nmStatus{nm: nm, message: message})
