@@ -2095,6 +2095,11 @@ func (r *ReconcileArgoCD) reconcileGitOpsPromoter(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
+	log.Info("reconciling GitOps Promoter's Controller Webhook Service")
+	if _, err = gitopspromoter.ReconcilePromoterControllerWebhookService(r.Client, controllerCompName, cr); err != nil {
+		return err
+	}
+
 	apiServerCompName := string(argoproj.PromoterComponentTypeAPIServer)
 
 	log.Info("reconciling GitOps Promoter's API Server ServiceAccount")

@@ -32,6 +32,10 @@ import (
 )
 
 const (
+	// ControllerWebhookPort is the port for the webhook service
+	ControllerWebhookPort = 3333
+	// ControllerWebhookProtocol is the protocol for the webhook service
+	ControllerWebhookProtocol = corev1.ProtocolTCP
 	// APIServerPortName is the name of the port for the apiserver service
 	APIServerPortName = "https"
 	// APIServerPort is the port used by the api server service
@@ -42,10 +46,20 @@ const (
 	APIServerProtocol = corev1.ProtocolTCP
 )
 
+func ReconcilePromoterControllerWebhookService(client client.Client, compName string, cr *argoproj.ArgoCD) (*corev1.Service, error) {
+	expectedSpec := buildControllerWebhookServiceSpec(compName, cr)
+	enabled := cr.Spec.Promoter.IsEnabled() && cr.Spec.Promoter.WebhookEnabled
+	return ReconcilePromoterService(client, compName, cr, expectedSpec, enabled)
+}
+
 func ReconcilePromoterAPIServerService(client client.Client, compName string, cr *argoproj.ArgoCD) (*corev1.Service, error) {
-	svc := buildService(compName, cr)
 	expectedSpec := buildAPIServerServiceSpec(compName)
 	enabled := cr.Spec.Promoter == nil || cr.Spec.Promoter.APIServer.IsEnabled()
+	return ReconcilePromoterService(client, compName, cr, expectedSpec, enabled)
+}
+
+func ReconcilePromoterService(client client.Client, compName string, cr *argoproj.ArgoCD, expectedSpec corev1.ServiceSpec, enabled bool) (*corev1.Service, error) {
+	svc := buildService(compName, cr)
 
 	exists := true
 	if err := argoutil.FetchObject(client, cr.Namespace, svc.Name, svc); err != nil {
@@ -87,7 +101,7 @@ func ReconcilePromoterAPIServerService(client client.Client, compName string, cr
 	svc.Spec = expectedSpec
 	argoutil.LogResourceCreation(log, svc)
 	if err := client.Create(context.Background(), svc); err != nil {
-		return nil, fmt.Errorf("failed to create promoter apiserver service %s: %v", svc.Name, err)
+		return nil, fmt.Errorf("failed to create promoter service %s: %v", svc.Name, err)
 	}
 	return svc, nil
 }
@@ -99,6 +113,27 @@ func buildService(compName string, cr *argoproj.ArgoCD) *corev1.Service {
 			Namespace: cr.Namespace,
 			Labels:    buildLabelsForPromoterResources(compName, cr),
 		},
+	}
+}
+
+func buildControllerWebhookServiceSpec(compName string, cr *argoproj.ArgoCD) corev1.ServiceSpec {
+	serviceType := corev1.ServiceTypeClusterIP
+	if cr.Spec.Promoter != nil && cr.Spec.Promoter.WebhookServiceType != "" {
+		serviceType = corev1.ServiceType(cr.Spec.Promoter.WebhookServiceType)
+	}
+
+	return corev1.ServiceSpec{
+		Selector: map[string]string{
+			common.ArgoCDKeyComponent: compName,
+		},
+		Ports: []corev1.ServicePort{
+			{
+				Port:       ControllerWebhookPort,
+				TargetPort: intstr.FromInt(ControllerWebhookPort),
+				Protocol:   ControllerWebhookProtocol,
+			},
+		},
+		Type: serviceType,
 	}
 }
 

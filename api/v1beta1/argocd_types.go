@@ -1794,6 +1794,12 @@ type PromoterSpec struct {
 
 	// APIServer defines the configuration for the promoter's API server
 	APIServer *PromoterAPIServerSpec `json:"apiserver,omitempty"`
+
+	// WebhookEnabled controls whether the controllers webhook functionality is enabled
+	WebhookEnabled bool `json:"webhookEnabled,omitempty"`
+
+	// WebhookServiceType defines what service type the webhook service will be. If none is provided defaults to ClusterIP
+	WebhookServiceType string `json:"webhookServiceType,omitempty"`
 }
 
 // PromoterAPIServerSpec defines the desired state for the GitOps Promoter's API server

@@ -22911,6 +22911,10 @@ spec:
                           More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                         type: object
                     type: object
+                  webhookEnabled:
+                    description: WebhookEnabled controls whether the controllers webhook
+                      functionality is enabled
+                    type: boolean
                 required:
                 - enabled
                 type: object

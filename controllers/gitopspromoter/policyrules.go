@@ -22,6 +22,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
+// TODO: refactor this so its not inline
 func buildPolicyRulesForControllerClusterRoles(compName string, cr *argoproj.ArgoCD) []struct {
 	name       string
 	policyRule []rbacv1.PolicyRule
