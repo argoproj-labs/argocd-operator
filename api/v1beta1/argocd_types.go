@@ -1801,15 +1801,21 @@ type PromoterAPIServerSpec struct {
 	// Enabled defines whether or not the API server should be deployed or not (will default to true if the promoter is enabled)
 	Enabled *bool `json:"enabled,omitempty"`
 
-	// Insecure defines whether the API server is launched without TLS enabled
-	Insecure *bool `json:"insecure,omitempty"`
-
 	// TLS defines the TLS settings for the API server
 	TLS *PromoterAPIServerTLSSpec `json:"tls,omitempty"`
 }
 
 // PromoterAPIServerTLSSpec defines the TLS options for the GitOps Promoter's API server
-type PromoterAPIServerTLSSpec struct{}
+type PromoterAPIServerTLSSpec struct {
+	// CertSecretName is the name of the secret holding the TLS cert to use for the API Server
+	CertSecretName string `json:"certSecretName,omitempty"`
+
+	// CABundleSecretName is the name of the secret holding the CA bundle for the API Server's API Service
+	CABundleSecretName string `json:"caSecretName,omitempty"`
+
+	// CABundleSecretKey is the name of the key that holds the CA bundle for the API Server's API Service (defaults to "ca.crt")
+	CABundleSecretKey string `json:"caSecretKey,omitempty"`
+}
 
 func (p *PromoterSpec) IsEnabled() bool {
 	return p != nil && p.Enabled != nil && *p.Enabled

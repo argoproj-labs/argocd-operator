@@ -40,6 +40,7 @@ const (
 	EnvGitOpsPromoterImage = "GITOPS_PROMOTER_IMAGE"
 	binaryControllerCmd    = "controller"
 	binaryAPIServerCmd     = "apiserver"
+	apiServerTLSVolumeName = "serving-cert"
 )
 
 // deploymentReconciler represents the functions to fill in spots in the deployment spec that
@@ -48,8 +49,11 @@ type deploymentConfig struct {
 	command         []string
 	args            []string
 	securityContext *corev1.SecurityContext
+	ports           []corev1.ContainerPort
 	livenessProbe   *corev1.Probe
 	readinessProbe  *corev1.Probe
+	volumes         []corev1.Volume
+	volumeMounts    []corev1.VolumeMount
 }
 
 func ReconcilePromoterControllerDeployment(client client.Client, compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD, scheme *runtime.Scheme) (*appsv1.Deployment, error) {
@@ -72,11 +76,19 @@ func ReconcilePromoterAPIServerDeployment(client client.Client, compName string,
 		command:         buildContainerCommand(binaryAPIServerCmd),
 		args:            buildAPIServerArgs(),
 		securityContext: buildAPIServerSecurityContext(),
+		ports:           buildAPIServerPorts(),
 		livenessProbe:   buildAPIServerLivenessProbe(),
 		readinessProbe:  buildAPIServerReadinessProbe(),
 	}
 
 	enabled := cr.Spec.Promoter == nil || cr.Spec.Promoter.APIServer.IsEnabled()
+	if cr.Spec.Promoter != nil && cr.Spec.Promoter.APIServer.TLS != nil && cr.Spec.Promoter.APIServer.TLS.CertSecretName != "" {
+		config.volumes = buildAPIServerVolumes(cr)
+		config.volumeMounts = buildAPIServerVolumeMounts()
+	} else {
+		log.Info("Warning: no TLS cert for the API Server specified, api server may fail to start.")
+	}
+
 	deployment, err := ReconcilePromoterDeployment(client, compName, sa, cr, scheme, config, enabled)
 	if err != nil {
 		return nil, err
@@ -166,6 +178,15 @@ func ReconcilePromoterDeployment(client client.Client, compName string, sa *core
 			changed = true
 		}
 
+		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Volumes, config.volumes) {
+			deployment.Spec.Template.Spec.Volumes = config.volumes
+			changed = true
+		}
+
+		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].VolumeMounts, config.volumeMounts) {
+			deployment.Spec.Template.Spec.Containers[0].VolumeMounts = config.volumeMounts
+		}
+
 		if changed {
 			argoutil.LogResourceUpdate(log, deployment)
 			if err := client.Update(context.Background(), deployment); err != nil {
@@ -219,12 +240,15 @@ func buildDeploymentSpec(compName string, sa *corev1.ServiceAccount, cr *argopro
 						Env:             cr.Spec.Promoter.Env,
 						SecurityContext: config.securityContext,
 						Resources:       getResources(cr),
+						Ports:           config.ports,
 						LivenessProbe:   config.livenessProbe,
 						ReadinessProbe:  config.readinessProbe,
+						VolumeMounts:    config.volumeMounts,
 					},
 				},
 				ServiceAccountName:            sa.Name,
 				TerminationGracePeriodSeconds: ptr.To(int64(10)),
+				Volumes:                       config.volumes,
 			},
 		},
 	}
@@ -304,11 +328,21 @@ func buildControllerReadinessProbe() *corev1.Probe {
 	}
 }
 
+func buildAPIServerPorts() []corev1.ContainerPort {
+	return []corev1.ContainerPort{
+		{
+			Name:          APIServerPortName,
+			ContainerPort: 6443,
+			Protocol:      corev1.ProtocolTCP,
+		},
+	}
+}
+
 func buildAPIServerLivenessProbe() *corev1.Probe {
 	return &corev1.Probe{
 		ProbeHandler: corev1.ProbeHandler{
 			HTTPGet: &corev1.HTTPGetAction{
-				Path:   "/healthz",
+				Path:   "/livez",
 				Port:   intstr.FromString("https"),
 				Scheme: corev1.URISchemeHTTPS,
 			},
@@ -335,6 +369,41 @@ func buildAPIServerReadinessProbe() *corev1.Probe {
 // #TODO: Allow for custom args through cr it seems that
 func buildAPIServerArgs() []string {
 	return []string{
-		"--insecure-skip-tls-verify",
+		"--secure-port=6443",
+		"--tls-cert-file=/serving-certs/tls.crt",
+		"--tls-private-key-file=/serving-certs/tls.key",
+	}
+}
+
+func buildAPIServerVolumes(cr *argoproj.ArgoCD) []corev1.Volume {
+	return []corev1.Volume{
+		{
+			Name: apiServerTLSVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: cr.Spec.Promoter.APIServer.TLS.CertSecretName,
+				},
+			},
+		},
+		{
+			Name: "tmp",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+	}
+}
+
+func buildAPIServerVolumeMounts() []corev1.VolumeMount {
+	return []corev1.VolumeMount{
+		{
+			Name:      apiServerTLSVolumeName,
+			MountPath: "/serving-certs",
+			ReadOnly:  true,
+		},
+		{
+			Name:      "tmp",
+			MountPath: "/tmp",
+		},
 	}
 }

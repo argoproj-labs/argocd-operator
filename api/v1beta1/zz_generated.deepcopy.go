@@ -2129,11 +2129,6 @@ func (in *PromoterAPIServerSpec) DeepCopyInto(out *PromoterAPIServerSpec) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.Insecure != nil {
-		in, out := &in.Insecure, &out.Insecure
-		*out = new(bool)
-		**out = **in
-	}
 	if in.TLS != nil {
 		in, out := &in.TLS, &out.TLS
 		*out = new(PromoterAPIServerTLSSpec)

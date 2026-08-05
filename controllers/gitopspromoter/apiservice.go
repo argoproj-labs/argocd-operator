@@ -24,6 +24,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -40,7 +41,10 @@ const (
 
 func ReconcilePromoterAPIServerAPIService(client client.Client, compName string, cr *argoproj.ArgoCD) (*apiregistrationv1.APIService, error) {
 	apiSvc := buildAPIService(compName, cr)
-	expectedSpec := buildAPIServiceSpec(compName, cr)
+	expectedSpec, err := buildAPIServiceSpec(client, compName, cr)
+	if err != nil {
+		return nil, err
+	}
 
 	enabled := cr.Spec.Promoter == nil || cr.Spec.Promoter.APIServer.IsEnabled()
 
@@ -99,9 +103,9 @@ func buildAPIService(compName string, cr *argoproj.ArgoCD) *apiregistrationv1.AP
 	}
 }
 
-func buildAPIServiceSpec(compName string, cr *argoproj.ArgoCD) apiregistrationv1.APIServiceSpec {
+func buildAPIServiceSpec(client client.Client, compName string, cr *argoproj.ArgoCD) (apiregistrationv1.APIServiceSpec, error) {
 	// TODO: need to add ca bundle
-	return apiregistrationv1.APIServiceSpec{
+	apiSvc := apiregistrationv1.APIServiceSpec{
 		Group:                "view.promoter.argoproj.io",
 		Version:              "v1alpha1",
 		GroupPriorityMinimum: APIServerAPIServiceGroupPriorityMinimum,
@@ -112,4 +116,26 @@ func buildAPIServiceSpec(compName string, cr *argoproj.ArgoCD) apiregistrationv1
 			Port:      ptr.To(int32(APIServerPort)),
 		},
 	}
+
+	if cr.Spec.Promoter != nil && cr.Spec.Promoter.APIServer.TLS != nil && cr.Spec.Promoter.APIServer.TLS.CABundleSecretName != "" {
+		caSecret := &corev1.Secret{}
+		if err := argoutil.FetchObject(client, cr.Namespace, cr.Spec.Promoter.APIServer.TLS.CABundleSecretName, caSecret); err != nil {
+			return apiregistrationv1.APIServiceSpec{}, err
+		}
+
+		key := "ca.crt"
+		if cr.Spec.Promoter != nil && cr.Spec.Promoter.APIServer.TLS != nil && cr.Spec.Promoter.APIServer.TLS.CABundleSecretKey != "" {
+			key = cr.Spec.Promoter.APIServer.TLS.CABundleSecretKey
+		}
+
+		if val, ok := caSecret.Data[key]; ok {
+			apiSvc.CABundle = val
+		} else {
+			log.Info("Warning: CA bundle not found in secret %s at key %s, API Server may not work correctly", cr.Spec.Promoter.APIServer.TLS.CABundleSecretName, key)
+		}
+	} else {
+		apiSvc.InsecureSkipTLSVerify = true
+	}
+
+	return apiSvc, nil
 }
