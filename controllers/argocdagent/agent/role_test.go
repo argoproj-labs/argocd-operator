@@ -535,7 +535,7 @@ func TestBuildPolicyRuleForClusterRole_Table(t *testing.T) {
 				},
 			}
 
-			assert.Len(t, rules, 2)
+			assert.Len(t, rules, 6)
 			assert.Equal(t, appRules, rules[1])
 
 			if tt.createNamespace {

@@ -276,6 +276,47 @@ func buildPolicyRuleForClusterRole(cr *argoproj.ArgoCD) []v1.PolicyRule {
 				"patch",
 			},
 		},
+		// Give get permissions for common core Kubernetes resources
+		{
+			APIGroups: []string{""},
+			Resources: []string{
+				"pods",
+				"services",
+				"endpoints",
+				"persistentvolumeclaims",
+				"configmaps",
+				"serviceaccounts",
+			},
+			Verbs: []string{"get"},
+		},
+		{
+			APIGroups: []string{"apps"},
+			Resources: []string{
+				"deployments",
+				"replicasets",
+				"statefulsets",
+				"daemonsets",
+			},
+			Verbs: []string{"get"},
+		},
+		{
+			APIGroups: []string{"networking.k8s.io"},
+			Resources: []string{
+				"ingresses",
+				"networkpolicies",
+			},
+			Verbs: []string{"get"},
+		},
+		{
+			APIGroups: []string{"rbac.authorization.k8s.io"},
+			Resources: []string{
+				"roles",
+				"rolebindings",
+				"clusterroles",
+				"clusterrolebindings",
+			},
+			Verbs: []string{"get"},
+		},
 	}
 
 	// Conditionally allow namespace create/get only if requested
