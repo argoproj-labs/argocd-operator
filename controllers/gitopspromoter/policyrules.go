@@ -22,15 +22,14 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
-// TODO: refactor this so its not inline
-func buildPolicyRulesForControllerClusterRoles(compName string, cr *argoproj.ArgoCD) []struct {
+type policyRuleConfig struct {
 	name       string
 	policyRule []rbacv1.PolicyRule
-} {
-	return []struct {
-		name       string
-		policyRule []rbacv1.PolicyRule
-	}{
+}
+
+// TODO: refactor this so its not inline
+func buildPolicyRulesForControllerClusterRoles(compName string, cr *argoproj.ArgoCD) []policyRuleConfig {
+	return []policyRuleConfig{
 		{
 			name:       generatePromoterResourceNameWithNamespace(compName, cr),
 			policyRule: buildPolicyRuleForControllerClusterRole(),
@@ -38,14 +37,8 @@ func buildPolicyRulesForControllerClusterRoles(compName string, cr *argoproj.Arg
 	}
 }
 
-func buildPolicyRulesForAPIServerClusterRoles(compName string, cr *argoproj.ArgoCD) []struct {
-	name       string
-	policyRule []rbacv1.PolicyRule
-} {
-	return []struct {
-		name       string
-		policyRule []rbacv1.PolicyRule
-	}{
+func buildPolicyRulesForAPIServerClusterRoles(compName string, cr *argoproj.ArgoCD) []policyRuleConfig {
+	return []policyRuleConfig{
 		{
 			name:       generatePromoterResourceNameWithNamespace(compName, cr),
 			policyRule: buildPolicyRuleForAPIServerClusterRole(),
