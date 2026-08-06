@@ -34,6 +34,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -288,7 +289,6 @@ func getArgoCmpServerInitCommand() []string {
 
 // getArgoServerCommand will return the command for the ArgoCD server component.
 func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
-
 	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
 
 	cmd := make([]string, 0)
@@ -418,7 +418,6 @@ func newDeploymentWithSuffix(suffix string, component string, cr *argoproj.ArgoC
 
 // reconcileDeployments will ensure that all Deployment resources are present for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileDeployments(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
-
 	if err := r.reconcileDexDeployment(cr); err != nil {
 		log.Error(err, "error reconciling dex deployment")
 	}
@@ -458,7 +457,6 @@ func (r *ReconcileArgoCD) reconcileDeployments(cr *argoproj.ArgoCD, useTLSForRed
 
 // reconcileGrafanaDeployment will ensure the Deployment resource is present for the ArgoCD Grafana component.
 func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error {
-
 	//lint:ignore SA1019 known to be deprecated
 	if !cr.Spec.Grafana.Enabled { //nolint:staticcheck // SA1019: We must test deprecated fields.
 		return nil // Grafana not enabled, do nothing.
@@ -672,7 +670,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 		},
 	}
 
-	var redisEnv = proxyEnvVars()
+	redisEnv := proxyEnvVars()
 
 	deploy.Spec.Replicas = argoutil.GetRedisHAReplicas()
 
@@ -954,7 +952,8 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		{
 			Name:      "ssh-known-hosts",
 			MountPath: "/app/config/ssh",
-		}, {
+		},
+		{
 			Name:      "tls-certs",
 			MountPath: "/app/config/tls",
 		},
@@ -1102,25 +1101,30 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 
 	deploy.Spec.Template.Spec.Volumes = serverVolumes
 
-	const rolloutsVolumeName = "rollout-extensions"
-	if cr.Spec.Server.EnableRolloutsUI {
-		deploy.Spec.Template.Spec.InitContainers = append(deploy.Spec.Template.Spec.InitContainers, getRolloutInitContainer()...)
+	rolloutsUIEnabled := cr.Spec.Server.EnableRolloutsUI
+	promoterUIEnabled := cr.Spec.Promoter.IsEnabled() && cr.Spec.Promoter.ArgoCDUIExtensionEnabled
 
+	const extensionsVolumeName = "extensions"
+	if rolloutsUIEnabled {
+		deploy.Spec.Template.Spec.InitContainers = append(deploy.Spec.Template.Spec.InitContainers, getRolloutInitContainer()...)
+	}
+
+	if promoterUIEnabled {
+		deploy.Spec.Template.Spec.InitContainers = append(deploy.Spec.Template.Spec.InitContainers, getPromoterInitContainer()...)
+	}
+
+	if rolloutsUIEnabled || promoterUIEnabled {
 		deploy.Spec.Template.Spec.Containers[0].VolumeMounts = append(deploy.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
-			Name:      rolloutsVolumeName,
+			Name:      extensionsVolumeName,
 			MountPath: "/tmp/extensions/",
 		})
 
 		deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, corev1.Volume{
-			Name: rolloutsVolumeName,
+			Name: extensionsVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		})
-	} else if !cr.Spec.Server.EnableRolloutsUI {
-		deploy.Spec.Template.Spec.InitContainers = removeInitContainer(deploy.Spec.Template.Spec.InitContainers, rolloutsVolumeName)
-		deploy.Spec.Template.Spec.Volumes = removeVolume(deploy.Spec.Template.Spec.Volumes, rolloutsVolumeName)
-		deploy.Spec.Template.Spec.Containers[0].VolumeMounts = removeVolumeMount(deploy.Spec.Template.Spec.Containers[0].VolumeMounts, rolloutsVolumeName)
 	}
 
 	if replicas := getArgoCDServerReplicas(cr); replicas != nil {
@@ -1302,7 +1306,6 @@ func BuildTLSArgsFromClusterTLSProfile(centralTLSConfig tlsProfile.TLSConfigProf
 
 // triggerDeploymentRollout will update the label with the given key to trigger a new rollout of the Deployment.
 func (r *ReconcileArgoCD) triggerDeploymentRollout(deployment *appsv1.Deployment, key string) error {
-
 	deplExists, err := argoutil.IsObjectFound(r.Client, deployment.Namespace, deployment.Name, deployment)
 	if err != nil {
 		return err
@@ -1366,7 +1369,7 @@ func getRolloutInitContainer() []corev1.Container {
 			Name: "rollout-extension",
 			VolumeMounts: []corev1.VolumeMount{
 				{
-					Name:      "rollout-extensions",
+					Name:      "extensions",
 					MountPath: "/tmp/extensions/",
 				},
 				{
@@ -1378,6 +1381,8 @@ func getRolloutInitContainer() []corev1.Container {
 		},
 	}
 
+	containers[0].SecurityContext.RunAsUser = ptr.To(int64(1000))
+
 	if value, exists := os.LookupEnv(common.ArgoCDExtensionImageEnvName); exists {
 		containers[0].Image = value
 	} else {
@@ -1386,8 +1391,44 @@ func getRolloutInitContainer() []corev1.Container {
 			{
 				Name:  "EXTENSION_URL",
 				Value: common.ArgoRolloutsExtensionURL,
-			}}
+			},
+		}
 	}
+	return containers
+}
+
+func getPromoterInitContainer() []corev1.Container {
+	containers := []corev1.Container{
+		{
+			Name: "promoter-extension",
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "extensions",
+					MountPath: "/tmp/extensions/",
+				},
+				{
+					Name:      "tmp",
+					MountPath: "/tmp",
+				},
+			},
+			SecurityContext: argoutil.DefaultSecurityContext(),
+		},
+	}
+
+	containers[0].SecurityContext.RunAsUser = ptr.To(int64(1000))
+
+	if value, exists := os.LookupEnv(common.ArgoCDExtensionImageEnvName); exists {
+		containers[0].Image = value
+	} else {
+		containers[0].Image = common.ArgoCDExtensionInstallerImage
+		containers[0].Env = []corev1.EnvVar{
+			{
+				Name:  "EXTENSION_URL",
+				Value: common.GitopsPromoterExtensionURL,
+			},
+		}
+	}
+	// TODO: look into adding the checksums for extensions installation. Could even add it to the rollouts one too.
 	return containers
 }
 

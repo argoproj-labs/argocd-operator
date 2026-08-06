@@ -22685,6 +22685,10 @@ spec:
                             type: string
                         type: object
                     type: object
+                  argoCDUIExtensionEnabled:
+                    description: ArgoCDUIExtensionEnabled defines whether the Argo
+                      CD UI extension is enabled.
+                    type: boolean
                   enabled:
                     description: Enabled defines whether gitops promoter controller
                       should be deployed or not

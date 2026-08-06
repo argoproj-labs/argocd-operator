@@ -1800,6 +1800,9 @@ type PromoterSpec struct {
 
 	// WebhookServiceType defines what service type the webhook service will be. If none is provided defaults to ClusterIP
 	WebhookServiceType string `json:"webhookServiceType,omitempty"`
+
+	// ArgoCDUIExtensionEnabled defines whether the Argo CD UI extension is enabled.
+	ArgoCDUIExtensionEnabled bool `json:"argoCDUIExtensionEnabled,omitempty"`
 }
 
 // PromoterAPIServerSpec defines the desired state for the GitOps Promoter's API server
