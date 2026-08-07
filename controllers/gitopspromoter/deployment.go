@@ -107,7 +107,6 @@ func ReconcilePromoterDeployment(client client.Client, compName string, sa *core
 		exists = false
 	}
 
-	// TODO: add reconcilation logic for the args and also custom settings of the args because the promoter has no env args ATM
 	if exists {
 		if !cr.Spec.Promoter.IsEnabled() || !enabled {
 			argoutil.LogResourceDeletion(log, deployment, "promoter deployment is being deleted due to being disabled")
@@ -123,10 +122,10 @@ func ReconcilePromoterDeployment(client client.Client, compName string, sa *core
 			changed = true
 		}
 
-		// if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Command, config.command) {
-		// 	deployment.Spec.Template.Spec.Containers[0].Command = config.command
-		// 	changed = true
-		// }
+		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Command, config.command) {
+			deployment.Spec.Template.Spec.Containers[0].Command = config.command
+			changed = true
+		}
 
 		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Image, selectImage(cr)) {
 			deployment.Spec.Template.Spec.Containers[0].Image = selectImage(cr)

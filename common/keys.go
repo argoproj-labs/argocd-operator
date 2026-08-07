@@ -262,6 +262,12 @@ const (
 	// ArgoCDAgentClusterRoleEnvName is an environment variable to specify a custom cluster role for the agent component of Argo CD Agent
 	ArgoCDAgentClusterRoleEnvName = "AGENT_CLUSTER_ROLE"
 
+	// GitOpsPromoterControllerClusterRoleEnvNmae is an environment variable to specify a custom cluster role for the GitOps Promoter Controller
+	GitOpsPromoterControllerClusterRoleEnvName = "PROMOTER_CONTROLLER_CLUSTER_ROLE"
+
+	// GitOpsPromoterAPIServerClusterRoleEnvName is an environment variable to specify a custom cluster role for the GitOps Promoter API Server
+	GitOpsPromoterAPIServerClusterRoleEnvName = "PROMOTER_API_SERVER_CLUSTER_ROLE"
+
 	// ArgoCDDexSecretKey is used to reference Dex secret from Argo CD secret into Argo CD configmap
 	ArgoCDDexSecretKey = "oidc.dex.clientSecret" // #nosec G101
 

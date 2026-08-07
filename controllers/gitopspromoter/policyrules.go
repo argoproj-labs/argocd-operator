@@ -20,32 +20,50 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 type policyRuleConfig struct {
-	name       string
-	policyRule []rbacv1.PolicyRule
+	name        string
+	roleRefName string
+	policyRule  []rbacv1.PolicyRule
 }
 
-// TODO: refactor this so its not inline
 func buildPolicyRulesForControllerClusterRoles(compName string, cr *argoproj.ArgoCD) []policyRuleConfig {
+	name := getCustomClusterRoleName(common.GitOpsPromoterControllerClusterRoleEnvName)
+	policyRule := []rbacv1.PolicyRule{}
+	if name == "" {
+		name = generatePromoterResourceNameWithNamespace(compName, cr)
+		policyRule = buildPolicyRuleForControllerClusterRole()
+	}
+
 	return []policyRuleConfig{
 		{
-			name:       generatePromoterResourceNameWithNamespace(compName, cr),
-			policyRule: buildPolicyRuleForControllerClusterRole(),
+			name:        generatePromoterResourceNameWithNamespace(compName, cr),
+			roleRefName: name,
+			policyRule:  policyRule,
 		},
 	}
 }
 
 func buildPolicyRulesForAPIServerClusterRoles(compName string, cr *argoproj.ArgoCD) []policyRuleConfig {
+	name := getCustomClusterRoleName(common.GitOpsPromoterAPIServerClusterRoleEnvName)
+	policyRule := []rbacv1.PolicyRule{}
+	if name == "" {
+		name = generatePromoterResourceNameWithNamespace(compName, cr)
+		policyRule = buildPolicyRuleForAPIServerClusterRole()
+	}
+
 	return []policyRuleConfig{
 		{
-			name:       generatePromoterResourceNameWithNamespace(compName, cr),
-			policyRule: buildPolicyRuleForAPIServerClusterRole(),
+			name:        generatePromoterResourceNameWithNamespace(compName, cr),
+			roleRefName: name,
+			policyRule:  policyRule,
 		},
 		{
-			name:       fmt.Sprintf("%s-%s", generatePromoterResourceNameWithNamespace(compName, cr), "promotionstrategydetails-viewer"),
-			policyRule: buildPolicyRuleForAPIServerPromotionStrategyDetailsViewer(),
+			name:        fmt.Sprintf("%s-%s", generatePromoterResourceNameWithNamespace(compName, cr), "promotionstrategydetails-viewer"),
+			roleRefName: fmt.Sprintf("%s-%s", generatePromoterResourceNameWithNamespace(compName, cr), "promotionstrategydetails-viewer"),
+			policyRule:  buildPolicyRuleForAPIServerPromotionStrategyDetailsViewer(),
 		},
 	}
 }

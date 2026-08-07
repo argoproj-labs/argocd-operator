@@ -17,6 +17,7 @@ package gitopspromoter
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -35,11 +36,13 @@ func ReconcilePromoterControllerClusterRoles(client client.Client, compName stri
 	reconciledClusterRoles := []*rbacv1.ClusterRole{}
 
 	for _, clusterRole := range clusterRolesToReconcile {
-		resultClusterRole, err := ReconcilePromoterClusterRole(client, compName, clusterRole.name, clusterRole.policyRule, cr, true)
-		if err != nil {
-			return nil, err
+		if !reflect.DeepEqual(clusterRole.policyRule, []rbacv1.PolicyRule{}) {
+			resultClusterRole, err := ReconcilePromoterClusterRole(client, compName, clusterRole.name, clusterRole.policyRule, cr, true)
+			if err != nil {
+				return nil, err
+			}
+			reconciledClusterRoles = append(reconciledClusterRoles, resultClusterRole)
 		}
-		reconciledClusterRoles = append(reconciledClusterRoles, resultClusterRole)
 	}
 
 	return reconciledClusterRoles, nil
@@ -51,11 +54,13 @@ func ReconcilePromoterAPIServerClusterRoles(client client.Client, compName strin
 
 	enabled := cr.Spec.Promoter == nil || cr.Spec.Promoter.APIServer.IsEnabled()
 	for _, clusterRole := range clusterRolesToReconcile {
-		resultClusterRole, err := ReconcilePromoterClusterRole(client, compName, clusterRole.name, clusterRole.policyRule, cr, enabled)
-		if err != nil {
-			return nil, err
+		if !reflect.DeepEqual(clusterRole.policyRule, []rbacv1.PolicyRule{}) {
+			resultClusterRole, err := ReconcilePromoterClusterRole(client, compName, clusterRole.name, clusterRole.policyRule, cr, enabled)
+			if err != nil {
+				return nil, err
+			}
+			reconciledClusterRoles = append(reconciledClusterRoles, resultClusterRole)
 		}
-		reconciledClusterRoles = append(reconciledClusterRoles, resultClusterRole)
 	}
 
 	return reconciledClusterRoles, nil
@@ -73,7 +78,6 @@ func ReconcilePromoterClusterRole(client client.Client, compName, name string, e
 	}
 
 	if exists {
-		// TODO: Need to add in some custom rbac functionality
 		if !cr.Spec.Promoter.IsEnabled() || !enabled {
 			argoutil.LogResourceDeletion(log, clusterRole, fmt.Sprintf("promoter cluster role, %s, is being deleted due to being disabled", clusterRole.Name))
 			if err := client.Delete(context.Background(), clusterRole); err != nil {
@@ -115,4 +119,8 @@ func buildClusterRole(compName, name string, cr *argoproj.ArgoCD) *rbacv1.Cluste
 			Labels: labels,
 		},
 	}
+}
+
+func getCustomClusterRoleName(component string) string {
+	return os.Getenv(component)
 }

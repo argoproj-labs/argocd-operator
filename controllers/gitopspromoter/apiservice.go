@@ -104,7 +104,6 @@ func buildAPIService(compName string, cr *argoproj.ArgoCD) *apiregistrationv1.AP
 }
 
 func buildAPIServiceSpec(client client.Client, compName string, cr *argoproj.ArgoCD) (apiregistrationv1.APIServiceSpec, error) {
-	// TODO: need to add ca bundle
 	apiSvc := apiregistrationv1.APIServiceSpec{
 		Group:                "view.promoter.argoproj.io",
 		Version:              "v1alpha1",

@@ -36,7 +36,7 @@ func ReconcilePromoterControllerClusterRoleBindings(client client.Client, compNa
 	reconciledClusterRoleBindings := []*rbacv1.ClusterRoleBinding{}
 
 	for _, clusterRole := range clusterRoleBindingsToReconcile {
-		resultClusterRoleBinding, err := ReconcilePromoterClusterRoleBinding(client, compName, clusterRole.name, clusterRole.name, sa, cr, true)
+		resultClusterRoleBinding, err := ReconcilePromoterClusterRoleBinding(client, compName, clusterRole.name, clusterRole.roleRefName, sa, cr, true)
 		if err != nil {
 			return nil, err
 		}
@@ -52,7 +52,7 @@ func ReconcilePromoterAPIServerClusterRoleBindings(client client.Client, compNam
 
 	enabled := cr.Spec.Promoter == nil || cr.Spec.Promoter.APIServer.IsEnabled()
 	for _, clusterRole := range clusterRoleBindingsToReconcile {
-		resultClusterRoleBinding, err := ReconcilePromoterClusterRoleBinding(client, compName, clusterRole.name, clusterRole.name, sa, cr, enabled)
+		resultClusterRoleBinding, err := ReconcilePromoterClusterRoleBinding(client, compName, clusterRole.name, clusterRole.roleRefName, sa, cr, enabled)
 		if err != nil {
 			return nil, err
 		}
