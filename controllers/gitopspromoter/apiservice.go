@@ -116,7 +116,7 @@ func buildAPIServiceSpec(client client.Client, compName string, cr *argoproj.Arg
 		},
 	}
 
-	if cr.Spec.Promoter != nil && cr.Spec.Promoter.APIServer.TLS != nil && cr.Spec.Promoter.APIServer.TLS.CABundleSecretName != "" {
+	if cr.Spec.Promoter != nil && cr.Spec.Promoter.APIServer != nil && cr.Spec.Promoter.APIServer.TLS != nil && cr.Spec.Promoter.APIServer.TLS.CABundleSecretName != "" {
 		caSecret := &corev1.Secret{}
 		if err := argoutil.FetchObject(client, cr.Namespace, cr.Spec.Promoter.APIServer.TLS.CABundleSecretName, caSecret); err != nil {
 			return apiregistrationv1.APIServiceSpec{}, err

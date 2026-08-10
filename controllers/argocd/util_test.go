@@ -350,8 +350,8 @@ func TestArgoCDInstanceSelector(t *testing.T) {
 	t.Run("Selector for an Invalid name", func(t *testing.T) {
 		invalidName := "argocd-*/"
 		selector, err := argocdInstanceSelector(invalidName)
-		//assert.ErrorContains(t, err, `failed to create a requirement for values[0][app.kubernetes.io/managed-by]: Invalid value: "argocd-*/`)
-		//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
+		// assert.ErrorContains(t, err, `failed to create a requirement for values[0][app.kubernetes.io/managed-by]: Invalid value: "argocd-*/`)
+		// TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), `failed to create a requirement for values[0][app.kubernetes.io/managed-by]: Invalid value: "argocd-*/`)
 
@@ -360,7 +360,6 @@ func TestArgoCDInstanceSelector(t *testing.T) {
 }
 
 func TestGetArgoApplicationControllerCommand(t *testing.T) {
-
 	defaultResult := []string{
 		"argocd-application-controller",
 		"--operation-processors",
@@ -633,7 +632,6 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 }
 
 func TestGetArgoApplicationContainerEnv(t *testing.T) {
-
 	sync60s := []corev1.EnvVar{
 		{Name: "HOME", Value: "/home/argocd", ValueFrom: (*corev1.EnvVarSource)(nil)},
 		{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "60s", ValueFrom: (*corev1.EnvVarSource)(nil)},
@@ -642,7 +640,8 @@ func TestGetArgoApplicationContainerEnv(t *testing.T) {
 				LocalObjectReference: corev1.LocalObjectReference{Name: common.ArgoCDCmdParamsConfigMapName},
 				Key:                  "controller.resource.health.persist",
 			},
-		}}}
+		}},
+	}
 
 	cmdTests := []struct {
 		name string
@@ -706,8 +705,8 @@ func TestDeleteRBACsForNamespace(t *testing.T) {
 
 	// role with the label should be deleted
 	_, err = testClient.RbacV1().Roles(testNameSpace).Get(context.TODO(), role.Name, metav1.GetOptions{})
-	//assert.ErrorContains(t, err, "not found")
-	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
+	// assert.ErrorContains(t, err, "not found")
+	// TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
 
@@ -717,15 +716,14 @@ func TestDeleteRBACsForNamespace(t *testing.T) {
 
 	// roleBinding with the label should be deleted
 	_, err = testClient.RbacV1().Roles(testNameSpace).Get(context.TODO(), roleBinding.Name, metav1.GetOptions{})
-	//assert.ErrorContains(t, err, "not found")
-	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
+	// assert.ErrorContains(t, err, "not found")
+	// TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
 
 	// roleBinding without the label should still exists, no error
 	_, err = testClient.RbacV1().Roles(testNameSpace).Get(context.TODO(), roleBinding2.Name, metav1.GetOptions{})
 	assert.NoError(t, err)
-
 }
 
 func TestRemoveManagedNamespaceFromClusterSecretAfterDeletion(t *testing.T) {
@@ -751,7 +749,6 @@ func TestRemoveManagedNamespaceFromClusterSecretAfterDeletion(t *testing.T) {
 	s, err := testClient.CoreV1().Secrets(a.Namespace).Get(context.TODO(), secret.Name, metav1.GetOptions{})
 	assert.NoError(t, err)
 	assert.Equal(t, "testNamespace2", string(s.Data["namespaces"]))
-
 }
 
 func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
@@ -770,31 +767,37 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	err := r.Create(context.TODO(), nsArgocd)
 	assert.NoError(t, err)
 
-	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
-		Name: "testNamespace",
-		Labels: map[string]string{
-			common.ArgoCDManagedByLabel: a.Namespace,
-		}},
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "testNamespace",
+			Labels: map[string]string{
+				common.ArgoCDManagedByLabel: a.Namespace,
+			},
+		},
 	}
 
 	err = r.Create(context.TODO(), ns)
 	assert.NoError(t, err)
 
-	ns2 := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
-		Name: "testNamespace2",
-		Labels: map[string]string{
-			common.ArgoCDManagedByLabel: a.Namespace,
-		}},
+	ns2 := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "testNamespace2",
+			Labels: map[string]string{
+				common.ArgoCDManagedByLabel: a.Namespace,
+			},
+		},
 	}
 
 	err = r.Create(context.TODO(), ns2)
 	assert.NoError(t, err)
 
-	ns3 := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
-		Name: "testNamespace3",
-		Labels: map[string]string{
-			common.ArgoCDManagedByLabel: "newNamespace",
-		}},
+	ns3 := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "testNamespace3",
+			Labels: map[string]string{
+				common.ArgoCDManagedByLabel: "newNamespace",
+			},
+		},
 	}
 
 	err = r.Create(context.TODO(), ns3)
@@ -1061,6 +1064,7 @@ func TestGetSourceNamespacesWithWildCardNamespace(t *testing.T) {
 	assert.Contains(t, sourceNamespaces, "test-namespace-1")
 	assert.Contains(t, sourceNamespaces, "test-namespace-2")
 }
+
 func TestGetSourceNamespacesWithRegExpNamespace(t *testing.T) {
 	a := makeTestArgoCD()
 	a.Spec = argoproj.ArgoCDSpec{
@@ -1100,7 +1104,6 @@ func TestGetSourceNamespacesWithRegExpNamespace(t *testing.T) {
 }
 
 func TestGenerateRandomString(t *testing.T) {
-
 	// verify the creation of unique strings
 	s1 := GenerateRandomString(20)
 	s2 := GenerateRandomString(20)
@@ -1404,13 +1407,13 @@ func TestInsertOrUpdateConditionsInSlice_add_another_condition(t *testing.T) {
 	assert.True(t, changed)
 	assert.Len(t, conditions, 2)
 
-	//Check that the unrelated condition is still present
+	// Check that the unrelated condition is still present
 	assert.Equal(t, conditions[0].Type, unrelatedCondition.Type)
 	assert.Equal(t, conditions[0].Status, unrelatedCondition.Status)
 	assert.Equal(t, conditions[0].Reason, unrelatedCondition.Reason)
 	assert.Equal(t, conditions[0].Message, unrelatedCondition.Message)
 
-	//Check that the new condition was added
+	// Check that the new condition was added
 	assert.Equal(t, conditions[1].Type, newCondition.Type)
 	assert.Equal(t, conditions[1].Status, newCondition.Status)
 	assert.Equal(t, conditions[1].Reason, newCondition.Reason)
