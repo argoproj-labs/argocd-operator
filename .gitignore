@@ -15,7 +15,8 @@ testbin/*
 *.out
 
 # Documentation generated files
-docs/reference/api.md
+docs/reference/api-v1alpha1.md
+docs/reference/api-v1beta1.md
 
 # Kubernetes Generated files - skip generated files, except for vendored files
 vendor/

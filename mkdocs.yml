@@ -67,7 +67,8 @@ nav:
   - ApplicationSet:
     - Policies: reference/applicationSet.md
   - ArgoCDExport: reference/argocdexport.md
-  - API Docs: reference/api.md
+  - API Docs (v1beta1): reference/api-v1beta1.md
+  - API Docs (v1alpha1): reference/api-v1alpha1.md
   - NotificationsConfiguration: reference/notificationsconfiguration.md
 - Contributing:
   - Contributing: developer-guide/contributing.md
