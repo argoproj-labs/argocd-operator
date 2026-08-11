@@ -22,7 +22,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -279,10 +278,10 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				},
 				Spec: argov1beta1api.ArgoCDSpec{
 					Prometheus: argov1beta1api.ArgoCDPrometheusSpec{Enabled: true},
-					Controller: argov1beta1api.ArgoCDApplicationControllerSpec{Enabled: ptr.To(false)},
+					Controller: argov1beta1api.ArgoCDApplicationControllerSpec{Enabled: new(false)},
 					ArgoCDAgent: &argov1beta1api.ArgoCDAgentSpec{
 						Principal: &argov1beta1api.PrincipalSpec{
-							Enabled: ptr.To(true),
+							Enabled: new(true),
 							Metrics: &argov1beta1api.ArgoCDMetricsSpec{
 								Interval:      "40s",
 								ScrapeTimeout: "12s",
@@ -351,11 +350,11 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				},
 				Spec: argov1beta1api.ArgoCDSpec{
 					Prometheus: argov1beta1api.ArgoCDPrometheusSpec{Enabled: true},
-					Controller: argov1beta1api.ArgoCDApplicationControllerSpec{Enabled: ptr.To(false)},
-					Server:     argov1beta1api.ArgoCDServerSpec{Enabled: ptr.To(false)},
+					Controller: argov1beta1api.ArgoCDApplicationControllerSpec{Enabled: new(false)},
+					Server:     argov1beta1api.ArgoCDServerSpec{Enabled: new(false)},
 					ArgoCDAgent: &argov1beta1api.ArgoCDAgentSpec{
 						Agent: &argov1beta1api.AgentSpec{
-							Enabled: ptr.To(true),
+							Enabled: new(true),
 							Metrics: &argov1beta1api.ArgoCDMetricsSpec{
 								Interval:      "50s",
 								ScrapeTimeout: "18s",

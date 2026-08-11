@@ -105,6 +105,13 @@ func HaveServerStatus(status string) matcher.GomegaMatcher {
 	})
 }
 
+func HaveCommitServerStatus(status string) matcher.GomegaMatcher {
+	return fetchArgoCD(func(argocd *argov1beta1api.ArgoCD) bool {
+		GinkgoWriter.Println("HaveCommitServerStatus:", "expected:", status, "/ actual:", argocd.Status.CommitServer)
+		return argocd.Status.CommitServer == status
+	})
+}
+
 func HaveApplicationControllerStatus(status string) matcher.GomegaMatcher {
 	return fetchArgoCD(func(argocd *argov1beta1api.ArgoCD) bool {
 		GinkgoWriter.Println("HaveApplicationControllerStatus:", "expected:", status, "/ actual:", argocd.Status.ApplicationController)
@@ -327,8 +334,8 @@ func StreamFromArgoCDEventSourceURL(ctx context.Context, eventSourceAPIURL strin
 					return strings.Contains(err.Error(), "context canceled")
 				}
 
-				if strings.HasPrefix(line, "data:") {
-					data := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+				if after, ok := strings.CutPrefix(line, "data:"); ok {
+					data := strings.TrimSpace(after)
 					select {
 					case <-ctx.Done():
 						GinkgoWriter.Println("Context is complete")

@@ -26,7 +26,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -373,12 +372,12 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 						Kind:               "ArgoCD",
 						Name:               argoCDInstance.Name,
 						UID:                argoCDInstance.UID,
-						Controller:         ptr.To(true),
-						BlockOwnerDeletion: ptr.To(true),
+						Controller:         new(true),
+						BlockOwnerDeletion: new(true),
 					}},
 				},
 				Spec: appsv1.StatefulSetSpec{
-					Replicas: ptr.To(int32(1)),
+					Replicas: new(int32(1)),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							"app.kubernetes.io/name": oldStatefulSetName,
@@ -490,12 +489,12 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 						Kind:               "ArgoCD",
 						Name:               argoCDInstance.Name,
 						UID:                argoCDInstance.UID,
-						Controller:         ptr.To(true),
-						BlockOwnerDeletion: ptr.To(true),
+						Controller:         new(true),
+						BlockOwnerDeletion: new(true),
 					}},
 				},
 				Spec: appsv1.StatefulSetSpec{
-					Replicas: ptr.To(int32(3)),
+					Replicas: new(int32(3)),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							"app.kubernetes.io/name": oldRedisLabel,

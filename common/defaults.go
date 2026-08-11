@@ -33,8 +33,17 @@ const (
 	// ArgoCDDefaultLogFormat is the default log format to be used by all ArgoCD components.
 	ArgoCDDefaultLogFormat = "text"
 
-	// ArgoCDServerComponent is the name of the Dex server control plane component
+	// ArgoCDServerComponent is the name of the server component
 	ArgoCDServerComponent = "argocd-server"
+
+	// ArgoCDCommitServerComponent is the name of the Commit Server component
+	ArgoCDCommitServerComponent = "argocd-commit-server"
+
+	// ArgoCDDefaultCommitServerPort is the default port for the Commit Server.
+	ArgoCDDefaultCommitServerPort = 8086
+
+	// ArgoCDDefaultCommitServerMetricsPort is the default port for the Commit Server metrics.
+	ArgoCDDefaultCommitServerMetricsPort = 8087
 
 	// ArgoCDRedisComponent is the name of the Redis control plane component
 	ArgoCDRedisComponent = "argocd-redis"
@@ -70,7 +79,7 @@ const (
 	ArgoCDDefaultArgoImage = "quay.io/argoproj/argocd"
 
 	// ArgoCDDefaultArgoVersion is the Argo CD container image digest to use when version not specified.
-	ArgoCDDefaultArgoVersion = "sha256:c612d570cb6d6ff29afb72932c1bfe98a1ecc234df50f8ea4873fb7066e760fc" // v3.4.2
+	ArgoCDDefaultArgoVersion = "sha256:c298cedbaeb31532ba8d4e9904eba9e4987e067293fbd86400c5194e78f743d5" // v3.5.0
 
 	// ArgoCDDefaultBackupKeyLength is the length of the generated default backup key.
 	ArgoCDDefaultBackupKeyLength = 32
@@ -300,10 +309,10 @@ vs-ssh.visualstudio.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7Hr1oTWqNqOlzGJOf
 	ArgoCDCmdParamsConfigMapName = "argocd-cmd-params-cm"
 
 	// ArgoCDAgentPrincipalDefaultImageName is the default image name for the ArgoCD agent's principal component.
-	ArgoCDAgentPrincipalDefaultImageName = "quay.io/argoprojlabs/argocd-agent:v0.8.1"
+	ArgoCDAgentPrincipalDefaultImageName = "quay.io/argoprojlabs/argocd-agent:v0.9.0"
 
 	// ArgoCDAgentAgentDefaultImageName is the default image name for the ArgoCD agent's agent component.
-	ArgoCDAgentAgentDefaultImageName = "quay.io/argoprojlabs/argocd-agent:v0.8.1"
+	ArgoCDAgentAgentDefaultImageName = "quay.io/argoprojlabs/argocd-agent:v0.9.0"
 
 	// ArgoCDImageUpdaterControllerComponent is the name of the Image Updater controller control plane component
 	ArgoCDImageUpdaterControllerComponent = "argocd-image-updater-controller"

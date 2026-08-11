@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"maps"
 	"reflect"
 	"strconv"
 	"strings"
@@ -404,23 +405,17 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	cm.Data[common.ArgoCDKeyOIDCConfig] = getOIDCConfig(cr)
 
 	if c := getResourceHealthChecks(cr); c != nil {
-		for k, v := range c {
-			cm.Data[k] = v
-		}
+		maps.Copy(cm.Data, c)
 	}
 
 	if c, err := getResourceIgnoreDifferences(cr); c != nil && err == nil {
-		for k, v := range c {
-			cm.Data[k] = v
-		}
+		maps.Copy(cm.Data, c)
 	} else {
 		return err
 	}
 
 	if c := getResourceActions(cr); c != nil {
-		for k, v := range c {
-			cm.Data[k] = v
-		}
+		maps.Copy(cm.Data, c)
 	}
 
 	resourceExclusions, err := getResourceExclusions(cr)
@@ -505,14 +500,33 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	}
 
 	if len(cr.Spec.ExtraConfig) > 0 {
-		for k, v := range cr.Spec.ExtraConfig {
-			cm.Data[k] = v
-		}
+		maps.Copy(cm.Data, cr.Spec.ExtraConfig)
 	}
 
 	// Check and set default value for server.rbac.disableApplicationFineGrainedRBACInheritance if not present
 	if _, exists := cm.Data[common.ArgoCDServerRBACDisableFineGrainedInheritance]; !exists {
 		cm.Data[common.ArgoCDServerRBACDisableFineGrainedInheritance] = "false"
+	}
+
+	// On OpenShift, mask the token value annotation in the ArgoCD UI/CLI to
+	// prevent accidental exposure of service account token secrets.
+	// Appends to any value already set via ExtraConfig; skips if already present.
+	if IsOpenShiftCluster() {
+		const tokenAnnotation = "openshift.io/token-secret.value"
+		if existing, ok := cm.Data[common.ArgoCDKeyResourceSensitiveMaskAnnotations]; ok && existing != "" {
+			alreadyPresent := false
+			for entry := range strings.SplitSeq(existing, ",") {
+				if strings.TrimSpace(entry) == tokenAnnotation {
+					alreadyPresent = true
+					break
+				}
+			}
+			if !alreadyPresent {
+				cm.Data[common.ArgoCDKeyResourceSensitiveMaskAnnotations] = existing + "," + tokenAnnotation
+			}
+		} else {
+			cm.Data[common.ArgoCDKeyResourceSensitiveMaskAnnotations] = tokenAnnotation
+		}
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
@@ -785,7 +799,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSF
 	ctx := context.TODO()
 	desired := newConfigMapWithName(common.ArgoCDRedisHAConfigMapName, cr)
 	desired.Data = map[string]string{
-		"haproxy.cfg":     argoutil.GetRedisHAProxyConfig(cr, useTLSForRedis),
+		"haproxy.cfg":     argoutil.GetRedisHAProxyConfig(cr, useTLSForRedis, r.CentralTLSConfigProfile),
 		"haproxy_init.sh": argoutil.GetRedisHAProxyScript(cr),
 		"init.sh":         argoutil.GetRedisInitScript(cr, useTLSForRedis),
 		"redis.conf":      argoutil.GetRedisConf(useTLSForRedis),
@@ -989,9 +1003,7 @@ func (r *ReconcileArgoCD) reconcileArgoCmdParamsConfigMap(cr *argoproj.ArgoCD) e
 
 	// Copy user-specified command parameters if any
 	if len(cr.Spec.CmdParams) > 0 {
-		for k, v := range cr.Spec.CmdParams {
-			cm.Data[k] = v
-		}
+		maps.Copy(cm.Data, cr.Spec.CmdParams)
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {

@@ -34,8 +34,6 @@ import (
 	configmapFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/configmap"
 	secretFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/secret"
 
-	"k8s.io/utils/ptr"
-
 	appFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/application"
 	osFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/os"
 
@@ -136,8 +134,8 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
 					DropImageCertificates: true, // So we can test against upstream sites that would otherwise be trusted by the image
 					ClusterTrustBundles: []corev1.ClusterTrustBundleProjection{
-						{Name: ptr.To(combinedCtb.Name), Path: "combined.crt"},
-						{Name: ptr.To("nah"), Path: "no-such-ctb.crt", Optional: ptr.To(true)},
+						{Name: new(combinedCtb.Name), Path: "combined.crt"},
+						{Name: new("nah"), Path: "no-such-ctb.crt", Optional: new(true)},
 					},
 				},
 				// plugin containers/volumes - this is not related to CTBs
@@ -185,7 +183,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 						LocalObjectReference: corev1.LocalObjectReference{
 							Name: cmCert.Name,
 						},
-						Optional: ptr.To(true),
+						Optional: new(true),
 						Items: []corev1.KeyToPath{
 							{Key: "ca.cm.crt", Path: "ca.cm.wrong-suffix"},
 						},
@@ -263,13 +261,13 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 						LocalObjectReference: corev1.LocalObjectReference{
 							Name: "ca-trust",
 						},
-						Optional: ptr.To(true),
+						Optional: new(true),
 					}},
 					ConfigMaps: []corev1.ConfigMapProjection{{
 						LocalObjectReference: corev1.LocalObjectReference{
 							Name: "ca-trust",
 						},
-						Optional: ptr.To(true),
+						Optional: new(true),
 					}},
 				},
 			})
@@ -354,7 +352,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				SystemCATrust: &argov1beta1api.ArgoCDSystemCATrustSpec{
 					DropImageCertificates: true, // To make the counting easier
 					ClusterTrustBundles: []corev1.ClusterTrustBundleProjection{{
-						Name: ptr.To(combinedCtb.Name), Path: "ctb.crt", Optional: ptr.To(true),
+						Name: new(combinedCtb.Name), Path: "ctb.crt", Optional: new(true),
 					}},
 				},
 			})
@@ -408,12 +406,12 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					// Test CTB update detection based on CTB binding specified by labels - no real signers involved
 					ClusterTrustBundles: []corev1.ClusterTrustBundleProjection{
 						{
-							SignerName: ptr.To(signerName),
+							SignerName: new(signerName),
 							LabelSelector: &metav1.LabelSelector{MatchLabels: map[string]string{
 								"test": labelVal,
 							}},
 							Path:     "one.crt",
-							Optional: ptr.To(true),
+							Optional: new(true),
 						},
 					},
 				},
@@ -448,9 +446,9 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				argocdFixture.Update(argoCD, func(cd *argov1beta1api.ArgoCD) {
 					cd.Spec.Repo.SystemCATrust.ClusterTrustBundles = []corev1.ClusterTrustBundleProjection{
 						{
-							Name:     ptr.To("no-such-ctb"),
+							Name:     new("no-such-ctb"),
 							Path:     "three.crt",
-							Optional: ptr.To(true),
+							Optional: new(true),
 						},
 					}
 				})
@@ -597,7 +595,7 @@ func createHelmApp(ns *corev1.Namespace, source *appv1alpha1.ApplicationSource) 
 			},
 			SyncPolicy: &appv1alpha1.SyncPolicy{
 				Automated: &appv1alpha1.SyncPolicyAutomated{
-					Prune: ptr.To(true), SelfHeal: ptr.To(true),
+					Prune: new(true), SelfHeal: new(true),
 				},
 			},
 		},

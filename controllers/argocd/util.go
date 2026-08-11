@@ -24,6 +24,7 @@ import (
 	"hash"
 	"os"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -199,8 +200,15 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 		log.Info("Repo Server is disabled. This would affect the functioning of Application Controller.")
 	}
 
+	if cr.Spec.SourceHydrator.IsEnabled() {
+		cmd = append(cmd, "--hydrator-enabled")
+	}
+	if UseCommitServer(cr) {
+		cmd = append(cmd, "--commit-server", argoutil.FqdnServiceRef("commit-server", common.ArgoCDDefaultCommitServerPort, cr))
+	}
+
 	cmd = append(cmd, "--status-processors", fmt.Sprint(getArgoServerStatusProcessors(cr)))
-	cmd = append(cmd, "--kubectl-parallelism-limit", fmt.Sprint(getArgoControllerParellismLimit(cr)))
+	cmd = append(cmd, "--kubectl-parallelism-limit", fmt.Sprint(getArgoControllerParallelismLimit(cr)))
 
 	if len(cr.Spec.SourceNamespaces) > 0 && allowed {
 		cmd = append(cmd, "--application-namespaces", fmt.Sprint(strings.Join(cr.Spec.SourceNamespaces, ",")))
@@ -404,8 +412,8 @@ func getArgoServerStatusProcessors(cr *argoproj.ArgoCD) int32 {
 	return sp
 }
 
-// getArgoControllerParellismLimit returns the parallelism limit for the application controller
-func getArgoControllerParellismLimit(cr *argoproj.ArgoCD) int32 {
+// getArgoControllerParallelismLimit returns the parallelism limit for the application controller
+func getArgoControllerParallelismLimit(cr *argoproj.ArgoCD) int32 {
 	pl := common.ArgoCDDefaultControllerParallelismLimit
 	if cr.Spec.Controller.ParallelismLimit > 0 {
 		pl = cr.Spec.Controller.ParallelismLimit
@@ -877,18 +885,9 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 	return bldr
 }
 
-// boolPtr returns a pointer to val
-func boolPtr(val bool) *bool {
-	return &val
-}
-
-func int64Ptr(val int64) *int64 {
-	return &val
-}
-
 // triggerRollout will trigger a rollout of a Kubernetes resource specified as
 // obj. It currently supports Deployment and StatefulSet resources.
-func (r *ReconcileArgoCD) triggerRollout(obj interface{}, key string) error {
+func (r *ReconcileArgoCD) triggerRollout(obj any, key string) error {
 	switch res := obj.(type) {
 	case *appsv1.Deployment:
 		return r.triggerDeploymentRollout(res, key)
@@ -1176,11 +1175,8 @@ func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(cr *argoproj.A
 			if err != nil {
 				return err
 			}
-			for _, namespace := range sourceNamespaces {
-				if namespace == ns {
-					managedNamespace = true
-					break
-				}
+			if slices.Contains(sourceNamespaces, ns) {
+				managedNamespace = true
 			}
 		}
 
@@ -1319,8 +1315,8 @@ func getClusterVersion(client client.Client) (string, error) {
 	return clusterVersion.Status.Desired.Version, nil
 }
 
-// generateRandomBytes returns a securely generated random bytes.
-func generateRandomBytes(n int) []byte {
+// GenerateRandomBytes returns a securely generated random bytes.
+func GenerateRandomBytes(n int) []byte {
 	b := make([]byte, n)
 	_, err := rand.Read(b)
 	if err != nil {
@@ -1329,20 +1325,15 @@ func generateRandomBytes(n int) []byte {
 	return b
 }
 
-// generateRandomString returns a securely generated random string.
-func generateRandomString(s int) string {
-	b := generateRandomBytes(s)
+// GenerateRandomString returns a securely generated random string.
+func GenerateRandomString(s int) string {
+	b := GenerateRandomBytes(s)
 	return base64.URLEncoding.EncodeToString(b)
 }
 
 // contains returns true if a string is part of the given slice.
 func contains(s []string, g string) bool {
-	for _, a := range s {
-		if a == g {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(s, g)
 }
 
 // getApplicationSetHTTPServerHost will return the host for the given ArgoCD.
@@ -1949,6 +1940,7 @@ func getNamespacesToDelete(oldList, newList []argoproj.ManagedNamespaces, allNam
 // It can be used for various components by passing in the desired deployment,
 // the component's name, and a boolean indicating if the component is enabled.
 func (r *ReconcileArgoCD) reconcileDeploymentHelper(cr *argoproj.ArgoCD, desiredDeployment *appsv1.Deployment, componentName string, enabled bool) error {
+	desiredDeployment.Spec.Template.Spec.PriorityClassName = cr.Spec.PriorityClassName
 	// fetch existing deployment by name
 	existingDeployment := &appsv1.Deployment{}
 	if err := r.Get(context.TODO(), types.NamespacedName{Name: desiredDeployment.Name, Namespace: cr.Namespace}, existingDeployment); err != nil {
@@ -2039,6 +2031,11 @@ func (r *ReconcileArgoCD) reconcileDeploymentHelper(cr *argoproj.ArgoCD, desired
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Args, desiredDeployment.Spec.Template.Spec.Containers[0].Args) {
 		existingDeployment.Spec.Template.Spec.Containers[0].Args = desiredDeployment.Spec.Template.Spec.Containers[0].Args
 		changes = append(changes, "container args")
+	}
+
+	if existingDeployment.Spec.Template.Spec.PriorityClassName != desiredDeployment.Spec.Template.Spec.PriorityClassName {
+		existingDeployment.Spec.Template.Spec.PriorityClassName = desiredDeployment.Spec.Template.Spec.PriorityClassName
+		changes = append(changes, "priority class name")
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Labels, desiredDeployment.Labels) {

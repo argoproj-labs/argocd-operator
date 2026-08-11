@@ -32,7 +32,6 @@ import (
 	secretFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/secret"
 	fixtureUtils "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -72,7 +71,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 						},
 					},
 					ApplicationSet: &argov1beta1api.ArgoCDApplicationSet{
-						Enabled: ptr.To(true),
+						Enabled: new(true),
 						WebhookServer: argov1beta1api.WebhookServerSpec{
 							Host: "example.com",
 							Route: argov1beta1api.ArgoCDRouteSpec{

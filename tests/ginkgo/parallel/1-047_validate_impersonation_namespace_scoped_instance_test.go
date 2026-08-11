@@ -243,7 +243,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			Expect(guestbookDevApplication.Status.OperationState).ToNot(BeNil())
 
-			Expect(guestbookDevApplication.Status.OperationState.Message).To(ContainSubstring("failed to find a matching service account to impersonate: no matching service account found for destination server"))
+			Expect(guestbookDevApplication.Status.OperationState.Message).To(ContainSubstring("no matching service account found for destination server"))
 
 		})
 	})

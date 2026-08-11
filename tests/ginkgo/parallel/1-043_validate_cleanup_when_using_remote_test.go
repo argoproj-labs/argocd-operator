@@ -24,7 +24,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -107,10 +106,10 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 				ac.Spec = argov1beta1api.ArgoCDSpec{
 					Redis: argov1beta1api.ArgoCDRedisSpec{
-						Remote: ptr.To("https://redis.remote.host:6379"),
+						Remote: new("https://redis.remote.host:6379"),
 					},
 					Repo: argov1beta1api.ArgoCDRepoSpec{
-						Remote: ptr.To("https://repo-server.remote.host:8081"),
+						Remote: new("https://repo-server.remote.host:8081"),
 					},
 				}
 			})

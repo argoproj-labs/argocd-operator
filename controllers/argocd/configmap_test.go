@@ -30,7 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	testclient "k8s.io/client-go/kubernetes/fake"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -41,6 +40,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/tlsprofile"
 )
 
 var _ reconcile.Reconciler = &ReconcileArgoCD{}
@@ -193,7 +193,7 @@ func TestReconcileArgoCD_reconcileRedisHAConfigMap(t *testing.T) {
 	exists, err = argoutil.IsObjectFound(cl, cr.Namespace, common.ArgoCDRedisHAConfigMapName, existingCMAfter)
 	assert.Nil(t, err)
 	assert.True(t, exists)
-	assert.Equal(t, argoutil.GetRedisHAProxyConfig(cr, false), existingCMAfter.Data["haproxy.cfg"])
+	assert.Equal(t, argoutil.GetRedisHAProxyConfig(cr, false, tlsprofile.TLSConfigProfile{}), existingCMAfter.Data["haproxy.cfg"])
 
 	// Disable HA and ensure ConfigMap is deleted
 	cr.Spec.HA.Enabled = false
@@ -463,7 +463,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 			SigningKeys string `yaml:"signingKeys"`
 		}
 
-		dexCfg := map[string]interface{}{
+		dexCfg := map[string]any{
 			"expiry": expiry{
 				IdTokens:    "1hr",
 				SigningKeys: "12hr",
@@ -550,7 +550,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 				t.Fatal("reconcileArgoConfigMap with dex failed")
 			}
 
-			m := make(map[string]interface{})
+			m := make(map[string]any)
 			err = yaml.Unmarshal([]byte(dex), &m)
 			assert.NoError(t, err, fmt.Sprintf("failed to unmarshal %s", dex))
 
@@ -558,13 +558,13 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 			if !ok {
 				t.Fatal("no connectors found in dex.config")
 			}
-			dexConnector := connectors.([]interface{})[0].(map[interface{}]interface{})
+			dexConnector := connectors.([]any)[0].(map[any]any)
 			config := dexConnector["config"]
-			assert.Equal(t, config.(map[interface{}]interface{})["clientID"], "system:serviceaccount:argocd:argocd-argocd-dex-server")
+			assert.Equal(t, config.(map[any]any)["clientID"], "system:serviceaccount:argocd:argocd-argocd-dex-server")
 
 			// verify that the dex config in the CR matches the config from the argocd-cm
 			if a.Spec.SSO.Dex.Config != "" {
-				expectedCfg := make(map[string]interface{})
+				expectedCfg := make(map[string]any)
 				expectedCfgStr, err := r.getOpenShiftDexConfig(a)
 				assert.NoError(t, err)
 
@@ -1176,7 +1176,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withLocalUsers(t *testing.T) {
 	a.Spec.LocalUsers = []argoproj.LocalUserSpec{
 		{
 			Name:    "alice",
-			Enabled: boolPtr(false),
+			Enabled: new(false),
 		},
 	}
 
@@ -1207,9 +1207,9 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withLocalUsers_extraConfigOverri
 	a.Spec.LocalUsers = []argoproj.LocalUserSpec{
 		{
 			Name:    "alice",
-			ApiKey:  boolPtr(true),
+			ApiKey:  new(true),
 			Login:   false,
-			Enabled: boolPtr(false),
+			Enabled: new(false),
 		},
 	}
 
@@ -1233,9 +1233,9 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withLocalUsers_extraConfigOverri
 	a.Spec.LocalUsers = []argoproj.LocalUserSpec{
 		{
 			Name:    "alice",
-			ApiKey:  boolPtr(true),
+			ApiKey:  new(true),
 			Login:   false,
-			Enabled: boolPtr(false),
+			Enabled: new(false),
 		},
 	}
 
@@ -1427,7 +1427,7 @@ func Test_modifyOwnerReferenceIfNeeded(t *testing.T) {
 				Kind:       "ConfigMap",
 				Name:       "something",
 				UID:        "123",
-				Controller: ptr.To(false),
+				Controller: new(false),
 			},
 		}
 
@@ -1983,4 +1983,158 @@ func TestReconcileArgoCD_reconcileArgoCmdParamsConfigMap_tokenRefStrictDefault(t
 			assert.Equal(t, tt.expectStrictValue, val)
 		})
 	}
+}
+
+func TestReconcileArgoCD_reconcileArgoConfigMap_sensitiveAnnotations(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	t.Run("non-openshift: key absent", func(t *testing.T) {
+		original := versionAPIFound
+		versionAPIFound = false
+		defer func() { versionAPIFound = original }()
+
+		a := makeTestArgoCD()
+		resObjs := []client.Object{a}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		err := r.reconcileArgoConfigMap(a)
+		require.NoError(t, err)
+
+		cm := &corev1.ConfigMap{}
+		err = r.Get(context.TODO(), types.NamespacedName{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: testNamespace,
+		}, cm)
+		require.NoError(t, err)
+		_, exists := cm.Data[common.ArgoCDKeyResourceSensitiveMaskAnnotations]
+		assert.False(t, exists, "resource.sensitive.mask.annotations should not be set on non-OpenShift clusters")
+	})
+
+	t.Run("openshift: key present on create", func(t *testing.T) {
+		original := versionAPIFound
+		versionAPIFound = true
+		defer func() { versionAPIFound = original }()
+
+		a := makeTestArgoCD()
+		resObjs := []client.Object{a}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		err := r.reconcileArgoConfigMap(a)
+		require.NoError(t, err)
+
+		cm := &corev1.ConfigMap{}
+		err = r.Get(context.TODO(), types.NamespacedName{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: testNamespace,
+		}, cm)
+		require.NoError(t, err)
+		assert.Equal(t, "openshift.io/token-secret.value", cm.Data[common.ArgoCDKeyResourceSensitiveMaskAnnotations])
+	})
+
+	t.Run("openshift: key added via update when cm already exists without it", func(t *testing.T) {
+		original := versionAPIFound
+		versionAPIFound = true
+		defer func() { versionAPIFound = original }()
+
+		a := makeTestArgoCD()
+		resObjs := []client.Object{a}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		// Pre-create the ConfigMap without the sensitive key, simulating an
+		// existing deployment being upgraded to an operator version that adds this key.
+		existingCM := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      common.ArgoCDConfigMapName,
+				Namespace: a.Namespace,
+			},
+			Data: map[string]string{
+				"admin.enabled": "true",
+			},
+		}
+		argoutil.AddTrackedByOperatorLabel(&existingCM.ObjectMeta)
+		err := r.Create(context.TODO(), existingCM)
+		require.NoError(t, err)
+
+		err = r.reconcileArgoConfigMap(a)
+		require.NoError(t, err)
+
+		cm := &corev1.ConfigMap{}
+		err = r.Get(context.TODO(), types.NamespacedName{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: testNamespace,
+		}, cm)
+		require.NoError(t, err)
+		assert.Equal(t, "openshift.io/token-secret.value", cm.Data[common.ArgoCDKeyResourceSensitiveMaskAnnotations])
+	})
+
+	t.Run("openshift: ExtraConfig has different annotation, token annotation is appended", func(t *testing.T) {
+		original := versionAPIFound
+		versionAPIFound = true
+		defer func() { versionAPIFound = original }()
+
+		a := makeTestArgoCD()
+		a.Spec.ExtraConfig = map[string]string{
+			common.ArgoCDKeyResourceSensitiveMaskAnnotations: "some.other/annotation",
+		}
+		resObjs := []client.Object{a}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		err := r.reconcileArgoConfigMap(a)
+		require.NoError(t, err)
+
+		cm := &corev1.ConfigMap{}
+		err = r.Get(context.TODO(), types.NamespacedName{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: testNamespace,
+		}, cm)
+		require.NoError(t, err)
+		assert.Equal(t, "some.other/annotation,openshift.io/token-secret.value",
+			cm.Data[common.ArgoCDKeyResourceSensitiveMaskAnnotations])
+	})
+
+	t.Run("openshift: ExtraConfig already contains token annotation, no duplicate added", func(t *testing.T) {
+		original := versionAPIFound
+		versionAPIFound = true
+		defer func() { versionAPIFound = original }()
+
+		a := makeTestArgoCD()
+		a.Spec.ExtraConfig = map[string]string{
+			common.ArgoCDKeyResourceSensitiveMaskAnnotations: "some.other/annotation,openshift.io/token-secret.value",
+		}
+		resObjs := []client.Object{a}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		err := r.reconcileArgoConfigMap(a)
+		require.NoError(t, err)
+
+		cm := &corev1.ConfigMap{}
+		err = r.Get(context.TODO(), types.NamespacedName{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: testNamespace,
+		}, cm)
+		require.NoError(t, err)
+		assert.Equal(t, "some.other/annotation,openshift.io/token-secret.value",
+			cm.Data[common.ArgoCDKeyResourceSensitiveMaskAnnotations],
+			"token annotation should not be duplicated")
+	})
 }

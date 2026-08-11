@@ -23,7 +23,6 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -69,7 +68,7 @@ p, role:with-logs, logs, get, */*, allow`
 				},
 				Spec: argov1beta1api.ArgoCDSpec{
 					RBAC: argov1beta1api.ArgoCDRBACSpec{
-						Policy: ptr.To(policyStr),
+						Policy: new(policyStr),
 					},
 				},
 			}
@@ -110,7 +109,7 @@ p, role:with-logs, logs, get, */*, allow
 p, role:global-log-viewer, logs, get, */*, allow`
 
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
-				ac.Spec.RBAC.Policy = ptr.To(policyStr)
+				ac.Spec.RBAC.Policy = new(policyStr)
 			})
 			Eventually(argocdRBACCMConfigMap).Should(configmapFixture.HaveStringDataKeyValue("policy.csv", policyStr))
 
@@ -133,7 +132,7 @@ p, role:app-only, applications, get, */*, allow`,
 
 			By("updating ArgoCD to have no default policy specified")
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
-				ac.Spec.RBAC.Policy = ptr.To(`
+				ac.Spec.RBAC.Policy = new(`
 # Custom role with only applications access
 p, role:app-only, applications, get, */*, allow`)
 			})

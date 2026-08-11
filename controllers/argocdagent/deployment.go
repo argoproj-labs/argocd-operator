@@ -27,7 +27,6 @@ import (
 	apiError "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -124,6 +123,7 @@ func buildPrincipalSpec(compName, saName string, cr *argoproj.ArgoCD, centralTLS
 				},
 				ServiceAccountName: saName,
 				Volumes:            append(buildVolumes(), redisAuthVolume),
+				PriorityClassName:  cr.Spec.PriorityClassName,
 			},
 		},
 	}
@@ -137,14 +137,14 @@ func buildSelector(compName string, cr *argoproj.ArgoCD) *metav1.LabelSelector {
 
 func buildSecurityContext() *corev1.SecurityContext {
 	return &corev1.SecurityContext{
-		AllowPrivilegeEscalation: ptr.To(false),
+		AllowPrivilegeEscalation: new(false),
 		Capabilities: &corev1.Capabilities{
 			Drop: []corev1.Capability{
 				"ALL",
 			},
 		},
-		ReadOnlyRootFilesystem: ptr.To(true),
-		RunAsNonRoot:           ptr.To(true),
+		ReadOnlyRootFilesystem: new(true),
+		RunAsNonRoot:           new(true),
 		SeccompProfile: &corev1.SeccompProfile{
 			Type: "RuntimeDefault",
 		},
@@ -228,7 +228,7 @@ func buildVolumes() []corev1.Volume {
 							Path: "jwt.key",
 						},
 					},
-					Optional: ptr.To(true),
+					Optional: new(true),
 				},
 			},
 		},
@@ -243,7 +243,7 @@ func buildVolumes() []corev1.Volume {
 							Path: "passwd",
 						},
 					},
-					Optional: ptr.To(true),
+					Optional: new(true),
 				},
 			},
 		},
@@ -332,6 +332,12 @@ func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, dep
 		deployment.Spec.Template.Spec.Containers[0].Resources = principalResources
 	}
 
+	if deployment.Spec.Template.Spec.PriorityClassName != cr.Spec.PriorityClassName {
+		log.Info("deployment priority class name is being updated")
+		changed = true
+		deployment.Spec.Template.Spec.PriorityClassName = cr.Spec.PriorityClassName
+	}
+
 	return deployment, changed
 }
 
@@ -407,6 +413,9 @@ func buildPrincipalContainerEnv(cr *argoproj.ArgoCD, centralTLSProfile tlsProfil
 		}, {
 			Name:  EnvArgoCDPrincipalDestinationBasedMapping,
 			Value: getPrincipalDestinationBasedMapping(cr),
+		}, {
+			Name:  EnvArgoCDPrincipalLabelSelector,
+			Value: getPrincipalLabelSelector(cr),
 		},
 	}
 
@@ -445,6 +454,7 @@ const (
 	EnvArgoCDPrincipalJwtSecretName             = "ARGOCD_PRINCIPAL_JWT_SECRET_NAME"
 	EnvArgoCDPrincipalImage                     = "ARGOCD_PRINCIPAL_IMAGE"
 	EnvArgoCDPrincipalDestinationBasedMapping   = "ARGOCD_PRINCIPAL_DESTINATION_BASED_MAPPING"
+	EnvArgoCDPrincipalLabelSelector             = "ARGOCD_PRINCIPAL_LABEL_SELECTOR"
 	EnvArgoCDPrincipalTlsMinVersion             = "ARGOCD_PRINCIPAL_TLS_MIN_VERSION"
 	EnvArgoCDPrincipalCipherSuites              = "ARGOCD_PRINCIPAL_TLS_CIPHERSUITES"
 )
@@ -501,6 +511,13 @@ func getPrincipalDestinationBasedMapping(cr *argoproj.ArgoCD) string {
 		return strconv.FormatBool(*cr.Spec.ArgoCDAgent.Principal.DestinationBasedMapping)
 	}
 	return "false"
+}
+
+func getPrincipalLabelSelector(cr *argoproj.ArgoCD) string {
+	if hasPrincipal(cr) && cr.Spec.ArgoCDAgent.Principal.LabelSelector != "" {
+		return cr.Spec.ArgoCDAgent.Principal.LabelSelector
+	}
+	return ""
 }
 
 func getPrincipalAllowedNamespaces(cr *argoproj.ArgoCD) string {

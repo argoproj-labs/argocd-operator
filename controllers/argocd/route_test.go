@@ -763,7 +763,7 @@ func makeArgoCD(opts ...func(*argoproj.ArgoCD)) *argoproj.ArgoCD {
 	return argoCD
 }
 
-func fatalIfError(t *testing.T, err error, format string, a ...interface{}) {
+func fatalIfError(t *testing.T, err error, format string, a ...any) {
 	t.Helper()
 	if err != nil {
 		t.Fatalf(format, a...)

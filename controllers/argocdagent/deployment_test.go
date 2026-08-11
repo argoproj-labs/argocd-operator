@@ -26,7 +26,6 @@ import (
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	configv1 "github.com/openshift/api/config/v1"
@@ -363,9 +362,9 @@ func TestReconcilePrincipalDeployment_VerifyDeploymentSpec(t *testing.T) {
 
 	// Verify security context
 	container := deployment.Spec.Template.Spec.Containers[0]
-	assert.Equal(t, ptr.To(false), container.SecurityContext.AllowPrivilegeEscalation)
-	assert.Equal(t, ptr.To(true), container.SecurityContext.ReadOnlyRootFilesystem)
-	assert.Equal(t, ptr.To(true), container.SecurityContext.RunAsNonRoot)
+	assert.Equal(t, new(false), container.SecurityContext.AllowPrivilegeEscalation)
+	assert.Equal(t, new(true), container.SecurityContext.ReadOnlyRootFilesystem)
+	assert.Equal(t, new(true), container.SecurityContext.RunAsNonRoot)
 	assert.Equal(t, []corev1.Capability{"ALL"}, container.SecurityContext.Capabilities.Drop)
 	assert.Equal(t, corev1.SeccompProfileType("RuntimeDefault"), container.SecurityContext.SeccompProfile.Type)
 
@@ -426,7 +425,7 @@ func TestReconcilePrincipalDeployment_VerifyDeploymentSpec(t *testing.T) {
 	assert.Equal(t, "jwt-secret", jwtVolume.Name)
 	assert.NotNil(t, jwtVolume.Secret)
 	assert.Equal(t, "argocd-agent-jwt", jwtVolume.Secret.SecretName)
-	assert.Equal(t, ptr.To(true), jwtVolume.Secret.Optional)
+	assert.Equal(t, new(true), jwtVolume.Secret.Optional)
 	assert.Len(t, jwtVolume.Secret.Items, 1)
 	assert.Equal(t, "jwt.key", jwtVolume.VolumeSource.Secret.Items[0].Key)
 	assert.Equal(t, "jwt.key", jwtVolume.VolumeSource.Secret.Items[0].Path)
@@ -435,7 +434,7 @@ func TestReconcilePrincipalDeployment_VerifyDeploymentSpec(t *testing.T) {
 	assert.Equal(t, "userpass-passwd", userpassVolume.Name)
 	assert.NotNil(t, userpassVolume.Secret)
 	assert.Equal(t, "argocd-agent-principal-userpass", userpassVolume.Secret.SecretName)
-	assert.Equal(t, ptr.To(true), userpassVolume.Secret.Optional)
+	assert.Equal(t, new(true), userpassVolume.Secret.Optional)
 	assert.Len(t, userpassVolume.Secret.Items, 1)
 	assert.Equal(t, "passwd", userpassVolume.VolumeSource.Secret.Items[0].Key)
 	assert.Equal(t, "passwd", userpassVolume.VolumeSource.Secret.Items[0].Path)
@@ -444,7 +443,7 @@ func TestReconcilePrincipalDeployment_VerifyDeploymentSpec(t *testing.T) {
 	assert.Equal(t, "redis-initial-pass", redisAuthVolume.Name)
 	assert.NotNil(t, redisAuthVolume.Secret)
 	assert.Equal(t, "argocd-redis-initial-password", redisAuthVolume.Secret.SecretName)
-	assert.NotEqual(t, ptr.To(true), redisAuthVolume.Secret.Optional)
+	assert.NotEqual(t, new(true), redisAuthVolume.Secret.Optional)
 	assert.Len(t, redisAuthVolume.Secret.Items, 2)
 }
 
@@ -540,12 +539,12 @@ func TestReconcilePrincipalDeployment_VolumeMountsAndVolumes(t *testing.T) {
 	jwtVolume := deployment.Spec.Template.Spec.Volumes[0]
 	assert.Equal(t, "jwt-secret", jwtVolume.Name)
 	assert.Equal(t, "argocd-agent-jwt", jwtVolume.Secret.SecretName)
-	assert.Equal(t, ptr.To(true), jwtVolume.Secret.Optional)
+	assert.Equal(t, new(true), jwtVolume.Secret.Optional)
 
 	userpassVolume := deployment.Spec.Template.Spec.Volumes[1]
 	assert.Equal(t, "userpass-passwd", userpassVolume.Name)
 	assert.Equal(t, "argocd-agent-principal-userpass", userpassVolume.Secret.SecretName)
-	assert.Equal(t, ptr.To(true), userpassVolume.Secret.Optional)
+	assert.Equal(t, new(true), userpassVolume.Secret.Optional)
 
 	redisAuthVolume := deployment.Spec.Template.Spec.Volumes[2]
 	assert.Equal(t, "redis-initial-pass", redisAuthVolume.Name)
@@ -782,6 +781,84 @@ func TestGetPrincipalTlsConfig(t *testing.T) {
 			if !reflect.DeepEqual(got, tt.expected) {
 				t.Fatalf("expected %#v got %#v", tt.expected, got)
 			}
+		})
+	}
+}
+
+func withPrincipalLabelSelector(selector string) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		if a.Spec.ArgoCDAgent == nil {
+			a.Spec.ArgoCDAgent = &argoproj.ArgoCDAgentSpec{}
+		}
+		if a.Spec.ArgoCDAgent.Principal == nil {
+			a.Spec.ArgoCDAgent.Principal = &argoproj.PrincipalSpec{}
+		}
+		a.Spec.ArgoCDAgent.Principal.LabelSelector = selector
+	}
+}
+
+func TestGetPrincipalLabelSelector(t *testing.T) {
+	tests := []struct {
+		name     string
+		cr       *argoproj.ArgoCD
+		expected string
+	}{
+		{
+			name:     "principal not configured",
+			cr:       makeTestArgoCD(),
+			expected: "",
+		},
+		{
+			name:     "principal enabled without label selector",
+			cr:       makeTestArgoCD(withPrincipalEnabled(true)),
+			expected: "",
+		},
+		{
+			name:     "label selector set",
+			cr:       makeTestArgoCD(withPrincipalEnabled(true), withPrincipalLabelSelector("argocd-agent=true")),
+			expected: "argocd-agent=true",
+		},
+		{
+			name:     "empty label selector",
+			cr:       makeTestArgoCD(withPrincipalEnabled(true), withPrincipalLabelSelector("")),
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, getPrincipalLabelSelector(tt.cr))
+		})
+	}
+}
+
+func TestBuildPrincipalContainerEnv_LabelSelector(t *testing.T) {
+	tests := []struct {
+		name     string
+		cr       *argoproj.ArgoCD
+		expected string
+	}{
+		{
+			name:     "default empty label selector",
+			cr:       makeTestArgoCD(withPrincipalEnabled(true)),
+			expected: "",
+		},
+		{
+			name:     "custom label selector",
+			cr:       makeTestArgoCD(withPrincipalEnabled(true), withPrincipalLabelSelector("argocd-agent=true")),
+			expected: "argocd-agent=true",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			envVars := buildPrincipalContainerEnv(tt.cr, tlsprofile.TLSConfigProfile{})
+			envMap := make(map[string]string)
+			for _, e := range envVars {
+				envMap[e.Name] = e.Value
+			}
+			assert.Equal(t, tt.expected, envMap[EnvArgoCDPrincipalLabelSelector],
+				"ARGOCD_PRINCIPAL_LABEL_SELECTOR mismatch")
 		})
 	}
 }

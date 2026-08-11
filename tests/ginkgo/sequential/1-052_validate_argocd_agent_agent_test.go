@@ -27,7 +27,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -79,29 +78,30 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				},
 				Spec: argov1beta1api.ArgoCDSpec{
 					Controller: argov1beta1api.ArgoCDApplicationControllerSpec{
-						Enabled: ptr.To(false),
+						Enabled: new(false),
 					},
 					Server: argov1beta1api.ArgoCDServerSpec{
-						Enabled: ptr.To(false),
+						Enabled: new(false),
 					},
 					ArgoCDAgent: &argov1beta1api.ArgoCDAgentSpec{
 						Agent: &argov1beta1api.AgentSpec{
-							Enabled:   ptr.To(true),
-							Creds:     "mtls:any",
-							LogLevel:  "info",
-							LogFormat: "text",
+							Enabled:       new(true),
+							Creds:         "mtls:any",
+							LogLevel:      "info",
+							LogFormat:     "text",
+							LabelSelector: "argocd-agent=true",
 							Client: &argov1beta1api.AgentClientSpec{
 								PrincipalServerAddress: "argocd-agent-principal.example.com",
 								PrincipalServerPort:    "443",
 								Mode:                   string(argov1beta1api.AgentModeManaged),
-								EnableWebSocket:        ptr.To(false),
-								EnableCompression:      ptr.To(false),
+								EnableWebSocket:        new(false),
+								EnableCompression:      new(false),
 								KeepAliveInterval:      "30s",
 							},
 							TLS: &argov1beta1api.AgentTLSSpec{
 								SecretName:       agentClientTLSSecretName,
 								RootCASecretName: agentRootCASecretName,
-								Insecure:         ptr.To(false),
+								Insecure:         new(false),
 							},
 							Redis: &argov1beta1api.AgentRedisSpec{
 								ServerAddress: fmt.Sprintf("%s-%s:%d", argoCDName, "redis", common.ArgoCDDefaultRedisPort),
@@ -183,6 +183,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				agent.EnvArgoCDAgentKeepAliveInterval:   "30s",
 				agent.EnvArgoCDAgentRedisAddress:        fmt.Sprintf("%s-%s:%d", argoCDName, "redis", common.ArgoCDDefaultRedisPort),
 				agent.EnvArgoCDAgentEnableResourceProxy: "true",
+				agent.EnvArgoCDAgentLabelSelector:       "argocd-agent=true",
 			}
 		})
 
@@ -309,7 +310,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: argoCDName, Namespace: ns.Name}, argoCD)).To(Succeed())
 
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
-				ac.Spec.ArgoCDAgent.Agent.Enabled = ptr.To(false)
+				ac.Spec.ArgoCDAgent.Agent.Enabled = new(false)
 			})
 
 			By("Verify agent resources are deleted")
@@ -393,15 +394,16 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				ac.Spec.ArgoCDAgent.Agent.LogLevel = "trace"
 				ac.Spec.ArgoCDAgent.Agent.LogFormat = "json"
 				ac.Spec.ArgoCDAgent.Agent.Image = "quay.io/argoprojlabs/argocd-agent:v0.5.1"
+				ac.Spec.ArgoCDAgent.Agent.LabelSelector = "env=staging"
 
 				ac.Spec.ArgoCDAgent.Agent.Client.KeepAliveInterval = "60s"
-				ac.Spec.ArgoCDAgent.Agent.Client.EnableWebSocket = ptr.To(true)
-				ac.Spec.ArgoCDAgent.Agent.Client.EnableCompression = ptr.To(true)
+				ac.Spec.ArgoCDAgent.Agent.Client.EnableWebSocket = new(true)
+				ac.Spec.ArgoCDAgent.Agent.Client.EnableCompression = new(true)
 				ac.Spec.ArgoCDAgent.Agent.Client.Mode = string(argov1beta1api.AgentModeAutonomous)
 				ac.Spec.ArgoCDAgent.Agent.Client.PrincipalServerAddress = "argocd-agent-principal-updated.example.com"
 				ac.Spec.ArgoCDAgent.Agent.Client.PrincipalServerPort = "8443"
 
-				ac.Spec.ArgoCDAgent.Agent.TLS.Insecure = ptr.To(true)
+				ac.Spec.ArgoCDAgent.Agent.TLS.Insecure = new(true)
 				ac.Spec.ArgoCDAgent.Agent.TLS.SecretName = "argocd-agent-client-tls-v2"
 				ac.Spec.ArgoCDAgent.Agent.TLS.RootCASecretName = "argocd-agent-ca-v2"
 			})
@@ -437,6 +439,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			expectedEnvVariables[agent.EnvArgoCDAgentTLSInsecure] = "true"
 			expectedEnvVariables[agent.EnvArgoCDAgentTLSSecretName] = "argocd-agent-client-tls-v2"
 			expectedEnvVariables[agent.EnvArgoCDAgentTLSRootCASecretName] = "argocd-agent-ca-v2"
+			expectedEnvVariables[agent.EnvArgoCDAgentLabelSelector] = "env=staging"
 
 			for key, value := range expectedEnvVariables {
 				Expect(container.Env).To(ContainElement(corev1.EnvVar{Name: key, Value: value}), "Environment variable %s should be set to %s", key, value)
@@ -617,7 +620,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: argoCDName, Namespace: ns.Name}, argoCD)).To(Succeed())
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
-				ac.Spec.ArgoCDAgent.Agent.Enabled = ptr.To(false)
+				ac.Spec.ArgoCDAgent.Agent.Enabled = new(false)
 			})
 
 			Eventually(agentServiceMonitor, "2m", "2s").Should(k8sFixture.NotExistByName())

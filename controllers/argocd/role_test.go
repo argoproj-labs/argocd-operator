@@ -261,6 +261,52 @@ func TestReconcileArgoCD_reconcileRoleForApplicationSourceNamespaces(t *testing.
 	assert.Equal(t, expectedRules, reconciledRole.Rules)
 }
 
+func TestReconcileRoleForApplicationSourceNamespaces_TerminatingNamespace(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	terminatingNamespace := "terminating-source-ns"
+	activeNamespace := "active-source-ns"
+	a := makeTestArgoCD()
+	allowClusterConfigNamespaces(t, a.Namespace)
+	a.Spec = argoproj.ArgoCDSpec{
+		SourceNamespaces: []string{
+			terminatingNamespace,
+			activeNamespace,
+		},
+	}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	assert.NoError(t, createNamespaceManagedByClusterArgoCDLabel(r, terminatingNamespace, a.Namespace))
+	assert.NoError(t, createNamespaceManagedByClusterArgoCDLabel(r, activeNamespace, a.Namespace))
+
+	terminatingNS := &corev1.Namespace{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: terminatingNamespace}, terminatingNS))
+	terminatingNS.Finalizers = []string{"test.argoproj.io/finalizer"}
+	assert.NoError(t, r.Update(context.TODO(), terminatingNS))
+	assert.NoError(t, r.Delete(context.TODO(), terminatingNS))
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: terminatingNamespace}, terminatingNS))
+	assert.NotNil(t, terminatingNS.DeletionTimestamp)
+
+	workloadIdentifier := common.ArgoCDServerComponent + "-custom"
+	expectedRules := policyRuleForServerApplicationSourceNamespaces()
+	assert.NoError(t, r.reconcileRoleForApplicationSourceNamespaces(workloadIdentifier, expectedRules, a))
+
+	reconciledRole := &v1.Role{}
+	terminatingRoleName := getRoleNameForApplicationSourceNamespaces(terminatingNamespace, a)
+	err := r.Get(context.TODO(), types.NamespacedName{Name: terminatingRoleName, Namespace: terminatingNamespace}, reconciledRole)
+	assert.True(t, errors.IsNotFound(err), "expected no role to be reconciled in terminating namespace")
+
+	activeRoleName := getRoleNameForApplicationSourceNamespaces(activeNamespace, a)
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: activeRoleName, Namespace: activeNamespace}, reconciledRole))
+	assert.Equal(t, expectedRules, reconciledRole.Rules)
+}
+
 func TestReconcileArgoCD_RoleHooks(t *testing.T) {
 	defer resetHooks()()
 	a := makeTestArgoCD()

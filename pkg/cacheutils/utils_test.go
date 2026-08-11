@@ -15,8 +15,8 @@ import (
 func TestStripDataFromSecretOrConfigMapTransform(t *testing.T) {
 	tests := []struct {
 		name           string
-		input          interface{}
-		expectedResult interface{}
+		input          any
+		expectedResult any
 		expectedError  bool
 		description    string
 	}{
@@ -589,7 +589,7 @@ func TestStripDataFromSecretOrConfigMapTransformEdgeCases(t *testing.T) {
 func TestIsTrackedByOperator(t *testing.T) {
 	tests := []struct {
 		name        string
-		obj         interface{}
+		obj         any
 		expected    bool
 		description string
 	}{

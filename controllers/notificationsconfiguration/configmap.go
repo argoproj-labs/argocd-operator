@@ -3,6 +3,7 @@ package notificationsconfiguration
 import (
 	"context"
 	"fmt"
+	"maps"
 	"reflect"
 	"strings"
 
@@ -47,21 +48,13 @@ func (r *NotificationsConfigurationReconciler) reconcileNotificationsConfigmap(c
 	// Verify if Notifications Configmap data is up to date with NotificationsConfiguration CR data
 	expectedConfiguration := make(map[string]string)
 
-	for k, v := range cr.Spec.Triggers {
-		expectedConfiguration[k] = v
-	}
+	maps.Copy(expectedConfiguration, cr.Spec.Triggers)
 
-	for k, v := range cr.Spec.Templates {
-		expectedConfiguration[k] = v
-	}
+	maps.Copy(expectedConfiguration, cr.Spec.Templates)
 
-	for k, v := range cr.Spec.Services {
-		expectedConfiguration[k] = v
-	}
+	maps.Copy(expectedConfiguration, cr.Spec.Services)
 
-	for k, v := range cr.Spec.Subscriptions {
-		expectedConfiguration[k] = v
-	}
+	maps.Copy(expectedConfiguration, cr.Spec.Subscriptions)
 
 	if cr.Spec.Context != nil {
 		expectedConfiguration["context"] = mapToString(cr.Spec.Context)
@@ -90,11 +83,11 @@ func (r *NotificationsConfigurationReconciler) reconcileNotificationsConfigmap(c
 }
 
 func mapToString(m map[string]string) string {
-	result := ""
+	var result strings.Builder
 	for key, value := range m {
-		result += fmt.Sprintf("%s: %s\n", key, value)
+		fmt.Fprintf(&result, "%s: %s\n", key, value)
 	}
-	return result
+	return result.String()
 }
 
 // checkIfContextChanged checks if context value in NotificationConfiguration and notificationConfigMap context have same value

@@ -230,7 +230,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			By("verifying Application contains error message indicating that no matching service account exists in the appproject, which is required for impersonation")
 			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(guestbookDevApplication), guestbookDevApplication)).To(Succeed())
 
-			Expect(guestbookDevApplication.Status.OperationState.Message).To(ContainSubstring("failed to find a matching service account to impersonate: no matching service account found for destination server"))
+			Expect(guestbookDevApplication.Status.OperationState.Message).To(ContainSubstring("no matching service account found for destination server"))
 
 		})
 	})

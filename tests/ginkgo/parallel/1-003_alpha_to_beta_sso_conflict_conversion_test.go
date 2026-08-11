@@ -22,7 +22,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	argov1alpha1api "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -75,7 +74,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 						Keycloak: &argov1alpha1api.ArgoCDKeycloakSpec{
 							RootCA: "\"---BEGIN---END---\"",
 						},
-						VerifyTLS: ptr.To(false),
+						VerifyTLS: new(false),
 					},
 					ExtraConfig: map[string]string{
 						"oidc.tls.insecure.skip.verify": "true",

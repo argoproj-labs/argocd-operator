@@ -195,6 +195,9 @@ const (
 	// ArgoCDKeyUsersAnonymousEnabled is the configuration key for anonymous user access.
 	ArgoCDKeyUsersAnonymousEnabled = "users.anonymous.enabled"
 
+	// ArgoCDKeyResourceSensitiveMaskAnnotations is the key to mask metadata.annotations values in UI/CLI on Secrets.
+	ArgoCDKeyResourceSensitiveMaskAnnotations = "resource.sensitive.mask.annotations"
+
 	// ArgoCDDexImageEnvName is the environment variable used to get the image
 	// to used for the Dex container.
 	ArgoCDDexImageEnvName = "ARGOCD_DEX_IMAGE"

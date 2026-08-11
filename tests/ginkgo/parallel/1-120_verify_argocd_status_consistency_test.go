@@ -24,7 +24,6 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -80,15 +79,15 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 					name: "redis",
 					disable: func(acd *argov1beta1api.ArgoCD) {
 						argocdFixture.Update(acd, func(ac *argov1beta1api.ArgoCD) {
-							ac.Spec.Redis = argov1beta1api.ArgoCDRedisSpec{Enabled: ptr.To(false)}
+							ac.Spec.Redis = argov1beta1api.ArgoCDRedisSpec{Enabled: new(false)}
 						})
 					},
 					enable: func(acd *argov1beta1api.ArgoCD, shouldFail bool) {
 						argocdFixture.Update(acd, func(ac *argov1beta1api.ArgoCD) {
 							if shouldFail {
-								ac.Spec.Redis = argov1beta1api.ArgoCDRedisSpec{Enabled: ptr.To(true), Image: "quay.io/argoprojlabs/argocd-operator-does-not-exist:latest"}
+								ac.Spec.Redis = argov1beta1api.ArgoCDRedisSpec{Enabled: new(true), Image: "quay.io/argoprojlabs/argocd-operator-does-not-exist:latest"}
 							} else {
-								ac.Spec.Redis = argov1beta1api.ArgoCDRedisSpec{Enabled: ptr.To(true)}
+								ac.Spec.Redis = argov1beta1api.ArgoCDRedisSpec{Enabled: new(true)}
 							}
 						})
 					},
@@ -101,15 +100,15 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 					name: "app-controller",
 					disable: func(acd *argov1beta1api.ArgoCD) {
 						argocdFixture.Update(acd, func(ac *argov1beta1api.ArgoCD) {
-							ac.Spec.Controller = argov1beta1api.ArgoCDApplicationControllerSpec{Enabled: ptr.To(false)}
+							ac.Spec.Controller = argov1beta1api.ArgoCDApplicationControllerSpec{Enabled: new(false)}
 						})
 					},
 					enable: func(acd *argov1beta1api.ArgoCD, shouldFail bool) {
 						argocdFixture.Update(acd, func(ac *argov1beta1api.ArgoCD) {
 							if shouldFail {
-								ac.Spec.Controller = argov1beta1api.ArgoCDApplicationControllerSpec{Enabled: ptr.To(true), ExtraCommandArgs: []string{"--fake-param"}}
+								ac.Spec.Controller = argov1beta1api.ArgoCDApplicationControllerSpec{Enabled: new(true), ExtraCommandArgs: []string{"--fake-param"}}
 							} else {
-								ac.Spec.Controller = argov1beta1api.ArgoCDApplicationControllerSpec{Enabled: ptr.To(true)}
+								ac.Spec.Controller = argov1beta1api.ArgoCDApplicationControllerSpec{Enabled: new(true)}
 							}
 						})
 					},
@@ -122,15 +121,15 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 					name: "repo-server",
 					disable: func(acd *argov1beta1api.ArgoCD) {
 						argocdFixture.Update(acd, func(ac *argov1beta1api.ArgoCD) {
-							ac.Spec.Repo = argov1beta1api.ArgoCDRepoSpec{Enabled: ptr.To(false)}
+							ac.Spec.Repo = argov1beta1api.ArgoCDRepoSpec{Enabled: new(false)}
 						})
 					},
 					enable: func(acd *argov1beta1api.ArgoCD, shouldFail bool) {
 						argocdFixture.Update(acd, func(ac *argov1beta1api.ArgoCD) {
 							if shouldFail {
-								ac.Spec.Repo = argov1beta1api.ArgoCDRepoSpec{Enabled: ptr.To(true), Image: "quay.io/argoprojlabs/argocd-operator-does-not-exist:latest"}
+								ac.Spec.Repo = argov1beta1api.ArgoCDRepoSpec{Enabled: new(true), Image: "quay.io/argoprojlabs/argocd-operator-does-not-exist:latest"}
 							} else {
-								ac.Spec.Repo = argov1beta1api.ArgoCDRepoSpec{Enabled: ptr.To(true)}
+								ac.Spec.Repo = argov1beta1api.ArgoCDRepoSpec{Enabled: new(true)}
 							}
 						})
 					},
@@ -143,15 +142,15 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 					name: "server",
 					disable: func(acd *argov1beta1api.ArgoCD) {
 						argocdFixture.Update(acd, func(ac *argov1beta1api.ArgoCD) {
-							ac.Spec.Server = argov1beta1api.ArgoCDServerSpec{Enabled: ptr.To(false)}
+							ac.Spec.Server = argov1beta1api.ArgoCDServerSpec{Enabled: new(false)}
 						})
 					},
 					enable: func(acd *argov1beta1api.ArgoCD, shouldFail bool) {
 						argocdFixture.Update(acd, func(ac *argov1beta1api.ArgoCD) {
 							if shouldFail {
-								ac.Spec.Server = argov1beta1api.ArgoCDServerSpec{Enabled: ptr.To(true), ExtraCommandArgs: []string{"--not-a-real-param"}}
+								ac.Spec.Server = argov1beta1api.ArgoCDServerSpec{Enabled: new(true), ExtraCommandArgs: []string{"--not-a-real-param"}}
 							} else {
-								ac.Spec.Server = argov1beta1api.ArgoCDServerSpec{Enabled: ptr.To(true)}
+								ac.Spec.Server = argov1beta1api.ArgoCDServerSpec{Enabled: new(true)}
 							}
 						})
 					},

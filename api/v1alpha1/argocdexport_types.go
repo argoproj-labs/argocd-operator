@@ -110,7 +110,3 @@ type ArgoCDExportStorageSpec struct {
 	// SecretName is the name of a Secret with encryption key, credentials, etc.
 	SecretName string `json:"secretName,omitempty"`
 }
-
-func init() {
-	SchemeBuilder.Register(&ArgoCDExport{}, &ArgoCDExportList{})
-}

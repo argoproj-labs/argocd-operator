@@ -25,7 +25,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -99,14 +98,14 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			}))
 
 			Expect(*initContainer.SecurityContext).To(Equal(corev1.SecurityContext{
-				AllowPrivilegeEscalation: ptr.To(false),
+				AllowPrivilegeEscalation: new(false),
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{
 						"ALL",
 					},
 				},
-				ReadOnlyRootFilesystem: ptr.To(true),
-				RunAsNonRoot:           ptr.To(true),
+				ReadOnlyRootFilesystem: new(true),
+				RunAsNonRoot:           new(true),
 				// RunAsUser:              ptr.To(int64(999)),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: corev1.SeccompProfileTypeRuntimeDefault,

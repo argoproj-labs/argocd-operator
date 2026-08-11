@@ -27,7 +27,6 @@ import (
 	apiError "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -121,6 +120,7 @@ func buildAgentSpec(compName, saName string, cr *argoproj.ArgoCD) appsv1.Deploym
 				},
 				ServiceAccountName: saName,
 				Volumes:            append(buildVolumes(), redisAuthVolume),
+				PriorityClassName:  cr.Spec.PriorityClassName,
 			},
 		},
 	}
@@ -134,14 +134,14 @@ func buildSelector(compName string, cr *argoproj.ArgoCD) *metav1.LabelSelector {
 
 func buildSecurityContext() *corev1.SecurityContext {
 	return &corev1.SecurityContext{
-		AllowPrivilegeEscalation: ptr.To(false),
+		AllowPrivilegeEscalation: new(false),
 		Capabilities: &corev1.Capabilities{
 			Drop: []corev1.Capability{
 				"ALL",
 			},
 		},
-		ReadOnlyRootFilesystem: ptr.To(true),
-		RunAsNonRoot:           ptr.To(true),
+		ReadOnlyRootFilesystem: new(true),
+		RunAsNonRoot:           new(true),
 		SeccompProfile: &corev1.SeccompProfile{
 			Type: "RuntimeDefault",
 		},
@@ -206,7 +206,7 @@ func buildVolumes() []corev1.Volume {
 							Path: "userpass.creds",
 						},
 					},
-					Optional: ptr.To(true),
+					Optional: new(true),
 				},
 			},
 		},
@@ -289,6 +289,12 @@ func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, dep
 		deployment.Spec.Template.Spec.Containers[0].Resources = agentResources
 	}
 
+	if deployment.Spec.Template.Spec.PriorityClassName != cr.Spec.PriorityClassName {
+		log.Info("deployment priority class name is being updated")
+		changed = true
+		deployment.Spec.Template.Spec.PriorityClassName = cr.Spec.PriorityClassName
+	}
+
 	return deployment, changed
 }
 
@@ -366,6 +372,10 @@ func buildAgentContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
 			Name:  EnvArgoCDAgentAllowedNamespaces,
 			Value: getAgentAllowedNamespaces(cr),
 		},
+		{
+			Name:  EnvArgoCDAgentLabelSelector,
+			Value: getAgentLabelSelector(cr),
+		},
 	}
 
 	env = append(env, argoutil.GetRedisAuthEnv()...)
@@ -400,6 +410,7 @@ const (
 	EnvArgoCDAgentDestinationBasedMap = "ARGOCD_AGENT_DESTINATION_BASED_MAPPING"
 	EnvArgoCDAgentCreateNamespace     = "ARGOCD_AGENT_CREATE_NAMESPACE"
 	EnvArgoCDAgentAllowedNamespaces   = "ARGOCD_AGENT_ALLOWED_NAMESPACES"
+	EnvArgoCDAgentLabelSelector       = "ARGOCD_AGENT_LABEL_SELECTOR"
 )
 
 // Logging Configuration
@@ -433,6 +444,13 @@ func getAgentCreateNamespace(cr *argoproj.ArgoCD) string {
 func getAgentAllowedNamespaces(cr *argoproj.ArgoCD) string {
 	if hasAgent(cr) && len(cr.Spec.ArgoCDAgent.Agent.AllowedNamespaces) > 0 {
 		return strings.Join(cr.Spec.ArgoCDAgent.Agent.AllowedNamespaces, ",")
+	}
+	return ""
+}
+
+func getAgentLabelSelector(cr *argoproj.ArgoCD) string {
+	if hasAgent(cr) && cr.Spec.ArgoCDAgent.Agent.LabelSelector != "" {
+		return cr.Spec.ArgoCDAgent.Agent.LabelSelector
 	}
 	return ""
 }

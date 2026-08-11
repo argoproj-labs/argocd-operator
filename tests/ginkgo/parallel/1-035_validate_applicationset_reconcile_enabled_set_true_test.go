@@ -24,7 +24,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -169,19 +168,19 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				},
 				Spec: argov1beta1api.ArgoCDSpec{
 					Controller: argov1beta1api.ArgoCDApplicationControllerSpec{
-						Enabled: ptr.To(true),
+						Enabled: new(true),
 					},
 					Redis: argov1beta1api.ArgoCDRedisSpec{
-						Enabled: ptr.To(true),
+						Enabled: new(true),
 					},
 					Repo: argov1beta1api.ArgoCDRepoSpec{
-						Enabled: ptr.To(true),
+						Enabled: new(true),
 					},
 					Server: argov1beta1api.ArgoCDServerSpec{
-						Enabled: ptr.To(true),
+						Enabled: new(true),
 					},
 					ApplicationSet: &argov1beta1api.ArgoCDApplicationSet{
-						Enabled: ptr.To(true),
+						Enabled: new(true),
 					},
 				},
 			}
@@ -215,19 +214,19 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			argocdFixture.Update(argocd_test1, func(ac *argov1beta1api.ArgoCD) {
 				ac.Spec = argov1beta1api.ArgoCDSpec{
 					Controller: argov1beta1api.ArgoCDApplicationControllerSpec{
-						Enabled: ptr.To(false),
+						Enabled: new(false),
 					},
 					Redis: argov1beta1api.ArgoCDRedisSpec{
-						Enabled: ptr.To(true),
+						Enabled: new(true),
 					},
 					Repo: argov1beta1api.ArgoCDRepoSpec{
-						Enabled: ptr.To(true),
+						Enabled: new(true),
 					},
 					Server: argov1beta1api.ArgoCDServerSpec{
-						Enabled: ptr.To(true),
+						Enabled: new(true),
 					},
 					ApplicationSet: &argov1beta1api.ArgoCDApplicationSet{
-						Enabled: ptr.To(true),
+						Enabled: new(true),
 					},
 				}
 
@@ -263,19 +262,19 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			argocdFixture.Update(argocd_test1, func(ac *argov1beta1api.ArgoCD) {
 				ac.Spec = argov1beta1api.ArgoCDSpec{
 					Controller: argov1beta1api.ArgoCDApplicationControllerSpec{
-						Enabled: ptr.To(false),
+						Enabled: new(false),
 					},
 					Redis: argov1beta1api.ArgoCDRedisSpec{
-						Enabled: ptr.To(false),
+						Enabled: new(false),
 					},
 					Repo: argov1beta1api.ArgoCDRepoSpec{
-						Enabled: ptr.To(true),
+						Enabled: new(true),
 					},
 					Server: argov1beta1api.ArgoCDServerSpec{
-						Enabled: ptr.To(true),
+						Enabled: new(true),
 					},
 					ApplicationSet: &argov1beta1api.ArgoCDApplicationSet{
-						Enabled: ptr.To(true),
+						Enabled: new(true),
 					},
 				}
 
@@ -312,19 +311,19 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			argocdFixture.Update(argocd_test1, func(ac *argov1beta1api.ArgoCD) {
 				ac.Spec = argov1beta1api.ArgoCDSpec{
 					Controller: argov1beta1api.ArgoCDApplicationControllerSpec{
-						Enabled: ptr.To(false),
+						Enabled: new(false),
 					},
 					Redis: argov1beta1api.ArgoCDRedisSpec{
-						Enabled: ptr.To(false),
+						Enabled: new(false),
 					},
 					Repo: argov1beta1api.ArgoCDRepoSpec{
-						Enabled: ptr.To(false),
+						Enabled: new(false),
 					},
 					Server: argov1beta1api.ArgoCDServerSpec{
-						Enabled: ptr.To(true),
+						Enabled: new(true),
 					},
 					ApplicationSet: &argov1beta1api.ArgoCDApplicationSet{
-						Enabled: ptr.To(true),
+						Enabled: new(true),
 					},
 				}
 
@@ -361,19 +360,19 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			argocdFixture.Update(argocd_test1, func(ac *argov1beta1api.ArgoCD) {
 				ac.Spec = argov1beta1api.ArgoCDSpec{
 					Controller: argov1beta1api.ArgoCDApplicationControllerSpec{
-						Enabled: ptr.To(false),
+						Enabled: new(false),
 					},
 					Redis: argov1beta1api.ArgoCDRedisSpec{
-						Enabled: ptr.To(false),
+						Enabled: new(false),
 					},
 					Repo: argov1beta1api.ArgoCDRepoSpec{
-						Enabled: ptr.To(false),
+						Enabled: new(false),
 					},
 					Server: argov1beta1api.ArgoCDServerSpec{
-						Enabled: ptr.To(false),
+						Enabled: new(false),
 					},
 					ApplicationSet: &argov1beta1api.ArgoCDApplicationSet{
-						Enabled: ptr.To(true),
+						Enabled: new(true),
 					},
 				}
 			})
@@ -408,19 +407,19 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			argocdFixture.Update(argocd_test1, func(ac *argov1beta1api.ArgoCD) {
 				ac.Spec = argov1beta1api.ArgoCDSpec{
 					Controller: argov1beta1api.ArgoCDApplicationControllerSpec{
-						Enabled: ptr.To(false),
+						Enabled: new(false),
 					},
 					Redis: argov1beta1api.ArgoCDRedisSpec{
-						Enabled: ptr.To(false),
+						Enabled: new(false),
 					},
 					Repo: argov1beta1api.ArgoCDRepoSpec{
-						Enabled: ptr.To(false),
+						Enabled: new(false),
 					},
 					Server: argov1beta1api.ArgoCDServerSpec{
-						Enabled: ptr.To(false),
+						Enabled: new(false),
 					},
 					ApplicationSet: &argov1beta1api.ArgoCDApplicationSet{
-						Enabled: ptr.To(false),
+						Enabled: new(false),
 					},
 				}
 
@@ -455,19 +454,19 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			argocdFixture.Update(argocd_test1, func(ac *argov1beta1api.ArgoCD) {
 				ac.Spec = argov1beta1api.ArgoCDSpec{
 					Controller: argov1beta1api.ArgoCDApplicationControllerSpec{
-						Enabled: ptr.To(false),
+						Enabled: new(false),
 					},
 					Redis: argov1beta1api.ArgoCDRedisSpec{
-						Enabled: ptr.To(false),
+						Enabled: new(false),
 					},
 					Repo: argov1beta1api.ArgoCDRepoSpec{
-						Enabled: ptr.To(false),
+						Enabled: new(false),
 					},
 					Server: argov1beta1api.ArgoCDServerSpec{
-						Enabled: ptr.To(false),
+						Enabled: new(false),
 					},
 					ApplicationSet: &argov1beta1api.ArgoCDApplicationSet{
-						Enabled: ptr.To(false),
+						Enabled: new(false),
 					},
 					HA: argov1beta1api.ArgoCDHASpec{
 						Enabled: true,

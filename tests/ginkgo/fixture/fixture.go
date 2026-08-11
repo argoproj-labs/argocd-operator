@@ -55,7 +55,7 @@ func WaitForRootPartitionToHaveMinimumDiskSpace() {
 	for {
 
 		output, err := osFixture.ExecCommandWithOutputParam(false, false, "df", "-k")
-		Expect(err).ToNot(HaveOccurred())
+		Expect(err).ToNot(HaveOccurred(), "failed to execute `df -k` command")
 
 		// Output from 'df' looks like this:
 		// Filesystem     1K-blocks     Used Available Use% Mounted on
@@ -613,7 +613,7 @@ func OutputDebugOnFail(namespaceParams ...any) {
 
 	for _, namespace := range namespaces {
 
-		kubectlOutput, err := osFixture.ExecCommandWithOutputParam(false, true, "kubectl", "get", "all", "-n", namespace)
+		kubectlOutput, err := osFixture.ExecCommandWithOutputParam(false, true, "kubectl", "get", "all,serviceaccount", "-n", namespace)
 		if err != nil {
 			GinkgoWriter.Println("unable to list", namespace, err, kubectlOutput)
 			continue

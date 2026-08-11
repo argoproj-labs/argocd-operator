@@ -24,7 +24,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
@@ -84,32 +83,32 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				{
 					Name: "ssh-known-hosts", VolumeSource: corev1.VolumeSource{
 						ConfigMap: &corev1.ConfigMapVolumeSource{
-							DefaultMode:          ptr.To(int32(420)),
+							DefaultMode:          new(int32(420)),
 							LocalObjectReference: corev1.LocalObjectReference{Name: "argocd-ssh-known-hosts-cm"}},
 					},
 				},
 				{
 					Name: "tls-certs", VolumeSource: corev1.VolumeSource{
 						ConfigMap: &corev1.ConfigMapVolumeSource{
-							DefaultMode:          ptr.To(int32(420)),
+							DefaultMode:          new(int32(420)),
 							LocalObjectReference: corev1.LocalObjectReference{Name: "argocd-tls-certs-cm"}},
 					},
 				},
 				{
 					Name: "argocd-repo-server-tls", VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{
-							DefaultMode: ptr.To(int32(420)),
+							DefaultMode: new(int32(420)),
 							SecretName:  "argocd-repo-server-tls",
-							Optional:    ptr.To(true),
+							Optional:    new(true),
 						},
 					},
 				},
 				{
 					Name: "argocd-operator-redis-tls", VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{
-							DefaultMode: ptr.To(int32(420)),
+							DefaultMode: new(int32(420)),
 							SecretName:  "argocd-operator-redis-tls",
-							Optional:    ptr.To(true),
+							Optional:    new(true),
 						},
 					},
 				},
@@ -121,10 +120,10 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				{
 					Name: "argocd-cmd-params-cm", VolumeSource: corev1.VolumeSource{
 						ConfigMap: &corev1.ConfigMapVolumeSource{
-							DefaultMode:          ptr.To(int32(420)),
+							DefaultMode:          new(int32(420)),
 							Items:                []corev1.KeyToPath{{Key: "server.profile.enabled", Path: "profiler.enabled"}},
 							LocalObjectReference: corev1.LocalObjectReference{Name: "argocd-cmd-params-cm"},
-							Optional:             ptr.To(true)},
+							Optional:             new(true)},
 					},
 				},
 				{
@@ -137,7 +136,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 					VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{
 							SecretName:  "argocd-redis-initial-password",
-							DefaultMode: ptr.To(int32(420)),
+							DefaultMode: new(int32(420)),
 							Items: []corev1.KeyToPath{
 								{Key: "auth", Path: "auth"},
 								{Key: "auth_username", Path: "auth_username"},
@@ -168,21 +167,21 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				{
 					Name: "ssh-known-hosts", VolumeSource: corev1.VolumeSource{
 						ConfigMap: &corev1.ConfigMapVolumeSource{
-							DefaultMode:          ptr.To(int32(420)),
+							DefaultMode:          new(int32(420)),
 							LocalObjectReference: corev1.LocalObjectReference{Name: "argocd-ssh-known-hosts-cm"}},
 					},
 				},
 				{
 					Name: "tls-certs", VolumeSource: corev1.VolumeSource{
 						ConfigMap: &corev1.ConfigMapVolumeSource{
-							DefaultMode:          ptr.To(int32(420)),
+							DefaultMode:          new(int32(420)),
 							LocalObjectReference: corev1.LocalObjectReference{Name: "argocd-tls-certs-cm"}},
 					},
 				},
 				{
 					Name: "gpg-keys", VolumeSource: corev1.VolumeSource{
 						ConfigMap: &corev1.ConfigMapVolumeSource{
-							DefaultMode:          ptr.To(int32(420)),
+							DefaultMode:          new(int32(420)),
 							LocalObjectReference: corev1.LocalObjectReference{Name: "argocd-gpg-keys-cm"}},
 					},
 				},
@@ -194,18 +193,18 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				{
 					Name: "argocd-repo-server-tls", VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{
-							DefaultMode: ptr.To(int32(420)),
+							DefaultMode: new(int32(420)),
 							SecretName:  "argocd-repo-server-tls",
-							Optional:    ptr.To(true),
+							Optional:    new(true),
 						},
 					},
 				},
 				{
 					Name: "argocd-operator-redis-tls", VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{
-							DefaultMode: ptr.To(int32(420)),
+							DefaultMode: new(int32(420)),
 							SecretName:  "argocd-operator-redis-tls",
-							Optional:    ptr.To(true),
+							Optional:    new(true),
 						},
 					},
 				},
@@ -224,7 +223,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 					VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{
 							SecretName:  "argocd-redis-initial-password",
-							DefaultMode: ptr.To(int32(420)),
+							DefaultMode: new(int32(420)),
 							Items: []corev1.KeyToPath{
 								{Key: "auth", Path: "auth"},
 								{Key: "auth_username", Path: "auth_username"},
@@ -257,18 +256,18 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				{
 					Name: "argocd-repo-server-tls", VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{
-							DefaultMode: ptr.To(int32(420)),
+							DefaultMode: new(int32(420)),
 							SecretName:  "argocd-repo-server-tls",
-							Optional:    ptr.To(true),
+							Optional:    new(true),
 						},
 					},
 				},
 				{
 					Name: "argocd-operator-redis-tls", VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{
-							DefaultMode: ptr.To(int32(420)),
+							DefaultMode: new(int32(420)),
 							SecretName:  "argocd-operator-redis-tls",
-							Optional:    ptr.To(true),
+							Optional:    new(true),
 						},
 					},
 				},
@@ -280,13 +279,13 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				{
 					Name: "argocd-cmd-params-cm", VolumeSource: corev1.VolumeSource{
 						ConfigMap: &corev1.ConfigMapVolumeSource{
-							DefaultMode: ptr.To(int32(420)),
+							DefaultMode: new(int32(420)),
 							Items: []corev1.KeyToPath{
 								{Key: "controller.profile.enabled", Path: "profiler.enabled"},
 								{Key: "controller.resource.health.persist", Path: "controller.resource.health.persist"},
 							},
 							LocalObjectReference: corev1.LocalObjectReference{Name: "argocd-cmd-params-cm"},
-							Optional:             ptr.To(true)},
+							Optional:             new(true)},
 					},
 				},
 				{
@@ -299,7 +298,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 					VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{
 							SecretName:  "argocd-redis-initial-password",
-							DefaultMode: ptr.To(int32(420)),
+							DefaultMode: new(int32(420)),
 							Items: []corev1.KeyToPath{
 								{Key: "auth", Path: "auth"},
 								{Key: "auth_username", Path: "auth_username"},
@@ -376,7 +375,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 						LocalObjectReference: corev1.LocalObjectReference{
 							Name: "argocd-ssh-known-hosts-cm",
 						},
-						DefaultMode: ptr.To(int32(420)),
+						DefaultMode: new(int32(420)),
 					}},
 				},
 				{
@@ -385,7 +384,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 						LocalObjectReference: corev1.LocalObjectReference{
 							Name: "argocd-tls-certs-cm",
 						},
-						DefaultMode: ptr.To(int32(420)),
+						DefaultMode: new(int32(420)),
 					}},
 				},
 				{
@@ -394,7 +393,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 						LocalObjectReference: corev1.LocalObjectReference{
 							Name: "argocd-gpg-keys-cm",
 						},
-						DefaultMode: ptr.To(int32(420)),
+						DefaultMode: new(int32(420)),
 					}},
 				},
 				{

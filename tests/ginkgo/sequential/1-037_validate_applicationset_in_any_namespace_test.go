@@ -3,6 +3,7 @@ package sequential
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/argoproj/argo-cd/gitops-engine/pkg/health"
@@ -660,28 +661,22 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			removedListFromNamespaces := false
 			for _, r := range operatorClusterRole.Rules {
 				replaced := false
-				for _, res := range r.Resources {
-					if res == "namespaces" {
-						replaced = true
-						for _, v := range r.Verbs {
-							if v == "list" {
-								removedListFromNamespaces = true
-								break
-							}
+				if slices.Contains(r.Resources, "namespaces") {
+					replaced = true
+					if slices.Contains(r.Verbs, "list") {
+						removedListFromNamespaces = true
+					}
+					var newVerbs []string
+					for _, v := range r.Verbs {
+						if v != "list" {
+							newVerbs = append(newVerbs, v)
 						}
-						var newVerbs []string
-						for _, v := range r.Verbs {
-							if v != "list" {
-								newVerbs = append(newVerbs, v)
-							}
-						}
-						if len(newVerbs) > 0 {
-							modifiedRules = append(modifiedRules, rbacv1.PolicyRule{
-								APIGroups: r.APIGroups, Resources: r.Resources, Verbs: newVerbs,
-								ResourceNames: r.ResourceNames, NonResourceURLs: r.NonResourceURLs,
-							})
-						}
-						break
+					}
+					if len(newVerbs) > 0 {
+						modifiedRules = append(modifiedRules, rbacv1.PolicyRule{
+							APIGroups: r.APIGroups, Resources: r.Resources, Verbs: newVerbs,
+							ResourceNames: r.ResourceNames, NonResourceURLs: r.NonResourceURLs,
+						})
 					}
 				}
 				if !replaced {
@@ -1271,37 +1266,37 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			By("creating an ApplicationSet in the target namespace")
 			appset := &unstructured.Unstructured{
-				Object: map[string]interface{}{
+				Object: map[string]any{
 					"apiVersion": "argoproj.io/v1alpha1",
 					"kind":       "ApplicationSet",
-					"metadata": map[string]interface{}{
+					"metadata": map[string]any{
 						"name":      "guestbook-appset",
 						"namespace": targetNS.Name,
 					},
-					"spec": map[string]interface{}{
-						"generators": []interface{}{
-							map[string]interface{}{
-								"list": map[string]interface{}{
-									"elements": []interface{}{
-										map[string]interface{}{
+					"spec": map[string]any{
+						"generators": []any{
+							map[string]any{
+								"list": map[string]any{
+									"elements": []any{
+										map[string]any{
 											"name": "guestbook",
 										},
 									},
 								},
 							},
 						},
-						"template": map[string]interface{}{
-							"metadata": map[string]interface{}{
+						"template": map[string]any{
+							"metadata": map[string]any{
 								"name": "{{name}}",
 							},
-							"spec": map[string]interface{}{
+							"spec": map[string]any{
 								"project": "default",
-								"source": map[string]interface{}{
+								"source": map[string]any{
 									"repoURL":        "https://github.com/argoproj/argocd-example-apps.git",
 									"targetRevision": "HEAD",
 									"path":           "guestbook",
 								},
-								"destination": map[string]interface{}{
+								"destination": map[string]any{
 									"server":    "https://kubernetes.default.svc",
 									"namespace": targetNS.Name,
 								},

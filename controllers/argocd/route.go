@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"maps"
 	"strings"
 
 	routev1 "github.com/openshift/api/route/v1"
@@ -162,9 +163,7 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 	// Allow override of the Labels for the Route.
 	if len(cr.Spec.Server.Route.Labels) > 0 {
 		labels := route.Labels
-		for key, val := range cr.Spec.Server.Route.Labels {
-			labels[key] = val
-		}
+		maps.Copy(labels, cr.Spec.Server.Route.Labels)
 		route.Labels = labels
 	}
 
@@ -310,9 +309,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 	// Allow override of the Labels for the Route.
 	if len(cr.Spec.ApplicationSet.WebhookServer.Route.Labels) > 0 {
 		labels := route.Labels
-		for key, val := range cr.Spec.ApplicationSet.WebhookServer.Route.Labels {
-			labels[key] = val
-		}
+		maps.Copy(labels, cr.Spec.ApplicationSet.WebhookServer.Route.Labels)
 		route.Labels = labels
 	}
 

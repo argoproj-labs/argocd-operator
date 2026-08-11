@@ -9,7 +9,6 @@ import (
 	v1 "k8s.io/api/networking/v1"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
 
 	v1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -534,7 +533,7 @@ func TestAlphaToBetaConversion(t *testing.T) {
 								Type: corev1.ServiceTypeClusterIP,
 							},
 							Route: ArgoCDAgentPrincipalRouteSpec{
-								Enabled: ptr.To(true),
+								Enabled: new(true),
 							},
 						},
 					},
@@ -551,7 +550,7 @@ func TestAlphaToBetaConversion(t *testing.T) {
 								Type: corev1.ServiceTypeClusterIP,
 							},
 							Route: v1beta1.ArgoCDAgentPrincipalRouteSpec{
-								Enabled: ptr.To(true),
+								Enabled: new(true),
 							},
 						},
 					},
@@ -568,11 +567,12 @@ func TestAlphaToBetaConversion(t *testing.T) {
 				allowGenerate := true
 				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
 					Principal: &PrincipalSpec{
-						Enabled:   &enabled,
-						Auth:      "mtls:CN=([^,]+)",
-						LogLevel:  "info",
-						LogFormat: "text",
-						Image:     "quay.io/user/argocd-agent:v1",
+						Enabled:       &enabled,
+						Auth:          "mtls:CN=([^,]+)",
+						LogLevel:      "info",
+						LogFormat:     "text",
+						Image:         "quay.io/user/argocd-agent:v1",
+						LabelSelector: "argocd-agent=true",
 						Server: &PrincipalServerSpec{
 							EnableWebSocket:      &enableWebSocket,
 							KeepAliveMinInterval: "30s",
@@ -580,7 +580,7 @@ func TestAlphaToBetaConversion(t *testing.T) {
 								Type: corev1.ServiceTypeLoadBalancer,
 							},
 							Route: ArgoCDAgentPrincipalRouteSpec{
-								Enabled: ptr.To(false),
+								Enabled: new(false),
 							},
 						},
 						Redis: &PrincipalRedisSpec{
@@ -617,11 +617,12 @@ func TestAlphaToBetaConversion(t *testing.T) {
 				insecureGenerate := true
 				cr.Spec.ArgoCDAgent = &v1beta1.ArgoCDAgentSpec{
 					Principal: &v1beta1.PrincipalSpec{
-						Enabled:   &enabled,
-						Auth:      "mtls:CN=([^,]+)",
-						LogLevel:  "info",
-						LogFormat: "text",
-						Image:     "quay.io/user/argocd-agent:v1",
+						Enabled:       &enabled,
+						Auth:          "mtls:CN=([^,]+)",
+						LogLevel:      "info",
+						LogFormat:     "text",
+						Image:         "quay.io/user/argocd-agent:v1",
+						LabelSelector: "argocd-agent=true",
 						Server: &v1beta1.PrincipalServerSpec{
 							EnableWebSocket:      &enableWebSocket,
 							KeepAliveMinInterval: "30s",
@@ -629,7 +630,7 @@ func TestAlphaToBetaConversion(t *testing.T) {
 								Type: corev1.ServiceTypeLoadBalancer,
 							},
 							Route: v1beta1.ArgoCDAgentPrincipalRouteSpec{
-								Enabled: ptr.To(false),
+								Enabled: new(false),
 							},
 						},
 						Redis: &v1beta1.PrincipalRedisSpec{
@@ -718,11 +719,12 @@ func TestAlphaToBetaConversion(t *testing.T) {
 				insecure := true
 				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
 					Agent: &AgentSpec{
-						Enabled:   &enabled,
-						Creds:     "mtls:any",
-						LogLevel:  "info",
-						LogFormat: "text",
-						Image:     "quay.io/user/argocd-agent:v1",
+						Enabled:       &enabled,
+						Creds:         "mtls:any",
+						LogLevel:      "info",
+						LogFormat:     "text",
+						Image:         "quay.io/user/argocd-agent:v1",
+						LabelSelector: "argocd-agent=true",
 						Client: &AgentClientSpec{
 							PrincipalServerAddress: "argocd-agent-principal.example.com",
 							PrincipalServerPort:    "443",
@@ -749,11 +751,12 @@ func TestAlphaToBetaConversion(t *testing.T) {
 				insecure := true
 				cr.Spec.ArgoCDAgent = &v1beta1.ArgoCDAgentSpec{
 					Agent: &v1beta1.AgentSpec{
-						Enabled:   &enabled,
-						Creds:     "mtls:any",
-						LogLevel:  "info",
-						LogFormat: "text",
-						Image:     "quay.io/user/argocd-agent:v1",
+						Enabled:       &enabled,
+						Creds:         "mtls:any",
+						LogLevel:      "info",
+						LogFormat:     "text",
+						Image:         "quay.io/user/argocd-agent:v1",
+						LabelSelector: "argocd-agent=true",
 						Client: &v1beta1.AgentClientSpec{
 							PrincipalServerAddress: "argocd-agent-principal.example.com",
 							PrincipalServerPort:    "443",
@@ -939,7 +942,7 @@ func TestBetaToAlphaConversion(t *testing.T) {
 								Type: corev1.ServiceTypeNodePort,
 							},
 							Route: v1beta1.ArgoCDAgentPrincipalRouteSpec{
-								Enabled: ptr.To(true),
+								Enabled: new(true),
 							},
 						},
 					},
@@ -956,7 +959,7 @@ func TestBetaToAlphaConversion(t *testing.T) {
 								Type: corev1.ServiceTypeNodePort,
 							},
 							Route: ArgoCDAgentPrincipalRouteSpec{
-								Enabled: ptr.To(true),
+								Enabled: new(true),
 							},
 						},
 					},
@@ -973,11 +976,12 @@ func TestBetaToAlphaConversion(t *testing.T) {
 				insecureGenerate := true
 				cr.Spec.ArgoCDAgent = &v1beta1.ArgoCDAgentSpec{
 					Principal: &v1beta1.PrincipalSpec{
-						Enabled:   &enabled,
-						Auth:      "mtls:CN=([^,]+)",
-						LogLevel:  "info",
-						LogFormat: "text",
-						Image:     "quay.io/user/argocd-agent:v1",
+						Enabled:       &enabled,
+						Auth:          "mtls:CN=([^,]+)",
+						LogLevel:      "info",
+						LogFormat:     "text",
+						Image:         "quay.io/user/argocd-agent:v1",
+						LabelSelector: "argocd-agent=true",
 						Env: []corev1.EnvVar{
 							{Name: "TEST_ENV", Value: "test-value"},
 						},
@@ -988,7 +992,7 @@ func TestBetaToAlphaConversion(t *testing.T) {
 								Type: corev1.ServiceTypeExternalName,
 							},
 							Route: v1beta1.ArgoCDAgentPrincipalRouteSpec{
-								Enabled: ptr.To(false),
+								Enabled: new(false),
 							},
 						},
 						Redis: &v1beta1.PrincipalRedisSpec{
@@ -1025,11 +1029,12 @@ func TestBetaToAlphaConversion(t *testing.T) {
 				insecureGenerate := true
 				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
 					Principal: &PrincipalSpec{
-						Enabled:   &enabled,
-						Auth:      "mtls:CN=([^,]+)",
-						LogLevel:  "info",
-						LogFormat: "text",
-						Image:     "quay.io/user/argocd-agent:v1",
+						Enabled:       &enabled,
+						Auth:          "mtls:CN=([^,]+)",
+						LogLevel:      "info",
+						LogFormat:     "text",
+						Image:         "quay.io/user/argocd-agent:v1",
+						LabelSelector: "argocd-agent=true",
 						Env: []corev1.EnvVar{
 							{Name: "TEST_ENV", Value: "test-value"},
 						},
@@ -1040,7 +1045,7 @@ func TestBetaToAlphaConversion(t *testing.T) {
 								Type: corev1.ServiceTypeExternalName,
 							},
 							Route: ArgoCDAgentPrincipalRouteSpec{
-								Enabled: ptr.To(false),
+								Enabled: new(false),
 							},
 						},
 						Redis: &PrincipalRedisSpec{
@@ -1129,11 +1134,12 @@ func TestBetaToAlphaConversion(t *testing.T) {
 				insecure := true
 				cr.Spec.ArgoCDAgent = &v1beta1.ArgoCDAgentSpec{
 					Agent: &v1beta1.AgentSpec{
-						Enabled:   &enabled,
-						Creds:     "mtls:any",
-						LogLevel:  "info",
-						LogFormat: "text",
-						Image:     "quay.io/user/argocd-agent:v1",
+						Enabled:       &enabled,
+						Creds:         "mtls:any",
+						LogLevel:      "info",
+						LogFormat:     "text",
+						Image:         "quay.io/user/argocd-agent:v1",
+						LabelSelector: "argocd-agent=true",
 						Env: []corev1.EnvVar{
 							{Name: "TEST_ENV", Value: "test-value"},
 						},
@@ -1163,11 +1169,12 @@ func TestBetaToAlphaConversion(t *testing.T) {
 				insecure := true
 				cr.Spec.ArgoCDAgent = &ArgoCDAgentSpec{
 					Agent: &AgentSpec{
-						Enabled:   &enabled,
-						Creds:     "mtls:any",
-						LogLevel:  "info",
-						LogFormat: "text",
-						Image:     "quay.io/user/argocd-agent:v1",
+						Enabled:       &enabled,
+						Creds:         "mtls:any",
+						LogLevel:      "info",
+						LogFormat:     "text",
+						Image:         "quay.io/user/argocd-agent:v1",
+						LabelSelector: "argocd-agent=true",
 						Env: []corev1.EnvVar{
 							{Name: "TEST_ENV", Value: "test-value"},
 						},
@@ -1261,4 +1268,26 @@ func TestBetaToAlphaConversion(t *testing.T) {
 			assert.Equal(t, test.expectedOutput, result)
 		})
 	}
+}
+
+func TestPriorityClassNameConversion(t *testing.T) {
+	t.Run("alpha to beta", func(t *testing.T) {
+		cr := &ArgoCD{}
+		cr.Spec.PriorityClassName = "high-priority"
+
+		dst := &v1beta1.ArgoCD{}
+		err := cr.ConvertTo(dst)
+		assert.NoError(t, err)
+		assert.Equal(t, "high-priority", dst.Spec.PriorityClassName)
+	})
+
+	t.Run("beta to alpha", func(t *testing.T) {
+		cr := &v1beta1.ArgoCD{}
+		cr.Spec.PriorityClassName = "high-priority"
+
+		dst := &ArgoCD{}
+		err := dst.ConvertFrom(cr)
+		assert.NoError(t, err)
+		assert.Equal(t, "high-priority", dst.Spec.PriorityClassName)
+	})
 }

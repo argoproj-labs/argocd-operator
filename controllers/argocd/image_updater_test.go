@@ -328,7 +328,7 @@ func TestReconcileImageUpdater_CreateDeployments(t *testing.T) {
 			Name: "image-updater-conf",
 			VolumeSource: v1.VolumeSource{
 				ConfigMap: &v1.ConfigMapVolumeSource{
-					Optional: boolPtr(true),
+					Optional: new(true),
 					LocalObjectReference: v1.LocalObjectReference{
 						Name: ArgocdImageUpdaterConfigCM,
 					},
@@ -349,7 +349,7 @@ func TestReconcileImageUpdater_CreateDeployments(t *testing.T) {
 			Name: "ssh-known-hosts",
 			VolumeSource: v1.VolumeSource{
 				ConfigMap: &v1.ConfigMapVolumeSource{
-					Optional: boolPtr(true),
+					Optional: new(true),
 					LocalObjectReference: v1.LocalObjectReference{
 						Name: "argocd-ssh-known-hosts-cm",
 					},
@@ -360,7 +360,7 @@ func TestReconcileImageUpdater_CreateDeployments(t *testing.T) {
 			Name: "ssh-config",
 			VolumeSource: v1.VolumeSource{
 				ConfigMap: &v1.ConfigMapVolumeSource{
-					Optional: boolPtr(true),
+					Optional: new(true),
 					LocalObjectReference: v1.LocalObjectReference{
 						Name: ArgocdImageUpdaterSSHConfigCM,
 					},
@@ -372,7 +372,7 @@ func TestReconcileImageUpdater_CreateDeployments(t *testing.T) {
 			VolumeSource: v1.VolumeSource{
 				Secret: &v1.SecretVolumeSource{
 					SecretName: "ssh-git-creds",
-					Optional:   boolPtr(true),
+					Optional:   new(true),
 				},
 			},
 		},

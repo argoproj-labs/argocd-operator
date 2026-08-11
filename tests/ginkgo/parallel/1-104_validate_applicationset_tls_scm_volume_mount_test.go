@@ -24,7 +24,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -168,21 +167,21 @@ XWyb96wrUlv+E8I=
 				{
 					Name: "ssh-known-hosts", VolumeSource: corev1.VolumeSource{
 						ConfigMap: &corev1.ConfigMapVolumeSource{
-							DefaultMode:          ptr.To(int32(420)),
+							DefaultMode:          new(int32(420)),
 							LocalObjectReference: corev1.LocalObjectReference{Name: "argocd-ssh-known-hosts-cm"}},
 					},
 				},
 				{
 					Name: "tls-certs", VolumeSource: corev1.VolumeSource{
 						ConfigMap: &corev1.ConfigMapVolumeSource{
-							DefaultMode:          ptr.To(int32(420)),
+							DefaultMode:          new(int32(420)),
 							LocalObjectReference: corev1.LocalObjectReference{Name: "argocd-tls-certs-cm"}},
 					},
 				},
 				{
 					Name: "gpg-keys", VolumeSource: corev1.VolumeSource{
 						ConfigMap: &corev1.ConfigMapVolumeSource{
-							DefaultMode:          ptr.To(int32(420)),
+							DefaultMode:          new(int32(420)),
 							LocalObjectReference: corev1.LocalObjectReference{Name: "argocd-gpg-keys-cm"}},
 					},
 				},
@@ -199,7 +198,7 @@ XWyb96wrUlv+E8I=
 				{
 					Name: "appset-gitlab-scm-tls-cert", VolumeSource: corev1.VolumeSource{
 						ConfigMap: &corev1.ConfigMapVolumeSource{
-							DefaultMode:          ptr.To(int32(420)),
+							DefaultMode:          new(int32(420)),
 							LocalObjectReference: corev1.LocalObjectReference{Name: "argocd-appset-gitlab-scm-tls-certs-cm"}},
 					},
 				},

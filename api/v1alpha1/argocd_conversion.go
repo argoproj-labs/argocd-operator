@@ -77,6 +77,7 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.OIDCConfig = src.Spec.OIDCConfig
 	dst.Spec.Monitoring = v1beta1.ArgoCDMonitoringSpec(src.Spec.Monitoring)
 	dst.Spec.NodePlacement = (*v1beta1.ArgoCDNodePlacementSpec)(src.Spec.NodePlacement)
+	dst.Spec.PriorityClassName = src.Spec.PriorityClassName
 	dst.Spec.Notifications = *ConvertAlphaToBetaNotifications(&src.Spec.Notifications)
 	dst.Spec.Prometheus = *ConvertAlphaToBetaPrometheus(&src.Spec.Prometheus)
 	dst.Spec.RBAC = v1beta1.ArgoCDRBACSpec(src.Spec.RBAC)
@@ -103,6 +104,8 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.NamespaceManagement = ConvertAlphaToBetaNamespaceManagement(src.Spec.NamespaceManagement)
 	dst.Spec.WebhookSecrets = ConvertAlphaToBetaWebhookSecrets(src.Spec.WebhookSecrets)
 	dst.Spec.NetworkPolicy = v1beta1.ArgoCDNetworkPolicySpec(src.Spec.NetworkPolicy)
+	dst.Spec.CommitServer = v1beta1.ArgoCDCommitServerSpec(src.Spec.CommitServer)
+	dst.Spec.SourceHydrator = v1beta1.ArgoCDSourceHydratorSpec(src.Spec.SourceHydrator)
 
 	// Status conversion
 	dst.Status = v1beta1.ArgoCDStatus(src.Status)
@@ -154,6 +157,7 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.OIDCConfig = src.Spec.OIDCConfig
 	dst.Spec.Monitoring = ArgoCDMonitoringSpec(src.Spec.Monitoring)
 	dst.Spec.NodePlacement = (*ArgoCDNodePlacementSpec)(src.Spec.NodePlacement)
+	dst.Spec.PriorityClassName = src.Spec.PriorityClassName
 	dst.Spec.Notifications = *ConvertBetaToAlphaNotifications(&src.Spec.Notifications)
 	dst.Spec.Prometheus = *ConvertBetaToAlphaPrometheus(&src.Spec.Prometheus)
 	dst.Spec.RBAC = ArgoCDRBACSpec(src.Spec.RBAC)
@@ -179,6 +183,8 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.ArgoCDAgent = ConvertBetaToAlphaArgoCDAgent(src.Spec.ArgoCDAgent)
 	dst.Spec.NamespaceManagement = ConvertBetaToAlphaNamespaceManagement(src.Spec.NamespaceManagement)
 	dst.Spec.WebhookSecrets = ConvertBetaToAlphaWebhookSecrets(src.Spec.WebhookSecrets)
+	dst.Spec.CommitServer = ArgoCDCommitServerSpec(src.Spec.CommitServer)
+	dst.Spec.SourceHydrator = ArgoCDSourceHydratorSpec(src.Spec.SourceHydrator)
 
 	// Status conversion
 	dst.Status = ArgoCDStatus(src.Status)
@@ -816,6 +822,7 @@ func ConvertAlphaToBetaPrincipal(src *PrincipalSpec) *v1beta1.PrincipalSpec {
 			LogLevel:      src.LogLevel,
 			LogFormat:     src.LogFormat,
 			Image:         src.Image,
+			LabelSelector: src.LabelSelector,
 			Env:           src.Env,
 			Server:        ConvertAlphaToBetaPrincipalServer(src.Server),
 			Redis:         ConvertAlphaToBetaPrincipalRedis(src.Redis),
@@ -849,6 +856,7 @@ func ConvertBetaToAlphaPrincipal(src *v1beta1.PrincipalSpec) *PrincipalSpec {
 			LogLevel:      src.LogLevel,
 			LogFormat:     src.LogFormat,
 			Image:         src.Image,
+			LabelSelector: src.LabelSelector,
 			Env:           src.Env,
 			Server:        ConvertBetaToAlphaPrincipalServer(src.Server),
 			Redis:         ConvertBetaToAlphaPrincipalRedis(src.Redis),
@@ -1008,16 +1016,17 @@ func ConvertAlphaToBetaAgent(src *AgentSpec) *v1beta1.AgentSpec {
 	var dst *v1beta1.AgentSpec
 	if src != nil {
 		dst = &v1beta1.AgentSpec{
-			Enabled:   src.Enabled,
-			Creds:     src.Creds,
-			LogLevel:  src.LogLevel,
-			LogFormat: src.LogFormat,
-			Image:     src.Image,
-			Env:       src.Env,
-			Client:    ConvertAlphaToBetaAgentClient(src.Client),
-			Redis:     ConvertAlphaToBetaAgentRedis(src.Redis),
-			TLS:       ConvertAlphaToBetaAgentTLS(src.TLS),
-			Metrics:   ConvertAlphaToBetaMetrics(src.Metrics),
+			Enabled:       src.Enabled,
+			Creds:         src.Creds,
+			LogLevel:      src.LogLevel,
+			LogFormat:     src.LogFormat,
+			Image:         src.Image,
+			LabelSelector: src.LabelSelector,
+			Env:           src.Env,
+			Client:        ConvertAlphaToBetaAgentClient(src.Client),
+			Redis:         ConvertAlphaToBetaAgentRedis(src.Redis),
+			TLS:           ConvertAlphaToBetaAgentTLS(src.TLS),
+			Metrics:       ConvertAlphaToBetaMetrics(src.Metrics),
 		}
 	}
 	return dst
@@ -1027,16 +1036,17 @@ func ConvertBetaToAlphaAgent(src *v1beta1.AgentSpec) *AgentSpec {
 	var dst *AgentSpec
 	if src != nil {
 		dst = &AgentSpec{
-			Enabled:   src.Enabled,
-			Creds:     src.Creds,
-			LogLevel:  src.LogLevel,
-			LogFormat: src.LogFormat,
-			Image:     src.Image,
-			Env:       src.Env,
-			Client:    ConvertBetaToAlphaAgentClient(src.Client),
-			Redis:     ConvertBetaToAlphaAgentRedis(src.Redis),
-			TLS:       ConvertBetaToAlphaAgentTLS(src.TLS),
-			Metrics:   ConvertBetaToAlphaMetrics(src.Metrics),
+			Enabled:       src.Enabled,
+			Creds:         src.Creds,
+			LogLevel:      src.LogLevel,
+			LogFormat:     src.LogFormat,
+			Image:         src.Image,
+			LabelSelector: src.LabelSelector,
+			Env:           src.Env,
+			Client:        ConvertBetaToAlphaAgentClient(src.Client),
+			Redis:         ConvertBetaToAlphaAgentRedis(src.Redis),
+			TLS:           ConvertBetaToAlphaAgentTLS(src.TLS),
+			Metrics:       ConvertBetaToAlphaMetrics(src.Metrics),
 		}
 	}
 	return dst

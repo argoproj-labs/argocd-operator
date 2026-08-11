@@ -692,8 +692,8 @@ func combineClusterSecretNamespacesWithManagedNamespaces(clusterSecret corev1.Se
 		namespacesToManageMap[managedNamespace] = managedNamespace
 	}
 
-	clusterSecretNamespaces := strings.Split(string(clusterSecret.Data["namespaces"]), ",")
-	for _, clusterSecretNS := range clusterSecretNamespaces {
+	clusterSecretNamespaces := strings.SplitSeq(string(clusterSecret.Data["namespaces"]), ",")
+	for clusterSecretNS := range clusterSecretNamespaces {
 		ns := strings.TrimSpace(clusterSecretNS)
 		namespacesToManageMap[ns] = ns
 	}
@@ -794,8 +794,8 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoproj.ArgoCD)
 	// Create the Secret, since we could not find it above
 	secret := argoutil.NewSecretWithSuffix(cr, "default-cluster-config")
 	secret.Labels[common.ArgoCDSecretTypeLabel] = "cluster"
-	dataBytes, _ := json.Marshal(map[string]interface{}{
-		"tlsClientConfig": map[string]interface{}{
+	dataBytes, _ := json.Marshal(map[string]any{
+		"tlsClientConfig": map[string]any{
 			"insecure": false,
 		},
 	})

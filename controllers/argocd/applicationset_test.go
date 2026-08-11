@@ -286,7 +286,7 @@ func TestReconcileApplicationSetProxyConfiguration(t *testing.T) {
 						Name: common.ArgoCDCmdParamsConfigMapName,
 					},
 					Key:      common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey,
-					Optional: boolPtr(true),
+					Optional: new(true),
 				},
 			},
 		},
@@ -707,7 +707,7 @@ func TestReconcileApplicationSet_ServiceAccount(t *testing.T) {
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
-		Enabled: boolPtr(true),
+		Enabled: new(true),
 	}
 
 	retSa, err := r.reconcileApplicationSetServiceAccount(a)
@@ -742,7 +742,7 @@ func TestReconcileApplicationSet_ClusterRBACCreationAndCleanup(t *testing.T) {
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
-		Enabled: boolPtr(true),
+		Enabled: new(true),
 	}
 
 	sa := &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa-name"}}
@@ -951,7 +951,7 @@ func TestReconcileApplicationSet_Role(t *testing.T) {
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
-		Enabled: boolPtr(true),
+		Enabled: new(true),
 	}
 
 	roleRet, err := r.reconcileApplicationSetRole(a)
@@ -1006,7 +1006,7 @@ func TestReconcileApplicationSet_RoleBinding(t *testing.T) {
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
-		Enabled: boolPtr(true),
+		Enabled: new(true),
 	}
 
 	role := &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: "role-name"}}
@@ -1129,7 +1129,7 @@ func TestArgoCDApplicationSetCommand(t *testing.T) {
 		"entrypoint.sh",
 		"argocd-applicationset-controller",
 		"--argocd-repo-server",
-		"argocd-repo-server.argocd.svc.cluster.local:8081",
+		"argocd-repo-server.argocd.svc.cluster.local.:8081",
 		"--loglevel",
 		"info",
 		"--logformat",
@@ -1150,7 +1150,7 @@ func TestArgoCDApplicationSetCommand(t *testing.T) {
 		"--logformat",
 		"text",
 		"--argocd-repo-server",
-		"foo.scv.cluster.local:6379",
+		"foo.scv.cluster.local.:6379",
 	}
 
 	deployment := &appsv1.Deployment{}
@@ -1191,7 +1191,7 @@ func TestArgoCDApplicationSetCommand(t *testing.T) {
 	// When one of the ExtraCommandArgs already exists in cmd with same or different value
 	a.Spec.ApplicationSet.ExtraCommandArgs = []string{
 		"--argocd-repo-server",
-		"foo.scv.cluster.local:6379",
+		"foo.scv.cluster.local.:6379",
 	}
 
 	assert.NoError(t, r.reconcileApplicationSetController(a))
@@ -1270,7 +1270,7 @@ func TestArgoCDApplicationSetEnv(t *testing.T) {
 						Name: common.ArgoCDCmdParamsConfigMapName,
 					},
 					Key:      common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey,
-					Optional: boolPtr(true),
+					Optional: new(true),
 				},
 			},
 		},
@@ -1341,7 +1341,7 @@ func TestArgoCDApplicationSet_getApplicationSetSourceNamespaces(t *testing.T) {
 		{
 			name: "No appset source namespaces",
 			appSetField: &argoproj.ArgoCDApplicationSet{
-				Enabled: boolPtr(true),
+				Enabled: new(true),
 			},
 			namespaces: []client.Object{},
 			expected:   []string(nil),

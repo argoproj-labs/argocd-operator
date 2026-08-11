@@ -10,7 +10,7 @@ VERSION ?= 0.19.0
 # After updating, call 'make update-dependencies'.
 # Notes:
 # - String should NOT begin with 'v' prefix, e.g. 'v3.1.1'
-ARGO_CD_TARGET_VERSION ?= 3.4.2
+ARGO_CD_TARGET_VERSION ?= 3.5.0
 
 # Try to detect Docker or Podman
 CONTAINER_RUNTIME := $(shell command -v docker 2> /dev/null || command -v podman 2> /dev/null)
@@ -216,17 +216,15 @@ all: test install run ## UnitTest, Run the operator locally
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 controller-gen: ## Download controller-gen locally if necessary.
-	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.18.0)
+	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.21.0)
 
 KUSTOMIZE = $(shell pwd)/bin/kustomize
 kustomize: ## Download kustomize locally if necessary.
-	$(call go-install-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v4@v4.5.2)
+	$(call go-install-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v5@v5.8.1)
 
 ENVTEST = $(shell pwd)/bin/setup-envtest
 envtest: ## Download envtest-setup locally if necessary.
-	## Use release-0.22 as the last version that supports Go 1.24 - https://github.com/kubernetes-sigs/controller-runtime/issues/3358
-	## Feel free to update this when we move to Go 1.25+
-	$(call go-install-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@release-0.22)
+	$(call go-install-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@release-0.24)
 	$(ENVTEST) use 1.26
 
 
@@ -385,6 +383,11 @@ ginkgo: ## Download ginkgo locally if necessary.
 .PHONY: update-dependencies
 update-dependencies:
 	hack/update-dependencies-script/run.sh
+
+# Updates only Argo CD dependencies
+.PHONY: update-dependencies-argocd
+update-dependencies-argocd:
+	hack/update-dependencies-script/argocd/run.sh
 
 .PHONY: apidocs-gen
 apidocs-gen: ## Generate API documentation.

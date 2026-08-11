@@ -19,6 +19,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"hash"
+	"maps"
 	"reflect"
 	"strings"
 	"time"
@@ -33,7 +34,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -129,19 +129,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 			return err
 		}
 		if fipsEnabled {
-			repoEnv = append(repoEnv, corev1.EnvVar{
-				Name:  "GODEBUG",
-				Value: "fips140=on",
-			},
-				// GOLANG_FIPS and GODEBUG=fips140=on are both mutaully exclusive.
-				// GOLANG_FIPS=1 is set by default but it causes issues
-				// since we are explicitly setting GODEBUG=fips140=on to skip unsupported fips ssh algorithms in Argo CD.
-				// See https://github.com/argoproj/argo-cd/issues/24155,
-				// so we need to set GOLANG_FIPS=0 to avoid the conflict.
-				corev1.EnvVar{
-					Name:  "GOLANG_FIPS",
-					Value: "0",
-				})
+			repoEnv = argoutil.DecorateWithFIPSEnv(repoEnv)
 		}
 	}
 
@@ -211,12 +199,10 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 	}
 
 	if !volumeMountOverridesTmpVolume {
-
 		repoServerVolumeMounts = append(repoServerVolumeMounts, corev1.VolumeMount{
 			Name:      "tmp",
 			MountPath: "/tmp",
 		})
-
 	}
 
 	if cr.Spec.Repo.VolumeMounts != nil {
@@ -323,7 +309,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   new(true),
 				},
 			},
 		},
@@ -332,7 +318,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   new(true),
 				},
 			},
 		},
@@ -373,15 +359,15 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 	}
 
 	if cr.Spec.Repo.Annotations != nil {
-		for key, value := range cr.Spec.Repo.Annotations {
-			deploy.Spec.Template.Annotations[key] = value
-		}
+		maps.Copy(deploy.Spec.Template.Annotations, cr.Spec.Repo.Annotations)
 	}
 
 	if cr.Spec.Repo.Labels != nil {
-		for key, value := range cr.Spec.Repo.Labels {
-			deploy.Spec.Template.Labels[key] = value
-		}
+		maps.Copy(deploy.Spec.Template.Labels, cr.Spec.Repo.Labels)
+	}
+
+	if cr.Spec.PriorityClassName != "" {
+		deploy.Spec.Template.Spec.PriorityClassName = cr.Spec.PriorityClassName
 	}
 
 	log.Info("Applying ArgoCD Repo Server reconciler hook")
@@ -431,6 +417,11 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 		}
 
 		changes = append(changes, updateNodePlacement(existing, deploy)...)
+
+		if existing.Spec.Template.Spec.PriorityClassName != deploy.Spec.Template.Spec.PriorityClassName {
+			existing.Spec.Template.Spec.PriorityClassName = deploy.Spec.Template.Spec.PriorityClassName
+			changes = append(changes, "priority class name")
+		}
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
 			existing.Spec.Template.Spec.Volumes = deploy.Spec.Template.Spec.Volumes
@@ -567,7 +558,7 @@ func (r *ReconcileArgoCD) injectCATrustToContainers(cr *argocdoperatorv1beta1.Ar
 			VolumeSource: corev1.VolumeSource{
 				Projected: &corev1.ProjectedVolumeSource{
 					Sources:     sources,
-					DefaultMode: ptr.To(int32(0o444)),
+					DefaultMode: new(int32(0o444)),
 				},
 			},
 		}, {
@@ -1079,7 +1070,7 @@ func (och *objectChecksum) writeObject(obj runtime.Object) {
 	}
 }
 
-func (och *objectChecksum) sprintf(format string, a ...interface{}) {
+func (och *objectChecksum) sprintf(format string, a ...any) {
 	_, err := och.Write(fmt.Appendf([]byte{}, format, a...))
 	if err != nil {
 		log.Error(err, "unable to fingerprint string", "format", format)

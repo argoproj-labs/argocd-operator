@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 	"sort"
 	"strings"
@@ -278,15 +279,11 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 	}
 
 	if cr.Spec.ApplicationSet.Annotations != nil {
-		for key, value := range cr.Spec.ApplicationSet.Annotations {
-			deploy.Spec.Template.Annotations[key] = value
-		}
+		maps.Copy(deploy.Spec.Template.Annotations, cr.Spec.ApplicationSet.Annotations)
 	}
 
 	if cr.Spec.ApplicationSet.Labels != nil {
-		for key, value := range cr.Spec.ApplicationSet.Labels {
-			deploy.Spec.Template.Labels[key] = value
-		}
+		maps.Copy(deploy.Spec.Template.Labels, cr.Spec.ApplicationSet.Labels)
 	}
 
 	appSetContainer, err := r.applicationSetContainer(cr, addSCMGitlabVolumeMount)
@@ -297,6 +294,10 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 		appSetContainer,
 	}
 	AddSeccompProfileForOpenShift(r.Client, podSpec)
+
+	if cr.Spec.PriorityClassName != "" {
+		podSpec.PriorityClassName = cr.Spec.PriorityClassName
+	}
 
 	if deplExists {
 		// Add Kubernetes-specific labels/annotations from the live object in the source to preserve metadata.
@@ -314,6 +315,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 			existing.Spec.Selector = deploy.Spec.Selector
 			existing.Spec.Template.Spec.NodeSelector = deploy.Spec.Template.Spec.NodeSelector
 			existing.Spec.Template.Spec.Tolerations = deploy.Spec.Template.Spec.Tolerations
+			existing.Spec.Template.Spec.PriorityClassName = deploy.Spec.Template.Spec.PriorityClassName
 			existing.Spec.Template.Spec.Containers[0].SecurityContext = deploy.Spec.Template.Spec.Containers[0].SecurityContext
 			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
 
@@ -379,6 +381,10 @@ func identifyDeploymentDifference(x appsv1.Deployment, y appsv1.Deployment) stri
 		return "Spec.Template.Spec..Containers[0].SecurityContext"
 	}
 
+	if xPodSpec.PriorityClassName != yPodSpec.PriorityClassName {
+		return "Spec.Template.Spec.PriorityClassName"
+	}
+
 	if !reflect.DeepEqual(x.Spec.Template.Annotations, y.Spec.Template.Annotations) {
 		return ".Spec.Template.Annotations"
 	}
@@ -405,7 +411,7 @@ func (r *ReconcileArgoCD) applicationSetContainer(cr *argoproj.ArgoCD, addSCMGit
 						Name: common.ArgoCDCmdParamsConfigMapName,
 					},
 					Key:      common.ArgoCDApplicationSetControllerTokenRefStrictModeCmdParamKey,
-					Optional: boolPtr(true),
+					Optional: new(true),
 				},
 			},
 		},

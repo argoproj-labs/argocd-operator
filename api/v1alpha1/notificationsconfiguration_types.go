@@ -18,10 +18,6 @@ package v1alpha1
 
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-func init() {
-	SchemeBuilder.Register(&NotificationsConfiguration{}, &NotificationsConfigurationList{})
-}
-
 //+kubebuilder:object:root=true
 
 // NotificationsConfiguration is the Schema for the NotificationsConfiguration API

@@ -131,7 +131,7 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 		}
 		// only skip creation of dex and redisHa rolebindings for namespaces that no argocd instance is deployed in
 		if len(list.Items) < 1 {
-			// namespace doesn't contain argocd instance, so skipe all the ArgoCD internal roles
+			// namespace doesn't contain argocd instance, so skip all the ArgoCD internal roles
 			if cr.Namespace != namespace.Name && (name != common.ArgoCDApplicationControllerComponent && name != common.ArgoCDServerComponent) {
 				continue
 			}
@@ -149,7 +149,7 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 				return fmt.Errorf("failed to get the rolebinding associated with %s : %s", name, err)
 			}
 
-			if (name == common.ArgoCDDexServerComponent && !UseDex(cr)) ||
+			if (name == common.ArgoCDDexServerComponent && !UseDex(cr)) || (name == common.ArgoCDCommitServerComponent && !UseCommitServer(cr)) ||
 				!UseApplicationController(name, cr) || !UseRedis(name, cr) || !UseServer(name, cr) {
 				continue // Component installation is not requested, do nothing
 			}
@@ -181,9 +181,9 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 		}
 
 		if roleBindingExists {
-			if (name == common.ArgoCDDexServerComponent && !UseDex(cr)) || !UseApplicationController(name, cr) || !UseRedis(name, cr) || !UseServer(name, cr) {
+			if (name == common.ArgoCDDexServerComponent && !UseDex(cr)) || (name == common.ArgoCDCommitServerComponent && !UseCommitServer(cr)) || !UseApplicationController(name, cr) || !UseRedis(name, cr) || !UseServer(name, cr) {
 				// Delete any existing RoleBinding created for Dex since dex uninstallation is requested
-				argoutil.LogResourceDeletion(log, existingRoleBinding, "dex is being uninstalled")
+				argoutil.LogResourceDeletion(log, existingRoleBinding, "rolebinding is being uninstalled")
 				if err = r.Delete(context.TODO(), existingRoleBinding); err != nil {
 					return err
 				}
@@ -237,6 +237,13 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 			namespace := &corev1.Namespace{}
 			if err := r.Get(context.TODO(), types.NamespacedName{Name: sourceNamespace}, namespace); err != nil {
 				return err
+			}
+
+			// Creating content in a terminating namespace is forbidden and should not
+			// prevent reconciliation of the remaining source namespaces.
+			if namespace.DeletionTimestamp != nil {
+				log.Info(fmt.Sprintf("Skipping terminating namespace %s", namespace.Name))
+				continue
 			}
 
 			// do not reconcile rolebindings for namespaces already containing managed-by label
