@@ -41,8 +41,10 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
 # Set the Operator SDK version to use.
 # This is useful for CI or a project to utilize a specific version of the operator-sdk toolkit.
+OPERATOR_SDK_VERSION ?= v1.35.0
+
+# K8s version to use for reference documentation.
 KUBERNETES_API_VERSION ?= 1.35
-OPERATOR_SDK_VERSION ?= v$(KUBERNETES_API_VERSION).0
 
 GOSEC_VERSION ?= v2.22.7
 GOLANGCILINT_VERSION ?= v2.12.2
