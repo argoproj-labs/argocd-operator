@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	testclient "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -3524,4 +3525,122 @@ func TestArgoCDServerAndRepoServerDeploymentArgs(t *testing.T) {
 	assert.NoError(t, r.reconcileRepoDeployment(a, false))
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: "argocd-repo-server", Namespace: a.Namespace}, deployment))
 	assert.Equal(t, args, deployment.Spec.Template.Spec.Containers[0].Args)
+}
+
+func TestReconcileServer_PromoterUIExtension(t *testing.T) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Promoter = &argoproj.PromoterSpec{}
+		a.Spec.Promoter.Enabled = ptr.To(true)
+		a.Spec.Promoter.ArgoCDUIExtensionEnabled = true
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: a.Namespace}, deployment))
+
+	assert.Len(t, deployment.Spec.Template.Spec.InitContainers, 1)
+	assert.Equal(t, "promoter-extension", deployment.Spec.Template.Spec.InitContainers[0].Name)
+
+	foundExtensionsVolumeMount := false
+	for _, volMnt := range deployment.Spec.Template.Spec.InitContainers[0].VolumeMounts {
+		if volMnt.Name == "extensions" {
+			foundExtensionsVolumeMount = true
+			assert.NotNil(t, volMnt.MountPath)
+			assert.Equal(t, "/tmp/extensions/", volMnt.MountPath)
+		}
+	}
+	assert.True(t, foundExtensionsVolumeMount, "expected volume mount 'extensions' to be present in init container")
+	foundExtensionsVolumeMount = false
+	for _, vol := range deployment.Spec.Template.Spec.Containers[0].VolumeMounts {
+		if vol.Name == "extensions" {
+			foundExtensionsVolumeMount = true
+			assert.NotNil(t, vol.MountPath)
+			assert.Equal(t, "/tmp/extensions/", vol.MountPath)
+		}
+	}
+	assert.True(t, foundExtensionsVolumeMount, "expected volume mount 'extensions' to be present in container")
+
+	foundTmpVolumeMount := false
+	for _, volMnt := range deployment.Spec.Template.Spec.InitContainers[0].VolumeMounts {
+		if volMnt.Name == "tmp" {
+			foundTmpVolumeMount = true
+			assert.NotNil(t, volMnt.MountPath)
+			assert.Equal(t, volMnt.MountPath, "/tmp")
+		}
+	}
+	assert.True(t, foundTmpVolumeMount, "expected volume mount 'tmp' to be present in init container")
+	foundTmpVolumeMount = false
+	for _, volMnt := range deployment.Spec.Template.Spec.Containers[0].VolumeMounts {
+		if volMnt.Name == "tmp" {
+			foundTmpVolumeMount = true
+			assert.NotNil(t, volMnt.MountPath)
+			assert.Equal(t, volMnt.MountPath, "/tmp")
+		}
+	}
+	assert.True(t, foundTmpVolumeMount, "expected volume mount 'tmp' to be present in container")
+
+	foundVolume := false
+	for _, vol := range deployment.Spec.Template.Spec.Volumes {
+		if vol.Name == "extensions" {
+			foundVolume = true
+			assert.NotNil(t, vol.EmptyDir)
+		}
+	}
+	assert.True(t, foundVolume, "expected volume 'extensions' to be present")
+	foundTmpVolume := false
+	for _, vol := range deployment.Spec.Template.Spec.Volumes {
+		if vol.Name == "tmp" {
+			foundTmpVolume = true
+			assert.NotNil(t, vol.EmptyDir)
+		}
+	}
+	assert.True(t, foundTmpVolume, "expected volume 'tmp' to be present")
+
+	a.Spec.Promoter.ArgoCDUIExtensionEnabled = false
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
+	assert.NoError(t, r.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Len(t, deployment.Spec.Template.Spec.InitContainers, 0)
+	assert.Len(t, deployment.Spec.Template.Spec.Containers, 1)
+
+	foundVolume = false
+	for _, vol := range deployment.Spec.Template.Spec.Volumes {
+		if vol.Name == "extensions" {
+			foundVolume = true
+		}
+	}
+	assert.False(t, foundVolume, "expected volume 'rollout-extension' to be removed")
+
+	foundTmpVolume = false
+	for _, vol := range deployment.Spec.Template.Spec.Volumes {
+		if vol.Name == "tmp" {
+			foundTmpVolume = true
+			assert.NotNil(t, vol.EmptyDir)
+		}
+	}
+	assert.True(t, foundTmpVolume, "expected volume 'tmp' to be present even if rollouts is disabled")
+
+	foundTmpVolumeMount = false
+	for _, vol := range deployment.Spec.Template.Spec.Containers[0].VolumeMounts {
+		if vol.Name == "tmp" {
+			foundTmpVolumeMount = true
+			assert.NotNil(t, vol.MountPath)
+			assert.Equal(t, vol.MountPath, "/tmp")
+		}
+	}
+	assert.True(t, foundTmpVolumeMount, "expected volume mount 'tmp' to be present in container")
 }

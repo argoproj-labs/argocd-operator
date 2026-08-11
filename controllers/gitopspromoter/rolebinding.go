@@ -79,8 +79,12 @@ func ReconcilePromoterAPIServerRoleBindings(client client.Client, compName strin
 	crCopy := cr.DeepCopy()
 	crCopy.SetNamespace("kube-system")
 	bindingName := fmt.Sprintf("%s-%s", generatePromoterResourceNameWithNamespace(compName, cr), "extension-auth-reader")
-	ReconcilePromoterRoleBinding(client, compName, bindingName, "extension-apiserver-authentication-reader", sa, crCopy, enabled)
+	roleBinding, err := ReconcilePromoterRoleBinding(client, compName, bindingName, "extension-apiserver-authentication-reader", sa, crCopy, enabled)
+	if err != nil {
+		return nil, err
+	}
 
+	reconciledRoleBindings = append(reconciledRoleBindings, roleBinding)
 	return reconciledRoleBindings, nil
 }
 
