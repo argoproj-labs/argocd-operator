@@ -56,14 +56,28 @@ type deploymentConfig struct {
 	volumeMounts    []corev1.VolumeMount
 }
 
-func ReconcilePromoterControllerDeployment(client client.Client, compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD, scheme *runtime.Scheme) (*appsv1.Deployment, error) {
-	config := deploymentConfig{
+func createControllerConfig() deploymentConfig {
+	return deploymentConfig{
 		command:         buildContainerCommand(binaryControllerCmd),
 		securityContext: buildControllerSecurityContext(),
 		livenessProbe:   buildControllerLivenessProbe(),
 		readinessProbe:  buildControllerReadinessProbe(),
 	}
+}
 
+func createAPIServerConfig() deploymentConfig {
+	return deploymentConfig{
+		command:         buildContainerCommand(binaryAPIServerCmd),
+		args:            buildAPIServerArgs(),
+		securityContext: buildAPIServerSecurityContext(),
+		ports:           buildAPIServerPorts(),
+		livenessProbe:   buildAPIServerLivenessProbe(),
+		readinessProbe:  buildAPIServerReadinessProbe(),
+	}
+}
+
+func ReconcilePromoterControllerDeployment(client client.Client, compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD, scheme *runtime.Scheme) (*appsv1.Deployment, error) {
+	config := createControllerConfig()
 	deployment, err := ReconcilePromoterDeployment(client, compName, sa, cr, scheme, config, true)
 	if err != nil {
 		return nil, err
@@ -72,17 +86,9 @@ func ReconcilePromoterControllerDeployment(client client.Client, compName string
 }
 
 func ReconcilePromoterAPIServerDeployment(client client.Client, compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD, scheme *runtime.Scheme) (*appsv1.Deployment, error) {
-	config := deploymentConfig{
-		command:         buildContainerCommand(binaryAPIServerCmd),
-		args:            buildAPIServerArgs(),
-		securityContext: buildAPIServerSecurityContext(),
-		ports:           buildAPIServerPorts(),
-		livenessProbe:   buildAPIServerLivenessProbe(),
-		readinessProbe:  buildAPIServerReadinessProbe(),
-	}
-
+	config := createAPIServerConfig()
 	enabled := cr.Spec.Promoter == nil || cr.Spec.Promoter.APIServer.IsEnabled()
-	if cr.Spec.Promoter != nil && cr.Spec.Promoter.APIServer.TLS != nil && cr.Spec.Promoter.APIServer.TLS.CertSecretName != "" {
+	if cr.Spec.Promoter != nil && cr.Spec.Promoter.APIServer != nil && cr.Spec.Promoter.APIServer.TLS != nil && cr.Spec.Promoter.APIServer.TLS.CertSecretName != "" {
 		config.volumes = buildAPIServerVolumes(cr)
 		config.volumeMounts = buildAPIServerVolumeMounts()
 	} else {
@@ -152,6 +158,11 @@ func ReconcilePromoterDeployment(client client.Client, compName string, sa *core
 			changed = true
 		}
 
+		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Ports, config.ports) {
+			deployment.Spec.Template.Spec.Containers[0].Ports = config.ports
+			changed = true
+		}
+
 		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Resources, getResources(cr)) {
 			deployment.Spec.Template.Spec.Containers[0].Resources = getResources(cr)
 			changed = true
@@ -162,7 +173,7 @@ func ReconcilePromoterDeployment(client client.Client, compName string, sa *core
 			changed = true
 		}
 
-		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].ReadinessProbe, config.livenessProbe) {
+		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].ReadinessProbe, config.readinessProbe) {
 			deployment.Spec.Template.Spec.Containers[0].ReadinessProbe = config.readinessProbe
 			changed = true
 		}
@@ -184,6 +195,7 @@ func ReconcilePromoterDeployment(client client.Client, compName string, sa *core
 
 		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].VolumeMounts, config.volumeMounts) {
 			deployment.Spec.Template.Spec.Containers[0].VolumeMounts = config.volumeMounts
+			changed = true
 		}
 
 		if changed {
@@ -264,7 +276,7 @@ func buildContainerCommand(cmd string) []string {
 }
 
 func selectImage(cr *argoproj.ArgoCD) string {
-	if cr.Spec.Promoter.Image != "" {
+	if cr.Spec.Promoter != nil && cr.Spec.Promoter.Image != "" {
 		return cr.Spec.Promoter.Image
 	}
 
