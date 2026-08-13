@@ -67,34 +67,34 @@ func makeExistingDeployment(sa *corev1.ServiceAccount, cr *argoproj.ArgoCD) *app
 									Drop: []corev1.Capability{"ALL"},
 								},
 							},
-						Ports: []corev1.ContainerPort{
-							{
-								Name:          "https",
-								ContainerPort: 6443,
-								Protocol:      corev1.ProtocolTCP,
-							},
-						},
-						Resources: getResources(cr),
-						LivenessProbe: &corev1.Probe{
-							ProbeHandler: corev1.ProbeHandler{
-								HTTPGet: &corev1.HTTPGetAction{
-									Path: "/healthz",
-									Port: intstr.FromInt(9081),
+							Ports: []corev1.ContainerPort{
+								{
+									Name:          "https",
+									ContainerPort: 6443,
+									Protocol:      corev1.ProtocolTCP,
 								},
 							},
-							InitialDelaySeconds: 5,
-							PeriodSeconds:       10,
-						},
-						ReadinessProbe: &corev1.Probe{
-							ProbeHandler: corev1.ProbeHandler{
-								HTTPGet: &corev1.HTTPGetAction{
-									Path: "/readyz",
-									Port: intstr.FromInt(9081),
+							Resources: getResources(cr),
+							LivenessProbe: &corev1.Probe{
+								ProbeHandler: corev1.ProbeHandler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Path: "/healthz",
+										Port: intstr.FromInt(9081),
+									},
 								},
+								InitialDelaySeconds: 5,
+								PeriodSeconds:       10,
 							},
-							InitialDelaySeconds: 5,
-							PeriodSeconds:       10,
-						},
+							ReadinessProbe: &corev1.Probe{
+								ProbeHandler: corev1.ProbeHandler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Path: "/readyz",
+										Port: intstr.FromInt(9081),
+									},
+								},
+								InitialDelaySeconds: 5,
+								PeriodSeconds:       10,
+							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "test-volume",

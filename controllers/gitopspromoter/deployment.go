@@ -148,7 +148,9 @@ func ReconcilePromoterDeployment(client client.Client, compName string, sa *core
 			changed = true
 		}
 
-		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Env, cr.Spec.Promoter.Env) {
+		actualEnv := sliceEmptyToNil(deployment.Spec.Template.Spec.Containers[0].Env)
+		desiredEnv := sliceEmptyToNil(cr.Spec.Promoter.Env)
+		if !reflect.DeepEqual(actualEnv, desiredEnv) {
 			deployment.Spec.Template.Spec.Containers[0].Env = cr.Spec.Promoter.Env
 			changed = true
 		}
@@ -188,12 +190,16 @@ func ReconcilePromoterDeployment(client client.Client, compName string, sa *core
 			changed = true
 		}
 
-		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Volumes, config.volumes) {
+		actualVolumes := sliceEmptyToNil(deployment.Spec.Template.Spec.Volumes)
+		desiredVolumes := sliceEmptyToNil(config.volumes)
+		if !reflect.DeepEqual(actualVolumes, desiredVolumes) {
 			deployment.Spec.Template.Spec.Volumes = config.volumes
 			changed = true
 		}
 
-		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].VolumeMounts, config.volumeMounts) {
+		actualVolumeMounts := sliceEmptyToNil(deployment.Spec.Template.Spec.Containers[0].VolumeMounts)
+		desiredVolumeMounts := sliceEmptyToNil(config.volumeMounts)
+		if !reflect.DeepEqual(actualVolumeMounts, desiredVolumeMounts) {
 			deployment.Spec.Template.Spec.Containers[0].VolumeMounts = config.volumeMounts
 			changed = true
 		}
@@ -317,10 +323,14 @@ func buildControllerLivenessProbe() *corev1.Probe {
 	return &corev1.Probe{
 		ProbeHandler: corev1.ProbeHandler{
 			HTTPGet: &corev1.HTTPGetAction{
-				Path: "/healthz",
-				Port: intstr.FromInt(9081),
+				Scheme: corev1.URISchemeHTTP,
+				Path:   "/healthz",
+				Port:   intstr.FromInt(9081),
 			},
 		},
+		TimeoutSeconds:      1,
+		SuccessThreshold:    1,
+		FailureThreshold:    3,
 		InitialDelaySeconds: 15,
 		PeriodSeconds:       20,
 	}
@@ -330,10 +340,14 @@ func buildControllerReadinessProbe() *corev1.Probe {
 	return &corev1.Probe{
 		ProbeHandler: corev1.ProbeHandler{
 			HTTPGet: &corev1.HTTPGetAction{
-				Path: "/readyz",
-				Port: intstr.FromInt(9081),
+				Scheme: corev1.URISchemeHTTP,
+				Path:   "/readyz",
+				Port:   intstr.FromInt(9081),
 			},
 		},
+		TimeoutSeconds:      1,
+		SuccessThreshold:    1,
+		FailureThreshold:    3,
 		InitialDelaySeconds: 5,
 		PeriodSeconds:       10,
 	}
@@ -358,6 +372,9 @@ func buildAPIServerLivenessProbe() *corev1.Probe {
 				Scheme: corev1.URISchemeHTTPS,
 			},
 		},
+		TimeoutSeconds:      1,
+		SuccessThreshold:    1,
+		FailureThreshold:    3,
 		InitialDelaySeconds: 15,
 		PeriodSeconds:       20,
 	}
@@ -372,6 +389,9 @@ func buildAPIServerReadinessProbe() *corev1.Probe {
 				Scheme: corev1.URISchemeHTTPS,
 			},
 		},
+		TimeoutSeconds:      1,
+		SuccessThreshold:    1,
+		FailureThreshold:    3,
 		InitialDelaySeconds: 5,
 		PeriodSeconds:       10,
 	}
@@ -392,7 +412,8 @@ func buildAPIServerVolumes(cr *argoproj.ArgoCD) []corev1.Volume {
 			Name: apiServerTLSVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: cr.Spec.Promoter.APIServer.TLS.CertSecretName,
+					SecretName:  cr.Spec.Promoter.APIServer.TLS.CertSecretName,
+					DefaultMode: ptr.To(int32(420)),
 				},
 			},
 		},
@@ -417,4 +438,11 @@ func buildAPIServerVolumeMounts() []corev1.VolumeMount {
 			MountPath: "/tmp",
 		},
 	}
+}
+
+func sliceEmptyToNil[T any](s []T) []T {
+	if len(s) == 0 {
+		return nil
+	}
+	return s
 }
