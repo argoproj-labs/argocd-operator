@@ -92,6 +92,18 @@ spec:
                 required:
                 - name
                 type: object
+              labels:
+                description: |-
+                  Labels is the desired set of SCM pull request labels (not Kubernetes metadata labels).
+                  Written by the ChangeTransferPolicy controller from pullRequest.labels.expression evaluation.
+                items:
+                  maxLength: 50
+                  minLength: 1
+                  pattern: ^[^\n\r\x00]+$
+                  type: string
+                maxItems: 10
+                type: array
+                x-kubernetes-list-type: set
               mergeSha:
                 description: |-
                   MergeSha is the commit SHA that the head branch must match before the PR can be merged.
@@ -158,6 +170,17 @@ spec:
           status:
             description: PullRequestStatus defines the observed state of PullRequest
             properties:
+              appliedLabels:
+                description: AppliedLabels lists SCM labels successfully applied by
+                  gitops-promoter (for sync and retraction).
+                items:
+                  maxLength: 50
+                  minLength: 1
+                  pattern: ^[^\n\r\x00]+$
+                  type: string
+                maxItems: 10
+                type: array
+                x-kubernetes-list-type: set
               conditions:
                 description: Conditions Represents the observations of the current
                   state.

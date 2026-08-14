@@ -202,6 +202,33 @@ spec:
                 x-kubernetes-list-map-keys:
                 - key
                 x-kubernetes-list-type: map
+              pullRequest:
+                description: PullRequest configures SCM pull request behavior for
+                  all environments in this strategy.
+                properties:
+                  labels:
+                    description: Labels configures dynamic SCM labels applied to promotion
+                      pull requests.
+                    properties:
+                      expression:
+                        description: |-
+                          Expression is evaluated using the expr library (github.com/expr-lang/expr) against
+                          ChangeTransferPolicy status and spec. It must return a list of SCM label name strings.
+
+                          Available variables:
+                            - Status: ChangeTransferPolicy status (Proposed/Active commit statuses, branch SHAs, etc.)
+                            - Spec: ChangeTransferPolicy spec (ActiveBranch, ProposedBranch, etc.)
+                            - PromotionStrategy: owning PromotionStrategy spec and status when available
+
+                          Each returned label name must satisfy the same validation as PullRequest.spec.labels
+                          (non-empty, max 50 characters, no newlines, max 10 labels, unique).
+                        maxLength: 8192
+                        minLength: 1
+                        type: string
+                    required:
+                    - expression
+                    type: object
+                type: object
             required:
             - environments
             - gitRepositoryRef

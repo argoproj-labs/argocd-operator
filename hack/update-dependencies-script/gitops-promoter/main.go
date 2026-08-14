@@ -11,7 +11,7 @@ import (
 
 const (
 	GitOpsPromoterRepoURL        = "https://github.com/argoproj-labs/gitops-promoter"
-	DefaultGitOpsPromoterVersion = "v0.34.0"
+	DefaultGitOpsPromoterVersion = "v0.35.0"
 )
 
 var targetGitOpsPromoterVersion string

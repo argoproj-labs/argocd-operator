@@ -326,10 +326,10 @@ vs-ssh.visualstudio.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7Hr1oTWqNqOlzGJOf
 	ArgoCDDefaultWebTerminalEnabled = "false"
 
 	// GitOpsPromoterDefaultImageName is the default image name for the GitOps Promoter
-	GitOpsPromoterDefaultImageName = "quay.io/argoprojlabs/gitops-promoter:v0.34.0"
+	GitOpsPromoterDefaultImageName = "quay.io/argoprojlabs/gitops-promoter:v0.35.0"
 
 	// GitopsPromoterExtensionInstallerName is the default url for the GitOps Promoter extension
-	GitopsPromoterExtensionURL = "https://github.com/argoproj-labs/gitops-promoter/releases/download/v0.34.0/gitops-promoter-argocd-extension.tar.gz"
+	GitopsPromoterExtensionURL = "https://github.com/argoproj-labs/gitops-promoter/releases/download/v0.35.0/gitops-promoter-argocd-extension.tar.gz"
 )
 
 // DefaultLabels returns the default set of labels for controllers.
