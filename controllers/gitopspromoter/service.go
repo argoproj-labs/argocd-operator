@@ -152,5 +152,6 @@ func buildAPIServerServiceSpec(compName string) corev1.ServiceSpec {
 				Protocol:   APIServerProtocol,
 			},
 		},
+		Type: corev1.ServiceTypeClusterIP,
 	}
 }

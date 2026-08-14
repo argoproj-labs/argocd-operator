@@ -6,16 +6,13 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"math/big"
 	"net"
 	"sort"
 	"strings"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -32,10 +29,13 @@ import (
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
+	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/certutil"
 	k8sFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/k8s"
 	osFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/os"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 )
+
+const caSubject = "argocd-agent-ca"
 
 type PrincipalResources struct {
 	PrincipalNamespaceName   string
@@ -112,7 +112,6 @@ type VerifyExpectedResourcesExistParams struct {
 }
 
 func VerifyResourcesDeleted(resources PrincipalResources) {
-
 	By("verifying resources are deleted for principal pod")
 
 	Eventually(resources.ServiceAccount).Should(k8sFixture.NotExistByName())
@@ -159,8 +158,8 @@ func CreateRequiredSecrets(cfg PrincipalSecretsConfig) {
 	}
 	Expect(k8sClient.Create(ctx, jwtSecret)).To(Succeed())
 
-	caKey, caCert, caCertPEM := generateCertificateAuthority()
-	caKeyPEM := encodePrivateKeyToPEM(caKey)
+	caKey, caCert, caCertPEM := certutil.GenerateCertificateAuthority(caSubject)
+	caKeyPEM := certutil.EncodePrivateKeyToPEM(caKey)
 
 	caSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -177,7 +176,7 @@ func CreateRequiredSecrets(cfg PrincipalSecretsConfig) {
 	Expect(k8sClient.Create(ctx, caSecret)).To(Succeed())
 
 	principalDNS, principalIPs := aggregateSANs(cfg.PrincipalNamespaceName, cfg.PrincipalServiceName, cfg.AdditionalPrincipalSANs)
-	principalCertPEM, principalKeyPEM := issueCertificate(caCert, caKey, certificateRequest{
+	principalCertPEM, principalKeyPEM := certutil.IssueCertificate(caCert, caKey, certutil.CertificateRequest{
 		CommonName:  cfg.PrincipalServiceName,
 		DNSNames:    principalDNS,
 		IPAddresses: principalIPs,
@@ -186,7 +185,7 @@ func CreateRequiredSecrets(cfg PrincipalSecretsConfig) {
 	createTLSSecret(ctx, k8sClient, cfg.PrincipalNamespaceName, cfg.PrincipalTLSSecretName, principalCertPEM, principalKeyPEM, caCertPEM)
 
 	resourceProxyDNS, resourceProxyIPs := aggregateSANs(cfg.PrincipalNamespaceName, cfg.ResourceProxyServiceName, cfg.AdditionalResourceProxySANs)
-	resourceProxyCertPEM, resourceProxyKeyPEM := issueCertificate(caCert, caKey, certificateRequest{
+	resourceProxyCertPEM, resourceProxyKeyPEM := certutil.IssueCertificate(caCert, caKey, certutil.CertificateRequest{
 		CommonName:  cfg.ResourceProxyServiceName,
 		DNSNames:    resourceProxyDNS,
 		IPAddresses: resourceProxyIPs,
@@ -219,7 +218,7 @@ func CreateRequiredAgentSecrets(cfg AgentSecretsConfig) {
 	caKey := parsePrivateKey(caKeyPEM)
 
 	clientDNS, clientIPs := aggregateClientSANs(cfg.ClientDNSNames)
-	clientCertPEM, clientKeyPEM := issueCertificate(caCert, caKey, certificateRequest{
+	clientCertPEM, clientKeyPEM := certutil.IssueCertificate(caCert, caKey, certutil.CertificateRequest{
 		CommonName:  cfg.ClientCommonName,
 		DNSNames:    clientDNS,
 		IPAddresses: clientIPs,
@@ -400,55 +399,6 @@ type certificateRequest struct {
 	ExtKeyUsage []x509.ExtKeyUsage
 }
 
-func generateCertificateAuthority() (*rsa.PrivateKey, *x509.Certificate, []byte) {
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	Expect(err).ToNot(HaveOccurred())
-
-	template := x509.Certificate{
-		SerialNumber:          randomSerialNumber(),
-		Subject:               pkix.Name{CommonName: "argocd-agent-ca"},
-		NotBefore:             time.Now().Add(-1 * time.Hour),
-		NotAfter:              time.Now().Add(24 * time.Hour),
-		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
-		BasicConstraintsValid: true,
-		IsCA:                  true,
-	}
-
-	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
-	Expect(err).ToNot(HaveOccurred())
-
-	cert, err := x509.ParseCertificate(certDER)
-	Expect(err).ToNot(HaveOccurred())
-
-	return privateKey, cert, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
-}
-
-func issueCertificate(caCert *x509.Certificate, caKey *rsa.PrivateKey, req certificateRequest) ([]byte, []byte) {
-	key, err := rsa.GenerateKey(rand.Reader, 2048)
-	Expect(err).ToNot(HaveOccurred())
-
-	template := x509.Certificate{
-		SerialNumber: randomSerialNumber(),
-		Subject: pkix.Name{
-			CommonName: req.CommonName,
-		},
-		NotBefore:   time.Now().Add(-1 * time.Hour),
-		NotAfter:    time.Now().Add(24 * time.Hour),
-		KeyUsage:    x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
-		ExtKeyUsage: req.ExtKeyUsage,
-		DNSNames:    req.DNSNames,
-		IPAddresses: req.IPAddresses,
-	}
-
-	certDER, err := x509.CreateCertificate(rand.Reader, &template, caCert, &key.PublicKey, caKey)
-	Expect(err).ToNot(HaveOccurred())
-
-	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
-	keyPEM := encodePrivateKeyToPEM(key)
-
-	return certPEM, keyPEM
-}
-
 func createTLSSecret(ctx context.Context, k8sClient client.Client, namespace, secretName string, certPEM, keyPEM, caCertPEM []byte) {
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -475,13 +425,6 @@ func generateJWTSigningKey() []byte {
 	return pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyDER})
 }
 
-func encodePrivateKeyToPEM(key *rsa.PrivateKey) []byte {
-	keyDER, err := x509.MarshalPKCS8PrivateKey(key)
-	Expect(err).ToNot(HaveOccurred())
-
-	return pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyDER})
-}
-
 func parseCertificate(certPEM []byte) *x509.Certificate {
 	block, _ := pem.Decode(certPEM)
 	Expect(block).ToNot(BeNil(), "invalid certificate data")
@@ -499,13 +442,6 @@ func parsePrivateKey(keyPEM []byte) *rsa.PrivateKey {
 	privateKey, ok := parsedKey.(*rsa.PrivateKey)
 	Expect(ok).To(BeTrue(), "private key is not RSA")
 	return privateKey
-}
-
-func randomSerialNumber() *big.Int {
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
-	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
-	Expect(err).ToNot(HaveOccurred())
-	return serialNumber
 }
 
 func aggregateSANs(namespace, serviceName string, additional []string) ([]string, []net.IP) {

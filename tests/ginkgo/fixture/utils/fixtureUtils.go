@@ -9,6 +9,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
 	argocdv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
 	osappsv1 "github.com/openshift/api/apps/v1"
 	consolev1 "github.com/openshift/api/console/v1"
@@ -24,6 +25,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	schedulingv1 "k8s.io/api/scheduling/v1"
 	crdv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 
 	imageUpdater "github.com/argoproj-labs/argocd-image-updater/api/v1alpha1"
 
@@ -59,7 +61,6 @@ func GetE2ETestKubeClientWithError() (client.Client, *runtime.Scheme, error) {
 
 // getKubeClient returns a controller-runtime Client for accessing K8s API resources used by the controller.
 func getKubeClient(config *rest.Config) (client.Client, *runtime.Scheme, error) {
-
 	scheme := runtime.NewScheme()
 
 	if err := corev1.AddToScheme(scheme); err != nil {
@@ -137,18 +138,24 @@ func getKubeClient(config *rest.Config) (client.Client, *runtime.Scheme, error) 
 		return nil, nil, err
 	}
 
+	if err := apiregistrationv1.AddToScheme(scheme); err != nil {
+		return nil, nil, err
+	}
+
+	if err := promoter.AddToScheme(scheme); err != nil {
+		return nil, nil, err
+	}
+
 	k8sClient, err := client.New(config, client.Options{Scheme: scheme})
 	if err != nil {
 		return nil, nil, err
 	}
 
 	return k8sClient, scheme, nil
-
 }
 
 // Retrieve the system-level Kubernetes config (e.g. ~/.kube/config or service account config from volume)
 func getSystemKubeConfig() (*rest.Config, error) {
-
 	overrides := clientcmd.ConfigOverrides{}
 
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
