@@ -257,7 +257,7 @@ metadata:
     capabilities: Deep Insights
     categories: Integration & Delivery
     certified: "false"
-    createdAt: "2026-08-13T02:40:25Z"
+    createdAt: "2026-08-14T21:01:41Z"
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v1.35.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
@@ -284,6 +284,9 @@ spec:
       displayName: AppProject
       kind: AppProject
       name: appprojects.argoproj.io
+      version: v1alpha1
+    - kind: ArgoCDCommitStatus
+      name: argocdcommitstatuses.promoter.argoproj.io
       version: v1alpha1
     - description: ArgoCDExport is the Schema for the argocdexports API
       displayName: Argo CDExport
@@ -1692,6 +1695,24 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       version: v1beta1
+    - kind: ChangeTransferPolicy
+      name: changetransferpolicies.promoter.argoproj.io
+      version: v1alpha1
+    - kind: ClusterScmProvider
+      name: clusterscmproviders.promoter.argoproj.io
+      version: v1alpha1
+    - kind: CommitStatus
+      name: commitstatuses.promoter.argoproj.io
+      version: v1alpha1
+    - kind: ControllerConfiguration
+      name: controllerconfigurations.promoter.argoproj.io
+      version: v1alpha1
+    - kind: GitCommitStatus
+      name: gitcommitstatuses.promoter.argoproj.io
+      version: v1alpha1
+    - kind: GitRepository
+      name: gitrepositories.promoter.argoproj.io
+      version: v1alpha1
     - kind: ImageUpdater
       name: imageupdaters.argocd-image-updater.argoproj.io
       version: v1alpha1
@@ -1787,6 +1808,27 @@ spec:
         path: phase
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
+      version: v1alpha1
+    - kind: PromotionStrategy
+      name: promotionstrategies.promoter.argoproj.io
+      version: v1alpha1
+    - kind: PullRequest
+      name: pullrequests.promoter.argoproj.io
+      version: v1alpha1
+    - kind: RevertCommit
+      name: revertcommits.promoter.argoproj.io
+      version: v1alpha1
+    - kind: ScheduledCommitStatus
+      name: scheduledcommitstatuses.promoter.argoproj.io
+      version: v1alpha1
+    - kind: ScmProvider
+      name: scmproviders.promoter.argoproj.io
+      version: v1alpha1
+    - kind: TimedCommitStatus
+      name: timedcommitstatuses.promoter.argoproj.io
+      version: v1alpha1
+    - kind: WebRequestCommitStatus
+      name: webrequestcommitstatuses.promoter.argoproj.io
       version: v1alpha1
   description: |
     ## Overview
