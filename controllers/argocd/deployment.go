@@ -1107,10 +1107,14 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 	const extensionsVolumeName = "extensions"
 	if rolloutsUIEnabled {
 		deploy.Spec.Template.Spec.InitContainers = append(deploy.Spec.Template.Spec.InitContainers, getRolloutInitContainer()...)
+	} else {
+		deploy.Spec.Template.Spec.InitContainers = removeInitContainer(deploy.Spec.Template.Spec.InitContainers, "rollout-extension")
 	}
 
 	if promoterUIEnabled {
 		deploy.Spec.Template.Spec.InitContainers = append(deploy.Spec.Template.Spec.InitContainers, getPromoterInitContainer()...)
+	} else {
+		deploy.Spec.Template.Spec.InitContainers = removeInitContainer(deploy.Spec.Template.Spec.InitContainers, "promoter-extension")
 	}
 
 	if rolloutsUIEnabled || promoterUIEnabled {
@@ -1125,6 +1129,9 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		})
+	} else {
+		deploy.Spec.Template.Spec.Volumes = removeVolume(deploy.Spec.Template.Spec.Volumes, extensionsVolumeName)
+		deploy.Spec.Template.Spec.Containers[0].VolumeMounts = removeVolumeMount(deploy.Spec.Template.Spec.Containers[0].VolumeMounts, extensionsVolumeName)
 	}
 
 	if replicas := getArgoCDServerReplicas(cr); replicas != nil {
@@ -1432,10 +1439,10 @@ func getPromoterInitContainer() []corev1.Container {
 	return containers
 }
 
+// Remove the init container by slicing it out
 func removeInitContainer(initContainers []corev1.Container, name string) []corev1.Container {
 	for i, container := range initContainers {
 		if container.Name == name {
-			// Remove the init container by slicing it out
 			return append(initContainers[:i], initContainers[i+1:]...)
 		}
 	}

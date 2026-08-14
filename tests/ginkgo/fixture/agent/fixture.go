@@ -392,13 +392,6 @@ func VerifyLogs(deploymentName, namespace string, requiredMessages []string) {
 	}, "120s", "5s").Should(BeTrue(), "Agent should process cluster cache updates")
 }
 
-type certificateRequest struct {
-	CommonName  string
-	DNSNames    []string
-	IPAddresses []net.IP
-	ExtKeyUsage []x509.ExtKeyUsage
-}
-
 func createTLSSecret(ctx context.Context, k8sClient client.Client, namespace, secretName string, certPEM, keyPEM, caCertPEM []byte) {
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{

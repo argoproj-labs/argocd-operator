@@ -45,14 +45,14 @@ func makeTestServiceSpec(compName string) corev1.ServiceSpec {
 	}
 }
 
-func makeExistingService(compName string, cr *argoproj.ArgoCD) *corev1.Service {
+func makeExistingService(cr *argoproj.ArgoCD) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      generatePromoterResourceName(compName, cr),
+			Name:      generatePromoterResourceName(testCompName, cr),
 			Namespace: cr.Namespace,
-			Labels:    buildLabelsForPromoterResources(compName, cr),
+			Labels:    buildLabelsForPromoterResources(testCompName, cr),
 		},
-		Spec: makeTestServiceSpec(compName),
+		Spec: makeTestServiceSpec(testCompName),
 	}
 }
 
@@ -116,7 +116,7 @@ func TestReconcilePromoterService_Exists_PromoterDisabled(t *testing.T) {
 
 	cr := makeTestArgoCD(withPromoterEnabled(false))
 
-	existingSvc := makeExistingService(testCompName, cr)
+	existingSvc := makeExistingService(cr)
 
 	resObjs := []client.Object{cr, existingSvc}
 	sch := makeTestReconcilerScheme()
@@ -140,7 +140,7 @@ func TestReconcilePromoterService_Exists_PromoterEnabled(t *testing.T) {
 
 	cr := makeTestArgoCD(withPromoterEnabled(true))
 
-	existingService := makeExistingService(testCompName, cr)
+	existingService := makeExistingService(cr)
 
 	resObjs := []client.Object{cr, existingService}
 	sch := makeTestReconcilerScheme()
@@ -174,7 +174,7 @@ func TestReconcilePromoterService_Exists_PromoterNotSet(t *testing.T) {
 
 	cr := makeTestArgoCD()
 
-	existingSvc := makeExistingService(testCompName, cr)
+	existingSvc := makeExistingService(cr)
 
 	resObjs := []client.Object{cr, existingSvc}
 	sch := makeTestReconcilerScheme()
@@ -198,7 +198,7 @@ func TestReconcilePromoterService_DoesNotExist_PromoterNotSet(t *testing.T) {
 
 	cr := makeTestArgoCD()
 
-	existingSvc := makeExistingService(testCompName, cr)
+	existingSvc := makeExistingService(cr)
 
 	resObjs := []client.Object{cr, existingSvc}
 	sch := makeTestReconcilerScheme()
@@ -222,7 +222,7 @@ func TestReconcilePromoterService_Exists_Update(t *testing.T) {
 
 	cr := makeTestArgoCD(withPromoterEnabled(true))
 
-	existingService := makeExistingService(testCompName, cr)
+	existingService := makeExistingService(cr)
 	existingService.Spec.Selector[common.ArgoCDKeyComponent] = "random-not-correct-value"
 	existingService.Spec.Ports[0].Port = 25565
 	existingService.Spec.Ports[0].TargetPort = intstr.FromInt(25565)
