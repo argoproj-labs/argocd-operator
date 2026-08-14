@@ -79,10 +79,12 @@ func ReconcilePromoterService(client client.Client, compName string, cr *argopro
 		}
 
 		if !reflect.DeepEqual(svc.Spec.Selector, expectedSpec.Selector) ||
-			!reflect.DeepEqual(svc.Spec.Ports, expectedSpec.Ports) {
+			!reflect.DeepEqual(svc.Spec.Ports, expectedSpec.Ports) ||
+			!reflect.DeepEqual(svc.Spec.Type, expectedSpec.Type) {
 
 			svc.Spec.Selector = expectedSpec.Selector
 			svc.Spec.Ports = expectedSpec.Ports
+			svc.Spec.Type = expectedSpec.Type
 
 			argoutil.LogResourceUpdate(log, svc)
 			if err := client.Update(context.Background(), svc); err != nil {
