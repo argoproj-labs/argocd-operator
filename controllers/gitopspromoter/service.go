@@ -46,18 +46,21 @@ const (
 	APIServerProtocol = corev1.ProtocolTCP
 )
 
+// ReconcilePromoterControllerWebhookService reconciles the Promoter's Controller Service for the webhook
 func ReconcilePromoterControllerWebhookService(client client.Client, compName string, cr *argoproj.ArgoCD) (*corev1.Service, error) {
 	expectedSpec := buildControllerWebhookServiceSpec(compName, cr)
 	enabled := cr.Spec.Promoter.IsEnabled() && cr.Spec.Promoter.WebhookEnabled
 	return ReconcilePromoterService(client, compName, cr, expectedSpec, enabled)
 }
 
+// ReconcilePromoterAPIServerService reconciles the Promoter's Service for the API Server
 func ReconcilePromoterAPIServerService(client client.Client, compName string, cr *argoproj.ArgoCD) (*corev1.Service, error) {
 	expectedSpec := buildAPIServerServiceSpec(compName)
 	enabled := cr.Spec.Promoter == nil || cr.Spec.Promoter.APIServer.IsEnabled()
 	return ReconcilePromoterService(client, compName, cr, expectedSpec, enabled)
 }
 
+// ReconcilePromoterService is a generic reconcilation function for Services and reconciles based on the provided spec. Handles creation, updating, and deletion.
 func ReconcilePromoterService(client client.Client, compName string, cr *argoproj.ArgoCD, expectedSpec corev1.ServiceSpec, enabled bool) (*corev1.Service, error) {
 	svc := buildService(compName, cr)
 
@@ -108,6 +111,7 @@ func ReconcilePromoterService(client client.Client, compName string, cr *argopro
 	return svc, nil
 }
 
+// buildService creates a Service object with metadata
 func buildService(compName string, cr *argoproj.ArgoCD) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -118,6 +122,7 @@ func buildService(compName string, cr *argoproj.ArgoCD) *corev1.Service {
 	}
 }
 
+// buildControllerWebhookServiceSpec builds the Spec for the Controller's Webhook Service
 func buildControllerWebhookServiceSpec(compName string, cr *argoproj.ArgoCD) corev1.ServiceSpec {
 	serviceType := corev1.ServiceTypeClusterIP
 	if cr.Spec.Promoter != nil && cr.Spec.Promoter.WebhookServiceType != "" {
@@ -139,6 +144,7 @@ func buildControllerWebhookServiceSpec(compName string, cr *argoproj.ArgoCD) cor
 	}
 }
 
+// buildAPIServerServiceSpec builds the Spec for the API Server Service
 func buildAPIServerServiceSpec(compName string) corev1.ServiceSpec {
 	return corev1.ServiceSpec{
 		Selector: map[string]string{

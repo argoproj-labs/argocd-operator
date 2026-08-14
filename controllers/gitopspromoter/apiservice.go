@@ -39,6 +39,7 @@ const (
 	APIServerAPIServiceVersionPriority = 15
 )
 
+// ReconcilePromoterAPIServerAPIService reconciles the API Server's APIService, handles all creation, updates, and deletion
 func ReconcilePromoterAPIServerAPIService(client client.Client, compName string, cr *argoproj.ArgoCD) (*apiregistrationv1.APIService, error) {
 	apiSvc := buildAPIService(compName, cr)
 	expectedSpec, err := buildAPIServiceSpec(client, compName, cr)
@@ -91,6 +92,7 @@ func ReconcilePromoterAPIServerAPIService(client client.Client, compName string,
 	return apiSvc, nil
 }
 
+// buildAPIService creates the basic object for the API Service
 func buildAPIService(compName string, cr *argoproj.ArgoCD) *apiregistrationv1.APIService {
 	// FIXME: this is also a hard coded resource like the controller configuration.
 	// It might be difficult to allow for multiple instances of the promoter in the same cluster
@@ -103,6 +105,7 @@ func buildAPIService(compName string, cr *argoproj.ArgoCD) *apiregistrationv1.AP
 	}
 }
 
+// buildAPIServiceSpec creates the spec for the API Service object
 func buildAPIServiceSpec(client client.Client, compName string, cr *argoproj.ArgoCD) (apiregistrationv1.APIServiceSpec, error) {
 	apiSvc := apiregistrationv1.APIServiceSpec{
 		Group:                "view.promoter.argoproj.io",
@@ -139,6 +142,7 @@ func buildAPIServiceSpec(client client.Client, compName string, cr *argoproj.Arg
 	return apiSvc, nil
 }
 
+// DeleteAPIServices deletes a list of API Services
 func DeleteAPIServices(c client.Client, apiSvcList *apiregistrationv1.APIServiceList) error {
 	for _, apiSvc := range apiSvcList.Items {
 		argoutil.LogResourceDeletion(log, &apiSvc, "cleaning up cluster resources")

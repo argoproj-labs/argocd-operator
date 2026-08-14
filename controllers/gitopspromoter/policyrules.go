@@ -16,6 +16,7 @@ package gitopspromoter
 
 import (
 	"fmt"
+	"os"
 
 	rbacv1 "k8s.io/api/rbac/v1"
 
@@ -23,14 +24,17 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 )
 
+// policyRuleConfig provides relevant data for Cluster Roles and Roles that need to be created
 type policyRuleConfig struct {
 	name        string
 	roleRefName string
 	policyRule  []rbacv1.PolicyRule
 }
 
+// buildPolicyRulesForControllerClusterRoles creates a list of configs for the ClusterRoles that are needed by the controller
+// The default ClusterRule can be replaced by your own custom ClusterRole if the env variable is set
 func buildPolicyRulesForControllerClusterRoles(compName string, cr *argoproj.ArgoCD) []policyRuleConfig {
-	name := getCustomClusterRoleName(common.GitOpsPromoterControllerClusterRoleEnvName)
+	name := os.Getenv(common.GitOpsPromoterControllerClusterRoleEnvName)
 	policyRule := []rbacv1.PolicyRule{}
 	if name == "" {
 		name = generatePromoterResourceNameWithNamespace(compName, cr)
@@ -46,8 +50,10 @@ func buildPolicyRulesForControllerClusterRoles(compName string, cr *argoproj.Arg
 	}
 }
 
+// buildPolicyRulesForControllerClusterRoles creates a list of configs for the ClusterRoles that are needed by the api server
+// The default ClusterRule can be replaced by your own custom ClusterRole if the env variable is set
 func buildPolicyRulesForAPIServerClusterRoles(compName string, cr *argoproj.ArgoCD) []policyRuleConfig {
-	name := getCustomClusterRoleName(common.GitOpsPromoterAPIServerClusterRoleEnvName)
+	name := os.Getenv(common.GitOpsPromoterAPIServerClusterRoleEnvName)
 	policyRule := []rbacv1.PolicyRule{}
 	if name == "" {
 		name = generatePromoterResourceNameWithNamespace(compName, cr)
@@ -68,6 +74,7 @@ func buildPolicyRulesForAPIServerClusterRoles(compName string, cr *argoproj.Argo
 	}
 }
 
+// buildPolicyRuleForControllerClusterRole creates the default policy rule for the Controller's cluster role
 func buildPolicyRuleForControllerClusterRole() []rbacv1.PolicyRule {
 	return []rbacv1.PolicyRule{
 		{
@@ -281,6 +288,7 @@ func buildPolicyRuleForControllerClusterRole() []rbacv1.PolicyRule {
 	}
 }
 
+// buildPolicyRuleForAPIServerClusterRole builds the default policy rule for the API Server
 func buildPolicyRuleForAPIServerClusterRole() []rbacv1.PolicyRule {
 	return []rbacv1.PolicyRule{
 		{
@@ -323,6 +331,8 @@ func buildPolicyRuleForAPIServerClusterRole() []rbacv1.PolicyRule {
 	}
 }
 
+// buildPolicyRuleForAPIServerPromotionStrategyDetailsViewer creates the PolicyRule for the view.promoter.argoproj.io resource which is managed by
+// the API Server
 func buildPolicyRuleForAPIServerPromotionStrategyDetailsViewer() []rbacv1.PolicyRule {
 	return []rbacv1.PolicyRule{
 		{

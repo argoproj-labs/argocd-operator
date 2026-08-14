@@ -28,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// ReconcilePromoterControllerConfiguration reconciles the Promoter's ControllerConfiguration. It handles creation, updating, and deletion.
 func ReconcilePromoterControllerConfiguration(client client.Client, compName string, cr *argoproj.ArgoCD) (*promoter.ControllerConfiguration, error) {
 	controllerConfiguration := buildControllerConfiguration(compName, cr)
 
@@ -65,6 +66,7 @@ func ReconcilePromoterControllerConfiguration(client client.Client, compName str
 	return controllerConfiguration, nil
 }
 
+// buildControllerConfiguration builds the full default ControllerConfiguration
 func buildControllerConfiguration(compName string, cr *argoproj.ArgoCD) *promoter.ControllerConfiguration {
 	return &promoter.ControllerConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
@@ -111,6 +113,7 @@ func buildControllerConfiguration(compName string, cr *argoproj.ArgoCD) *promote
 	}
 }
 
+// buildDefaultWorkQueueSettings creates the default settings for a WorkQueue
 func buildDefaultWorkQueueSettings() promoter.WorkQueue {
 	return promoter.WorkQueue{
 		MaxConcurrentReconciles: 10,
@@ -140,6 +143,7 @@ func buildDefaultWorkQueueSettings() promoter.WorkQueue {
 	}
 }
 
+// DeleteControllerConfigurations deletes a list of ControllerConfigurations
 func DeleteControllerConfigurations(c client.Client, controllerConfigList *promoter.ControllerConfigurationList) error {
 	for _, config := range controllerConfigList.Items {
 		argoutil.LogResourceDeletion(log, &config, "cleaning up cluster resources")

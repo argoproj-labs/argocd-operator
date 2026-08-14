@@ -44,6 +44,7 @@ func generatePromoterResourceNameWithNamespace(compName string, cr *argoproj.Arg
 	return fmt.Sprintf("%s-%s-%s", cr.Name, cr.Namespace, compName)
 }
 
+// ReconcilePromoterServiceAccount reconciles a ServiceAccount needed for the Promoter's workloads. Handles creation, updating, and deletion.
 func ReconcilePromoterServiceAccount(client client.Client, compName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme, enabled bool) (*corev1.ServiceAccount, error) {
 	sa := buildPromoterServiceAccount(compName, cr)
 
@@ -81,6 +82,7 @@ func ReconcilePromoterServiceAccount(client client.Client, compName string, cr *
 	return sa, nil
 }
 
+// buildPromoterServiceAccount creates a ServiceAccountObject with metadata
 func buildPromoterServiceAccount(compName string, cr *argoproj.ArgoCD) *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
@@ -91,6 +93,7 @@ func buildPromoterServiceAccount(compName string, cr *argoproj.ArgoCD) *corev1.S
 	}
 }
 
+// buildLabelsForPromoterResources builds the labels to be used in it's resources metadata
 func buildLabelsForPromoterResources(compName string, cr *argoproj.ArgoCD) map[string]string {
 	return map[string]string{
 		common.ArgoCDKeyName:      argoutil.TruncateWithHash(generatePromoterResourceName(compName, cr), argoutil.GetMaxLabelLength()),

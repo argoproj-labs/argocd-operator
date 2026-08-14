@@ -36,15 +36,19 @@ import (
 	"k8s.io/utils/ptr"
 )
 
+// Useful constants for the Promoter's Deployment
 const (
+	// EnvGitOpsPromoterImage is the environment variable that controls the default image used for the GitOps Promoter if not
+	// specified in the CR
 	EnvGitOpsPromoterImage = "GITOPS_PROMOTER_IMAGE"
-	binaryControllerCmd    = "controller"
+	// binaryAPIServerCmd is the command for the controller in the GitOps Promoter's binary
+	binaryControllerCmd = "controller"
+	// binaryAPIServerCmd is the command for the API Server in the GitOps Promoter's binary
 	binaryAPIServerCmd     = "apiserver"
 	apiServerTLSVolumeName = "serving-cert"
 )
 
-// deploymentReconciler represents the functions to fill in spots in the deployment spec that
-// differ between the components
+// deploymentReconciler represents the functions to fill in spots in the deployment spec that differ between the components
 type deploymentConfig struct {
 	command         []string
 	args            []string
@@ -56,6 +60,7 @@ type deploymentConfig struct {
 	volumeMounts    []corev1.VolumeMount
 }
 
+// createControllerConfig creates the deploymentConfig that is to be used with the Controller
 func createControllerConfig() deploymentConfig {
 	return deploymentConfig{
 		command:         buildContainerCommand(binaryControllerCmd),
@@ -65,6 +70,7 @@ func createControllerConfig() deploymentConfig {
 	}
 }
 
+// createAPIServerConfig creates the deploymentConfig that is to be used with the API Server
 func createAPIServerConfig() deploymentConfig {
 	return deploymentConfig{
 		command:         buildContainerCommand(binaryAPIServerCmd),
@@ -76,33 +82,39 @@ func createAPIServerConfig() deploymentConfig {
 	}
 }
 
+// ReconcilePromoterControllerDeployment reconciles the Promoter's Controller Deployment
+// Calls the generic ReconcilePromoterDeployment function with the settings for the Controller
 func ReconcilePromoterControllerDeployment(client client.Client, compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD, scheme *runtime.Scheme) (*appsv1.Deployment, error) {
-	config := createControllerConfig()
-	deployment, err := ReconcilePromoterDeployment(client, compName, sa, cr, scheme, config, true)
+	cfg := createControllerConfig()
+	deployment, err := ReconcilePromoterDeployment(client, compName, sa, cr, scheme, cfg, true)
 	if err != nil {
 		return nil, err
 	}
 	return deployment, nil
 }
 
+// ReconcilePromoterAPIServerDeployment reconciles the Promoter's API Server Deployment
+// Calls the generic ReconcilePromoterDeployment function with the settings for the API Server
 func ReconcilePromoterAPIServerDeployment(client client.Client, compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD, scheme *runtime.Scheme) (*appsv1.Deployment, error) {
-	config := createAPIServerConfig()
+	cfg := createAPIServerConfig()
 	enabled := cr.Spec.Promoter == nil || cr.Spec.Promoter.APIServer.IsEnabled()
 	if cr.Spec.Promoter != nil && cr.Spec.Promoter.APIServer != nil && cr.Spec.Promoter.APIServer.TLS != nil && cr.Spec.Promoter.APIServer.TLS.CertSecretName != "" {
-		config.volumes = buildAPIServerVolumes(cr)
-		config.volumeMounts = buildAPIServerVolumeMounts()
+		cfg.volumes = buildAPIServerVolumes(cr)
+		cfg.volumeMounts = buildAPIServerVolumeMounts()
 	} else {
 		log.Info("Warning: no TLS cert for the API Server specified, api server may fail to start.")
 	}
 
-	deployment, err := ReconcilePromoterDeployment(client, compName, sa, cr, scheme, config, enabled)
+	deployment, err := ReconcilePromoterDeployment(client, compName, sa, cr, scheme, cfg, enabled)
 	if err != nil {
 		return nil, err
 	}
 	return deployment, nil
 }
 
-func ReconcilePromoterDeployment(client client.Client, compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD, scheme *runtime.Scheme, config deploymentConfig, enabled bool) (*appsv1.Deployment, error) {
+// ReconcilePromoterDeployment is a generic reconcilation function for Promoter Deployments. Handles creation, updating, and deletion.
+// Specific settings are determined by the provided deploymentConfig
+func ReconcilePromoterDeployment(client client.Client, compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD, scheme *runtime.Scheme, cfg deploymentConfig, enabled bool) (*appsv1.Deployment, error) {
 	deployment := buildDeployment(cr, compName)
 
 	exists := true
@@ -128,8 +140,8 @@ func ReconcilePromoterDeployment(client client.Client, compName string, sa *core
 			changed = true
 		}
 
-		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Command, config.command) {
-			deployment.Spec.Template.Spec.Containers[0].Command = config.command
+		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Command, cfg.command) {
+			deployment.Spec.Template.Spec.Containers[0].Command = cfg.command
 			changed = true
 		}
 
@@ -155,13 +167,13 @@ func ReconcilePromoterDeployment(client client.Client, compName string, sa *core
 			changed = true
 		}
 
-		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].SecurityContext, config.securityContext) {
-			deployment.Spec.Template.Spec.Containers[0].SecurityContext = config.securityContext
+		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].SecurityContext, cfg.securityContext) {
+			deployment.Spec.Template.Spec.Containers[0].SecurityContext = cfg.securityContext
 			changed = true
 		}
 
-		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Ports, config.ports) {
-			deployment.Spec.Template.Spec.Containers[0].Ports = config.ports
+		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].Ports, cfg.ports) {
+			deployment.Spec.Template.Spec.Containers[0].Ports = cfg.ports
 			changed = true
 		}
 
@@ -170,13 +182,13 @@ func ReconcilePromoterDeployment(client client.Client, compName string, sa *core
 			changed = true
 		}
 
-		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].LivenessProbe, config.livenessProbe) {
-			deployment.Spec.Template.Spec.Containers[0].LivenessProbe = config.livenessProbe
+		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].LivenessProbe, cfg.livenessProbe) {
+			deployment.Spec.Template.Spec.Containers[0].LivenessProbe = cfg.livenessProbe
 			changed = true
 		}
 
-		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].ReadinessProbe, config.readinessProbe) {
-			deployment.Spec.Template.Spec.Containers[0].ReadinessProbe = config.readinessProbe
+		if !reflect.DeepEqual(deployment.Spec.Template.Spec.Containers[0].ReadinessProbe, cfg.readinessProbe) {
+			deployment.Spec.Template.Spec.Containers[0].ReadinessProbe = cfg.readinessProbe
 			changed = true
 		}
 
@@ -191,16 +203,16 @@ func ReconcilePromoterDeployment(client client.Client, compName string, sa *core
 		}
 
 		actualVolumes := sliceEmptyToNil(deployment.Spec.Template.Spec.Volumes)
-		desiredVolumes := sliceEmptyToNil(config.volumes)
+		desiredVolumes := sliceEmptyToNil(cfg.volumes)
 		if !reflect.DeepEqual(actualVolumes, desiredVolumes) {
-			deployment.Spec.Template.Spec.Volumes = config.volumes
+			deployment.Spec.Template.Spec.Volumes = cfg.volumes
 			changed = true
 		}
 
 		actualVolumeMounts := sliceEmptyToNil(deployment.Spec.Template.Spec.Containers[0].VolumeMounts)
-		desiredVolumeMounts := sliceEmptyToNil(config.volumeMounts)
+		desiredVolumeMounts := sliceEmptyToNil(cfg.volumeMounts)
 		if !reflect.DeepEqual(actualVolumeMounts, desiredVolumeMounts) {
-			deployment.Spec.Template.Spec.Containers[0].VolumeMounts = config.volumeMounts
+			deployment.Spec.Template.Spec.Containers[0].VolumeMounts = cfg.volumeMounts
 			changed = true
 		}
 
@@ -217,7 +229,7 @@ func ReconcilePromoterDeployment(client client.Client, compName string, sa *core
 	if !cr.Spec.Promoter.IsEnabled() || !enabled {
 		return deployment, nil
 	}
-	deployment.Spec = buildDeploymentSpec(compName, sa, cr, config)
+	deployment.Spec = buildDeploymentSpec(compName, sa, cr, cfg)
 	if err := controllerutil.SetControllerReference(cr, deployment, scheme); err != nil {
 		return nil, fmt.Errorf("failed to set argocd cr %s as owner for deployment %s: %v", cr.Name, sa.Name, err)
 	}
@@ -229,6 +241,7 @@ func ReconcilePromoterDeployment(client client.Client, compName string, sa *core
 	return deployment, nil
 }
 
+// buildDeployment creates a Deployment object with meta data
 func buildDeployment(cr *argoproj.ArgoCD, compName string) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -239,7 +252,8 @@ func buildDeployment(cr *argoproj.ArgoCD, compName string) *appsv1.Deployment {
 	}
 }
 
-func buildDeploymentSpec(compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD, config deploymentConfig) appsv1.DeploymentSpec {
+// buildDeploymentSpec builds the Deployment's spec based on the config provided and the CR
+func buildDeploymentSpec(compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD, cfg deploymentConfig) appsv1.DeploymentSpec {
 	return appsv1.DeploymentSpec{
 		Selector: buildSelector(compName, cr),
 		Template: corev1.PodTemplateSpec{
@@ -249,28 +263,29 @@ func buildDeploymentSpec(compName string, sa *corev1.ServiceAccount, cr *argopro
 			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{
 					{
-						Command:         config.command,
+						Command:         cfg.command,
 						Image:           selectImage(cr),
 						ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 						Name:            generatePromoterResourceName(compName, cr),
-						Args:            config.args,
+						Args:            cfg.args,
 						Env:             cr.Spec.Promoter.Env,
-						SecurityContext: config.securityContext,
+						SecurityContext: cfg.securityContext,
 						Resources:       getResources(cr),
-						Ports:           config.ports,
-						LivenessProbe:   config.livenessProbe,
-						ReadinessProbe:  config.readinessProbe,
-						VolumeMounts:    config.volumeMounts,
+						Ports:           cfg.ports,
+						LivenessProbe:   cfg.livenessProbe,
+						ReadinessProbe:  cfg.readinessProbe,
+						VolumeMounts:    cfg.volumeMounts,
 					},
 				},
 				ServiceAccountName:            sa.Name,
 				TerminationGracePeriodSeconds: ptr.To(int64(10)),
-				Volumes:                       config.volumes,
+				Volumes:                       cfg.volumes,
 			},
 		},
 	}
 }
 
+// buildSelector builds the selector for the Deployment
 func buildSelector(compName string, cr *argoproj.ArgoCD) *metav1.LabelSelector {
 	return &metav1.LabelSelector{
 		MatchLabels: buildLabelsForPromoterResources(compName, cr),
@@ -281,6 +296,8 @@ func buildContainerCommand(cmd string) []string {
 	return []string{"/usr/bin/tini", "--", "/gitops-promoter", cmd}
 }
 
+// selectImage selects the image to be used for the Promoter based on the following priority
+// CR's .Spec.Promoter.Image field -> GITOPS_PROMOTER_IMAGE env variable -> Default Image on argoproj-labs quay repository
 func selectImage(cr *argoproj.ArgoCD) string {
 	if cr.Spec.Promoter != nil && cr.Spec.Promoter.Image != "" {
 		return cr.Spec.Promoter.Image
@@ -293,6 +310,7 @@ func selectImage(cr *argoproj.ArgoCD) string {
 	return common.GitOpsPromoterDefaultImageName
 }
 
+// buildControllerSecurityContext builds the SecurityContext for the Controller's container within its Deployment
 func buildControllerSecurityContext() *corev1.SecurityContext {
 	return &corev1.SecurityContext{
 		AllowPrivilegeEscalation: ptr.To(false),
@@ -302,6 +320,7 @@ func buildControllerSecurityContext() *corev1.SecurityContext {
 	}
 }
 
+// buildAPIServerSecurityContext builds the SecurityContext for the API Server's container within its Deployment
 func buildAPIServerSecurityContext() *corev1.SecurityContext {
 	return &corev1.SecurityContext{
 		RunAsNonRoot: ptr.To(true),
@@ -311,6 +330,7 @@ func buildAPIServerSecurityContext() *corev1.SecurityContext {
 	}
 }
 
+// getResources gets the resources value to be used for the Deployment's container
 func getResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
 	resources := corev1.ResourceRequirements{}
 	if cr.Spec.Promoter != nil && cr.Spec.Promoter.Resources != nil {
@@ -319,6 +339,7 @@ func getResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
 	return resources
 }
 
+// buildControllerReadinessProbe builds the LivenessProbe for the Controller's container within its Deployment
 func buildControllerLivenessProbe() *corev1.Probe {
 	return &corev1.Probe{
 		ProbeHandler: corev1.ProbeHandler{
@@ -336,6 +357,7 @@ func buildControllerLivenessProbe() *corev1.Probe {
 	}
 }
 
+// buildControllerReadinessProbe builds the ReadinessProbe for the Controller's container within its Deployment
 func buildControllerReadinessProbe() *corev1.Probe {
 	return &corev1.Probe{
 		ProbeHandler: corev1.ProbeHandler{
@@ -353,6 +375,7 @@ func buildControllerReadinessProbe() *corev1.Probe {
 	}
 }
 
+// buildAPIServerPorts builds the Port for the API Server's container within its Deployment
 func buildAPIServerPorts() []corev1.ContainerPort {
 	return []corev1.ContainerPort{
 		{
@@ -363,6 +386,7 @@ func buildAPIServerPorts() []corev1.ContainerPort {
 	}
 }
 
+// buildAPIServerLivenessProbe builds the LivenessProbe for the API Server's container within its Deployment
 func buildAPIServerLivenessProbe() *corev1.Probe {
 	return &corev1.Probe{
 		ProbeHandler: corev1.ProbeHandler{
@@ -380,6 +404,7 @@ func buildAPIServerLivenessProbe() *corev1.Probe {
 	}
 }
 
+// buildAPIServerReadinessProbe builds the ReadinessProbe for the API Server's container within its Deployment
 func buildAPIServerReadinessProbe() *corev1.Probe {
 	return &corev1.Probe{
 		ProbeHandler: corev1.ProbeHandler{
@@ -397,7 +422,8 @@ func buildAPIServerReadinessProbe() *corev1.Probe {
 	}
 }
 
-// #TODO: Allow for custom args through cr it seems that
+// buildAPIServerArgs builds the Args for the API Server's container within its Deployment
+// #TODO: Allow for custom args through CR if there are worth it settings in the Promoter
 func buildAPIServerArgs() []string {
 	return []string{
 		"--secure-port=6443",
@@ -406,6 +432,7 @@ func buildAPIServerArgs() []string {
 	}
 }
 
+// buildAPIServerVolumes builds the Volumes for the API Server
 func buildAPIServerVolumes(cr *argoproj.ArgoCD) []corev1.Volume {
 	return []corev1.Volume{
 		{
@@ -426,6 +453,7 @@ func buildAPIServerVolumes(cr *argoproj.ArgoCD) []corev1.Volume {
 	}
 }
 
+// buildAPIServerVolumeMounts builds the VolumeMounts for the API Server
 func buildAPIServerVolumeMounts() []corev1.VolumeMount {
 	return []corev1.VolumeMount{
 		{
@@ -440,6 +468,7 @@ func buildAPIServerVolumeMounts() []corev1.VolumeMount {
 	}
 }
 
+// sliceEmptyToNil returns nil if the slice is empty for more easy comparisons in updated checks
 func sliceEmptyToNil[T any](s []T) []T {
 	if len(s) == 0 {
 		return nil

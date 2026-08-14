@@ -31,6 +31,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
+// ReconcilePromoterControllerClusterRoleBindings reconciles the ClusterRoleBinding for the controller
 func ReconcilePromoterControllerClusterRoleBindings(client client.Client, compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD) ([]*rbacv1.ClusterRoleBinding, error) {
 	clusterRoleBindingsToReconcile := buildPolicyRulesForControllerClusterRoles(compName, cr)
 	reconciledClusterRoleBindings := []*rbacv1.ClusterRoleBinding{}
@@ -46,6 +47,7 @@ func ReconcilePromoterControllerClusterRoleBindings(client client.Client, compNa
 	return reconciledClusterRoleBindings, nil
 }
 
+// ReconcilePromoterAPIServerClusterRoleBindings reconciles the ClusterRoleBindings for the API Server
 func ReconcilePromoterAPIServerClusterRoleBindings(client client.Client, compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD) ([]*rbacv1.ClusterRoleBinding, error) {
 	clusterRoleBindingsToReconcile := buildPolicyRulesForAPIServerClusterRoles(compName, cr)
 	reconciledClusterRoleBindings := []*rbacv1.ClusterRoleBinding{}
@@ -70,6 +72,9 @@ func ReconcilePromoterAPIServerClusterRoleBindings(client client.Client, compNam
 	return reconciledClusterRoleBindings, nil
 }
 
+// ReconcilePromoterAPIServerRoleBindings reconciles the RoleBindings for the API Server
+// At the moment there is only one RoleBinding for the Promoter that lives in the kube-system namespace for API aggregation
+// More Details: https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/apiserver-aggregation/
 func ReconcilePromoterAPIServerRoleBindings(client client.Client, compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD) ([]*rbacv1.RoleBinding, error) {
 	reconciledRoleBindings := []*rbacv1.RoleBinding{}
 
@@ -88,6 +93,7 @@ func ReconcilePromoterAPIServerRoleBindings(client client.Client, compName strin
 	return reconciledRoleBindings, nil
 }
 
+// ReconcilePromoterClusterRoleBinding is a generic reconcilation function for ClusterRoleBindings based on the provided name and role reference
 func ReconcilePromoterClusterRoleBinding(client client.Client, compName, bindingName, roleRefName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD, enabled bool) (*rbacv1.ClusterRoleBinding, error) {
 	clusterRoleBinding := buildClusterRoleBinding(compName, bindingName, cr)
 	expectedSubjects := buildSubject(sa)
@@ -141,6 +147,7 @@ func ReconcilePromoterClusterRoleBinding(client client.Client, compName, binding
 	return newClusterRoleBinding, nil
 }
 
+// ReconcilePromoterRoleBinding is a generic reconcilation function for RoleBindings based on the provided name and role reference
 func ReconcilePromoterRoleBinding(client client.Client, compName, bindingName, roleRefName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD, enabled bool) (*rbacv1.RoleBinding, error) {
 	roleBinding := buildRoleBinding(compName, bindingName, cr)
 	expectedSubjects := buildSubject(sa)
@@ -194,6 +201,7 @@ func ReconcilePromoterRoleBinding(client client.Client, compName, bindingName, r
 	return newRoleBinding, nil
 }
 
+// buildClusterRoleBinding creates a ClusterRoleBinding with metadata
 func buildClusterRoleBinding(compName, name string, cr *argoproj.ArgoCD) *rbacv1.ClusterRoleBinding {
 	labels := buildLabelsForPromoterResources(compName, cr)
 	labels[common.ArgoCDKeyName] = argoutil.TruncateWithHash(name, argoutil.GetMaxLabelLength())
@@ -206,6 +214,7 @@ func buildClusterRoleBinding(compName, name string, cr *argoproj.ArgoCD) *rbacv1
 	}
 }
 
+// buildRoleBinding creates a RoleBinding object with metadata
 func buildRoleBinding(compName, name string, cr *argoproj.ArgoCD) *rbacv1.RoleBinding {
 	return &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
@@ -216,6 +225,7 @@ func buildRoleBinding(compName, name string, cr *argoproj.ArgoCD) *rbacv1.RoleBi
 	}
 }
 
+// buildSubject builds the subject for the binding
 func buildSubject(sa *corev1.ServiceAccount) []rbacv1.Subject {
 	return []rbacv1.Subject{
 		{
@@ -226,6 +236,7 @@ func buildSubject(sa *corev1.ServiceAccount) []rbacv1.Subject {
 	}
 }
 
+// buildRoleRef builds the role reference for the binding
 func buildRoleRef(name, refType string) rbacv1.RoleRef {
 	return rbacv1.RoleRef{
 		APIGroup: rbacv1.GroupName,

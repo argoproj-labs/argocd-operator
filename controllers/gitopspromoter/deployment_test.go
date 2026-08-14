@@ -129,7 +129,7 @@ func TestReconcilePromoterDeployment_DoesNotExist_PromoterDisabled(t *testing.T)
 
 	sa := makeExistingServiceAccount(cr)
 	referenceDeployment := makeExistingDeployment(sa, cr)
-	config := deploymentConfig{
+	cfg := deploymentConfig{
 		command:         referenceDeployment.Spec.Template.Spec.Containers[0].Command,
 		securityContext: referenceDeployment.Spec.Template.Spec.Containers[0].SecurityContext,
 		ports:           referenceDeployment.Spec.Template.Spec.Containers[0].Ports,
@@ -143,7 +143,7 @@ func TestReconcilePromoterDeployment_DoesNotExist_PromoterDisabled(t *testing.T)
 	sch := makeTestReconcilerScheme()
 	client := makeTestReconcilerClient(sch, resObjs)
 
-	deployment, err := ReconcilePromoterDeployment(client, testCompName, sa, cr, sch, config, true)
+	deployment, err := ReconcilePromoterDeployment(client, testCompName, sa, cr, sch, cfg, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, deployment)
 
@@ -163,7 +163,7 @@ func TestReconcilePromoterDeployment_DoesNotExist_PromoterEnabled(t *testing.T) 
 
 	sa := makeExistingServiceAccount(cr)
 	referenceDeployment := makeExistingDeployment(sa, cr)
-	config := deploymentConfig{
+	cfg := deploymentConfig{
 		command:         referenceDeployment.Spec.Template.Spec.Containers[0].Command,
 		securityContext: referenceDeployment.Spec.Template.Spec.Containers[0].SecurityContext,
 		ports:           referenceDeployment.Spec.Template.Spec.Containers[0].Ports,
@@ -177,7 +177,7 @@ func TestReconcilePromoterDeployment_DoesNotExist_PromoterEnabled(t *testing.T) 
 	sch := makeTestReconcilerScheme()
 	client := makeTestReconcilerClient(sch, resObjs)
 
-	deployment, err := ReconcilePromoterDeployment(client, testCompName, sa, cr, sch, config, true)
+	deployment, err := ReconcilePromoterDeployment(client, testCompName, sa, cr, sch, cfg, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, deployment)
 
@@ -217,7 +217,7 @@ func TestReconcilePromoterDeployment_Exists_PromoterDisabled(t *testing.T) {
 
 	sa := makeExistingServiceAccount(cr)
 	referenceDeployment := makeExistingDeployment(sa, cr)
-	config := deploymentConfig{
+	cfg := deploymentConfig{
 		command:         referenceDeployment.Spec.Template.Spec.Containers[0].Command,
 		securityContext: referenceDeployment.Spec.Template.Spec.Containers[0].SecurityContext,
 		ports:           referenceDeployment.Spec.Template.Spec.Containers[0].Ports,
@@ -231,7 +231,7 @@ func TestReconcilePromoterDeployment_Exists_PromoterDisabled(t *testing.T) {
 	sch := makeTestReconcilerScheme()
 	client := makeTestReconcilerClient(sch, resObjs)
 
-	deployment, err := ReconcilePromoterDeployment(client, testCompName, sa, cr, sch, config, true)
+	deployment, err := ReconcilePromoterDeployment(client, testCompName, sa, cr, sch, cfg, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, deployment)
 
@@ -251,7 +251,7 @@ func TestReconcilePromoterDeployment_Exists_PromoterNotSet(t *testing.T) {
 
 	sa := makeExistingServiceAccount(cr)
 	referenceDeployment := makeExistingDeployment(sa, cr)
-	config := deploymentConfig{
+	cfg := deploymentConfig{
 		command:         referenceDeployment.Spec.Template.Spec.Containers[0].Command,
 		securityContext: referenceDeployment.Spec.Template.Spec.Containers[0].SecurityContext,
 		ports:           referenceDeployment.Spec.Template.Spec.Containers[0].Ports,
@@ -265,7 +265,7 @@ func TestReconcilePromoterDeployment_Exists_PromoterNotSet(t *testing.T) {
 	sch := makeTestReconcilerScheme()
 	client := makeTestReconcilerClient(sch, resObjs)
 
-	deployment, err := ReconcilePromoterDeployment(client, testCompName, sa, cr, sch, config, true)
+	deployment, err := ReconcilePromoterDeployment(client, testCompName, sa, cr, sch, cfg, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, deployment)
 
@@ -285,7 +285,7 @@ func TestReconcilePromoterDeployment_DoesNotExists_PromoterNotSet(t *testing.T) 
 
 	sa := makeExistingServiceAccount(cr)
 	referenceDeployment := makeExistingDeployment(sa, cr)
-	config := deploymentConfig{
+	cfg := deploymentConfig{
 		command:         referenceDeployment.Spec.Template.Spec.Containers[0].Command,
 		securityContext: referenceDeployment.Spec.Template.Spec.Containers[0].SecurityContext,
 		ports:           referenceDeployment.Spec.Template.Spec.Containers[0].Ports,
@@ -299,7 +299,7 @@ func TestReconcilePromoterDeployment_DoesNotExists_PromoterNotSet(t *testing.T) 
 	sch := makeTestReconcilerScheme()
 	client := makeTestReconcilerClient(sch, resObjs)
 
-	deployment, err := ReconcilePromoterDeployment(client, testCompName, sa, cr, sch, config, true)
+	deployment, err := ReconcilePromoterDeployment(client, testCompName, sa, cr, sch, cfg, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, deployment)
 
@@ -335,7 +335,7 @@ func TestReconcilePromoterDeployment_Exists_PromoterEnabled_Update(t *testing.T)
 
 	sa := makeExistingServiceAccount(cr)
 	referenceDeployment := makeExistingDeployment(sa, cr)
-	config := deploymentConfig{
+	cfg := deploymentConfig{
 		command:         referenceDeployment.Spec.Template.Spec.Containers[0].Command,
 		securityContext: referenceDeployment.Spec.Template.Spec.Containers[0].SecurityContext,
 		ports:           referenceDeployment.Spec.Template.Spec.Containers[0].Ports,
@@ -388,7 +388,7 @@ func TestReconcilePromoterDeployment_Exists_PromoterEnabled_Update(t *testing.T)
 	sch := makeTestReconcilerScheme()
 	client := makeTestReconcilerClient(sch, resObjs)
 
-	deployment, err := ReconcilePromoterDeployment(client, testCompName, sa, cr, sch, config, true)
+	deployment, err := ReconcilePromoterDeployment(client, testCompName, sa, cr, sch, cfg, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, deployment)
 
@@ -471,11 +471,11 @@ func TestReconcilePromoterControllerDeployment_PromoterEnabled(t *testing.T) {
 	assert.Equal(t, cr.Namespace, retrievedDeployment.Namespace)
 	assert.Equal(t, buildLabelsForPromoterResources(testCompName, cr), retrievedDeployment.Labels)
 
-	config := createControllerConfig()
-	assert.Equal(t, config.command, retrievedDeployment.Spec.Template.Spec.Containers[0].Command)
-	assert.Equal(t, config.securityContext, retrievedDeployment.Spec.Template.Spec.Containers[0].SecurityContext)
-	assert.Equal(t, config.livenessProbe, retrievedDeployment.Spec.Template.Spec.Containers[0].LivenessProbe)
-	assert.Equal(t, config.readinessProbe, retrievedDeployment.Spec.Template.Spec.Containers[0].ReadinessProbe)
+	cfg := createControllerConfig()
+	assert.Equal(t, cfg.command, retrievedDeployment.Spec.Template.Spec.Containers[0].Command)
+	assert.Equal(t, cfg.securityContext, retrievedDeployment.Spec.Template.Spec.Containers[0].SecurityContext)
+	assert.Equal(t, cfg.livenessProbe, retrievedDeployment.Spec.Template.Spec.Containers[0].LivenessProbe)
+	assert.Equal(t, cfg.readinessProbe, retrievedDeployment.Spec.Template.Spec.Containers[0].ReadinessProbe)
 }
 
 func TestReconcilePromoterAPIServerDeployment_PromoterDisabled(t *testing.T) {
@@ -529,13 +529,13 @@ func TestReconcilePromoterAPIServerDeployment_PromoterEnabled(t *testing.T) {
 	assert.Equal(t, cr.Namespace, retrievedDeployment.Namespace)
 	assert.Equal(t, buildLabelsForPromoterResources(testCompName, cr), retrievedDeployment.Labels)
 
-	config := createAPIServerConfig()
-	assert.Equal(t, config.command, retrievedDeployment.Spec.Template.Spec.Containers[0].Command)
-	assert.Equal(t, config.args, retrievedDeployment.Spec.Template.Spec.Containers[0].Args)
-	assert.Equal(t, config.securityContext, retrievedDeployment.Spec.Template.Spec.Containers[0].SecurityContext)
-	assert.Equal(t, config.ports, retrievedDeployment.Spec.Template.Spec.Containers[0].Ports)
-	assert.Equal(t, config.livenessProbe, retrievedDeployment.Spec.Template.Spec.Containers[0].LivenessProbe)
-	assert.Equal(t, config.readinessProbe, retrievedDeployment.Spec.Template.Spec.Containers[0].ReadinessProbe)
+	cfg := createAPIServerConfig()
+	assert.Equal(t, cfg.command, retrievedDeployment.Spec.Template.Spec.Containers[0].Command)
+	assert.Equal(t, cfg.args, retrievedDeployment.Spec.Template.Spec.Containers[0].Args)
+	assert.Equal(t, cfg.securityContext, retrievedDeployment.Spec.Template.Spec.Containers[0].SecurityContext)
+	assert.Equal(t, cfg.ports, retrievedDeployment.Spec.Template.Spec.Containers[0].Ports)
+	assert.Equal(t, cfg.livenessProbe, retrievedDeployment.Spec.Template.Spec.Containers[0].LivenessProbe)
+	assert.Equal(t, cfg.readinessProbe, retrievedDeployment.Spec.Template.Spec.Containers[0].ReadinessProbe)
 }
 
 func TestReconcilePromoterAPIServerDeployment_PromoterEnabled_APIServerDisabled(t *testing.T) {

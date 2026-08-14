@@ -17,7 +17,6 @@ package gitopspromoter
 import (
 	"context"
 	"fmt"
-	"os"
 	"reflect"
 
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -31,6 +30,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
+// ReconcilePromoterControllerClusterRoles reconciles the ClusterRoles for the Controller
 func ReconcilePromoterControllerClusterRoles(client client.Client, compName string, cr *argoproj.ArgoCD) ([]*rbacv1.ClusterRole, error) {
 	clusterRolesToReconcile := buildPolicyRulesForControllerClusterRoles(compName, cr)
 	reconciledClusterRoles := []*rbacv1.ClusterRole{}
@@ -48,6 +48,7 @@ func ReconcilePromoterControllerClusterRoles(client client.Client, compName stri
 	return reconciledClusterRoles, nil
 }
 
+// ReconcilePromoterAPIServerClusterRoles reconciles the ClusterRoles for the API Server
 func ReconcilePromoterAPIServerClusterRoles(client client.Client, compName string, cr *argoproj.ArgoCD) ([]*rbacv1.ClusterRole, error) {
 	clusterRolesToReconcile := buildPolicyRulesForAPIServerClusterRoles(compName, cr)
 	reconciledClusterRoles := []*rbacv1.ClusterRole{}
@@ -66,6 +67,7 @@ func ReconcilePromoterAPIServerClusterRoles(client client.Client, compName strin
 	return reconciledClusterRoles, nil
 }
 
+// ReconcilePromoterClusterRole is a generic ClusterRole reconcilation function that reconciles a ClusterRole based on the provided PolicyRule
 func ReconcilePromoterClusterRole(client client.Client, compName, name string, expectedPolicyRule []rbacv1.PolicyRule, cr *argoproj.ArgoCD, enabled bool) (*rbacv1.ClusterRole, error) {
 	clusterRole := buildClusterRole(compName, name, cr)
 
@@ -109,6 +111,7 @@ func ReconcilePromoterClusterRole(client client.Client, compName, name string, e
 	return clusterRole, nil
 }
 
+// buildClusterRole creates a ClusterRole object with metadata
 func buildClusterRole(compName, name string, cr *argoproj.ArgoCD) *rbacv1.ClusterRole {
 	labels := buildLabelsForPromoterResources(compName, cr)
 	labels[common.ArgoCDKeyName] = argoutil.TruncateWithHash(name, argoutil.GetMaxLabelLength())
@@ -119,8 +122,4 @@ func buildClusterRole(compName, name string, cr *argoproj.ArgoCD) *rbacv1.Cluste
 			Labels: labels,
 		},
 	}
-}
-
-func getCustomClusterRoleName(component string) string {
-	return os.Getenv(component)
 }
