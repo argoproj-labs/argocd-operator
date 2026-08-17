@@ -134,11 +134,13 @@ var ActiveInstanceMap = make(map[string]string)
 //+kubebuilder:rbac:groups=template.openshift.io,resources=templates;templateinstances;templateconfigs,verbs=*
 //+kubebuilder:rbac:groups="oauth.openshift.io",resources=oauthclients,verbs=get;list;watch;create;delete;patch;update
 //+kubebuilder:rbac:groups=argoproj.io,resources=notificationsconfigurations;notificationsconfigurations/finalizers,verbs=*
-//+kubebuilder:rbac:groups="apiregistration.k8s.io",resources="apiservices",verbs=get;list
+//+kubebuilder:rbac:groups="apiregistration.k8s.io",resources="apiservices",verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=argoproj.io,resources=namespacemanagements;namespacemanagements/finalizers;namespacemanagements/status,verbs=*
 //+kubebuilder:rbac:groups=argocd-image-updater.argoproj.io,resources=imageupdaters;imageupdaters/finalizers,verbs=*
 //+kubebuilder:rbac:groups=config.openshift.io,resources=authentications,verbs=get;list;watch
 //+kubebuilder:rbac:groups=certificates.k8s.io,resources=clustertrustbundles,verbs=get;list;watch
+//+kubebuilder:rbac:groups=promoter.argoproj.io,resources=controllerconfigurations;controllerconfigurations/status;controllerconfigurations/finalizers,verbs=*
+//+kubebuilder:rbac:groups=promoter.argoproj.io,resources=*,verbs=get;list
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -149,7 +151,6 @@ var ActiveInstanceMap = make(map[string]string)
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
-
 	result, argocd, argocdStatus, err := r.internalReconcile(ctx, request)
 
 	message := ""
@@ -174,7 +175,6 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 }
 
 func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, *argoproj.ArgoCD, *argoproj.ArgoCDStatus, error) {
-
 	argoCDStatus := &argoproj.ArgoCDStatus{} // Start with a blank canvas
 
 	reconcileStartTS := time.Now()

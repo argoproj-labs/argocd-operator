@@ -22,6 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -42,6 +43,10 @@ func ReconcilePromoterControllerConfiguration(client client.Client, compName str
 
 	if exists {
 		if !cr.Spec.Promoter.IsEnabled() {
+			expectedLabels := buildLabelsForPromoterResources(compName, cr)
+			if controllerConfiguration.Labels[common.ArgoCDKeyManagedBy] != expectedLabels[common.ArgoCDKeyManagedBy] {
+				return controllerConfiguration, nil
+			}
 			argoutil.LogResourceDeletion(log, controllerConfiguration, "promoter controller configuration is being deleted due to being disabled")
 			if err := client.Delete(context.Background(), controllerConfiguration); err != nil {
 				return nil, fmt.Errorf("failed to delete controller configuration %s: %v", controllerConfiguration.Name, err)

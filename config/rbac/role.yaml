@@ -40,8 +40,13 @@ rules:
   resources:
   - apiservices
   verbs:
+  - create
+  - delete
   - get
   - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - apps
   resources:
@@ -152,6 +157,21 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - promoter.argoproj.io
+  resources:
+  - '*'
+  verbs:
+  - get
+  - list
+- apiGroups:
+  - promoter.argoproj.io
+  resources:
+  - controllerconfigurations
+  - controllerconfigurations/finalizers
+  - controllerconfigurations/status
+  verbs:
+  - '*'
 - apiGroups:
   - rbac.authorization.k8s.io
   resources:

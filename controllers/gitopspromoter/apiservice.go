@@ -42,11 +42,6 @@ const (
 // ReconcilePromoterAPIServerAPIService reconciles the API Server's APIService, handles all creation, updates, and deletion
 func ReconcilePromoterAPIServerAPIService(client client.Client, compName string, cr *argoproj.ArgoCD) (*apiregistrationv1.APIService, error) {
 	apiSvc := buildAPIService(compName, cr)
-	expectedSpec, err := buildAPIServiceSpec(client, compName, cr)
-	if err != nil {
-		return nil, err
-	}
-
 	enabled := cr.Spec.Promoter == nil || cr.Spec.Promoter.APIServer.IsEnabled()
 
 	exists := true
@@ -66,9 +61,15 @@ func ReconcilePromoterAPIServerAPIService(client client.Client, compName string,
 			return apiSvc, nil
 		}
 
-		if !reflect.DeepEqual(apiSvc.Spec.Service, expectedSpec.Service) {
+		expectedSpec, err := buildAPIServiceSpec(client, compName, cr)
+		if err != nil {
+			return nil, err
+		}
 
-			apiSvc.Spec.Service = expectedSpec.Service
+		if !reflect.DeepEqual(apiSvc.Spec.Service, expectedSpec.Service) ||
+			!reflect.DeepEqual(apiSvc.Spec.CABundle, expectedSpec.CABundle) {
+
+			apiSvc.Spec = expectedSpec
 
 			argoutil.LogResourceUpdate(log, apiSvc)
 			if err := client.Update(context.Background(), apiSvc); err != nil {
@@ -78,6 +79,11 @@ func ReconcilePromoterAPIServerAPIService(client client.Client, compName string,
 		}
 
 		return apiSvc, nil
+	}
+
+	expectedSpec, err := buildAPIServiceSpec(client, compName, cr)
+	if err != nil {
+		return nil, err
 	}
 
 	if !cr.Spec.Promoter.IsEnabled() || !enabled {
@@ -133,7 +139,7 @@ func buildAPIServiceSpec(client client.Client, compName string, cr *argoproj.Arg
 		if val, ok := caSecret.Data[key]; ok {
 			apiSvc.CABundle = val
 		} else {
-			log.Info("Warning: CA bundle not found in secret %s at key %s, API Server may not work correctly", cr.Spec.Promoter.APIServer.TLS.CABundleSecretName, key)
+			return apiregistrationv1.APIServiceSpec{}, fmt.Errorf("Warning: CA bundle not found in secret %s at key %s, API Server may not work correctly", cr.Spec.Promoter.APIServer.TLS.CABundleSecretName, key)
 		}
 	} else {
 		apiSvc.InsecureSkipTLSVerify = true

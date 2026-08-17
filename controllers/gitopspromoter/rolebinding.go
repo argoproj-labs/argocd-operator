@@ -128,6 +128,24 @@ func ReconcilePromoterClusterRoleBinding(client client.Client, compName, binding
 			}
 			return clusterRoleBinding, nil
 		}
+
+		// RoleRef field is immutable so a deletion and recreation is required
+		if !reflect.DeepEqual(clusterRoleBinding.RoleRef, expectedRoleRef) {
+			argoutil.LogResourceDeletion(log, clusterRoleBinding, fmt.Sprintf("deleting cluster role binding %s is being deleted due to RoleRef diff", bindingName))
+			if err := client.Delete(context.Background(), clusterRoleBinding); err != nil {
+				return nil, fmt.Errorf("failed to delete promoter cluster role %s: %v", clusterRoleBinding.Name, err)
+			}
+
+			clusterRoleBinding.Subjects = expectedSubjects
+			clusterRoleBinding.RoleRef = expectedRoleRef
+
+			argoutil.LogResourceCreation(log, clusterRoleBinding, fmt.Sprintf("recreating cluster role binding %s because of a RoleRef diff", bindingName))
+			if err := client.Create(context.Background(), clusterRoleBinding); err != nil {
+				return nil, fmt.Errorf("failed to create promoter cluster role binding %s: %v", clusterRoleBinding.Name, err)
+			}
+
+		}
+
 		return clusterRoleBinding, nil
 	}
 
@@ -170,11 +188,9 @@ func ReconcilePromoterRoleBinding(client client.Client, compName, bindingName, r
 			return roleBinding, nil
 		}
 
-		if !reflect.DeepEqual(roleBinding.Subjects, expectedSubjects) ||
-			!reflect.DeepEqual(roleBinding.RoleRef, expectedRoleRef) {
+		if !reflect.DeepEqual(roleBinding.Subjects, expectedSubjects) {
 
 			roleBinding.Subjects = expectedSubjects
-			roleBinding.RoleRef = expectedRoleRef
 
 			argoutil.LogResourceUpdate(log, roleBinding, fmt.Sprintf("promoter cluster role binding %s has the wrong subject or role ref", bindingName))
 			if err := client.Update(context.Background(), roleBinding); err != nil {
@@ -182,6 +198,23 @@ func ReconcilePromoterRoleBinding(client client.Client, compName, bindingName, r
 			}
 			return roleBinding, nil
 		}
+
+		// RoleRef field is immutable so a deletion and recreation is required
+		if !reflect.DeepEqual(roleBinding.RoleRef, expectedRoleRef) {
+			argoutil.LogResourceDeletion(log, roleBinding, fmt.Sprintf("promoter cluster role binding %s is being deleted due to a RoleRef diff", bindingName))
+			if err := client.Delete(context.Background(), roleBinding); err != nil {
+				return nil, fmt.Errorf("failed to delete promoter cluster role %s: %v", roleBinding.Name, err)
+			}
+
+			roleBinding.Subjects = expectedSubjects
+			roleBinding.RoleRef = expectedRoleRef
+
+			argoutil.LogResourceCreation(log, roleBinding, fmt.Sprintf("recreating role binding %s because of a RoleRef diff", bindingName))
+			if err := client.Create(context.Background(), roleBinding); err != nil {
+				return nil, fmt.Errorf("failed to create promoter cluster role binding %s: %v", roleBinding.Name, err)
+			}
+		}
+
 		return roleBinding, nil
 	}
 

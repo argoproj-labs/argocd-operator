@@ -232,22 +232,6 @@ func buildPolicyRuleForControllerClusterRole() []rbacv1.PolicyRule {
 				"promoter.argoproj.io",
 			},
 			Resources: []string{
-				"clusterscmproviders",
-				"gitrepositories",
-				"scmproviders",
-			},
-			Verbs: []string{
-				"get",
-				"list",
-				"update",
-				"watch",
-			},
-		},
-		{
-			APIGroups: []string{
-				"promoter.argoproj.io",
-			},
-			Resources: []string{
 				"commitstatuses",
 			},
 			Verbs: []string{

@@ -337,17 +337,8 @@ func TestReconcilePromoterAPIServerAPIService_CABundle_SecretKeyDoesNotExist(t *
 	sch := makeTestReconcilerScheme()
 	client := makeTestReconcilerClient(sch, resObjs)
 
-	apiService, err := ReconcilePromoterAPIServerAPIService(client, testCompName, cr)
-	assert.NoError(t, err)
-	assert.NotNil(t, apiService)
-
-	retrievedAPIService := &apiregistrationv1.APIService{}
-	err = client.Get(context.Background(), types.NamespacedName{
-		Name: "v1alpha1.view.promoter.argoproj.io",
-	}, retrievedAPIService)
-	assert.NoError(t, err)
-
-	assert.Nil(t, retrievedAPIService.Spec.CABundle)
+	_, err := ReconcilePromoterAPIServerAPIService(client, testCompName, cr)
+	assert.Error(t, err)
 }
 
 func TestReconcilePromoterAPIServerAPIService_No_CABundle(t *testing.T) {
