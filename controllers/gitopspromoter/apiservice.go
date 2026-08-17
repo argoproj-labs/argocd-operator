@@ -139,7 +139,7 @@ func buildAPIServiceSpec(client client.Client, compName string, cr *argoproj.Arg
 		if val, ok := caSecret.Data[key]; ok {
 			apiSvc.CABundle = val
 		} else {
-			return apiregistrationv1.APIServiceSpec{}, fmt.Errorf("Warning: CA bundle not found in secret %s at key %s, API Server may not work correctly", cr.Spec.Promoter.APIServer.TLS.CABundleSecretName, key)
+			return apiregistrationv1.APIServiceSpec{}, fmt.Errorf("ca bundle not found in secret %s at key %s, API Server may not work correctly", cr.Spec.Promoter.APIServer.TLS.CABundleSecretName, key)
 		}
 	} else {
 		apiSvc.InsecureSkipTLSVerify = true

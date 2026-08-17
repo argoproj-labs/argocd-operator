@@ -30,10 +30,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func makeTestServiceSpec(compName string) corev1.ServiceSpec {
+func makeTestServiceSpec() corev1.ServiceSpec {
 	return corev1.ServiceSpec{
 		Selector: map[string]string{
-			common.ArgoCDKeyComponent: compName,
+			common.ArgoCDKeyComponent: testCompName,
 		},
 		Ports: []corev1.ServicePort{
 			{
@@ -52,7 +52,7 @@ func makeExistingService(cr *argoproj.ArgoCD) *corev1.Service {
 			Namespace: cr.Namespace,
 			Labels:    buildLabelsForPromoterResources(testCompName, cr),
 		},
-		Spec: makeTestServiceSpec(testCompName),
+		Spec: makeTestServiceSpec(),
 	}
 }
 
@@ -66,7 +66,7 @@ func TestReconcilePromoterService_DoesNotExist_PromoterDisabled(t *testing.T) {
 	sch := makeTestReconcilerScheme()
 	client := makeTestReconcilerClient(sch, resObjs)
 
-	service, err := ReconcilePromoterService(client, testCompName, cr, makeTestServiceSpec(testCompName), true)
+	service, err := ReconcilePromoterService(client, testCompName, cr, makeTestServiceSpec(), true)
 	assert.NoError(t, err)
 	assert.NotNil(t, service)
 
@@ -88,7 +88,7 @@ func TestReconcilePromoterService_DoesNotExist_PromoterEnabled(t *testing.T) {
 	sch := makeTestReconcilerScheme()
 	client := makeTestReconcilerClient(sch, resObjs)
 
-	service, err := ReconcilePromoterService(client, testCompName, cr, makeTestServiceSpec(testCompName), true)
+	service, err := ReconcilePromoterService(client, testCompName, cr, makeTestServiceSpec(), true)
 	assert.NoError(t, err)
 	assert.NotNil(t, service)
 
@@ -103,7 +103,7 @@ func TestReconcilePromoterService_DoesNotExist_PromoterEnabled(t *testing.T) {
 	assert.Equal(t, cr.Namespace, retrievedService.Namespace)
 	assert.Equal(t, buildLabelsForPromoterResources(testCompName, cr), retrievedService.Labels)
 
-	expectedSpec := makeTestServiceSpec(testCompName)
+	expectedSpec := makeTestServiceSpec()
 	assert.Equal(t, expectedSpec.Selector, retrievedService.Spec.Selector)
 	assert.Equal(t, expectedSpec.Ports[0].Port, retrievedService.Spec.Ports[0].Port)
 	assert.Equal(t, expectedSpec.Ports[0].TargetPort, retrievedService.Spec.Ports[0].TargetPort)
@@ -122,7 +122,7 @@ func TestReconcilePromoterService_Exists_PromoterDisabled(t *testing.T) {
 	sch := makeTestReconcilerScheme()
 	client := makeTestReconcilerClient(sch, resObjs)
 
-	service, err := ReconcilePromoterService(client, testCompName, cr, makeTestServiceSpec(testCompName), true)
+	service, err := ReconcilePromoterService(client, testCompName, cr, makeTestServiceSpec(), true)
 	assert.NoError(t, err)
 	assert.NotNil(t, service)
 
@@ -146,7 +146,7 @@ func TestReconcilePromoterService_Exists_PromoterEnabled(t *testing.T) {
 	sch := makeTestReconcilerScheme()
 	client := makeTestReconcilerClient(sch, resObjs)
 
-	service, err := ReconcilePromoterService(client, testCompName, cr, makeTestServiceSpec(testCompName), true)
+	service, err := ReconcilePromoterService(client, testCompName, cr, makeTestServiceSpec(), true)
 	assert.NoError(t, err)
 	assert.NotNil(t, service)
 
@@ -161,7 +161,7 @@ func TestReconcilePromoterService_Exists_PromoterEnabled(t *testing.T) {
 	assert.Equal(t, cr.Namespace, retrievedService.Namespace)
 	assert.Equal(t, buildLabelsForPromoterResources(testCompName, cr), retrievedService.Labels)
 
-	expectedSpec := makeTestServiceSpec(testCompName)
+	expectedSpec := makeTestServiceSpec()
 	assert.Equal(t, expectedSpec.Selector, retrievedService.Spec.Selector)
 	assert.Equal(t, expectedSpec.Ports[0].Port, retrievedService.Spec.Ports[0].Port)
 	assert.Equal(t, expectedSpec.Ports[0].TargetPort, retrievedService.Spec.Ports[0].TargetPort)
@@ -180,7 +180,7 @@ func TestReconcilePromoterService_Exists_PromoterNotSet(t *testing.T) {
 	sch := makeTestReconcilerScheme()
 	client := makeTestReconcilerClient(sch, resObjs)
 
-	service, err := ReconcilePromoterService(client, testCompName, cr, makeTestServiceSpec(testCompName), true)
+	service, err := ReconcilePromoterService(client, testCompName, cr, makeTestServiceSpec(), true)
 	assert.NoError(t, err)
 	assert.NotNil(t, service)
 
@@ -204,7 +204,7 @@ func TestReconcilePromoterService_DoesNotExist_PromoterNotSet(t *testing.T) {
 	sch := makeTestReconcilerScheme()
 	client := makeTestReconcilerClient(sch, resObjs)
 
-	service, err := ReconcilePromoterService(client, testCompName, cr, makeTestServiceSpec(testCompName), true)
+	service, err := ReconcilePromoterService(client, testCompName, cr, makeTestServiceSpec(), true)
 	assert.NoError(t, err)
 	assert.NotNil(t, service)
 
@@ -232,7 +232,7 @@ func TestReconcilePromoterService_Exists_Update(t *testing.T) {
 	sch := makeTestReconcilerScheme()
 	client := makeTestReconcilerClient(sch, resObjs)
 
-	service, err := ReconcilePromoterService(client, testCompName, cr, makeTestServiceSpec(testCompName), true)
+	service, err := ReconcilePromoterService(client, testCompName, cr, makeTestServiceSpec(), true)
 	assert.NoError(t, err)
 	assert.NotNil(t, service)
 
@@ -247,7 +247,7 @@ func TestReconcilePromoterService_Exists_Update(t *testing.T) {
 	assert.Equal(t, cr.Namespace, retrievedService.Namespace)
 	assert.Equal(t, buildLabelsForPromoterResources(testCompName, cr), retrievedService.Labels)
 
-	expectedSpec := makeTestServiceSpec(testCompName)
+	expectedSpec := makeTestServiceSpec()
 	assert.Equal(t, expectedSpec.Selector, retrievedService.Spec.Selector)
 	assert.Equal(t, expectedSpec.Ports[0].Port, retrievedService.Spec.Ports[0].Port)
 	assert.Equal(t, expectedSpec.Ports[0].TargetPort, retrievedService.Spec.Ports[0].TargetPort)
@@ -301,7 +301,7 @@ func TestReconcilePromoterControllerWebhookService_PromoterEnabled_WebhookEnable
 	assert.Equal(t, cr.Namespace, retrievedService.Namespace)
 	assert.Equal(t, buildLabelsForPromoterResources(testCompName, cr), retrievedService.Labels)
 
-	expectedSpec := makeTestServiceSpec(testCompName)
+	expectedSpec := makeTestServiceSpec()
 	assert.Equal(t, expectedSpec.Selector, retrievedService.Spec.Selector)
 	assert.Equal(t, int32(ControllerWebhookPort), retrievedService.Spec.Ports[0].Port)
 	assert.Equal(t, intstr.FromInt(ControllerWebhookPort), retrievedService.Spec.Ports[0].TargetPort)
@@ -334,7 +334,7 @@ func TestReconcilePromoterControllerWebhookService_PromoterEnabled_WebhookEnable
 	assert.Equal(t, cr.Namespace, retrievedService.Namespace)
 	assert.Equal(t, buildLabelsForPromoterResources(testCompName, cr), retrievedService.Labels)
 
-	expectedSpec := makeTestServiceSpec(testCompName)
+	expectedSpec := makeTestServiceSpec()
 	assert.Equal(t, expectedSpec.Selector, retrievedService.Spec.Selector)
 	assert.Equal(t, int32(ControllerWebhookPort), retrievedService.Spec.Ports[0].Port)
 	assert.Equal(t, intstr.FromInt(ControllerWebhookPort), retrievedService.Spec.Ports[0].TargetPort)
@@ -367,7 +367,7 @@ func TestReconcilePromoterAPIServerService_PromoterEnabled_APIServerNotSet(t *te
 	assert.Equal(t, cr.Namespace, retrievedService.Namespace)
 	assert.Equal(t, buildLabelsForPromoterResources(testCompName, cr), retrievedService.Labels)
 
-	expectedSpec := makeTestServiceSpec(testCompName)
+	expectedSpec := makeTestServiceSpec()
 	assert.Equal(t, expectedSpec.Selector, retrievedService.Spec.Selector)
 	assert.Equal(t, int32(APIServerPort), retrievedService.Spec.Ports[0].Port)
 	assert.Equal(t, intstr.FromString(APIServerTargetPort), retrievedService.Spec.Ports[0].TargetPort)
