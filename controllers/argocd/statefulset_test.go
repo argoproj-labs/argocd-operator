@@ -13,10 +13,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	testclient "k8s.io/client-go/kubernetes/fake"
 
+	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
+
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
-	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
 
 	"github.com/google/go-cmp/cmp"
 	appsv1 "k8s.io/api/apps/v1"

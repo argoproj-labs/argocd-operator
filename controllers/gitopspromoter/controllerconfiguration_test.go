@@ -22,9 +22,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 func makeExistingControllerConfiguration(cr *argoproj.ArgoCD) *promoter.ControllerConfiguration {

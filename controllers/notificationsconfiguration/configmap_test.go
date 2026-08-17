@@ -15,8 +15,9 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
+
+	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
 
 type notificationsOpts func(*v1alpha1.NotificationsConfiguration)

@@ -25,9 +25,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/stretchr/testify/assert"
+
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/stretchr/testify/assert"
 )
 
 func makeTestServiceSpec() corev1.ServiceSpec {

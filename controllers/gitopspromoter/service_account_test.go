@@ -28,10 +28,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 const (

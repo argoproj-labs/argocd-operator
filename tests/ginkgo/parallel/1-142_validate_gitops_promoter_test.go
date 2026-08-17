@@ -21,11 +21,6 @@ import (
 	"fmt"
 	"reflect"
 
-	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
-	argoCDFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/argocd"
-	promoterFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/promoter"
-	fixtureUtils "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -36,6 +31,12 @@ import (
 	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
+	argoCDFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/argocd"
+	promoterFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/promoter"
+	fixtureUtils "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 )
 
 const (

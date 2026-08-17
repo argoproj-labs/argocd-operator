@@ -17,8 +17,9 @@ package gitopspromoter
 import (
 	"testing"
 
-	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 func TestBuildPolicyRulesForControllerClusterRoles_UsesEnvVariable(t *testing.T) {

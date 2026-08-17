@@ -4,9 +4,10 @@ import (
 	"context"
 	"testing"
 
+	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
+
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
-	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
 
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"

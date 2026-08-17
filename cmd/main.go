@@ -61,13 +61,14 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
+	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
+	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
+
 	v1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	v1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/pkg/cacheutils"
 	cw "github.com/argoproj-labs/argocd-operator/pkg/clientwrapper"
 	"github.com/argoproj-labs/argocd-operator/version"
-	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
-	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	//+kubebuilder:scaffold:imports
 )
 
