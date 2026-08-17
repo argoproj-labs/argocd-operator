@@ -22687,7 +22687,7 @@ spec:
                     type: object
                   argoCDUIExtensionEnabled:
                     description: ArgoCDUIExtensionEnabled defines whether the Argo
-                      CD UI extension is enabled.
+                      CD UI extension is enabled
                     type: boolean
                   enabled:
                     description: Enabled defines whether gitops promoter controller
@@ -22915,14 +22915,19 @@ spec:
                           More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                         type: object
                     type: object
-                  webhookEnabled:
-                    description: WebhookEnabled controls whether the controllers webhook
-                      functionality is enabled
-                    type: boolean
-                  webhookServiceType:
-                    description: WebhookServiceType defines what service type the
-                      webhook service will be. If none is provided defaults to ClusterIP
-                    type: string
+                  webhook:
+                    description: Webhook defines the configuration for the Promoter's
+                      Controller Webhook
+                    properties:
+                      enabled:
+                        description: Enabled defines whether the webhook is enabled
+                          for the Promoter's controller
+                        type: boolean
+                      serviceType:
+                        description: ServiceType defines what service type the webhook
+                          service will be. If none is provided defaults to ClusterIP
+                        type: string
+                    type: object
                 required:
                 - enabled
                 type: object

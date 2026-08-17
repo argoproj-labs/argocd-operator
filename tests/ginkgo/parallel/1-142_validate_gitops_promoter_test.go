@@ -292,14 +292,16 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			By("Enable webhook and make sure that the service is created")
 
 			argoCDFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
-				ac.Spec.Promoter.WebhookEnabled = true
+				ac.Spec.Promoter.Webhook = &argov1beta1api.PromoterControllerWebhookSpec{
+					Enabled: ptr.To(true),
+				}
 			})
 			promoterFixture.VerifyExpectedResourcesExist(webhookResources)
 
 			By("Can change the webhook service type in the CR and it gets reflected in the service")
 
 			argoCDFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
-				ac.Spec.Promoter.WebhookServiceType = "NodePort"
+				ac.Spec.Promoter.Webhook.ServiceType = "NodePort"
 			})
 			Eventually(func() bool {
 				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(controllerService), controllerService); err != nil {
@@ -311,7 +313,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			By("Disabling the webhook deletes its resources")
 
 			argoCDFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
-				ac.Spec.Promoter.WebhookEnabled = false
+				ac.Spec.Promoter.Webhook.Enabled = ptr.To(false)
 			})
 			promoterFixture.VerifyExpectedResourcesDontExist(webhookResources)
 		})

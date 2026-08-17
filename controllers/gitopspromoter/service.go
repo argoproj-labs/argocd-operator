@@ -49,7 +49,7 @@ const (
 // ReconcilePromoterControllerWebhookService reconciles the Promoter's Controller Service for the webhook
 func ReconcilePromoterControllerWebhookService(client client.Client, compName string, cr *argoproj.ArgoCD) (*corev1.Service, error) {
 	expectedSpec := buildControllerWebhookServiceSpec(compName, cr)
-	enabled := cr.Spec.Promoter.IsEnabled() && cr.Spec.Promoter.WebhookEnabled
+	enabled := cr.Spec.Promoter.IsEnabled() && cr.Spec.Promoter.Webhook.IsEnabled()
 	return ReconcilePromoterService(client, compName, cr, expectedSpec, enabled)
 }
 
@@ -125,8 +125,8 @@ func buildService(compName string, cr *argoproj.ArgoCD) *corev1.Service {
 // buildControllerWebhookServiceSpec builds the Spec for the Controller's Webhook Service
 func buildControllerWebhookServiceSpec(compName string, cr *argoproj.ArgoCD) corev1.ServiceSpec {
 	serviceType := corev1.ServiceTypeClusterIP
-	if cr.Spec.Promoter != nil && cr.Spec.Promoter.WebhookServiceType != "" {
-		serviceType = corev1.ServiceType(cr.Spec.Promoter.WebhookServiceType)
+	if cr.Spec.Promoter != nil && cr.Spec.Promoter.Webhook != nil && cr.Spec.Promoter.Webhook.ServiceType != "" {
+		serviceType = corev1.ServiceType(cr.Spec.Promoter.Webhook.ServiceType)
 	}
 
 	return corev1.ServiceSpec{

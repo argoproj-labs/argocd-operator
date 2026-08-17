@@ -1795,13 +1795,10 @@ type PromoterSpec struct {
 	// APIServer defines the configuration for the promoter's API server
 	APIServer *PromoterAPIServerSpec `json:"apiserver,omitempty"`
 
-	// WebhookEnabled controls whether the controllers webhook functionality is enabled
-	WebhookEnabled bool `json:"webhookEnabled,omitempty"`
+	// Webhook defines the configuration for the Promoter's Controller Webhook
+	Webhook *PromoterControllerWebhookSpec `json:"webhook,omitempty"`
 
-	// WebhookServiceType defines what service type the webhook service will be. If none is provided defaults to ClusterIP
-	WebhookServiceType string `json:"webhookServiceType,omitempty"`
-
-	// ArgoCDUIExtensionEnabled defines whether the Argo CD UI extension is enabled.
+	// ArgoCDUIExtensionEnabled defines whether the Argo CD UI extension is enabled
 	ArgoCDUIExtensionEnabled bool `json:"argoCDUIExtensionEnabled,omitempty"`
 }
 
@@ -1826,10 +1823,23 @@ type PromoterAPIServerTLSSpec struct {
 	CABundleSecretKey string `json:"caSecretKey,omitempty"`
 }
 
+// PromoterControllerWebhookSpec defines the Webhook options for the GitOps Promoter's controller
+type PromoterControllerWebhookSpec struct {
+	// Enabled defines whether the webhook is enabled for the Promoter's controller
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// ServiceType defines what service type the webhook service will be. If none is provided defaults to ClusterIP
+	ServiceType string `json:"serviceType,omitempty"`
+}
+
 func (p *PromoterSpec) IsEnabled() bool {
 	return p != nil && p.Enabled != nil && *p.Enabled
 }
 
 func (p *PromoterAPIServerSpec) IsEnabled() bool {
 	return p == nil || p.Enabled == nil || (p.Enabled != nil && *p.Enabled)
+}
+
+func (p *PromoterControllerWebhookSpec) IsEnabled() bool {
+	return p != nil && p.Enabled != nil && *p.Enabled == true
 }

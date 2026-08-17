@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -119,8 +120,10 @@ func withPromoterControllerWebhook(enabled bool, serviceType string) argoCDOpt {
 		if a.Spec.Promoter == nil {
 			a.Spec.Promoter = &argoproj.PromoterSpec{}
 		}
-		a.Spec.Promoter.WebhookEnabled = enabled
-		a.Spec.Promoter.WebhookServiceType = serviceType
+		a.Spec.Promoter.Webhook = &argoproj.PromoterControllerWebhookSpec{
+			Enabled:     ptr.To(enabled),
+			ServiceType: serviceType,
+		}
 	}
 }
 
