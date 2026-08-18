@@ -33,8 +33,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argov1beta1api "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture"
 	argoCDFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/argocd"
+	deploymentFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/deployment"
+	k8sFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/k8s"
 	promoterFixture "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/promoter"
 	fixtureUtils "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 )
@@ -268,14 +271,18 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			By("Disable API server and verify that the resources are deleted")
 
 			argoCDFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
-				ac.Spec.Promoter.APIServer.Enabled = ptr.To(false)
+				ac.Spec.Promoter.APIServer = &argov1beta1api.PromoterAPIServerSpec{
+					Enabled: ptr.To(false),
+				}
 			})
 			promoterFixture.VerifyExpectedResourcesDontExist(apiServerResources)
 
 			By("Enable API server again and make sure resources are created again")
 
 			argoCDFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
-				ac.Spec.Promoter.APIServer.Enabled = ptr.To(true)
+				ac.Spec.Promoter.APIServer = &argov1beta1api.PromoterAPIServerSpec{
+					Enabled: ptr.To(true),
+				}
 			})
 			promoterFixture.VerifyExpectedResourcesExist(apiServerResources)
 		})
@@ -302,7 +309,10 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			By("Can change the webhook service type in the CR and it gets reflected in the service")
 
 			argoCDFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
-				ac.Spec.Promoter.Webhook.ServiceType = "NodePort"
+				ac.Spec.Promoter.Webhook = &argov1beta1api.PromoterControllerWebhookSpec{
+					Enabled:     ptr.To(true),
+					ServiceType: "NodePort",
+				}
 			})
 			Eventually(func() bool {
 				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(controllerService), controllerService); err != nil {
@@ -314,7 +324,9 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			By("Disabling the webhook deletes its resources")
 
 			argoCDFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
-				ac.Spec.Promoter.Webhook.Enabled = ptr.To(false)
+				ac.Spec.Promoter.Webhook = &argov1beta1api.PromoterControllerWebhookSpec{
+					Enabled: ptr.To(false),
+				}
 			})
 			promoterFixture.VerifyExpectedResourcesDontExist(webhookResources)
 		})
@@ -366,6 +378,102 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				}
 				return false
 			}, "60s", "5s").Should(BeTrue())
+		})
+
+		It("GitOps Promoter Argo CD UI Extension gets added to the ArgoCD Server Deployment", func() {
+			argoCD = &argov1beta1api.ArgoCD{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      argoCDName,
+					Namespace: ns.Name,
+				},
+				Spec: argov1beta1api.ArgoCDSpec{
+					Promoter: &argov1beta1api.PromoterSpec{
+						Enabled:                  ptr.To(true),
+						ArgoCDUIExtensionEnabled: true,
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+
+			By("Verifying that the argocd-server exists")
+			argoCDServer := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-server",
+					Namespace: ns.Name,
+				},
+			}
+			Eventually(argoCDServer, "60s", "5s").Should(k8sFixture.ExistByName())
+
+			By("Verifying that argocd-server has expected extensions volume")
+			Expect(argoCDServer).Should(deploymentFixture.HaveSpecTemplateSpecVolume(corev1.Volume{
+				Name: "extensions",
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			}))
+
+			By("verify that the init container is as expected")
+			initContainer := deploymentFixture.GetTemplateSpecInitContainerByName("promoter-extension", *argoCDServer)
+			Expect(initContainer).ToNot(BeNil())
+
+			Expect(initContainer.Image).To(Equal(common.ArgoCDExtensionInstallerImage))
+
+			Expect(initContainer.Env).To(Equal([]corev1.EnvVar{
+				{Name: "EXTENSION_URL", Value: common.GitopsPromoterExtensionURL},
+			}))
+
+			By("verify that argocd-server gets the extension volume")
+			container := deploymentFixture.GetTemplateSpecContainerByName("argocd-server", *argoCDServer)
+			Expect(container).ToNot(BeNil())
+
+			expectedVolumeMount := corev1.VolumeMount{
+				Name:      "extensions",
+				MountPath: "/tmp/extensions/",
+			}
+
+			match := false
+			for _, volumeMount := range container.VolumeMounts {
+				if reflect.DeepEqual(volumeMount, expectedVolumeMount) {
+					match = true
+				}
+			}
+			Expect(match).To(BeTrue())
+
+			By("verify that disabling the extension cleans up its settings")
+			argoCDFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
+				ac.Spec.Promoter = &argov1beta1api.PromoterSpec{
+					Enabled:                  ptr.To(true),
+					ArgoCDUIExtensionEnabled: false,
+				}
+			})
+			Eventually(argoCDServer, "60s", "5s").Should(k8sFixture.ExistByName())
+
+			Eventually(func() bool {
+				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCDServer), argoCDServer); err != nil {
+					GinkgoWriter.Println(err)
+					return false
+				}
+				return len(argoCDServer.Spec.Template.Spec.InitContainers) == 0
+			}).Should(BeTrue())
+
+			match = false
+			for _, volume := range argoCDServer.Spec.Template.Spec.Volumes {
+				if volume.Name == "extensions" {
+					match = true
+				}
+			}
+			Expect(match).To(BeFalse())
+
+			container = deploymentFixture.GetTemplateSpecContainerByName("argocd-server", *argoCDServer)
+			Expect(container).ToNot(BeNil())
+
+			match = false
+			for _, volumeMount := range container.VolumeMounts {
+				if volumeMount.Name == "extensions" {
+					match = true
+				}
+			}
+			Expect(match).To(BeFalse())
 		})
 	})
 })
