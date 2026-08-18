@@ -85,7 +85,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			fixture.EnsureParallelCleanSlate()
 			k8sClient, _ = fixtureUtils.GetE2ETestKubeClient()
 			ctx = context.Background()
-			ns, cleanupFunc = fixture.CreateNamespaceWithCleanupFunc("gitops-promoter-1-142")
+			ns, cleanupFunc = fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 
 			// Deploy an ArgoCD CR with only the Promoter enabled and nothing else
 			argoCD = &argov1beta1api.ArgoCD{
