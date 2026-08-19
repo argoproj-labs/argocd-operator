@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package parallel
+package sequential
 
 import (
 	"context"
@@ -53,7 +53,7 @@ const (
 )
 
 var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
-	Context("1-142_validate_gitops_promoter", func() {
+	Context("1-134_validate_gitops_promoter", func() {
 		const (
 			argoCDName = "test"
 		)
@@ -85,7 +85,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			fixture.EnsureParallelCleanSlate()
 			k8sClient, _ = fixtureUtils.GetE2ETestKubeClient()
 			ctx = context.Background()
-			ns, cleanupFunc = fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
+			ns, cleanupFunc = fixture.CreateNamespaceWithCleanupFunc("gitops-promoter-1-134")
 
 			// Deploy an ArgoCD CR with only the Promoter enabled and nothing else
 			argoCD = &argov1beta1api.ArgoCD{
