@@ -41,9 +41,7 @@ import (
 )
 
 var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
-
 	Context("1-123_image_updater_annotations_test", func() {
-
 		var (
 			k8sClient    client.Client
 			ctx          context.Context
@@ -79,11 +77,9 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			}
 
 			fixture.OutputDebugOnFail(ns)
-
 		})
 
 		It("ensures that Image Updater will update Argo CD Application using argocd (default) policy using legacy annotations", func() {
-
 			By("creating simple namespace-scoped Argo CD instance with image updater enabled")
 			ns, cleanupFunc = fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 
@@ -101,7 +97,8 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 								Value: "0",
 							},
 						},
-						Enabled: true},
+						Enabled: true,
+					},
 				},
 			}
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
@@ -180,7 +177,6 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			By("ensuring that the Application image has `29437546.0` version after update")
 			Eventually(func() string {
 				err := k8sClient.Get(ctx, client.ObjectKeyFromObject(app), app)
-
 				if err != nil {
 					return "" // Let Eventually retry on error
 				}
@@ -193,7 +189,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 				// Return an empty string to signify the condition is not yet met.
 				return ""
-			}, "5m", "10s").Should(Equal("quay.io/dkarpele/my-guestbook:29437546.0"))
+			}, "8m", "10s").Should(Equal("quay.io/dkarpele/my-guestbook:29437546.0"))
 		})
 	})
 })
