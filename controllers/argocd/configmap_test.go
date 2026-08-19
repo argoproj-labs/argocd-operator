@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	testclient "k8s.io/client-go/kubernetes/fake"
+	k8stesting "k8s.io/client-go/testing"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -2211,5 +2212,49 @@ func TestReconcileArgoCD_reconcileCAConfigMap(t *testing.T) {
 		assert.Equal(t, string(caSecret.Data[corev1.ServiceAccountRootCAKey]), cm.Data[common.ArgoCDKeyTLSCACert])
 		assert.Contains(t, cm.Data, "someOtherKey", "existing keys should be preserved")
 		assert.Equal(t, "someValue", cm.Data["someOtherKey"], "existing key values should be preserved")
+	})
+
+	t.Run("no-op when both keys are already present", func(t *testing.T) {
+		a := makeTestArgoCD()
+
+		caSecret, err := newCASecret(a)
+		require.NoError(t, err)
+
+		// Create ConfigMap with both keys (simulating post-fix state)
+		existingCM := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      getCAConfigMapName(a),
+				Namespace: a.Namespace,
+			},
+			Data: map[string]string{
+				common.ArgoCDKeyTLSCert:   string(caSecret.Data[corev1.TLSCertKey]),
+				common.ArgoCDKeyTLSCACert: string(caSecret.Data[corev1.ServiceAccountRootCAKey]),
+			},
+		}
+
+		k8sClient := testclient.NewSimpleClientset()
+		k8sClient.PrependReactor("update", "configmaps", func(action k8stesting.Action) (bool, runtime.Object, error) {
+			return true, nil, fmt.Errorf("unexpected Update call to configmaps")
+		})
+
+		resObjs := []client.Object{a, caSecret, existingCM}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, k8sClient)
+
+		err = r.reconcileCAConfigMap(a)
+		require.NoError(t, err)
+
+		cm := &corev1.ConfigMap{}
+		err = r.Get(context.TODO(), types.NamespacedName{
+			Name:      getCAConfigMapName(a),
+			Namespace: a.Namespace,
+		}, cm)
+		require.NoError(t, err)
+
+		assert.Equal(t, string(caSecret.Data[corev1.TLSCertKey]), cm.Data[common.ArgoCDKeyTLSCert])
+		assert.Equal(t, string(caSecret.Data[corev1.ServiceAccountRootCAKey]), cm.Data[common.ArgoCDKeyTLSCACert])
 	})
 }
