@@ -2138,3 +2138,75 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_sensitiveAnnotations(t *testing.
 			"token annotation should not be duplicated")
 	})
 }
+
+func TestReconcileArgoCD_reconcileCAConfigMap(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	t.Run("creates ConfigMap with both tls.crt and ca.crt keys", func(t *testing.T) {
+		a := makeTestArgoCD()
+
+		caSecret, err := newCASecret(a)
+		require.NoError(t, err)
+
+		resObjs := []client.Object{a, caSecret}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		err = r.reconcileCAConfigMap(a)
+		require.NoError(t, err)
+
+		cm := &corev1.ConfigMap{}
+		err = r.Get(context.TODO(), types.NamespacedName{
+			Name:      getCAConfigMapName(a),
+			Namespace: a.Namespace,
+		}, cm)
+		require.NoError(t, err)
+
+		assert.Contains(t, cm.Data, common.ArgoCDKeyTLSCert, "ConfigMap should have tls.crt key")
+		assert.Contains(t, cm.Data, common.ArgoCDKeyTLSCACert, "ConfigMap should have ca.crt key")
+		assert.Equal(t, string(caSecret.Data[corev1.TLSCertKey]), cm.Data[common.ArgoCDKeyTLSCert])
+		assert.Equal(t, string(caSecret.Data[corev1.ServiceAccountRootCAKey]), cm.Data[common.ArgoCDKeyTLSCACert])
+	})
+
+	t.Run("updates ConfigMap when ca.crt key is missing", func(t *testing.T) {
+		a := makeTestArgoCD()
+
+		caSecret, err := newCASecret(a)
+		require.NoError(t, err)
+
+		// Create ConfigMap with only tls.crt (simulating pre-fix state)
+		oldCM := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      getCAConfigMapName(a),
+				Namespace: a.Namespace,
+			},
+			Data: map[string]string{
+				common.ArgoCDKeyTLSCert: string(caSecret.Data[corev1.TLSCertKey]),
+			},
+		}
+
+		resObjs := []client.Object{a, caSecret, oldCM}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		err = r.reconcileCAConfigMap(a)
+		require.NoError(t, err)
+
+		cm := &corev1.ConfigMap{}
+		err = r.Get(context.TODO(), types.NamespacedName{
+			Name:      getCAConfigMapName(a),
+			Namespace: a.Namespace,
+		}, cm)
+		require.NoError(t, err)
+
+		assert.Contains(t, cm.Data, common.ArgoCDKeyTLSCert, "ConfigMap should still have tls.crt key")
+		assert.Contains(t, cm.Data, common.ArgoCDKeyTLSCACert, "ConfigMap should now have ca.crt key added")
+		assert.Equal(t, string(caSecret.Data[corev1.ServiceAccountRootCAKey]), cm.Data[common.ArgoCDKeyTLSCACert])
+	})
+}
