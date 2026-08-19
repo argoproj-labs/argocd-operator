@@ -2177,7 +2177,7 @@ func TestReconcileArgoCD_reconcileCAConfigMap(t *testing.T) {
 		caSecret, err := newCASecret(a)
 		require.NoError(t, err)
 
-		// Create ConfigMap with only tls.crt (simulating pre-fix state)
+		// Create ConfigMap with only tls.crt + an extra key (simulating pre-fix state with custom data)
 		oldCM := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      getCAConfigMapName(a),
@@ -2185,6 +2185,7 @@ func TestReconcileArgoCD_reconcileCAConfigMap(t *testing.T) {
 			},
 			Data: map[string]string{
 				common.ArgoCDKeyTLSCert: string(caSecret.Data[corev1.TLSCertKey]),
+				"someOtherKey":          "someValue",
 			},
 		}
 
@@ -2208,5 +2209,7 @@ func TestReconcileArgoCD_reconcileCAConfigMap(t *testing.T) {
 		assert.Contains(t, cm.Data, common.ArgoCDKeyTLSCert, "ConfigMap should still have tls.crt key")
 		assert.Contains(t, cm.Data, common.ArgoCDKeyTLSCACert, "ConfigMap should now have ca.crt key added")
 		assert.Equal(t, string(caSecret.Data[corev1.ServiceAccountRootCAKey]), cm.Data[common.ArgoCDKeyTLSCACert])
+		assert.Contains(t, cm.Data, "someOtherKey", "existing keys should be preserved")
+		assert.Equal(t, "someValue", cm.Data["someOtherKey"], "existing key values should be preserved")
 	})
 }
