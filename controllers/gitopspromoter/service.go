@@ -65,6 +65,8 @@ func ReconcilePromoterAPIServerService(client client.Client, compName string, cr
 func ReconcilePromoterService(client client.Client, compName string, cr *argoproj.ArgoCD, expectedSpec corev1.ServiceSpec, enabled bool) (*corev1.Service, error) {
 	svc := buildService(compName, cr)
 
+	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
+
 	exists := true
 	if err := argoutil.FetchObject(client, cr.Namespace, svc.Name, svc); err != nil {
 		if !errors.IsNotFound(err) {
@@ -74,7 +76,7 @@ func ReconcilePromoterService(client client.Client, compName string, cr *argopro
 	}
 
 	if exists {
-		if !cr.Spec.Promoter.IsEnabled() || !enabled {
+		if !cr.Spec.Promoter.IsEnabled() || !enabled || !allowed {
 			argoutil.LogResourceDeletion(log, svc, fmt.Sprintf("promoter service for component %s is being deleted due to being disabled", compName))
 			if err := client.Delete(context.Background(), svc); err != nil {
 				return nil, fmt.Errorf("failed to delete promoter service %s: %v", svc.Name, err)
@@ -100,7 +102,7 @@ func ReconcilePromoterService(client client.Client, compName string, cr *argopro
 		return svc, nil
 	}
 
-	if !cr.Spec.Promoter.IsEnabled() || !enabled {
+	if !cr.Spec.Promoter.IsEnabled() || !enabled || !allowed {
 		return svc, nil
 	}
 

@@ -34,6 +34,8 @@ import (
 func ReconcilePromoterControllerConfiguration(client client.Client, compName string, cr *argoproj.ArgoCD) (*promoter.ControllerConfiguration, error) {
 	controllerConfiguration := buildControllerConfiguration(compName, cr)
 
+	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
+
 	exists := true
 	if err := argoutil.FetchObject(client, controllerConfiguration.Namespace, controllerConfiguration.Name, controllerConfiguration); err != nil {
 		if !errors.IsNotFound(err) {
@@ -43,7 +45,7 @@ func ReconcilePromoterControllerConfiguration(client client.Client, compName str
 	}
 
 	if exists {
-		if !cr.Spec.Promoter.IsEnabled() {
+		if !cr.Spec.Promoter.IsEnabled() || !allowed {
 			expectedLabels := buildLabelsForPromoterResources(compName, cr)
 			if controllerConfiguration.Labels[common.ArgoCDKeyManagedBy] != expectedLabels[common.ArgoCDKeyManagedBy] {
 				return controllerConfiguration, nil
@@ -54,14 +56,10 @@ func ReconcilePromoterControllerConfiguration(client client.Client, compName str
 			}
 			return controllerConfiguration, nil
 		}
-
-		// TODO:: For now do not do any reconcilation based on the spec of the controller configuration to allow for edits
-		// eventually put the edits into the Argo CD CR for easier editing and version controlling settings
-
 		return controllerConfiguration, nil
 	}
 
-	if !cr.Spec.Promoter.IsEnabled() {
+	if !cr.Spec.Promoter.IsEnabled() || !allowed {
 		return controllerConfiguration, nil
 	}
 

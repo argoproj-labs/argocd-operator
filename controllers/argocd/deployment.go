@@ -1104,31 +1104,63 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 	rolloutsUIEnabled := cr.Spec.Server.EnableRolloutsUI
 	promoterUIEnabled := cr.Spec.Promoter.IsEnabled() && cr.Spec.Promoter.ArgoCDUIExtensionEnabled
 
-	const extensionsVolumeName = "extensions"
-	if rolloutsUIEnabled {
+	hasRolloutsInitContainer := false
+	for _, initContainer := range deploy.Spec.Template.Spec.InitContainers {
+		if initContainer.Name == "rollout-extension" {
+			hasRolloutsInitContainer = true
+		}
+	}
+
+	hasPromoterInitContainer := false
+	for _, initContainer := range deploy.Spec.Template.Spec.InitContainers {
+		if initContainer.Name == "promoter-extension" {
+			hasPromoterInitContainer = true
+		}
+	}
+
+	const extensionsVolumeName = "argo-cd-operator-ui-extensions"
+	if rolloutsUIEnabled && !hasRolloutsInitContainer {
 		deploy.Spec.Template.Spec.InitContainers = append(deploy.Spec.Template.Spec.InitContainers, getRolloutInitContainer()...)
-	} else {
+	} else if !rolloutsUIEnabled {
 		deploy.Spec.Template.Spec.InitContainers = removeInitContainer(deploy.Spec.Template.Spec.InitContainers, "rollout-extension")
 	}
 
-	if promoterUIEnabled {
+	if promoterUIEnabled && !hasPromoterInitContainer {
 		deploy.Spec.Template.Spec.InitContainers = append(deploy.Spec.Template.Spec.InitContainers, getPromoterInitContainer()...)
-	} else {
+	} else if !promoterUIEnabled {
 		deploy.Spec.Template.Spec.InitContainers = removeInitContainer(deploy.Spec.Template.Spec.InitContainers, "promoter-extension")
 	}
 
-	if rolloutsUIEnabled || promoterUIEnabled {
-		deploy.Spec.Template.Spec.Containers[0].VolumeMounts = append(deploy.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
-			Name:      extensionsVolumeName,
-			MountPath: "/tmp/extensions/",
-		})
+	hasExtensionsVolumeMount := false
+	for _, volumeMount := range deploy.Spec.Template.Spec.Containers[0].VolumeMounts {
+		if volumeMount.Name == extensionsVolumeName {
+			hasExtensionsVolumeMount = true
+		}
+	}
 
-		deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, corev1.Volume{
-			Name: extensionsVolumeName,
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		})
+	hasExtensionsVolume := false
+	for _, volume := range deploy.Spec.Template.Spec.Volumes {
+		if volume.Name == extensionsVolumeName {
+			hasExtensionsVolume = true
+		}
+	}
+
+	if rolloutsUIEnabled || promoterUIEnabled {
+		if !hasExtensionsVolumeMount {
+			deploy.Spec.Template.Spec.Containers[0].VolumeMounts = append(deploy.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+				Name:      extensionsVolumeName,
+				MountPath: "/tmp/extensions/",
+			})
+		}
+
+		if !hasExtensionsVolume {
+			deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, corev1.Volume{
+				Name: extensionsVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			})
+		}
 	} else {
 		deploy.Spec.Template.Spec.Volumes = removeVolume(deploy.Spec.Template.Spec.Volumes, extensionsVolumeName)
 		deploy.Spec.Template.Spec.Containers[0].VolumeMounts = removeVolumeMount(deploy.Spec.Template.Spec.Containers[0].VolumeMounts, extensionsVolumeName)
@@ -1376,7 +1408,7 @@ func getRolloutInitContainer() []corev1.Container {
 			Name: "rollout-extension",
 			VolumeMounts: []corev1.VolumeMount{
 				{
-					Name:      "extensions",
+					Name:      "argo-cd-operator-ui-extensions",
 					MountPath: "/tmp/extensions/",
 				},
 				{
@@ -1388,7 +1420,9 @@ func getRolloutInitContainer() []corev1.Container {
 		},
 	}
 
-	containers[0].SecurityContext.RunAsUser = ptr.To(int64(1000))
+	if !IsOpenShiftCluster() {
+		containers[0].SecurityContext.RunAsUser = ptr.To(int64(1000))
+	}
 
 	if value, exists := os.LookupEnv(common.ArgoCDExtensionImageEnvName); exists {
 		containers[0].Image = value
@@ -1410,7 +1444,7 @@ func getPromoterInitContainer() []corev1.Container {
 			Name: "promoter-extension",
 			VolumeMounts: []corev1.VolumeMount{
 				{
-					Name:      "extensions",
+					Name:      "argo-cd-operator-ui-extensions",
 					MountPath: "/tmp/extensions/",
 				},
 				{
@@ -1422,7 +1456,9 @@ func getPromoterInitContainer() []corev1.Container {
 		},
 	}
 
-	containers[0].SecurityContext.RunAsUser = ptr.To(int64(1000))
+	if !IsOpenShiftCluster() {
+		containers[0].SecurityContext.RunAsUser = ptr.To(int64(1000))
+	}
 
 	if value, exists := os.LookupEnv(common.ArgoCDExtensionImageEnvName); exists {
 		containers[0].Image = value
@@ -1435,7 +1471,6 @@ func getPromoterInitContainer() []corev1.Container {
 			},
 		}
 	}
-	// TODO: look into adding the checksums for extensions installation. Could even add it to the rollouts one too.
 	return containers
 }
 

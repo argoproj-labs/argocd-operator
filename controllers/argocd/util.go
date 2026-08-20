@@ -2088,6 +2088,10 @@ func (r *ReconcileArgoCD) reconcileDeploymentHelper(cr *argoproj.ArgoCD, desired
 func (r *ReconcileArgoCD) reconcileGitOpsPromoter(cr *argoproj.ArgoCD) error {
 	log.Info("reconciling GitOps Promoter resources")
 
+	if cr.Spec.Promoter.IsEnabled() && !argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace) {
+		log.Info("Warning: will not reconcile GitOps Promoter because namespace is not allowed to deploy cluster scoped ArgoCDs")
+	}
+
 	controllerCompName := string(argoproj.PromoterComponentTypeControllerManager)
 	var sa *corev1.ServiceAccount
 	var err error

@@ -219,7 +219,7 @@ func TestReconcilePromoterRoleBinding_DoesNotExist_PromoterDisabled(t *testing.T
 	sch := makeTestReconcilerScheme()
 	client := makeTestReconcilerClient(sch, resObjs)
 
-	roleBinding, err := ReconcilePromoterRoleBinding(client, testCompName, testRoleBindingName, testRoleName, sa, cr, true)
+	roleBinding, err := ReconcilePromoterRoleBinding(client, testCompName, testRoleBindingName, testRoleName, sa, cr, true, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, roleBinding)
 
@@ -241,7 +241,7 @@ func TestReconcilePromoterRoleBinding_Exists_PromoterDisabled(t *testing.T) {
 	sch := makeTestReconcilerScheme()
 	client := makeTestReconcilerClient(sch, resObjs)
 
-	roleBinding, err := ReconcilePromoterRoleBinding(client, testCompName, testRoleBindingName, testRoleName, sa, cr, true)
+	roleBinding, err := ReconcilePromoterRoleBinding(client, testCompName, testRoleBindingName, testRoleName, sa, cr, true, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, roleBinding)
 
@@ -262,7 +262,7 @@ func TestReconcilePromoterRoleBinding_DoesNotExist_PromoterEnabled(t *testing.T)
 	sch := makeTestReconcilerScheme()
 	client := makeTestReconcilerClient(sch, resObjs)
 
-	roleBinding, err := ReconcilePromoterRoleBinding(client, testCompName, testRoleBindingName, testRoleName, sa, cr, true)
+	roleBinding, err := ReconcilePromoterRoleBinding(client, testCompName, testRoleBindingName, testRoleName, sa, cr, true, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, roleBinding)
 
@@ -295,7 +295,7 @@ func TestReconcilePromoterRoleBinding_DoesNotExists_PromoterNotSet(t *testing.T)
 	sch := makeTestReconcilerScheme()
 	client := makeTestReconcilerClient(sch, resObjs)
 
-	roleBinding, err := ReconcilePromoterRoleBinding(client, testCompName, testRoleBindingName, testRoleName, sa, cr, true)
+	roleBinding, err := ReconcilePromoterRoleBinding(client, testCompName, testRoleBindingName, testRoleName, sa, cr, true, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, roleBinding)
 
@@ -317,7 +317,7 @@ func TestReconcilePromoterRoleBinding_Exists_PromoterNotSet(t *testing.T) {
 	sch := makeTestReconcilerScheme()
 	client := makeTestReconcilerClient(sch, resObjs)
 
-	roleBinding, err := ReconcilePromoterRoleBinding(client, testCompName, testRoleBindingName, testRoleName, sa, cr, true)
+	roleBinding, err := ReconcilePromoterRoleBinding(client, testCompName, testRoleBindingName, testRoleName, sa, cr, true, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, roleBinding)
 

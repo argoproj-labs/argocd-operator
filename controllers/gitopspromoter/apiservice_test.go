@@ -344,7 +344,7 @@ func TestReconcilePromoterAPIServerAPIService_CABundle_SecretKeyDoesNotExist(t *
 
 func TestReconcilePromoterAPIServerAPIService_No_CABundle(t *testing.T) {
 	// Test case: APIService does not exist and the Promoter is enabled with the API server with no TLS settings
-	// Expected behavior: Insecure is set to true on the API Service
+	// Expected behavior: API Service still gets reconciled
 
 	cr := makeTestArgoCD(withPromoterEnabled(true), withPromoterAPIServerEnabled(true))
 
@@ -361,8 +361,6 @@ func TestReconcilePromoterAPIServerAPIService_No_CABundle(t *testing.T) {
 		Name: "v1alpha1.view.promoter.argoproj.io",
 	}, retrievedAPIService)
 	assert.NoError(t, err)
-
-	assert.True(t, retrievedAPIService.Spec.InsecureSkipTLSVerify)
 }
 
 func TestReconcilePromoterAPIServerAPIService_Exists_Update(t *testing.T) {

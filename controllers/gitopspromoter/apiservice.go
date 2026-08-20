@@ -45,6 +45,8 @@ func ReconcilePromoterAPIServerAPIService(client client.Client, compName string,
 	apiSvc := buildAPIService(compName, cr)
 	enabled := cr.Spec.Promoter == nil || cr.Spec.Promoter.APIServer.IsEnabled()
 
+	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
+
 	exists := true
 	if err := client.Get(context.Background(), types.NamespacedName{Name: apiSvc.Name}, apiSvc); err != nil {
 		if !errors.IsNotFound(err) {
@@ -54,7 +56,7 @@ func ReconcilePromoterAPIServerAPIService(client client.Client, compName string,
 	}
 
 	if exists {
-		if !cr.Spec.Promoter.IsEnabled() || !enabled {
+		if !cr.Spec.Promoter.IsEnabled() || !enabled || !allowed {
 			argoutil.LogResourceDeletion(log, apiSvc, fmt.Sprintf("promoter apiservice for component %s is being deleted due to being disabled", compName))
 			if err := client.Delete(context.Background(), apiSvc); err != nil {
 				return nil, fmt.Errorf("failed to delete promoter service %s: %v", apiSvc.Name, err)
@@ -87,7 +89,7 @@ func ReconcilePromoterAPIServerAPIService(client client.Client, compName string,
 		return nil, err
 	}
 
-	if !cr.Spec.Promoter.IsEnabled() || !enabled {
+	if !cr.Spec.Promoter.IsEnabled() || !enabled || !allowed {
 		return apiSvc, nil
 	}
 
@@ -101,9 +103,6 @@ func ReconcilePromoterAPIServerAPIService(client client.Client, compName string,
 
 // buildAPIService creates the basic object for the API Service
 func buildAPIService(compName string, cr *argoproj.ArgoCD) *apiregistrationv1.APIService {
-	// FIXME: this is also a hard coded resource like the controller configuration.
-	// It might be difficult to allow for multiple instances of the promoter in the same cluster
-	// this comment is a reminder to figure out what to do here
 	return &apiregistrationv1.APIService{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   "v1alpha1.view.promoter.argoproj.io",
@@ -143,7 +142,7 @@ func buildAPIServiceSpec(client client.Client, compName string, cr *argoproj.Arg
 			return apiregistrationv1.APIServiceSpec{}, fmt.Errorf("ca bundle not found in secret %s at key %s, API Server may not work correctly", cr.Spec.Promoter.APIServer.TLS.CABundleSecretName, key)
 		}
 	} else {
-		apiSvc.InsecureSkipTLSVerify = true
+		log.Info("Warning: CA Bundle is not set, APIService will not be able to authenticate API Server.")
 	}
 
 	return apiSvc, nil

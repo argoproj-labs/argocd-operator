@@ -85,6 +85,8 @@ func ReconcilePromoterAPIServerClusterRoles(client client.Client, compName strin
 func ReconcilePromoterClusterRole(client client.Client, compName, name string, expectedPolicyRule []rbacv1.PolicyRule, cr *argoproj.ArgoCD, enabled bool) (*rbacv1.ClusterRole, error) {
 	clusterRole := buildClusterRole(compName, name, cr)
 
+	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
+
 	exists := true
 	if err := client.Get(context.Background(), types.NamespacedName{Name: clusterRole.Name}, clusterRole); err != nil {
 		if !errors.IsNotFound(err) {
@@ -94,7 +96,7 @@ func ReconcilePromoterClusterRole(client client.Client, compName, name string, e
 	}
 
 	if exists {
-		if !cr.Spec.Promoter.IsEnabled() || !enabled {
+		if !cr.Spec.Promoter.IsEnabled() || !enabled || !allowed {
 			argoutil.LogResourceDeletion(log, clusterRole, fmt.Sprintf("promoter cluster role, %s, is being deleted due to being disabled", clusterRole.Name))
 			if err := client.Delete(context.Background(), clusterRole); err != nil {
 				return nil, fmt.Errorf("failed to delete promoter cluster role %s: %v", clusterRole.Name, err)
@@ -113,7 +115,7 @@ func ReconcilePromoterClusterRole(client client.Client, compName, name string, e
 		return clusterRole, nil
 	}
 
-	if !cr.Spec.Promoter.IsEnabled() || !enabled {
+	if !cr.Spec.Promoter.IsEnabled() || !enabled || !allowed {
 		return clusterRole, nil
 	}
 

@@ -48,6 +48,8 @@ func generatePromoterResourceNameWithNamespace(compName string, cr *argoproj.Arg
 func ReconcilePromoterServiceAccount(client client.Client, compName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme, enabled bool) (*corev1.ServiceAccount, error) {
 	sa := buildPromoterServiceAccount(compName, cr)
 
+	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
+
 	exists := true
 	if err := argoutil.FetchObject(client, cr.Namespace, sa.Name, sa); err != nil {
 		if !errors.IsNotFound(err) {
@@ -57,7 +59,7 @@ func ReconcilePromoterServiceAccount(client client.Client, compName string, cr *
 	}
 
 	if exists {
-		if !cr.Spec.Promoter.IsEnabled() || !enabled {
+		if !cr.Spec.Promoter.IsEnabled() || !enabled || !allowed {
 			argoutil.LogResourceDeletion(log, sa, fmt.Sprintf("promoter service account for component %s is being deleted due to being disabled", compName))
 			if err := client.Delete(context.Background(), sa); err != nil {
 				return nil, fmt.Errorf("failed to delete promoter service account %s: %v", sa.Name, err)
@@ -67,7 +69,7 @@ func ReconcilePromoterServiceAccount(client client.Client, compName string, cr *
 		return sa, nil
 	}
 
-	if !cr.Spec.Promoter.IsEnabled() || !enabled {
+	if !cr.Spec.Promoter.IsEnabled() || !enabled || !allowed {
 		return sa, nil
 	}
 

@@ -16,6 +16,7 @@ package gitopspromoter
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -48,6 +49,8 @@ const (
 type argoCDOpt func(*argoproj.ArgoCD)
 
 func makeTestArgoCD(opts ...argoCDOpt) *argoproj.ArgoCD {
+	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", testNamespace)
+
 	a := &argoproj.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testArgoCDName,

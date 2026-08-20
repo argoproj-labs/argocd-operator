@@ -1709,7 +1709,7 @@ func TestReconcileServer_RolloutUI(t *testing.T) {
 	// assert that extensions volume is mounted at /tmp/extensions for both the initContainer and container
 	foundExtensionsVolumeMount := false
 	for _, volMnt := range deployment.Spec.Template.Spec.InitContainers[0].VolumeMounts {
-		if volMnt.Name == "extensions" {
+		if volMnt.Name == "argo-cd-operator-ui-extensions" {
 			foundExtensionsVolumeMount = true
 			assert.NotNil(t, volMnt.MountPath)
 			assert.Equal(t, "/tmp/extensions/", volMnt.MountPath)
@@ -1718,7 +1718,7 @@ func TestReconcileServer_RolloutUI(t *testing.T) {
 	assert.True(t, foundExtensionsVolumeMount, "expected volume mount 'extensions' to be present in init container")
 	foundExtensionsVolumeMount = false
 	for _, vol := range deployment.Spec.Template.Spec.Containers[0].VolumeMounts {
-		if vol.Name == "extensions" {
+		if vol.Name == "argo-cd-operator-ui-extensions" {
 			foundExtensionsVolumeMount = true
 			assert.NotNil(t, vol.MountPath)
 			assert.Equal(t, "/tmp/extensions/", vol.MountPath)
@@ -1749,7 +1749,7 @@ func TestReconcileServer_RolloutUI(t *testing.T) {
 	// Check for the volumes
 	foundVolume := false
 	for _, vol := range deployment.Spec.Template.Spec.Volumes {
-		if vol.Name == "extensions" {
+		if vol.Name == "argo-cd-operator-ui-extensions" {
 			foundVolume = true
 			assert.NotNil(t, vol.EmptyDir)
 		}
@@ -1782,7 +1782,7 @@ func TestReconcileServer_RolloutUI(t *testing.T) {
 	// Check that volume is removed
 	foundVolume = false
 	for _, vol := range deployment.Spec.Template.Spec.Volumes {
-		if vol.Name == "extensions" {
+		if vol.Name == "argo-cd-operator-ui-extensions" {
 			foundVolume = true
 		}
 	}
@@ -3552,7 +3552,7 @@ func TestReconcileServer_PromoterUIExtension(t *testing.T) {
 
 	foundExtensionsVolumeMount := false
 	for _, volMnt := range deployment.Spec.Template.Spec.InitContainers[0].VolumeMounts {
-		if volMnt.Name == "extensions" {
+		if volMnt.Name == "argo-cd-operator-ui-extensions" {
 			foundExtensionsVolumeMount = true
 			assert.NotNil(t, volMnt.MountPath)
 			assert.Equal(t, "/tmp/extensions/", volMnt.MountPath)
@@ -3561,7 +3561,7 @@ func TestReconcileServer_PromoterUIExtension(t *testing.T) {
 	assert.True(t, foundExtensionsVolumeMount, "expected volume mount 'extensions' to be present in init container")
 	foundExtensionsVolumeMount = false
 	for _, vol := range deployment.Spec.Template.Spec.Containers[0].VolumeMounts {
-		if vol.Name == "extensions" {
+		if vol.Name == "argo-cd-operator-ui-extensions" {
 			foundExtensionsVolumeMount = true
 			assert.NotNil(t, vol.MountPath)
 			assert.Equal(t, "/tmp/extensions/", vol.MountPath)
@@ -3590,7 +3590,7 @@ func TestReconcileServer_PromoterUIExtension(t *testing.T) {
 
 	foundVolume := false
 	for _, vol := range deployment.Spec.Template.Spec.Volumes {
-		if vol.Name == "extensions" {
+		if vol.Name == "argo-cd-operator-ui-extensions" {
 			foundVolume = true
 			assert.NotNil(t, vol.EmptyDir)
 		}
@@ -3620,7 +3620,7 @@ func TestReconcileServer_PromoterUIExtension(t *testing.T) {
 
 	foundVolume = false
 	for _, vol := range deployment.Spec.Template.Spec.Volumes {
-		if vol.Name == "extensions" {
+		if vol.Name == "argo-cd-operator-ui-extensions" {
 			foundVolume = true
 		}
 	}

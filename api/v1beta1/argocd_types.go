@@ -1780,8 +1780,8 @@ func (r *ArgoCDRouteSpec) UseExternalCertificate() bool {
 
 // PromoterSpec defines the desired state for the GitOps Promoter
 type PromoterSpec struct {
-	// Enabled defines whether gitops promoter controller should be deployed or not
-	Enabled *bool `json:"enabled"`
+	// Enabled defines whether gitops promoter controller should be deployed or not (will default to being disabled)
+	Enabled *bool `json:"enabled,omitempty"`
 
 	// Image is the image to be used for the GitOps Promoter
 	Image string `json:"image,omitempty"`
@@ -1825,7 +1825,7 @@ type PromoterAPIServerTLSSpec struct {
 
 // PromoterControllerWebhookSpec defines the Webhook options for the GitOps Promoter's controller
 type PromoterControllerWebhookSpec struct {
-	// Enabled defines whether the webhook is enabled for the Promoter's controller
+	// Enabled defines whether the webhook is enabled for the Promoter's controller (defaults to being disabled)
 	Enabled *bool `json:"enabled,omitempty"`
 
 	// ServiceType defines what service type the webhook service will be. If none is provided defaults to ClusterIP

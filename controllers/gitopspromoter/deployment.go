@@ -102,7 +102,7 @@ func ReconcilePromoterAPIServerDeployment(client client.Client, compName string,
 	if cr.Spec.Promoter != nil && cr.Spec.Promoter.APIServer != nil && cr.Spec.Promoter.APIServer.TLS != nil && cr.Spec.Promoter.APIServer.TLS.CertSecretName != "" {
 		cfg.volumes = buildAPIServerVolumes(cr)
 		cfg.volumeMounts = buildAPIServerVolumeMounts()
-	} else {
+	} else if enabled {
 		log.Info("Warning: no TLS cert for the API Server specified, api server may fail to start.")
 	}
 
@@ -118,6 +118,8 @@ func ReconcilePromoterAPIServerDeployment(client client.Client, compName string,
 func ReconcilePromoterDeployment(client client.Client, compName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD, scheme *runtime.Scheme, cfg deploymentConfig, enabled bool) (*appsv1.Deployment, error) {
 	deployment := buildDeployment(cr, compName)
 
+	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
+
 	exists := true
 	if err := argoutil.FetchObject(client, deployment.Namespace, deployment.Name, deployment); err != nil {
 		if !errors.IsNotFound(err) {
@@ -127,7 +129,7 @@ func ReconcilePromoterDeployment(client client.Client, compName string, sa *core
 	}
 
 	if exists {
-		if !cr.Spec.Promoter.IsEnabled() || !enabled {
+		if !cr.Spec.Promoter.IsEnabled() || !enabled || !allowed {
 			argoutil.LogResourceDeletion(log, deployment, "promoter deployment is being deleted due to being disabled")
 			if err := client.Delete(context.Background(), deployment); err != nil {
 				return nil, fmt.Errorf("failed to delete deployment %s: %v", deployment.Name, err)
@@ -227,7 +229,7 @@ func ReconcilePromoterDeployment(client client.Client, compName string, sa *core
 		return deployment, nil
 	}
 
-	if !cr.Spec.Promoter.IsEnabled() || !enabled {
+	if !cr.Spec.Promoter.IsEnabled() || !enabled || !allowed {
 		return deployment, nil
 	}
 	deployment.Spec = buildDeploymentSpec(compName, sa, cr, cfg)
@@ -314,7 +316,12 @@ func selectImage(cr *argoproj.ArgoCD) string {
 // buildControllerSecurityContext builds the SecurityContext for the Controller's container within its Deployment
 func buildControllerSecurityContext() *corev1.SecurityContext {
 	return &corev1.SecurityContext{
+		RunAsNonRoot:             ptr.To(true),
 		AllowPrivilegeEscalation: ptr.To(false),
+		ReadOnlyRootFilesystem:   ptr.To(true),
+		SeccompProfile: &corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault,
+		},
 		Capabilities: &corev1.Capabilities{
 			Drop: []corev1.Capability{"ALL"},
 		},
@@ -324,9 +331,14 @@ func buildControllerSecurityContext() *corev1.SecurityContext {
 // buildAPIServerSecurityContext builds the SecurityContext for the API Server's container within its Deployment
 func buildAPIServerSecurityContext() *corev1.SecurityContext {
 	return &corev1.SecurityContext{
-		RunAsNonRoot: ptr.To(true),
+		RunAsNonRoot:             ptr.To(true),
+		AllowPrivilegeEscalation: ptr.To(false),
+		ReadOnlyRootFilesystem:   ptr.To(true),
 		SeccompProfile: &corev1.SeccompProfile{
 			Type: corev1.SeccompProfileTypeRuntimeDefault,
+		},
+		Capabilities: &corev1.Capabilities{
+			Drop: []corev1.Capability{"ALL"},
 		},
 	}
 }

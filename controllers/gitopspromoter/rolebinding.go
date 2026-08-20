@@ -79,12 +79,13 @@ func ReconcilePromoterAPIServerRoleBindings(client client.Client, compName strin
 	reconciledRoleBindings := []*rbacv1.RoleBinding{}
 
 	enabled := cr.Spec.Promoter == nil || cr.Spec.Promoter.APIServer.IsEnabled()
+	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
 	// As of right now the Promoter requires a RoleBinding to the extension-apiserver-authentication-reader role in the kube-system namespace
 	// Because of this a copy of the CR is needed with the kube-system namespace
 	crCopy := cr.DeepCopy()
 	crCopy.SetNamespace("kube-system")
 	bindingName := fmt.Sprintf("%s-%s", generatePromoterResourceNameWithNamespace(compName, cr), "extension-auth-reader")
-	roleBinding, err := ReconcilePromoterRoleBinding(client, compName, bindingName, "extension-apiserver-authentication-reader", sa, crCopy, enabled)
+	roleBinding, err := ReconcilePromoterRoleBinding(client, compName, bindingName, "extension-apiserver-authentication-reader", sa, crCopy, enabled, allowed)
 	if err != nil {
 		return nil, err
 	}
@@ -99,6 +100,8 @@ func ReconcilePromoterClusterRoleBinding(client client.Client, compName, binding
 	expectedSubjects := buildSubject(sa)
 	expectedRoleRef := buildRoleRef(roleRefName, "ClusterRole")
 
+	allowed := argoutil.IsNamespaceClusterConfigNamespace(cr.Namespace)
+
 	exists := true
 	if err := client.Get(context.Background(), types.NamespacedName{Name: clusterRoleBinding.Name}, clusterRoleBinding); err != nil {
 		if !errors.IsNotFound(err) {
@@ -108,23 +111,10 @@ func ReconcilePromoterClusterRoleBinding(client client.Client, compName, binding
 	}
 
 	if exists {
-		if !cr.Spec.Promoter.IsEnabled() || !enabled {
+		if !cr.Spec.Promoter.IsEnabled() || !enabled || !allowed {
 			argoutil.LogResourceDeletion(log, clusterRoleBinding, fmt.Sprintf("promoter cluster role binding %s is being deleted due to being disabled", bindingName))
 			if err := client.Delete(context.Background(), clusterRoleBinding); err != nil {
 				return nil, fmt.Errorf("failed to delete promoter cluster role %s: %v", clusterRoleBinding.Name, err)
-			}
-			return clusterRoleBinding, nil
-		}
-
-		if !reflect.DeepEqual(clusterRoleBinding.Subjects, expectedSubjects) ||
-			!reflect.DeepEqual(clusterRoleBinding.RoleRef, expectedRoleRef) {
-
-			clusterRoleBinding.Subjects = expectedSubjects
-			clusterRoleBinding.RoleRef = expectedRoleRef
-
-			argoutil.LogResourceUpdate(log, clusterRoleBinding, fmt.Sprintf("promoter cluster role binding %s has the wrong subject or role ref", bindingName))
-			if err := client.Update(context.Background(), clusterRoleBinding); err != nil {
-				return nil, fmt.Errorf("failed to update promoter cluster role %s: %v", clusterRoleBinding.Name, err)
 			}
 			return clusterRoleBinding, nil
 		}
@@ -143,13 +133,23 @@ func ReconcilePromoterClusterRoleBinding(client client.Client, compName, binding
 			if err := client.Create(context.Background(), clusterRoleBinding); err != nil {
 				return nil, fmt.Errorf("failed to create promoter cluster role binding %s: %v", clusterRoleBinding.Name, err)
 			}
+			return clusterRoleBinding, nil
+		}
 
+		if !reflect.DeepEqual(clusterRoleBinding.Subjects, expectedSubjects) {
+			clusterRoleBinding.Subjects = expectedSubjects
+
+			argoutil.LogResourceUpdate(log, clusterRoleBinding, fmt.Sprintf("promoter cluster role binding %s has the wrong subject or role ref", bindingName))
+			if err := client.Update(context.Background(), clusterRoleBinding); err != nil {
+				return nil, fmt.Errorf("failed to update promoter cluster role %s: %v", clusterRoleBinding.Name, err)
+			}
+			return clusterRoleBinding, nil
 		}
 
 		return clusterRoleBinding, nil
 	}
 
-	if !cr.Spec.Promoter.IsEnabled() || !enabled {
+	if !cr.Spec.Promoter.IsEnabled() || !enabled || !allowed {
 		return clusterRoleBinding, nil
 	}
 
@@ -166,7 +166,7 @@ func ReconcilePromoterClusterRoleBinding(client client.Client, compName, binding
 }
 
 // ReconcilePromoterRoleBinding is a generic reconcilation function for RoleBindings based on the provided name and role reference
-func ReconcilePromoterRoleBinding(client client.Client, compName, bindingName, roleRefName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD, enabled bool) (*rbacv1.RoleBinding, error) {
+func ReconcilePromoterRoleBinding(client client.Client, compName, bindingName, roleRefName string, sa *corev1.ServiceAccount, cr *argoproj.ArgoCD, enabled, allowed bool) (*rbacv1.RoleBinding, error) {
 	roleBinding := buildRoleBinding(compName, bindingName, cr)
 	expectedSubjects := buildSubject(sa)
 	expectedRoleRef := buildRoleRef(roleRefName, "Role")
@@ -180,21 +180,10 @@ func ReconcilePromoterRoleBinding(client client.Client, compName, bindingName, r
 	}
 
 	if exists {
-		if !cr.Spec.Promoter.IsEnabled() || !enabled {
+		if !cr.Spec.Promoter.IsEnabled() || !enabled || !allowed {
 			argoutil.LogResourceDeletion(log, roleBinding, fmt.Sprintf("promoter cluster role binding %s is being deleted due to being disabled", bindingName))
 			if err := client.Delete(context.Background(), roleBinding); err != nil {
 				return nil, fmt.Errorf("failed to delete promoter cluster role %s: %v", roleBinding.Name, err)
-			}
-			return roleBinding, nil
-		}
-
-		if !reflect.DeepEqual(roleBinding.Subjects, expectedSubjects) {
-
-			roleBinding.Subjects = expectedSubjects
-
-			argoutil.LogResourceUpdate(log, roleBinding, fmt.Sprintf("promoter cluster role binding %s has the wrong subject or role ref", bindingName))
-			if err := client.Update(context.Background(), roleBinding); err != nil {
-				return nil, fmt.Errorf("failed to update promoter cluster role %s: %v", roleBinding.Name, err)
 			}
 			return roleBinding, nil
 		}
@@ -213,12 +202,23 @@ func ReconcilePromoterRoleBinding(client client.Client, compName, bindingName, r
 			if err := client.Create(context.Background(), roleBinding); err != nil {
 				return nil, fmt.Errorf("failed to create promoter cluster role binding %s: %v", roleBinding.Name, err)
 			}
+			return roleBinding, nil
+		}
+
+		if !reflect.DeepEqual(roleBinding.Subjects, expectedSubjects) {
+			roleBinding.Subjects = expectedSubjects
+
+			argoutil.LogResourceUpdate(log, roleBinding, fmt.Sprintf("promoter cluster role binding %s has the wrong subject or role ref", bindingName))
+			if err := client.Update(context.Background(), roleBinding); err != nil {
+				return nil, fmt.Errorf("failed to update promoter cluster role %s: %v", roleBinding.Name, err)
+			}
+			return roleBinding, nil
 		}
 
 		return roleBinding, nil
 	}
 
-	if !cr.Spec.Promoter.IsEnabled() || !enabled {
+	if !cr.Spec.Promoter.IsEnabled() || !enabled || !allowed {
 		return roleBinding, nil
 	}
 

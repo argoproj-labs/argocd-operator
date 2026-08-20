@@ -52,7 +52,7 @@ const (
 	apiServerCABundleSecretKey                  = "ca.crt"
 )
 
-var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
+var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 	Context("1-134_validate_gitops_promoter", func() {
 		const (
 			argoCDName = "test"
@@ -82,7 +82,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 		)
 
 		BeforeEach(func() {
-			fixture.EnsureParallelCleanSlate()
+			fixture.EnsureSequentialCleanSlate()
 			k8sClient, _ = fixtureUtils.GetE2ETestKubeClient()
 			ctx = context.Background()
 			ns, cleanupFunc = fixture.CreateNamespaceWithCleanupFunc("gitops-promoter-1-134")
@@ -406,7 +406,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("Verifying that argocd-server has expected extensions volume")
 			Expect(argoCDServer).Should(deploymentFixture.HaveSpecTemplateSpecVolume(corev1.Volume{
-				Name: "extensions",
+				Name: "argo-cd-operator-ui-extensions",
 				VolumeSource: corev1.VolumeSource{
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				},
@@ -427,7 +427,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Expect(container).ToNot(BeNil())
 
 			expectedVolumeMount := corev1.VolumeMount{
-				Name:      "extensions",
+				Name:      "argo-cd-operator-ui-extensions",
 				MountPath: "/tmp/extensions/",
 			}
 
@@ -458,7 +458,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			match = false
 			for _, volume := range argoCDServer.Spec.Template.Spec.Volumes {
-				if volume.Name == "extensions" {
+				if volume.Name == "argo-cd-operator-ui-extensions" {
 					match = true
 				}
 			}
@@ -469,7 +469,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			match = false
 			for _, volumeMount := range container.VolumeMounts {
-				if volumeMount.Name == "extensions" {
+				if volumeMount.Name == "argo-cd-operator-ui-extensions" {
 					match = true
 				}
 			}

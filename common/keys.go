@@ -262,7 +262,7 @@ const (
 	// ArgoCDAgentClusterRoleEnvName is an environment variable to specify a custom cluster role for the agent component of Argo CD Agent
 	ArgoCDAgentClusterRoleEnvName = "AGENT_CLUSTER_ROLE"
 
-	// GitOpsPromoterControllerClusterRoleEnvNmae is an environment variable to specify a custom cluster role for the GitOps Promoter Controller
+	// GitOpsPromoterControllerClusterRoleEnvName is an environment variable to specify a custom cluster role for the GitOps Promoter Controller
 	GitOpsPromoterControllerClusterRoleEnvName = "PROMOTER_CONTROLLER_CLUSTER_ROLE"
 
 	// GitOpsPromoterAPIServerClusterRoleEnvName is an environment variable to specify a custom cluster role for the GitOps Promoter API Server
