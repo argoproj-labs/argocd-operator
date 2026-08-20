@@ -369,11 +369,10 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoproj.ArgoCD) error {
 		common.ArgoCDKeyTLSCACert: string(caSecret.Data[common.ArgoCDKeyTLSCACert]),
 	}
 
-	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
-		return err
-	}
-
 	if !configMapExists {
+		if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
+			return err
+		}
 		cm.Data = desiredData
 		argoutil.LogResourceCreation(log, cm)
 		return r.Create(context.TODO(), cm)
