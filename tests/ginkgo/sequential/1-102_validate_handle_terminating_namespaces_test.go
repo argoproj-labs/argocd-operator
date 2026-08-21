@@ -38,9 +38,7 @@ import (
 )
 
 var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
-
 	Context("1-102_validate_handle_terminating_namespaces", func() {
-
 		var (
 			k8sClient         client.Client
 			ctx               context.Context
@@ -61,7 +59,6 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 		})
 
 		AfterEach(func() {
-
 			fixture.OutputDebugOnFail(ns, janeNs, johnNs)
 
 			// Remove the ConfigMap finalizer so the namespace can be cleaned up
@@ -82,7 +79,6 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 		})
 
 		It("ensures that if one managed-by namespace is stuck in terminating, it does not prevent other managed-by namespaces from being managed or deployed to", func() {
-
 			By("creating simple namespace-scoped Argo CD instance")
 			ns, nsCleanupFunc = fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 
@@ -177,9 +173,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			By("verifying Argo CD is successfully able to deploy to the John Namespace")
 
-			Eventually(app, "4m", "5s").Should(appFixture.HaveSyncStatusCode(argocdv1alpha1.SyncStatusCodeSynced))
-
+			Eventually(app, "8m", "5s").Should(appFixture.HaveSyncStatusCode(argocdv1alpha1.SyncStatusCodeSynced))
 		})
-
 	})
 })

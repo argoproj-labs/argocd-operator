@@ -86,7 +86,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			Expect(initContainer.VolumeMounts).To(Equal([]corev1.VolumeMount{
 				{
-					Name:      "extensions",
+					Name:      "argo-cd-operator-ui-extensions",
 					MountPath: "/tmp/extensions/",
 				},
 				{
@@ -113,7 +113,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			By("verifying argo cd server has expected extensions volume")
 			Expect(argoCDServer).Should(deploymentFixture.HaveSpecTemplateSpecVolume(corev1.Volume{
-				Name: "extensions",
+				Name: "argo-cd-operator-ui-extensions",
 				VolumeSource: corev1.VolumeSource{
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				},
@@ -126,7 +126,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			match := false
 			for _, volumeMount := range container.VolumeMounts {
 				if reflect.DeepEqual(volumeMount, corev1.VolumeMount{
-					Name:      "extensions",
+					Name:      "argo-cd-operator-ui-extensions",
 					MountPath: "/tmp/extensions/",
 				}) {
 					match = true
@@ -153,7 +153,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			By("verifying rollout-extensions volume no longer exists")
 			match = false
 			for _, volume := range argoCDServer.Spec.Template.Spec.Volumes {
-				if volume.Name == "extensions" {
+				if volume.Name == "argo-cd-operator-ui-extensions" {
 					match = true
 				}
 			}
@@ -165,7 +165,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 			match = false
 			for _, volumeMount := range container.VolumeMounts {
-				if volumeMount.Name == "extensions" {
+				if volumeMount.Name == "argo-cd-operator-ui-extensions" {
 					match = true
 				}
 			}
