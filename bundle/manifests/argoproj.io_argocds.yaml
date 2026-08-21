@@ -22761,7 +22761,7 @@ spec:
                     type: boolean
                   enabled:
                     description: Enabled defines whether gitops promoter controller
-                      should be deployed or not
+                      should be deployed or not (will default to being disabled)
                     type: boolean
                   env:
                     description: Env lets you specify the environment variables for
@@ -22991,15 +22991,13 @@ spec:
                     properties:
                       enabled:
                         description: Enabled defines whether the webhook is enabled
-                          for the Promoter's controller
+                          for the Promoter's controller (defaults to being disabled)
                         type: boolean
                       serviceType:
                         description: ServiceType defines what service type the webhook
                           service will be. If none is provided defaults to ClusterIP
                         type: string
                     type: object
-                required:
-                - enabled
                 type: object
               rbac:
                 description: RBAC defines the RBAC configuration for Argo CD.
