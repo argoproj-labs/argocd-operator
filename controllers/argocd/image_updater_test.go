@@ -622,18 +622,24 @@ func TestReconcileImageUpdater_RoleBindingForNamespace(t *testing.T) {
 	assert.True(t, errors.IsNotFound(err))
 }
 
-func TestReconcileImageUpdater_WatchNamespacesMode(t *testing.T) {
+func TestReconcileImageUpdaterRBAC_WatchScope(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
-		name               string
-		watchNamespacesEnv string // raw value set in the env var; empty string means env var not set
-		// clusterConfigNS, when non-empty, is set as ARGOCD_CLUSTER_CONFIG_NAMESPACES for the subtest
-		clusterConfigNS   string
-		expectError       bool // reconcile must return an error
+		name string
+		// watchNamespacesEnv is the raw value placed in IMAGE_UPDATER_WATCH_NAMESPACES.
+		// An empty string means the env var is not set at all.
+		watchNamespacesEnv string
+		// clusterConfigNS, when non-empty, is set as ARGOCD_CLUSTER_CONFIG_NAMESPACES.
+		clusterConfigNS string
+		// clusterNamespaces are Namespace objects pre-created in the fake client so that
+		// expandImageUpdaterWatchNamespaces can match patterns against real namespace names.
+		clusterNamespaces []string
+		expectError       bool
 		expectClusterRole bool
 		expectClusterRB   bool
-		// namespaces where a manager role is expected (testNamespace = combined role in own ns)
+		// expectManagerRoleInNS lists every namespace where a manager Role is expected.
+		// Use testNamespace to assert the combined (base + manager) role in cr.Namespace.
 		expectManagerRoleInNS []string
 	}{
 		{
@@ -649,16 +655,43 @@ func TestReconcileImageUpdater_WatchNamespacesMode(t *testing.T) {
 			expectManagerRoleInNS: []string{testNamespace},
 		},
 		{
-			name:                  "comma-separated: two namespaces",
+			name:                  "exact list: two namespaces",
 			watchNamespacesEnv:    "ns1,ns2",
+			clusterNamespaces:     []string{"ns1", "ns2"},
 			expectClusterRole:     false,
 			expectManagerRoleInNS: []string{"ns1", "ns2"},
 		},
 		{
-			name:                  "comma-separated: single namespace",
+			name:                  "exact list: single namespace",
 			watchNamespacesEnv:    "ns1",
+			clusterNamespaces:     []string{"ns1"},
 			expectClusterRole:     false,
 			expectManagerRoleInNS: []string{"ns1"},
+		},
+		{
+			// Wildcard suffix — the typical Apps-in-Any-Namespace tenant pattern.
+			name:                  "glob wildcard: suffix pattern matches subset of namespaces",
+			watchNamespacesEnv:    "*-argocd",
+			clusterNamespaces:     []string{"team-a-argocd", "team-b-argocd", "unrelated"},
+			expectClusterRole:     false,
+			expectManagerRoleInNS: []string{"team-a-argocd", "team-b-argocd"},
+		},
+		{
+			// Multiple patterns — one glob and one exact name.
+			name:                  "glob wildcard: multiple patterns",
+			watchNamespacesEnv:    "*-argocd,staging",
+			clusterNamespaces:     []string{"team-a-argocd", "staging", "prod"},
+			expectClusterRole:     false,
+			expectManagerRoleInNS: []string{"team-a-argocd", "staging"},
+		},
+		{
+			// A namespace that exists in the cluster but is not matched by the pattern must
+			// not receive any RBAC objects.
+			name:                  "glob wildcard: non-matching namespaces get no RBAC",
+			watchNamespacesEnv:    "team-*",
+			clusterNamespaces:     []string{"team-a", "other"},
+			expectClusterRole:     false,
+			expectManagerRoleInNS: []string{"team-a"},
 		},
 		{
 			name:                  "cluster-scoped: watch namespaces set to *",
@@ -697,13 +730,18 @@ func TestReconcileImageUpdater_WatchNamespacesMode(t *testing.T) {
 			})
 
 			resObjs := []client.Object{a}
+			for _, ns := range tt.clusterNamespaces {
+				resObjs = append(resObjs, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})
+			}
 			subresObjs := []client.Object{a}
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-			err := r.reconcileImageUpdaterControllerEnabled(a)
+			sa := &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa", Namespace: a.Namespace}}
+
+			err := r.reconcileImageUpdaterRBAC(a, sa)
 			if tt.expectError {
 				assert.Error(t, err)
 				return
@@ -712,7 +750,7 @@ func TestReconcileImageUpdater_WatchNamespacesMode(t *testing.T) {
 
 			for _, ns := range tt.expectManagerRoleInNS {
 				if ns == testNamespace {
-					// Namespace-scoped: base + manager rules are merged into a single role.
+					// Namespace-scoped mode: base + manager rules merged into a single role in cr.Namespace.
 					role := &rbacv1.Role{}
 					assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
 						Name:      generateResourceName(common.ArgoCDImageUpdaterControllerComponent, a),
@@ -720,7 +758,7 @@ func TestReconcileImageUpdater_WatchNamespacesMode(t *testing.T) {
 					}, role), "expected combined role in namespace %s", ns)
 					assert.NotEmpty(t, role.Rules)
 				} else {
-					// Comma-separated: manager role in the listed namespace.
+					// Pattern-list mode: per-namespace manager role.
 					role := &rbacv1.Role{}
 					assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
 						Name:      getRoleNameForApplicationSourceNamespaces(ns, a),
@@ -736,6 +774,22 @@ func TestReconcileImageUpdater_WatchNamespacesMode(t *testing.T) {
 					assert.Equal(t, role.Name, rb.RoleRef.Name)
 					assert.Equal(t, a.Namespace, rb.Subjects[0].Namespace)
 				}
+			}
+
+			// Assert namespaces that exist in the cluster but were NOT matched get no RBAC.
+			allMatched := make(map[string]struct{}, len(tt.expectManagerRoleInNS))
+			for _, ns := range tt.expectManagerRoleInNS {
+				allMatched[ns] = struct{}{}
+			}
+			for _, ns := range tt.clusterNamespaces {
+				if _, expected := allMatched[ns]; expected {
+					continue
+				}
+				err := r.Get(context.TODO(), types.NamespacedName{
+					Name:      getRoleNameForApplicationSourceNamespaces(ns, a),
+					Namespace: ns,
+				}, &rbacv1.Role{})
+				assert.True(t, errors.IsNotFound(err), "namespace %s should not have a manager role", ns)
 			}
 
 			clusterRBACName := GenerateUniqueResourceName(common.ArgoCDImageUpdaterControllerComponent, a)
@@ -909,10 +963,10 @@ func TestPruneImageUpdaterNamespaceRBAC(t *testing.T) {
 	})
 }
 
-// TestReconcileImageUpdaterControllerEnabled_PrunesStaleNamespaceRBAC verifies that when the
-// watch-namespace list shrinks, the operator removes roles and bindings for the dropped namespaces
-// without touching the remaining ones.
-func TestReconcileImageUpdaterControllerEnabled_PrunesStaleNamespaceRBAC(t *testing.T) {
+// TestReconcileImageUpdaterRBAC_PrunesStaleNamespaces verifies that when the
+// watch-namespace list shrinks, reconcileImageUpdaterRBAC removes roles and bindings
+// for the dropped namespaces without touching the remaining ones.
+func TestReconcileImageUpdaterRBAC_PrunesStaleNamespaces(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	// Start with ns1 and ns2 in the watch list.
@@ -923,15 +977,21 @@ func TestReconcileImageUpdaterControllerEnabled_PrunesStaleNamespaceRBAC(t *test
 		}
 	})
 
-	resObjs := []client.Object{a}
+	resObjs := []client.Object{
+		a,
+		&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1"}},
+		&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns2"}},
+	}
 	subresObjs := []client.Object{a}
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
+	sa := &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa", Namespace: a.Namespace}}
+
 	// First reconcile: both namespaces get roles.
-	assert.NoError(t, r.reconcileImageUpdaterControllerEnabled(a))
+	assert.NoError(t, r.reconcileImageUpdaterRBAC(a, sa))
 
 	for _, ns := range []string{"ns1", "ns2"} {
 		assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
@@ -946,7 +1006,7 @@ func TestReconcileImageUpdaterControllerEnabled_PrunesStaleNamespaceRBAC(t *test
 	}
 
 	// Second reconcile: ns2 role and binding should be pruned.
-	assert.NoError(t, r.reconcileImageUpdaterControllerEnabled(a))
+	assert.NoError(t, r.reconcileImageUpdaterRBAC(a, sa))
 
 	// ns1 still exists.
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
@@ -966,6 +1026,191 @@ func TestReconcileImageUpdaterControllerEnabled_PrunesStaleNamespaceRBAC(t *test
 		Namespace: "ns2",
 	}, &rbacv1.RoleBinding{})
 	assert.True(t, errors.IsNotFound(err), "stale role binding in ns2 should have been pruned")
+}
+
+// TestReconcileImageUpdaterDeployment_WatchNamespacesExpanded verifies that glob/regex patterns
+// in IMAGE_UPDATER_WATCH_NAMESPACES are resolved to concrete namespace names before being
+// injected into the pod env, because the image-updater controller itself does not understand patterns.
+func TestReconcileImageUpdaterDeployment_WatchNamespacesExpanded(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		name            string
+		clusterNS       []string
+		watchNamespaces string
+		wantEnvValue    string // expected value of IMAGE_UPDATER_WATCH_NAMESPACES in the pod
+	}{
+		{
+			name:            "glob pattern is expanded to concrete names",
+			clusterNS:       []string{"team-a-argocd", "team-b-argocd", "unrelated"},
+			watchNamespaces: "*-argocd",
+			wantEnvValue:    "team-a-argocd,team-b-argocd",
+		},
+		{
+			name:            "exact names are passed through unchanged",
+			clusterNS:       []string{"ns1", "ns2"},
+			watchNamespaces: "ns1,ns2",
+			wantEnvValue:    "ns1,ns2",
+		},
+		{
+			name:            "* is passed through unchanged (cluster-scoped mode)",
+			watchNamespaces: "*",
+			wantEnvValue:    "*",
+		},
+		{
+			// When the pattern matches no existing namespaces the env var must NOT be
+			// replaced with "". Overwriting with "" would silently put the pod into
+			// namespace-scoped mode while the RBAC for that mode was never created.
+			name:            "no-match pattern is left unchanged in the pod",
+			clusterNS:       []string{"unrelated"},
+			watchNamespaces: "app-*",
+			wantEnvValue:    "app-*",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.ImageUpdater.Enabled = true
+				a.Spec.ImageUpdater.Env = []v1.EnvVar{
+					{Name: "IMAGE_UPDATER_WATCH_NAMESPACES", Value: tt.watchNamespaces},
+				}
+			})
+
+			resObjs := []client.Object{a}
+			for _, ns := range tt.clusterNS {
+				resObjs = append(resObjs, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})
+			}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, resObjs, []runtime.Object{})
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			sa := &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa", Namespace: a.Namespace}}
+			assert.NoError(t, r.reconcileImageUpdaterDeployment(a, sa))
+
+			deployment := &appsv1.Deployment{}
+			assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
+				Name:      generateResourceName(common.ArgoCDImageUpdaterControllerComponent, a),
+				Namespace: a.Namespace,
+			}, deployment))
+
+			var gotValue string
+			for _, e := range deployment.Spec.Template.Spec.Containers[0].Env {
+				if e.Name == "IMAGE_UPDATER_WATCH_NAMESPACES" {
+					gotValue = e.Value
+					break
+				}
+			}
+			assert.Equal(t, tt.wantEnvValue, gotValue)
+		})
+	}
+}
+
+func TestExpandImageUpdaterWatchNamespaces(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		name            string
+		clusterNS       []string // Namespace objects to pre-create in the fake client
+		watchNamespaces string   // raw value passed to expandImageUpdaterWatchNamespaces
+		want            []string // expected result, must be sorted
+	}{
+		{
+			name:            "exact match: single namespace",
+			clusterNS:       []string{"ns1", "ns2"},
+			watchNamespaces: "ns1",
+			want:            []string{"ns1"},
+		},
+		{
+			name:            "exact match: multiple namespaces",
+			clusterNS:       []string{"ns1", "ns2", "ns3"},
+			watchNamespaces: "ns1,ns2",
+			want:            []string{"ns1", "ns2"},
+		},
+		{
+			name:            "glob: suffix wildcard",
+			clusterNS:       []string{"team-a-argocd", "team-b-argocd", "unrelated"},
+			watchNamespaces: "*-argocd",
+			want:            []string{"team-a-argocd", "team-b-argocd"},
+		},
+		{
+			name:            "glob: prefix wildcard",
+			clusterNS:       []string{"argocd-east", "argocd-west", "other"},
+			watchNamespaces: "argocd-*",
+			want:            []string{"argocd-east", "argocd-west"},
+		},
+		{
+			name:            "glob: multiple patterns, one glob and one exact",
+			clusterNS:       []string{"team-a-argocd", "staging", "prod"},
+			watchNamespaces: "*-argocd,staging",
+			want:            []string{"staging", "team-a-argocd"},
+		},
+		{
+			// Regex patterns must be wrapped in "/" to be treated as a true regular expression;
+			// without the slashes the pattern falls through to glob matching.
+			name:            "regex: slash-delimited pattern matches numeric suffix",
+			clusterNS:       []string{"tenant-001", "tenant-002", "tenant-abc", "not-tenant"},
+			watchNamespaces: "/tenant-[0-9]+/",
+			want:            []string{"tenant-001", "tenant-002"},
+		},
+		{
+			// Glob character classes work without regex delimiters.
+			name:            "glob: character class in pattern",
+			clusterNS:       []string{"tenant-001", "tenant-002", "tenant-abc"},
+			watchNamespaces: "tenant-[0-9][0-9][0-9]",
+			want:            []string{"tenant-001", "tenant-002"},
+		},
+		{
+			name:            "whitespace trimmed from each pattern",
+			clusterNS:       []string{"ns1", "ns2"},
+			watchNamespaces: " ns1 , ns2 ",
+			want:            []string{"ns1", "ns2"},
+		},
+		{
+			name:            "result is sorted regardless of cluster order",
+			clusterNS:       []string{"z-ns", "a-ns", "m-ns"},
+			watchNamespaces: "*-ns",
+			want:            []string{"a-ns", "m-ns", "z-ns"},
+		},
+		{
+			name:            "namespace matched by two patterns is returned only once",
+			clusterNS:       []string{"ns1"},
+			watchNamespaces: "ns1,ns*",
+			want:            []string{"ns1"},
+		},
+		{
+			name:            "pattern matches no namespaces",
+			clusterNS:       []string{"ns1", "ns2"},
+			watchNamespaces: "nonexistent",
+			want:            nil,
+		},
+		{
+			name:            "no cluster namespaces",
+			clusterNS:       []string{},
+			watchNamespaces: "ns1",
+			want:            nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.ImageUpdater.Enabled = true
+			})
+
+			resObjs := []client.Object{a}
+			for _, ns := range tt.clusterNS {
+				resObjs = append(resObjs, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})
+			}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, resObjs, []runtime.Object{})
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			got, err := r.expandImageUpdaterWatchNamespaces(tt.watchNamespaces)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }
 
 func TestReconcileImageUpdaterDeployment_TLSArgs(t *testing.T) {
