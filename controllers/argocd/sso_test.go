@@ -36,6 +36,8 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 	tests := []struct {
 		name                     string
 		argoCD                   *argoproj.ArgoCD
+		setup                    func()
+		teardown                 func()
 		wantErr                  bool
 		Err                      error
 		wantSSOConfigLegalStatus string
@@ -127,10 +129,48 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			Err:                      errors.New("illegal SSO configuration: Unsupported SSO provider type. Supported provider is dex"),
 			wantSSOConfigLegalStatus: "Failed",
 		},
+		{
+			name: "openshiftOAuth enabled on non-OpenShift cluster - warning only",
+			argoCD: makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+				ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
+						OpenShiftOAuth: true,
+					},
+				}
+			}),
+			wantErr:                  false,
+			wantSSOConfigLegalStatus: "",
+		},
+		{
+			name: "openshiftOAuth enabled on OpenShift cluster - no validation error",
+			argoCD: makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+				ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
+						OpenShiftOAuth: true,
+					},
+				}
+			}),
+			setup: func() {
+				versionAPIFound = true
+			},
+			teardown: func() {
+				versionAPIFound = false
+			},
+			wantErr:                  false,
+			wantSSOConfigLegalStatus: "",
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			if test.setup != nil {
+				test.setup()
+			}
+			if test.teardown != nil {
+				defer test.teardown()
+			}
 
 			resObjs := []client.Object{test.argoCD}
 			subresObjs := []client.Object{test.argoCD}

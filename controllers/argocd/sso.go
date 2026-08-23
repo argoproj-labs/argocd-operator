@@ -60,6 +60,10 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoproj.ArgoCD, argocdStatus *argopr
 			isError = true
 		}
 
+		if cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.OpenShiftOAuth && !IsOpenShiftCluster() {
+			log.Info(fmt.Sprintf("warning: OpenShift OAuth is not supported on non-OpenShift clusters for Argo CD %s in namespace %s", cr.Name, cr.Namespace))
+		}
+
 		if isError {
 			err := errors.New(illegalSSOConfiguration + errMsg)
 			log.Error(err, fmt.Sprintf("Illegal expression of SSO configuration detected for Argo CD %s in namespace %s. %s", cr.Name, cr.Namespace, errMsg))
