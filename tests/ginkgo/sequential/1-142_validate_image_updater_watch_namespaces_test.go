@@ -127,14 +127,82 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			}, "2m", "5s").Should(k8sFixture.NotExistByName())
 		}
 
+		It("verifies that creating a new namespace matching IMAGE_UPDATER_WATCH_NAMESPACES triggers automatic RBAC creation without manual operator interaction", func() {
+
+			By("creating a cluster-scoped namespace for the Argo CD instance")
+			argoNamespace, _ = fixture.CreateNamespaceWithCleanupFunc("argocd-e2e-iuw-new-ns")
+			cleanupFunctions = append(cleanupFunctions, func() { fixture.DeleteNamespace(argoNamespace) })
+
+			By("creating an initial matching namespace app-ns-1 before ArgoCD is configured")
+			appNs1, cleanup := fixture.CreateNamespaceWithCleanupFunc("app-dyn-1")
+			cleanupFunctions = append(cleanupFunctions, cleanup)
+
+			By("creating ArgoCD CR with Image Updater enabled and IMAGE_UPDATER_WATCH_NAMESPACES=app-dyn-* (glob)")
+			argoCD = &argov1beta1api.ArgoCD{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      argocdName,
+					Namespace: argoNamespace.Name,
+				},
+				Spec: argov1beta1api.ArgoCDSpec{
+					ImageUpdater: argov1beta1api.ArgoCDImageUpdaterSpec{
+						Enabled: true,
+						Env: []corev1.EnvVar{
+							{Name: "IMAGE_UPDATER_WATCH_NAMESPACES", Value: "app-dyn-*"},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+
+			By("waiting for ArgoCD instance to become available")
+			Eventually(argoCD, "5m", "5s").Should(argocdFixture.BeAvailable())
+
+			By("verifying initial RBAC is created in app-dyn-1 (pre-existing namespace matched by the pattern)")
+			expectRBACExists(appNs1.Name)
+
+			By("verifying IMAGE_UPDATER_WATCH_NAMESPACES in the deployment is set to app-dyn-1")
+			imageUpdaterDeployment := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-argocd-image-updater-controller", argocdName),
+					Namespace: argoNamespace.Name,
+				},
+			}
+			Eventually(imageUpdaterDeployment, "2m", "5s").Should(
+				deplFixture.HaveContainerWithEnvVar("IMAGE_UPDATER_WATCH_NAMESPACES", "app-dyn-1", 0),
+			)
+
+			By("creating a new namespace app-dyn-2 AFTER the operator is already running")
+			appNs2, cleanup := fixture.CreateNamespaceWithCleanupFunc("app-dyn-2")
+			cleanupFunctions = append(cleanupFunctions, cleanup)
+
+			By("verifying the operator auto-reconciles and creates RBAC in app-dyn-2 (triggered by imageUpdaterWatchNSMapper)")
+			expectRBACExists(appNs2.Name)
+
+			By("verifying IMAGE_UPDATER_WATCH_NAMESPACES in the deployment is expanded to include app-dyn-2")
+			Eventually(imageUpdaterDeployment, "2m", "5s").Should(
+				deplFixture.HaveContainerWithEnvVar("IMAGE_UPDATER_WATCH_NAMESPACES", "app-dyn-1,app-dyn-2", 0),
+			)
+
+			By("creating another non-matching namespace to confirm it does not affect RBAC or deployment env var")
+			_, cleanup = fixture.CreateNamespaceWithCleanupFunc("other-dyn-ns")
+			cleanupFunctions = append(cleanupFunctions, cleanup)
+
+			By("verifying RBAC is absent in other-dyn-ns (no match)")
+			expectRBACAbsent("other-dyn-ns")
+
+			By("verifying deployment env var is still app-dyn-1,app-dyn-2 after unmatched namespace creation")
+			Eventually(imageUpdaterDeployment, "1m", "5s").Should(
+				deplFixture.HaveContainerWithEnvVar("IMAGE_UPDATER_WATCH_NAMESPACES", "app-dyn-1,app-dyn-2", 0),
+			)
+		})
+
 		It("verifies glob and regex patterns in IMAGE_UPDATER_WATCH_NAMESPACES create RBAC only in matching namespaces and prune stale entries", func() {
 
 			By("creating a cluster-scoped namespace for the Argo CD instance")
 			argoNamespace, _ = fixture.CreateNamespaceWithCleanupFunc("argocd-e2e-iuw-ns")
-			// argoNamespace is cleaned up via argoCD deletion first, then the namespace cleanup below.
 			cleanupFunctions = append(cleanupFunctions, func() { fixture.DeleteNamespace(argoNamespace) })
 
-			By("creating target namespaces: app-ns-1 and app-ns-2 (should match), other-ns (should not)")
+			By("creating target namespaces: app-ns-1 and app-ns-2 (match app-ns-*), other-ns (no match)")
 			appNs1, cleanup := fixture.CreateNamespaceWithCleanupFunc("app-ns-1")
 			cleanupFunctions = append(cleanupFunctions, cleanup)
 
@@ -179,7 +247,8 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					Namespace: argoNamespace.Name,
 				},
 			}
-			// expandImageUpdaterWatchNamespaces sorts results, so app-ns-1 comes before app-ns-2.
+			// resolveImageUpdaterWatchNamespaces sorts within each pattern's matches, so
+			// app-ns-1 comes before app-ns-2.
 			Eventually(imageUpdaterDeployment, "2m", "5s").Should(
 				deplFixture.HaveContainerWithEnvVar("IMAGE_UPDATER_WATCH_NAMESPACES", "app-ns-1,app-ns-2", 0),
 			)
@@ -191,13 +260,13 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				}
 			})
 
-			By("verifying RBAC for app-ns-1 is retained")
+			By("verifying RBAC for app-ns-1 is retained (regex still matches)")
 			expectRBACExists(appNs1.Name)
 
-			By("verifying RBAC for app-ns-2 is pruned after pattern change")
+			By("verifying RBAC for app-ns-2 is pruned (no longer matched by any pattern)")
 			expectRBACPruned(appNs2.Name)
 
-			By("verifying IMAGE_UPDATER_WATCH_NAMESPACES env var in the deployment is updated to only app-ns-1")
+			By("verifying IMAGE_UPDATER_WATCH_NAMESPACES in the deployment is updated to only app-ns-1")
 			Eventually(imageUpdaterDeployment, "2m", "5s").Should(
 				deplFixture.HaveContainerWithEnvVar("IMAGE_UPDATER_WATCH_NAMESPACES", "app-ns-1", 0),
 			)

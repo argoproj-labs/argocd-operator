@@ -52,7 +52,28 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterControllerEnabled(cr *argoproj.Ar
 		return err
 	}
 
-	if err := r.reconcileImageUpdaterRBAC(cr, sa); err != nil {
+	// Resolve the concrete namespace set once so that both RBAC and the deployment
+	// reconciliation operate on the same snapshot. If a namespace were created between
+	// two independent List calls, the pod could receive that namespace in
+	// IMAGE_UPDATER_WATCH_NAMESPACES without the required manager Role/RoleBinding.
+	watchNamespaces := ""
+	if env := argoutil.EnvGet(cr.Spec.ImageUpdater.Env, "IMAGE_UPDATER_WATCH_NAMESPACES"); env != nil {
+		watchNamespaces = strings.TrimSpace(env.Value)
+	}
+	var expandedNamespaces []string
+	if watchNamespaces != "" && watchNamespaces != "*" {
+		expandedNamespaces, err = r.expandImageUpdaterWatchNamespaces(watchNamespaces)
+		if err != nil {
+			return err
+		}
+		if len(expandedNamespaces) == 0 {
+			log.Info("IMAGE_UPDATER_WATCH_NAMESPACES matched no existing namespaces; "+
+				"no per-namespace RBAC will be created and the image-updater will have no manager permissions",
+				"pattern", watchNamespaces)
+		}
+	}
+
+	if err := r.reconcileImageUpdaterRBAC(cr, sa, watchNamespaces, expandedNamespaces); err != nil {
 		return err
 	}
 
@@ -85,7 +106,7 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterControllerEnabled(cr *argoproj.Ar
 
 	if sa != nil {
 		log.Info("reconciling Image Updater deployment")
-		if err := r.reconcileImageUpdaterDeployment(cr, sa); err != nil {
+		if err := r.reconcileImageUpdaterDeployment(cr, sa, watchNamespaces, expandedNamespaces); err != nil {
 			return err
 		}
 	}
@@ -94,19 +115,20 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterControllerEnabled(cr *argoproj.Ar
 }
 
 // reconcileImageUpdaterRBAC reconciles all RBAC for the Image Updater controller.
-// It reads IMAGE_UPDATER_WATCH_NAMESPACES and handles three modes:
-//   - "":        namespace-scoped — single Role covering both base and manager rules in cr.Namespace.
-//   - "*":       cluster-scoped — base Role in cr.Namespace + ClusterRole for manager rules.
-//   - patterns:  comma-separated list (glob/regex) — base Role in cr.Namespace + per-namespace
-//     manager Roles in every concrete namespace that matches a pattern.
+// watchNamespaces is the raw IMAGE_UPDATER_WATCH_NAMESPACES value; expandedNamespaces
+// is the pre-computed concrete list resolved by the caller.
+// Accepting both as parameters ensures RBAC and deployment reconciliation share the same
+// namespace snapshot, preventing a race where a namespace created between independent List
+// calls could appear in the deployment env var without a manager Role/RoleBinding.
+//
+// It handles three modes:
+//   - "*":      cluster-scoped — base Role in cr.Namespace + ClusterRole for manager rules.
+//   - "":       namespace-scoped — single Role covering both base and manager rules in cr.Namespace.
+//   - patterns: comma-separated list (glob/regex) — base Role in cr.Namespace + per-namespace
+//     manager Roles in every concrete namespace from expandedNamespaces.
 //
 // In all cases, stale per-namespace Roles/RoleBindings from a previous configuration are pruned.
-func (r *ReconcileArgoCD) reconcileImageUpdaterRBAC(cr *argoproj.ArgoCD, sa *corev1.ServiceAccount) error {
-	watchNamespaces := ""
-	if env := argoutil.EnvGet(cr.Spec.ImageUpdater.Env, "IMAGE_UPDATER_WATCH_NAMESPACES"); env != nil {
-		watchNamespaces = strings.TrimSpace(env.Value)
-	}
-
+func (r *ReconcileArgoCD) reconcileImageUpdaterRBAC(cr *argoproj.ArgoCD, sa *corev1.ServiceAccount, watchNamespaces string, expandedNamespaces []string) error {
 	// When the mode is not cluster-scoped, remove any ClusterRole/ClusterRoleBinding that may
 	// have been created by a previous reconcile cycle when watchNamespaces was "*".
 	if watchNamespaces != "*" {
@@ -169,7 +191,7 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterRBAC(cr *argoproj.ArgoCD, sa *cor
 
 	default:
 		// Comma-separated list (may contain glob/regex patterns): base role in cr.Namespace
-		// + manager Role in each concrete namespace that matches a pattern.
+		// + manager Role in each concrete namespace from the pre-computed expandedNamespaces.
 		log.Info("reconciling Image Updater role")
 		role, err := r.reconcileImageUpdaterRole(cr, policyRuleForRoleForImageUpdaterController())
 		if err != nil {
@@ -180,16 +202,6 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterRBAC(cr *argoproj.ArgoCD, sa *cor
 			if err := r.reconcileImageUpdaterRoleBinding(cr, role, sa); err != nil {
 				return err
 			}
-		}
-
-		expandedNamespaces, err := r.expandImageUpdaterWatchNamespaces(watchNamespaces)
-		if err != nil {
-			return err
-		}
-		if len(expandedNamespaces) == 0 {
-			log.Info("IMAGE_UPDATER_WATCH_NAMESPACES matched no existing namespaces; "+
-				"no per-namespace RBAC will be created and the image-updater will have no manager permissions",
-				"pattern", watchNamespaces)
 		}
 
 		for _, ns := range expandedNamespaces {
@@ -239,7 +251,6 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterControllerDisabled(cr *argoproj.A
 	if clusterRole.Name == "" {
 		clusterRole.Name = clusterRoleName
 	}
-	// delete network policies when disable
 	// delete network policy when disabled
 	npName := generateResourceName(ImageUpdaterNetworkPolicy, cr)
 	np := &networkingv1.NetworkPolicy{}
@@ -254,7 +265,7 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterControllerDisabled(cr *argoproj.A
 	}
 
 	log.Info("deleting Image Updater deployment")
-	if err := r.reconcileImageUpdaterDeployment(cr, sa); err != nil {
+	if err := r.reconcileImageUpdaterDeployment(cr, sa, "", nil); err != nil {
 		return err
 	}
 
@@ -577,7 +588,7 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterConfigMap(cr *argoproj.ArgoCD, de
 	return r.reconcileSecretConfigMapHelper(cr, desiredConfigMap)
 }
 
-func (r *ReconcileArgoCD) reconcileImageUpdaterDeployment(cr *argoproj.ArgoCD, sa *corev1.ServiceAccount) error {
+func (r *ReconcileArgoCD) reconcileImageUpdaterDeployment(cr *argoproj.ArgoCD, sa *corev1.ServiceAccount, watchNamespaces string, expandedNamespaces []string) error {
 
 	desiredDeployment := newDeploymentWithSuffix(common.ArgoCDImageUpdaterControllerComponent, "controller", cr)
 
@@ -590,23 +601,20 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterDeployment(cr *argoproj.ArgoCD, s
 	imageUpdaterEnv = argoutil.EnvMerge(imageUpdaterEnv, proxyEnvVars(), false)
 
 	// IMAGE_UPDATER_WATCH_NAMESPACES may contain glob/regex patterns, but the image-updater
-	// controller only understands concrete namespace names. Expand any patterns here and
-	// replace the env var value with the resolved comma-separated list before it reaches the pod.
-	// If no namespaces match the pattern yet, leave the env var unchanged.
-	if env := argoutil.EnvGet(imageUpdaterEnv, "IMAGE_UPDATER_WATCH_NAMESPACES"); env != nil {
-		rawValue := strings.TrimSpace(env.Value)
-		if rawValue != "" && rawValue != "*" {
-			expanded, err := r.expandImageUpdaterWatchNamespaces(rawValue)
-			if err != nil {
-				return err
-			}
-			if len(expanded) > 0 {
-				imageUpdaterEnv = argoutil.EnvSet(imageUpdaterEnv, corev1.EnvVar{
-					Name:  "IMAGE_UPDATER_WATCH_NAMESPACES",
-					Value: strings.Join(expanded, ","),
-				})
-			}
+	// controller only understands concrete namespace names. Use the pre-computed
+	// expandedNamespaces (resolved once by the caller alongside RBAC) to set the env var.
+	// If expandedNamespaces is empty the pattern currently matches nothing: keep the raw
+	// value so the pod fails with a meaningful error rather than silently switching to
+	// namespace-scoped mode without the required RBAC.
+	if watchNamespaces != "" && watchNamespaces != "*" {
+		envValue := watchNamespaces // fallback: preserve raw pattern when nothing matched yet
+		if len(expandedNamespaces) > 0 {
+			envValue = strings.Join(expandedNamespaces, ",")
 		}
+		imageUpdaterEnv = argoutil.EnvSet(imageUpdaterEnv, corev1.EnvVar{
+			Name:  "IMAGE_UPDATER_WATCH_NAMESPACES",
+			Value: envValue,
+		})
 	}
 
 	podSpec := &desiredDeployment.Spec.Template.Spec

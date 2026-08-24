@@ -2,6 +2,7 @@ package argocd
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -32,6 +33,25 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 )
+
+// testResolveWatchNamespaces mirrors the logic in reconcileImageUpdaterControllerEnabled:
+// it extracts watchNamespaces from the CR env and expands patterns to concrete namespace
+// names using the fake client. Tests use this to obtain pre-computed values before calling
+// reconcileImageUpdaterRBAC or reconcileImageUpdaterDeployment directly.
+func testResolveWatchNamespaces(t *testing.T, r *ReconcileArgoCD, a *argoproj.ArgoCD) (string, []string) {
+	t.Helper()
+	watchNamespaces := ""
+	if env := argoutil.EnvGet(a.Spec.ImageUpdater.Env, "IMAGE_UPDATER_WATCH_NAMESPACES"); env != nil {
+		watchNamespaces = strings.TrimSpace(env.Value)
+	}
+	var expanded []string
+	if watchNamespaces != "" && watchNamespaces != "*" {
+		var err error
+		expanded, err = r.expandImageUpdaterWatchNamespaces(watchNamespaces)
+		require.NoError(t, err)
+	}
+	return watchNamespaces, expanded
+}
 
 func TestReconcileImageUpdater_CreateRoles(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
@@ -235,7 +255,7 @@ func TestReconcileImageUpdater_CreateDeployments(t *testing.T) {
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 	sa := v1.ServiceAccount{}
 
-	assert.NoError(t, r.reconcileImageUpdaterDeployment(a, &sa))
+	assert.NoError(t, r.reconcileImageUpdaterDeployment(a, &sa, "", nil))
 
 	deployment := &appsv1.Deployment{}
 	assert.NoError(t, r.Get(
@@ -401,7 +421,7 @@ func TestReconcileImageUpdater_CreateDeployments(t *testing.T) {
 	}
 
 	a.Spec.ImageUpdater.Enabled = false
-	err := r.reconcileImageUpdaterDeployment(a, &sa)
+	err := r.reconcileImageUpdaterDeployment(a, &sa, "", nil)
 	assert.NoError(t, err)
 
 	err = r.Get(context.TODO(), types.NamespacedName{
@@ -741,7 +761,8 @@ func TestReconcileImageUpdaterRBAC_WatchScope(t *testing.T) {
 
 			sa := &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa", Namespace: a.Namespace}}
 
-			err := r.reconcileImageUpdaterRBAC(a, sa)
+			ws, expanded := testResolveWatchNamespaces(t, r, a)
+			err := r.reconcileImageUpdaterRBAC(a, sa, ws, expanded)
 			if tt.expectError {
 				assert.Error(t, err)
 				return
@@ -831,7 +852,7 @@ func TestReconcileImageUpdater_testEnvVars(t *testing.T) {
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	sa := v1.ServiceAccount{}
-	assert.NoError(t, r.reconcileImageUpdaterDeployment(a, &sa))
+	assert.NoError(t, r.reconcileImageUpdaterDeployment(a, &sa, "", nil))
 
 	deployment := &appsv1.Deployment{}
 	assert.NoError(t, r.Get(
@@ -862,7 +883,7 @@ func TestReconcileImageUpdater_testEnvVars(t *testing.T) {
 	assert.NoError(t, r.Update(context.TODO(), deployment))
 
 	// Reconcile back
-	assert.NoError(t, r.reconcileImageUpdaterDeployment(a, &sa))
+	assert.NoError(t, r.reconcileImageUpdaterDeployment(a, &sa, "", nil))
 
 	// Get the updated deployment
 	assert.NoError(t, r.Get(
@@ -991,7 +1012,8 @@ func TestReconcileImageUpdaterRBAC_PrunesStaleNamespaces(t *testing.T) {
 	sa := &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa", Namespace: a.Namespace}}
 
 	// First reconcile: both namespaces get roles.
-	assert.NoError(t, r.reconcileImageUpdaterRBAC(a, sa))
+	ws, expanded := testResolveWatchNamespaces(t, r, a)
+	assert.NoError(t, r.reconcileImageUpdaterRBAC(a, sa, ws, expanded))
 
 	for _, ns := range []string{"ns1", "ns2"} {
 		assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
@@ -1006,7 +1028,8 @@ func TestReconcileImageUpdaterRBAC_PrunesStaleNamespaces(t *testing.T) {
 	}
 
 	// Second reconcile: ns2 role and binding should be pruned.
-	assert.NoError(t, r.reconcileImageUpdaterRBAC(a, sa))
+	ws, expanded = testResolveWatchNamespaces(t, r, a)
+	assert.NoError(t, r.reconcileImageUpdaterRBAC(a, sa, ws, expanded))
 
 	// ns1 still exists.
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
@@ -1066,6 +1089,24 @@ func TestReconcileImageUpdaterDeployment_WatchNamespacesExpanded(t *testing.T) {
 			watchNamespaces: "app-*",
 			wantEnvValue:    "app-*",
 		},
+		{
+			// Mixed list where one pattern has matches and another does not.
+			// expandImageUpdaterWatchNamespaces returns only concrete matches, so
+			// the unmatched "future-*" is dropped from the deployment env var.
+			// The concrete names are sorted.
+			name:            "mixed-match: matched patterns expanded, unmatched pattern dropped",
+			clusterNS:       []string{"team-a", "team-b", "unrelated"},
+			watchNamespaces: "team-*,future-*",
+			wantEnvValue:    "team-a,team-b",
+		},
+		{
+			// Exact name alongside an unmatched glob: exact name expands normally,
+			// unmatched glob is dropped from the env var.
+			name:            "exact name expands, unmatched glob dropped",
+			clusterNS:       []string{"ns1"},
+			watchNamespaces: "ns1,app-*",
+			wantEnvValue:    "ns1",
+		},
 	}
 
 	for _, tt := range tests {
@@ -1086,7 +1127,8 @@ func TestReconcileImageUpdaterDeployment_WatchNamespacesExpanded(t *testing.T) {
 			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 			sa := &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa", Namespace: a.Namespace}}
-			assert.NoError(t, r.reconcileImageUpdaterDeployment(a, sa))
+			ws, expanded := testResolveWatchNamespaces(t, r, a)
+			assert.NoError(t, r.reconcileImageUpdaterDeployment(a, sa, ws, expanded))
 
 			deployment := &appsv1.Deployment{}
 			assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
@@ -1260,7 +1302,7 @@ func TestReconcileImageUpdaterDeployment_TLSArgs(t *testing.T) {
 				Scheme:                  scheme,
 				CentralTLSConfigProfile: tt.centralTLS,
 			}
-			err := r.reconcileImageUpdaterDeployment(cr, sa)
+			err := r.reconcileImageUpdaterDeployment(cr, sa, "", nil)
 			require.NoError(t, err)
 			deployment := &appsv1.Deployment{}
 			err = client.Get(context.TODO(), types.NamespacedName{Name: nameWithSuffix(common.ArgoCDImageUpdaterControllerComponent, cr), Namespace: cr.Namespace}, deployment)
