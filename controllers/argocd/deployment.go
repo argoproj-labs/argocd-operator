@@ -1424,7 +1424,7 @@ func getRolloutInitContainer() []corev1.Container {
 		containers[0].SecurityContext.RunAsUser = ptr.To(int64(1000))
 	}
 
-	if value, exists := os.LookupEnv(common.ArgoCDExtensionImageEnvName); exists {
+	if value, exists := os.LookupEnv(common.ArgoCDRolloutsExtensionImageEnvName); exists {
 		containers[0].Image = value
 	} else {
 		containers[0].Image = common.ArgoCDExtensionInstallerImage
@@ -1460,7 +1460,7 @@ func getPromoterInitContainer() []corev1.Container {
 		containers[0].SecurityContext.RunAsUser = ptr.To(int64(1000))
 	}
 
-	if value, exists := os.LookupEnv(common.ArgoCDExtensionImageEnvName); exists {
+	if value, exists := os.LookupEnv(common.ArgoCDPromoterExtensionImageEnvName); exists {
 		containers[0].Image = value
 	} else {
 		containers[0].Image = common.ArgoCDExtensionInstallerImage

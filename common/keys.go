@@ -208,7 +208,10 @@ const (
 
 	// ArgoCDExtensionImageEnvName is the environment variable used to get the image
 	// to be used for the Argo-CD extension image
-	ArgoCDExtensionImageEnvName = "ARGOCD_EXTENSION_IMAGE"
+	ArgoCDRolloutsExtensionImageEnvName = "ROLLOUTS_EXTENSION_IMAGE"
+
+	// ArgoCDPromoterExtensionEnvName is the environment variable used to get the image for the GitOps Promoter Extension
+	ArgoCDPromoterExtensionImageEnvName = "PROMOTER_EXTENSION_IMAGE"
 
 	// ArgoCDRedisHAProxyImageEnvName is the environment variable used to get the image
 	// to used for the Redis HA Proxy container.

@@ -2925,7 +2925,7 @@ func Test_getRolloutInitContainer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.envSet {
-				err := os.Setenv(common.ArgoCDExtensionImageEnvName, "updated_container")
+				err := os.Setenv(common.ArgoCDRolloutsExtensionImageEnvName, "updated_container")
 				assert.NoError(t, err)
 			}
 
@@ -3644,4 +3644,44 @@ func TestReconcileServer_PromoterUIExtension(t *testing.T) {
 		}
 	}
 	assert.True(t, foundTmpVolumeMount, "expected volume mount 'tmp' to be present in container")
+}
+
+func Test_getPromoterInitContainer(t *testing.T) {
+	tests := []struct {
+		name      string
+		envSet    bool
+		wantImage string
+		wantEnv   []corev1.EnvVar
+	}{
+		{
+			name:      "when running in argocd-operator",
+			envSet:    false,
+			wantImage: common.ArgoCDExtensionInstallerImage,
+			wantEnv: []corev1.EnvVar{
+				{
+					Name:  "EXTENSION_URL",
+					Value: common.GitopsPromoterExtensionURL,
+				},
+			},
+		},
+		{
+			name:      "when running in gitops-operator",
+			envSet:    true,
+			wantImage: "updated_container",
+			wantEnv:   nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.envSet {
+				err := os.Setenv(common.ArgoCDPromoterExtensionImageEnvName, "updated_container")
+				assert.NoError(t, err)
+			}
+
+			containers := getPromoterInitContainer()
+
+			assert.Equalf(t, tt.wantImage, containers[0].Image, "Image check")
+			assert.Equalf(t, tt.wantEnv, containers[0].Env, "Env check")
+		})
+	}
 }
