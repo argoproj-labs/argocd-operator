@@ -62,6 +62,7 @@ nav:
   - Apps in Any Namespace: usage/apps-in-any-namespace.md
   - Appsets in Any Namespace: usage/appsets-in-any-namespace.md
   - Custom labels and annotations: usage/custom_labels_annotations.md
+  - GitOps Promoter: usage/gitops-promoter.md
 - Reference:
   - ArgoCD: reference/argocd.md
   - ApplicationSet:
