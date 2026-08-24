@@ -313,9 +313,9 @@ func (r *ReconcileArgoCD) imageUpdaterWatchNSMapper(ctx context.Context, o clien
 			// "*" → cluster-wide (no per-namespace patterns)
 			continue
 		}
-		patterns := strings.Split(watchNS, ",")
-		for j := range patterns {
-			patterns[j] = strings.TrimSpace(patterns[j])
+		patterns := splitAndFilterPatterns(watchNS)
+		if len(patterns) == 0 {
+			continue
 		}
 		if glob.MatchStringInList(patterns, namespaceName, glob.REGEXP) {
 			result = append(result, reconcile.Request{

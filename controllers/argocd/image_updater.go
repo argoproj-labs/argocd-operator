@@ -768,14 +768,28 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterDeployment(cr *argoproj.ArgoCD, s
 	return r.reconcileDeploymentHelper(cr, desiredDeployment, "image updater", cr.Spec.ImageUpdater.Enabled)
 }
 
+// splitAndFilterPatterns splits a comma-separated pattern string, trims whitespace from
+// each token, and discards empty entries that result from trailing/leading commas or
+// consecutive commas. An empty pattern would match every namespace under glob semantics,
+// which could silently grant cluster-wide RBAC access.
+func splitAndFilterPatterns(raw string) []string {
+	var patterns []string
+	for _, p := range strings.Split(raw, ",") {
+		if t := strings.TrimSpace(p); t != "" {
+			patterns = append(patterns, t)
+		}
+	}
+	return patterns
+}
+
 // expandImageUpdaterWatchNamespaces lists all cluster namespaces and returns those that
 // match any pattern in the comma-separated watchNamespaces value. Each pattern may be a
 // glob-style wildcard or a full regular expression (the same semantics used by
 // .spec.applicationSet.sourceNamespaces). The returned slice is sorted for determinism.
 func (r *ReconcileArgoCD) expandImageUpdaterWatchNamespaces(watchNamespaces string) ([]string, error) {
-	patterns := strings.Split(watchNamespaces, ",")
-	for i := range patterns {
-		patterns[i] = strings.TrimSpace(patterns[i])
+	patterns := splitAndFilterPatterns(watchNamespaces)
+	if len(patterns) == 0 {
+		return nil, nil
 	}
 
 	clusterNamespaces := &corev1.NamespaceList{}

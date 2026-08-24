@@ -133,7 +133,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			argoNamespace, _ = fixture.CreateNamespaceWithCleanupFunc("argocd-e2e-iuw-new-ns")
 			cleanupFunctions = append(cleanupFunctions, func() { fixture.DeleteNamespace(argoNamespace) })
 
-			By("creating an initial matching namespace app-ns-1 before ArgoCD is configured")
+			By("creating an initial matching namespace app-dyn-1 before ArgoCD is configured")
 			appNs1, cleanup := fixture.CreateNamespaceWithCleanupFunc("app-dyn-1")
 			cleanupFunctions = append(cleanupFunctions, cleanup)
 

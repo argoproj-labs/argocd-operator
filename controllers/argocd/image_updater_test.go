@@ -1232,6 +1232,24 @@ func TestExpandImageUpdaterWatchNamespaces(t *testing.T) {
 			watchNamespaces: "ns1",
 			want:            nil,
 		},
+		{
+			name:            "trailing comma does not produce an empty match-all pattern",
+			clusterNS:       []string{"app-ns", "other-ns"},
+			watchNamespaces: "app-ns,",
+			want:            []string{"app-ns"},
+		},
+		{
+			name:            "leading and trailing commas are stripped",
+			clusterNS:       []string{"app-ns"},
+			watchNamespaces: ",app-ns,",
+			want:            []string{"app-ns"},
+		},
+		{
+			name:            "only commas returns nil (no valid patterns)",
+			clusterNS:       []string{"app-ns"},
+			watchNamespaces: ",,,",
+			want:            nil,
+		},
 	}
 
 	for _, tt := range tests {
