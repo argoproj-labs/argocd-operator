@@ -140,7 +140,7 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterRBAC(cr *argoproj.ArgoCD, sa *cor
 	// desiredNamespaces tracks which per-namespace Roles/RoleBindings should exist after this
 	// reconcile. It is populated only in the pattern-list case; for "*" and "" it stays empty,
 	// which causes pruneImageUpdaterNamespaceRBAC to remove any stale per-namespace objects.
-	desiredNamespaces := map[string]struct{}{}
+	desiredNamespaces := map[string]any{}
 
 	switch watchNamespaces {
 	case "*":
@@ -205,7 +205,7 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterRBAC(cr *argoproj.ArgoCD, sa *cor
 		}
 
 		for _, ns := range expandedNamespaces {
-			desiredNamespaces[ns] = struct{}{}
+			desiredNamespaces[ns] = nil
 			log.Info("reconciling Image Updater manager role", "namespace", ns)
 			nsRole, err := r.reconcileImageUpdaterRoleForNamespace(ns, cr, policyRuleForRoleManagerRoleForImageUpdaterController())
 			if err != nil {
@@ -299,7 +299,7 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterControllerDisabled(cr *argoproj.A
 	// Delete all per-namespace Roles/RoleBindings previously created for any watch-namespace list.
 	// pruneImageUpdaterNamespaceRBAC with an empty desired set removes everything it finds by label.
 	log.Info("deleting Image Updater namespace roles and role bindings")
-	if err := r.pruneImageUpdaterNamespaceRBAC(cr, map[string]struct{}{}); err != nil {
+	if err := r.pruneImageUpdaterNamespaceRBAC(cr, map[string]any{}); err != nil {
 		return err
 	}
 
@@ -463,7 +463,7 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterRoleBindingForNamespace(namespace
 // whose namespace is not present in desiredNamespaces. Pass an empty map to remove all of them
 // (used when Image Updater is disabled). Only objects carrying imageUpdaterManagedNamespaceLabel
 // are considered, so no other operator-managed RBAC is touched.
-func (r *ReconcileArgoCD) pruneImageUpdaterNamespaceRBAC(cr *argoproj.ArgoCD, desiredNamespaces map[string]struct{}) error {
+func (r *ReconcileArgoCD) pruneImageUpdaterNamespaceRBAC(cr *argoproj.ArgoCD, desiredNamespaces map[string]any) error {
 	matchLabels := client.MatchingLabels{
 		common.ArgoCDKeyName:              cr.Name,
 		imageUpdaterManagedNamespaceLabel: "true",

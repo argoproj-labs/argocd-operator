@@ -810,7 +810,7 @@ func TestReconcileImageUpdaterRBAC_WatchScope(t *testing.T) {
 					Name:      getRoleNameForApplicationSourceNamespaces(ns, a),
 					Namespace: ns,
 				}, &rbacv1.Role{})
-				assert.True(t, errors.IsNotFound(err), "namespace %s should not have a manager role", ns)
+				assert.True(t, errors.IsNotFound(err), "namespace %s should not have a manager role, got error: %v", ns, err)
 			}
 
 			clusterRBACName := GenerateUniqueResourceName(common.ArgoCDImageUpdaterControllerComponent, a)
@@ -934,7 +934,7 @@ func TestPruneImageUpdaterNamespaceRBAC(t *testing.T) {
 
 	t.Run("prune removes roles not in the desired set", func(t *testing.T) {
 		// Keep only ns1; ns2 and ns3 should be pruned.
-		desired := map[string]struct{}{"ns1": {}}
+		desired := map[string]any{"ns1": nil}
 		assert.NoError(t, r.pruneImageUpdaterNamespaceRBAC(a, desired))
 
 		// ns1 must still exist.
@@ -964,7 +964,7 @@ func TestPruneImageUpdaterNamespaceRBAC(t *testing.T) {
 	})
 
 	t.Run("prune with empty set removes all remaining namespace RBAC", func(t *testing.T) {
-		assert.NoError(t, r.pruneImageUpdaterNamespaceRBAC(a, map[string]struct{}{}))
+		assert.NoError(t, r.pruneImageUpdaterNamespaceRBAC(a, map[string]any{}))
 
 		err := r.Get(context.TODO(), types.NamespacedName{
 			Name:      getRoleNameForApplicationSourceNamespaces("ns1", a),
@@ -980,7 +980,7 @@ func TestPruneImageUpdaterNamespaceRBAC(t *testing.T) {
 	})
 
 	t.Run("prune is idempotent on empty cluster", func(t *testing.T) {
-		assert.NoError(t, r.pruneImageUpdaterNamespaceRBAC(a, map[string]struct{}{}))
+		assert.NoError(t, r.pruneImageUpdaterNamespaceRBAC(a, map[string]any{}))
 	})
 }
 
