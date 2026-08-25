@@ -1148,6 +1148,50 @@ func TestReconcileImageUpdaterDeployment_WatchNamespacesExpanded(t *testing.T) {
 	}
 }
 
+func TestNormalizeWatchNamespaces(t *testing.T) {
+	tests := []struct {
+		name    string
+		raw     string
+		want    string
+		wantErr bool
+	}{
+		// Canonical sentinels pass through unchanged.
+		{name: "empty string (namespace-scoped)", raw: "", want: ""},
+		{name: "bare * (cluster-scoped)", raw: "*", want: "*"},
+
+		// Trailing/leading commas around sole *.
+		{name: "trailing comma on *", raw: "*,", want: "*"},
+		{name: "leading comma on *", raw: ",*", want: "*"},
+		{name: "* surrounded by commas", raw: ",*,", want: "*"},
+
+		// Only commas collapse to namespace-scoped.
+		{name: "only commas", raw: ",,,", want: ""},
+
+		// * mixed with other patterns is rejected.
+		{name: "* mixed with pattern", raw: "*,team-a", wantErr: true},
+		{name: "pattern then *", raw: "team-a,*", wantErr: true},
+		{name: "* in the middle of a list", raw: "app-*,*,team-b", wantErr: true},
+
+		// Valid pattern lists are returned unchanged.
+		{name: "single glob pattern", raw: "app-*", want: "app-*"},
+		{name: "multiple patterns", raw: "app-*,team-b", want: "app-*,team-b"},
+		{name: "regex pattern", raw: "/^app-[a-z]+$/", want: "/^app-[a-z]+$/"},
+		{name: "pattern with trailing comma (raw unchanged)", raw: "app-*,", want: "app-*,"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := normalizeWatchNamespaces(tt.raw)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
 func TestExpandImageUpdaterWatchNamespaces(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 

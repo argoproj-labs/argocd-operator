@@ -308,12 +308,14 @@ func (r *ReconcileArgoCD) imageUpdaterWatchNSMapper(ctx context.Context, o clien
 			continue
 		}
 		watchNS := strings.TrimSpace(env.Value)
-		if watchNS == "" || watchNS == "*" {
-			// "" → namespace-scoped (no per-namespace patterns)
-			// "*" → cluster-wide (no per-namespace patterns)
+		// normalizeWatchNamespaces canonicalizes "*," → "*", rejects "*,team-a", etc.
+		// On error (invalid config) or when the value resolves to a sentinel, skip:
+		// the main reconcile loop will surface the error.
+		normalized, err := normalizeWatchNamespaces(watchNS)
+		if err != nil || normalized == "" || normalized == "*" {
 			continue
 		}
-		patterns := splitAndFilterPatterns(watchNS)
+		patterns := splitAndFilterPatterns(normalized)
 		if len(patterns) == 0 {
 			continue
 		}

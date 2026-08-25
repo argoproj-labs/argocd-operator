@@ -1251,6 +1251,18 @@ func TestReconcileArgoCD_imageUpdaterWatchNSMapper_EmptyPatterns(t *testing.T) {
 			triggerNS:      "other-ns",
 			wantReconcile:  false,
 		},
+		{
+			name:           "sole * with trailing comma is treated as cluster-scoped (skipped by mapper)",
+			watchNamespace: "*,",
+			triggerNS:      "any-namespace",
+			wantReconcile:  false,
+		},
+		{
+			name:           "* mixed with pattern is skipped by mapper (invalid config handled by reconciler)",
+			watchNamespace: "*,team-a",
+			triggerNS:      "team-a",
+			wantReconcile:  false,
+		},
 	}
 
 	for _, tt := range tests {

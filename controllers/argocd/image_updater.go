@@ -60,6 +60,15 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterControllerEnabled(cr *argoproj.Ar
 	if env := argoutil.EnvGet(cr.Spec.ImageUpdater.Env, "IMAGE_UPDATER_WATCH_NAMESPACES"); env != nil {
 		watchNamespaces = strings.TrimSpace(env.Value)
 	}
+
+	// Normalize before branching: canonicalize sole-"*" variants (e.g. "*,") back to the
+	// "*" sentinel and reject ambiguous mixes like "*,team-a" that would bypass the
+	// cluster-scope restriction in reconcileImageUpdaterRBAC.
+	watchNamespaces, err = normalizeWatchNamespaces(watchNamespaces)
+	if err != nil {
+		return err
+	}
+
 	var expandedNamespaces []string
 	if watchNamespaces != "" && watchNamespaces != "*" {
 		expandedNamespaces, err = r.expandImageUpdaterWatchNamespaces(watchNamespaces)
@@ -766,6 +775,39 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterDeployment(cr *argoproj.ArgoCD, s
 	}}
 
 	return r.reconcileDeploymentHelper(cr, desiredDeployment, "image updater", cr.Spec.ImageUpdater.Enabled)
+}
+
+// normalizeWatchNamespaces validates and normalizes a raw IMAGE_UPDATER_WATCH_NAMESPACES
+// value. It strips empty tokens produced by trailing, leading, or consecutive commas,
+// then applies the following rules:
+//   - No tokens remain (e.g. ",,,"): returns "" → namespace-scoped mode.
+//   - The sole remaining token is "*" (e.g. "*,"): returns "*" → cluster-scoped mode,
+//     so the IsNamespaceClusterConfigNamespace restriction is still enforced.
+//   - "*" appears alongside other patterns (e.g. "*,team-a"): returns an error, because
+//     the combination is ambiguous and would bypass the cluster-scope restriction.
+//   - Any other non-empty pattern list: returns the original value unchanged.
+func normalizeWatchNamespaces(raw string) (string, error) {
+	// Fast path for the two already-canonical sentinels.
+	if raw == "" || raw == "*" {
+		return raw, nil
+	}
+	patterns := splitAndFilterPatterns(raw)
+	switch {
+	case len(patterns) == 0:
+		return "", nil
+	case len(patterns) == 1 && patterns[0] == "*":
+		return "*", nil
+	default:
+		for _, p := range patterns {
+			if p == "*" {
+				return "", fmt.Errorf(
+					`IMAGE_UPDATER_WATCH_NAMESPACES %q mixes "*" with other patterns; use "*" alone for cluster-scoped mode or remove "*" from the list`,
+					raw,
+				)
+			}
+		}
+		return raw, nil
+	}
 }
 
 // splitAndFilterPatterns splits a comma-separated pattern string, trims whitespace from
