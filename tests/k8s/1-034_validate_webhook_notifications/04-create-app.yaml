@@ -1,0 +1,25 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: |
+    set -e
+
+    cat << EOF | kubectl apply -f -
+    apiVersion: argoproj.io/v1alpha1
+    kind: Application
+    metadata:
+      name: my-app-3
+      namespace: $NAMESPACE
+      annotations:
+        "notifications.argoproj.io/subscribe.test-on-created.test-webhook": ""
+    spec:
+      destination:
+        namespace: $NAMESPACE
+        server: https://kubernetes.default.svc
+      project: default
+      source:
+        repoURL: https://github.com/redhat-developer/gitops-operator
+        path: test/examples/nginx
+        targetRevision: HEAD
+    EOF
+- script: sleep 10
