@@ -742,6 +742,53 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			}, "30s", "2s").Should(Equal(corev1.ServiceTypeLoadBalancer))
 		})
 
+		It("should apply service annotations to the principal LoadBalancer service", func() {
+			By("Create ArgoCD instance with LoadBalancer service and MetalLB annotations")
+
+			argoCD.Spec.ArgoCDAgent.Principal.Server.Service = argov1beta1api.ArgoCDAgentPrincipalServiceSpec{
+				Type: corev1.ServiceTypeLoadBalancer,
+				Annotations: map[string]string{
+					"metallb.io/address-pool": "production-public-ips",
+				},
+			}
+			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+
+			By("Verify expected resources are created for principal pod")
+
+			verifyExpectedResourcesExist(ns)
+
+			principalService := &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      argoCDAgentPrincipalName,
+					Namespace: ns.Name,
+				},
+			}
+			Eventually(principalService).Should(k8sFixture.ExistByName())
+			Expect(principalService.Spec.Type).To(Equal(corev1.ServiceTypeLoadBalancer))
+			Expect(principalService.Annotations).To(HaveKeyWithValue("metallb.io/address-pool", "production-public-ips"))
+
+			By("Update service annotations")
+
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: argoCDName, Namespace: ns.Name}, argoCD)).To(Succeed())
+			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
+				ac.Spec.ArgoCDAgent.Principal.Server.Service.Annotations = map[string]string{
+					"metallb.io/address-pool":    "production-public-ips",
+					"metallb.io/loadBalancerIPs": "192.168.1.100",
+				}
+			})
+
+			By("Verify principal service annotations are updated")
+
+			Eventually(func() string {
+				err := k8sClient.Get(ctx, client.ObjectKey{Name: argoCDAgentPrincipalName, Namespace: ns.Name}, principalService)
+				if err != nil {
+					return ""
+				}
+				return principalService.Annotations["metallb.io/loadBalancerIPs"]
+			}, "30s", "2s").Should(Equal("192.168.1.100"))
+			Expect(principalService.Annotations).To(HaveKeyWithValue("metallb.io/address-pool", "production-public-ips"))
+		})
+
 		It("should deploy principal via namespace-scoped ArgoCD instance and verify cluster role and cluster role binding are not created", func() {
 			By("Create namespace-scoped ArgoCD instance")
 
