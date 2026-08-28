@@ -773,7 +773,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
 				ac.Spec.ArgoCDAgent.Principal.Server.Service.Annotations = map[string]string{
 					"metallb.io/address-pool":    "production-public-ips",
-					"metallb.io/loadBalancerIPs": "192.168.1.100",
+					"metallb.io/loadBalancerIPs": "x.x.x.x",
 				}
 			})
 
@@ -785,7 +785,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 					return ""
 				}
 				return principalService.Annotations["metallb.io/loadBalancerIPs"]
-			}, "30s", "2s").Should(Equal("192.168.1.100"))
+			}, "30s", "2s").Should(Equal("x.x.x.x"))
 			Expect(principalService.Annotations).To(HaveKeyWithValue("metallb.io/address-pool", "production-public-ips"))
 		})
 

@@ -1579,7 +1579,7 @@ func TestReconcilePrincipalService_ServiceAnnotations_Create(t *testing.T) {
 
 	annotations := map[string]string{
 		"metallb.io/address-pool":    "production-public-ips",
-		"metallb.io/loadBalancerIPs": "192.168.1.100",
+		"metallb.io/loadBalancerIPs": "x.x.x.x",
 	}
 	cr := makeTestArgoCD(
 		withPrincipalEnabled(true),
@@ -1602,7 +1602,7 @@ func TestReconcilePrincipalService_ServiceAnnotations_Create(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, corev1.ServiceTypeLoadBalancer, svc.Spec.Type)
 	assert.Equal(t, "production-public-ips", svc.Annotations["metallb.io/address-pool"])
-	assert.Equal(t, "192.168.1.100", svc.Annotations["metallb.io/loadBalancerIPs"])
+	assert.Equal(t, "x.x.x.x", svc.Annotations["metallb.io/loadBalancerIPs"])
 }
 
 func TestReconcilePrincipalService_ServiceAnnotations_Update(t *testing.T) {
