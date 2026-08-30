@@ -47,12 +47,6 @@ func getDexServerTokenSecretName(cr *argoproj.ArgoCD) string {
 	return argoutil.GetSecretNameWithSuffix(cr, common.ArgoCDDefaultDexServiceAccountName+"-token")
 }
 
-// dexServerTokenRenewalThreshold is how much nominal lifetime may remain before we treat the Dex token
-// as due for renewal (ExpirySecs * ArgoCDDexServerTokenRenewalThresholdPercent / 100).
-func dexServerTokenRenewalThreshold() time.Duration {
-	return time.Duration(common.ArgoCDDexServerTokenExpirySecs*common.ArgoCDDexServerTokenRenewalThresholdPercent/100) * time.Second
-}
-
 // needsDexTokenRenewal returns true when the token is missing, unparseable, or within the renewal window.
 func needsDexTokenRenewal(secret *corev1.Secret) bool {
 	if secret == nil || secret.Data == nil {

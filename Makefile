@@ -66,6 +66,12 @@ IMG ?= $(IMAGE_TAG_BASE):v$(VERSION)
 
 LD_FLAGS = "-X github.com/argoproj-labs/argocd-operator/version.Version=$(VERSION)"
 
+# BUILD_TAGS is a comma-separated list of Go build tags (e.g. make build BUILD_TAGS=dev).
+BUILD_TAGS ?=
+ifneq ($(BUILD_TAGS),)
+GO_TAGS_FLAG = -tags $(BUILD_TAGS)
+endif
+
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -125,13 +131,13 @@ test: manifests generate fmt vet envtest ## Run tests.
 ##@ Build
 
 build: generate fmt vet ## Build manager binary.
-	go build -ldflags=$(LD_FLAGS) -o bin/manager cmd/main.go
+	go build -ldflags=$(LD_FLAGS) $(GO_TAGS_FLAG)  -o bin/manager cmd/main.go
 
 run: manifests generate fmt vet ## Run a controller from your host.
 	REDIS_CONFIG_PATH="build/redis" ARGOCD_OPERATOR_NAMESPACE="argocd" go run -ldflags=$(LD_FLAGS) ./cmd/main.go
 
 docker-build: test ## Build docker image with the manager.
-	$(CONTAINER_RUNTIME) build --build-arg LD_FLAGS=$(LD_FLAGS) -t ${IMG} .
+	$(CONTAINER_RUNTIME) build --build-arg LD_FLAGS=$(LD_FLAGS) --build-arg BUILD_TAGS="$(BUILD_TAGS)" -t ${IMG} .
 
 docker-push: ## Push docker image with the manager.
 	$(CONTAINER_RUNTIME) push ${IMG}

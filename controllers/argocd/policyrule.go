@@ -3,8 +3,9 @@ package argocd
 import (
 	"fmt"
 
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	"golang.org/x/mod/semver"
+
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
