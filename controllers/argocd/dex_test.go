@@ -309,6 +309,7 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
+	t.Setenv("ARGOCD_DEX_KUBERNETES_STORAGE_ENABLED", "false")
 	assert.NoError(t, r.reconcileDexDeployment(a))
 
 	deployment := &appsv1.Deployment{}
@@ -666,6 +667,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 				test.setEnvFunc(t, "false")
 			}
 
+			t.Setenv("ARGOCD_DEX_KUBERNETES_STORAGE_ENABLED", "false")
 			assert.NoError(t, r.reconcileDexDeployment(test.argoCD))
 
 			if test.updateCrFunc != nil {
@@ -1616,4 +1618,91 @@ func TestReconcileArgoCD_reconcileDexDeployment_customLabelsAndAnnotations(t *te
 	_, hasCustomLabel := deployment.Spec.Template.Labels["custom"]
 	assert.False(t, hasCustomAnnotation)
 	assert.False(t, hasCustomLabel)
+}
+
+func TestReconcileArgoCD_reconcileDexDeployments_dex_storage_kubernetes(t *testing.T) {
+	tests := []struct {
+		name        string
+		envVars     map[string]string
+		argoCD      *argoproj.ArgoCD
+		wantCommand []string
+		wantArgs    []string
+	}{
+		{
+			// Given an Argo CD with no customizations and environment variables,
+			// then, by default the custom dex server startup script is used,
+			// so that dex uses the in-cluster kubernetes storage instead of in-memory storage.
+			name: "default kubernetes storage with in-cluster config when no storage customizations",
+			argoCD: makeTestArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
+						Config: "test",
+					},
+				}
+			}),
+			wantCommand: []string{"/bin/sh", "-c"},
+			wantArgs:    argoutil.DexServerCustomStartupScript(),
+		},
+		{
+			// Given an Argo CD with kubernetes storage explicitly disabled,
+			// then, argocd rundex command is used in container,
+			// so that dex uses the in-memory storage instead of kubernetes.
+			name:    "argocd rundex when kubernetes storage is disabled",
+			envVars: map[string]string{"ARGOCD_DEX_KUBERNETES_STORAGE_ENABLED": "false"},
+			argoCD: makeTestArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
+						Config: "test",
+					},
+				}
+			}),
+			wantCommand: []string{"/shared/argocd-dex", "rundex"},
+			wantArgs:    nil,
+		},
+		{
+			// Given an Argo CD with kubernetes storage explicitly enabled,
+			// then, the dex server is started with custom start script with modified config.yaml,
+			// so that dex uses the in-cluster kubernetes storage instead of in-memory.
+			name:    "kubernetes storage env vars when explicitly enabled",
+			envVars: map[string]string{"ARGOCD_DEX_KUBERNETES_STORAGE_ENABLED": "true"},
+			argoCD: makeTestArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
+						Config: "test",
+					},
+				}
+			}),
+			wantCommand: []string{"/bin/sh", "-c"},
+			wantArgs:    argoutil.DexServerCustomStartupScript(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resObjs := []client.Object{tt.argoCD}
+			subresObjs := []client.Object{tt.argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			for k, v := range tt.envVars {
+				t.Setenv(k, v)
+			}
+
+			require.NoError(t, r.reconcileDexDeployment(tt.argoCD))
+
+			deployment := &appsv1.Deployment{}
+			require.NoError(t, cl.Get(context.TODO(), types.NamespacedName{
+				Name:      "argocd-dex-server",
+				Namespace: testNamespace,
+			}, deployment))
+
+			require.EqualValues(t, tt.wantCommand, deployment.Spec.Template.Spec.Containers[0].Command)
+			require.EqualValues(t, tt.wantArgs, deployment.Spec.Template.Spec.Containers[0].Args)
+		})
+	}
 }

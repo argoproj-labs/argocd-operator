@@ -10,7 +10,6 @@ import (
 	"time"
 
 	configv1 "github.com/openshift/api/config/v1"
-
 	"gopkg.in/yaml.v2"
 	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -467,6 +466,13 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		SecurityContext: dexSecCtx,
 		VolumeMounts:    dexVolumeMounts,
 	}}
+
+	// if dex kubernetes storage override is enabled, generate a base config,
+	// override the storage config and use that to server the dex server
+	if argoutil.IsDexKubernetesStorageEnabled() {
+		deploy.Spec.Template.Spec.Containers[0].Command = []string{"/bin/sh", "-c"}
+		deploy.Spec.Template.Spec.Containers[0].Args = argoutil.DexServerCustomStartupScript()
+	}
 
 	deploy.Spec.Template.Spec.InitContainers = []corev1.Container{{
 		Command: []string{

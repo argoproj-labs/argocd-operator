@@ -3,6 +3,7 @@ package argocd
 import (
 	"fmt"
 
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	"golang.org/x/mod/semver"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -130,8 +131,7 @@ func policyRuleForRedisHa(client client.Client) []v1.PolicyRule {
 }
 
 func policyRuleForDexServer() []v1.PolicyRule {
-
-	return []v1.PolicyRule{
+	dexPolicyRules := []v1.PolicyRule{
 		{
 			APIGroups: []string{
 				"",
@@ -147,6 +147,16 @@ func policyRuleForDexServer() []v1.PolicyRule {
 			},
 		},
 	}
+	// if dex storage override is enabled, add policy rules for storing dex related custom resources
+	// in kubernetes storage.
+	if argoutil.IsDexKubernetesStorageEnabled() {
+		dexPolicyRules = append(dexPolicyRules, v1.PolicyRule{
+			APIGroups: []string{"dex.coreos.com"},
+			Resources: []string{"*"},
+			Verbs:     []string{"*"},
+		})
+	}
+	return dexPolicyRules
 }
 
 func policyRuleForServer(cr *argoproj.ArgoCD) []v1.PolicyRule {

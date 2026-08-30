@@ -12,7 +12,10 @@ import (
 	"github.com/argoproj-labs/argocd-operator/dependency-upgrade/utils"
 )
 
-const ArgoCDGitHubRepoURL = "https://github.com/argoproj/argo-cd"
+const (
+	ArgoCDGitHubRepoURL = "https://github.com/argoproj/argo-cd"
+	DexGitHubRepoURL    = "https://github.com/dexidp/dex"
+)
 
 func main() {
 	wd, err := os.Getwd()
@@ -63,6 +66,15 @@ func main() {
 
 	// update controllers/argocd/dex_test.go: test references a dex container image
 	replaceDexImageReferenceInDexTest(argocdOperatorRoot, dexContainerInfo)
+
+	// Clone Dex into a temporary directory
+	dexRepoRoot, err := utils.CloneRepoIntoTempDir(DexGitHubRepoURL, dexContainerInfo.version)
+	if err != nil {
+		utils.ExitWithError(fmt.Errorf("unable to checkout Dex: %v", err))
+		return
+	}
+
+	updateDexCRDs(dexRepoRoot, argocdOperatorRoot)
 
 	fmt.Println()
 	fmt.Println("Dependency update is complete:")
@@ -563,4 +575,58 @@ func retrieveSHA256DigestUsingSkopeo(url string) *processedContainerImage {
 type processedContainerImage struct {
 	version      string // version string portion of container image URL, e.g. 'v3.1.1'
 	sha256Digest string // 'sha256:(...)' digest value of container image from skopeo. string includes 'sha256:' prefix
+}
+
+// updateDexCRDs updates the Dex CRDs required for kubernetes storage
+func updateDexCRDs(dexRepoRoot string, dexOperatorRoot string) {
+	dexCRDSourcePath := filepath.Join(dexRepoRoot, "scripts", "manifests", "crds")
+
+	entries, err := os.ReadDir(dexCRDSourcePath)
+	if err != nil {
+		utils.ExitWithError(fmt.Errorf("unable to list Dex CRDS: %v", err))
+		return
+	}
+
+	var count int
+	for _, entry := range entries {
+		fname := entry.Name()
+		if entry.IsDir() || fname == "kustomization.yaml" {
+			continue
+		}
+
+		if strings.HasSuffix(fname, ".yaml") {
+			count++
+		}
+	}
+
+	filesToCopy := map[string]string{
+		// dex repo YAML filename -> argocd-operator YAML filename
+		"authcodes.yaml":         "dex.coreos.com_authcodes.yaml",
+		"authrequests.yaml":      "dex.coreos.com_authrequests.yaml",
+		"connectors.yaml":        "dex.coreos.com_connectors.yaml",
+		"devicerequests.yaml":    "dex.coreos.com_devicerequests.yaml",
+		"devicetokens.yaml":      "dex.coreos.com_devicetokens.yaml",
+		"oauth2clients.yaml":     "dex.coreos.com_oauth2clients.yaml",
+		"offlinesessionses.yaml": "dex.coreos.com_offlinesessionses.yaml",
+		"passwords.yaml":         "dex.coreos.com_passwords.yaml",
+		"refreshtokens.yaml":     "dex.coreos.com_refreshtokens.yaml",
+		"signingkeies.yaml":      "dex.coreos.com_signingkeies.yaml",
+	}
+
+	// Sanity test: The CRDs found in Dex directory should match the values in the map above
+	if len(filesToCopy) != count {
+		utils.ExitWithError(fmt.Errorf("unexpected number of YAML files found in Argo CD CRD directory '%s': %d", dexCRDSourcePath, count))
+		return
+	}
+
+	for k, v := range filesToCopy {
+		srcFile := filepath.Join(dexCRDSourcePath, k)
+		destFile := filepath.Join(dexOperatorRoot, "config", "crd", "bases", v)
+
+		if err := utils.CopyFile(srcFile, destFile); err != nil {
+			utils.ExitWithError(fmt.Errorf("unable to copy %s to %s: %v", srcFile, destFile, err))
+			return
+		}
+
+	}
 }

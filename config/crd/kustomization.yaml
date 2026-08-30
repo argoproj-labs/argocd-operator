@@ -26,6 +26,18 @@ resources:
   - bases/promoter.argoproj.io_scmproviders.yaml
   - bases/promoter.argoproj.io_timedcommitstatuses.yaml
   - bases/promoter.argoproj.io_webrequestcommitstatuses.yaml
+
+  - bases/dex.coreos.com_authcodes.yaml
+  - bases/dex.coreos.com_authrequests.yaml
+  - bases/dex.coreos.com_connectors.yaml
+  - bases/dex.coreos.com_devicerequests.yaml
+  - bases/dex.coreos.com_devicetokens.yaml
+  - bases/dex.coreos.com_signingkeies.yaml
+  - bases/dex.coreos.com_oauth2clients.yaml
+  - bases/dex.coreos.com_offlinesessionses.yaml
+  - bases/dex.coreos.com_passwords.yaml
+  - bases/dex.coreos.com_refreshtokens.yaml
+
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patches:

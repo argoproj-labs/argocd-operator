@@ -1695,6 +1695,12 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       version: v1beta1
+    - kind: AuthCode
+      name: authcodes.dex.coreos.com
+      version: v1
+    - kind: AuthRequest
+      name: authrequests.dex.coreos.com
+      version: v1
     - kind: ChangeTransferPolicy
       name: changetransferpolicies.promoter.argoproj.io
       version: v1alpha1
@@ -1704,9 +1710,18 @@ spec:
     - kind: CommitStatus
       name: commitstatuses.promoter.argoproj.io
       version: v1alpha1
+    - kind: Connector
+      name: connectors.dex.coreos.com
+      version: v1
     - kind: ControllerConfiguration
       name: controllerconfigurations.promoter.argoproj.io
       version: v1alpha1
+    - kind: DeviceRequest
+      name: devicerequests.dex.coreos.com
+      version: v1
+    - kind: DeviceToken
+      name: devicetokens.dex.coreos.com
+      version: v1
     - kind: GitCommitStatus
       name: gitcommitstatuses.promoter.argoproj.io
       version: v1alpha1
@@ -1809,12 +1824,24 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       version: v1alpha1
+    - kind: OAuth2Client
+      name: oauth2clients.dex.coreos.com
+      version: v1
+    - kind: OfflineSessions
+      name: offlinesessionses.dex.coreos.com
+      version: v1
+    - kind: Password
+      name: passwords.dex.coreos.com
+      version: v1
     - kind: PromotionStrategy
       name: promotionstrategies.promoter.argoproj.io
       version: v1alpha1
     - kind: PullRequest
       name: pullrequests.promoter.argoproj.io
       version: v1alpha1
+    - kind: RefreshToken
+      name: refreshtokens.dex.coreos.com
+      version: v1
     - kind: RevertCommit
       name: revertcommits.promoter.argoproj.io
       version: v1alpha1
@@ -1824,6 +1851,9 @@ spec:
     - kind: ScmProvider
       name: scmproviders.promoter.argoproj.io
       version: v1alpha1
+    - kind: SigningKey
+      name: signingkeies.dex.coreos.com
+      version: v1
     - kind: TimedCommitStatus
       name: timedcommitstatuses.promoter.argoproj.io
       version: v1alpha1
