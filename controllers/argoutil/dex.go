@@ -15,8 +15,60 @@
 package argoutil
 
 import (
+	"bytes"
+	"context"
+	"fmt"
 	"os"
+	"text/template"
+
+	"gopkg.in/yaml.v2"
+	authorizationv1 "k8s.io/api/authorization/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+const (
+	dexCRDTemplate = `apiVersion: apiextensions.k8s.io/v1
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: {{ .Plural }}.dex.coreos.com
+spec:
+  group: dex.coreos.com
+  names:
+    kind: {{ .Kind }}
+    listKind: {{ .Kind }}List
+    plural: {{ .Plural }}
+  scope: Namespaced
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        x-kubernetes-preserve-unknown-fields: true
+`
+)
+
+type CRDData struct {
+	Kind   string
+	Plural string
+}
+
+var DexCRDs = []CRDData{
+	{Kind: "AuthCode", Plural: "authcodes"},
+	{Kind: "AuthRequest", Plural: "authrequests"},
+	{Kind: "Connector", Plural: "connectors"},
+	{Kind: "DeviceRequest", Plural: "devicerequests"},
+	{Kind: "DeviceToken", Plural: "devicetokens"},
+	{Kind: "OAuth2Client", Plural: "oauth2clients"},
+	{Kind: "OfflineSessions", Plural: "offlinesessionses"},
+	{Kind: "Password", Plural: "passwords"},
+	{Kind: "RefreshToken", Plural: "refreshtokens"},
+	{Kind: "SigningKey", Plural: "signingkeies"},
+}
 
 // IsDexKubernetesStorageEnabled returns a feature flag which determines if the dex storage config
 // need to be overridden through env overrides. Returns false if explicitly disabled, true otherwise.
@@ -44,4 +96,57 @@ fi
 awk '/^storage:/ { print "storage:\n  type: kubernetes\n  config:\n    inCluster: true"; skip=1; next } skip && /^[a-zA-Z0-9_-]+:/ { skip=0 } !skip' /tmp/base.yaml > /tmp/dex.yaml
 exec dex serve /tmp/dex.yaml`,
 	}
+}
+
+// EnsureDexCRDs ensures that the dex CRDS are available. If not available, it creates it, and if already available,
+// it will be a no-op.
+func EnsureDexCRDs(ctx context.Context, c client.Client) error {
+	tmpl, err := template.New("crd").Parse(dexCRDTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse CRD template: %w", err)
+	}
+
+	for _, item := range DexCRDs {
+		var buf bytes.Buffer
+		if err := tmpl.Execute(&buf, item); err != nil {
+			return fmt.Errorf("template execution failed for %s: %w", item.Kind, err)
+		}
+
+		obj := &unstructured.Unstructured{}
+		if err := yaml.Unmarshal(buf.Bytes(), obj); err != nil {
+			return fmt.Errorf("failed to unmarshal YAML into unstructured for %s: %w", item.Kind, err)
+		}
+
+		existing := &unstructured.Unstructured{}
+		existing.SetGroupVersionKind(obj.GroupVersionKind())
+		err = c.Get(ctx, client.ObjectKey{Name: obj.GetName()}, existing)
+		if errors.IsNotFound(err) {
+			// Create CRD
+			if err := c.Create(ctx, obj); err != nil {
+				return fmt.Errorf("failed to create CRD %s: %w", obj.GetName(), err)
+			}
+		} else if err != nil {
+			return fmt.Errorf("failed to fetch CRD %s: %w", obj.GetName(), err)
+		}
+	}
+	return nil
+}
+
+// CanCreateDexCRDs checks if the operator's ServiceAccount has RBAC permission to create CRDs.
+func CanCreateDexCRDs(ctx context.Context, c client.Client) (bool, error) {
+	ssar := &authorizationv1.SelfSubjectAccessReview{
+		Spec: authorizationv1.SelfSubjectAccessReviewSpec{
+			ResourceAttributes: &authorizationv1.ResourceAttributes{
+				Group:    "apiextensions.k8s.io",
+				Resource: "customresourcedefinitions",
+				Verb:     "create",
+			},
+		},
+	}
+
+	if err := c.Create(ctx, ssar); err != nil {
+		return false, fmt.Errorf("failed to evaluate SelfSubjectAccessReview: %w", err)
+	}
+
+	return ssar.Status.Allowed, nil
 }

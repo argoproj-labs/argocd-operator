@@ -36,6 +36,34 @@ rules:
   verbs:
   - get
 - apiGroups:
+  - apiextensions.k8s.io
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - create
+  - list
+  - watch
+- apiGroups:
+  - apiextensions.k8s.io
+  resourceNames:
+  - authcodes.dex.coreos.com
+  - authrequests.dex.coreos.com
+  - connectors.dex.coreos.com
+  - devicerequests.dex.coreos.com
+  - devicetokens.dex.coreos.com
+  - oauth2clients.dex.coreos.com
+  - offlinesessionses.dex.coreos.com
+  - passwords.dex.coreos.com
+  - refreshtokens.dex.coreos.com
+  - signingkeies.dex.coreos.com
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - delete
+  - get
+  - patch
+  - update
+- apiGroups:
   - apiregistration.k8s.io
   resources:
   - apiservices
@@ -89,6 +117,12 @@ rules:
   - notificationsconfigurations/finalizers
   verbs:
   - '*'
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - selfsubjectaccessreviews
+  verbs:
+  - create
 - apiGroups:
   - autoscaling
   resources:

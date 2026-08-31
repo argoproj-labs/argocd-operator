@@ -461,11 +461,20 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		VolumeMounts:    dexVolumeMounts,
 	}}
 
-	// if dex kubernetes storage override is enabled, generate a base config,
-	// override the storage config and use that to server the dex server
-	if argoutil.IsDexKubernetesStorageEnabled() {
+	canCreateDexCRDs, err := argoutil.CanCreateDexCRDs(context.TODO(), r.Client)
+	if err != nil {
+		log.Error(err, "unable to check if dex CRDs can be created")
+		canCreateDexCRDs = false
+	}
+	// if dex kubernetes storage override is enabled, and if operator can create CRDs, generate a base config,
+	// override the storage config and use that to server the dex server, if not continue using the in-memory storage.
+	if argoutil.IsDexKubernetesStorageEnabled() && canCreateDexCRDs {
 		deploy.Spec.Template.Spec.Containers[0].Command = []string{"/bin/sh", "-c"}
 		deploy.Spec.Template.Spec.Containers[0].Args = argoutil.DexServerCustomStartupScript()
+		err := argoutil.EnsureDexCRDs(context.TODO(), r.Client)
+		if err != nil {
+			return err
+		}
 	}
 
 	deploy.Spec.Template.Spec.InitContainers = []corev1.Container{{

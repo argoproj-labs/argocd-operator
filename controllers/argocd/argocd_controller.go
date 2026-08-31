@@ -141,6 +141,9 @@ var ActiveInstanceMap = make(map[string]string)
 //+kubebuilder:rbac:groups=certificates.k8s.io,resources=clustertrustbundles,verbs=get;list;watch
 //+kubebuilder:rbac:groups=promoter.argoproj.io,resources=controllerconfigurations;controllerconfigurations/status;controllerconfigurations/finalizers,verbs=*
 //+kubebuilder:rbac:groups=promoter.argoproj.io,resources=*,verbs=get;list
+//+kubebuilder:rbac:groups=authorization.k8s.io,resources=selfsubjectaccessreviews,verbs=create
+//+kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=create;list;watch
+//+kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,resourceNames=authcodes.dex.coreos.com;authrequests.dex.coreos.com;connectors.dex.coreos.com;devicerequests.dex.coreos.com;devicetokens.dex.coreos.com;oauth2clients.dex.coreos.com;offlinesessionses.dex.coreos.com;passwords.dex.coreos.com;refreshtokens.dex.coreos.com;signingkeies.dex.coreos.com,verbs=get;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
