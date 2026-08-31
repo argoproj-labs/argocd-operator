@@ -3,6 +3,7 @@
 package argocd
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -11,7 +12,7 @@ import (
 )
 
 const (
-	EnvKeyDexServerTokenExpirySecs       = "ARGOCD_DEX_SERVER_TOKEN_EXPIRY_SECS"
+	EnvKeyDexServerTokenExpirySecs       = "ARGOCD_DEX_SERVER_TOKEN_EXPIRY_SECONDS"
 	EnvKeyDexServerTokenRenewalThreshold = "ARGOCD_DEX_SERVER_TOKEN_RENEWAL_THRESHOLD"
 )
 
@@ -21,7 +22,7 @@ func dexServerTokenRenewalThreshold() time.Duration {
 	dexServerTokenExpirySecsEnv := os.Getenv(EnvKeyDexServerTokenExpirySecs)
 	var err error
 	var duration, threshold int64
-	log.Info("dex config: using debug settings with env override", EnvKeyDexServerTokenExpirySecs, dexServerTokenExpirySecsEnv)
+	log.Info(fmt.Sprintf("dex config: using debug settings with env override %s:%s", EnvKeyDexServerTokenExpirySecs, dexServerTokenExpirySecsEnv))
 	if dexServerTokenExpirySecsEnv != "" {
 		duration, err = strconv.ParseInt(dexServerTokenExpirySecsEnv, 10, 64)
 		if err != nil {
@@ -31,7 +32,7 @@ func dexServerTokenRenewalThreshold() time.Duration {
 
 	}
 	dexServerTokenRenewalThresholdEnv := os.Getenv(EnvKeyDexServerTokenRenewalThreshold)
-	log.Info("dex config: using debug settings with env override", EnvKeyDexServerTokenRenewalThreshold, dexServerTokenRenewalThresholdEnv)
+	log.Info(fmt.Sprintf("dex config: using debug settings with env override %s:%s", EnvKeyDexServerTokenRenewalThreshold, dexServerTokenRenewalThresholdEnv))
 	if dexServerTokenRenewalThresholdEnv != "" {
 		threshold, err = strconv.ParseInt(dexServerTokenRenewalThresholdEnv, 10, 64)
 		if err != nil {
@@ -39,6 +40,6 @@ func dexServerTokenRenewalThreshold() time.Duration {
 			threshold = common.ArgoCDDexServerTokenRenewalThresholdPercent
 		}
 	}
-	log.Info("dex config: using duration and threshold settings", duration, threshold)
+	log.Info(fmt.Sprintf("dex config: using debug settings with env override %v:%v", duration, threshold))
 	return time.Duration(duration*threshold/100) * time.Second
 }
