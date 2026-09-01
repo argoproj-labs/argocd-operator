@@ -19,19 +19,9 @@ const (
 // dexServerTokenRenewalThreshold is how much nominal lifetime may remain before we treat the Dex token
 // values can be overridden with environment variables when debug build tag is enabled.
 func dexServerTokenRenewalThreshold() time.Duration {
-	dexServerTokenExpirySecsEnv := os.Getenv(EnvKeyDexServerTokenExpirySecs)
-	var err error
-	var duration, threshold int64
-	log.Info(fmt.Sprintf("dex config: using debug settings with env override %s:%s", EnvKeyDexServerTokenExpirySecs, dexServerTokenExpirySecsEnv))
-	if dexServerTokenExpirySecsEnv != "" {
-		duration, err = strconv.ParseInt(dexServerTokenExpirySecsEnv, 10, 64)
-		if err != nil {
-			log.Error(err, "failed to parse DEX_SERVER_TOKEN_EXPIRY_SECS as duration")
-			duration = common.ArgoCDDexServerTokenExpirySecs
-		}
-
-	}
 	dexServerTokenRenewalThresholdEnv := os.Getenv(EnvKeyDexServerTokenRenewalThreshold)
+	var threshold int64
+	var err error
 	log.Info(fmt.Sprintf("dex config: using debug settings with env override %s:%s", EnvKeyDexServerTokenRenewalThreshold, dexServerTokenRenewalThresholdEnv))
 	if dexServerTokenRenewalThresholdEnv != "" {
 		threshold, err = strconv.ParseInt(dexServerTokenRenewalThresholdEnv, 10, 64)
@@ -40,6 +30,19 @@ func dexServerTokenRenewalThreshold() time.Duration {
 			threshold = common.ArgoCDDexServerTokenRenewalThresholdPercent
 		}
 	}
-	log.Info(fmt.Sprintf("dex config: using debug settings with env override %v:%v", duration, threshold))
-	return time.Duration(duration*threshold/100) * time.Second
+	return time.Duration(getTokenExpirySeconds()*threshold/100) * time.Second
+}
+
+// getTokenExpirySeconds returns the token expiry seconds from env variable if set or else returns the default value 3600s
+func getTokenExpirySeconds() int64 {
+	dexServerTokenExpirySecsEnv := os.Getenv(EnvKeyDexServerTokenExpirySecs)
+	log.Info(fmt.Sprintf("dex config: using debug settings with env override %s:%s", EnvKeyDexServerTokenExpirySecs, dexServerTokenExpirySecsEnv))
+	if dexServerTokenExpirySecsEnv != "" {
+		tokenExpirySeconds, err := strconv.ParseInt(dexServerTokenExpirySecsEnv, 10, 64)
+		if err == nil {
+			return tokenExpirySeconds
+		}
+		log.Error(err, "failed to parse DEX_SERVER_TOKEN_EXPIRY_SECS as duration")
+	}
+	return common.ArgoCDDexServerTokenExpirySecs
 }

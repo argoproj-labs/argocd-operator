@@ -103,7 +103,7 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string,
 	}
 
 	// Request a new time-limited token via the TokenRequest API.
-	expirationSeconds := common.ArgoCDDexServerTokenExpirySecs
+	expirationSeconds := getTokenExpirySeconds()
 	tokenRequest, err := r.K8sClient.CoreV1().ServiceAccounts(cr.Namespace).CreateToken(
 		context.TODO(),
 		sa.Name,
