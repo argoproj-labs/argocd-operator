@@ -150,5 +150,156 @@ oc -n argocd extract secret/example-argocd-cluster --to=-
 
 Refer to the [Ingress Guide][ingress_guide] for further steps on accessing these resources.
 
+## Metrics Service Annotations
+
+The operator supports adding custom annotations to metrics services for all Argo CD components. This is useful for service-based autodiscovery with monitoring tools like Datadog, Dynatrace, or other APM solutions that rely on service annotations for configuration.
+
+**Note:** This feature is for adding annotations to the metrics **Services** (not pods). Since the operator creates ServiceMonitors for Prometheus integration, you typically do not need `prometheus.io/*` annotations. Use this feature when you need service-level annotations for:
+
+- Service-based monitoring autodiscovery (e.g., Datadog, Dynatrace)
+- Custom metadata for monitoring platforms
+- Integration with service mesh observability tools
+
+### Important: Annotation Reconciliation Behavior
+
+!!! warning "Custom annotations are actively managed"
+    The operator treats the `metrics.annotations` field as the **source of truth**. During reconciliation:
+    
+    - ✅ Annotations specified in `metrics.annotations` will be applied to the service
+    - ✅ System annotations (kubernetes.io/*, k8s.io/*, openshift.io/*, service.beta.openshift.io/*, service.alpha.openshift.io/*) are automatically preserved
+    - ❌ **Any custom annotations not in the spec will be automatically removed**
+    
+    This ensures consistency between your ArgoCD CR and the actual service state. If you need to preserve a custom annotation, you must add it to the `metrics.annotations` map in your ArgoCD CR.
+
+**Example:** System annotations like `service.beta.openshift.io/serving-cert-secret-name` are automatically preserved even if not specified in the annotations map.
+
+### Overview
+
+Custom annotations can be applied to the metrics services of the following components:
+
+- Application Controller
+- Server
+- Repo Server
+- Notifications Controller
+- ArgoCD Agent (both Agent and Principal)
+
+### Configuration
+
+Annotations are configured through the `metrics.annotations` field in each component's specification.
+
+### Example: Datadog Autodiscovery
+
+The following example shows how to configure Datadog autodiscovery annotations for the Application Controller metrics service:
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+spec:
+  prometheus:
+    enabled: true
+  controller:
+    metrics:
+      annotations:
+        ad.datadoghq.com/service.check_names: '["openmetrics"]'
+        ad.datadoghq.com/service.init_configs: '[{}]'
+        ad.datadoghq.com/service.instances: |
+          [{
+            "openmetrics_endpoint": "http://%%host%%:%%port%%/metrics",
+            "namespace": "argocd_controller",
+            "metrics": [".*"]
+          }]
+```
+
+### Example: Multiple Components
+
+You can configure annotations for multiple components simultaneously:
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+spec:
+  prometheus:
+    enabled: true
+  controller:
+    metrics:
+      interval: "30s"
+      annotations:
+        monitoring.example.com/scrape: "true"
+        monitoring.example.com/path: "/metrics"
+  server:
+    metrics:
+      interval: "30s"
+      annotations:
+        monitoring.example.com/scrape: "true"
+        monitoring.example.com/path: "/metrics"
+  repo:
+    metrics:
+      annotations:
+        monitoring.example.com/scrape: "true"
+  notifications:
+    enabled: true
+    metrics:
+      annotations:
+        monitoring.example.com/scrape: "true"
+```
+
+### Example: Custom Monitoring Metadata
+
+For custom monitoring solutions that require metadata annotations:
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+spec:
+  prometheus:
+    enabled: true
+  controller:
+    metrics:
+      annotations:
+        monitoring.example.com/team: "platform"
+        monitoring.example.com/environment: "production"
+        monitoring.example.com/service-tier: "critical"
+```
+
+### Verification
+
+After applying the configuration, verify that the annotations are present on the metrics services:
+
+``` bash
+kubectl get service example-argocd-metrics -n argocd -o json | jq '.metadata.annotations'
+```
+
+Expected output:
+``` json
+{
+  "ad.datadoghq.com/service.check_names": "[\"openmetrics\"]",
+  "ad.datadoghq.com/service.init_configs": "[{}]",
+  "ad.datadoghq.com/service.instances": "[{\"openmetrics_endpoint\":\"http://%%host%%:%%port%%/metrics\",\"namespace\":\"argocd_controller\",\"metrics\":[\".*\"]}]"
+}
+```
+
+### Updating Annotations
+
+To update or remove annotations, modify the ArgoCD CR and the operator will reconcile the changes:
+
+- **Adding annotations**: Add new key-value pairs to the `metrics.annotations` map
+- **Updating annotations**: Change the value for an existing key
+- **Removing annotations**: Delete the key from the `metrics.annotations` map (or set `metrics.annotations` to `{}` to remove all custom annotations)
+
+The operator will automatically update the service annotations during the next reconciliation cycle.
+
+### Notes
+
+- All custom annotations not present in the spec will be removed during reconciliation
+- System annotations (kubernetes.io/*, k8s.io/*, openshift.io/*, service.beta.openshift.io/*, service.alpha.openshift.io/*) are always preserved
+- Annotation values can contain JSON strings for complex configurations
+- Empty or nil `metrics.annotations` maps will result in all custom annotations being removed
+
 [olm_guide]:../install/olm.md
 [ingress_guide]:./ingress.md#access

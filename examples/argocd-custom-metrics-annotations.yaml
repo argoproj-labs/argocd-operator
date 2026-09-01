@@ -1,0 +1,48 @@
+# Example ArgoCD instance with custom metrics annotations
+# This example shows a simple configuration for custom monitoring integrations
+# that require specific service annotations for metadata or custom tooling.
+
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  namespace: argocd
+spec:
+  # Enable Prometheus ServiceMonitors
+  prometheus:
+    enabled: true
+  
+  # Application Controller with custom monitoring annotations
+  controller:
+    metrics:
+      interval: "30s"
+      annotations:
+        monitoring.example.com/team: "platform"
+        monitoring.example.com/service: "argocd-controller"
+        monitoring.example.com/environment: "production"
+        monitoring.example.com/tier: "critical"
+  
+  # Server with custom monitoring annotations
+  server:
+    metrics:
+      interval: "30s"
+      annotations:
+        monitoring.example.com/team: "platform"
+        monitoring.example.com/service: "argocd-server"
+        monitoring.example.com/environment: "production"
+        monitoring.example.com/public-facing: "true"
+  
+  # Repo Server with minimal annotations
+  repo:
+    metrics:
+      annotations:
+        monitoring.example.com/team: "platform"
+        monitoring.example.com/service: "argocd-repo"
+  
+  # Notifications Controller
+  notifications:
+    enabled: true
+    metrics:
+      annotations:
+        monitoring.example.com/team: "platform"
+        monitoring.example.com/service: "argocd-notifications"

@@ -602,8 +602,13 @@ func (r *ReconcileArgoCD) reconcileNotificationsMetricsService(cr *argoproj.Argo
 	if err != nil {
 		return err
 	}
+
 	if svcExists {
-		// Service found, do nothing
+		// Service found, check if we need to update annotations
+		if argoutil.EnsureMetricsServiceAnnotations(svc, cr.Spec.Notifications.Metrics) {
+			argoutil.LogResourceUpdate(log, svc, "updating metrics service annotations")
+			return r.Update(context.TODO(), svc)
+		}
 		return nil
 	}
 
@@ -619,6 +624,9 @@ func (r *ReconcileArgoCD) reconcileNotificationsMetricsService(cr *argoproj.Argo
 			TargetPort: intstr.FromInt(common.NotificationsControllerMetricsPort),
 		},
 	}
+
+	// Apply custom annotations from metrics spec
+	argoutil.EnsureMetricsServiceAnnotations(svc, cr.Spec.Notifications.Metrics)
 
 	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
 		return err

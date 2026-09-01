@@ -1291,3 +1291,83 @@ func TestPriorityClassNameConversion(t *testing.T) {
 		assert.Equal(t, "high-priority", dst.Spec.PriorityClassName)
 	})
 }
+
+func TestMetricsAnnotationsDeepCopy(t *testing.T) {
+	t.Run("alpha to beta - annotations are deep copied", func(t *testing.T) {
+		src := &ArgoCDMetricsSpec{
+			Interval:      "60s",
+			ScrapeTimeout: "30s",
+			Annotations: map[string]string{
+				"prometheus.io/scrape": "true",
+				"prometheus.io/port":   "8080",
+			},
+		}
+
+		dst := ConvertAlphaToBetaMetrics(src)
+
+		// Verify the conversion worked
+		assert.Equal(t, src.Interval, dst.Interval)
+		assert.Equal(t, src.ScrapeTimeout, dst.ScrapeTimeout)
+		assert.Equal(t, src.Annotations, dst.Annotations)
+
+		// Mutate the source annotations
+		src.Annotations["prometheus.io/path"] = "/metrics"
+		src.Annotations["prometheus.io/scrape"] = "false"
+
+		// Verify destination is not affected
+		assert.Equal(t, "true", dst.Annotations["prometheus.io/scrape"])
+		assert.NotContains(t, dst.Annotations, "prometheus.io/path")
+		assert.Len(t, dst.Annotations, 2)
+	})
+
+	t.Run("beta to alpha - annotations are deep copied", func(t *testing.T) {
+		src := &v1beta1.ArgoCDMetricsSpec{
+			Interval:      "90s",
+			ScrapeTimeout: "15s",
+			Annotations: map[string]string{
+				"ad.datadoghq.com/service.check_names":  "[\"prometheus\"]",
+				"ad.datadoghq.com/service.init_configs": "[{}]",
+			},
+		}
+
+		dst := ConvertBetaToAlphaMetrics(src)
+
+		// Verify the conversion worked
+		assert.Equal(t, src.Interval, dst.Interval)
+		assert.Equal(t, src.ScrapeTimeout, dst.ScrapeTimeout)
+		assert.Equal(t, src.Annotations, dst.Annotations)
+
+		// Mutate the source annotations
+		src.Annotations["ad.datadoghq.com/service.instances"] = "[{\"prometheus_url\":\"http://%%host%%:8080/metrics\"}]"
+		delete(src.Annotations, "ad.datadoghq.com/service.init_configs")
+
+		// Verify destination is not affected
+		assert.Contains(t, dst.Annotations, "ad.datadoghq.com/service.init_configs")
+		assert.NotContains(t, dst.Annotations, "ad.datadoghq.com/service.instances")
+		assert.Len(t, dst.Annotations, 2)
+	})
+
+	t.Run("alpha to beta - nil annotations", func(t *testing.T) {
+		src := &ArgoCDMetricsSpec{
+			Interval:    "60s",
+			Annotations: nil,
+		}
+
+		dst := ConvertAlphaToBetaMetrics(src)
+
+		assert.Equal(t, src.Interval, dst.Interval)
+		assert.Nil(t, dst.Annotations)
+	})
+
+	t.Run("beta to alpha - nil annotations", func(t *testing.T) {
+		src := &v1beta1.ArgoCDMetricsSpec{
+			ScrapeTimeout: "30s",
+			Annotations:   nil,
+		}
+
+		dst := ConvertBetaToAlphaMetrics(src)
+
+		assert.Equal(t, src.ScrapeTimeout, dst.ScrapeTimeout)
+		assert.Nil(t, dst.Annotations)
+	})
+}

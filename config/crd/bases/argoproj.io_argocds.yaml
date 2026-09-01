@@ -705,6 +705,14 @@ spec:
                         description: Metrics defines the metrics configuration for
                           the Agent ServiceMonitor.
                         properties:
+                          annotations:
+                            additionalProperties:
+                              type: string
+                            description: |-
+                              Annotations is an unstructured key value map that can be used to add custom annotations
+                              to the metrics Service for this component. This enables service-based autodiscovery for
+                              monitoring tools like Datadog that rely on service annotations.
+                            type: object
                           interval:
                             description: |-
                               Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
@@ -948,6 +956,14 @@ spec:
                         description: Metrics defines the metrics configuration for
                           the Principal ServiceMonitor.
                         properties:
+                          annotations:
+                            additionalProperties:
+                              type: string
+                            description: |-
+                              Annotations is an unstructured key value map that can be used to add custom annotations
+                              to the metrics Service for this component. This enables service-based autodiscovery for
+                              monitoring tools like Datadog that rely on service annotations.
+                            type: object
                           interval:
                             description: |-
                               Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
@@ -3059,6 +3075,14 @@ spec:
                     description: Metrics defines the metrics configuration for the
                       Application Controller ServiceMonitor.
                     properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          Annotations is an unstructured key value map that can be used to add custom annotations
+                          to the metrics Service for this component. This enables service-based autodiscovery for
+                          monitoring tools like Datadog that rely on service annotations.
+                        type: object
                       interval:
                         description: |-
                           Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
@@ -4009,6 +4033,14 @@ spec:
                     description: Metrics defines the metrics configuration for the
                       Notifications ServiceMonitor.
                     properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          Annotations is an unstructured key value map that can be used to add custom annotations
+                          to the metrics Service for this component. This enables service-based autodiscovery for
+                          monitoring tools like Datadog that rely on service annotations.
+                        type: object
                       interval:
                         description: |-
                           Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
@@ -6148,6 +6180,14 @@ spec:
                     description: Metrics defines the metrics configuration for the
                       Repo Server ServiceMonitor.
                     properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          Annotations is an unstructured key value map that can be used to add custom annotations
+                          to the metrics Service for this component. This enables service-based autodiscovery for
+                          monitoring tools like Datadog that rely on service annotations.
+                        type: object
                       interval:
                         description: |-
                           Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
@@ -10212,6 +10252,14 @@ spec:
                     description: Metrics defines the metrics configuration for the
                       Server ServiceMonitor.
                     properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          Annotations is an unstructured key value map that can be used to add custom annotations
+                          to the metrics Service for this component. This enables service-based autodiscovery for
+                          monitoring tools like Datadog that rely on service annotations.
+                        type: object
                       interval:
                         description: |-
                           Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
@@ -13742,6 +13790,14 @@ spec:
                         description: Metrics defines the metrics configuration for
                           the Agent ServiceMonitor.
                         properties:
+                          annotations:
+                            additionalProperties:
+                              type: string
+                            description: |-
+                              Annotations is an unstructured key value map that can be used to add custom annotations
+                              to the metrics Service for this component. This enables service-based autodiscovery for
+                              monitoring tools like Datadog that rely on service annotations.
+                            type: object
                           interval:
                             description: |-
                               Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
@@ -14049,6 +14105,14 @@ spec:
                         description: Metrics defines the metrics configuration for
                           the Principal ServiceMonitor.
                         properties:
+                          annotations:
+                            additionalProperties:
+                              type: string
+                            description: |-
+                              Annotations is an unstructured key value map that can be used to add custom annotations
+                              to the metrics Service for this component. This enables service-based autodiscovery for
+                              monitoring tools like Datadog that rely on service annotations.
+                            type: object
                           interval:
                             description: |-
                               Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
@@ -17789,6 +17853,14 @@ spec:
                     description: Metrics defines the metrics configuration for the
                       Application Controller ServiceMonitor.
                     properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          Annotations is an unstructured key value map that can be used to add custom annotations
+                          to the metrics Service for this component. This enables service-based autodiscovery for
+                          monitoring tools like Datadog that rely on service annotations.
+                        type: object
                       interval:
                         description: |-
                           Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
@@ -22423,6 +22495,14 @@ spec:
                     description: Metrics defines the metrics configuration for the
                       Notifications ServiceMonitor.
                     properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          Annotations is an unstructured key value map that can be used to add custom annotations
+                          to the metrics Service for this component. This enables service-based autodiscovery for
+                          monitoring tools like Datadog that rely on service annotations.
+                        type: object
                       interval:
                         description: |-
                           Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
@@ -24859,6 +24939,14 @@ spec:
                     description: Metrics defines the metrics configuration for the
                       Repo Server ServiceMonitor.
                     properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          Annotations is an unstructured key value map that can be used to add custom annotations
+                          to the metrics Service for this component. This enables service-based autodiscovery for
+                          monitoring tools like Datadog that rely on service annotations.
+                        type: object
                       interval:
                         description: |-
                           Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.
@@ -30700,6 +30788,14 @@ spec:
                     description: Metrics defines the metrics configuration for the
                       Server ServiceMonitor.
                     properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          Annotations is an unstructured key value map that can be used to add custom annotations
+                          to the metrics Service for this component. This enables service-based autodiscovery for
+                          monitoring tools like Datadog that rely on service annotations.
+                        type: object
                       interval:
                         description: |-
                           Interval specifies the Prometheus scrape interval for this component's ServiceMonitor.

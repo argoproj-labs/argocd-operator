@@ -1,0 +1,78 @@
+# Example ArgoCD instance with custom metrics service annotations
+# This example demonstrates how to configure service annotations for
+# metrics endpoints to enable service-based autodiscovery with monitoring
+# tools like Datadog.
+
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  namespace: argocd
+spec:
+  # Enable Prometheus ServiceMonitors
+  prometheus:
+    enabled: true
+  
+  # Application Controller metrics configuration
+  controller:
+    metrics:
+      # Configure Prometheus scrape interval
+      interval: "30s"
+      scrapeTimeout: "10s"
+      # Add custom annotations for Datadog autodiscovery
+      annotations:
+        ad.datadoghq.com/service.check_names: '["openmetrics"]'
+        ad.datadoghq.com/service.init_configs: '[{}]'
+        ad.datadoghq.com/service.instances: |
+          [{
+            "openmetrics_endpoint": "http://%%host%%:%%port%%/metrics",
+            "namespace": "argocd_controller",
+            "metrics": [".*"]
+          }]
+  
+  # Server metrics configuration
+  server:
+    metrics:
+      interval: "30s"
+      annotations:
+        # Datadog annotations
+        ad.datadoghq.com/service.check_names: '["openmetrics"]'
+        ad.datadoghq.com/service.init_configs: '[{}]'
+        ad.datadoghq.com/service.instances: |
+          [{
+            "openmetrics_endpoint": "http://%%host%%:%%port%%/metrics",
+            "namespace": "argocd_server",
+            "metrics": [".*"]
+          }]
+        # Custom metadata annotations
+        monitoring.example.com/team: "platform"
+        monitoring.example.com/environment: "production"
+  
+  # Repo Server metrics configuration
+  repo:
+    metrics:
+      interval: "30s"
+      annotations:
+        ad.datadoghq.com/service.check_names: '["openmetrics"]'
+        ad.datadoghq.com/service.init_configs: '[{}]'
+        ad.datadoghq.com/service.instances: |
+          [{
+            "openmetrics_endpoint": "http://%%host%%:%%port%%/metrics",
+            "namespace": "argocd_repo",
+            "metrics": [".*"]
+          }]
+  
+  # Notifications Controller metrics configuration
+  notifications:
+    enabled: true
+    metrics:
+      interval: "30s"
+      annotations:
+        ad.datadoghq.com/service.check_names: '["openmetrics"]'
+        ad.datadoghq.com/service.init_configs: '[{}]'
+        ad.datadoghq.com/service.instances: |
+          [{
+            "openmetrics_endpoint": "http://%%host%%:%%port%%/metrics",
+            "namespace": "argocd_notifications",
+            "metrics": [".*"]
+          }]

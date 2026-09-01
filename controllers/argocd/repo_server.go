@@ -792,12 +792,13 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *argocdoperatorv1beta1.ArgoCD)
 			argoutil.LogResourceDeletion(log, svc, "repo server is disabled")
 			return r.Delete(context.TODO(), svc)
 		}
-		update, err := ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDRepoServerTLSSecretName, cr.Spec.Repo.WantsAutoTLS())
+		updateTLS, err := ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDRepoServerTLSSecretName, cr.Spec.Repo.WantsAutoTLS())
 		if err != nil {
 			return err
 		}
-		if update {
-			argoutil.LogResourceUpdate(log, svc, "updating auto tls annotation")
+		updateMetrics := argoutil.EnsureMetricsServiceAnnotations(svc, cr.Spec.Repo.Metrics)
+		if updateTLS || updateMetrics {
+			argoutil.LogResourceUpdate(log, svc, "updating service annotations")
 			return r.Update(context.TODO(), svc)
 		}
 		if cr.Spec.Repo.IsRemote() {
@@ -818,6 +819,9 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *argocdoperatorv1beta1.ArgoCD)
 	if err != nil {
 		return fmt.Errorf("unable to ensure AutoTLS annotation: %w", err)
 	}
+
+	// Apply custom annotations from metrics spec
+	argoutil.EnsureMetricsServiceAnnotations(svc, cr.Spec.Repo.Metrics)
 
 	svc.Spec.Selector = map[string]string{
 		common.ArgoCDKeyName: nameWithSuffix("repo-server", cr),

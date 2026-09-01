@@ -215,16 +215,36 @@ func ConvertAlphaToBetaMetrics(src *ArgoCDMetricsSpec) *v1beta1.ArgoCDMetricsSpe
 	if src == nil {
 		return nil
 	}
-	dst := v1beta1.ArgoCDMetricsSpec(*src)
-	return &dst
+	dst := &v1beta1.ArgoCDMetricsSpec{
+		Interval:      src.Interval,
+		ScrapeTimeout: src.ScrapeTimeout,
+	}
+	// Deep copy Annotations to prevent shared map storage
+	if src.Annotations != nil {
+		dst.Annotations = make(map[string]string, len(src.Annotations))
+		for k, v := range src.Annotations {
+			dst.Annotations[k] = v
+		}
+	}
+	return dst
 }
 
 func ConvertBetaToAlphaMetrics(src *v1beta1.ArgoCDMetricsSpec) *ArgoCDMetricsSpec {
 	if src == nil {
 		return nil
 	}
-	dst := ArgoCDMetricsSpec(*src)
-	return &dst
+	dst := &ArgoCDMetricsSpec{
+		Interval:      src.Interval,
+		ScrapeTimeout: src.ScrapeTimeout,
+	}
+	// Deep copy Annotations to prevent shared map storage
+	if src.Annotations != nil {
+		dst.Annotations = make(map[string]string, len(src.Annotations))
+		for k, v := range src.Annotations {
+			dst.Annotations[k] = v
+		}
+	}
+	return dst
 }
 
 func ConvertAlphaToBetaRedis(src *ArgoCDRedisSpec) *v1beta1.ArgoCDRedisSpec {

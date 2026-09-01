@@ -72,6 +72,7 @@ func ReconcileAgentMetricsService(client client.Client, compName string, cr *arg
 			return nil
 		}
 
+		needsUpdate := false
 		if !reflect.DeepEqual(service.Spec.Ports, expectedSpec.Ports) ||
 			!reflect.DeepEqual(service.Spec.Selector, expectedSpec.Selector) ||
 			!reflect.DeepEqual(service.Spec.Type, expectedSpec.Type) {
@@ -79,8 +80,16 @@ func ReconcileAgentMetricsService(client client.Client, compName string, cr *arg
 			service.Spec.Type = expectedSpec.Type
 			service.Spec.Ports = expectedSpec.Ports
 			service.Spec.Selector = expectedSpec.Selector
+			needsUpdate = true
+		}
 
-			argoutil.LogResourceUpdate(log, service, "updating agent metrics service spec")
+		// Check if we need to update annotations
+		if argoutil.EnsureMetricsServiceAnnotations(service, cr.Spec.ArgoCDAgent.Agent.Metrics) {
+			needsUpdate = true
+		}
+
+		if needsUpdate {
+			argoutil.LogResourceUpdate(log, service, "updating agent metrics service")
 			if err := client.Update(context.TODO(), service); err != nil {
 				return fmt.Errorf("failed to update agent metrics service %s: %v", service.Name, err)
 			}
@@ -100,6 +109,9 @@ func ReconcileAgentMetricsService(client client.Client, compName string, cr *arg
 	service.Spec.Type = expectedSpec.Type
 	service.Spec.Ports = expectedSpec.Ports
 	service.Spec.Selector = expectedSpec.Selector
+
+	// Apply custom annotations from metrics spec
+	argoutil.EnsureMetricsServiceAnnotations(service, cr.Spec.ArgoCDAgent.Agent.Metrics)
 
 	argoutil.LogResourceCreation(log, service)
 	if err := client.Create(context.TODO(), service); err != nil {
