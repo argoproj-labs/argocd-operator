@@ -2,12 +2,22 @@ package argoutil
 
 import (
 	"bytes"
+	"context"
+	"fmt"
 	"os/exec"
 	"strings"
 	"testing"
 	"text/template"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
+	sigyaml "sigs.k8s.io/yaml"
 )
 
 const dexConfigTemplate = `
@@ -162,4 +172,96 @@ func runAwkTransform(inputYAML, awkScript string) (string, error) {
 		return "", err
 	}
 	return outBuffer.String(), nil
+}
+
+func newFakeClientForCRDs() client.Client {
+	sch := runtime.NewScheme()
+	apiextensionsv1.AddToScheme(sch)
+	return fake.NewClientBuilder().WithScheme(sch).Build()
+}
+
+func TestEnsureDexCRDs_CreatesAllCRDs(t *testing.T) {
+	cl := newFakeClientForCRDs()
+	ctx := context.Background()
+
+	err := EnsureDexCRDs(ctx, cl)
+	require.NoError(t, err)
+
+	for _, crd := range DexCRDs {
+		obj := &apiextensionsv1.CustomResourceDefinition{}
+		key := client.ObjectKey{Name: crd.Plural + ".dex.coreos.com"}
+		err := cl.Get(ctx, key, obj)
+		assert.NoError(t, err, "CRD %s should exist", crd.Plural)
+		assert.Equal(t, "dex.coreos.com", obj.Spec.Group)
+		assert.Equal(t, crd.Kind, obj.Spec.Names.Kind)
+		assert.Equal(t, crd.Kind+"List", obj.Spec.Names.ListKind)
+		assert.Equal(t, crd.Plural, obj.Spec.Names.Plural)
+	}
+}
+
+func TestEnsureDexCRDs_IsIdempotent(t *testing.T) {
+	cl := newFakeClientForCRDs()
+	ctx := context.Background()
+
+	require.NoError(t, EnsureDexCRDs(ctx, cl))
+	require.NoError(t, EnsureDexCRDs(ctx, cl))
+
+	for _, crd := range DexCRDs {
+		obj := &apiextensionsv1.CustomResourceDefinition{}
+		key := client.ObjectKey{Name: crd.Plural + ".dex.coreos.com"}
+		assert.NoError(t, cl.Get(ctx, key, obj), "CRD %s should still exist after second call", crd.Plural)
+	}
+}
+
+func TestEnsureDexCRDs_GetError(t *testing.T) {
+	sch := runtime.NewScheme()
+	apiextensionsv1.AddToScheme(sch)
+
+	wantErr := fmt.Errorf("simulated get error")
+	cl := fake.NewClientBuilder().WithScheme(sch).WithInterceptorFuncs(interceptor.Funcs{
+		Get: func(ctx context.Context, c client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+			return wantErr
+		},
+	}).Build()
+
+	err := EnsureDexCRDs(context.Background(), cl)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to fetch CRD")
+}
+
+func TestEnsureDexCRDs_CreateError(t *testing.T) {
+	sch := runtime.NewScheme()
+	apiextensionsv1.AddToScheme(sch)
+
+	wantErr := fmt.Errorf("simulated create error")
+	cl := fake.NewClientBuilder().WithScheme(sch).WithInterceptorFuncs(interceptor.Funcs{
+		Create: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+			return wantErr
+		},
+	}).Build()
+
+	err := EnsureDexCRDs(context.Background(), cl)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to create CRD")
+}
+
+func TestEnsureDexCRDs_TemplateProducesValidGVK(t *testing.T) {
+	tmpl, err := template.New("crd").Parse(dexCRDTemplate)
+	require.NoError(t, err)
+
+	for _, crd := range DexCRDs {
+		t.Run(crd.Kind, func(t *testing.T) {
+			var buf bytes.Buffer
+			require.NoError(t, tmpl.Execute(&buf, crd))
+
+			obj := &unstructured.Unstructured{}
+			require.NoError(t, sigyaml.Unmarshal(buf.Bytes(), &obj.Object))
+
+			gvk := obj.GroupVersionKind()
+			assert.Equal(t, "apiextensions.k8s.io", gvk.Group)
+			assert.Equal(t, "v1", gvk.Version)
+			assert.Equal(t, "CustomResourceDefinition", gvk.Kind)
+			assert.Equal(t, crd.Plural+".dex.coreos.com", obj.GetName())
+		})
+	}
 }

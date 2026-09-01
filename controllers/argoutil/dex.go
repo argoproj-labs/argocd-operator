@@ -21,16 +21,15 @@ import (
 	"os"
 	"text/template"
 
-	"gopkg.in/yaml.v2"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	sigyaml "sigs.k8s.io/yaml"
 )
 
 const (
 	dexCRDTemplate = `apiVersion: apiextensions.k8s.io/v1
-apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: {{ .Plural }}.dex.coreos.com
@@ -59,7 +58,7 @@ type CRDData struct {
 
 var DexCRDs = []CRDData{
 	{Kind: "AuthCode", Plural: "authcodes"},
-	{Kind: "AuthRequest", Plural: "authrequests"},
+	{Kind: "AuthRequest", Plural: "authrequests"},tmpl
 	{Kind: "Connector", Plural: "connectors"},
 	{Kind: "DeviceRequest", Plural: "devicerequests"},
 	{Kind: "DeviceToken", Plural: "devicetokens"},
@@ -113,7 +112,7 @@ func EnsureDexCRDs(ctx context.Context, c client.Client) error {
 		}
 
 		obj := &unstructured.Unstructured{}
-		if err := yaml.Unmarshal(buf.Bytes(), obj); err != nil {
+		if err := sigyaml.Unmarshal(buf.Bytes(), &obj.Object); err != nil {
 			return fmt.Errorf("failed to unmarshal YAML into unstructured for %s: %w", item.Kind, err)
 		}
 
