@@ -58,7 +58,7 @@ type CRDData struct {
 
 var DexCRDs = []CRDData{
 	{Kind: "AuthCode", Plural: "authcodes"},
-	{Kind: "AuthRequest", Plural: "authrequests"},tmpl
+	{Kind: "AuthRequest", Plural: "authrequests"},
 	{Kind: "Connector", Plural: "connectors"},
 	{Kind: "DeviceRequest", Plural: "devicerequests"},
 	{Kind: "DeviceToken", Plural: "devicetokens"},
