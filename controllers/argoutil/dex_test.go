@@ -174,14 +174,16 @@ func runAwkTransform(inputYAML, awkScript string) (string, error) {
 	return outBuffer.String(), nil
 }
 
-func newFakeClientForCRDs() client.Client {
+func newFakeClientForCRDs(t *testing.T) client.Client {
+	t.Helper()
 	sch := runtime.NewScheme()
-	apiextensionsv1.AddToScheme(sch)
+	err := apiextensionsv1.AddToScheme(sch)
+	require.NoError(t, err)
 	return fake.NewClientBuilder().WithScheme(sch).Build()
 }
 
 func TestEnsureDexCRDs_CreatesAllCRDs(t *testing.T) {
-	cl := newFakeClientForCRDs()
+	cl := newFakeClientForCRDs(t)
 	ctx := context.Background()
 
 	err := EnsureDexCRDs(ctx, cl)
@@ -200,7 +202,7 @@ func TestEnsureDexCRDs_CreatesAllCRDs(t *testing.T) {
 }
 
 func TestEnsureDexCRDs_IsIdempotent(t *testing.T) {
-	cl := newFakeClientForCRDs()
+	cl := newFakeClientForCRDs(t)
 	ctx := context.Background()
 
 	require.NoError(t, EnsureDexCRDs(ctx, cl))
@@ -215,7 +217,8 @@ func TestEnsureDexCRDs_IsIdempotent(t *testing.T) {
 
 func TestEnsureDexCRDs_GetError(t *testing.T) {
 	sch := runtime.NewScheme()
-	apiextensionsv1.AddToScheme(sch)
+	err := apiextensionsv1.AddToScheme(sch)
+	require.NoError(t, err)
 
 	wantErr := fmt.Errorf("simulated get error")
 	cl := fake.NewClientBuilder().WithScheme(sch).WithInterceptorFuncs(interceptor.Funcs{
@@ -224,14 +227,15 @@ func TestEnsureDexCRDs_GetError(t *testing.T) {
 		},
 	}).Build()
 
-	err := EnsureDexCRDs(context.Background(), cl)
+	err = EnsureDexCRDs(context.Background(), cl)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to fetch CRD")
 }
 
 func TestEnsureDexCRDs_CreateError(t *testing.T) {
 	sch := runtime.NewScheme()
-	apiextensionsv1.AddToScheme(sch)
+	err := apiextensionsv1.AddToScheme(sch)
+	require.NoError(t, err)
 
 	wantErr := fmt.Errorf("simulated create error")
 	cl := fake.NewClientBuilder().WithScheme(sch).WithInterceptorFuncs(interceptor.Funcs{
@@ -240,7 +244,7 @@ func TestEnsureDexCRDs_CreateError(t *testing.T) {
 		},
 	}).Build()
 
-	err := EnsureDexCRDs(context.Background(), cl)
+	err = EnsureDexCRDs(context.Background(), cl)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to create CRD")
 }
