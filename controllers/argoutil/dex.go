@@ -81,18 +81,20 @@ func DexServerCustomStartupScript() []string {
 	return []string{
 		`set -e
 trap 'kill -TERM $DEX_PID 2>/dev/null; exit 0' INT TERM
+
+EXTRA_ARGS=""
+if [ -s /tls/tls.crt ] && [ -s /tls/tls.key ]; then
+cp /tls/tls.crt /tmp/tls.crt
+cp /tls/tls.key /tmp/tls.key
+elif command -v openssl >/dev/null 2>&1; then
+  openssl req -x509 -newkey rsa:2048 -nodes \
+  -keyout /tmp/tls.key -out /tmp/tls.crt -days 3650 \
+  -subj "/CN=dexserver" -addext "subjectAltName=DNS:localhost,DNS:dexserver"
+else
+EXTRA_ARGS="--disable-tls"
+fi
+# run in a loop and restart the dex server process if there is a change in dex config.
 while true; do
-  EXTRA_ARGS=""
-  if [ -s /tls/tls.crt ] && [ -s /tls/tls.key ]; then
-    cp /tls/tls.crt /tmp/tls.crt
-    cp /tls/tls.key /tmp/tls.key
-  elif command -v openssl >/dev/null 2>&1; then
-      openssl req -x509 -newkey rsa:2048 -nodes \
-      -keyout /tmp/tls.key -out /tmp/tls.crt -days 3650 \
-      -subj "/CN=dexserver" -addext "subjectAltName=DNS:localhost,DNS:dexserver"
-  else
-    EXTRA_ARGS="--disable-tls"
-  fi
   /shared/argocd-dex gendexcfg ${EXTRA_ARGS} -o /tmp/base.yaml
   awk '/^storage:/ { print "storage:\n  type: kubernetes\n  config:\n    inCluster: true"; skip=1; next } skip && /^[a-zA-Z0-9_-]+:/ { skip=0 } !skip' /tmp/base.yaml > /tmp/dex.yaml
   
