@@ -9,7 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
+	authorizationv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,6 +21,7 @@ import (
 	testclient "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
@@ -1685,8 +1688,20 @@ func TestReconcileArgoCD_reconcileDexDeployments_dex_storage_kubernetes(t *testi
 			resObjs := []client.Object{tt.argoCD}
 			subresObjs := []client.Object{tt.argoCD}
 			runtimeObjs := []runtime.Object{}
-			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, apiextensionsv1.AddToScheme)
+			cl := fake.NewClientBuilder().WithScheme(sch).
+				WithObjects(resObjs...).
+				WithStatusSubresource(subresObjs...).
+				WithRuntimeObjects(runtimeObjs...).
+				WithInterceptorFuncs(interceptor.Funcs{
+					Create: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+						if ssar, ok := obj.(*authorizationv1.SelfSubjectAccessReview); ok {
+							ssar.Status.Allowed = true
+							return nil
+						}
+						return c.Create(ctx, obj, opts...)
+					},
+				}).Build()
 			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 			for k, v := range tt.envVars {
