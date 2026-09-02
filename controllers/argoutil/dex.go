@@ -80,20 +80,39 @@ func IsDexKubernetesStorageEnabled() bool {
 func DexServerCustomStartupScript() []string {
 	return []string{
 		`set -e
-EXTRA_ARGS=""
-if [ -s /tls/tls.crt ] && [ -s /tls/tls.key ]; then
-  cp /tls/tls.crt /tmp/tls.crt
-  cp /tls/tls.key /tmp/tls.key
-elif command -v openssl >/dev/null 2>&1; then
+trap 'kill -TERM $DEX_PID 2>/dev/null; exit 0' INT TERM
+while true; do
+  EXTRA_ARGS=""
+  if [ -s /tls/tls.crt ] && [ -s /tls/tls.key ]; then
+    cp /tls/tls.crt /tmp/tls.crt
+    cp /tls/tls.key /tmp/tls.key
+  elif command -v openssl >/dev/null 2>&1; then
       openssl req -x509 -newkey rsa:2048 -nodes \
       -keyout /tmp/tls.key -out /tmp/tls.crt -days 3650 \
       -subj "/CN=dexserver" -addext "subjectAltName=DNS:localhost,DNS:dexserver"
-else
+  else
     EXTRA_ARGS="--disable-tls"
-fi
-/shared/argocd-dex gendexcfg ${EXTRA_ARGS} -o /tmp/base.yaml
-awk '/^storage:/ { print "storage:\n  type: kubernetes\n  config:\n    inCluster: true"; skip=1; next } skip && /^[a-zA-Z0-9_-]+:/ { skip=0 } !skip' /tmp/base.yaml > /tmp/dex.yaml
-exec dex serve /tmp/dex.yaml`,
+  fi
+  /shared/argocd-dex gendexcfg ${EXTRA_ARGS} -o /tmp/base.yaml
+  awk '/^storage:/ { print "storage:\n  type: kubernetes\n  config:\n    inCluster: true"; skip=1; next } skip && /^[a-zA-Z0-9_-]+:/ { skip=0 } !skip' /tmp/base.yaml > /tmp/dex.yaml
+  
+  echo "starting dex server"
+  dex serve /tmp/dex.yaml &
+  DEX_PID=$!
+
+  # continuously poll for changes to dex configuration in argocd-cm configmap
+  # if a change is detected, send SIGTERM signal for dex server process for it to restart.
+  while true; do
+    sleep 15
+    /shared/argocd-dex gendexcfg ${EXTRA_ARGS} -o /tmp/check_base.yaml 2>/dev/null || continue
+    if ! cmp -s /tmp/base.yaml /tmp/check_base.yaml; then
+      echo "Configuration change detected in argocd-cm/argocd-secret. Restarting Dex process..."
+      kill -TERM $DEX_PID
+      wait $DEX_PID 2>/dev/null || true
+      break
+    fi
+  done
+done`,
 	}
 }
 
