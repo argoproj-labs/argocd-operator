@@ -105,7 +105,7 @@ while true; do
   while true; do
     sleep 15
     /shared/argocd-dex gendexcfg ${EXTRA_ARGS} -o /tmp/check_base.yaml 2>/dev/null || continue
-    if ! cmp -s /tmp/base.yaml /tmp/check_base.yaml; then
+    if [ "$(sha256sum < /tmp/base.yaml)" != "$(sha256sum < /tmp/check_base.yaml)" ]; then
       echo "Configuration change detected in argocd-cm/argocd-secret. Restarting Dex process..."
       kill -TERM $DEX_PID
       wait $DEX_PID 2>/dev/null || true
