@@ -76,6 +76,14 @@ func getCAConfigMapName(cr *argoproj.ArgoCD) string {
 	return nameWithSuffix(common.ArgoCDCASuffix, cr)
 }
 
+// getCASecretName will return the CA Secret name for the given ArgoCD.
+func getCASecretName(cr *argoproj.ArgoCD) string {
+	if len(cr.Spec.TLS.CA.SecretName) > 0 {
+		return cr.Spec.TLS.CA.SecretName
+	}
+	return nameWithSuffix(common.ArgoCDCASuffix, cr)
+}
+
 // getSCMRootCAConfigMapName will return the SCMRootCA ConfigMap name for the given ArgoCD ApplicationSet Controller.
 func getSCMRootCAConfigMapName(cr *argoproj.ArgoCD) string {
 	if cr.Spec.ApplicationSet.SCMRootCAConfigMap != "" && len(cr.Spec.ApplicationSet.SCMRootCAConfigMap) > 0 {
@@ -348,7 +356,7 @@ func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoproj.ArgoCD, useTLSForRedi
 func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoproj.ArgoCD) error {
 	cm := newConfigMapWithName(getCAConfigMapName(cr), cr)
 
-	caSecret := argoutil.NewSecretWithSuffix(cr, common.ArgoCDCASuffix)
+	caSecret := argoutil.NewSecretWithName(cr, getCASecretName(cr))
 	caSecretExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, caSecret.Name, caSecret)
 	if err != nil {
 		return err

@@ -81,9 +81,11 @@ func nowNano() string {
 	return fmt.Sprintf("%d", time.Now().UTC().UnixNano())
 }
 
-// newCASecret creates a new CA secret with the given suffix for the given ArgoCD.
+// newCASecret creates a new CA secret for the given ArgoCD.
+// The secret name is taken from spec.tls.ca.secretName when set, otherwise it defaults to the "{cr.Name}-ca" suffix.
 func newCASecret(cr *argoproj.ArgoCD) (*corev1.Secret, error) {
-	secret := argoutil.NewTLSSecret(cr, "ca")
+	secret := argoutil.NewSecretWithName(cr, getCASecretName(cr))
+	secret.Type = corev1.SecretTypeTLS
 
 	key, err := argoutil.NewPrivateKey()
 	if err != nil {
@@ -260,7 +262,7 @@ func (r *ReconcileArgoCD) reconcileClusterTLSSecret(cr *argoproj.ArgoCD) error {
 		return nil // Secret found, do nothing
 	}
 
-	caSecret := argoutil.NewSecretWithSuffix(cr, "ca")
+	caSecret := argoutil.NewSecretWithName(cr, getCASecretName(cr))
 	caSecret, err = argoutil.FetchSecret(r.Client, cr.ObjectMeta, caSecret.Name)
 	if err != nil {
 		return err
@@ -291,7 +293,7 @@ func (r *ReconcileArgoCD) reconcileClusterTLSSecret(cr *argoproj.ArgoCD) error {
 
 // reconcileClusterCASecret ensures the CA Secret is created for the ArgoCD cluster.
 func (r *ReconcileArgoCD) reconcileClusterCASecret(cr *argoproj.ArgoCD) error {
-	secret := argoutil.NewSecretWithSuffix(cr, "ca")
+	secret := argoutil.NewSecretWithName(cr, getCASecretName(cr))
 	secretExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret)
 	if err != nil {
 		return err

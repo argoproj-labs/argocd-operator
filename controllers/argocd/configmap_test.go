@@ -2250,4 +2250,52 @@ func TestReconcileArgoCD_reconcileCAConfigMap(t *testing.T) {
 		assert.Equal(t, "sentinel-tls", cm.Data[common.ArgoCDKeyTLSCert], "existing tls.crt should be preserved unchanged")
 		assert.Equal(t, "sentinel-ca", cm.Data[common.ArgoCDKeyTLSCACert], "existing ca.crt should be preserved unchanged")
 	})
+
+	t.Run("uses custom CA secret name from spec.tls.ca.secretName", func(t *testing.T) {
+		const customSecretName = "my-custom-ca"
+		a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+			a.Spec.TLS.CA.SecretName = customSecretName
+		})
+
+		caSecret, err := newCASecret(a)
+		require.NoError(t, err)
+		require.Equal(t, customSecretName, caSecret.Name, "newCASecret must honour spec.tls.ca.secretName")
+
+		resObjs := []client.Object{a, caSecret}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		err = r.reconcileCAConfigMap(a)
+		require.NoError(t, err)
+
+		cm := &corev1.ConfigMap{}
+		err = r.Get(context.TODO(), types.NamespacedName{
+			Name:      getCAConfigMapName(a),
+			Namespace: a.Namespace,
+		}, cm)
+		require.NoError(t, err)
+
+		assert.Contains(t, cm.Data, common.ArgoCDKeyTLSCert, "ConfigMap should have tls.crt key")
+		assert.Contains(t, cm.Data, common.ArgoCDKeyTLSCACert, "ConfigMap should have ca.crt key")
+		assert.Equal(t, string(caSecret.Data[corev1.TLSCertKey]), cm.Data[common.ArgoCDKeyTLSCert])
+		assert.Equal(t, string(caSecret.Data[corev1.ServiceAccountRootCAKey]), cm.Data[common.ArgoCDKeyTLSCACert])
+	})
+}
+
+func TestGetCASecretName(t *testing.T) {
+	t.Run("returns default suffix-based name when SecretName is not set", func(t *testing.T) {
+		a := makeTestArgoCD()
+		// testArgoCDName is "argocd", so the default is "argocd-ca"
+		assert.Equal(t, "argocd-ca", getCASecretName(a))
+	})
+
+	t.Run("returns custom name when spec.tls.ca.secretName is set", func(t *testing.T) {
+		a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+			a.Spec.TLS.CA.SecretName = "my-custom-ca"
+		})
+		assert.Equal(t, "my-custom-ca", getCASecretName(a))
+	})
 }
