@@ -386,15 +386,21 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoproj.ArgoCD) error {
 		return r.Create(context.TODO(), cm)
 	}
 
-	// ConfigMap exists — only update if ca.crt key is missing (backfill for pre-fix ConfigMaps)
-	if _, hasCACert := existingCM.Data[common.ArgoCDKeyTLSCACert]; !hasCACert {
-		if existingCM.Data == nil {
-			existingCM.Data = make(map[string]string)
+	// ConfigMap exists — sync only the operator-managed keys (tls.crt, ca.crt).
+	// This handles both the initial backfill (missing keys) and cert rotation
+	// when spec.tls.ca.secretName is changed to a different secret.
+	// Unrelated keys added by the user are preserved.
+	needsUpdate := false
+	if existingCM.Data == nil {
+		existingCM.Data = make(map[string]string)
+	}
+	for key, desiredVal := range desiredData {
+		if existingCM.Data[key] != desiredVal {
+			existingCM.Data[key] = desiredVal
+			needsUpdate = true
 		}
-		if _, hasTLSCert := existingCM.Data[common.ArgoCDKeyTLSCert]; !hasTLSCert {
-			existingCM.Data[common.ArgoCDKeyTLSCert] = desiredData[common.ArgoCDKeyTLSCert]
-		}
-		existingCM.Data[common.ArgoCDKeyTLSCACert] = desiredData[common.ArgoCDKeyTLSCACert]
+	}
+	if needsUpdate {
 		argoutil.LogResourceUpdate(log, existingCM)
 		return r.Update(context.TODO(), existingCM)
 	}

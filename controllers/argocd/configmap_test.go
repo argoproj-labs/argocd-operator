@@ -2174,14 +2174,14 @@ func TestReconcileArgoCD_reconcileCAConfigMap(t *testing.T) {
 		caSecret, err := newCASecret(a)
 		require.NoError(t, err)
 
-		// Create ConfigMap with only tls.crt + an extra key (simulating pre-fix state with custom data)
+		// ConfigMap has only a stale tls.crt and an unrelated user key; ca.crt is absent.
 		oldCM := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      getCAConfigMapName(a),
 				Namespace: a.Namespace,
 			},
 			Data: map[string]string{
-				common.ArgoCDKeyTLSCert: "existing-tls",
+				common.ArgoCDKeyTLSCert: "stale-tls",
 				"someOtherKey":          "someValue",
 			},
 		}
@@ -2203,28 +2203,29 @@ func TestReconcileArgoCD_reconcileCAConfigMap(t *testing.T) {
 		}, cm)
 		require.NoError(t, err)
 
-		assert.Equal(t, "existing-tls", cm.Data[common.ArgoCDKeyTLSCert], "existing tls.crt should be preserved")
-		assert.Contains(t, cm.Data, common.ArgoCDKeyTLSCACert, "ConfigMap should now have ca.crt key added")
-		assert.Equal(t, string(caSecret.Data[corev1.ServiceAccountRootCAKey]), cm.Data[common.ArgoCDKeyTLSCACert])
-		assert.Contains(t, cm.Data, "someOtherKey", "existing keys should be preserved")
-		assert.Equal(t, "someValue", cm.Data["someOtherKey"], "existing key values should be preserved")
+		// Both managed keys must now reflect the current secret.
+		assert.Equal(t, string(caSecret.Data[corev1.TLSCertKey]), cm.Data[common.ArgoCDKeyTLSCert], "tls.crt should be updated from secret")
+		assert.Equal(t, string(caSecret.Data[corev1.ServiceAccountRootCAKey]), cm.Data[common.ArgoCDKeyTLSCACert], "ca.crt should be added from secret")
+		// Unrelated keys must survive untouched.
+		assert.Equal(t, "someValue", cm.Data["someOtherKey"], "unrelated keys must be preserved")
 	})
 
-	t.Run("no-op when both keys are already present", func(t *testing.T) {
+	t.Run("no-op when both keys already match the current secret", func(t *testing.T) {
 		a := makeTestArgoCD()
 
 		caSecret, err := newCASecret(a)
 		require.NoError(t, err)
 
-		// Create ConfigMap with sentinel values (simulating post-fix state)
+		// Pre-populate the ConfigMap with the exact values from the secret so reconcile is a no-op.
 		existingCM := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      getCAConfigMapName(a),
 				Namespace: a.Namespace,
 			},
 			Data: map[string]string{
-				common.ArgoCDKeyTLSCert:   "sentinel-tls",
-				common.ArgoCDKeyTLSCACert: "sentinel-ca",
+				common.ArgoCDKeyTLSCert:   string(caSecret.Data[corev1.TLSCertKey]),
+				common.ArgoCDKeyTLSCACert: string(caSecret.Data[corev1.ServiceAccountRootCAKey]),
+				"someOtherKey":            "someValue",
 			},
 		}
 
@@ -2233,7 +2234,7 @@ func TestReconcileArgoCD_reconcileCAConfigMap(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := fake.NewClientBuilder().WithScheme(sch).WithObjects(resObjs...).WithStatusSubresource(subresObjs...).WithRuntimeObjects(runtimeObjs...).WithInterceptorFuncs(interceptor.Funcs{Update: func(ctx context.Context, client client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
-			return fmt.Errorf("unexpected Update call to configmaps")
+			return fmt.Errorf("unexpected Update call to configmap")
 		}}).Build()
 		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
@@ -2247,8 +2248,56 @@ func TestReconcileArgoCD_reconcileCAConfigMap(t *testing.T) {
 		}, cm)
 		require.NoError(t, err)
 
-		assert.Equal(t, "sentinel-tls", cm.Data[common.ArgoCDKeyTLSCert], "existing tls.crt should be preserved unchanged")
-		assert.Equal(t, "sentinel-ca", cm.Data[common.ArgoCDKeyTLSCACert], "existing ca.crt should be preserved unchanged")
+		assert.Equal(t, string(caSecret.Data[corev1.TLSCertKey]), cm.Data[common.ArgoCDKeyTLSCert])
+		assert.Equal(t, string(caSecret.Data[corev1.ServiceAccountRootCAKey]), cm.Data[common.ArgoCDKeyTLSCACert])
+		assert.Equal(t, "someValue", cm.Data["someOtherKey"], "unrelated keys must be preserved")
+	})
+
+	t.Run("updates stale managed keys when spec.tls.ca.secretName is rotated to a different secret", func(t *testing.T) {
+		const newSecretName = "my-rotated-ca"
+		a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+			a.Spec.TLS.CA.SecretName = newSecretName
+		})
+
+		newCASecret, err := newCASecret(a)
+		require.NoError(t, err)
+		require.Equal(t, newSecretName, newCASecret.Name)
+
+		// ConfigMap still holds data from the old secret (stale) plus an unrelated user key.
+		staleCM := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      getCAConfigMapName(a),
+				Namespace: a.Namespace,
+			},
+			Data: map[string]string{
+				common.ArgoCDKeyTLSCert:   "old-tls-cert-data",
+				common.ArgoCDKeyTLSCACert: "old-ca-cert-data",
+				"someOtherKey":            "someValue",
+			},
+		}
+
+		resObjs := []client.Object{a, newCASecret, staleCM}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		err = r.reconcileCAConfigMap(a)
+		require.NoError(t, err)
+
+		cm := &corev1.ConfigMap{}
+		err = r.Get(context.TODO(), types.NamespacedName{
+			Name:      getCAConfigMapName(a),
+			Namespace: a.Namespace,
+		}, cm)
+		require.NoError(t, err)
+
+		// Managed keys must now reflect the new (rotated) secret.
+		assert.Equal(t, string(newCASecret.Data[corev1.TLSCertKey]), cm.Data[common.ArgoCDKeyTLSCert], "tls.crt must be updated from the new secret")
+		assert.Equal(t, string(newCASecret.Data[corev1.ServiceAccountRootCAKey]), cm.Data[common.ArgoCDKeyTLSCACert], "ca.crt must be updated from the new secret")
+		// Unrelated keys must survive untouched.
+		assert.Equal(t, "someValue", cm.Data["someOtherKey"], "unrelated keys must be preserved")
 	})
 
 	t.Run("uses custom CA secret name from spec.tls.ca.secretName", func(t *testing.T) {

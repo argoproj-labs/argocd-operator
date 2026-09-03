@@ -293,7 +293,18 @@ func (r *ReconcileArgoCD) reconcileClusterTLSSecret(cr *argoproj.ArgoCD) error {
 
 // reconcileClusterCASecret ensures the CA Secret is created for the ArgoCD cluster.
 func (r *ReconcileArgoCD) reconcileClusterCASecret(cr *argoproj.ArgoCD) error {
-	secret := argoutil.NewSecretWithName(cr, getCASecretName(cr))
+	caSecretName := getCASecretName(cr)
+
+	// If spec.tls.ca.secretName equals {cr.Name}-tls, CA reconciliation would create
+	// or adopt that secret first, and TLS reconciliation would then see it as the
+	// existing server-TLS secret and skip generating a proper signed certificate.
+	tlsSecretName := argoutil.GetSecretNameWithSuffix(cr, "tls")
+	if caSecretName == tlsSecretName {
+		return fmt.Errorf("spec.tls.ca.secretName %q conflicts with the operator-managed cluster TLS secret %q; choose a different name",
+			caSecretName, tlsSecretName)
+	}
+
+	secret := argoutil.NewSecretWithName(cr, caSecretName)
 	secretExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret)
 	if err != nil {
 		return err
