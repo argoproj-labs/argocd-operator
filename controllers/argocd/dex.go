@@ -618,6 +618,14 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
 			changes = append(changes, "labels")
 		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Args, existing.Spec.Template.Spec.Containers[0].Args) {
+			existing.Spec.Template.Spec.Containers[0].Args = deploy.Spec.Template.Spec.Containers[0].Args
+			changes = append(changes, "container args")
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Command, existing.Spec.Template.Spec.Containers[0].Command) {
+			existing.Spec.Template.Spec.Containers[0].Command = deploy.Spec.Template.Spec.Containers[0].Command
+			changes = append(changes, "container command")
+		}
 
 		if len(changes) > 0 {
 			argoutil.LogResourceUpdate(log, existing, "updating", strings.Join(changes, ", "))
