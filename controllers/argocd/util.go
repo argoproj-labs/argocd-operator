@@ -553,10 +553,15 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD, argocdStatus *
 		return err
 	}
 
-	log.Info("reconciling image pull secrets")
-	if err := r.reconcileImagePullSecrets(cr); err != nil {
-		log.Info(err.Error())
-		return err
+	// On OpenShift, clusters already have access to registry.redhat.io and the
+	// platform injects dockercfg secrets into ServiceAccounts. Skip image pull
+	// secret propagation to avoid clobbering those platform-managed entries.
+	if !IsOpenShiftCluster() {
+		log.Info("reconciling image pull secrets")
+		if err := r.reconcileImagePullSecrets(cr); err != nil {
+			log.Info(err.Error())
+			return err
+		}
 	}
 
 	log.Info("reconciling service accounts")
@@ -1691,9 +1696,12 @@ func (r *ReconcileArgoCD) reconcileArgoCDAgent(cr *argoproj.ArgoCD) error {
 	var err error
 
 	log.Info("reconciling ArgoCD Agent's Principal service account")
-	pullSecretRefs, err := r.getImagePullSecretRefs(cr)
-	if err != nil {
-		return err
+	var pullSecretRefs []corev1.LocalObjectReference
+	if !IsOpenShiftCluster() {
+		pullSecretRefs, err = r.getImagePullSecretRefs(cr)
+		if err != nil {
+			return err
+		}
 	}
 	if sa, err = argocdagent.ReconcilePrincipalServiceAccount(r.Client, compName, cr, r.Scheme, pullSecretRefs); err != nil {
 		return err
@@ -1771,9 +1779,12 @@ func (r *ReconcileArgoCD) reconcileArgoCDAgent(cr *argoproj.ArgoCD) error {
 
 	log.Info("reconciling ArgoCD Agent's Agent service account")
 	var agentSa *corev1.ServiceAccount
-	agentPullSecretRefs, err := r.getImagePullSecretRefs(cr)
-	if err != nil {
-		return err
+	var agentPullSecretRefs []corev1.LocalObjectReference
+	if !IsOpenShiftCluster() {
+		agentPullSecretRefs, err = r.getImagePullSecretRefs(cr)
+		if err != nil {
+			return err
+		}
 	}
 	if agentSa, err = agent.ReconcileAgentServiceAccount(r.Client, agentCompName, cr, r.Scheme, agentPullSecretRefs); err != nil {
 		return err
@@ -2158,9 +2169,12 @@ func (r *ReconcileArgoCD) reconcileGitOpsPromoter(cr *argoproj.ArgoCD) error {
 	var sa *corev1.ServiceAccount
 	var err error
 
-	pullSecretRefs, err := r.getImagePullSecretRefs(cr)
-	if err != nil {
-		return err
+	var pullSecretRefs []corev1.LocalObjectReference
+	if !IsOpenShiftCluster() {
+		pullSecretRefs, err = r.getImagePullSecretRefs(cr)
+		if err != nil {
+			return err
+		}
 	}
 
 	log.Info("reconciling GitOps Promoter's Controller Manager ServiceAccount")

@@ -264,8 +264,9 @@ func TestReconcilePromoterServiceAccount_Exists_UpdatesImagePullSecrets(t *testi
 	assert.NoError(t, err)
 	assert.Equal(t, refs, retrievedSA.ImagePullSecrets)
 
-	// nil refs (label removed) should clear the imagePullSecrets
-	_, err = ReconcilePromoterServiceAccount(client, testCompName, cr, sch, true, nil)
+	// empty (non-nil) refs (label removed) should clear the imagePullSecrets.
+	// nil refs means "don't touch" (used on OpenShift).
+	_, err = ReconcilePromoterServiceAccount(client, testCompName, cr, sch, true, []corev1.LocalObjectReference{})
 	assert.NoError(t, err)
 
 	err = client.Get(context.Background(), types.NamespacedName{

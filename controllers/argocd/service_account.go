@@ -140,30 +140,39 @@ func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoproj.Argo
 			return sa, r.Delete(context.TODO(), sa)
 		}
 
-		desired, err := r.getImagePullSecretRefs(cr)
-		if err != nil {
-			return sa, err
-		}
-		if !reflect.DeepEqual(sa.ImagePullSecrets, desired) {
-			sa.ImagePullSecrets = desired
-			argoutil.LogResourceUpdate(log, sa, "imagePullSecrets changed")
-			return sa, r.Update(context.TODO(), sa)
+		// On OpenShift the platform injects dockercfg secrets into SAs;
+		// do not touch ImagePullSecrets to avoid clobbering them.
+		if !IsOpenShiftCluster() {
+			desired, err := r.getImagePullSecretRefs(cr)
+			if err != nil {
+				return sa, err
+			}
+			existing := sa.ImagePullSecrets
+			if existing == nil {
+				existing = []corev1.LocalObjectReference{}
+			}
+			if !reflect.DeepEqual(existing, desired) {
+				sa.ImagePullSecrets = desired
+				argoutil.LogResourceUpdate(log, sa, "imagePullSecrets changed")
+				return sa, r.Update(context.TODO(), sa)
+			}
 		}
 		return sa, nil
 	}
 
-	refs, err := r.getImagePullSecretRefs(cr)
-	if err != nil {
-		return nil, err
+	if !IsOpenShiftCluster() {
+		refs, err := r.getImagePullSecretRefs(cr)
+		if err != nil {
+			return nil, err
+		}
+		sa.ImagePullSecrets = refs
 	}
-	sa.ImagePullSecrets = refs
 	if err := controllerutil.SetControllerReference(cr, sa, r.Scheme); err != nil {
 		return nil, err
 	}
 
 	argoutil.LogResourceCreation(log, sa)
-	err = r.Create(context.TODO(), sa)
-	if err != nil {
+	if err := r.Create(context.TODO(), sa); err != nil {
 		return nil, err
 	}
 
