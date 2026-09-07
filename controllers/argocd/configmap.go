@@ -76,6 +76,14 @@ func getCAConfigMapName(cr *argoproj.ArgoCD) string {
 	return nameWithSuffix(common.ArgoCDCASuffix, cr)
 }
 
+// getCASecretName will return the CA Secret name for the given ArgoCD.
+func getCASecretName(cr *argoproj.ArgoCD) string {
+	if len(cr.Spec.TLS.CA.SecretName) > 0 {
+		return cr.Spec.TLS.CA.SecretName
+	}
+	return nameWithSuffix(common.ArgoCDCASuffix, cr)
+}
+
 // getSCMRootCAConfigMapName will return the SCMRootCA ConfigMap name for the given ArgoCD ApplicationSet Controller.
 func getSCMRootCAConfigMapName(cr *argoproj.ArgoCD) string {
 	if cr.Spec.ApplicationSet.SCMRootCAConfigMap != "" && len(cr.Spec.ApplicationSet.SCMRootCAConfigMap) > 0 {
@@ -348,7 +356,7 @@ func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoproj.ArgoCD, useTLSForRedi
 func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoproj.ArgoCD) error {
 	cm := newConfigMapWithName(getCAConfigMapName(cr), cr)
 
-	caSecret := argoutil.NewSecretWithSuffix(cr, common.ArgoCDCASuffix)
+	caSecret := argoutil.NewSecretWithName(cr, getCASecretName(cr))
 	caSecretExists, err := argoutil.IsObjectFound(r.Client, cr.Namespace, caSecret.Name, caSecret)
 	if err != nil {
 		return err
@@ -378,15 +386,21 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoproj.ArgoCD) error {
 		return r.Create(context.TODO(), cm)
 	}
 
-	// ConfigMap exists — only update if ca.crt key is missing (backfill for pre-fix ConfigMaps)
-	if _, hasCACert := existingCM.Data[common.ArgoCDKeyTLSCACert]; !hasCACert {
-		if existingCM.Data == nil {
-			existingCM.Data = make(map[string]string)
+	// ConfigMap exists — sync only the operator-managed keys (tls.crt, ca.crt).
+	// This handles both the initial backfill (missing keys) and cert rotation
+	// when spec.tls.ca.secretName is changed to a different secret.
+	// Unrelated keys added by the user are preserved.
+	needsUpdate := false
+	if existingCM.Data == nil {
+		existingCM.Data = make(map[string]string)
+	}
+	for key, desiredVal := range desiredData {
+		if existingCM.Data[key] != desiredVal {
+			existingCM.Data[key] = desiredVal
+			needsUpdate = true
 		}
-		if _, hasTLSCert := existingCM.Data[common.ArgoCDKeyTLSCert]; !hasTLSCert {
-			existingCM.Data[common.ArgoCDKeyTLSCert] = desiredData[common.ArgoCDKeyTLSCert]
-		}
-		existingCM.Data[common.ArgoCDKeyTLSCACert] = desiredData[common.ArgoCDKeyTLSCACert]
+	}
+	if needsUpdate {
 		argoutil.LogResourceUpdate(log, existingCM)
 		return r.Update(context.TODO(), existingCM)
 	}

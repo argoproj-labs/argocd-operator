@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	testclient "k8s.io/client-go/kubernetes/fake"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
@@ -55,6 +56,116 @@ func Test_newCASecret(t *testing.T) {
 	if k := byteMapKeys(s.Data); !reflect.DeepEqual(want, k) {
 		t.Fatalf("got %#v, want %#v", k, want)
 	}
+}
+
+func TestReconcileArgoCD_reconcileClusterCASecret(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	t.Run("returns error when spec.tls.ca.secretName collides with the cluster TLS secret name", func(t *testing.T) {
+		a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+			// testArgoCDName is "argocd", so the TLS secret name is "argocd-tls".
+			// Setting secretName to that value must be rejected.
+			a.Spec.TLS.CA.SecretName = argoutil.GetSecretNameWithSuffix(a, "tls")
+		})
+
+		resObjs := []client.Object{a}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		err := r.reconcileClusterCASecret(a)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "conflicts with the operator-managed cluster TLS secret")
+	})
+
+	t.Run("creates CA secret with default name when spec.tls.ca.secretName is not set", func(t *testing.T) {
+		a := makeTestArgoCD()
+
+		resObjs := []client.Object{a}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		err := r.reconcileClusterCASecret(a)
+		require.NoError(t, err)
+
+		secret := &corev1.Secret{}
+		err = r.Get(context.TODO(), types.NamespacedName{
+			Name:      getCASecretName(a), // "argocd-ca"
+			Namespace: a.Namespace,
+		}, secret)
+		require.NoError(t, err)
+		assert.Equal(t, corev1.SecretTypeTLS, secret.Type)
+		assert.NotEmpty(t, secret.Data[corev1.TLSCertKey])
+		assert.NotEmpty(t, secret.Data[corev1.TLSPrivateKeyKey])
+	})
+
+	t.Run("creates CA secret with custom name when spec.tls.ca.secretName is set", func(t *testing.T) {
+		const customName = "my-custom-ca"
+		a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+			a.Spec.TLS.CA.SecretName = customName
+		})
+
+		resObjs := []client.Object{a}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		err := r.reconcileClusterCASecret(a)
+		require.NoError(t, err)
+
+		secret := &corev1.Secret{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: customName, Namespace: a.Namespace}, secret)
+		require.NoError(t, err, "secret must be created under the custom name")
+		assert.Equal(t, corev1.SecretTypeTLS, secret.Type)
+
+		// Default-named secret must NOT exist.
+		defaultSecret := &corev1.Secret{}
+		err = r.Get(context.TODO(), types.NamespacedName{
+			Name:      argoutil.GetSecretNameWithSuffix(a, common.ArgoCDCASuffix),
+			Namespace: a.Namespace,
+		}, defaultSecret)
+		assert.True(t, apierrors.IsNotFound(err), "default-named CA secret must not be created when a custom name is set; got err: %v", err)
+	})
+
+	t.Run("skips creation when custom-named CA secret already exists", func(t *testing.T) {
+		const customName = "my-custom-ca"
+		a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+			a.Spec.TLS.CA.SecretName = customName
+		})
+
+		existingSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: customName, Namespace: a.Namespace},
+			Type:       corev1.SecretTypeTLS,
+			Data: map[string][]byte{
+				corev1.TLSCertKey:              []byte("existing-cert"),
+				corev1.TLSPrivateKeyKey:        []byte("existing-key"),
+				corev1.ServiceAccountRootCAKey: []byte("existing-ca"),
+			},
+		}
+
+		resObjs := []client.Object{a, existingSecret}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+		err := r.reconcileClusterCASecret(a)
+		require.NoError(t, err)
+
+		// Data must be unchanged — operator must not overwrite a pre-existing secret.
+		secret := &corev1.Secret{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: customName, Namespace: a.Namespace}, secret)
+		require.NoError(t, err)
+		assert.Equal(t, []byte("existing-cert"), secret.Data[corev1.TLSCertKey], "pre-existing cert must not be overwritten")
+	})
 }
 
 func byteMapKeys(m map[string][]byte) []string {
