@@ -1286,8 +1286,21 @@ type PrincipalSpec struct {
 	// JWT defines the JWT options for the Principal component.
 	JWT *PrincipalJWTSpec `json:"jwt,omitempty"`
 
+	// SelfRegistration defines the self-registration options for the Principal component.
+	SelfRegistration *PrincipalSelfRegistrationSpec `json:"selfRegistration,omitempty"`
+
 	// Metrics defines the metrics configuration for the Principal ServiceMonitor.
 	Metrics *ArgoCDMetricsSpec `json:"metrics,omitempty"`
+}
+
+type PrincipalSelfRegistrationSpec struct {
+	// Enabled is the flag to enable self-registration of agents.
+	// When enabled, agents with valid credentials can automatically register on connection.
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// ClientCertSecretName is the name of the TLS secret containing shared client cert
+	// for self-registered cluster secrets (must have tls.crt, tls.key, ca.crt).
+	ClientCertSecretName string `json:"clientCertSecretName,omitempty"`
 }
 
 type PrincipalServerSpec struct {

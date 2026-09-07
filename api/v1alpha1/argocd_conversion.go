@@ -817,20 +817,21 @@ func ConvertAlphaToBetaPrincipal(src *PrincipalSpec) *v1beta1.PrincipalSpec {
 	var dst *v1beta1.PrincipalSpec
 	if src != nil {
 		dst = &v1beta1.PrincipalSpec{
-			Enabled:       src.Enabled,
-			Auth:          src.Auth,
-			LogLevel:      src.LogLevel,
-			LogFormat:     src.LogFormat,
-			Image:         src.Image,
-			LabelSelector: src.LabelSelector,
-			Env:           src.Env,
-			Server:        ConvertAlphaToBetaPrincipalServer(src.Server),
-			Redis:         ConvertAlphaToBetaPrincipalRedis(src.Redis),
-			Namespace:     ConvertAlphaToBetaPrincipalNamespace(src.Namespace),
-			TLS:           ConvertAlphaToBetaPrincipalTLS(src.TLS),
-			ResourceProxy: ConvertAlphaToBetaPrincipalResourceProxy(src.ResourceProxy),
-			JWT:           ConvertAlphaToBetaPrincipalJWT(src.JWT),
-			Metrics:       ConvertAlphaToBetaMetrics(src.Metrics),
+			Enabled:          src.Enabled,
+			Auth:             src.Auth,
+			LogLevel:         src.LogLevel,
+			LogFormat:        src.LogFormat,
+			Image:            src.Image,
+			LabelSelector:    src.LabelSelector,
+			Env:              src.Env,
+			Server:           ConvertAlphaToBetaPrincipalServer(src.Server),
+			Redis:            ConvertAlphaToBetaPrincipalRedis(src.Redis),
+			Namespace:        ConvertAlphaToBetaPrincipalNamespace(src.Namespace),
+			TLS:              ConvertAlphaToBetaPrincipalTLS(src.TLS),
+			ResourceProxy:    ConvertAlphaToBetaPrincipalResourceProxy(src.ResourceProxy),
+			JWT:              ConvertAlphaToBetaPrincipalJWT(src.JWT),
+			SelfRegistration: ConvertAlphaToBetaPrincipalSelfRegistration(src.SelfRegistration),
+			Metrics:          ConvertAlphaToBetaMetrics(src.Metrics),
 		}
 	}
 	return dst
@@ -851,20 +852,21 @@ func ConvertBetaToAlphaPrincipal(src *v1beta1.PrincipalSpec) *PrincipalSpec {
 	var dst *PrincipalSpec
 	if src != nil {
 		dst = &PrincipalSpec{
-			Enabled:       src.Enabled,
-			Auth:          src.Auth,
-			LogLevel:      src.LogLevel,
-			LogFormat:     src.LogFormat,
-			Image:         src.Image,
-			LabelSelector: src.LabelSelector,
-			Env:           src.Env,
-			Server:        ConvertBetaToAlphaPrincipalServer(src.Server),
-			Redis:         ConvertBetaToAlphaPrincipalRedis(src.Redis),
-			Namespace:     ConvertBetaToAlphaPrincipalNamespace(src.Namespace),
-			TLS:           ConvertBetaToAlphaPrincipalTLS(src.TLS),
-			ResourceProxy: ConvertBetaToAlphaPrincipalResourceProxy(src.ResourceProxy),
-			JWT:           ConvertBetaToAlphaPrincipalJWT(src.JWT),
-			Metrics:       ConvertBetaToAlphaMetrics(src.Metrics),
+			Enabled:          src.Enabled,
+			Auth:             src.Auth,
+			LogLevel:         src.LogLevel,
+			LogFormat:        src.LogFormat,
+			Image:            src.Image,
+			LabelSelector:    src.LabelSelector,
+			Env:              src.Env,
+			Server:           ConvertBetaToAlphaPrincipalServer(src.Server),
+			Redis:            ConvertBetaToAlphaPrincipalRedis(src.Redis),
+			Namespace:        ConvertBetaToAlphaPrincipalNamespace(src.Namespace),
+			TLS:              ConvertBetaToAlphaPrincipalTLS(src.TLS),
+			ResourceProxy:    ConvertBetaToAlphaPrincipalResourceProxy(src.ResourceProxy),
+			JWT:              ConvertBetaToAlphaPrincipalJWT(src.JWT),
+			SelfRegistration: ConvertBetaToAlphaPrincipalSelfRegistration(src.SelfRegistration),
+			Metrics:          ConvertBetaToAlphaMetrics(src.Metrics),
 		}
 	}
 	return dst
@@ -1007,6 +1009,28 @@ func ConvertBetaToAlphaPrincipalJWT(src *v1beta1.PrincipalJWTSpec) *PrincipalJWT
 		dst = &PrincipalJWTSpec{
 			SecretName:       src.SecretName,
 			InsecureGenerate: src.InsecureGenerate,
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaPrincipalSelfRegistration(src *PrincipalSelfRegistrationSpec) *v1beta1.PrincipalSelfRegistrationSpec {
+	var dst *v1beta1.PrincipalSelfRegistrationSpec
+	if src != nil {
+		dst = &v1beta1.PrincipalSelfRegistrationSpec{
+			Enabled:              src.Enabled,
+			ClientCertSecretName: src.ClientCertSecretName,
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaPrincipalSelfRegistration(src *v1beta1.PrincipalSelfRegistrationSpec) *PrincipalSelfRegistrationSpec {
+	var dst *PrincipalSelfRegistrationSpec
+	if src != nil {
+		dst = &PrincipalSelfRegistrationSpec{
+			Enabled:              src.Enabled,
+			ClientCertSecretName: src.ClientCertSecretName,
 		}
 	}
 	return dst

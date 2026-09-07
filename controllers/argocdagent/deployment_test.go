@@ -143,7 +143,7 @@ func TestReconcilePrincipalDeployment_DeploymentDoesNotExist_PrincipalEnabled(t 
 	assert.Equal(t, generateAgentResourceName(cr.Name, testCompName), container.Name)
 	assert.Equal(t, buildPrincipalImage(cr), container.Image)
 	assert.Equal(t, buildArgs(testCompName), container.Args)
-	assert.Equal(t, buildPrincipalContainerEnv(cr, tlsprofile.TLSConfigProfile{}), container.Env)
+	assert.Equal(t, buildPrincipalContainerEnv(cr, testCompName, tlsprofile.TLSConfigProfile{}), container.Env)
 	assert.Equal(t, buildSecurityContext(), container.SecurityContext)
 	assert.Equal(t, buildPorts(testCompName), container.Ports)
 
@@ -852,13 +852,139 @@ func TestBuildPrincipalContainerEnv_LabelSelector(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			envVars := buildPrincipalContainerEnv(tt.cr, tlsprofile.TLSConfigProfile{})
+			envVars := buildPrincipalContainerEnv(tt.cr, testCompName, tlsprofile.TLSConfigProfile{})
 			envMap := make(map[string]string)
 			for _, e := range envVars {
 				envMap[e.Name] = e.Value
 			}
 			assert.Equal(t, tt.expected, envMap[EnvArgoCDPrincipalLabelSelector],
 				"ARGOCD_PRINCIPAL_LABEL_SELECTOR mismatch")
+		})
+	}
+}
+
+func withSelfRegistration(enabled bool, clientCertSecretName string) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		if a.Spec.ArgoCDAgent == nil {
+			a.Spec.ArgoCDAgent = &argoproj.ArgoCDAgentSpec{}
+		}
+		if a.Spec.ArgoCDAgent.Principal == nil {
+			a.Spec.ArgoCDAgent.Principal = &argoproj.PrincipalSpec{}
+		}
+		a.Spec.ArgoCDAgent.Principal.SelfRegistration = &argoproj.PrincipalSelfRegistrationSpec{
+			Enabled:              &enabled,
+			ClientCertSecretName: clientCertSecretName,
+		}
+	}
+}
+
+func TestGetPrincipalEnableSelfClusterRegistration(t *testing.T) {
+	tests := []struct {
+		name     string
+		cr       *argoproj.ArgoCD
+		expected string
+	}{
+		{
+			name:     "principal not configured",
+			cr:       makeTestArgoCD(),
+			expected: "false",
+		},
+		{
+			name:     "self-registration not configured",
+			cr:       makeTestArgoCD(withPrincipalEnabled(true)),
+			expected: "false",
+		},
+		{
+			name:     "self-registration enabled",
+			cr:       makeTestArgoCD(withPrincipalEnabled(true), withSelfRegistration(true, "")),
+			expected: "true",
+		},
+		{
+			name:     "self-registration disabled",
+			cr:       makeTestArgoCD(withPrincipalEnabled(true), withSelfRegistration(false, "")),
+			expected: "false",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, getPrincipalEnableSelfClusterRegistration(tt.cr))
+		})
+	}
+}
+
+func TestGetPrincipalSelfRegistrationClientCertSecret(t *testing.T) {
+	tests := []struct {
+		name     string
+		cr       *argoproj.ArgoCD
+		expected string
+	}{
+		{
+			name:     "principal not configured",
+			cr:       makeTestArgoCD(),
+			expected: "",
+		},
+		{
+			name:     "self-registration not configured",
+			cr:       makeTestArgoCD(withPrincipalEnabled(true)),
+			expected: "",
+		},
+		{
+			name:     "client cert secret set",
+			cr:       makeTestArgoCD(withPrincipalEnabled(true), withSelfRegistration(true, "argocd-agent-shared-client-cert")),
+			expected: "argocd-agent-shared-client-cert",
+		},
+		{
+			name:     "client cert secret empty",
+			cr:       makeTestArgoCD(withPrincipalEnabled(true), withSelfRegistration(true, "")),
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, getPrincipalSelfRegistrationClientCertSecret(tt.cr))
+		})
+	}
+}
+
+func TestBuildPrincipalContainerEnv_SelfRegistration(t *testing.T) {
+	tests := []struct {
+		name                      string
+		cr                        *argoproj.ArgoCD
+		expectedEnabled           string
+		expectedClientCertSecret  string
+		expectedResourceProxyAddr string
+	}{
+		{
+			name:                      "defaults when self-registration not configured",
+			cr:                        makeTestArgoCD(withPrincipalEnabled(true)),
+			expectedEnabled:           "false",
+			expectedClientCertSecret:  "",
+			expectedResourceProxyAddr: generateAgentResourceName(testArgoCDName, testCompName+"-resource-proxy") + ":9090",
+		},
+		{
+			name:                      "self-registration enabled with client cert",
+			cr:                        makeTestArgoCD(withPrincipalEnabled(true), withSelfRegistration(true, "argocd-agent-shared-client-cert")),
+			expectedEnabled:           "true",
+			expectedClientCertSecret:  "argocd-agent-shared-client-cert",
+			expectedResourceProxyAddr: generateAgentResourceName(testArgoCDName, testCompName+"-resource-proxy") + ":9090",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			envVars := buildPrincipalContainerEnv(tt.cr, testCompName, tlsprofile.TLSConfigProfile{})
+			envMap := make(map[string]string)
+			for _, e := range envVars {
+				envMap[e.Name] = e.Value
+			}
+			assert.Equal(t, tt.expectedEnabled, envMap[EnvArgoCDPrincipalEnableSelfClusterRegistration],
+				"ARGOCD_PRINCIPAL_ENABLE_SELF_CLUSTER_REGISTRATION mismatch")
+			assert.Equal(t, tt.expectedClientCertSecret, envMap[EnvArgoCDPrincipalSelfRegistrationClientCertSecret],
+				"ARGOCD_PRINCIPAL_SELF_REGISTRATION_CLIENT_CERT_SECRET mismatch")
+			assert.Equal(t, tt.expectedResourceProxyAddr, envMap[EnvArgoCDPrincipalResourceProxyAddress],
+				"ARGOCD_PRINCIPAL_RESOURCE_PROXY_ADDRESS mismatch")
 		})
 	}
 }
