@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	testclient "k8s.io/client-go/kubernetes/fake"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
@@ -130,7 +131,7 @@ func TestReconcileArgoCD_reconcileClusterCASecret(t *testing.T) {
 			Name:      argoutil.GetSecretNameWithSuffix(a, common.ArgoCDCASuffix),
 			Namespace: a.Namespace,
 		}, defaultSecret)
-		assert.True(t, err != nil, "default-named CA secret must not be created when a custom name is set")
+		assert.True(t, apierrors.IsNotFound(err), "default-named CA secret must not be created when a custom name is set; got err: %v", err)
 	})
 
 	t.Run("skips creation when custom-named CA secret already exists", func(t *testing.T) {
