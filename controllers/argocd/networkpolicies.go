@@ -54,7 +54,11 @@ func (r *ReconcileArgoCD) ReconcileNetworkPolicies(cr *argoproj.ArgoCD) error {
 		}
 	}
 
-	// Reconcile Redis network policy
+	if !cr.Spec.NetworkPolicy.IsEnabled() {
+		return r.deleteArgoCDNetworkPolicies(cr)
+	}
+
+	// Reconcile Redis network policy (only if enabled)
 	if err := r.ReconcileRedisNetworkPolicy(cr); err != nil {
 		return err
 	}
@@ -62,10 +66,6 @@ func (r *ReconcileArgoCD) ReconcileNetworkPolicies(cr *argoproj.ArgoCD) error {
 	// Reconcile Redis HA network policy
 	if err := r.ReconcileRedisHANetworkPolicy(cr); err != nil {
 		return err
-	}
-
-	if !cr.Spec.NetworkPolicy.IsEnabled() {
-		return r.deleteArgoCDNetworkPolicies(cr)
 	}
 
 	// Reconcile Notifications Controller network policy
@@ -104,6 +104,8 @@ func (r *ReconcileArgoCD) ReconcileNetworkPolicies(cr *argoproj.ArgoCD) error {
 
 func (r *ReconcileArgoCD) deleteArgoCDNetworkPolicies(cr *argoproj.ArgoCD) error {
 	names := []string{
+		nameWithSuffix(RedisNetworkPolicy, cr),
+		nameWithSuffix(RedisHANetworkPolicy, cr),
 		nameWithSuffix(ArgoCDNotificationsControllerNetworkPolicy, cr),
 		nameWithSuffix(ArgoCDDexServerNetworkPolicy, cr),
 		nameWithSuffix(ArgoCDApplicationSetControllerNetworkPolicy, cr),
