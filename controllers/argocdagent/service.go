@@ -70,6 +70,13 @@ const (
 // It creates, updates, or deletes the service based on the principal configuration.
 func ReconcilePrincipalService(client client.Client, compName string, cr *argoproj.ArgoCD, scheme *runtime.Scheme) error {
 	service := buildService(generateAgentResourceName(cr.Name, compName), compName, cr)
+
+	// Set the service annotations if annotations are set
+	if hasServer(cr) &&
+		len(cr.Spec.ArgoCDAgent.Principal.Server.Service.Annotations) > 0 {
+		service.Annotations = cr.Spec.ArgoCDAgent.Principal.Server.Service.Annotations
+	}
+
 	expectedSpec := buildPrincipalServiceSpec(compName, cr)
 
 	// Check if the service already exists in the cluster
@@ -91,6 +98,7 @@ func ReconcilePrincipalService(client client.Client, compName string, cr *argopr
 			return nil
 		}
 
+		needsUpdate := false
 		if !reflect.DeepEqual(service.Spec.Ports, expectedSpec.Ports) ||
 			!reflect.DeepEqual(service.Spec.Selector, expectedSpec.Selector) ||
 			!reflect.DeepEqual(service.Spec.Type, expectedSpec.Type) {
@@ -98,7 +106,37 @@ func ReconcilePrincipalService(client client.Client, compName string, cr *argopr
 			service.Spec.Type = expectedSpec.Type
 			service.Spec.Ports = expectedSpec.Ports
 			service.Spec.Selector = expectedSpec.Selector
+			needsUpdate = true
+		}
 
+		// Update the annotations if the server is enabled and the annotations are set
+		if hasServer(cr) && len(cr.Spec.ArgoCDAgent.Principal.Server.Service.Annotations) > 0 {
+			// Initialize the annotations map if it is nil
+			if service.Annotations == nil {
+				service.Annotations = make(map[string]string)
+			}
+
+			// Update the annotations if the key does not exist or the value is different
+			for key, value := range cr.Spec.ArgoCDAgent.Principal.Server.Service.Annotations {
+				if _, exists := service.Annotations[key]; !exists {
+					service.Annotations[key] = value
+					needsUpdate = true
+				} else {
+					if service.Annotations[key] != value {
+						service.Annotations[key] = value
+						needsUpdate = true
+					}
+				}
+			}
+		} else {
+			// Set the annotations to an empty map if the server is disabled or the annotations are not set
+			if service.Annotations != nil {
+				service.Annotations = nil
+				needsUpdate = true
+			}
+		}
+
+		if needsUpdate {
 			argoutil.LogResourceUpdate(log, service, "updating principal service spec")
 			if err := client.Update(context.TODO(), service); err != nil {
 				return fmt.Errorf("failed to update principal service %s: %v", service.Name, err)

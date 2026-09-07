@@ -682,6 +682,9 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			argoCD.Spec.ArgoCDAgent.Principal.Server.Service = argov1beta1api.ArgoCDAgentPrincipalServiceSpec{
 				Type: corev1.ServiceTypeLoadBalancer,
+				Annotations: map[string]string{
+					"test.argocd.io/annotation": "test",
+				},
 			}
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
 
@@ -698,7 +701,67 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				},
 			}
 			Eventually(principalService).Should(k8sFixture.ExistByName())
-			Expect(principalService.Spec.Type).To(Equal(corev1.ServiceTypeLoadBalancer))
+			Eventually(principalService.Spec.Type).Should(Equal(corev1.ServiceTypeLoadBalancer))
+			Eventually(func() map[string]string {
+				err := k8sClient.Get(ctx, client.ObjectKey{Name: argoCDAgentPrincipalName, Namespace: ns.Name}, principalService)
+				if err != nil {
+					return nil
+				}
+				return principalService.Annotations
+			}, "30s", "2s").Should(HaveKeyWithValue("test.argocd.io/annotation", "test"))
+
+			By("Update service annotations")
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: argoCDName, Namespace: ns.Name}, argoCD)).To(Succeed())
+
+			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
+				ac.Spec.ArgoCDAgent.Principal.Server.Service.Annotations = map[string]string{
+					"test.argocd.io/annotation": "test2",
+				}
+			})
+
+			By("Verify principal service has updated annotations")
+
+			principalService = &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      argoCDAgentPrincipalName,
+					Namespace: ns.Name,
+				},
+			}
+			Eventually(principalService).Should(k8sFixture.ExistByName())
+			Eventually(func() map[string]string {
+				err := k8sClient.Get(ctx, client.ObjectKey{Name: argoCDAgentPrincipalName, Namespace: ns.Name}, principalService)
+				if err != nil {
+					return nil
+				}
+				return principalService.Annotations
+			}, "30s", "2s").Should(HaveKeyWithValue("test.argocd.io/annotation", "test2"))
+
+			By("Remove service annotations")
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: argoCDName, Namespace: ns.Name}, argoCD)).To(Succeed())
+
+			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
+				ac.Spec.ArgoCDAgent.Principal.Server.Service = argov1beta1api.ArgoCDAgentPrincipalServiceSpec{
+					Type: corev1.ServiceTypeLoadBalancer,
+				}
+			})
+
+			By("Verify principal service has no annotations")
+
+			principalService = &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      argoCDAgentPrincipalName,
+					Namespace: ns.Name,
+				},
+			}
+
+			Eventually(principalService).Should(k8sFixture.ExistByName())
+			Eventually(func() map[string]string {
+				err := k8sClient.Get(ctx, client.ObjectKey{Name: argoCDAgentPrincipalName, Namespace: ns.Name}, principalService)
+				if err != nil {
+					return nil
+				}
+				return principalService.Annotations
+			}, "30s", "2s").ShouldNot(HaveKey("test.argocd.io/annotation"))
 		})
 
 		It("should handle service type updates correctly", func() {

@@ -1436,6 +1436,56 @@ func withServiceType(serviceType corev1.ServiceType) argoCDOpt {
 	}
 }
 
+func withServiceAnnotations(annotations map[string]string) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		if a.Spec.ArgoCDAgent.Principal.Server == nil {
+			a.Spec.ArgoCDAgent.Principal.Server = &argoproj.PrincipalServerSpec{}
+		}
+		a.Spec.ArgoCDAgent.Principal.Server.Service.Annotations = annotations
+	}
+}
+
+func TestReconcilePrincipalService_ServiceAnnotations_Set(t *testing.T) {
+	annotations := map[string]string{
+		"metallb.universe.tf/address-pool": "address-pool",
+	}
+	cr := makeTestArgoCD(withPrincipalEnabled(true), withServiceAnnotations(annotations))
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName),
+		Namespace: testNamespace,
+	}, svc)
+	assert.NoError(t, err)
+	assert.Equal(t, annotations, svc.Annotations)
+}
+
+func TestReconcilePrincipalService_ServiceAnnotations_Default(t *testing.T) {
+	cr := makeTestArgoCD(withPrincipalEnabled(true))
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName),
+		Namespace: testNamespace,
+	}, svc)
+	assert.NoError(t, err)
+	assert.Empty(t, svc.Annotations)
+}
+
 func TestReconcilePrincipalService_ServiceType_ClusterIP(t *testing.T) {
 	// Test case: Service type is explicitly set to ClusterIP
 	// Expected behavior: Should create service with ClusterIP type
