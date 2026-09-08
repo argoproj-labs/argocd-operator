@@ -677,14 +677,14 @@ func TestReconcileImageUpdaterRBAC_WatchScope(t *testing.T) {
 		{
 			name:                  "exact list: two namespaces",
 			watchNamespacesEnv:    "ns1,ns2",
-			clusterNamespaces:     []string{"ns1", "ns2"},
+			clusterNamespaces:     []string{"ns1", "ns2", "other"},
 			expectClusterRole:     false,
 			expectManagerRoleInNS: []string{"ns1", "ns2"},
 		},
 		{
 			name:                  "exact list: single namespace",
 			watchNamespacesEnv:    "ns1",
-			clusterNamespaces:     []string{"ns1"},
+			clusterNamespaces:     []string{"ns1", "other"},
 			expectClusterRole:     false,
 			expectManagerRoleInNS: []string{"ns1"},
 		},
@@ -1002,6 +1002,7 @@ func TestReconcileImageUpdaterRBAC_PrunesStaleNamespaces(t *testing.T) {
 		a,
 		&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1"}},
 		&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns2"}},
+		&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "other"}}, // decoy: keeps patterns from matching the full cluster
 	}
 	subresObjs := []client.Object{a}
 	runtimeObjs := []runtime.Object{}
@@ -1071,7 +1072,7 @@ func TestReconcileImageUpdaterDeployment_WatchNamespacesExpanded(t *testing.T) {
 		},
 		{
 			name:            "exact names are passed through unchanged",
-			clusterNS:       []string{"ns1", "ns2"},
+			clusterNS:       []string{"ns1", "ns2", "other"},
 			watchNamespaces: "ns1,ns2",
 			wantEnvValue:    "ns1,ns2",
 		},
@@ -1103,7 +1104,7 @@ func TestReconcileImageUpdaterDeployment_WatchNamespacesExpanded(t *testing.T) {
 			// Exact name alongside an unmatched glob: exact name expands normally,
 			// unmatched glob is dropped from the env var.
 			name:            "exact name expands, unmatched glob dropped",
-			clusterNS:       []string{"ns1"},
+			clusterNS:       []string{"ns1", "other"},
 			watchNamespaces: "ns1,app-*",
 			wantEnvValue:    "ns1",
 		},
@@ -1200,6 +1201,7 @@ func TestExpandImageUpdaterWatchNamespaces(t *testing.T) {
 		clusterNS       []string // Namespace objects to pre-create in the fake client
 		watchNamespaces string   // raw value passed to expandImageUpdaterWatchNamespaces
 		want            []string // expected result, must be sorted
+		wantErr         bool     // true when an error is expected instead of a result
 	}{
 		{
 			name:            "exact match: single namespace",
@@ -1248,19 +1250,19 @@ func TestExpandImageUpdaterWatchNamespaces(t *testing.T) {
 		},
 		{
 			name:            "whitespace trimmed from each pattern",
-			clusterNS:       []string{"ns1", "ns2"},
+			clusterNS:       []string{"ns1", "ns2", "unrelated"},
 			watchNamespaces: " ns1 , ns2 ",
 			want:            []string{"ns1", "ns2"},
 		},
 		{
 			name:            "result is sorted regardless of cluster order",
-			clusterNS:       []string{"z-ns", "a-ns", "m-ns"},
+			clusterNS:       []string{"z-ns", "a-ns", "m-ns", "not-a-match"},
 			watchNamespaces: "*-ns",
 			want:            []string{"a-ns", "m-ns", "z-ns"},
 		},
 		{
 			name:            "namespace matched by two patterns is returned only once",
-			clusterNS:       []string{"ns1"},
+			clusterNS:       []string{"ns1", "other"},
 			watchNamespaces: "ns1,ns*",
 			want:            []string{"ns1"},
 		},
@@ -1284,7 +1286,7 @@ func TestExpandImageUpdaterWatchNamespaces(t *testing.T) {
 		},
 		{
 			name:            "leading and trailing commas are stripped",
-			clusterNS:       []string{"app-ns"},
+			clusterNS:       []string{"app-ns", "other-ns"},
 			watchNamespaces: ",app-ns,",
 			want:            []string{"app-ns"},
 		},
@@ -1293,6 +1295,32 @@ func TestExpandImageUpdaterWatchNamespaces(t *testing.T) {
 			clusterNS:       []string{"app-ns"},
 			watchNamespaces: ",,,",
 			want:            nil,
+		},
+		// Patterns that expand to every namespace must be rejected — they are semantically
+		// equivalent to cluster-scoped mode ("*") but bypass IsNamespaceClusterConfigNamespace.
+		{
+			name:            "double-star glob matches all namespaces → error",
+			clusterNS:       []string{"ns1", "ns2", "ns3"},
+			watchNamespaces: "**",
+			wantErr:         true,
+		},
+		{
+			name:            "question-star glob matches all namespaces → error",
+			clusterNS:       []string{"ns1", "ns2"},
+			watchNamespaces: "?*",
+			wantErr:         true,
+		},
+		{
+			name:            "match-all regex matches all namespaces → error",
+			clusterNS:       []string{"ns1", "ns2"},
+			watchNamespaces: "/.*/",
+			wantErr:         true,
+		},
+		{
+			name:            "pattern that matches a strict subset is allowed",
+			clusterNS:       []string{"app-ns-1", "app-ns-2", "other-ns"},
+			watchNamespaces: "app-ns-*",
+			want:            []string{"app-ns-1", "app-ns-2"},
 		},
 	}
 
@@ -1311,8 +1339,12 @@ func TestExpandImageUpdaterWatchNamespaces(t *testing.T) {
 			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 			got, err := r.expandImageUpdaterWatchNamespaces(tt.watchNamespaces)
-			assert.NoError(t, err)
-			assert.Equal(t, tt.want, got)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
 		})
 	}
 }

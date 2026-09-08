@@ -845,6 +845,20 @@ func (r *ReconcileArgoCD) expandImageUpdaterWatchNamespaces(watchNamespaces stri
 			matched = append(matched, ns.Name)
 		}
 	}
+
+	// Guard against patterns that silently expand to every namespace (e.g. "**", "?*",
+	// "/.*/"). Such a result is semantically identical to cluster-scoped mode ("*") but
+	// bypasses the IsNamespaceClusterConfigNamespace restriction that the "*" sentinel
+	// enforces. Returning an error here prevents unintended privilege escalation and
+	// directs the user to the correct, explicit cluster-scoped configuration.
+	if len(clusterNamespaces.Items) > 0 && len(matched) == len(clusterNamespaces.Items) {
+		return nil, fmt.Errorf(
+			"IMAGE_UPDATER_WATCH_NAMESPACES %q matches all %d cluster namespaces; "+
+				"use \"*\" for cluster-scoped mode",
+			watchNamespaces, len(clusterNamespaces.Items),
+		)
+	}
+
 	sort.Strings(matched)
 	return matched, nil
 }
