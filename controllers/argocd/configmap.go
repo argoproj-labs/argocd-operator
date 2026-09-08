@@ -572,6 +572,19 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 			// Keycloak functionality has been removed, skipping reconciliation
 		}
 
+		// Preserve an existing resource tracking method on upgrade. When the user has not
+		// explicitly set .spec.resourceTrackingMethod, keep whatever value is already present
+		// in argocd-cm instead of silently applying the current operator default. This avoids
+		// migrating a running instance between tracking methods (e.g. label -> annotation),
+		// which makes previously-Synced resources go OutOfSync and can strip controller-managed
+		// labels on Secrets during sync. New installs (no existing value) still get the default.
+		if cr.Spec.ResourceTrackingMethod == "" {
+			if existing := existingCM.Data[common.ArgoCDKeyResourceTrackingMethod]; existing != "" &&
+				argoproj.ParseResourceTrackingMethod(existing) != argoproj.ResourceTrackingMethodInvalid {
+				cm.Data[common.ArgoCDKeyResourceTrackingMethod] = existing
+			}
+		}
+
 		changed := false
 		if !reflect.DeepEqual(cm.Data, existingCM.Data) {
 			existingCM.Data = cm.Data

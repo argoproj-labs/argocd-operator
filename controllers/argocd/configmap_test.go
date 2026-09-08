@@ -850,6 +850,85 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceTrackingMethod(t *te
 	})
 }
 
+// TestReconcileArgoCD_reconcileArgoConfigMap_preservesTrackingMethodOnUpgrade verifies that
+// when .spec.resourceTrackingMethod is not set, the operator preserves the value already
+// present in an existing argocd-cm instead of overwriting it with the current default. This
+// prevents a silent tracking-method migration (e.g. label -> annotation) on operator upgrade,
+// which would make previously-Synced resources go OutOfSync and strip controller-managed labels.
+func TestReconcileArgoCD_reconcileArgoConfigMap_preservesTrackingMethodOnUpgrade(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		name        string
+		existingRTM string
+		specRTM     string
+		expectedRTM string
+	}{
+		{
+			name:        "existing label preserved when spec empty",
+			existingRTM: argoproj.ResourceTrackingMethodLabel.String(),
+			specRTM:     "",
+			expectedRTM: argoproj.ResourceTrackingMethodLabel.String(),
+		},
+		{
+			name:        "existing annotation preserved when spec empty",
+			existingRTM: argoproj.ResourceTrackingMethodAnnotation.String(),
+			specRTM:     "",
+			expectedRTM: argoproj.ResourceTrackingMethodAnnotation.String(),
+		},
+		{
+			name:        "invalid existing value falls back to default when spec empty",
+			existingRTM: "bogus",
+			specRTM:     "",
+			expectedRTM: argoproj.ResourceTrackingMethodAnnotation.String(),
+		},
+		{
+			name:        "explicit spec overrides existing value",
+			existingRTM: argoproj.ResourceTrackingMethodLabel.String(),
+			specRTM:     argoproj.ResourceTrackingMethodAnnotationAndLabel.String(),
+			expectedRTM: argoproj.ResourceTrackingMethodAnnotationAndLabel.String(),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			a := makeTestArgoCD()
+			a.Spec.ResourceTrackingMethod = test.specRTM
+
+			existingCM := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      common.ArgoCDConfigMapName,
+					Namespace: testNamespace,
+				},
+				Data: map[string]string{
+					common.ArgoCDKeyResourceTrackingMethod: test.existingRTM,
+				},
+			}
+
+			resObjs := []client.Object{a, existingCM}
+			subresObjs := []client.Object{a}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			err := r.reconcileArgoConfigMap(a)
+			assert.NoError(t, err)
+
+			cm := &corev1.ConfigMap{}
+			err = r.Get(context.TODO(), types.NamespacedName{
+				Name:      common.ArgoCDConfigMapName,
+				Namespace: testNamespace,
+			}, cm)
+			assert.NoError(t, err)
+
+			rtm, ok := cm.Data[common.ArgoCDKeyResourceTrackingMethod]
+			assert.True(t, ok)
+			assert.Equal(t, test.expectedRTM, rtm)
+		})
+	}
+}
+
 func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceInclusions(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	customizations := "testing: testing"
