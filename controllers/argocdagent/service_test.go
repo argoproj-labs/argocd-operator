@@ -1563,3 +1563,180 @@ func TestReconcilePrincipalService_ServiceType_Update(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, corev1.ServiceTypeLoadBalancer, svc.Spec.Type)
 }
+
+func withServiceAnnotations(annotations map[string]string) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		if a.Spec.ArgoCDAgent.Principal.Server == nil {
+			a.Spec.ArgoCDAgent.Principal.Server = &argoproj.PrincipalServerSpec{}
+		}
+		a.Spec.ArgoCDAgent.Principal.Server.Service.Annotations = annotations
+	}
+}
+
+func TestReconcilePrincipalService_ServiceAnnotations_Create(t *testing.T) {
+	// Test case: Service annotations are specified on the CR
+	// Expected behavior: Should create the principal service with those annotations
+
+	annotations := map[string]string{
+		"metallb.io/address-pool":    "production-public-ips",
+		"metallb.io/loadBalancerIPs": "x.x.x.x",
+	}
+	cr := makeTestArgoCD(
+		withPrincipalEnabled(true),
+		withServiceType(corev1.ServiceTypeLoadBalancer),
+		withServiceAnnotations(annotations),
+	)
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName),
+		Namespace: testNamespace,
+	}, svc)
+	assert.NoError(t, err)
+	assert.Equal(t, corev1.ServiceTypeLoadBalancer, svc.Spec.Type)
+	assert.Equal(t, "production-public-ips", svc.Annotations["metallb.io/address-pool"])
+	assert.Equal(t, "x.x.x.x", svc.Annotations["metallb.io/loadBalancerIPs"])
+}
+
+func TestReconcilePrincipalService_ServiceAnnotations_Update(t *testing.T) {
+	// Test case: Service exists, then CR annotations are added
+	// Expected behavior: Should update the principal service annotations
+
+	cr := makeTestArgoCD(withPrincipalEnabled(true), withServiceType(corev1.ServiceTypeLoadBalancer))
+
+	existingService := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      generateAgentResourceName(cr.Name, testCompName),
+			Namespace: testNamespace,
+		},
+		Spec: corev1.ServiceSpec{
+			Type: corev1.ServiceTypeLoadBalancer,
+			Ports: []corev1.ServicePort{
+				{
+					Name:       PrincipalServicePortName,
+					Port:       PrincipalServiceHTTPSPort,
+					Protocol:   corev1.ProtocolTCP,
+					TargetPort: intstr.FromInt(PrincipalServiceTargetPort),
+				},
+			},
+			Selector: map[string]string{
+				common.ArgoCDKeyName: generateAgentResourceName(cr.Name, testCompName),
+			},
+		},
+	}
+
+	resObjs := []client.Object{cr, existingService}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName),
+		Namespace: testNamespace,
+	}, svc)
+	assert.NoError(t, err)
+	assert.Empty(t, svc.Annotations)
+
+	cr.Spec.ArgoCDAgent.Principal.Server.Service.Annotations = map[string]string{
+		"metallb.io/address-pool": "production-public-ips",
+	}
+
+	err = ReconcilePrincipalService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName),
+		Namespace: testNamespace,
+	}, svc)
+	assert.NoError(t, err)
+	assert.Equal(t, "production-public-ips", svc.Annotations["metallb.io/address-pool"])
+}
+
+func TestReconcilePrincipalService_ServiceAnnotations_PreserveExisting(t *testing.T) {
+	// Test case: Service already has an annotation added by an external controller (e.g. MetalLB)
+	// Expected behavior: CR annotations are merged without removing the existing annotation
+
+	cr := makeTestArgoCD(
+		withPrincipalEnabled(true),
+		withServiceType(corev1.ServiceTypeLoadBalancer),
+		withServiceAnnotations(map[string]string{
+			"metallb.io/address-pool": "production-public-ips",
+		}),
+	)
+
+	existingService := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      generateAgentResourceName(cr.Name, testCompName),
+			Namespace: testNamespace,
+			Annotations: map[string]string{
+				"metallb.io/ip-allocated-from-pool": "production-public-ips",
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Type: corev1.ServiceTypeLoadBalancer,
+			Ports: []corev1.ServicePort{
+				{
+					Name:       PrincipalServicePortName,
+					Port:       PrincipalServiceHTTPSPort,
+					Protocol:   corev1.ProtocolTCP,
+					TargetPort: intstr.FromInt(PrincipalServiceTargetPort),
+				},
+			},
+			Selector: map[string]string{
+				common.ArgoCDKeyName: generateAgentResourceName(cr.Name, testCompName),
+			},
+		},
+	}
+
+	resObjs := []client.Object{cr, existingService}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName),
+		Namespace: testNamespace,
+	}, svc)
+	assert.NoError(t, err)
+	assert.Equal(t, "production-public-ips", svc.Annotations["metallb.io/address-pool"])
+	assert.Equal(t, "production-public-ips", svc.Annotations["metallb.io/ip-allocated-from-pool"])
+}
+
+func TestReconcilePrincipalMetricsService_DoesNotReceivePrincipalServiceAnnotations(t *testing.T) {
+	// Test case: Principal service annotations should not be copied to other principal services
+	cr := makeTestArgoCD(
+		withPrincipalEnabled(true),
+		withServiceType(corev1.ServiceTypeLoadBalancer),
+		withServiceAnnotations(map[string]string{
+			"metallb.io/address-pool": "production-public-ips",
+		}),
+	)
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcilePrincipalMetricsService(cl, testCompName, cr, sch)
+	assert.NoError(t, err)
+
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testCompName+"-metrics"),
+		Namespace: testNamespace,
+	}, svc)
+	assert.NoError(t, err)
+	assert.Empty(t, svc.Annotations)
+}
