@@ -865,7 +865,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			VolumeMounts:    getArgoImportVolumeMounts(),
 		}}
 
-		podSpec.Volumes = getArgoImportVolumes(export)
+		podSpec.Volumes = append(controllerVolumes, getArgoImportVolumes(export)...)
 	}
 
 	invalidImagePod, err := containsInvalidImage(*cr, r)
