@@ -12,9 +12,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/dependency-upgrade/utils"
 )
 
-const (
-	ArgoCDGitHubRepoURL = "https://github.com/argoproj/argo-cd"
-)
+const ArgoCDGitHubRepoURL = "https://github.com/argoproj/argo-cd"
 
 func main() {
 	wd, err := os.Getwd()
