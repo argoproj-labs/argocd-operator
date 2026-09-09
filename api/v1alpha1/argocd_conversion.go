@@ -367,6 +367,7 @@ func ConvertAlphaToBetaHA(src *ArgoCDHASpec) *v1beta1.ArgoCDHASpec {
 			Enabled:           src.Enabled,
 			RedisProxyImage:   src.RedisProxyImage,
 			RedisProxyVersion: src.RedisProxyVersion,
+			Replicas:          src.Replicas,
 			Resources:         src.Resources,
 		}
 	}
@@ -635,6 +636,7 @@ func ConvertBetaToAlphaHA(src *v1beta1.ArgoCDHASpec) *ArgoCDHASpec {
 			Enabled:           src.Enabled,
 			RedisProxyImage:   src.RedisProxyImage,
 			RedisProxyVersion: src.RedisProxyVersion,
+			Replicas:          src.Replicas,
 			Resources:         src.Resources,
 		}
 	}

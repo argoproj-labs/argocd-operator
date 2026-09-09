@@ -76,7 +76,18 @@ func GetRedisSecretData(redisInitialPassword []byte) map[string][]byte {
 
 func GetRedisHAReplicas() *int32 {
 	replicas := common.ArgoCDDefaultRedisHAReplicas
-	// TODO: Allow override of this value through CR?
+	// Redis HA StatefulSet must remain at 3 replicas for Sentinel quorum.
+	return &replicas
+}
+
+// GetRedisHAProxyReplicas returns the replica count for the Redis HAProxy Deployment.
+// If spec.ha.replicas is set to a value greater than 0, that value is used.
+// Otherwise the default of ArgoCDDefaultRedisHAReplicas (3) is used.
+func GetRedisHAProxyReplicas(cr *argoproj.ArgoCD) *int32 {
+	replicas := common.ArgoCDDefaultRedisHAReplicas
+	if cr != nil && cr.Spec.HA.Replicas != nil && *cr.Spec.HA.Replicas > 0 {
+		replicas = *cr.Spec.HA.Replicas
+	}
 	return &replicas
 }
 

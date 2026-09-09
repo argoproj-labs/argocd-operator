@@ -3582,6 +3582,14 @@ spec:
                     description: RedisProxyVersion is the Redis HAProxy container
                       image tag.
                     type: string
+                  replicas:
+                    description: Replicas is the number of replicas for the Redis
+                      HAProxy Deployment (argocd-redis-ha-haproxy). This does not
+                      change the Redis HA StatefulSet replica count, which remains
+                      3. Must be greater than or equal to 1. Defaults to 3 when
+                      omitted.
+                    format: int32
+                    type: integer
                   resources:
                     description: Resources defines the Compute Resources required
                       by the container for HA.
@@ -21727,6 +21735,14 @@ spec:
                     description: RedisProxyVersion is the Redis HAProxy container
                       image tag.
                     type: string
+                  replicas:
+                    description: Replicas is the number of replicas for the Redis
+                      HAProxy Deployment (argocd-redis-ha-haproxy). This does not
+                      change the Redis HA StatefulSet replica count, which remains
+                      3. Must be greater than or equal to 1. Defaults to 3 when
+                      omitted.
+                    format: int32
+                    type: integer
                   resources:
                     description: Resources defines the Compute Resources required
                       by the container for HA.

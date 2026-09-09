@@ -461,6 +461,7 @@ Name | Default | Description
 Enabled | `false` | Toggle High Availability support globally for Argo CD.
 RedisProxyImage | `haproxy` | The Redis HAProxy container image. This overrides the `ARGOCD_REDIS_HA_PROXY_IMAGE`environment variable.
 RedisProxyVersion | `2.0.4` | The tag to use for the Redis HAProxy container image.
+Replicas | `3` | The number of replicas for the Redis HAProxy Deployment (`argocd-redis-ha-haproxy`). Must be greater than or equal to 1. This does not change the Redis HA StatefulSet replica count, which remains 3.
 Resources | [Empty] | The container compute resources.
 
 ### HA Example
@@ -479,6 +480,7 @@ spec:
     enabled: true
     redisProxyImage: haproxy
     redisProxyVersion: "2.0.4"
+    replicas: 3
 ```
 
 ## Help Chat URL
