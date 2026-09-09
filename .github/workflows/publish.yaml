@@ -1,11 +1,15 @@
-name: Publish latest operator build 
+name: Publish latest operator build
 on:
   push:
     branches:
       - 'master'
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
 
 jobs:
-
   publish-latest-operator:
     runs-on: ubuntu-latest
 
@@ -13,36 +17,174 @@ jobs:
       REGISTRY_URL: quay.io
       ORG: argoprojlabs
       REPO: argocd-operator
+      PLATFORMS: linux/amd64,linux/arm64
+      OPM_REGISTRY_IMAGE: quay.io/operator-framework/opm:v1.73.0@sha256:e5a6220603fb4504d58c6e3e488386b817e3695c906a62ee0370b5faedc3799a
 
     steps:
 
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@v7.0.0
         with:
           go-version-file: 'go.mod'
 
       - name: Restore go build cache
-        uses: actions/cache@v6
+        uses: actions/cache@v6.1.0
         with:
           path: ~/.cache/go-build
           key: ${{ runner.os }}-go-build-v1-${{ github.run_id }}
 
-      - name: Build operator and Tag Latest
-        run: make docker-build
-        env:
-          IMG: ${{ env.REGISTRY_URL }}/${{ env.ORG }}/${{ env.REPO }}:latest
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4.2.0
+
+      - name: Set up Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v4.3.0
+        with:
+          # Give every multi-arch RUN step its own network namespace (BuildKit's
+          # built-in bridge provider, no CNI config/plugins required) so the
+          # parallel `opm serve --cache-only` steps can't collide on pprof's
+          # default 127.0.0.1:6060 during the render and validate step.
+          # https://docs.docker.com/build/buildkit/configure/#bridge-networking
+          buildkitd-flags: --oci-worker-net=bridge
 
       - name: Login to Registry
-        uses: docker/login-action@v4
+        uses: docker/login-action@v4.6.0
         with:
           registry: ${{ env.REGISTRY_URL }}
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: Push latest operator
-        run: make docker-push
+      # Compute tags: always :latest; additionally a semver :<version> when
+      # triggered by a release tag (v*)
+      - name: Extract metadata (tags) for operator
+        id: meta-operator
+        uses: docker/metadata-action@v6.2.0
+        with:
+          images: ${{ env.REGISTRY_URL }}/${{ env.ORG }}/${{ env.REPO }}
+          tags: |
+            type=raw,value=latest
+            type=semver,pattern={{raw}}
+
+      - name: Extract metadata (tags) for bundle
+        id: meta-bundle
+        uses: docker/metadata-action@v6.2.0
+        with:
+          images: ${{ env.REGISTRY_URL }}/${{ env.ORG }}/${{ env.REPO }}-bundle
+          tags: |
+            type=raw,value=latest
+            type=semver,pattern={{raw}}
+
+      - name: Extract metadata (tags) for registry
+        id: meta-registry
+        uses: docker/metadata-action@v6.2.0
+        with:
+          images: ${{ env.REGISTRY_URL }}/${{ env.ORG }}/${{ env.REPO }}-registry
+          tags: |
+            type=raw,value=latest
+            type=semver,pattern={{raw}}
+
+      - name: Extract metadata (tags) for util
+        id: meta-util
+        uses: docker/metadata-action@v6.2.0
+        with:
+          images: ${{ env.REGISTRY_URL }}/${{ env.ORG }}/${{ env.REPO }}-util
+          tags: |
+            type=raw,value=latest
+            type=semver,pattern={{raw}}
+
+      - name: Build and push operator image (multi-arch)
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          push: true
+          platforms: ${{ env.PLATFORMS }}
+          build-args:  LD_FLAGS=-X github.com/argoproj-labs/argocd-operator/version.Version=${{ steps.meta-operator.outputs.version || 'latest' }}
+          tags: ${{ steps.meta-operator.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push bundle image
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          file: bundle.Dockerfile
+          push: true
+          # Bundle images are arch-independent (plaintext manifests/metadata), so a
+          # single platform suffices; the catalog index remains multi-arch.
+          # https://sdk.operatorframework.io/docs/advanced-topics/multi-arch/#operator-lifecycle-manager
+          platforms: linux/amd64
+          tags: ${{ steps.meta-bundle.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push util image (multi-arch)
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: build/util
+          push: true
+          # AWS CLI v2 only publishes x86_64 and aarch64 binaries, so the util
+          # image targets linux/amd64 and linux/arm64.
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta-util.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Install opm
+        run: |
+          mkdir -p bin
+          OS=$(go env GOOS) && ARCH=$(go env GOARCH)
+          curl -sSLfo bin/opm "https://github.com/operator-framework/operator-registry/releases/download/v1.73.0/${OS}-${ARCH}-opm"
+          chmod +x bin/opm
+          echo "$PWD/bin" >> "$GITHUB_PATH"
+
+      # Resolve the exact tag the bundle step just pushed so the catalog references
+      # the identical image: a release tag push (v*) -> the same v-prefixed semver tag
+      # that meta-bundle produced via pattern={{raw}}, any branch push -> :latest.
+      - name: Resolve bundle image reference
+        id: bundle-ref
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "ref=${{ env.REGISTRY_URL }}/${{ env.ORG }}/${{ env.REPO }}-bundle:${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=${{ env.REGISTRY_URL }}/${{ env.ORG }}/${{ env.REPO }}-bundle:latest" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Render and validate the file-based catalog
         env:
-          IMG: ${{ env.REGISTRY_URL }}/${{ env.ORG }}/${{ env.REPO }}:latest
+          BUNDLE_IMG: ${{ steps.bundle-ref.outputs.ref }}
+        run: |
+          set -euo pipefail
+          rm -rf build/_output
+          mkdir -p build/_output/catalog
+          # Lay the FBC root (catalog.yaml + rendered bundle.yaml) directly under
+          # build/_output/catalog.
+          cp config/fbc-registry/catalog.yaml build/_output/catalog/
+          opm render "$BUNDLE_IMG" --output=yaml >> build/_output/catalog/bundle.yaml
+          # Fill the channel entry's copy version from the rendered bundle's own
+          # name (argocd-operator.v<X> -> <X>) so it always matches what gets
+          # installed; works for both tag and branch pushes.
+          BUNDLE_VERSION="$(grep -m1 'name: argocd-operator\.v' build/_output/catalog/bundle.yaml \
+            | sed -n 's/.*argocd-operator\.v\([0-9][^ ]*\).*/\1/p')"
+          # Substitute the derived version in place of the ${BUNDLE_VERSION} template
+          # token using plain sed (no extra tooling required on the runner).
+          sed "s|argocd-operator\.v\${BUNDLE_VERSION}|argocd-operator.v${BUNDLE_VERSION}|" \
+            build/_output/catalog/catalog.yaml > build/_output/catalog/catalog.yaml.tmp \
+            && mv build/_output/catalog/catalog.yaml.tmp build/_output/catalog/catalog.yaml
+          opm validate build/_output/catalog
+          opm generate dockerfile --base-image ${{ env.OPM_REGISTRY_IMAGE }} --builder-image ${{ env.OPM_REGISTRY_IMAGE }} build/_output/catalog
+
+      - name: Build and push file-based catalog registry image (multi-arch)
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: build/_output
+          file: build/_output/catalog.Dockerfile
+          push: true
+          platforms: ${{ env.PLATFORMS }}
+          tags: ${{ steps.meta-registry.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

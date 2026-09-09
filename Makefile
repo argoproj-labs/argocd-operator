@@ -20,6 +20,15 @@ ifeq ($(CONTAINER_RUNTIME),)
 $(warning "No container runtime (Docker or Podman) found in PATH. Please install one of them.")
 endif
 
+BUILD_PLATFORMS ?= linux/amd64,linux/arm64
+
+comma := ,
+
+# A comma/space-separated extra args appended to buildx invocations. Set
+# BUILDX_OPTS=--push to also push the images.
+BUILDX_OPTS ?=
+
+
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
 # To re-generate a bundle for other specific channels without changing the standard setup, you can:
@@ -131,10 +140,10 @@ run: manifests generate fmt vet ## Run a controller from your host.
 	REDIS_CONFIG_PATH="build/redis" ARGOCD_OPERATOR_NAMESPACE="argocd" go run -ldflags=$(LD_FLAGS) ./cmd/main.go
 
 docker-build: test ## Build docker image with the manager.
-	$(CONTAINER_RUNTIME) build --build-arg LD_FLAGS=$(LD_FLAGS) -t ${IMG} .
+	$(CONTAINER_RUNTIME) buildx build --platform linux/$(shell go env GOARCH) --build-arg LD_FLAGS=$(LD_FLAGS) -t ${IMG} --load .
 
 docker-push: ## Push docker image with the manager.
-	$(CONTAINER_RUNTIME) push ${IMG}
+	$(CONTAINER_RUNTIME) buildx build --platform $(BUILD_PLATFORMS) --build-arg LD_FLAGS=$(LD_FLAGS) -t ${IMG} --push .
 
 ##@ Build Dependencies
 
@@ -287,41 +296,41 @@ bundle: operator-sdk manifests kustomize ## Generate bundle manifests and metada
 	mv deploy/olm-catalog/argocd-operator/$(VERSION)/argocd-operator.clusterserviceversion.yaml deploy/olm-catalog/argocd-operator/$(VERSION)/argocd-operator.v$(VERSION).clusterserviceversion.yaml
 
 .PHONY: bundle-build
-bundle-build: ## Build the bundle image.
-	$(CONTAINER_RUNTIME) build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+bundle-build: ## Build the bundle image (arch-independent plaintext manifests).
+	$(CONTAINER_RUNTIME) buildx build --platform linux/amd64 -f bundle.Dockerfile -t $(BUNDLE_IMG) $(BUILDX_OPTS) .
 
 .PHONY: bundle-push
 bundle-push: ## Push the bundle image.
-	$(MAKE) docker-push IMG=$(BUNDLE_IMG)
+	$(MAKE) bundle-build BUILDX_OPTS=--push
 
 # UTIL_IMG defines the image:tag used for the utility image (for backup).
 # You can use it as an arg. (E.g make util-build UTIL_IMG=<some-registry>/<project-name-bundle>:<tag>)
 UTIL_IMG ?= $(IMAGE_TAG_BASE)-util:v$(VERSION)
 
+# The util image is limited to amd64/arm64 because AWS CLI v2 only publishes
+# x86_64 and aarch64 binaries (no ppc64le/s390x builds).
+UTIL_PLATFORMS ?= linux/amd64,linux/arm64
+
 .PHONY: util-build
 util-build: ## Build the util container image (for backup)
-	$(CONTAINER_RUNTIME) build --no-cache -t $(UTIL_IMG) build/util
+	$(CONTAINER_RUNTIME) buildx build --platform $(UTIL_PLATFORMS) --no-cache -t $(UTIL_IMG) $(BUILDX_OPTS) build/util
 
 .PHONY: util-push
 util-push: ## Push the util container image
-	$(MAKE) docker-push IMG=$(UTIL_IMG)
+	$(MAKE) util-build BUILDX_OPTS=--push
 
-# REGISTRY_IMG defines the image:tag used for the (legacy) registry container image.
+# REGISTRY_IMG defines the image:tag used for the File-Based Catalog (FBC) registry
+# container image. It serves the catalog via `opm serve /configs`.
 # You can use it as an arg. (E.g make registry-build REGISTRY_IMG=<some-registry>/<project-name-bundle>:<tag>)
 REGISTRY_IMG ?= $(IMAGE_TAG_BASE)-registry:v$(VERSION)
 
 .PHONY: registry-build
-registry-build: ## Build the registry container image
-	rm -fr build/_output
-	mkdir -p build/_output/registry
-	cp -r deploy/registry/* build/_output/registry/
-	mkdir -p build/_output/registry/manifests
-	cp -r deploy/olm-catalog/argocd-operator build/_output/registry/manifests/
-	$(CONTAINER_RUNTIME) build -t $(REGISTRY_IMG) build/_output/registry
+registry-build: opm ## Build the registry container image
+	$(call build-fbc-catalog,$(REGISTRY_IMG))
 
 .PHONY: registry-push
-registry-push: ## Push the util container image
-	$(MAKE) docker-push IMG=$(REGISTRY_IMG)
+registry-push: ## Push the registry container image
+	$(MAKE) catalog-push CATALOG_IMG=$(REGISTRY_IMG)
 
 .PHONY: opm
 OPM = ./bin/opm
@@ -332,13 +341,15 @@ ifeq (,$(shell which opm 2>/dev/null))
 	set -e ;\
 	mkdir -p $(dir $(OPM)) ;\
 	OS=$(shell go env GOOS) && ARCH=$(shell go env GOARCH) && \
-	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/v1.23.0/$${OS}-$${ARCH}-opm ;\
+	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/v1.73.0/$${OS}-$${ARCH}-opm ;\
 	chmod +x $(OPM) ;\
 	}
 else
 OPM = $(shell which opm)
 endif
 endif
+
+OPM_REGISTRY_IMAGE ?= quay.io/operator-framework/opm:v1.73.0@sha256:e5a6220603fb4504d58c6e3e488386b817e3695c906a62ee0370b5faedc3799a
 
 # A comma-separated list of bundle images (e.g. make catalog-build BUNDLE_IMGS=example.com/operator-bundle:v0.1.0,example.com/operator-bundle:v0.2.0).
 # These images MUST exist in a registry and be pull-able.
@@ -347,22 +358,40 @@ BUNDLE_IMGS ?= $(BUNDLE_IMG)
 # The image tag given to the resulting catalog image (e.g. make catalog-build CATALOG_IMG=example.com/operator-catalog:v0.2.0).
 CATALOG_IMG ?= $(IMAGE_TAG_BASE)-catalog:v$(VERSION)
 
-# Set CATALOG_BASE_IMG to an existing catalog image tag to add $BUNDLE_IMGS to that image.
-ifneq ($(origin CATALOG_BASE_IMG), undefined)
-FROM_INDEX_OPT := --from-index $(CATALOG_BASE_IMG)
-endif
+define render-fbc-catalog
+	rm -rf build/_output
+	mkdir -p build/_output/catalog
+	# Lay the FBC root (catalog.yaml + rendered bundle.yaml) directly under
+	# build/_output/catalog so `opm generate dockerfile`/`ADD catalog /configs`
+	# produce a single /configs/ directory.
+	cp config/fbc-registry/catalog.yaml build/_output/catalog/
+	@for img in $(subst $(comma), ,$(BUNDLE_IMGS)); do \
+		$(OPM) render "$$img" --output=yaml >> build/_output/catalog/bundle.yaml; \
+	done
+    $(OPM) validate build/_output/catalog
+    $(OPM) generate dockerfile --base-image $(OPM_REGISTRY_IMAGE) --builder-image $(OPM_REGISTRY_IMAGE) build/_output/catalog
+    # Bind opm's pprof endpoint to an ephemeral port so simultaneous multi-arch
+    # `opm serve --cache-only` runs don't collide on the default 127.0.0.1:6060.
+    sed -i.bak 's|--cache-only"\]|--cache-only", "--pprof-addr", "localhost:0"]|' build/_output/catalog.Dockerfile && rm -f build/_output/catalog.Dockerfile.bak
+endef
 
-# Build a catalog image by adding bundle images to an empty catalog using the operator package manager tool, 'opm'.
-# This recipe invokes 'opm' in 'semver' bundle add mode. For more information on add modes, see:
-# https://github.com/operator-framework/community-operators/blob/7f1438c/docs/packaging-operator.md#updating-your-existing-operator
+define build-fbc-catalog
+	$(call render-fbc-catalog)
+	$(CONTAINER_RUNTIME) buildx build --platform $(BUILD_PLATFORMS) -f build/_output/catalog.Dockerfile -t $(1) $(BUILDX_OPTS) build/_output
+endef
+
 .PHONY: catalog-build
-catalog-build: opm ## Build a catalog image.
-	$(OPM) index add --container-tool $(shell basename $(CONTAINER_RUNTIME)) --mode semver --tag $(CATALOG_IMG) --bundles $(BUNDLE_IMGS) $(FROM_INDEX_OPT)
+catalog-build: opm ## Build a Catalog image from the bundle image reference.
+	$(call build-fbc-catalog,$(CATALOG_IMG))
+
+.PHONY: catalog-validate
+catalog-validate: opm ## Render and validate the Catalog config without building an image.
+	$(call render-fbc-catalog)
 
 # Push the catalog image.
 .PHONY: catalog-push
 catalog-push: ## Push a catalog image.
-	$(MAKE) docker-push IMG=$(CATALOG_IMG)
+	$(MAKE) catalog-build CATALOG_IMG=$(CATALOG_IMG) BUILDX_OPTS=--push
 
 .PHONY: e2e-tests-sequential-ginkgo
 e2e-tests-sequential-ginkgo: ginkgo
