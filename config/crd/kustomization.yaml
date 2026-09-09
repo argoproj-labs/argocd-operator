@@ -26,7 +26,6 @@ resources:
   - bases/promoter.argoproj.io_scmproviders.yaml
   - bases/promoter.argoproj.io_timedcommitstatuses.yaml
   - bases/promoter.argoproj.io_webrequestcommitstatuses.yaml
-
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patches:
