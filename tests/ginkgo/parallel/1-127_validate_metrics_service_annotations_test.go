@@ -166,9 +166,11 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			By("Case 2: Update annotations and verify they are updated")
 
 			By("updating ArgoCD instance with new annotations")
+			argocdFixture.Update(argoCD, func(cr *argov1beta1api.ArgoCD) {
+				cr.Spec.Controller.Metrics.Annotations["custom.io/controller"] = "updated-controller-value"
+				cr.Spec.Server.Metrics.Annotations["custom.io/server"] = "updated-server-value"
+			})
 			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCD), argoCD)).To(Succeed())
-			argoCD.Spec.Controller.Metrics.Annotations["custom.io/controller"] = "updated-controller-value"
-			argoCD.Spec.Server.Metrics.Annotations["custom.io/server"] = "updated-server-value"
 			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
 
 			By("verifying controller metrics service annotations are updated")
@@ -190,9 +192,9 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			By("Case 3: Remove annotations from spec and verify they are removed")
 
 			By("updating ArgoCD instance to remove metrics annotation config")
-			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(argoCD), argoCD)).To(Succeed())
-			argoCD.Spec.Notifications.Metrics.Annotations = nil
-			Expect(k8sClient.Update(ctx, argoCD)).To(Succeed())
+			argocdFixture.Update(argoCD, func(cr *argov1beta1api.ArgoCD) {
+				cr.Spec.Notifications.Metrics.Annotations = nil
+			})
 
 			By("verifying notifications service annotations are removed")
 			// Annotations should be removed when deleted from spec (except k8s-managed annotations)
