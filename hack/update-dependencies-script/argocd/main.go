@@ -14,7 +14,6 @@ import (
 
 const (
 	ArgoCDGitHubRepoURL = "https://github.com/argoproj/argo-cd"
-	DexGitHubRepoURL    = "https://github.com/dexidp/dex"
 )
 
 func main() {

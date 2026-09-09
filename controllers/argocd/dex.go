@@ -13,6 +13,7 @@ import (
 	"gopkg.in/yaml.v2"
 	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -45,6 +46,12 @@ func UseDex(cr *argoproj.ArgoCD) bool {
 // getDexServerTokenSecretName returns the name of the Secret that stores the Dex OAuth client token.
 func getDexServerTokenSecretName(cr *argoproj.ArgoCD) string {
 	return argoutil.GetSecretNameWithSuffix(cr, common.ArgoCDDefaultDexServiceAccountName+"-token")
+}
+
+// dexServerTokenRenewalThreshold is how much nominal lifetime may remain before we treat the Dex token
+// as due for renewal (ExpirySecs * ArgoCDDexServerTokenRenewalThresholdPercent / 100).
+func dexServerTokenRenewalThreshold() time.Duration {
+	return time.Duration(common.ArgoCDDexServerTokenExpirySecs*common.ArgoCDDexServerTokenRenewalThresholdPercent/100) * time.Second
 }
 
 // needsDexTokenRenewal returns true when the token is missing, unparseable, or within the renewal window.
@@ -103,7 +110,7 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string,
 	}
 
 	// Request a new time-limited token via the TokenRequest API.
-	expirationSeconds := getTokenExpirySeconds()
+	expirationSeconds := common.ArgoCDDexServerTokenExpirySecs
 	tokenRequest, err := r.K8sClient.CoreV1().ServiceAccounts(cr.Namespace).CreateToken(
 		context.TODO(),
 		sa.Name,
@@ -699,16 +706,24 @@ func (r *ReconcileArgoCD) reconcileDexService(cr *argoproj.ArgoCD) error {
 // reconcileDexResources consolidates all dex resources reconciliation calls. It serves as the single place to trigger both creation
 // and deletion of dex resources based on the specified configuration of dex
 func (r *ReconcileArgoCD) reconcileDexResources(cr *argoproj.ArgoCD) error {
-	if _, err := r.reconcileRole(common.ArgoCDDexServerComponent, policyRuleForDexServer(), cr); err != nil {
+	dexPolicyRules := policyRuleForDexServer()
+	if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && argoutil.IsDexKubernetesStorageEnabled() {
+		dexPolicyRules = append(dexPolicyRules, rbacv1.PolicyRule{
+			APIGroups: []string{"dex.coreos.com"},
+			Resources: []string{"*"},
+			Verbs:     []string{"*"},
+		})
+	}
+	if _, err := r.reconcileRole(common.ArgoCDDexServerComponent, dexPolicyRules, cr); err != nil {
 		log.Error(err, "error reconciling dex role")
 		return err
 	}
 
-	if err := r.reconcileRoleBinding(common.ArgoCDDexServerComponent, policyRuleForDexServer(), cr); err != nil {
+	if err := r.reconcileRoleBinding(common.ArgoCDDexServerComponent, dexPolicyRules, cr); err != nil {
 		log.Error(err, "error reconciling dex rolebinding")
 	}
 
-	if err := r.reconcileServiceAccountPermissions(common.ArgoCDDexServerComponent, policyRuleForDexServer(), cr); err != nil {
+	if err := r.reconcileServiceAccountPermissions(common.ArgoCDDexServerComponent, dexPolicyRules, cr); err != nil {
 		return err
 	}
 
