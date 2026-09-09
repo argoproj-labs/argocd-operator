@@ -615,7 +615,18 @@ func (r *ReconcileArgoCD) reconcileImageUpdaterDeployment(cr *argoproj.ArgoCD, s
 	// If expandedNamespaces is empty the pattern currently matches nothing: keep the raw
 	// value so the pod fails with a meaningful error rather than silently switching to
 	// namespace-scoped mode without the required RBAC.
-	if watchNamespaces != "" && watchNamespaces != "*" {
+	switch watchNamespaces {
+	case "*":
+		// Cluster-scoped: explicitly set IMAGE_UPDATER_WATCH_NAMESPACES="*"
+		imageUpdaterEnv = argoutil.EnvSet(imageUpdaterEnv, corev1.EnvVar{
+			Name:  "IMAGE_UPDATER_WATCH_NAMESPACES",
+			Value: "*",
+		})
+	case "":
+		// Namespace-scoped: remove IMAGE_UPDATER_WATCH_NAMESPACES to use the controller's default
+		imageUpdaterEnv = argoutil.EnvRemove(imageUpdaterEnv, "IMAGE_UPDATER_WATCH_NAMESPACES")
+	default:
+		// Pattern list: use expanded or raw value
 		envValue := watchNamespaces // fallback: preserve raw pattern when nothing matched yet
 		if len(expandedNamespaces) > 0 {
 			envValue = strings.Join(expandedNamespaces, ",")

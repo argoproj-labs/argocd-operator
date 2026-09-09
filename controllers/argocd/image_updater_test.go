@@ -1062,24 +1062,33 @@ func TestReconcileImageUpdaterDeployment_WatchNamespacesExpanded(t *testing.T) {
 		name            string
 		clusterNS       []string
 		watchNamespaces string
-		wantEnvValue    string // expected value of IMAGE_UPDATER_WATCH_NAMESPACES in the pod
+		wantEnvValue    string // expected value of IMAGE_UPDATER_WATCH_NAMESPACES in the pod, empty means env var should not be set
+		wantEnvSet      bool   // whether IMAGE_UPDATER_WATCH_NAMESPACES should be present in the pod env
 	}{
 		{
 			name:            "glob pattern is expanded to concrete names",
 			clusterNS:       []string{"team-a-argocd", "team-b-argocd", "unrelated"},
 			watchNamespaces: "*-argocd",
 			wantEnvValue:    "team-a-argocd,team-b-argocd",
+			wantEnvSet:      true,
 		},
 		{
 			name:            "exact names are passed through unchanged",
 			clusterNS:       []string{"ns1", "ns2", "other"},
 			watchNamespaces: "ns1,ns2",
 			wantEnvValue:    "ns1,ns2",
+			wantEnvSet:      true,
 		},
 		{
-			name:            "* is passed through unchanged (cluster-scoped mode)",
+			name:            "* is explicitly set to ensure cluster-scoped mode",
 			watchNamespaces: "*",
 			wantEnvValue:    "*",
+			wantEnvSet:      true,
+		},
+		{
+			name:            "empty string does not set IMAGE_UPDATER_WATCH_NAMESPACES (namespace-scoped mode uses default)",
+			watchNamespaces: "",
+			wantEnvSet:      false,
 		},
 		{
 			// When the pattern matches no existing namespaces the env var must NOT be
@@ -1089,6 +1098,7 @@ func TestReconcileImageUpdaterDeployment_WatchNamespacesExpanded(t *testing.T) {
 			clusterNS:       []string{"unrelated"},
 			watchNamespaces: "app-*",
 			wantEnvValue:    "app-*",
+			wantEnvSet:      true,
 		},
 		{
 			// Mixed list where one pattern has matches and another does not.
@@ -1099,6 +1109,7 @@ func TestReconcileImageUpdaterDeployment_WatchNamespacesExpanded(t *testing.T) {
 			clusterNS:       []string{"team-a", "team-b", "unrelated"},
 			watchNamespaces: "team-*,future-*",
 			wantEnvValue:    "team-a,team-b",
+			wantEnvSet:      true,
 		},
 		{
 			// Exact name alongside an unmatched glob: exact name expands normally,
@@ -1107,6 +1118,7 @@ func TestReconcileImageUpdaterDeployment_WatchNamespacesExpanded(t *testing.T) {
 			clusterNS:       []string{"ns1", "other"},
 			watchNamespaces: "ns1,app-*",
 			wantEnvValue:    "ns1",
+			wantEnvSet:      true,
 		},
 	}
 
@@ -1138,13 +1150,20 @@ func TestReconcileImageUpdaterDeployment_WatchNamespacesExpanded(t *testing.T) {
 			}, deployment))
 
 			var gotValue string
+			var found bool
 			for _, e := range deployment.Spec.Template.Spec.Containers[0].Env {
 				if e.Name == "IMAGE_UPDATER_WATCH_NAMESPACES" {
 					gotValue = e.Value
+					found = true
 					break
 				}
 			}
-			assert.Equal(t, tt.wantEnvValue, gotValue)
+			if tt.wantEnvSet {
+				assert.True(t, found, "IMAGE_UPDATER_WATCH_NAMESPACES should be set")
+				assert.Equal(t, tt.wantEnvValue, gotValue)
+			} else {
+				assert.False(t, found, "IMAGE_UPDATER_WATCH_NAMESPACES should not be set")
+			}
 		})
 	}
 }
