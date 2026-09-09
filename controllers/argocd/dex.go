@@ -470,7 +470,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 				"--name=dex",
 				"--data-dir=/tmp/etcd-data",
 				"--listen-client-urls=http://127.0.0.1:2379",
-				"--listen-client-http-urls=http://127.0.0.1:2381",
+				"--listen-client-http-urls=http://0.0.0.0:2381",
 				"--advertise-client-urls=http://127.0.0.1:2379",
 			},
 			Image:           getDexEtcdSidecarContainerImage(),
