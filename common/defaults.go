@@ -333,6 +333,12 @@ vs-ssh.visualstudio.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7Hr1oTWqNqOlzGJOf
 
 	// GitopsPromoterExtensionInstallerName is the default url for the GitOps Promoter extension
 	GitopsPromoterExtensionURL = "https://github.com/argoproj-labs/gitops-promoter/releases/download/v0.35.0/gitops-promoter-argocd-extension.tar.gz"
+
+	// ArgoCDDefaultDexEtcdImage is the container image used for dex etcd sidecar container when etcd storage is enabled
+	ArgoCDDefaultDexEtcdImage = "quay.io/coreos/etcd"
+
+	// ArgoCDDefaultDexEtcdVersion is the version of etcd to be used for dex etcd sidecar container when etcd storage is enabled
+	ArgoCDDefaultDexEtcdVersion = "v3.7.1"
 )
 
 // DefaultLabels returns the default set of labels for controllers.

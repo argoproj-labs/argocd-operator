@@ -10,7 +10,6 @@ import (
 	"time"
 
 	configv1 "github.com/openshift/api/config/v1"
-
 	"gopkg.in/yaml.v2"
 	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -46,12 +45,6 @@ func UseDex(cr *argoproj.ArgoCD) bool {
 // getDexServerTokenSecretName returns the name of the Secret that stores the Dex OAuth client token.
 func getDexServerTokenSecretName(cr *argoproj.ArgoCD) string {
 	return argoutil.GetSecretNameWithSuffix(cr, common.ArgoCDDefaultDexServiceAccountName+"-token")
-}
-
-// dexServerTokenRenewalThreshold is how much nominal lifetime may remain before we treat the Dex token
-// as due for renewal (ExpirySecs * ArgoCDDexServerTokenRenewalThresholdPercent / 100).
-func dexServerTokenRenewalThreshold() time.Duration {
-	return time.Duration(common.ArgoCDDexServerTokenExpirySecs*common.ArgoCDDexServerTokenRenewalThresholdPercent/100) * time.Second
 }
 
 // needsDexTokenRenewal returns true when the token is missing, unparseable, or within the renewal window.
@@ -110,7 +103,7 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string,
 	}
 
 	// Request a new time-limited token via the TokenRequest API.
-	expirationSeconds := common.ArgoCDDexServerTokenExpirySecs
+	expirationSeconds := getTokenExpirySeconds()
 	tokenRequest, err := r.K8sClient.CoreV1().ServiceAccounts(cr.Namespace).CreateToken(
 		context.TODO(),
 		sa.Name,
@@ -468,6 +461,76 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		VolumeMounts:    dexVolumeMounts,
 	}}
 
+	if UseDex(cr) && argoutil.IsDexEtcdStorageEnabled() {
+		deploy.Spec.Template.Spec.Containers[0].Command = []string{"/bin/sh", "-c"}
+		deploy.Spec.Template.Spec.Containers[0].Args = argoutil.DexServerCustomStartupScript()
+		deploy.Spec.Template.Spec.Containers = append(deploy.Spec.Template.Spec.Containers, corev1.Container{
+			Command: []string{
+				"etcd",
+				"--name=dex",
+				"--data-dir=/tmp/etcd-data",
+				"--listen-client-urls=http://127.0.0.1:2379",
+				"--listen-client-http-urls=http://127.0.0.1:2381",
+				"--advertise-client-urls=http://127.0.0.1:2379",
+			},
+			Image:           getDexEtcdSidecarContainerImage(),
+			ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
+			Env:             proxyEnvVars(),
+			Name:            "etcd",
+			Ports: []corev1.ContainerPort{
+				{
+					ContainerPort: 2379,
+					Name:          "client",
+				},
+				{
+					ContainerPort: 2381,
+					Name:          "client-http",
+				},
+			},
+			StartupProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path:   "/health",
+						Port:   intstr.FromInt32(2381),
+						Scheme: corev1.URISchemeHTTP,
+					},
+				},
+				InitialDelaySeconds: 2,
+				PeriodSeconds:       5,
+				FailureThreshold:    12,
+			},
+			LivenessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path:   "/livez",
+						Port:   intstr.FromInt32(2381),
+						Scheme: corev1.URISchemeHTTP,
+					},
+				},
+				InitialDelaySeconds: 10,
+				PeriodSeconds:       10,
+				TimeoutSeconds:      3,
+				FailureThreshold:    3,
+			},
+			ReadinessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path:   "/readyz",
+						Port:   intstr.FromInt32(2381),
+						Scheme: corev1.URISchemeHTTP,
+					},
+				},
+				InitialDelaySeconds: 10,
+				PeriodSeconds:       10,
+				TimeoutSeconds:      3,
+				FailureThreshold:    3,
+			},
+			Resources:       getDexResources(cr),
+			SecurityContext: dexSecCtx,
+			VolumeMounts:    dexVolumeMounts,
+		})
+	}
+
 	deploy.Spec.Template.Spec.InitContainers = []corev1.Container{{
 		Command: []string{
 			"cp",
@@ -608,6 +671,76 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		if !reflect.DeepEqual(deploy.Spec.Template.Labels, existing.Spec.Template.Labels) {
 			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
 			changes = append(changes, "labels")
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Args, existing.Spec.Template.Spec.Containers[0].Args) {
+			existing.Spec.Template.Spec.Containers[0].Args = deploy.Spec.Template.Spec.Containers[0].Args
+			changes = append(changes, "container args")
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Command, existing.Spec.Template.Spec.Containers[0].Command) {
+			existing.Spec.Template.Spec.Containers[0].Command = deploy.Spec.Template.Spec.Containers[0].Command
+			changes = append(changes, "container command")
+		}
+		desiredHasEtcd := len(deploy.Spec.Template.Spec.Containers) > 1
+		existingHasEtcd := len(existing.Spec.Template.Spec.Containers) > 1
+
+		switch {
+		case desiredHasEtcd && !existingHasEtcd:
+			existing.Spec.Template.Spec.Containers = append(
+				existing.Spec.Template.Spec.Containers,
+				deploy.Spec.Template.Spec.Containers[1],
+			)
+			changes = append(changes, "added etcd sidecar container")
+
+		case !desiredHasEtcd && existingHasEtcd:
+			existing.Spec.Template.Spec.Containers = existing.Spec.Template.Spec.Containers[:1]
+			changes = append(changes, "removed etcd sidecar container")
+
+		case desiredHasEtcd && existingHasEtcd:
+			if existing.Spec.Template.Spec.Containers[1].Image != deploy.Spec.Template.Spec.Containers[1].Image {
+				existing.Spec.Template.Spec.Containers[1].Image = deploy.Spec.Template.Spec.Containers[1].Image
+				changes = append(changes, "etcd container image")
+			}
+			if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[1].Env,
+				deploy.Spec.Template.Spec.Containers[1].Env) {
+				existing.Spec.Template.Spec.Containers[1].Env = deploy.Spec.Template.Spec.Containers[1].Env
+				changes = append(changes, "etcd container env")
+			}
+			if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[1].Resources, existing.Spec.Template.Spec.Containers[1].Resources) {
+				existing.Spec.Template.Spec.Containers[1].Resources = deploy.Spec.Template.Spec.Containers[1].Resources
+				changes = append(changes, "etcd container resources")
+			}
+			if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[1].SecurityContext, existing.Spec.Template.Spec.Containers[1].SecurityContext) {
+				existing.Spec.Template.Spec.Containers[1].SecurityContext = deploy.Spec.Template.Spec.Containers[1].SecurityContext
+				changes = append(changes, "etcd container security context")
+			}
+			if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[1].VolumeMounts, existing.Spec.Template.Spec.Containers[1].VolumeMounts) {
+				existing.Spec.Template.Spec.Containers[1].VolumeMounts = deploy.Spec.Template.Spec.Containers[1].VolumeMounts
+				changes = append(changes, "etcd container volume mounts")
+			}
+			if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[1].Command, existing.Spec.Template.Spec.Containers[1].Command) {
+				existing.Spec.Template.Spec.Containers[1].Command = deploy.Spec.Template.Spec.Containers[1].Command
+				changes = append(changes, "etcd container command")
+			}
+			if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[1].ImagePullPolicy, existing.Spec.Template.Spec.Containers[1].ImagePullPolicy) {
+				existing.Spec.Template.Spec.Containers[1].ImagePullPolicy = deploy.Spec.Template.Spec.Containers[1].ImagePullPolicy
+				changes = append(changes, "etcd container image pull policy")
+			}
+			if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[1].Ports, existing.Spec.Template.Spec.Containers[1].Ports) {
+				existing.Spec.Template.Spec.Containers[1].Ports = deploy.Spec.Template.Spec.Containers[1].Ports
+				changes = append(changes, "etcd container ports")
+			}
+			if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[1].StartupProbe, existing.Spec.Template.Spec.Containers[1].StartupProbe) {
+				existing.Spec.Template.Spec.Containers[1].StartupProbe = deploy.Spec.Template.Spec.Containers[1].StartupProbe
+				changes = append(changes, "etcd container startup probe")
+			}
+			if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[1].LivenessProbe, existing.Spec.Template.Spec.Containers[1].LivenessProbe) {
+				existing.Spec.Template.Spec.Containers[1].LivenessProbe = deploy.Spec.Template.Spec.Containers[1].LivenessProbe
+				changes = append(changes, "etcd container liveness probe")
+			}
+			if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[1].ReadinessProbe, existing.Spec.Template.Spec.Containers[1].ReadinessProbe) {
+				existing.Spec.Template.Spec.Containers[1].ReadinessProbe = deploy.Spec.Template.Spec.Containers[1].ReadinessProbe
+				changes = append(changes, "etcd container readiness probe")
+			}
 		}
 
 		if len(changes) > 0 {
