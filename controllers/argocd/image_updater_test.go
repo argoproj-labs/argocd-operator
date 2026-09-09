@@ -1216,12 +1216,12 @@ func TestExpandImageUpdaterWatchNamespaces(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
-		name               string
-		clusterNS          []string // Namespace objects to pre-create in the fake client
-		terminatingNS      []string // Namespaces to mark as terminating (DeletionTimestamp != nil)
-		watchNamespaces    string   // raw value passed to expandImageUpdaterWatchNamespaces
-		want               []string // expected result, must be sorted
-		wantErr            bool     // true when an error is expected instead of a result
+		name            string
+		clusterNS       []string // Namespace objects to pre-create in the fake client
+		terminatingNS   []string // Namespaces to mark as terminating (DeletionTimestamp != nil)
+		watchNamespaces string   // raw value passed to expandImageUpdaterWatchNamespaces
+		want            []string // expected result, must be sorted
+		wantErr         bool     // true when an error is expected instead of a result
 	}{
 		{
 			name:            "exact match: single namespace",
@@ -1382,8 +1382,8 @@ func TestExpandImageUpdaterWatchNamespaces(t *testing.T) {
 					// Mark namespace as terminating by setting DeletionTimestamp and Finalizers
 					// (fake client requires finalizers when DeletionTimestamp is set)
 					now := metav1.Now()
-					nsObj.ObjectMeta.DeletionTimestamp = &now
-					nsObj.ObjectMeta.Finalizers = []string{"kubernetes"}
+					nsObj.DeletionTimestamp = &now
+					nsObj.Finalizers = []string{"kubernetes"}
 				}
 				resObjs = append(resObjs, nsObj)
 			}
