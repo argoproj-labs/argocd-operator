@@ -137,7 +137,7 @@ func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoproj.Argo
 		if !shouldExist {
 			// Delete any existing Service Account as no longer needed
 			argoutil.LogResourceDeletion(log, sa, "component is being uninstalled")
-			return sa, r.Delete(context.TODO(), sa)
+			return sa, r.deleteIgnoringNotFound(sa)
 		}
 
 		// On OpenShift the platform injects dockercfg secrets into SAs;
@@ -172,7 +172,7 @@ func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoproj.Argo
 	}
 
 	argoutil.LogResourceCreation(log, sa)
-	if err := r.Create(context.TODO(), sa); err != nil {
+	if err := r.createIgnoringAlreadyExists(sa); err != nil {
 		return nil, err
 	}
 

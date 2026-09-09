@@ -83,7 +83,7 @@ func ReconcilePromoterAPIServerRoleBindings(client client.Client, compName strin
 	// As of right now the Promoter requires a RoleBinding to the extension-apiserver-authentication-reader role in the kube-system namespace
 	// Because of this a copy of the CR is needed with the kube-system namespace
 	crCopy := cr.DeepCopy()
-	crCopy.SetNamespace("kube-system")
+	crCopy.SetNamespace(APIAggregationNamespace)
 	bindingName := fmt.Sprintf("%s-%s", generatePromoterResourceNameWithNamespace(compName, cr), "extension-auth-reader")
 	roleBinding, err := ReconcilePromoterRoleBinding(client, compName, bindingName, "extension-apiserver-authentication-reader", sa, crCopy, enabled, allowed)
 	if err != nil {
