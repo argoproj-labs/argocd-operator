@@ -83,7 +83,7 @@ func TestReconcileArgoCD_reconcileRole_for_new_namespace(t *testing.T) {
 	// check no dexServer role is created for the new namespace with managed-by label
 	workloadIdentifier := common.ArgoCDDexServerComponent
 	expectedRoleNamespace := a.Namespace
-	expectedDexServerRules := policyRuleForDexServer()
+	expectedDexServerRules := policyRuleForDexServer(a)
 	dexRoles, err := r.reconcileRole(workloadIdentifier, expectedDexServerRules, a)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedNumberOfRoles, len(dexRoles))

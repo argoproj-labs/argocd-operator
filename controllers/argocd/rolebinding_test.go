@@ -78,7 +78,7 @@ func TestReconcileArgoCD_reconcileRoleBinding_for_new_namespace(t *testing.T) {
 	// check no dexServer rolebinding is created for the new namespace with managed-by label
 	roleBinding := &rbacv1.RoleBinding{}
 	workloadIdentifier := common.ArgoCDDexServerComponent
-	expectedDexServerRules := policyRuleForDexServer()
+	expectedDexServerRules := policyRuleForDexServer(a)
 	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
 	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, expectedDexServerRules, a))
 	assert.Error(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))

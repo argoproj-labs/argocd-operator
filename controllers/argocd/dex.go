@@ -13,7 +13,6 @@ import (
 	"gopkg.in/yaml.v2"
 	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -706,24 +705,16 @@ func (r *ReconcileArgoCD) reconcileDexService(cr *argoproj.ArgoCD) error {
 // reconcileDexResources consolidates all dex resources reconciliation calls. It serves as the single place to trigger both creation
 // and deletion of dex resources based on the specified configuration of dex
 func (r *ReconcileArgoCD) reconcileDexResources(cr *argoproj.ArgoCD) error {
-	dexPolicyRules := policyRuleForDexServer()
-	if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && argoutil.IsDexKubernetesStorageEnabled() {
-		dexPolicyRules = append(dexPolicyRules, rbacv1.PolicyRule{
-			APIGroups: []string{"dex.coreos.com"},
-			Resources: []string{"*"},
-			Verbs:     []string{"*"},
-		})
-	}
-	if _, err := r.reconcileRole(common.ArgoCDDexServerComponent, dexPolicyRules, cr); err != nil {
+	if _, err := r.reconcileRole(common.ArgoCDDexServerComponent, policyRuleForDexServer(cr), cr); err != nil {
 		log.Error(err, "error reconciling dex role")
 		return err
 	}
 
-	if err := r.reconcileRoleBinding(common.ArgoCDDexServerComponent, dexPolicyRules, cr); err != nil {
+	if err := r.reconcileRoleBinding(common.ArgoCDDexServerComponent, policyRuleForDexServer(cr), cr); err != nil {
 		log.Error(err, "error reconciling dex rolebinding")
 	}
 
-	if err := r.reconcileServiceAccountPermissions(common.ArgoCDDexServerComponent, dexPolicyRules, cr); err != nil {
+	if err := r.reconcileServiceAccountPermissions(common.ArgoCDDexServerComponent, policyRuleForDexServer(cr), cr); err != nil {
 		return err
 	}
 

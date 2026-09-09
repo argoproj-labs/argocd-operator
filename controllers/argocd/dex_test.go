@@ -1019,7 +1019,7 @@ func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
 
 			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
 
-			rules := policyRuleForDexServer()
+			rules := policyRuleForDexServer(test.argoCD)
 			role := newRole(common.ArgoCDDexServerComponent, rules, test.argoCD)
 
 			if test.setEnvFunc != nil {
@@ -1095,7 +1095,7 @@ func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
 
 			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
 
-			rules := policyRuleForDexServer()
+			rules := policyRuleForDexServer(test.argoCD)
 			roleBinding := newRoleBindingWithname(common.ArgoCDDexServerComponent, test.argoCD)
 
 			if test.setEnvFunc != nil {
