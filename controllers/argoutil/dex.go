@@ -47,6 +47,10 @@ while true; do
   /shared/argocd-dex gendexcfg ${EXTRA_ARGS} -o /tmp/base.yaml
   awk '/^storage:/ { print "storage:\n  type: etcd\n  config:\n    endpoints:\n    - \"http://127.0.0.1:2379\"\n    namespace: dex"; skip=1; next } skip && /^[a-zA-Z0-9_-]+:/ { skip=0 } !skip' /tmp/base.yaml > /tmp/dex.yaml
   
+  echo "waiting for etcd to be ready..."
+  until curl -sf http://127.0.0.1:2381/health > /dev/null 2>&1; do sleep 1; done
+  echo "etcd is ready"
+
   echo "starting dex server"
   dex serve /tmp/dex.yaml &
   DEX_PID=$!
