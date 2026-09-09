@@ -10,6 +10,8 @@ spec:
     env:
       - name: IMAGE_UPDATER_LOGLEVEL
         value: trace
+      - name: IMAGE_UPDATER_WATCH_NAMESPACES
+        value: "*-argocd"
     resources:
       limits:
         cpu: 500m
