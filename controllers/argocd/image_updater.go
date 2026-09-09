@@ -839,6 +839,8 @@ func splitAndFilterPatterns(raw string) []string {
 // match any pattern in the comma-separated watchNamespaces value. Each pattern may be a
 // glob-style wildcard or a full regular expression (the same semantics used by
 // .spec.applicationSet.sourceNamespaces). The returned slice is sorted for determinism.
+// Namespaces in a Terminating state (DeletionTimestamp != nil) are excluded from both
+// the match result and the total count, as creating content in such namespaces is forbidden.
 func (r *ReconcileArgoCD) expandImageUpdaterWatchNamespaces(watchNamespaces string) ([]string, error) {
 	patterns := splitAndFilterPatterns(watchNamespaces)
 	if len(patterns) == 0 {
@@ -850,23 +852,33 @@ func (r *ReconcileArgoCD) expandImageUpdaterWatchNamespaces(watchNamespaces stri
 		return nil, err
 	}
 
+	// Namespaces in Terminating state reject object creation with 403 (not NotFound), which
+	// would abort the entire reconcile. Exclude them from the match set — and from the
+	// all-namespaces comparison below, so a terminating namespace cannot mask a
+	// match-everything pattern.
+	activeCount := 0
 	var matched []string
 	for _, ns := range clusterNamespaces.Items {
+		if ns.DeletionTimestamp != nil {
+			log.Info("skipping terminating namespace for Image Updater RBAC", "namespace", ns.Name)
+			continue
+		}
+		activeCount++
 		if glob.MatchStringInList(patterns, ns.Name, glob.REGEXP) {
 			matched = append(matched, ns.Name)
 		}
 	}
 
-	// Guard against patterns that silently expand to every namespace (e.g. "**", "?*",
+	// Guard against patterns that silently expand to every active namespace (e.g. "**", "?*",
 	// "/.*/"). Such a result is semantically identical to cluster-scoped mode ("*") but
 	// bypasses the IsNamespaceClusterConfigNamespace restriction that the "*" sentinel
 	// enforces. Returning an error here prevents unintended privilege escalation and
 	// directs the user to the correct, explicit cluster-scoped configuration.
-	if len(clusterNamespaces.Items) > 0 && len(matched) == len(clusterNamespaces.Items) {
+	if activeCount > 0 && len(matched) == activeCount {
 		return nil, fmt.Errorf(
-			"IMAGE_UPDATER_WATCH_NAMESPACES %q matches all %d cluster namespaces; "+
+			"IMAGE_UPDATER_WATCH_NAMESPACES %q matches all %d active cluster namespaces; "+
 				"use \"*\" for cluster-scoped mode",
-			watchNamespaces, len(clusterNamespaces.Items),
+			watchNamespaces, activeCount,
 		)
 	}
 

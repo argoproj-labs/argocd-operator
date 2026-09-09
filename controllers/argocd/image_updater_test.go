@@ -1216,11 +1216,12 @@ func TestExpandImageUpdaterWatchNamespaces(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
-		name            string
-		clusterNS       []string // Namespace objects to pre-create in the fake client
-		watchNamespaces string   // raw value passed to expandImageUpdaterWatchNamespaces
-		want            []string // expected result, must be sorted
-		wantErr         bool     // true when an error is expected instead of a result
+		name               string
+		clusterNS          []string // Namespace objects to pre-create in the fake client
+		terminatingNS      []string // Namespaces to mark as terminating (DeletionTimestamp != nil)
+		watchNamespaces    string   // raw value passed to expandImageUpdaterWatchNamespaces
+		want               []string // expected result, must be sorted
+		wantErr            bool     // true when an error is expected instead of a result
 	}{
 		{
 			name:            "exact match: single namespace",
@@ -1341,6 +1342,27 @@ func TestExpandImageUpdaterWatchNamespaces(t *testing.T) {
 			watchNamespaces: "app-ns-*",
 			want:            []string{"app-ns-1", "app-ns-2"},
 		},
+		{
+			name:            "terminating namespace is excluded from matches",
+			clusterNS:       []string{"ns1", "ns2-terminating", "other"},
+			terminatingNS:   []string{"ns2-terminating"},
+			watchNamespaces: "ns*",
+			want:            []string{"ns1"},
+		},
+		{
+			name:            "terminating namespace does not prevent valid pattern matches",
+			clusterNS:       []string{"app-a", "app-b", "app-term", "other-ns"},
+			terminatingNS:   []string{"app-term"},
+			watchNamespaces: "app-*",
+			want:            []string{"app-a", "app-b"},
+		},
+		{
+			name:            "pattern that would match all active namespaces (with terminating ones present) is rejected",
+			clusterNS:       []string{"ns1", "ns2", "ns-term"},
+			terminatingNS:   []string{"ns-term"},
+			watchNamespaces: "ns*",
+			wantErr:         true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -1350,8 +1372,20 @@ func TestExpandImageUpdaterWatchNamespaces(t *testing.T) {
 			})
 
 			resObjs := []client.Object{a}
+			terminatingSet := make(map[string]struct{})
+			for _, ns := range tt.terminatingNS {
+				terminatingSet[ns] = struct{}{}
+			}
 			for _, ns := range tt.clusterNS {
-				resObjs = append(resObjs, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})
+				nsObj := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}}
+				if _, isTerminating := terminatingSet[ns]; isTerminating {
+					// Mark namespace as terminating by setting DeletionTimestamp and Finalizers
+					// (fake client requires finalizers when DeletionTimestamp is set)
+					now := metav1.Now()
+					nsObj.ObjectMeta.DeletionTimestamp = &now
+					nsObj.ObjectMeta.Finalizers = []string{"kubernetes"}
+				}
+				resObjs = append(resObjs, nsObj)
 			}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, resObjs, []runtime.Object{})
