@@ -25,6 +25,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 // Metrics Service Tests
@@ -519,4 +521,204 @@ func TestReconcileAgentHealthzService_ServiceDoesNotExist_AgentNotSet(t *testing
 		Namespace: cr.Namespace,
 	}, svc)
 	assert.True(t, errors.IsNotFound(err))
+}
+
+// Agent Metrics Service Annotation Tests
+
+func TestReconcileAgentMetricsService_WithAnnotations_NewService(t *testing.T) {
+	// Test case: Create new metrics service with annotations
+	// Expected behavior: Service should be created with custom annotations
+
+	cr := makeTestArgoCD(withAgentEnabled(true))
+	cr.Spec.ArgoCDAgent.Agent.Metrics = &argoproj.ArgoCDMetricsSpec{
+		Annotations: map[string]string{
+			"ad.datadoghq.com/service.check_names":  `["openmetrics"]`,
+			"ad.datadoghq.com/service.init_configs": `[{}]`,
+			"custom.io/annotation":                  "test-value",
+		},
+	}
+
+	resObjs := []client.Object{cr}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcileAgentMetricsService(cl, testAgentCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was created with annotations
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testAgentCompName+"-metrics"),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.NoError(t, err)
+
+	// Verify annotations are present
+	assert.Equal(t, `["openmetrics"]`, svc.Annotations["ad.datadoghq.com/service.check_names"])
+	assert.Equal(t, `[{}]`, svc.Annotations["ad.datadoghq.com/service.init_configs"])
+	assert.Equal(t, "test-value", svc.Annotations["custom.io/annotation"])
+}
+
+func TestReconcileAgentMetricsService_WithAnnotations_UpdateAnnotationsOnly(t *testing.T) {
+	// Test case: Existing service, update only annotations (spec unchanged)
+	// Expected behavior: Service should be updated with new annotations
+
+	cr := makeTestArgoCD(withAgentEnabled(true))
+
+	// Create existing service without annotations
+	existingSvc := buildService(generateAgentResourceName(cr.Name, testAgentCompName)+"-metrics", testAgentCompName, cr)
+	existingSvc.Spec = buildAgentMetricsServiceSpec(testAgentCompName, cr)
+
+	resObjs := []client.Object{cr, existingSvc}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	// Now add annotations to the CR
+	cr.Spec.ArgoCDAgent.Agent.Metrics = &argoproj.ArgoCDMetricsSpec{
+		Annotations: map[string]string{
+			"custom.io/annotation": "new-value",
+		},
+	}
+
+	err := ReconcileAgentMetricsService(cl, testAgentCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was updated with annotations
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testAgentCompName+"-metrics"),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.NoError(t, err)
+
+	// Verify annotation is present
+	assert.Equal(t, "new-value", svc.Annotations["custom.io/annotation"])
+}
+
+func TestReconcileAgentMetricsService_WithAnnotations_UpdateBothSpecAndAnnotations(t *testing.T) {
+	// Test case: Update both spec and annotations
+	// Expected behavior: Both should be updated in single update call
+
+	cr := makeTestArgoCD(withAgentEnabled(true))
+	cr.Spec.ArgoCDAgent.Agent.Metrics = &argoproj.ArgoCDMetricsSpec{
+		Annotations: map[string]string{
+			"custom.io/annotation": "old-value",
+		},
+	}
+
+	// Create existing service with old annotations and different port
+	existingSvc := buildService(generateAgentResourceName(cr.Name, testAgentCompName)+"-metrics", testAgentCompName, cr)
+	existingSvc.Spec = corev1.ServiceSpec{
+		Ports: []corev1.ServicePort{
+			{
+				Name:       "metrics",
+				Port:       9999, // Wrong port
+				TargetPort: intstr.FromInt(9999),
+				Protocol:   corev1.ProtocolTCP,
+			},
+		},
+		Selector: buildLabelsForAgent(cr.Name, testAgentCompName),
+		Type:     corev1.ServiceTypeClusterIP,
+	}
+	existingSvc.Annotations = map[string]string{
+		"custom.io/annotation": "old-value",
+	}
+
+	resObjs := []client.Object{cr, existingSvc}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	// Update both spec (port) and annotations
+	cr.Spec.ArgoCDAgent.Agent.Metrics.Annotations["custom.io/annotation"] = "new-value"
+
+	err := ReconcileAgentMetricsService(cl, testAgentCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was updated
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testAgentCompName+"-metrics"),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.NoError(t, err)
+
+	// Verify both port and annotation were updated
+	assert.Equal(t, int32(8181), svc.Spec.Ports[0].Port, "Port should be updated")
+	assert.Equal(t, "new-value", svc.Annotations["custom.io/annotation"], "Annotation should be updated")
+}
+
+func TestReconcileAgentMetricsService_WithAnnotations_RemoveAnnotations(t *testing.T) {
+	// Test case: Remove annotations from spec
+	// Expected behavior: Annotations should be removed from service
+
+	cr := makeTestArgoCD(withAgentEnabled(true))
+
+	// Create existing service with annotations
+	existingSvc := buildService(generateAgentResourceName(cr.Name, testAgentCompName)+"-metrics", testAgentCompName, cr)
+	existingSvc.Spec = buildAgentMetricsServiceSpec(testAgentCompName, cr)
+	existingSvc.Annotations = map[string]string{
+		"custom.io/annotation": "value-to-remove",
+	}
+
+	resObjs := []client.Object{cr, existingSvc}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	// Reconcile without annotations in spec (nil Metrics)
+	err := ReconcileAgentMetricsService(cl, testAgentCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service annotations were removed
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testAgentCompName+"-metrics"),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.NoError(t, err)
+
+	// Verify annotation is removed
+	_, hasAnnotation := svc.Annotations["custom.io/annotation"]
+	assert.False(t, hasAnnotation, "Custom annotation should be removed")
+}
+
+func TestReconcileAgentMetricsService_WithAnnotations_PreserveSystemAnnotations(t *testing.T) {
+	// Test case: Ensure system annotations are preserved when updating
+	// Expected behavior: Kubernetes/OpenShift annotations should not be removed
+
+	cr := makeTestArgoCD(withAgentEnabled(true))
+	cr.Spec.ArgoCDAgent.Agent.Metrics = &argoproj.ArgoCDMetricsSpec{
+		Annotations: map[string]string{
+			"custom.io/annotation": "value",
+		},
+	}
+
+	// Create existing service with system annotations
+	existingSvc := buildService(generateAgentResourceName(cr.Name, testAgentCompName)+"-metrics", testAgentCompName, cr)
+	existingSvc.Spec = buildAgentMetricsServiceSpec(testAgentCompName, cr)
+	existingSvc.Annotations = map[string]string{
+		"service.beta.openshift.io/serving-cert-secret-name": "my-tls-secret",
+		"kubernetes.io/service-name":                         "my-service",
+	}
+
+	resObjs := []client.Object{cr, existingSvc}
+	sch := makeTestReconcilerScheme()
+	cl := makeTestReconcilerClient(sch, resObjs)
+
+	err := ReconcileAgentMetricsService(cl, testAgentCompName, cr, sch)
+	assert.NoError(t, err)
+
+	// Verify Service was updated
+	svc := &corev1.Service{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      generateAgentResourceName(cr.Name, testAgentCompName+"-metrics"),
+		Namespace: cr.Namespace,
+	}, svc)
+	assert.NoError(t, err)
+
+	// Verify custom annotation was added
+	assert.Equal(t, "value", svc.Annotations["custom.io/annotation"])
+
+	// Verify system annotations were preserved
+	assert.Equal(t, "my-tls-secret", svc.Annotations["service.beta.openshift.io/serving-cert-secret-name"])
+	assert.Equal(t, "my-service", svc.Annotations["kubernetes.io/service-name"])
 }

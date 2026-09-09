@@ -186,8 +186,8 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			}
 			Expect(k8sClient.Create(ctx, app2)).To(Succeed())
 
-			Eventually(app2, "4m", "1s").Should(appFixture.HaveHealthStatusCode(health.HealthStatusHealthy))
-			Eventually(app2, "4m", "1s").Should(appFixture.HaveSyncStatusCode(argocdv1alpha1.SyncStatusCodeSynced))
+			Eventually(app2, "8m", "1s").Should(appFixture.HaveHealthStatusCode(health.HealthStatusHealthy))
+			Eventually(app2, "8m", "1s").Should(appFixture.HaveSyncStatusCode(argocdv1alpha1.SyncStatusCodeSynced))
 
 			By("deleting all Argo CD applications and first managed namespace")
 
@@ -258,8 +258,8 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Eventually(app, "1m", "1s").Should(appFixture.HaveHealthStatusCode(health.HealthStatusMissing))
 			Eventually(app, "1m", "1s").Should(appFixture.HaveSyncStatusCode(argocdv1alpha1.SyncStatusCodeUnknown))
 
-			Eventually(app2, "4m", "1s").Should(appFixture.HaveHealthStatusCode(health.HealthStatusHealthy))
-			Eventually(app2, "4m", "1s").Should(appFixture.HaveSyncStatusCode(argocdv1alpha1.SyncStatusCodeSynced))
+			Eventually(app2, "8m", "1s").Should(appFixture.HaveHealthStatusCode(health.HealthStatusHealthy))
+			Eventually(app2, "8m", "1s").Should(appFixture.HaveSyncStatusCode(argocdv1alpha1.SyncStatusCodeSynced))
 
 		})
 

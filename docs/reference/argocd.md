@@ -191,6 +191,7 @@ Annotations | [Empty] | Custom annotations to pods deployed by the operator
 Labels | [Empty] | Custom labels to pods deployed by the operator
 Metrics.Interval | [Empty] | Prometheus scrape interval for the Application Controller ServiceMonitor. If empty, Prometheus uses its default.
 Metrics.ScrapeTimeout | [Empty] | Prometheus scrape timeout for the Application Controller ServiceMonitor. If empty, Prometheus uses its default.
+Metrics.Annotations | [Empty] | Custom annotations to add to the Application Controller metrics Service. Useful for service-based autodiscovery with monitoring tools like Datadog. System annotations (kubernetes.io/*, k8s.io/*, openshift.io/*, service.beta.openshift.io/*, service.alpha.openshift.io/*) are automatically preserved. Any custom annotations not in this map will be removed during reconciliation. | |
 
 ### Controller Example
 
@@ -635,6 +636,7 @@ LogLevel | info | The log level to be used by the ArgoCD Application Controller 
 sourceNamespaces | [Empty] | List of namespaces allowed to manage their own notification configuration (ConfigMap and Secret).
 Metrics.Interval | [Empty] | Prometheus scrape interval for the Notifications ServiceMonitor. If empty, Prometheus uses its default.
 Metrics.ScrapeTimeout | [Empty] | Prometheus scrape timeout for the Notifications ServiceMonitor. If empty, Prometheus uses its default.
+Metrics.Annotations | [Empty] | Custom annotations to add to the Notifications metrics Service. Useful for service-based autodiscovery with monitoring tools like Datadog. System annotations (kubernetes.io/*, k8s.io/*, openshift.io/*, service.beta.openshift.io/*, service.alpha.openshift.io/*) are automatically preserved. Any custom annotations not in this map will be removed during reconciliation.
 
 ### Notifications Controller Example
 
@@ -1111,6 +1113,7 @@ Labels | [Empty] | Custom labels to pods deployed by the operator
 [SystemCATrust](#repo-server-tls-trust-configuration) | [Empty] | Custom certificates to inject into the repo server container and its plugins to trust source hosting sites
 Metrics.Interval | [Empty] | Prometheus scrape interval for the Repo Server ServiceMonitor. If empty, Prometheus uses its default.
 Metrics.ScrapeTimeout | [Empty] | Prometheus scrape timeout for the Repo Server ServiceMonitor. If empty, Prometheus uses its default.
+Metrics.Annotations | [Empty] | Custom annotations to add to the Repo Server metrics Service. Useful for service-based autodiscovery with monitoring tools like Datadog. System annotations (kubernetes.io/*, k8s.io/*, openshift.io/*, service.beta.openshift.io/*, service.alpha.openshift.io/*) are automatically preserved. Any custom annotations not in this map will be removed during reconciliation.
 
 ### Pass Command Arguments To Repo Server
 
@@ -1530,6 +1533,7 @@ Annotations | [Empty] | Custom annotations to pods deployed by the operator
 Labels | [Empty] | Custom labels to pods deployed by the operator
 Metrics.Interval | [Empty] | Prometheus scrape interval for the Server ServiceMonitor. If empty, Prometheus uses its default.
 Metrics.ScrapeTimeout | [Empty] | Prometheus scrape timeout for the Server ServiceMonitor. If empty, Prometheus uses its default.
+Metrics.Annotations | [Empty] | Custom annotations to add to the Server metrics Service. Useful for service-based autodiscovery with monitoring tools like Datadog. System annotations (kubernetes.io/*, k8s.io/*, openshift.io/*, service.beta.openshift.io/*, service.alpha.openshift.io/*) are automatically preserved. Any custom annotations not in this map will be removed during reconciliation.
 
 
 ### Server Autoscale Options

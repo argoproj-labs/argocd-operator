@@ -153,6 +153,7 @@ func ReconcilePrincipalMetricsService(client client.Client, compName string, cr 
 			return nil
 		}
 
+		needsUpdate := false
 		if !reflect.DeepEqual(service.Spec.Ports, expectedSpec.Ports) ||
 			!reflect.DeepEqual(service.Spec.Selector, expectedSpec.Selector) ||
 			!reflect.DeepEqual(service.Spec.Type, expectedSpec.Type) {
@@ -160,8 +161,20 @@ func ReconcilePrincipalMetricsService(client client.Client, compName string, cr 
 			service.Spec.Type = expectedSpec.Type
 			service.Spec.Ports = expectedSpec.Ports
 			service.Spec.Selector = expectedSpec.Selector
+			needsUpdate = true
+		}
 
-			argoutil.LogResourceUpdate(log, service, "updating principal metrics service spec")
+		// Check if we need to update annotations
+		var metricsSpec *argoproj.ArgoCDMetricsSpec
+		if cr.Spec.ArgoCDAgent.Principal != nil {
+			metricsSpec = cr.Spec.ArgoCDAgent.Principal.Metrics
+		}
+		if argoutil.EnsureMetricsServiceAnnotations(service, metricsSpec) {
+			needsUpdate = true
+		}
+
+		if needsUpdate {
+			argoutil.LogResourceUpdate(log, service, "updating principal metrics service")
 			if err := client.Update(context.TODO(), service); err != nil {
 				return fmt.Errorf("failed to update principal metrics service %s: %v", service.Name, err)
 			}
@@ -181,6 +194,13 @@ func ReconcilePrincipalMetricsService(client client.Client, compName string, cr 
 	service.Spec.Type = expectedSpec.Type
 	service.Spec.Ports = expectedSpec.Ports
 	service.Spec.Selector = expectedSpec.Selector
+
+	// Apply custom annotations from metrics spec
+	var metricsSpec *argoproj.ArgoCDMetricsSpec
+	if cr.Spec.ArgoCDAgent.Principal != nil {
+		metricsSpec = cr.Spec.ArgoCDAgent.Principal.Metrics
+	}
+	argoutil.EnsureMetricsServiceAnnotations(service, metricsSpec)
 
 	argoutil.LogResourceCreation(log, service)
 	if err := client.Create(context.TODO(), service); err != nil {

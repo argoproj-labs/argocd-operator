@@ -105,8 +105,14 @@ func (r *ReconcileArgoCD) reconcileMetricsService(cr *argoproj.ArgoCD) error {
 	if err != nil {
 		return err
 	}
+
 	if svcExists {
-		// Service found, do nothing
+		// Service found, check if we need to update annotations
+		// TODO: Consider adding spec reconciliation (ports, selector) similar to Agent metrics services
+		if argoutil.EnsureMetricsServiceAnnotations(svc, cr.Spec.Controller.Metrics) {
+			argoutil.LogResourceUpdate(log, svc, "updating metrics service annotations")
+			return r.Update(context.TODO(), svc)
+		}
 		return nil
 	}
 
@@ -122,6 +128,9 @@ func (r *ReconcileArgoCD) reconcileMetricsService(cr *argoproj.ArgoCD) error {
 			TargetPort: intstr.FromInt(8082),
 		},
 	}
+
+	// Apply custom annotations from metrics spec
+	argoutil.EnsureMetricsServiceAnnotations(svc, cr.Spec.Controller.Metrics)
 
 	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
 		return err
@@ -454,8 +463,15 @@ func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoproj.ArgoCD) err
 	if err != nil {
 		return err
 	}
+
 	if svcExists {
-		return nil // Service found, do nothing
+		// Service found, check if we need to update annotations
+		// TODO: Consider adding spec reconciliation (ports, selector) similar to Agent metrics services
+		if argoutil.EnsureMetricsServiceAnnotations(svc, cr.Spec.Server.Metrics) {
+			argoutil.LogResourceUpdate(log, svc, "updating metrics service annotations")
+			return r.Update(context.TODO(), svc)
+		}
+		return nil
 	}
 
 	svc.Spec.Selector = map[string]string{
@@ -470,6 +486,9 @@ func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoproj.ArgoCD) err
 			TargetPort: intstr.FromInt(8083),
 		},
 	}
+
+	// Apply custom annotations from metrics spec
+	argoutil.EnsureMetricsServiceAnnotations(svc, cr.Spec.Server.Metrics)
 
 	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
 		return err

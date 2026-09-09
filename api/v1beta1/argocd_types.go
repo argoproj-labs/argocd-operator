@@ -485,6 +485,11 @@ type ArgoCDMetricsSpec struct {
 	// ScrapeTimeout specifies the Prometheus scrape timeout for this component's ServiceMonitor.
 	// If empty, Prometheus uses the global scrape timeout.
 	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
+
+	// Annotations is an unstructured key value map that can be used to add custom annotations
+	// to the metrics Service for this component. This enables service-based autodiscovery for
+	// monitoring tools like Datadog that rely on service annotations.
+	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
 // ArgoCDPrometheusSpec defines the desired state for the Prometheus component.

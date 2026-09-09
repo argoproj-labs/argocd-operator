@@ -480,6 +480,95 @@ func TestReconcileNotifications_CreateMetricsService(t *testing.T) {
 	assert.Equal(t, testService.Spec.Ports[0].Name, "metrics")
 }
 
+func TestReconcileNotifications_MetricsServiceWithAnnotations(t *testing.T) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Notifications.Enabled = true
+		a.Spec.Notifications.Metrics = &argoproj.ArgoCDMetricsSpec{
+			Annotations: map[string]string{
+				"ad.datadoghq.com/service.check_names":  `["openmetrics"]`,
+				"ad.datadoghq.com/service.init_configs": `[{}]`,
+				"ad.datadoghq.com/service.instances":    `[{"openmetrics_endpoint":"http://%%host%%:%%port%%/metrics","namespace":"argocd_notifications","metrics":[".*"]}]`,
+				"custom.io/annotation":                  "custom-value",
+			},
+		}
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	err := r.reconcileNotificationsMetricsService(a)
+	assert.NoError(t, err)
+
+	testService := &v1.Service{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
+		Name:      fmt.Sprintf("%s-%s", a.Name, "notifications-controller-metrics"),
+		Namespace: a.Namespace,
+	}, testService))
+
+	// Verify custom annotations are applied
+	assert.Equal(t, `["openmetrics"]`, testService.Annotations["ad.datadoghq.com/service.check_names"])
+	assert.Equal(t, `[{}]`, testService.Annotations["ad.datadoghq.com/service.init_configs"])
+	assert.Equal(t, `[{"openmetrics_endpoint":"http://%%host%%:%%port%%/metrics","namespace":"argocd_notifications","metrics":[".*"]}]`,
+		testService.Annotations["ad.datadoghq.com/service.instances"])
+	assert.Equal(t, "custom-value", testService.Annotations["custom.io/annotation"])
+
+	// Verify service is still configured correctly
+	assert.Equal(t, testService.Spec.Selector["app.kubernetes.io/name"],
+		fmt.Sprintf("%s-%s", a.Name, "notifications-controller"))
+	assert.Equal(t, testService.Spec.Ports[0].Port, int32(9001))
+}
+
+func TestReconcileNotifications_UpdateMetricsServiceAnnotations(t *testing.T) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Notifications.Enabled = true
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	// Create service without annotations
+	err := r.reconcileNotificationsMetricsService(a)
+	assert.NoError(t, err)
+
+	testService := &v1.Service{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
+		Name:      fmt.Sprintf("%s-%s", a.Name, "notifications-controller-metrics"),
+		Namespace: a.Namespace,
+	}, testService))
+
+	// Verify no custom annotations
+	_, hasAnnotation := testService.Annotations["custom.io/annotation"]
+	assert.False(t, hasAnnotation)
+
+	// Update ArgoCD with annotations
+	a.Spec.Notifications.Metrics = &argoproj.ArgoCDMetricsSpec{
+		Annotations: map[string]string{
+			"custom.io/annotation": "new-value",
+		},
+	}
+
+	// Reconcile again to update annotations
+	err = r.reconcileNotificationsMetricsService(a)
+	assert.NoError(t, err)
+
+	testService = &v1.Service{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{
+		Name:      fmt.Sprintf("%s-%s", a.Name, "notifications-controller-metrics"),
+		Namespace: a.Namespace,
+	}, testService))
+
+	// Verify annotation was added
+	assert.Equal(t, "new-value", testService.Annotations["custom.io/annotation"])
+}
+
 func TestReconcileNotifications_CreateServiceMonitor(t *testing.T) {
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.Notifications.Enabled = true

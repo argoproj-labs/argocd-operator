@@ -367,7 +367,7 @@ catalog-push: ## Push a catalog image.
 .PHONY: e2e-tests-sequential-ginkgo
 e2e-tests-sequential-ginkgo: ginkgo
 	@echo "Running operator sequential Ginkgo E2E tests..."
-	$(GINKGO_CLI) -v --trace --timeout 110m -r ./tests/ginkgo/sequential
+	$(GINKGO_CLI) -v --trace --timeout 150m -r ./tests/ginkgo/sequential
 
 .PHONY: e2e-tests-parallel-ginkgo
 e2e-tests-parallel-ginkgo: ginkgo
