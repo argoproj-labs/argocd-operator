@@ -3,7 +3,7 @@
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
-VERSION ?= 0.19.0
+VERSION ?= 0.20.0
 
 # ARGO_CD_TARGET_VERSION is the target version that argocd-operator will install.
 # Update this when you upgrade the Argo CD dependencies of the project.

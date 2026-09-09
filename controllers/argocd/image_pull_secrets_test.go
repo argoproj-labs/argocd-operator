@@ -949,3 +949,272 @@ func TestImagePullSecretPredicate_AcceptsLabelFalseToTrue(t *testing.T) {
 	assert.True(t, pred.Update(event.UpdateEvent{ObjectOld: oldSecret, ObjectNew: newSecret}),
 		"must accept false→true transition for propagation")
 }
+
+// --- OpenShift guards: SA ImagePullSecrets must not be touched ---
+
+func setOpenShift(t *testing.T) {
+	t.Helper()
+	original := versionAPIFound
+	versionAPIFound = true
+	t.Cleanup(func() { versionAPIFound = original })
+}
+
+func TestReconcileServiceAccount_OpenShift_DoesNotSetImagePullSecrets(t *testing.T) {
+	setOpenShift(t)
+	operatorNS := "operator-ns"
+	setOperatorNamespace(t, operatorNS)
+
+	cr := makeTestArgoCD()
+
+	copiedSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-pull-secret",
+			Namespace: testNamespace,
+			Labels: map[string]string{
+				common.ArgoCDImagePullSecretCopiedLabel: "my-pull-secret",
+			},
+			OwnerReferences: []metav1.OwnerReference{testOwnerRef(cr)},
+		},
+	}
+
+	resObjs := []client.Object{cr, copiedSecret}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, nil, nil)
+	r := makeTestReconciler(cl, sch, nil)
+
+	sa, err := r.reconcileServiceAccount(common.ArgoCDServerComponent, cr)
+	assert.NoError(t, err)
+	assert.NotNil(t, sa)
+
+	retrieved := &corev1.ServiceAccount{}
+	err = cl.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: testNamespace}, retrieved)
+	assert.NoError(t, err)
+	assert.Empty(t, retrieved.ImagePullSecrets,
+		"on OpenShift, newly created SA must not have operator-managed imagePullSecrets")
+}
+
+func TestReconcileServiceAccount_OpenShift_DoesNotOverwriteExistingSecrets(t *testing.T) {
+	setOpenShift(t)
+	operatorNS := "operator-ns"
+	setOperatorNamespace(t, operatorNS)
+
+	cr := makeTestArgoCD()
+
+	existingSA := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      getServiceAccountName(cr.Name, common.ArgoCDServerComponent),
+			Namespace: testNamespace,
+			Labels:    argoutil.LabelsForCluster(cr),
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: "argoproj.io/v1beta1",
+					Kind:       "ArgoCD",
+					Name:       cr.Name,
+					UID:        cr.UID,
+				},
+			},
+		},
+		ImagePullSecrets: []corev1.LocalObjectReference{
+			{Name: "openshift-dockercfg-abc123"},
+		},
+	}
+
+	resObjs := []client.Object{cr, existingSA}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, nil, nil)
+	r := makeTestReconciler(cl, sch, nil)
+
+	sa, err := r.reconcileServiceAccount(common.ArgoCDServerComponent, cr)
+	assert.NoError(t, err)
+	assert.NotNil(t, sa)
+
+	retrieved := &corev1.ServiceAccount{}
+	err = cl.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: testNamespace}, retrieved)
+	assert.NoError(t, err)
+	assert.Len(t, retrieved.ImagePullSecrets, 1)
+	assert.Equal(t, "openshift-dockercfg-abc123", retrieved.ImagePullSecrets[0].Name,
+		"on OpenShift, operator must not overwrite platform-injected imagePullSecrets")
+}
+
+func TestReconcileImagePullSecrets_OpenShift_SkipsReconciliation(t *testing.T) {
+	setOpenShift(t)
+	operatorNS := "operator-ns"
+	setOperatorNamespace(t, operatorNS)
+
+	cr := makeTestArgoCD()
+
+	srcSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-pull-secret",
+			Namespace: operatorNS,
+			Labels: map[string]string{
+				common.ArgoCDImagePullSecretPropagateLabel: "true",
+			},
+		},
+		Type: corev1.SecretTypeDockerConfigJson,
+		Data: map[string][]byte{".dockerconfigjson": []byte(`{"auths":{}}`)},
+	}
+
+	resObjs := []client.Object{cr, srcSecret}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, nil, nil)
+	r := makeTestReconciler(cl, sch, nil)
+
+	assert.True(t, IsOpenShiftCluster(), "OpenShift detection must be active for this test")
+
+	err := r.reconcileImagePullSecrets(cr)
+	assert.NoError(t, err)
+
+	copiedSecrets := &corev1.SecretList{}
+	err = cl.List(context.TODO(), copiedSecrets,
+		client.InNamespace(testNamespace),
+		client.HasLabels{common.ArgoCDImagePullSecretCopiedLabel})
+	assert.NoError(t, err)
+	assert.Empty(t, copiedSecrets.Items, "on OpenShift, operator must not copy image pull secrets to ArgoCD namespace")
+}
+
+func TestReconcileApplicationSetServiceAccount_OpenShift_DoesNotSetImagePullSecrets(t *testing.T) {
+	setOpenShift(t)
+	operatorNS := "operator-ns"
+	setOperatorNamespace(t, operatorNS)
+
+	cr := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{}
+	})
+
+	copiedSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-pull-secret",
+			Namespace: testNamespace,
+			Labels: map[string]string{
+				common.ArgoCDImagePullSecretCopiedLabel: "my-pull-secret",
+			},
+			OwnerReferences: []metav1.OwnerReference{testOwnerRef(cr)},
+		},
+	}
+
+	resObjs := []client.Object{cr, copiedSecret}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, nil, nil)
+	r := makeTestReconciler(cl, sch, nil)
+
+	sa, err := r.reconcileApplicationSetServiceAccount(cr)
+	assert.NoError(t, err)
+	assert.NotNil(t, sa)
+
+	retrieved := &corev1.ServiceAccount{}
+	err = cl.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: testNamespace}, retrieved)
+	assert.NoError(t, err)
+	assert.Empty(t, retrieved.ImagePullSecrets,
+		"on OpenShift, applicationset SA must not have operator-managed imagePullSecrets")
+}
+
+func TestReconcileImageUpdaterServiceAccount_OpenShift_DoesNotSetImagePullSecrets(t *testing.T) {
+	setOpenShift(t)
+	operatorNS := "operator-ns"
+	setOperatorNamespace(t, operatorNS)
+
+	cr := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.ImageUpdater.Enabled = true
+	})
+
+	copiedSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-pull-secret",
+			Namespace: testNamespace,
+			Labels: map[string]string{
+				common.ArgoCDImagePullSecretCopiedLabel: "my-pull-secret",
+			},
+			OwnerReferences: []metav1.OwnerReference{testOwnerRef(cr)},
+		},
+	}
+
+	resObjs := []client.Object{cr, copiedSecret}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, nil, nil)
+	r := makeTestReconciler(cl, sch, nil)
+
+	sa, err := r.reconcileImageUpdaterServiceAccount(cr)
+	assert.NoError(t, err)
+	assert.NotNil(t, sa)
+
+	retrieved := &corev1.ServiceAccount{}
+	err = cl.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: testNamespace}, retrieved)
+	assert.NoError(t, err)
+	assert.Empty(t, retrieved.ImagePullSecrets,
+		"on OpenShift, image-updater SA must not have operator-managed imagePullSecrets")
+}
+
+func TestReconcileApplicationSetServiceAccount_OpenShift_DoesNotOverwriteExistingSecrets(t *testing.T) {
+	setOpenShift(t)
+	operatorNS := "operator-ns"
+	setOperatorNamespace(t, operatorNS)
+
+	cr := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{}
+	})
+
+	existingSA := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      getServiceAccountName(cr.Name, "applicationset-controller"),
+			Namespace: testNamespace,
+			Labels:    argoutil.LabelsForCluster(cr),
+		},
+		ImagePullSecrets: []corev1.LocalObjectReference{
+			{Name: "openshift-dockercfg-abc123"},
+		},
+	}
+
+	resObjs := []client.Object{cr, existingSA}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, nil, nil)
+	r := makeTestReconciler(cl, sch, nil)
+
+	sa, err := r.reconcileApplicationSetServiceAccount(cr)
+	assert.NoError(t, err)
+	assert.NotNil(t, sa)
+
+	retrieved := &corev1.ServiceAccount{}
+	err = cl.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: testNamespace}, retrieved)
+	assert.NoError(t, err)
+	assert.Len(t, retrieved.ImagePullSecrets, 1)
+	assert.Equal(t, "openshift-dockercfg-abc123", retrieved.ImagePullSecrets[0].Name,
+		"on OpenShift, operator must not overwrite platform-injected imagePullSecrets on applicationset SA")
+}
+
+func TestReconcileImageUpdaterServiceAccount_OpenShift_DoesNotOverwriteExistingSecrets(t *testing.T) {
+	setOpenShift(t)
+	operatorNS := "operator-ns"
+	setOperatorNamespace(t, operatorNS)
+
+	cr := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.ImageUpdater.Enabled = true
+	})
+
+	existingSA := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      getServiceAccountName(cr.Name, common.ArgoCDImageUpdaterControllerComponent),
+			Namespace: testNamespace,
+			Labels:    argoutil.LabelsForCluster(cr),
+		},
+		ImagePullSecrets: []corev1.LocalObjectReference{
+			{Name: "openshift-dockercfg-abc123"},
+		},
+	}
+
+	resObjs := []client.Object{cr, existingSA}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, nil, nil)
+	r := makeTestReconciler(cl, sch, nil)
+
+	sa, err := r.reconcileImageUpdaterServiceAccount(cr)
+	assert.NoError(t, err)
+	assert.NotNil(t, sa)
+
+	retrieved := &corev1.ServiceAccount{}
+	err = cl.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: testNamespace}, retrieved)
+	assert.NoError(t, err)
+	assert.Len(t, retrieved.ImagePullSecrets, 1)
+	assert.Equal(t, "openshift-dockercfg-abc123", retrieved.ImagePullSecrets[0].Name,
+		"on OpenShift, operator must not overwrite platform-injected imagePullSecrets on image-updater SA")
+}
