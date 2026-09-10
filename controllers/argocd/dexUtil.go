@@ -89,3 +89,12 @@ func getDexConfig(cr *argoproj.ArgoCD) string {
 	}
 	return config
 }
+
+// getDexEtcdSidecarContainerImage returns the etcd image used for dex sidecar container when etcd storage is enabled.
+// if set in environment, it will be used, if not the default value will be used.
+func getDexEtcdSidecarContainerImage() string {
+	if e := os.Getenv(common.ArgoCDDexEtcdImageEnvName); e != "" {
+		return e
+	}
+	return fmt.Sprintf("%s:%s", common.ArgoCDDefaultDexEtcdImage, common.ArgoCDDefaultDexEtcdVersion)
+}

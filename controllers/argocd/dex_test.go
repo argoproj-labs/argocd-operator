@@ -9,7 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
+	authorizationv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,6 +21,7 @@ import (
 	testclient "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
@@ -309,6 +312,7 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
+	t.Setenv("ARGOCD_DEX_STORAGE_TYPE", "")
 	assert.NoError(t, r.reconcileDexDeployment(a))
 
 	deployment := &appsv1.Deployment{}
@@ -666,6 +670,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 				test.setEnvFunc(t, "false")
 			}
 
+			t.Setenv("ARGOCD_DEX_STORAGE_TYPE", "")
 			assert.NoError(t, r.reconcileDexDeployment(test.argoCD))
 
 			if test.updateCrFunc != nil {
@@ -1616,4 +1621,103 @@ func TestReconcileArgoCD_reconcileDexDeployment_customLabelsAndAnnotations(t *te
 	_, hasCustomLabel := deployment.Spec.Template.Labels["custom"]
 	assert.False(t, hasCustomAnnotation)
 	assert.False(t, hasCustomLabel)
+}
+
+func TestReconcileArgoCD_reconcileDexDeployments_dex_storage_etcd(t *testing.T) {
+	tests := []struct {
+		name        string
+		envVars     map[string]string
+		argoCD      *argoproj.ArgoCD
+		wantCommand []string
+		wantArgs    []string
+	}{
+		{
+			// Given an Argo CD with no customizations and environment variables,
+			// then, by default the custom dex server startup script is used,
+			// so that dex uses the in-cluster kubernetes storage instead of in-memory storage.
+			name: "default etcd storage with in-cluster config when no storage customizations",
+			argoCD: makeTestArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
+						Config: "test",
+					},
+				}
+			}),
+			wantCommand: []string{"/bin/sh", "-c"},
+			wantArgs:    argoutil.DexServerCustomStartupScript(),
+		},
+		{
+			// Given an Argo CD with etcd storage explicitly disabled,
+			// then, argocd rundex command is used in container,
+			// so that dex uses the in-memory storage instead of kubernetes.
+			name:    "argocd rundex when etcd storage is disabled",
+			envVars: map[string]string{"ARGOCD_DEX_STORAGE_TYPE": ""},
+			argoCD: makeTestArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
+						Config: "test",
+					},
+				}
+			}),
+			wantCommand: []string{"/shared/argocd-dex", "rundex"},
+			wantArgs:    nil,
+		},
+		{
+			// Given an Argo CD with kubernetes storage explicitly enabled,
+			// then, the dex server is started with custom start script with modified config.yaml,
+			// so that dex uses the in-cluster kubernetes storage instead of in-memory.
+			name:    "kubernetes storage env vars when explicitly enabled",
+			envVars: map[string]string{"ARGOCD_DEX_STORAGE_TYPE": "etcd"},
+			argoCD: makeTestArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
+						Config: "test",
+					},
+				}
+			}),
+			wantCommand: []string{"/bin/sh", "-c"},
+			wantArgs:    argoutil.DexServerCustomStartupScript(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resObjs := []client.Object{tt.argoCD}
+			subresObjs := []client.Object{tt.argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, apiextensionsv1.AddToScheme)
+			cl := fake.NewClientBuilder().WithScheme(sch).
+				WithObjects(resObjs...).
+				WithStatusSubresource(subresObjs...).
+				WithRuntimeObjects(runtimeObjs...).
+				WithInterceptorFuncs(interceptor.Funcs{
+					Create: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+						if ssar, ok := obj.(*authorizationv1.SelfSubjectAccessReview); ok {
+							ssar.Status.Allowed = true
+							return nil
+						}
+						return c.Create(ctx, obj, opts...)
+					},
+				}).Build()
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			for k, v := range tt.envVars {
+				t.Setenv(k, v)
+			}
+
+			require.NoError(t, r.reconcileDexDeployment(tt.argoCD))
+
+			deployment := &appsv1.Deployment{}
+			require.NoError(t, cl.Get(context.TODO(), types.NamespacedName{
+				Name:      "argocd-dex-server",
+				Namespace: testNamespace,
+			}, deployment))
+
+			require.EqualValues(t, tt.wantCommand, deployment.Spec.Template.Spec.Containers[0].Command)
+			require.EqualValues(t, tt.wantArgs, deployment.Spec.Template.Spec.Containers[0].Args)
+		})
+	}
 }
