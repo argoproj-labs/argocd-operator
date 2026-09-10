@@ -36,6 +36,7 @@ elif command -v openssl >/dev/null 2>&1; then
 else
 EXTRA_ARGS="--disable-tls"
 fi
+%s
 # run in a loop and restart the dex server process if there is a change in dex config.
 while true; do
   /shared/argocd-dex gendexcfg ${EXTRA_ARGS} -o /tmp/base.yaml
@@ -75,7 +76,7 @@ func IsDexEtcdStorageEnabled() bool {
 // updating the dex storage to kubernetes and generate TLS certs and start the dex server.
 func DexServerCustomStartupScript() []string {
 	return []string{
-		fmt.Sprintf(customBootstrapScriptTemplate, awkScriptEtcdStorageType),
+		fmt.Sprintf(customBootstrapScriptTemplate, getDexEtcdStorageHealthCheck(), awkScriptEtcdStorageType),
 	}
 }
 
@@ -85,4 +86,19 @@ func getDexStorageType() string {
 		return env
 	}
 	return DefaultDexStorageType
+}
+
+// getDexEtcdStorageHealthCheck returns the script to perform health check to see if etcd sidecar container
+// is started and accepting connections.
+func getDexEtcdStorageHealthCheck() string {
+	return `MAX_RETRIES=10
+	COUNT=0
+	while [ "$COUNT" -lt "$MAX_RETRIES" ]; do
+	  COUNT=$((COUNT + 1))
+	  if (echo > /dev/tcp/127.0.0.1/2379) >/dev/null 2>&1; then
+	    echo "etcd port 2379 is open and accepting connections"
+	    break
+	fi
+	sleep 1
+	done`
 }
