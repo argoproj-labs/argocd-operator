@@ -95,7 +95,7 @@ func Test_custom_startup_script_dex(t *testing.T) {
 		},
 	}
 
-	awkScript := initAwkScript()
+	awkScript := prepareAwkScript(DexServerCustomStartupScript()[0])
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
 			inputYAML, err := renderConfig(tc)
@@ -110,19 +110,24 @@ func Test_custom_startup_script_dex(t *testing.T) {
 			require.Contains(t, outputYAML, "telemetry:\n  http: 0.0.0.0:5558", "Adjacent section 'telemetry' was corrupted or lost")
 
 			expectedOutput, err := renderConfig(StorageTestCase{
-				Name:          "kubernetes dex storage",
+				Name:          "etcd dex storage",
 				StorageType:   "etcd",
 				StorageConfig: "endpoints:\n    - \"http://127.0.0.1:2379\"\n    namespace: dex",
 			})
+			require.NoError(t, err)
+			require.EqualValues(t, expectedOutput, outputYAML)
+
+			// verify the direct awk script variable also does the same transformation.
+			outputYAML, err = runAwkTransform(inputYAML, prepareAwkScript(awkScriptEtcdStorageType))
 			require.NoError(t, err)
 			require.EqualValues(t, expectedOutput, outputYAML)
 		})
 	}
 }
 
-// initAwkScript gets the awk script arguments from startup script
-func initAwkScript() string {
-	for line := range strings.SplitSeq(DexServerCustomStartupScript()[0], "\n") {
+// prepareAwkScript gets the awk script arguments from startup script
+func prepareAwkScript(script string) string {
+	for line := range strings.SplitSeq(script, "\n") {
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "awk") {
 			script := strings.ReplaceAll(trimmed, "awk ", "")

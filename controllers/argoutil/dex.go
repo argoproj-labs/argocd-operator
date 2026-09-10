@@ -15,20 +15,14 @@
 package argoutil
 
 import (
+	"fmt"
 	"os"
 )
 
-// IsDexEtcdStorageEnabled returns a feature flag which determines if the dex storage config
-// need to be overridden through env overrides. Returns false if explicitly disabled, true otherwise.
-func IsDexEtcdStorageEnabled() bool {
-	return os.Getenv("ARGOCD_DEX_ETCD_STORAGE_ENABLED") != "false"
-}
-
-// DexServerCustomStartupScript returns the script that is required for generating dex config from `argocd-cm` config map,
-// updating the dex storage to kubernetes and generate TLS certs and start the dex server.
-func DexServerCustomStartupScript() []string {
-	return []string{
-		`set -eo pipefail
+const (
+	DefaultDexStorageType         = "etcd"
+	awkScriptEtcdStorageType      = "awk '/^storage:/ { print \"storage:\\n  type: etcd\\n  config:\\n    endpoints:\\n    - \\\"http://127.0.0.1:2379\\\"\\n    namespace: dex\"; skip=1; next } skip && /^[a-zA-Z0-9_-]+:/ { skip=0 } !skip' /tmp/base.yaml > /tmp/dex.yaml"
+	customBootstrapScriptTemplate = `set -eo pipefail
 trap 'kill -TERM $DEX_PID 2>/dev/null; exit 0' INT TERM
 
 EXTRA_ARGS=""
@@ -45,12 +39,7 @@ fi
 # run in a loop and restart the dex server process if there is a change in dex config.
 while true; do
   /shared/argocd-dex gendexcfg ${EXTRA_ARGS} -o /tmp/base.yaml
-  awk '/^storage:/ { print "storage:\n  type: etcd\n  config:\n    endpoints:\n    - \"http://127.0.0.1:2379\"\n    namespace: dex"; skip=1; next } skip && /^[a-zA-Z0-9_-]+:/ { skip=0 } !skip' /tmp/base.yaml > /tmp/dex.yaml
-  
-  echo "waiting for etcd to be ready..."
-  until curl -sf http://127.0.0.1:2381/health > /dev/null 2>&1; do sleep 1; done
-  echo "etcd is ready"
-
+  %s
   echo "starting dex server"
   dex serve /tmp/dex.yaml &
   DEX_PID=$!
@@ -73,6 +62,27 @@ while true; do
       break
     fi
   done
-done`,
+done`
+)
+
+// IsDexEtcdStorageEnabled returns a feature flag which determines if the dex storage config
+// need to be overridden through env overrides. Returns false if explicitly disabled, true otherwise.
+func IsDexEtcdStorageEnabled() bool {
+	return getDexStorageType() == "etcd"
+}
+
+// DexServerCustomStartupScript returns the script that is required for generating dex config from `argocd-cm` config map,
+// updating the dex storage to kubernetes and generate TLS certs and start the dex server.
+func DexServerCustomStartupScript() []string {
+	return []string{
+		fmt.Sprintf(customBootstrapScriptTemplate, awkScriptEtcdStorageType),
 	}
+}
+
+// getDexStorageType returns the storage type that needs to be used for dex.
+func getDexStorageType() string {
+	if env := os.Getenv("ARGOCD_DEX_STORAGE_TYPE"); env != "" {
+		return env
+	}
+	return DefaultDexStorageType
 }
