@@ -312,7 +312,7 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
-	t.Setenv("ARGOCD_DEX_ETCD_STORAGE_ENABLED", "false")
+	t.Setenv("ARGOCD_DEX_STORAGE_TYPE", "")
 	assert.NoError(t, r.reconcileDexDeployment(a))
 
 	deployment := &appsv1.Deployment{}
@@ -670,7 +670,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 				test.setEnvFunc(t, "false")
 			}
 
-			t.Setenv("ARGOCD_DEX_ETCD_STORAGE_ENABLED", "false")
+			t.Setenv("ARGOCD_DEX_STORAGE_TYPE", "")
 			assert.NoError(t, r.reconcileDexDeployment(test.argoCD))
 
 			if test.updateCrFunc != nil {
@@ -1623,7 +1623,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_customLabelsAndAnnotations(t *te
 	assert.False(t, hasCustomLabel)
 }
 
-func TestReconcileArgoCD_reconcileDexDeployments_dex_storage_kubernetes(t *testing.T) {
+func TestReconcileArgoCD_reconcileDexDeployments_dex_storage_etcd(t *testing.T) {
 	tests := []struct {
 		name        string
 		envVars     map[string]string
@@ -1635,7 +1635,7 @@ func TestReconcileArgoCD_reconcileDexDeployments_dex_storage_kubernetes(t *testi
 			// Given an Argo CD with no customizations and environment variables,
 			// then, by default the custom dex server startup script is used,
 			// so that dex uses the in-cluster kubernetes storage instead of in-memory storage.
-			name: "default kubernetes storage with in-cluster config when no storage customizations",
+			name: "default etcd storage with in-cluster config when no storage customizations",
 			argoCD: makeTestArgoCD(func(a *argoproj.ArgoCD) {
 				a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 					Provider: argoproj.SSOProviderTypeDex,
@@ -1648,11 +1648,11 @@ func TestReconcileArgoCD_reconcileDexDeployments_dex_storage_kubernetes(t *testi
 			wantArgs:    argoutil.DexServerCustomStartupScript(),
 		},
 		{
-			// Given an Argo CD with kubernetes storage explicitly disabled,
+			// Given an Argo CD with etcd storage explicitly disabled,
 			// then, argocd rundex command is used in container,
 			// so that dex uses the in-memory storage instead of kubernetes.
-			name:    "argocd rundex when kubernetes storage is disabled",
-			envVars: map[string]string{"ARGOCD_DEX_ETCD_STORAGE_ENABLED": "false"},
+			name:    "argocd rundex when etcd storage is disabled",
+			envVars: map[string]string{"ARGOCD_DEX_STORAGE_TYPE": ""},
 			argoCD: makeTestArgoCD(func(a *argoproj.ArgoCD) {
 				a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 					Provider: argoproj.SSOProviderTypeDex,
@@ -1669,7 +1669,7 @@ func TestReconcileArgoCD_reconcileDexDeployments_dex_storage_kubernetes(t *testi
 			// then, the dex server is started with custom start script with modified config.yaml,
 			// so that dex uses the in-cluster kubernetes storage instead of in-memory.
 			name:    "kubernetes storage env vars when explicitly enabled",
-			envVars: map[string]string{"ARGOCD_DEX_ETCD_STORAGE_ENABLED": "true"},
+			envVars: map[string]string{"ARGOCD_DEX_STORAGE_TYPE": "etcd"},
 			argoCD: makeTestArgoCD(func(a *argoproj.ArgoCD) {
 				a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 					Provider: argoproj.SSOProviderTypeDex,

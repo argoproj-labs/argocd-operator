@@ -81,7 +81,7 @@ func DexServerCustomStartupScript() []string {
 
 // getDexStorageType returns the storage type that needs to be used for dex.
 func getDexStorageType() string {
-	if env := os.Getenv("ARGOCD_DEX_STORAGE_TYPE"); env != "" {
+	if env, found := os.LookupEnv("ARGOCD_DEX_STORAGE_TYPE"); found {
 		return env
 	}
 	return DefaultDexStorageType
