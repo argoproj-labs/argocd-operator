@@ -39,7 +39,7 @@ jobs:
           key: ${{ runner.os }}-go-build-v1-${{ github.run_id }}
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4.2.0
+        uses: docker/setup-qemu-action@v4.3.0
 
       - name: Set up Buildx
         id: buildx
