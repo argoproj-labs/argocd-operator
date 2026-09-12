@@ -454,7 +454,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				})
 			})
 			actualTrust = repoServerSystemCaTrust(ns)
-			Consistently(actualTrust, "10s", "5s").Should(trustCerts(Equal(0), Not(BeEmpty())), actualTrust.diagnose())
+			Consistently(actualTrust, "30s", "5s").Should(trustCerts(Equal(0), Not(BeEmpty())), actualTrust.diagnose())
 
 			By("creating unrelated ClusterTrustBundle")
 			fourCtb := createCtbFromCerts(getCACert("google.com"))
@@ -462,7 +462,7 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 				Expect(k8sClient.Create(ctx, fourCtb)).To(Succeed())
 			})
 			actualTrust = repoServerSystemCaTrust(ns)
-			Consistently(actualTrust, "10s", "5s").Should(trustCerts(Equal(0), Not(BeEmpty())), actualTrust.diagnose())
+			Consistently(actualTrust, "30s", "5s").Should(trustCerts(Equal(0), Not(BeEmpty())), actualTrust.diagnose())
 		})
 	})
 })

@@ -531,6 +531,9 @@ func TestAlphaToBetaConversion(t *testing.T) {
 						Server: &PrincipalServerSpec{
 							Service: ArgoCDAgentPrincipalServiceSpec{
 								Type: corev1.ServiceTypeClusterIP,
+								Annotations: map[string]string{
+									"metallb.universe.tf/address-pool": "address-pool",
+								},
 							},
 							Route: ArgoCDAgentPrincipalRouteSpec{
 								Enabled: new(true),
@@ -548,6 +551,9 @@ func TestAlphaToBetaConversion(t *testing.T) {
 						Server: &v1beta1.PrincipalServerSpec{
 							Service: v1beta1.ArgoCDAgentPrincipalServiceSpec{
 								Type: corev1.ServiceTypeClusterIP,
+								Annotations: map[string]string{
+									"metallb.universe.tf/address-pool": "address-pool",
+								},
 							},
 							Route: v1beta1.ArgoCDAgentPrincipalRouteSpec{
 								Enabled: new(true),
@@ -940,6 +946,9 @@ func TestBetaToAlphaConversion(t *testing.T) {
 						Server: &v1beta1.PrincipalServerSpec{
 							Service: v1beta1.ArgoCDAgentPrincipalServiceSpec{
 								Type: corev1.ServiceTypeNodePort,
+								Annotations: map[string]string{
+									"custom.annotation/key": "value",
+								},
 							},
 							Route: v1beta1.ArgoCDAgentPrincipalRouteSpec{
 								Enabled: new(true),
@@ -957,6 +966,9 @@ func TestBetaToAlphaConversion(t *testing.T) {
 						Server: &PrincipalServerSpec{
 							Service: ArgoCDAgentPrincipalServiceSpec{
 								Type: corev1.ServiceTypeNodePort,
+								Annotations: map[string]string{
+									"custom.annotation/key": "value",
+								},
 							},
 							Route: ArgoCDAgentPrincipalRouteSpec{
 								Enabled: new(true),
