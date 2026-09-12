@@ -200,27 +200,30 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 			// List environment variables with expected values for the principal deployment
 			expectedEnvVariables = map[string]string{
-				argocdagent.EnvArgoCDPrincipalLogLevel:                  "info",
-				argocdagent.EnvArgoCDPrincipalNamespace:                 ns.Name,
-				argocdagent.EnvArgoCDPrincipalAllowedNamespaces:         "*",
-				argocdagent.EnvArgoCDPrincipalNamespaceCreateEnable:     "false",
-				argocdagent.EnvArgoCDPrincipalNamespaceCreatePattern:    "",
-				argocdagent.EnvArgoCDPrincipalNamespaceCreateLabels:     "",
-				argocdagent.EnvArgoCDPrincipalTLSServerAllowGenerate:    "true",
-				argocdagent.EnvArgoCDPrincipalJWTAllowGenerate:          "true",
-				argocdagent.EnvArgoCDPrincipalAuth:                      "mtls:CN=([^,]+)",
-				argocdagent.EnvArgoCDPrincipalEnableResourceProxy:       "true",
-				argocdagent.EnvArgoCDPrincipalKeepAliveMinInterval:      "30s",
-				argocdagent.EnvArgoCDPrincipalRedisServerAddress:        fmt.Sprintf("%s-%s:%d", argoCDName, "redis", common.ArgoCDDefaultRedisPort),
-				argocdagent.EnvArgoCDPrincipalRedisCompressionType:      "gzip",
-				argocdagent.EnvArgoCDPrincipalLogFormat:                 "text",
-				argocdagent.EnvArgoCDPrincipalEnableWebSocket:           "false",
-				argocdagent.EnvArgoCDPrincipalTLSSecretName:             agentPrincipalTLSSecretName,
-				argocdagent.EnvArgoCDPrincipalTLSServerRootCASecretName: agentRootCASecretName,
-				argocdagent.EnvArgoCDPrincipalResourceProxySecretName:   agentResourceProxyTLSSecretName,
-				argocdagent.EnvArgoCDPrincipalResourceProxyCaSecretName: agentRootCASecretName,
-				argocdagent.EnvArgoCDPrincipalJwtSecretName:             agentJWTSecretName,
-				argocdagent.EnvArgoCDPrincipalLabelSelector:             "argocd-agent=true",
+				argocdagent.EnvArgoCDPrincipalLogLevel:                         "info",
+				argocdagent.EnvArgoCDPrincipalNamespace:                        ns.Name,
+				argocdagent.EnvArgoCDPrincipalAllowedNamespaces:                "*",
+				argocdagent.EnvArgoCDPrincipalNamespaceCreateEnable:            "false",
+				argocdagent.EnvArgoCDPrincipalNamespaceCreatePattern:           "",
+				argocdagent.EnvArgoCDPrincipalNamespaceCreateLabels:            "",
+				argocdagent.EnvArgoCDPrincipalTLSServerAllowGenerate:           "true",
+				argocdagent.EnvArgoCDPrincipalJWTAllowGenerate:                 "true",
+				argocdagent.EnvArgoCDPrincipalAuth:                             "mtls:CN=([^,]+)",
+				argocdagent.EnvArgoCDPrincipalEnableResourceProxy:              "true",
+				argocdagent.EnvArgoCDPrincipalKeepAliveMinInterval:             "30s",
+				argocdagent.EnvArgoCDPrincipalRedisServerAddress:               fmt.Sprintf("%s-%s:%d", argoCDName, "redis", common.ArgoCDDefaultRedisPort),
+				argocdagent.EnvArgoCDPrincipalRedisCompressionType:             "gzip",
+				argocdagent.EnvArgoCDPrincipalLogFormat:                        "text",
+				argocdagent.EnvArgoCDPrincipalEnableWebSocket:                  "false",
+				argocdagent.EnvArgoCDPrincipalTLSSecretName:                    agentPrincipalTLSSecretName,
+				argocdagent.EnvArgoCDPrincipalTLSServerRootCASecretName:        agentRootCASecretName,
+				argocdagent.EnvArgoCDPrincipalResourceProxySecretName:          agentResourceProxyTLSSecretName,
+				argocdagent.EnvArgoCDPrincipalResourceProxyCaSecretName:        agentRootCASecretName,
+				argocdagent.EnvArgoCDPrincipalJwtSecretName:                    agentJWTSecretName,
+				argocdagent.EnvArgoCDPrincipalLabelSelector:                    "argocd-agent=true",
+				argocdagent.EnvArgoCDPrincipalEnableSelfClusterRegistration:    "false",
+				argocdagent.EnvArgoCDPrincipalSelfRegistrationClientCertSecret: "",
+				argocdagent.EnvArgoCDPrincipalResourceProxyAddress:             fmt.Sprintf("%s-agent-principal-resource-proxy:%d", argoCDName, argocdagent.PrincipalResourceProxyServicePort),
 			}
 
 			principalResources = agentFixture.PrincipalResources{
@@ -504,6 +507,66 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 			expectedEnvVariables[argocdagent.EnvArgoCDPrincipalTLSServerRootCASecretName] = "argocd-agent-ca-v2"
 			expectedEnvVariables[argocdagent.EnvArgoCDPrincipalJwtSecretName] = "argocd-agent-jwt-v2"
 			expectedEnvVariables[argocdagent.EnvArgoCDPrincipalLabelSelector] = "env=staging"
+
+			for key, value := range expectedEnvVariables {
+				Expect(container.Env).To(ContainElement(corev1.EnvVar{Name: key, Value: value}), "Environment variable %s should be set to %s", key, value)
+			}
+		})
+
+		It("should propagate self-registration configuration to principal deployment env vars", func() {
+			By("Create ArgoCD instance with self-registration enabled")
+
+			argoCD.Spec.ArgoCDAgent.Principal.SelfRegistration = &argov1beta1api.PrincipalSelfRegistrationSpec{
+				Enabled:              new(true),
+				ClientCertSecretName: "argocd-agent-shared-client-cert",
+			}
+			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())
+
+			By("Verify expected resources are created for principal pod")
+
+			verifyExpectedResourcesExist(ns)
+
+			By("Verify self-registration environment variables are set correctly")
+
+			container := deploymentFixture.GetTemplateSpecContainerByName(argoCDAgentPrincipalName, *principalDeployment)
+			Expect(container).ToNot(BeNil())
+
+			expectedEnvVariables[argocdagent.EnvArgoCDPrincipalEnableSelfClusterRegistration] = "true"
+			expectedEnvVariables[argocdagent.EnvArgoCDPrincipalSelfRegistrationClientCertSecret] = "argocd-agent-shared-client-cert"
+
+			for key, value := range expectedEnvVariables {
+				Expect(container.Env).To(ContainElement(corev1.EnvVar{Name: key, Value: value}), "Environment variable %s should be set to %s", key, value)
+			}
+
+			By("Update self-registration configuration: disable and change client cert secret")
+
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: argoCDName, Namespace: ns.Name}, argoCD)).To(Succeed())
+			argocdFixture.Update(argoCD, func(ac *argov1beta1api.ArgoCD) {
+				ac.Spec.ArgoCDAgent.Principal.SelfRegistration.Enabled = new(false)
+				ac.Spec.ArgoCDAgent.Principal.SelfRegistration.ClientCertSecretName = "updated-client-cert"
+			})
+
+			By("Wait for the client cert secret update to propagate, then verify all env vars")
+
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, client.ObjectKey{Name: argoCDAgentPrincipalName, Namespace: ns.Name}, principalDeployment)
+				if err != nil {
+					return false
+				}
+				container = deploymentFixture.GetTemplateSpecContainerByName(argoCDAgentPrincipalName, *principalDeployment)
+				if container == nil {
+					return false
+				}
+				for _, env := range container.Env {
+					if env.Name == argocdagent.EnvArgoCDPrincipalSelfRegistrationClientCertSecret {
+						return env.Value == "updated-client-cert"
+					}
+				}
+				return false
+			}, "120s", "5s").Should(BeTrue(), "Self-registration client cert secret should be updated")
+
+			expectedEnvVariables[argocdagent.EnvArgoCDPrincipalEnableSelfClusterRegistration] = "false"
+			expectedEnvVariables[argocdagent.EnvArgoCDPrincipalSelfRegistrationClientCertSecret] = "updated-client-cert"
 
 			for key, value := range expectedEnvVariables {
 				Expect(container.Env).To(ContainElement(corev1.EnvVar{Name: key, Value: value}), "Environment variable %s should be set to %s", key, value)
