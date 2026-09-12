@@ -309,6 +309,7 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
+	t.Setenv("ARGOCD_DEX_STORAGE_TYPE", "")
 	assert.NoError(t, r.reconcileDexDeployment(a))
 
 	deployment := &appsv1.Deployment{}
@@ -363,9 +364,9 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 				Name:  "dex",
 				Image: getDexContainerImage(a),
 				Command: []string{
-					"/shared/argocd-dex",
-					"rundex",
+					"/bin/sh", "-c",
 				},
+				Args: argoutil.DexServerCustomStartupScript(),
 				LivenessProbe: &corev1.Probe{
 					ProbeHandler: corev1.ProbeHandler{
 						HTTPGet: &corev1.HTTPGetAction{
@@ -485,9 +486,10 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 						Name:  "dex",
 						Image: "testdex:v0.0.1",
 						Command: []string{
-							"/shared/argocd-dex",
-							"rundex",
+							"/bin/sh",
+							"-c",
 						},
+						Args: argoutil.DexServerCustomStartupScript(),
 						LivenessProbe: &corev1.Probe{
 							ProbeHandler: corev1.ProbeHandler{
 								HTTPGet: &corev1.HTTPGetAction{
@@ -594,9 +596,10 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 						Name:  "dex",
 						Image: "ghcr.io/dexidp/dex@sha256:8499afd690c437f52301efd2b05b2455da5bd2dfc20332cd697dc9937f808462", // (v2.45.1) NOTE: this value is modified by dependency update script
 						Command: []string{
-							"/shared/argocd-dex",
-							"rundex",
+							"/bin/sh",
+							"-c",
 						},
+						Args: argoutil.DexServerCustomStartupScript(),
 						LivenessProbe: &corev1.Probe{
 							ProbeHandler: corev1.ProbeHandler{
 								HTTPGet: &corev1.HTTPGetAction{
@@ -666,6 +669,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 				test.setEnvFunc(t, "false")
 			}
 
+			t.Setenv("ARGOCD_DEX_STORAGE_TYPE", "")
 			assert.NoError(t, r.reconcileDexDeployment(test.argoCD))
 
 			if test.updateCrFunc != nil {
