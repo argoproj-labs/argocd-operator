@@ -685,6 +685,178 @@ func TestReconcileRouteTLSConfig(t *testing.T) {
 	}
 }
 
+func TestReconcileRouteDestinationCACertificate(t *testing.T) {
+	argoutil.SetRouteAPIFound(true)
+	ctx := context.Background()
+	logf.SetLogger(ZapLogger(true))
+
+	const (
+		secretCA    = "-----BEGIN CERTIFICATE-----\nsecret-ca\n-----END CERTIFICATE-----"
+		configMapCA = "-----BEGIN CERTIFICATE-----\nconfigmap-ca\n-----END CERTIFICATE-----"
+		userCA      = "-----BEGIN CERTIFICATE-----\nuser-ca\n-----END CERTIFICATE-----"
+	)
+
+	serviceCASecret := func(k8sClient client.Client, cr *argoproj.ArgoCD, ca []byte) {
+		serviceName := fmt.Sprintf("%s-%s", cr.Name, "server")
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      common.ArgoCDServerTLSSecretName,
+				Namespace: cr.Namespace,
+				Annotations: map[string]string{
+					common.AnnotationOpenShiftOriginatingServiceName: serviceName,
+				},
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						Name: serviceName,
+						Kind: "Service",
+					},
+				},
+			},
+			Data: map[string][]byte{},
+		}
+		if ca != nil {
+			secret.Data[tlsCAKey] = ca
+		}
+		err := k8sClient.Create(context.Background(), secret)
+		assert.NoError(t, err)
+	}
+
+	serviceCAConfigMap := func(k8sClient client.Client, cr *argoproj.ArgoCD) {
+		cm := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      openShiftServiceCAConfigMapName,
+				Namespace: cr.Namespace,
+			},
+			Data: map[string]string{
+				openShiftServiceCAConfigMapKey: configMapCA,
+			},
+		}
+		err := k8sClient.Create(context.Background(), cm)
+		assert.NoError(t, err)
+	}
+
+	tt := []struct {
+		name            string
+		want            string
+		wantTermination routev1.TLSTerminationType
+		updateArgoCD    func(cr *argoproj.ArgoCD)
+		createResources func(k8sClient client.Client, cr *argoproj.ArgoCD)
+	}{
+		{
+			name:            "sets destination CA from Service CA secret",
+			want:            secretCA,
+			wantTermination: routev1.TLSTerminationReencrypt,
+			updateArgoCD: func(cr *argoproj.ArgoCD) {
+				cr.Spec.Server.Route.Enabled = true
+			},
+			createResources: func(k8sClient client.Client, cr *argoproj.ArgoCD) {
+				serviceCASecret(k8sClient, cr, []byte(secretCA))
+			},
+		},
+		{
+			name:            "sets destination CA from OpenShift Service CA ConfigMap",
+			want:            configMapCA,
+			wantTermination: routev1.TLSTerminationReencrypt,
+			updateArgoCD: func(cr *argoproj.ArgoCD) {
+				cr.Spec.Server.Route.Enabled = true
+			},
+			createResources: func(k8sClient client.Client, cr *argoproj.ArgoCD) {
+				serviceCAConfigMap(k8sClient, cr)
+			},
+		},
+		{
+			name:            "uses ConfigMap when Service CA secret has no ca.crt",
+			want:            configMapCA,
+			wantTermination: routev1.TLSTerminationReencrypt,
+			updateArgoCD: func(cr *argoproj.ArgoCD) {
+				cr.Spec.Server.Route.Enabled = true
+			},
+			createResources: func(k8sClient client.Client, cr *argoproj.ArgoCD) {
+				serviceCASecret(k8sClient, cr, nil)
+				serviceCAConfigMap(k8sClient, cr)
+			},
+		},
+		{
+			name:            "prefers serving-cert secret CA over ConfigMap",
+			want:            secretCA,
+			wantTermination: routev1.TLSTerminationReencrypt,
+			updateArgoCD: func(cr *argoproj.ArgoCD) {
+				cr.Spec.Server.Route.Enabled = true
+			},
+			createResources: func(k8sClient client.Client, cr *argoproj.ArgoCD) {
+				serviceCASecret(k8sClient, cr, []byte(secretCA))
+				serviceCAConfigMap(k8sClient, cr)
+			},
+		},
+		{
+			name:            "does not overwrite user-provided destination CA",
+			want:            userCA,
+			wantTermination: routev1.TLSTerminationReencrypt,
+			updateArgoCD: func(cr *argoproj.ArgoCD) {
+				cr.Spec.Server.Route.Enabled = true
+				cr.Spec.Server.Route.TLS = &routev1.TLSConfig{
+					Termination:              routev1.TLSTerminationReencrypt,
+					DestinationCACertificate: userCA,
+				}
+			},
+			createResources: func(k8sClient client.Client, cr *argoproj.ArgoCD) {
+				serviceCASecret(k8sClient, cr, []byte(secretCA))
+				serviceCAConfigMap(k8sClient, cr)
+			},
+		},
+		{
+			name:            "does not set destination CA for passthrough routes",
+			want:            "",
+			wantTermination: routev1.TLSTerminationPassthrough,
+			updateArgoCD: func(cr *argoproj.ArgoCD) {
+				cr.Spec.Server.Route.Enabled = true
+				cr.Spec.Server.Route.TLS = &routev1.TLSConfig{
+					Termination: routev1.TLSTerminationPassthrough,
+				}
+			},
+			createResources: func(k8sClient client.Client, cr *argoproj.ArgoCD) {
+				serviceCAConfigMap(k8sClient, cr)
+			},
+		},
+		{
+			name:            "leaves destination CA empty when no CA source exists",
+			want:            "",
+			wantTermination: routev1.TLSTerminationReencrypt,
+			updateArgoCD: func(cr *argoproj.ArgoCD) {
+				cr.Spec.Server.Route.Enabled = true
+			},
+			createResources: func(k8sClient client.Client, cr *argoproj.ArgoCD) {},
+		},
+	}
+
+	for _, test := range tt {
+		t.Run(test.name, func(t *testing.T) {
+			argoCD := makeArgoCD(test.updateArgoCD)
+
+			resObjs := []client.Object{argoCD}
+			subresObjs := []client.Object{argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme, configv1.Install, routev1.Install)
+			fakeClient := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			reconciler := makeTestReconciler(fakeClient, sch, testclient.NewSimpleClientset())
+
+			test.createResources(fakeClient, argoCD)
+			req := reconcile.Request{
+				NamespacedName: testNamespacedName(testArgoCDName),
+			}
+
+			_, err := reconciler.Reconcile(ctx, req)
+			assert.Nil(t, err)
+
+			route := &routev1.Route{}
+			err = reconciler.Get(ctx, types.NamespacedName{Name: argoCD.Name + "-server", Namespace: argoCD.Namespace}, route)
+			assert.Nil(t, err)
+			assert.Equal(t, test.wantTermination, route.Spec.TLS.Termination)
+			assert.Equal(t, test.want, route.Spec.TLS.DestinationCACertificate)
+		})
+	}
+}
+
 func TestIsCreatedByServiceCA(t *testing.T) {
 	cr := makeArgoCD()
 	serviceName := fmt.Sprintf("%s-%s", cr.Name, "server")
