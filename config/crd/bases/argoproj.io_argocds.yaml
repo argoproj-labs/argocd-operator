@@ -1040,6 +1040,15 @@ spec:
                               Service defines the options for the Service backing the ArgoCD Agent component.
                               If not set, type ClusterIP will be used by default.
                             properties:
+                              annotations:
+                                additionalProperties:
+                                  type: string
+                                description: |-
+                                  Annotations is the map of annotations to apply to the Principal Service.
+                                  Use this to configure load-balancer implementations such as MetalLB
+                                  (for example metallb.io/address-pool or metallb.io/loadBalancerIPs)
+                                  when the Service type is LoadBalancer.
+                                type: object
                               type:
                                 description: |-
                                   Type is the ServiceType to use for the Service resource.
@@ -14201,6 +14210,15 @@ spec:
                               Service defines the options for the Service backing the ArgoCD Agent component.
                               If not set, type ClusterIP will be used by default.
                             properties:
+                              annotations:
+                                additionalProperties:
+                                  type: string
+                                description: |-
+                                  Annotations is the map of annotations to apply to the Principal Service.
+                                  Use this to configure load-balancer implementations such as MetalLB
+                                  (for example metallb.io/address-pool or metallb.io/loadBalancerIPs)
+                                  when the Service type is LoadBalancer.
+                                type: object
                               type:
                                 description: |-
                                   Type is the ServiceType to use for the Service resource.
