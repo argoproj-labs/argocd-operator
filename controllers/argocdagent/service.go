@@ -91,13 +91,17 @@ func ReconcilePrincipalService(client client.Client, compName string, cr *argopr
 			return nil
 		}
 
-		if !reflect.DeepEqual(service.Spec.Ports, expectedSpec.Ports) ||
+		specChanged := !reflect.DeepEqual(service.Spec.Ports, expectedSpec.Ports) ||
 			!reflect.DeepEqual(service.Spec.Selector, expectedSpec.Selector) ||
-			!reflect.DeepEqual(service.Spec.Type, expectedSpec.Type) {
+			!reflect.DeepEqual(service.Spec.Type, expectedSpec.Type)
+		annotationsChanged := applyPrincipalServiceAnnotations(service, cr)
 
-			service.Spec.Type = expectedSpec.Type
-			service.Spec.Ports = expectedSpec.Ports
-			service.Spec.Selector = expectedSpec.Selector
+		if specChanged || annotationsChanged {
+			if specChanged {
+				service.Spec.Type = expectedSpec.Type
+				service.Spec.Ports = expectedSpec.Ports
+				service.Spec.Selector = expectedSpec.Selector
+			}
 
 			argoutil.LogResourceUpdate(log, service, "updating principal service spec")
 			if err := client.Update(context.TODO(), service); err != nil {
@@ -119,6 +123,7 @@ func ReconcilePrincipalService(client client.Client, compName string, cr *argopr
 	service.Spec.Type = expectedSpec.Type
 	service.Spec.Ports = expectedSpec.Ports
 	service.Spec.Selector = expectedSpec.Selector
+	applyPrincipalServiceAnnotations(service, cr)
 
 	argoutil.LogResourceCreation(log, service)
 	if err := client.Create(context.TODO(), service); err != nil {
@@ -479,4 +484,35 @@ func getPrincipalServiceType(cr *argoproj.ArgoCD) corev1.ServiceType {
 		return cr.Spec.ArgoCDAgent.Principal.Server.Service.Type
 	}
 	return corev1.ServiceTypeClusterIP
+}
+
+func getPrincipalServiceAnnotations(cr *argoproj.ArgoCD) map[string]string {
+	if cr.Spec.ArgoCDAgent != nil &&
+		cr.Spec.ArgoCDAgent.Principal != nil &&
+		cr.Spec.ArgoCDAgent.Principal.Server != nil &&
+		len(cr.Spec.ArgoCDAgent.Principal.Server.Service.Annotations) > 0 {
+		return cr.Spec.ArgoCDAgent.Principal.Server.Service.Annotations
+	}
+	return nil
+}
+
+// applyPrincipalServiceAnnotations merges CR-specified annotations onto the Principal Service.
+// Existing annotations that are not in the CR (for example those added by MetalLB) are preserved.
+func applyPrincipalServiceAnnotations(service *corev1.Service, cr *argoproj.ArgoCD) bool {
+	desired := getPrincipalServiceAnnotations(cr)
+	if len(desired) == 0 {
+		return false
+	}
+
+	changed := false
+	if service.Annotations == nil {
+		service.Annotations = make(map[string]string, len(desired))
+	}
+	for key, value := range desired {
+		if service.Annotations[key] != value {
+			service.Annotations[key] = value
+			changed = true
+		}
+	}
+	return changed
 }
