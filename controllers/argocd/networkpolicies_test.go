@@ -58,6 +58,8 @@ func TestReconcileNetworkPolicies_DisabledDeletesExisting(t *testing.T) {
 	assert.NoError(t, err)
 
 	nps := []string{
+		nameWithSuffix(RedisNetworkPolicy, a),
+		nameWithSuffix(RedisHANetworkPolicy, a),
 		nameWithSuffix(ArgoCDNotificationsControllerNetworkPolicy, a),
 		nameWithSuffix(ArgoCDDexServerNetworkPolicy, a),
 		nameWithSuffix(ArgoCDApplicationSetControllerNetworkPolicy, a),
@@ -566,4 +568,39 @@ func TestNameWithSuffix(t *testing.T) {
 	result = nameWithSuffix("redis", a)
 	assert.Contains(t, result, "-redis") // Suffix should be preserved
 	assert.Len(t, result, 37+6)          // truncated name (37) + "-redis" (6) = 43
+}
+
+func TestReconcileRedisNetworkPoliciesDisabledDeletesExisting(t *testing.T) {
+	a := makeTestArgoCD()
+	r := makeTestReconciler(makeTestReconcilerClient(makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme), []client.Object{a}, []client.Object{a}, []runtime.Object{}), makeTestReconcilerScheme(argoproj.AddToScheme), testclient.NewSimpleClientset())
+
+	// Create all redis network policies
+	err := r.ReconcileRedisNetworkPolicy(a)
+	assert.NoError(t, err)
+
+	err = r.ReconcileRedisHANetworkPolicy(a)
+	assert.NoError(t, err)
+
+	// Verify they exist
+	redisNP := &networkingv1.NetworkPolicy{}
+	err = r.Get(context.TODO(), client.ObjectKey{Name: nameWithSuffix(RedisNetworkPolicy, a), Namespace: a.Namespace}, redisNP)
+	assert.NoError(t, err, "redis network policy should exist before disabling")
+
+	redisHANP := &networkingv1.NetworkPolicy{}
+	err = r.Get(context.TODO(), client.ObjectKey{Name: nameWithSuffix(RedisHANetworkPolicy, a), Namespace: a.Namespace}, redisHANP)
+	assert.NoError(t, err, "redis-ha network policy should exist before disabling")
+
+	// Disable NetworkPolicy and reconcile
+	a.Spec.NetworkPolicy.Enabled = new(false)
+	err = r.ReconcileNetworkPolicies(a)
+	assert.NoError(t, err)
+
+	// Verify redis policies are deleted
+	redisNPAfter := &networkingv1.NetworkPolicy{}
+	err = r.Get(context.TODO(), client.ObjectKey{Name: nameWithSuffix(RedisNetworkPolicy, a), Namespace: a.Namespace}, redisNPAfter)
+	assert.Error(t, err, "redis network policy should be deleted when NetworkPolicy is disabled")
+
+	redisHANPAfter := &networkingv1.NetworkPolicy{}
+	err = r.Get(context.TODO(), client.ObjectKey{Name: nameWithSuffix(RedisHANetworkPolicy, a), Namespace: a.Namespace}, redisHANPAfter)
+	assert.Error(t, err, "redis-ha network policy should be deleted when NetworkPolicy is disabled")
 }

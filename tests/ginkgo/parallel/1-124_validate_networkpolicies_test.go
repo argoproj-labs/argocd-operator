@@ -368,6 +368,8 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				"example-argocd-repo-server-network-policy",
 				"example-argocd-server-network-policy",
 				"example-argocd-application-controller-network-policy",
+				"example-argocd-redis-network-policy",
+				"example-argocd-redis-ha-network-policy",
 			}
 			for _, npName := range coreNPs {
 				Eventually(&networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: npName, Namespace: nsObj.Name}}, "3m", "5s").Should(k8sFixture.NotExistByName())
