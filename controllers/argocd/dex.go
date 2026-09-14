@@ -361,8 +361,10 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 	autoMountSAToken := false
 	deploy.Spec.Template.Spec.AutomountServiceAccountToken = &autoMountSAToken
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
-		Command:         []string{"/bin/sh", "-c"},
-		Args:            dexServerCustomStartupScript(),
+		Command: []string{
+			"/shared/argocd-dex",
+			"rundex",
+		},
 		Image:           getDexContainerImage(cr),
 		ImagePullPolicy: argoutil.GetImagePullPolicy(cr.Spec.ImagePullPolicy),
 		Name:            "dex",

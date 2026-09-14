@@ -446,10 +446,12 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 		},
 		Containers: []corev1.Container{
 			{
-				Name:    "dex",
-				Image:   getDexContainerImage(a),
-				Command: []string{"/bin/sh", "-c"},
-				Args:    dexServerCustomStartupScript(),
+				Name:  "dex",
+				Image: getDexContainerImage(a),
+				Command: []string{
+					"/shared/argocd-dex",
+					"rundex",
+				},
 				LivenessProbe: &corev1.Probe{
 					ProbeHandler: corev1.ProbeHandler{
 						HTTPGet: &corev1.HTTPGetAction{
@@ -612,10 +614,12 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 					},
 					Containers: []corev1.Container{
 						{
-							Name:    "dex",
-							Image:   "testdex:v0.0.1",
-							Command: []string{"/bin/sh", "-c"},
-							Args:    dexServerCustomStartupScript(),
+							Name:  "dex",
+							Image: "testdex:v0.0.1",
+							Command: []string{
+								"/shared/argocd-dex",
+								"rundex",
+							},
 							LivenessProbe: &corev1.Probe{
 								ProbeHandler: corev1.ProbeHandler{
 									HTTPGet: &corev1.HTTPGetAction{
@@ -766,10 +770,12 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 					},
 					Containers: []corev1.Container{
 						{
-							Name:    "dex",
-							Image:   "ghcr.io/dexidp/dex@sha256:8499afd690c437f52301efd2b05b2455da5bd2dfc20332cd697dc9937f808462", // (v2.45.1) NOTE: this value is modified by dependency update script
-							Command: []string{"/bin/sh", "-c"},
-							Args:    dexServerCustomStartupScript(),
+							Name:  "dex",
+							Image: "ghcr.io/dexidp/dex@sha256:8499afd690c437f52301efd2b05b2455da5bd2dfc20332cd697dc9937f808462", // (v2.45.1) NOTE: this value is modified by dependency update script
+							Command: []string{
+								"/shared/argocd-dex",
+								"rundex",
+							},
 							LivenessProbe: &corev1.Probe{
 								ProbeHandler: corev1.ProbeHandler{
 									HTTPGet: &corev1.HTTPGetAction{
