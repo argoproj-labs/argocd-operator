@@ -545,6 +545,10 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 			existing.Spec.Template.Spec.Containers[0].Command = deploy.Spec.Template.Spec.Containers[0].Command
 			changes = append(changes, "container command")
 		}
+		if existing.Spec.Template.Spec.AutomountServiceAccountToken == nil || *existing.Spec.Template.Spec.AutomountServiceAccountToken {
+			existing.Spec.Template.Spec.AutomountServiceAccountToken = &autoMountSAToken
+			changes = append(changes, "pod automountServiceAccountToken")
+		}
 		if len(changes) > 0 {
 			argoutil.LogResourceUpdate(log, existing, "updating", strings.Join(changes, ", "))
 			return r.Update(context.TODO(), existing)
