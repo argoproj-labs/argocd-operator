@@ -8,4 +8,6 @@ type TLSConfigProfile struct {
 	MinVersion configv1.TLSProtocolVersion
 	// Ciphers specifies the list of supported TLS cipher suites in cluster.
 	Ciphers []string
+	// CurvePreferences specifies the list of supported TLS curve preferences in cluster.
+	CurvePreferences []string
 }

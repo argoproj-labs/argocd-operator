@@ -9,6 +9,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	tlsProfile "github.com/argoproj-labs/argocd-operator/pkg/tlsprofile"
 )
 
 // getDexContainerImage will return the container image for the Dex server.
@@ -78,8 +79,27 @@ func getDexResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
 	return resources
 }
 
-func getDexConfig(cr *argoproj.ArgoCD) string {
+func getDexConfig(cr *argoproj.ArgoCD, centralTLSConfig tlsProfile.TLSConfigProfile) string {
 	config := common.ArgoCDDefaultDexConfig
+	// build TLSMinVersion, TLSCiphers, TLSCurvePreferences
+	if !centralTLSConfig.DisableClusterTLSProfile {
+		config += "\nweb:"
+		if v := argoutil.TLSProtocolVersionString(centralTLSConfig.MinVersion); v != "" {
+			config += fmt.Sprintf("\n  tlsMinVersion: %q", v)
+		}
+		if ciphers := argoutil.MapCipherSuites(centralTLSConfig.Ciphers); len(ciphers) > 0 {
+			config += "\n  tlsCiphers:"
+			for _, cipher := range ciphers {
+				config += fmt.Sprintf("\n    - %q", cipher)
+			}
+		}
+		if len(centralTLSConfig.CurvePreferences) > 0 {
+			config += "\n  tlsCurvePreferences:"
+			for _, curve := range centralTLSConfig.CurvePreferences {
+				config += fmt.Sprintf("\n    - %q", curve)
+			}
+		}
+	}
 
 	// Allow override of config from CR
 	if cr.Spec.ExtraConfig["dex.config"] != "" {

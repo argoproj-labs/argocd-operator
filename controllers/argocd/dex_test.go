@@ -27,6 +27,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	tlsProfile "github.com/argoproj-labs/argocd-operator/pkg/tlsprofile"
 )
 
 func TestReconcileArgoCD_reconcileDexDeployment_with_dex_disabled(t *testing.T) {
@@ -592,7 +593,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 				Containers: []corev1.Container{
 					{
 						Name:  "dex",
-						Image: "ghcr.io/dexidp/dex@sha256:8499afd690c437f52301efd2b05b2455da5bd2dfc20332cd697dc9937f808462", // (v2.45.1) NOTE: this value is modified by dependency update script
+						Image: "ghcr.io/dexidp/dex@sha256::8499afd690c437f52301efd2b05b2455da5bd2dfc20332cd697dc9937f808462", // (v2.45.1) NOTE: this value is modified by dependency update script
 						Command: []string{
 							"/shared/argocd-dex",
 							"rundex",
@@ -1616,4 +1617,137 @@ func TestReconcileArgoCD_reconcileDexDeployment_customLabelsAndAnnotations(t *te
 	_, hasCustomLabel := deployment.Spec.Template.Labels["custom"]
 	assert.False(t, hasCustomAnnotation)
 	assert.False(t, hasCustomLabel)
+}
+
+func TestGetDexConfig(t *testing.T) {
+	cr := &argoproj.ArgoCD{
+		Spec: argoproj.ArgoCDSpec{
+			ExtraConfig: map[string]string{},
+		},
+	}
+	tests := []struct {
+		name               string
+		centralTLSConfig   tlsProfile.TLSConfigProfile
+		expectedContains   []string
+		expectedNotContain []string
+	}{
+		{
+			name: "TLS profile disabled",
+			centralTLSConfig: tlsProfile.TLSConfigProfile{
+				DisableClusterTLSProfile: true,
+				MinVersion:               configv1.TLSProtocolVersion("VersionTLS13"),
+				Ciphers: []string{
+					"TLS_AES_128_GCM_SHA256",
+				},
+				CurvePreferences: []string{
+					"X25519MLKEM768",
+				},
+			},
+			expectedNotContain: []string{
+				"web:",
+				"tlsMinVersion:",
+				"tlsCiphers:",
+				"tlsCurvePreferences:",
+			},
+		},
+		{
+			name: "TLS minimum version",
+			centralTLSConfig: tlsProfile.TLSConfigProfile{
+				MinVersion: configv1.TLSProtocolVersion("VersionTLS12"),
+			},
+			expectedContains: []string{
+				"web:",
+				`tlsMinVersion: "1.2"`,
+			},
+			expectedNotContain: []string{
+				"tlsCiphers:",
+				"tlsCurvePreferences:",
+			},
+		},
+		{
+			name: "TLS cipher suites",
+			centralTLSConfig: tlsProfile.TLSConfigProfile{
+				Ciphers: []string{
+					"TLS_AES_128_GCM_SHA256",
+					"TLS_AES_256_GCM_SHA384",
+				},
+			},
+			expectedContains: []string{
+				"web:",
+				"tlsCiphers:",
+				`- "TLS_AES_128_GCM_SHA256"`,
+				`- "TLS_AES_256_GCM_SHA384"`,
+			},
+			expectedNotContain: []string{
+				"tlsMinVersion:",
+				"tlsCurvePreferences:",
+			},
+		},
+		{
+			name: "TLS curve preferences",
+			centralTLSConfig: tlsProfile.TLSConfigProfile{
+				CurvePreferences: []string{
+					"X25519MLKEM768",
+					"X25519",
+				},
+			},
+			expectedContains: []string{
+				"web:",
+				"tlsCurvePreferences:",
+				`- "X25519MLKEM768"`,
+				`- "X25519"`,
+			},
+			expectedNotContain: []string{
+				"tlsMinVersion:",
+				"tlsCiphers:",
+			},
+		},
+		{
+			name: "all TLS settings",
+			centralTLSConfig: tlsProfile.TLSConfigProfile{
+				MinVersion: configv1.TLSProtocolVersion("VersionTLS13"),
+				Ciphers: []string{
+					"TLS_AES_128_GCM_SHA256",
+					"TLS_AES_256_GCM_SHA384",
+				},
+				CurvePreferences: []string{
+					"X25519MLKEM768",
+					"X25519",
+				},
+			},
+			expectedContains: []string{
+				"web:",
+				`tlsMinVersion: "1.3"`,
+				"tlsCiphers:",
+				`- "TLS_AES_128_GCM_SHA256"`,
+				`- "TLS_AES_256_GCM_SHA384"`,
+				"tlsCurvePreferences:",
+				`- "X25519MLKEM768"`,
+				`- "X25519"`,
+			},
+		},
+		{
+			name:             "empty TLS configuration",
+			centralTLSConfig: tlsProfile.TLSConfigProfile{},
+			expectedNotContain: []string{
+				"tlsMinVersion:",
+				"tlsCiphers:",
+				"tlsCurvePreferences:",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := getDexConfig(cr, tt.centralTLSConfig)
+
+			for _, expected := range tt.expectedContains {
+				assert.Contains(t, config, expected)
+			}
+
+			for _, notExpected := range tt.expectedNotContain {
+				assert.NotContains(t, config, notExpected)
+			}
+		})
+	}
 }

@@ -24,6 +24,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	tlsProfile "github.com/argoproj-labs/argocd-operator/pkg/tlsprofile"
 )
 
 // DexConnector represents an authentication connector for Dex.
@@ -216,7 +217,7 @@ func (r *ReconcileArgoCD) reconcileDexLegacySATokenSecrets(cr *argoproj.ArgoCD) 
 // reconcileDexConfiguration will ensure that Dex is configured properly.
 func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *argoproj.ArgoCD) error {
 	actual := cm.Data[common.ArgoCDKeyDexConfig]
-	desired := getDexConfig(cr)
+	desired := getDexConfig(cr, r.CentralTLSConfigProfile)
 
 	// Append the default OpenShift dex config if the openShiftOAuth is requested through `.spec.sso.dex`.
 	if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.OpenShiftOAuth {
@@ -304,7 +305,7 @@ func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoproj.ArgoCD) (string, er
 	dex["connectors"] = connectors
 
 	// add dex config from the Argo CD CR.
-	if err := addDexConfigFromCR(cr, dex); err != nil {
+	if err := addDexConfigFromCR(cr, dex, r.CentralTLSConfigProfile); err != nil {
 		return "", err
 	}
 
@@ -312,8 +313,8 @@ func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoproj.ArgoCD) (string, er
 	return string(bytes), err
 }
 
-func addDexConfigFromCR(cr *argoproj.ArgoCD, dex map[string]any) error {
-	dexCfgStr := getDexConfig(cr)
+func addDexConfigFromCR(cr *argoproj.ArgoCD, dex map[string]any, centralTLSConfig tlsProfile.TLSConfigProfile) error {
+	dexCfgStr := getDexConfig(cr, centralTLSConfig)
 	if dexCfgStr == "" {
 		return nil
 	}
