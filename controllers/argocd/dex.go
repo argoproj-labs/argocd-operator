@@ -10,7 +10,6 @@ import (
 	"time"
 
 	configv1 "github.com/openshift/api/config/v1"
-
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -169,12 +168,12 @@ func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoproj.ArgoCD) (string, er
 		ID:   "openshift",
 		Name: "OpenShift",
 		Config: map[string]any{
-			"issuer":                  "https://kubernetes.default.svc", // TODO: Should this be hard-coded?
-			"clientID":                getDexOAuthClientID(cr),
-			"redirectURI":             redirectURI,
-			"insecureCA":              true, // TODO: Configure for openshift CA,
-			"groups":                  groups,
-			"serviceAccountTokenFile": "/var/run/secrets/kubernetes.io/serviceaccount/token",
+			"issuer":           "https://kubernetes.default.svc", // TODO: Should this be hard-coded?
+			"clientID":         getDexOAuthClientID(cr),
+			"redirectURI":      redirectURI,
+			"insecureCA":       true, // TODO: Configure for openshift CA,
+			"groups":           groups,
+			"clientSecretFile": "/var/run/secrets/kubernetes.io/serviceaccount/token",
 		},
 	}
 
