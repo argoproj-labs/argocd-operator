@@ -25,6 +25,7 @@ import (
 	"github.com/go-logr/logr"
 
 	"github.com/argoproj-labs/argocd-operator/common"
+	tlsProfile "github.com/argoproj-labs/argocd-operator/pkg/tlsprofile"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -66,6 +67,9 @@ func makeTestReconciler(client client.Client, sch *runtime.Scheme, k8sClient kub
 		K8sClient: k8sClient,
 		LocalUsers: &LocalUsersInfo{
 			tokenRenewalTimers: map[string]*tokenRenewalTimer{},
+		},
+		CentralTLSConfigProfile: tlsProfile.TLSConfigProfile{
+			DisableClusterTLSProfile: true,
 		},
 	}
 }
