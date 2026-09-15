@@ -10,12 +10,9 @@ import (
 	"time"
 
 	configv1 "github.com/openshift/api/config/v1"
-
 	"gopkg.in/yaml.v2"
-	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -41,123 +38,6 @@ func UseDex(cr *argoproj.ArgoCD) bool {
 	}
 
 	return false
-}
-
-// getDexServerTokenSecretName returns the name of the Secret that stores the Dex OAuth client token.
-func getDexServerTokenSecretName(cr *argoproj.ArgoCD) string {
-	return argoutil.GetSecretNameWithSuffix(cr, common.ArgoCDDefaultDexServiceAccountName+"-token")
-}
-
-// dexServerTokenRenewalThreshold is how much nominal lifetime may remain before we treat the Dex token
-// as due for renewal (ExpirySecs * ArgoCDDexServerTokenRenewalThresholdPercent / 100).
-func dexServerTokenRenewalThreshold() time.Duration {
-	return time.Duration(common.ArgoCDDexServerTokenExpirySecs*common.ArgoCDDexServerTokenRenewalThresholdPercent/100) * time.Second
-}
-
-// needsDexTokenRenewal returns true when the token is missing, unparseable, or within the renewal window.
-func needsDexTokenRenewal(secret *corev1.Secret) bool {
-	if secret == nil || secret.Data == nil {
-		return true
-	}
-	tokenBytes, ok := secret.Data["token"]
-	if !ok || len(tokenBytes) == 0 {
-		return true
-	}
-	expiryBytes, ok := secret.Data["expiry"]
-	if !ok {
-		return true
-	}
-	expiry, err := time.Parse(time.RFC3339, string(expiryBytes))
-	if err != nil {
-		log.Error(err, "dex token secret has unparseable expiry, renewal needed",
-			"secret", fmt.Sprintf("%s/%s", secret.Namespace, secret.Name),
-			"expiry", string(expiryBytes))
-		return true
-	}
-	return time.Until(expiry) < dexServerTokenRenewalThreshold()
-}
-
-// getDexOAuthClientSecret returns a time-limited Dex OAuth client token via the TokenRequest API.
-func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string, error) {
-	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr)
-	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
-		return nil, err
-	}
-
-	tokenSecretName := getDexServerTokenSecretName(cr)
-	tokenSecret := &corev1.Secret{}
-	fetchErr := argoutil.FetchObject(r.Client, cr.Namespace, tokenSecretName, tokenSecret)
-	if fetchErr != nil && !apierrors.IsNotFound(fetchErr) {
-		return nil, fetchErr
-	}
-	secretExists := fetchErr == nil
-
-	// Return the cached token if it is still valid.
-	if secretExists && !needsDexTokenRenewal(tokenSecret) {
-		token := string(tokenSecret.Data["token"])
-		// Schedule the next reconcile to run just before the renewal threshold so
-		// the token is proactively renewed without waiting for an external event.
-		expiry, parseErr := time.Parse(time.RFC3339, string(tokenSecret.Data["expiry"]))
-		if parseErr != nil {
-			log.Error(parseErr, "dex token secret expiry unparseable when scheduling requeue, returning cached token",
-				"secret", fmt.Sprintf("%s/%s", tokenSecret.Namespace, tokenSecret.Name))
-		} else {
-			if d := time.Until(expiry) - dexServerTokenRenewalThreshold(); d > 0 {
-				r.dexTokenRequeueAfter.Store(cr.Namespace, d)
-			}
-		}
-		return &token, nil
-	}
-
-	// Request a new time-limited token via the TokenRequest API.
-	expirationSeconds := common.ArgoCDDexServerTokenExpirySecs
-	tokenRequest, err := r.K8sClient.CoreV1().ServiceAccounts(cr.Namespace).CreateToken(
-		context.TODO(),
-		sa.Name,
-		&authv1.TokenRequest{
-			Spec: authv1.TokenRequestSpec{
-				ExpirationSeconds: &expirationSeconds,
-			},
-		},
-		metav1.CreateOptions{},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create token for dex service account %s: %w", sa.Name, err)
-	}
-
-	expiryStr := tokenRequest.Status.ExpirationTimestamp.UTC().Format(time.RFC3339)
-	tokenData := map[string][]byte{
-		"token":  []byte(tokenRequest.Status.Token),
-		"expiry": []byte(expiryStr),
-	}
-
-	if !secretExists {
-		newSecret := argoutil.NewSecretWithSuffix(cr, common.ArgoCDDefaultDexServiceAccountName+"-token")
-		newSecret.Type = corev1.SecretTypeOpaque
-		newSecret.Data = tokenData
-		argoutil.AddTrackedByOperatorLabel(&newSecret.ObjectMeta)
-		if err := controllerutil.SetControllerReference(cr, newSecret, r.Scheme); err != nil {
-			return nil, err
-		}
-		argoutil.LogResourceCreation(log, newSecret)
-		if err := r.Create(context.TODO(), newSecret); err != nil {
-			return nil, err
-		}
-	} else {
-		tokenSecret.Data = tokenData
-		argoutil.LogResourceUpdate(log, tokenSecret, "renewing dex OAuth client token")
-		if err := r.Update(context.TODO(), tokenSecret); err != nil {
-			return nil, err
-		}
-	}
-
-	// Schedule the next reconcile just before the renewal threshold.
-	if d := time.Until(tokenRequest.Status.ExpirationTimestamp.Time) - dexServerTokenRenewalThreshold(); d > 0 {
-		r.dexTokenRequeueAfter.Store(cr.Namespace, d)
-	}
-
-	token := tokenRequest.Status.Token
-	return &token, nil
 }
 
 // reconcileDexLegacySATokenSecrets deletes non-expiring kubernetes.io/service-account-token
@@ -288,12 +168,12 @@ func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoproj.ArgoCD) (string, er
 		ID:   "openshift",
 		Name: "OpenShift",
 		Config: map[string]any{
-			"issuer":       "https://kubernetes.default.svc", // TODO: Should this be hard-coded?
-			"clientID":     getDexOAuthClientID(cr),
-			"clientSecret": "$oidc.dex.clientSecret",
-			"redirectURI":  redirectURI,
-			"insecureCA":   true, // TODO: Configure for openshift CA,
-			"groups":       groups,
+			"issuer":           "https://kubernetes.default.svc", // TODO: Should this be hard-coded?
+			"clientID":         getDexOAuthClientID(cr),
+			"redirectURI":      redirectURI,
+			"insecureCA":       true, // TODO: Configure for openshift CA,
+			"groups":           groups,
+			"clientSecretFile": "/var/run/secrets/kubernetes.io/serviceaccount/token",
 		},
 	}
 
@@ -374,7 +254,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
 
 	dexEnv := proxyEnvVars()
-
+	expirationSeconds := common.ArgoCDDexServerTokenExpirySecs
 	dexVolumes := []corev1.Volume{
 		{
 			Name: "static-files",
@@ -388,6 +268,47 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
+		{
+			Name: "sa-token-volume",
+			VolumeSource: corev1.VolumeSource{
+				Projected: &corev1.ProjectedVolumeSource{
+					Sources: []corev1.VolumeProjection{
+						{
+							ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+								ExpirationSeconds: &expirationSeconds,
+								Path:              "token",
+							},
+						},
+						{
+							ConfigMap: &corev1.ConfigMapProjection{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "kube-root-ca.crt",
+								},
+								Items: []corev1.KeyToPath{
+									{
+										Key:  "ca.crt",
+										Path: "ca.crt",
+									},
+								},
+							},
+						},
+						{
+							DownwardAPI: &corev1.DownwardAPIProjection{
+								Items: []corev1.DownwardAPIVolumeFile{
+									{
+										Path: "namespace",
+										FieldRef: &corev1.ObjectFieldSelector{
+											APIVersion: "v1",
+											FieldPath:  "metadata.namespace",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	dexVolumeMounts := []corev1.VolumeMount{
@@ -398,6 +319,11 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		{
 			Name:      "dexconfig",
 			MountPath: "/tmp",
+		},
+		{
+			Name:      "sa-token-volume",
+			MountPath: "/var/run/secrets/kubernetes.io/serviceaccount",
+			ReadOnly:  true,
 		},
 	}
 
@@ -431,7 +357,8 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		dexUID := common.ArgoCDDefaultDexRunAsUser
 		dexSecCtx.RunAsUser = &dexUID
 	}
-
+	autoMountSAToken := false
+	deploy.Spec.Template.Spec.AutomountServiceAccountToken = &autoMountSAToken
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command: []string{
 			"/shared/argocd-dex",
@@ -609,7 +536,18 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
 			changes = append(changes, "labels")
 		}
-
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Args, existing.Spec.Template.Spec.Containers[0].Args) {
+			existing.Spec.Template.Spec.Containers[0].Args = deploy.Spec.Template.Spec.Containers[0].Args
+			changes = append(changes, "container args")
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Command, existing.Spec.Template.Spec.Containers[0].Command) {
+			existing.Spec.Template.Spec.Containers[0].Command = deploy.Spec.Template.Spec.Containers[0].Command
+			changes = append(changes, "container command")
+		}
+		if existing.Spec.Template.Spec.AutomountServiceAccountToken == nil || *existing.Spec.Template.Spec.AutomountServiceAccountToken {
+			existing.Spec.Template.Spec.AutomountServiceAccountToken = &autoMountSAToken
+			changes = append(changes, "pod automountServiceAccountToken")
+		}
 		if len(changes) > 0 {
 			argoutil.LogResourceUpdate(log, existing, "updating", strings.Join(changes, ", "))
 			return r.Update(context.TODO(), existing)

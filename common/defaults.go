@@ -131,12 +131,7 @@ const (
 	ArgoCDDefaultDexServiceAccountName = "argocd-dex-server"
 
 	// ArgoCDDexServerTokenExpirySecs is the Dex SA token lifetime in seconds (1 hour).
-	ArgoCDDexServerTokenExpirySecs = int64(3600)
-
-	// ArgoCDDexServerTokenRenewalThresholdPercent (1-99): renew the Dex token when less than this percent
-	// of ArgoCDDexServerTokenExpirySecs remains (default 33 is approximately equivalent to the last third
-	// of a 1h nominal lifetime).
-	ArgoCDDexServerTokenRenewalThresholdPercent int64 = 33
+	ArgoCDDexServerTokenExpirySecs = int64(600)
 
 	// ArgoCDDefaultDexVersion is the Dex container image tag to use when not specified.
 	ArgoCDDefaultDexVersion = "sha256:8499afd690c437f52301efd2b05b2455da5bd2dfc20332cd697dc9937f808462" // v2.45.1
