@@ -139,7 +139,7 @@ const (
 	ArgoCDDexServerTokenRenewalThresholdPercent int64 = 33
 
 	// ArgoCDDefaultDexVersion is the Dex container image tag to use when not specified.
-	ArgoCDDefaultDexVersion = "sha256:f5d77499df7ea3ff0bdc5f9e218e4be8fac3b91a1b29b64a7158a5876850fb20" // v2.45.1
+	ArgoCDDefaultDexVersion = "sha256:8499afd690c437f52301efd2b05b2455da5bd2dfc20332cd697dc9937f808462" // v2.45.1
 
 	// ArgoCDDefaultDexRunAsUser is the numeric UID of the "dex" user declared in the Dex image.
 	// Kubernetes requires a numeric runAsUser when runAsNonRoot is true and the image USER is a named string.
