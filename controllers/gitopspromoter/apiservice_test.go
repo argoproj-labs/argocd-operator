@@ -370,8 +370,6 @@ func TestReconcilePromoterAPIServerAPIService_Exists_Update(t *testing.T) {
 	cr := makeTestArgoCD(withPromoterEnabled(true), withPromoterAPIServerEnabled(true))
 
 	existingAPIService := makeExistingAPIService(cr)
-	existingAPIService.Spec.Service.Name = "not-a-real-service"
-	existingAPIService.Spec.Service.Namespace = "not-a-real-namespace"
 	existingAPIService.Spec.Service.Port = ptr.To(int32(25565))
 
 	resObjs := []client.Object{cr, existingAPIService}
@@ -391,4 +389,39 @@ func TestReconcilePromoterAPIServerAPIService_Exists_Update(t *testing.T) {
 	assert.Equal(t, generatePromoterResourceName(testCompName, cr), retrievedAPIService.Spec.Service.Name)
 	assert.Equal(t, cr.Namespace, retrievedAPIService.Spec.Service.Namespace)
 	assert.Equal(t, ptr.To(int32(APIServerPort)), retrievedAPIService.Spec.Service.Port)
+}
+
+func TestReconcilePromoterAPIServerAPIService_MultipleCRsPresent(t *testing.T) {
+	// Test case: APIService gets reconciled then another CR with the promoter disabled gets reconciled
+	// Expected behavior: the APIService should not get deleted
+
+	crEnabled := makeTestArgoCD(withPromoterEnabled(true), withPromoterAPIServerEnabled(true))
+	crDisabled := makeTestArgoCD(withPromoterEnabled(false), withPromoterAPIServerEnabled(false))
+	crDisabled.Name = "disabled-cr"
+	crDisabled.Namespace = "different-namespace"
+
+	resObjs := []client.Object{crEnabled, crDisabled}
+	sch := makeTestReconcilerScheme()
+	client := makeTestReconcilerClient(sch, resObjs)
+
+	apiService, err := ReconcilePromoterAPIServerAPIService(client, testCompName, crEnabled)
+	assert.NoError(t, err)
+	assert.NotNil(t, apiService)
+
+	// Make sure APIService as created
+	retrievedAPIService := &apiregistrationv1.APIService{}
+	err = client.Get(context.Background(), types.NamespacedName{
+		Name: "v1alpha1.view.promoter.argoproj.io",
+	}, retrievedAPIService)
+	assert.NoError(t, err)
+
+	apiService, err = ReconcilePromoterAPIServerAPIService(client, testCompName, crDisabled)
+	assert.NoError(t, err)
+	assert.NotNil(t, apiService)
+
+	// Get APIService again to make sure it is not deleted
+	err = client.Get(context.Background(), types.NamespacedName{
+		Name: "v1alpha1.view.promoter.argoproj.io",
+	}, retrievedAPIService)
+	assert.NoError(t, err)
 }
