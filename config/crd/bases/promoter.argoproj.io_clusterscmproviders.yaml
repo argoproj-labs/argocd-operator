@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.21.0
+    controller-gen.kubebuilder.io/version: v0.22.0
   name: clusterscmproviders.promoter.argoproj.io
 spec:
   group: promoter.argoproj.io
@@ -168,8 +168,8 @@ spec:
             x-kubernetes-validations:
             - message: exactly one of the fields in [github gitlab forgejo gitea bitbucketCloud
                 azureDevOps fake] must be set
-              rule: '[has(self.github),has(self.gitlab),has(self.forgejo),has(self.gitea),has(self.bitbucketCloud),has(self.azureDevOps),has(self.fake)].filter(x,x==true).size()
-                == 1'
+              rule: (has(self.github)?1:0)+(has(self.gitlab)?1:0)+(has(self.forgejo)?1:0)+(has(self.gitea)?1:0)+(has(self.bitbucketCloud)?1:0)+(has(self.azureDevOps)?1:0)+(has(self.fake)?1:0)
+                == 1
           status:
             description: ScmProviderStatus defines the observed state of ScmProvider
             properties:

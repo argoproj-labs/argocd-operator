@@ -17,6 +17,7 @@ resources:
   - bases/promoter.argoproj.io_clusterscmproviders.yaml
   - bases/promoter.argoproj.io_commitstatuses.yaml
   - bases/promoter.argoproj.io_controllerconfigurations.yaml
+  - bases/promoter.argoproj.io_dependentssuccessfulcommitstatuses.yaml
   - bases/promoter.argoproj.io_gitcommitstatuses.yaml
   - bases/promoter.argoproj.io_gitrepositories.yaml
   - bases/promoter.argoproj.io_promotionstrategies.yaml

@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.21.0
+    controller-gen.kubebuilder.io/version: v0.22.0
   creationTimestamp: null
   name: promotionstrategies.promoter.argoproj.io
 spec:
@@ -132,6 +132,27 @@ spec:
                         rule: '!self.contains('':'')'
                       - message: branch must not contain '..'
                         rule: '!self.contains(''..'')'
+                    dependsOn:
+                      description: |-
+                        DependsOn is the list of upstream environment branches this environment waits on before it becomes eligible
+                        for promotion (evaluated by DependentsSuccessfulCommitStatus). An empty or omitted list makes this environment
+                        a root when any environment declares dependsOn; when no environment declares dependsOn, that controller infers
+                        a linear chain from spec.environments order.
+                        Each item must not start with '-', contain ':', or contain '..'.
+                      items:
+                        maxLength: 100
+                        minLength: 1
+                        type: string
+                        x-kubernetes-validations:
+                        - message: branch must not start with '-'
+                          rule: '!self.startsWith(''-'')'
+                        - message: branch must not contain ':'
+                          rule: '!self.contains('':'')'
+                        - message: branch must not contain '..'
+                          rule: '!self.contains(''..'')'
+                      maxItems: 100
+                      type: array
+                      x-kubernetes-list-type: set
                     proposedCommitStatuses:
                       description: |-
                         ProposedCommitStatuses are commit statuses describing a proposed dry commit, i.e. one that is not yet running
@@ -159,7 +180,10 @@ spec:
                   required:
                   - branch
                   type: object
-                maxItems: 1000
+                  x-kubernetes-validations:
+                  - message: branch cannot depend on itself
+                    rule: '!has(self.dependsOn) || self.dependsOn.all(d, d != self.branch)'
+                maxItems: 500
                 minItems: 1
                 type: array
                 x-kubernetes-list-map-keys:
@@ -178,6 +202,40 @@ spec:
                 required:
                 - name
                 type: object
+              orderCommitStatusRef:
+                description: |-
+                  OrderCommitStatusRef is a reference to the commit status gate that enforces promotion ordering across
+                  environments. The controller injects that gate's key onto every ChangeTransferPolicy's proposedCommitStatuses.
+                properties:
+                  group:
+                    default: promoter.argoproj.io
+                    description: |-
+                      Group is the API group of the referenced resource. Built-in gates use promoter.argoproj.io;
+                      out-of-tree ordering gates may use any valid API group and are resolved via the generic gate contract.
+                    maxLength: 253
+                    minLength: 1
+                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                    type: string
+                  kind:
+                    default: DependentsSuccessfulCommitStatus
+                    description: |-
+                      Kind is the type of resource being referenced. Must name a CommitStatus gate CR registered as an
+                      ordering gate. DependentsSuccessfulCommitStatus is supported today; additional kinds may be added later.
+                    type: string
+                    x-kubernetes-validations:
+                    - message: kind must name a CommitStatus gate CR
+                      rule: self.endsWith('CommitStatus')
+                  name:
+                    description: Name is the name of the resource being referenced.
+                    maxLength: 253
+                    minLength: 1
+                    pattern: ^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$
+                    type: string
+                required:
+                - group
+                - kind
+                - name
+                type: object
               proposedCommitStatuses:
                 description: |-
                   ProposedCommitStatuses are commit statuses describing a proposed dry commit, i.e. one that is not yet running
@@ -186,6 +244,9 @@ spec:
 
                   The commit statuses specified in this field apply to all environments in the promotion sequence. You can also
                   specify commit statuses for individual environments in the `environments` field.
+
+                  The ordering gate key from orderCommitStatusRef is injected onto each ChangeTransferPolicy automatically and
+                  does not need to be declared here.
                 items:
                   description: CommitStatusSelector is used to select commit statuses
                     by their key.
@@ -232,6 +293,7 @@ spec:
             required:
             - environments
             - gitRepositoryRef
+            - orderCommitStatusRef
             type: object
           status:
             description: PromotionStrategyStatus defines the observed state of PromotionStrategy
@@ -343,6 +405,7 @@ spec:
                             - key
                             - phase
                             type: object
+                          maxItems: 100
                           type: array
                           x-kubernetes-list-map-keys:
                           - key
@@ -350,6 +413,7 @@ spec:
                         dry:
                           description: Dry is the dry state of the branch, which is
                             the commit that is being proposed.
+                          nullable: true
                           properties:
                             author:
                               description: Author is the author of the commit
@@ -409,6 +473,7 @@ spec:
                                         type: string
                                     type: object
                                 type: object
+                              maxItems: 100
                               type: array
                             repoURL:
                               description: RepoURL is the URL of the repository where
@@ -492,6 +557,7 @@ spec:
                                         type: string
                                     type: object
                                 type: object
+                              maxItems: 100
                               type: array
                             repoURL:
                               description: RepoURL is the URL of the repository where
@@ -584,6 +650,7 @@ spec:
                                         type: string
                                     type: object
                                 type: object
+                              maxItems: 100
                               type: array
                             repoURL:
                               description: RepoURL is the URL of the repository where
@@ -604,7 +671,7 @@ spec:
                       description: |-
                         History defines the history of promoted changes done by the PromotionStrategy for each environment.
                         You can think of it as a list of PRs merged by GitOps Promoter. It will not include changes that were
-                        manually merged. The history length is hard-coded to be at most 5 entries. This may change in the future.
+                        manually merged. The history length is at most 5 entries.
                         History is constructed on a best-effort basis and should be used for informational purposes only.
                         History is in reverse chronological order (newest is first).
                       items:
@@ -612,8 +679,11 @@ spec:
                           promoted by the ChangeTransferPolicy.
                         properties:
                           active:
-                            description: Active is the state of the active branch
-                              at the time the PR was merged.
+                            description: |-
+                              Active is the state of the active branch at the time the PR was merged. Its dry state is read back from
+                              <activePath>/hydrator.metadata on the merge commit and its hydrated state from that commit itself, so both
+                              describe what actually merged regardless of merge style. Its commitStatuses, by contrast, come from the
+                              snapshot trailers and may be stale when mergeCommitSnapshotMismatch is true.
                             properties:
                               commitStatuses:
                                 description: CommitStatuses is a list of commit statuses
@@ -651,6 +721,7 @@ spec:
                                   - key
                                   - phase
                                   type: object
+                                maxItems: 100
                                 type: array
                                 x-kubernetes-list-map-keys:
                                 - key
@@ -658,6 +729,7 @@ spec:
                               dry:
                                 description: Dry is the dry state of the branch, which
                                   is the commit that is being proposed.
+                                nullable: true
                                 properties:
                                   author:
                                     description: Author is the author of the commit
@@ -722,6 +794,7 @@ spec:
                                               type: string
                                           type: object
                                       type: object
+                                    maxItems: 100
                                     type: array
                                   repoURL:
                                     description: RepoURL is the URL of the repository
@@ -811,6 +884,7 @@ spec:
                                               type: string
                                           type: object
                                       type: object
+                                    maxItems: 100
                                     type: array
                                   repoURL:
                                     description: RepoURL is the URL of the repository
@@ -908,6 +982,7 @@ spec:
                                               type: string
                                           type: object
                                       type: object
+                                    maxItems: 100
                                     type: array
                                   repoURL:
                                     description: RepoURL is the URL of the repository
@@ -919,6 +994,15 @@ spec:
                                     type: string
                                 type: object
                             type: object
+                          mergeCommitSnapshotMismatch:
+                            description: |-
+                              MergeCommitSnapshotMismatch indicates hydrator metadata on the SCM-reported merge commit disagreed with
+                              the promoter's last snapshot (typically an external merge after the proposed branch advanced). When true,
+                              the fields this entry rebuilds from the snapshot trailers — proposed.commitStatuses and
+                              active.commitStatuses, plus proposed.hydrated when the merge was a squash (a single-parent squash commit
+                              gives the controller nothing to reconstruct the hydrated sha from) — may describe the earlier proposed
+                              revision rather than what actually merged.
+                            type: boolean
                           proposed:
                             description: Proposed is the state of the proposed branch
                               at the time the PR was merged.
@@ -926,7 +1010,9 @@ spec:
                               commitStatuses:
                                 description: |-
                                   CommitStatuses is a list of commit statuses that were being monitored for this branch.
-                                  This contains the state frozen at the moment the PR was merged.
+                                  This contains the state frozen at the moment the PR was merged. When the entry's
+                                  mergeCommitSnapshotMismatch is true, these phases come from snapshot trailers describing the proposed
+                                  revision the promoter last saw, which is not necessarily the revision that merged.
                                 items:
                                   description: ChangeRequestPolicyCommitStatusPhase
                                     defines the phase of a commit status in a ChangeTransferPolicy.
@@ -960,11 +1046,14 @@ spec:
                                   - key
                                   - phase
                                   type: object
+                                maxItems: 100
                                 type: array
                               hydrated:
-                                description: Hydrated is the hydrated state of the
-                                  branch, which is the commit that is currently being
-                                  worked on.
+                                description: |-
+                                  Hydrated is the hydrated state of the branch, which is the commit that is currently being worked on.
+                                  Read from the snapshot trailers. On a regular merge it is corrected to the merge commit's second parent,
+                                  but a squash commit has only one parent, so when the entry's mergeCommitSnapshotMismatch is true and the
+                                  merge was a squash the stale snapshot value is kept.
                                 properties:
                                   author:
                                     description: Author is the author of the commit
@@ -1029,6 +1118,7 @@ spec:
                                               type: string
                                           type: object
                                       type: object
+                                    maxItems: 100
                                     type: array
                                   repoURL:
                                     description: RepoURL is the URL of the repository
@@ -1057,16 +1147,27 @@ spec:
                             properties:
                               externallyMergedOrClosed:
                                 description: |-
-                                  ExternallyMergedOrClosed indicates that the pull request is no longer open on the SCM while the
-                                  PullRequest still desired it open: merged or closed outside the controller, or closed on the SCM
-                                  because the PullRequest resource was deleted (finalizer) before this status was reconciled.
-                                  When true, the State field will be empty ("") since we cannot tell merge vs. close from the provider.
-                                  This status is preserved even after the PullRequest resource is deleted, maintaining a historical
-                                  record until a new pull request is created for this environment.
+                                  ExternallyMergedOrClosed indicated that the pull request was no longer open on the SCM while
+                                  promotion still desired it open. The PullRequest controller no longer sets this field.
+
+                                  Deprecated: Use status.state merged-or-closed or unknown instead. Existing values may still
+                                  appear when mirrored from older PullRequest status. This field may be removed in a future API
+                                  revision.
                                 type: boolean
                               id:
                                 description: ID is the unique identifier of the pull
                                   request, set by the SCM.
+                                type: string
+                              mergedTargetSha:
+                                description: |-
+                                  MergedTargetSha is the SHA that the target branch points at after the merge. It is a merge commit
+                                  only when the SCM created one; squash and fast-forward merges report the resulting commit on the
+                                  target branch instead. In the live pull request status it is mirrored from the PullRequest resource
+                                  and is empty until the merge is observed; in a History entry it is the active-branch commit the
+                                  entry describes.
+                                maxLength: 64
+                                minLength: 40
+                                pattern: ^([a-f0-9]{40}|[a-f0-9]{64})$
                                 type: string
                               prCreationTime:
                                 description: PRCreationTime is the time when the pull
@@ -1087,6 +1188,8 @@ spec:
                                 - closed
                                 - merged
                                 - open
+                                - merged-or-closed
+                                - unknown
                                 type: string
                               url:
                                 description: Url is the URL of the pull request.
@@ -1097,6 +1200,7 @@ spec:
                                   rule: self == '' || isURL(self)
                             type: object
                         type: object
+                      maxItems: 5
                       type: array
                     lastHealthyDryShas:
                       description: LastHealthyDryShas is a list of dry commits that
@@ -1161,6 +1265,7 @@ spec:
                             - key
                             - phase
                             type: object
+                          maxItems: 100
                           type: array
                           x-kubernetes-list-map-keys:
                           - key
@@ -1168,6 +1273,7 @@ spec:
                         dry:
                           description: Dry is the dry state of the branch, which is
                             the commit that is being proposed.
+                          nullable: true
                           properties:
                             author:
                               description: Author is the author of the commit
@@ -1227,6 +1333,7 @@ spec:
                                         type: string
                                     type: object
                                 type: object
+                              maxItems: 100
                               type: array
                             repoURL:
                               description: RepoURL is the URL of the repository where
@@ -1310,6 +1417,7 @@ spec:
                                         type: string
                                     type: object
                                 type: object
+                              maxItems: 100
                               type: array
                             repoURL:
                               description: RepoURL is the URL of the repository where
@@ -1402,6 +1510,7 @@ spec:
                                         type: string
                                     type: object
                                 type: object
+                              maxItems: 100
                               type: array
                             repoURL:
                               description: RepoURL is the URL of the repository where
@@ -1419,16 +1528,27 @@ spec:
                       properties:
                         externallyMergedOrClosed:
                           description: |-
-                            ExternallyMergedOrClosed indicates that the pull request is no longer open on the SCM while the
-                            PullRequest still desired it open: merged or closed outside the controller, or closed on the SCM
-                            because the PullRequest resource was deleted (finalizer) before this status was reconciled.
-                            When true, the State field will be empty ("") since we cannot tell merge vs. close from the provider.
-                            This status is preserved even after the PullRequest resource is deleted, maintaining a historical
-                            record until a new pull request is created for this environment.
+                            ExternallyMergedOrClosed indicated that the pull request was no longer open on the SCM while
+                            promotion still desired it open. The PullRequest controller no longer sets this field.
+
+                            Deprecated: Use status.state merged-or-closed or unknown instead. Existing values may still
+                            appear when mirrored from older PullRequest status. This field may be removed in a future API
+                            revision.
                           type: boolean
                         id:
                           description: ID is the unique identifier of the pull request,
                             set by the SCM.
+                          type: string
+                        mergedTargetSha:
+                          description: |-
+                            MergedTargetSha is the SHA that the target branch points at after the merge. It is a merge commit
+                            only when the SCM created one; squash and fast-forward merges report the resulting commit on the
+                            target branch instead. In the live pull request status it is mirrored from the PullRequest resource
+                            and is empty until the merge is observed; in a History entry it is the active-branch commit the
+                            entry describes.
+                          maxLength: 64
+                          minLength: 40
+                          pattern: ^([a-f0-9]{40}|[a-f0-9]{64})$
                           type: string
                         prCreationTime:
                           description: PRCreationTime is the time when the pull request
@@ -1449,6 +1569,8 @@ spec:
                           - closed
                           - merged
                           - open
+                          - merged-or-closed
+                          - unknown
                           type: string
                         url:
                           description: Url is the URL of the pull request.
@@ -1463,6 +1585,7 @@ spec:
                   - branch
                   - proposed
                   type: object
+                maxItems: 500
                 type: array
                 x-kubernetes-list-map-keys:
                 - branch
@@ -1484,8 +1607,6 @@ spec:
                   status writes: compare status.observedGeneration with metadata.generation.
                 format: int64
                 type: integer
-            required:
-            - environments
             type: object
         required:
         - spec

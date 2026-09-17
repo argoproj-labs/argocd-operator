@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.21.0
+    controller-gen.kubebuilder.io/version: v0.22.0
   name: webrequestcommitstatuses.promoter.argoproj.io
 spec:
   group: promoter.argoproj.io
@@ -240,8 +240,8 @@ spec:
                     x-kubernetes-validations:
                     - message: at most one of the fields in [basic bearer oauth2 tls
                         scm] may be set
-                      rule: '[has(self.basic),has(self.bearer),has(self.oauth2),has(self.tls),has(self.scm)].filter(x,x==true).size()
-                        <= 1'
+                      rule: (has(self.basic)?1:0)+(has(self.bearer)?1:0)+(has(self.oauth2)?1:0)+(has(self.tls)?1:0)+(has(self.scm)?1:0)
+                        <= 1
                   bodyTemplate:
                     description: |-
                       BodyTemplate is the request body to send.
@@ -459,8 +459,7 @@ spec:
                 x-kubernetes-validations:
                 - message: exactly one of the fields in [polling trigger] must be
                     set
-                  rule: '[has(self.polling),has(self.trigger)].filter(x,x==true).size()
-                    == 1'
+                  rule: (has(self.polling)?1:0)+(has(self.trigger)?1:0) == 1
               promotionStrategyRef:
                 description: |-
                   PromotionStrategyRef references the PromotionStrategy this applies to.
@@ -501,7 +500,8 @@ spec:
                   Evaluated every reconcile. See SuccessSpec.
                 properties:
                   when:
-                    description: When is evaluated every reconcile. See WhenWithOutputSpec.Expression.
+                    description: When is evaluated every reconcile. See SuccessSpec
+                      for return values and WhenWithOutputSpec.Expression for variables.
                     properties:
                       expression:
                         description: |-
@@ -704,7 +704,8 @@ spec:
                     phase:
                       description: |-
                         Phase represents the current phase of the validation.
-                        This controller sets only "pending" or "success"; it never sets "failure" (failure is allowed by the enum for API consistency).
+                        A boolean success expression yields only "pending" or "success"; "failure" requires the { phase } object
+                        return form documented on SuccessSpec.
                       enum:
                       - pending
                       - success

@@ -1,35 +1,27 @@
+---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.22.0
-  creationTimestamp: null
-  name: argocdcommitstatuses.promoter.argoproj.io
+  name: dependentssuccessfulcommitstatuses.promoter.argoproj.io
 spec:
   group: promoter.argoproj.io
   names:
-    kind: ArgoCDCommitStatus
-    listKind: ArgoCDCommitStatusList
-    plural: argocdcommitstatuses
-    singular: argocdcommitstatus
+    kind: DependentsSuccessfulCommitStatus
+    listKind: DependentsSuccessfulCommitStatusList
+    plural: dependentssuccessfulcommitstatuses
+    singular: dependentssuccessfulcommitstatus
   scope: Namespaced
   versions:
-  - additionalPrinterColumns:
-    - jsonPath: .spec.promotionStrategyRef.name
-      name: PromotionStrategy
-      priority: 1
-      type: string
-    - jsonPath: .status.conditions[?(@.type=="Ready")].status
-      name: Ready
-      type: string
-    name: v1alpha1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ArgoCDCommitStatus is the Schema for the argocdcommitstatuses
-          API.
+        description: DependentsSuccessfulCommitStatus is the Schema for the dependentssuccessfulcommitstatuses
+          API
         externalDocs:
           description: CRD reference (examples and behavior)
-          url: https://gitops-promoter.readthedocs.io/en/stable/crd-specs/#argocdcommitstatus
+          url: https://gitops-promoter.readthedocs.io/en/stable/crd-specs/#dependentssuccessfulcommitstatus
         properties:
           apiVersion:
             description: |-
@@ -49,68 +41,22 @@ spec:
           metadata:
             type: object
           spec:
-            description: ArgoCDCommitStatusSpec defines the desired state of ArgoCDCommitStatus.
+            description: spec defines the desired state of DependentsSuccessfulCommitStatus
             properties:
-              applicationSelector:
-                description: ApplicationSelector is a label selector that selects
-                  the Argo CD applications to which this commit status applies.
-                properties:
-                  matchExpressions:
-                    description: matchExpressions is a list of label selector requirements.
-                      The requirements are ANDed.
-                    items:
-                      description: |-
-                        A label selector requirement is a selector that contains values, a key, and an operator that
-                        relates the key and values.
-                      properties:
-                        key:
-                          description: key is the label key that the selector applies
-                            to.
-                          type: string
-                        operator:
-                          description: |-
-                            operator represents a key's relationship to a set of values.
-                            Valid operators are In, NotIn, Exists and DoesNotExist.
-                          type: string
-                        values:
-                          description: |-
-                            values is an array of string values. If the operator is In or NotIn,
-                            the values array must be non-empty. If the operator is Exists or DoesNotExist,
-                            the values array must be empty. This array is replaced during a strategic
-                            merge patch.
-                          items:
-                            type: string
-                          type: array
-                          x-kubernetes-list-type: atomic
-                      required:
-                      - key
-                      - operator
-                      type: object
-                    type: array
-                    x-kubernetes-list-type: atomic
-                  matchLabels:
-                    additionalProperties:
-                      type: string
-                    description: |-
-                      matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
-                      map is equivalent to an element of matchExpressions, whose key field is "key", the
-                      operator is "In", and the values array contains only "value". The requirements are ANDed.
-                    type: object
-                type: object
-                x-kubernetes-map-type: atomic
               key:
-                default: argocd-health
                 description: |-
-                  Key is the gate name referenced in the PromotionStrategy's activeCommitStatuses.
-                  When omitted, the CRD default is argocd-health. Set Key explicitly, even if you use the CRD default.
+                  Key is the commit status key this controller writes on each environment's proposed hydrated SHA.
+                  The PromotionStrategy controller injects this key onto every ChangeTransferPolicy's proposedCommitStatuses.
                   Must be lowercase alphanumeric with hyphens, 1–63 characters (pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$).
                 maxLength: 63
                 minLength: 1
                 pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
                 type: string
               promotionStrategyRef:
-                description: PromotionStrategyRef is a reference to the promotion
-                  strategy that this commit status applies to.
+                description: |-
+                  PromotionStrategyRef is a reference to the promotion strategy that this dependents successful commit status
+                  applies to. The controller watches this PromotionStrategy and, for each environment, reports whether the
+                  environment's dependent environments (as declared on the PromotionStrategy) are promoted and successful.
                 properties:
                   name:
                     description: Name is the name of the object to refer to.
@@ -122,8 +68,12 @@ spec:
                 - name
                 type: object
               url:
-                description: URL generates the URL to use in the CommitStatus, for
-                  example a link to the Argo CD UI.
+                description: |-
+                  URL generates the URL to use on the per-environment CommitStatus (SCM details link), for
+                  example a link into the Promoter UI that highlights this environment's dependsOn upstreams.
+                  Optional; when empty, no URL is set on the child CommitStatus. The template receives
+                  .Environment, .DependentsSuccessfulCommitStatus, .PromotionStrategy, .DependsOn, and .DependsOnQuery
+                  (see controller docs).
                 properties:
                   options:
                     description: "Options sets options for the template. Options are
@@ -153,76 +103,15 @@ spec:
                     type: string
                 type: object
             required:
-            - applicationSelector
+            - key
             - promotionStrategyRef
             type: object
           status:
-            description: ArgoCDCommitStatusStatus defines the observed state of ArgoCDCommitStatus.
+            description: status defines the observed state of DependentsSuccessfulCommitStatus
             properties:
-              applicationsSelected:
-                description: |-
-                  ApplicationsSelected represents the Argo CD applications that are selected by the commit status.
-                  This field is sorted by environment (same order as the referenced PromotionStrategy), then namespace, then name.
-                items:
-                  description: |-
-                    ApplicationsSelected represents the Argo CD applications that are selected by the commit status. The fields in this
-                    struct are all required, since the controller should always fully construct this information.
-                  properties:
-                    clusterName:
-                      description: |-
-                        ClusterName is the name of the cluster that the application manifest is deployed to. An empty string indicates
-                        the local cluster. There is no minimum length, since the local cluster is represented by an empty string.
-                      type: string
-                    environment:
-                      description: Environment is the syncSource.targetBranch of the
-                        Argo CD application (in effect, its environment).
-                      minLength: 1
-                      type: string
-                    lastTransitionTime:
-                      description: LastTransitionTime is the last time the phase transitioned.
-                      format: date-time
-                      type: string
-                    name:
-                      description: Name is the name of the Argo CD application.
-                      maxLength: 253
-                      minLength: 1
-                      pattern: ^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$
-                      type: string
-                    namespace:
-                      description: Namespace is the namespace of the Argo CD application.
-                      maxLength: 63
-                      minLength: 1
-                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
-                      type: string
-                    phase:
-                      description: Phase is the current phase of the commit status.
-                      enum:
-                      - pending
-                      - success
-                      - failure
-                      type: string
-                    sha:
-                      description: |-
-                        Sha is the commit SHA that the application is synced to.
-                        This field is only populated when the application's sync status is Synced.
-                        When the sync status is OutOfSync or Unknown, this field will be empty because
-                        Status.Sync.Revision may contain a branch name instead of a SHA.
-                        Supports both SHA-1 (40 chars) and SHA-256 (64 chars) Git hash formats.
-                      maxLength: 64
-                      pattern: ^(|[a-f0-9]{40}|[a-f0-9]{64})$
-                      type: string
-                  required:
-                  - clusterName
-                  - environment
-                  - name
-                  - namespace
-                  - phase
-                  - sha
-                  type: object
-                type: array
               conditions:
-                description: Conditions Represents the observations of the current
-                  state.
+                description: Conditions represent the latest available observations
+                  of an object's state
                 items:
                   description: Condition contains details for one aspect of the current
                     state of this API Resource.
@@ -281,6 +170,119 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
+              environments:
+                description: Environments reports observed gate and upstream state
+                  per dependency-graph branch.
+                items:
+                  description: DependentsSuccessfulCommitStatusEnvironmentStatus defines
+                    observed state for one environment branch.
+                  properties:
+                    activeCommitStatuses:
+                      description: ActiveCommitStatuses is a verbatim copy of the
+                        PromotionStrategy environment's active commit statuses.
+                      items:
+                        description: ChangeRequestPolicyCommitStatusPhase defines
+                          the phase of a commit status in a ChangeTransferPolicy.
+                        properties:
+                          description:
+                            description: Description is the description of the commit
+                              status
+                            type: string
+                          key:
+                            description: Key staging hydrated branch
+                            maxLength: 63
+                            minLength: 1
+                            pattern: ([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]
+                            type: string
+                          phase:
+                            description: Phase what phase is the status in
+                            enum:
+                            - pending
+                            - success
+                            - failure
+                            type: string
+                          url:
+                            description: Url is the URL of the commit status
+                            pattern: ^(https?://.*)?$
+                            type: string
+                            x-kubernetes-validations:
+                            - message: must be a valid URL
+                              rule: self == '' || isURL(self)
+                        required:
+                        - key
+                        - phase
+                        type: object
+                      maxItems: 100
+                      type: array
+                      x-kubernetes-list-map-keys:
+                      - key
+                      x-kubernetes-list-type: map
+                    branch:
+                      description: Branch is the environment branch name.
+                      minLength: 1
+                      type: string
+                    description:
+                      description: Description mirrors child CommitStatus.spec.description.
+                      type: string
+                    phase:
+                      description: Phase mirrors child CommitStatus.spec.phase.
+                      enum:
+                      - pending
+                      - success
+                      - failure
+                      - ""
+                      type: string
+                    reportedSha:
+                      description: |-
+                        ReportedSha is the hydrated SHA the child CommitStatus is attached to (CommitStatus.spec.sha).
+                        Semantics depend on the parent gate (proposed vs active hydrated SHA).
+                        Supports both SHA-1 (40 chars) and SHA-256 (64 chars) Git hash formats.
+                      maxLength: 64
+                      pattern: ^([a-f0-9]{40}|[a-f0-9]{64})?$
+                      type: string
+                    upstreams:
+                      description: Upstreams lists all transitive ancestor branches
+                        and whether each is satisfied for this environment's promotion
+                        target.
+                      items:
+                        description: |-
+                          DependentsSuccessfulCommitStatusUpstreamStatus reports whether a transitive upstream branch
+                          is satisfied for this environment's promotion target.
+                        properties:
+                          branch:
+                            description: Branch is the upstream environment branch
+                              name.
+                            minLength: 1
+                            type: string
+                          reason:
+                            description: Reason explains why the upstream is not satisfied.
+                              Omitted when satisfied is true.
+                            type: string
+                          satisfied:
+                            description: Satisfied is true when the upstream has promoted
+                              and is healthy for this environment's target dry SHA.
+                            type: boolean
+                        required:
+                        - branch
+                        - satisfied
+                        type: object
+                      type: array
+                      x-kubernetes-list-type: atomic
+                    url:
+                      description: Url mirrors child CommitStatus.spec.url.
+                      pattern: ^(https?://.*)?$
+                      type: string
+                      x-kubernetes-validations:
+                      - message: must be a valid URL
+                        rule: self == '' || isURL(self)
+                  required:
+                  - branch
+                  type: object
+                maxItems: 500
+                type: array
+                x-kubernetes-list-map-keys:
+                - branch
+                x-kubernetes-list-type: map
               instanceID:
                 description: |-
                   InstanceID mirrors metadata.labels[promoter.argoproj.io/instance-id] stamped on each
@@ -299,14 +301,10 @@ spec:
                 format: int64
                 type: integer
             type: object
+        required:
+        - spec
         type: object
     served: true
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: null
-  storedVersions: null
