@@ -90,6 +90,23 @@ func (r *ReconcileArgoCD) reconcileDexLegacySATokenSecrets(cr *argoproj.ArgoCD) 
 			return errors.Join(append([]error{err}, deleteErrs...)...)
 		}
 	}
+	// Bounded short-lived token secrets generated through TokenRequest API must also be removed.
+	for _, secret := range secretList.Items {
+		if secret.Type != corev1.SecretTypeOpaque ||
+			secret.Name != fmt.Sprintf("%s-%s", dexSAName, "token") ||
+			secret.Labels[common.ArgoCDTrackedByOperatorLabel] != common.ArgoCDAppName {
+			continue
+		}
+
+		argoutil.LogResourceDeletion(log, &secret, "removing bound short-lived dex token secret")
+		if err := r.Delete(context.TODO(), &secret); err != nil {
+			if !apierrors.IsNotFound(err) {
+				deleteErrs = append(deleteErrs, fmt.Errorf("delete bound short-lived dex token secret %s/%s: %w", secret.Namespace, secret.Name, err))
+				continue
+			}
+		}
+		deletedSecretNames[secret.Name] = struct{}{}
+	}
 	return errors.Join(deleteErrs...)
 }
 
