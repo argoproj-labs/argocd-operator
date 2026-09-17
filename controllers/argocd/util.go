@@ -734,7 +734,8 @@ func (r *ReconcileArgoCD) deleteClusterResources(cr *argoproj.ArgoCD) error {
 		return fmt.Errorf("failed to filter APIServices for %s: %w", cr.Name, err)
 	}
 
-	if err := gitopspromoter.DeleteAPIServices(r.Client, apiSvcList); err != nil {
+	apiServerCompName := string(argoproj.PromoterComponentTypeAPIServer)
+	if err := gitopspromoter.DeleteAPIServices(r.Client, apiSvcList, apiServerCompName, cr); err != nil {
 		return err
 	}
 
@@ -826,7 +827,6 @@ func removeString(slice []string, s string) []string {
 
 // setResourceWatches will register Watches for each of the supported Resources.
 func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, clusterSecretResourceMapper, applicationSetGitlabSCMTLSConfigMapMapper, nmMapper, systemCATrustMapper, imagePullSecretMapper handler.MapFunc) *builder.Builder {
-
 	// Add new predicate to delete Notifications Resources. The predicate watches the Argo CD CR for changes to the `.spec.Notifications.Enabled`
 	// field. When a change is detected that results in notifications being disabled, we trigger deletion of notifications resources
 	deleteNotificationsPred := predicate.Funcs{
