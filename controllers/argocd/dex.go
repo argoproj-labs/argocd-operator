@@ -255,6 +255,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 
 	dexEnv := proxyEnvVars()
 	expirationSeconds := common.ArgoCDDexServerTokenExpirySecs
+	projectedVolDefaultMode := corev1.ProjectedVolumeSourceDefaultMode
 	dexVolumes := []corev1.Volume{
 		{
 			Name: "static-files",
@@ -306,6 +307,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 							},
 						},
 					},
+					DefaultMode: &projectedVolDefaultMode,
 				},
 			},
 		},
