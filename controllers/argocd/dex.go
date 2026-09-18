@@ -40,8 +40,10 @@ func UseDex(cr *argoproj.ArgoCD) bool {
 	return false
 }
 
-// reconcileDexLegacySATokenSecrets deletes non-expiring kubernetes.io/service-account-token
-// Secrets for the Dex SA and removes their stale references from the SA.
+// reconcileDexLegacySATokenSecrets cleans up token secrets for the Dex ServiceAccount by:
+//   - Deleting legacy, non-expiring kubernetes.io/service-account-token secrets.
+//   - Deleting bounded, short-lived token secrets generated via the TokenRequest API.
+//   - Removing stale secret references directly from the Dex ServiceAccount resource.
 func (r *ReconcileArgoCD) reconcileDexLegacySATokenSecrets(cr *argoproj.ArgoCD) error {
 	dexSAName := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr).Name
 	secretList := &corev1.SecretList{}
@@ -69,6 +71,23 @@ func (r *ReconcileArgoCD) reconcileDexLegacySATokenSecrets(cr *argoproj.ArgoCD) 
 		}
 		deletedSecretNames[s.Name] = struct{}{}
 	}
+	// Bounded short-lived token secrets generated through TokenRequest API must also be removed.
+	for _, secret := range secretList.Items {
+		if secret.Type != corev1.SecretTypeOpaque ||
+			secret.Name != fmt.Sprintf("%s-%s", dexSAName, "token") ||
+			secret.Labels[common.ArgoCDTrackedByOperatorLabel] != common.ArgoCDAppName {
+			continue
+		}
+
+		argoutil.LogResourceDeletion(log, &secret, "removing bounded short-lived dex token secret")
+		if err := r.Delete(context.TODO(), &secret); err != nil {
+			if !apierrors.IsNotFound(err) {
+				deleteErrs = append(deleteErrs,
+					fmt.Errorf("delete bound short-lived dex token secret %s/%s: %w", secret.Namespace, secret.Name, err))
+				continue
+			}
+		}
+	}
 	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr)
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
 		if apierrors.IsNotFound(err) {
@@ -89,23 +108,6 @@ func (r *ReconcileArgoCD) reconcileDexLegacySATokenSecrets(cr *argoproj.ArgoCD) 
 		if err := r.Update(context.TODO(), sa); err != nil {
 			return errors.Join(append([]error{err}, deleteErrs...)...)
 		}
-	}
-	// Bounded short-lived token secrets generated through TokenRequest API must also be removed.
-	for _, secret := range secretList.Items {
-		if secret.Type != corev1.SecretTypeOpaque ||
-			secret.Name != fmt.Sprintf("%s-%s", dexSAName, "token") ||
-			secret.Labels[common.ArgoCDTrackedByOperatorLabel] != common.ArgoCDAppName {
-			continue
-		}
-
-		argoutil.LogResourceDeletion(log, &secret, "removing bound short-lived dex token secret")
-		if err := r.Delete(context.TODO(), &secret); err != nil {
-			if !apierrors.IsNotFound(err) {
-				deleteErrs = append(deleteErrs, fmt.Errorf("delete bound short-lived dex token secret %s/%s: %w", secret.Namespace, secret.Name, err))
-				continue
-			}
-		}
-		deletedSecretNames[secret.Name] = struct{}{}
 	}
 	return errors.Join(deleteErrs...)
 }
