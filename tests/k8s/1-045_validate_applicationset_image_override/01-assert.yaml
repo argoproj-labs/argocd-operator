@@ -1,0 +1,10 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-argocd-applicationset-controller
+spec:
+  template:
+    spec:
+      containers:
+        - image: "testimage:tag001"
+          name: argocd-applicationset-controller
