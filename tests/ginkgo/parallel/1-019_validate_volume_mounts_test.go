@@ -454,6 +454,11 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 					MountPath: "/tmp",
 				},
 				{
+					Name:      "sa-token-volume",
+					MountPath: "/var/run/secrets/kubernetes.io/serviceaccount",
+					ReadOnly:  true,
+				},
+				{
 					Name:      "empty-dir-volume",
 					MountPath: "/etc/test",
 				},
@@ -467,6 +472,11 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				{
 					Name:      "dexconfig",
 					MountPath: "/tmp",
+				},
+				{
+					Name:      "sa-token-volume",
+					MountPath: "/var/run/secrets/kubernetes.io/serviceaccount",
+					ReadOnly:  true,
 				},
 				{
 					Name:      "empty-dir-volume",
@@ -485,6 +495,48 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 					Name: "dexconfig",
 					VolumeSource: corev1.VolumeSource{
 						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+				{
+					Name: "sa-token-volume",
+					VolumeSource: corev1.VolumeSource{
+						Projected: &corev1.ProjectedVolumeSource{
+							Sources: []corev1.VolumeProjection{
+								{
+									ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+										ExpirationSeconds: new(int64(3600)),
+										Path:              "token",
+									},
+								},
+								{
+									ConfigMap: &corev1.ConfigMapProjection{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "kube-root-ca.crt",
+										},
+										Items: []corev1.KeyToPath{
+											{
+												Key:  "ca.crt",
+												Path: "ca.crt",
+											},
+										},
+									},
+								},
+								{
+									DownwardAPI: &corev1.DownwardAPIProjection{
+										Items: []corev1.DownwardAPIVolumeFile{
+											{
+												Path: "namespace",
+												FieldRef: &corev1.ObjectFieldSelector{
+													APIVersion: "v1",
+													FieldPath:  "metadata.namespace",
+												},
+											},
+										},
+									},
+								},
+							},
+							DefaultMode: new(corev1.ProjectedVolumeSourceDefaultMode),
+						},
 					},
 				},
 
