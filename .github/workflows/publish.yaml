@@ -98,7 +98,7 @@ jobs:
             type=semver,pattern={{raw}}
 
       - name: Build and push operator image (multi-arch)
-        uses: docker/build-push-action@v7.3.0
+        uses: docker/build-push-action@v7.4.0
         with:
           context: .
           push: true
@@ -109,7 +109,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and push bundle image
-        uses: docker/build-push-action@v7.3.0
+        uses: docker/build-push-action@v7.4.0
         with:
           context: .
           file: bundle.Dockerfile
@@ -123,7 +123,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and push util image (multi-arch)
-        uses: docker/build-push-action@v7.3.0
+        uses: docker/build-push-action@v7.4.0
         with:
           context: build/util
           push: true
@@ -179,7 +179,7 @@ jobs:
           opm generate dockerfile --base-image ${{ env.OPM_REGISTRY_IMAGE }} --builder-image ${{ env.OPM_REGISTRY_IMAGE }} build/_output/catalog
 
       - name: Build and push file-based catalog registry image (multi-arch)
-        uses: docker/build-push-action@v7.3.0
+        uses: docker/build-push-action@v7.4.0
         with:
           context: build/_output
           file: build/_output/catalog.Dockerfile
