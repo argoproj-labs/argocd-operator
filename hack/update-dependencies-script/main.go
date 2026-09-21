@@ -121,11 +121,11 @@ func replaceDexImageReferenceInDexTest(argocdOperatorRoot string, dexContainerIm
 	match := false
 
 	for idx := 0; idx < len(lines); idx++ {
-		if strings.HasPrefix(lines[idx], "						Name:  \"dex\",") &&
-			strings.HasPrefix(lines[idx+1], "						Image: \"ghcr.io/dexidp/dex@sha256:") {
+		if strings.HasPrefix(lines[idx], "							Name:  \"dex\",") &&
+			strings.HasPrefix(lines[idx+1], "							Image: \"ghcr.io/dexidp/dex@sha256:") {
 
 			newContent += lines[idx] + "\n" // No modification of first line required
-			newContent += "						Image: \"ghcr.io/dexidp/dex@" + dexContainerImage.sha256Digest + "\", // (" + dexContainerImage.version + ") NOTE: this value is modified by dependency update script\n"
+			newContent += "							Image: \"ghcr.io/dexidp/dex@" + dexContainerImage.sha256Digest + "\", // (" + dexContainerImage.version + ") NOTE: this value is modified by dependency update script\n"
 
 			idx++ // Skip to the line after these 2
 			match = true

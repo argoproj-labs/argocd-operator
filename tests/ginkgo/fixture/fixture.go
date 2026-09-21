@@ -637,6 +637,17 @@ func OutputDebugOnFail(namespaceParams ...any) {
 		GinkgoWriter.Println(kubectlOutput)
 		GinkgoWriter.Println("----------------------------------------------------------------")
 
+		kubectlOutput, err = osFixture.ExecCommandWithOutputParam(false, true, "kubectl", "get", "statefulsets", "-n", namespace, "-o", "yaml")
+		if err != nil {
+			GinkgoWriter.Println("unable to list", namespace, err, kubectlOutput)
+			continue
+		}
+		GinkgoWriter.Println("")
+		GinkgoWriter.Println("----------------------------------------------------------------")
+		GinkgoWriter.Println("'kubectl get statefulsets -n " + namespace + " -o yaml")
+		GinkgoWriter.Println(kubectlOutput)
+		GinkgoWriter.Println("----------------------------------------------------------------")
+
 		kubectlOutput, err = osFixture.ExecCommandWithOutputParam(false, true, "kubectl", "get", "events", "-n", namespace)
 		if err != nil {
 			GinkgoWriter.Println("unable to get events for namespace", err, kubectlOutput)

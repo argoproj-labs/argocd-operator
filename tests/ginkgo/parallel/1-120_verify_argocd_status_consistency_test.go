@@ -34,6 +34,17 @@ import (
 	fixtureUtils "github.com/argoproj-labs/argocd-operator/tests/ginkgo/fixture/utils"
 )
 
+const dexConfigYAML = `connectors:
+  - type: openshift
+    id: openshift
+    name: OpenShift
+    config:
+      issuer: https://kubernetes.default.svc
+      clientID: testclient
+      redirectURI: https://localhost:443/dex/callback
+      insecureCA: true
+      clientSecretFile: /var/run/secrets/kubernetes.io/serviceaccount/token`
+
 var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 	Context("1-120_verify_argocd_status_consistency", func() {
@@ -173,7 +184,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 								ac.Spec.SSO = &argov1beta1api.ArgoCDSSOSpec{
 									Provider: argov1beta1api.SSOProviderTypeDex,
 									Dex: &argov1beta1api.ArgoCDDexSpec{
-										Config: "hi",
+										Config: dexConfigYAML,
 										Image:  "quay.io/argoprojlabs/argocd-operator-does-not-exist:latest",
 									},
 								}
@@ -181,7 +192,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 								ac.Spec.SSO = &argov1beta1api.ArgoCDSSOSpec{
 									Provider: argov1beta1api.SSOProviderTypeDex,
 									Dex: &argov1beta1api.ArgoCDDexSpec{
-										Config: "hi",
+										Config: dexConfigYAML,
 									},
 								}
 							}
@@ -205,7 +216,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 					SSO: &argov1beta1api.ArgoCDSSOSpec{
 						Provider: argov1beta1api.SSOProviderTypeDex,
 						Dex: &argov1beta1api.ArgoCDDexSpec{
-							Config: "hi",
+							Config: dexConfigYAML,
 						},
 					},
 					Repo:  argov1beta1api.ArgoCDRepoSpec{},
