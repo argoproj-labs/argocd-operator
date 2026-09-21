@@ -200,16 +200,6 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoproj.ArgoCD) error {
 		common.ArgoCDKeyTLSPrivateKey:      tlsSecret.Data[common.ArgoCDKeyTLSPrivateKey],
 	}
 
-	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeDex {
-		dexOIDCClientSecret, err := r.getDexOAuthClientSecret(cr)
-		if err != nil {
-			return err
-		}
-		if dexOIDCClientSecret != nil {
-			secret.Data[common.ArgoCDDexSecretKey] = []byte(*dexOIDCClientSecret)
-		}
-	}
-
 	var webhookChanges []string
 	if err := applyDeclarativeWebhookSecrets(context.TODO(), r.Client, cr, secret, &webhookChanges); err != nil {
 		return err
@@ -376,21 +366,6 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secre
 		secret.Data[common.ArgoCDKeyTLSCert] = tlsSecret.Data[common.ArgoCDKeyTLSCert]
 		secret.Data[common.ArgoCDKeyTLSPrivateKey] = tlsSecret.Data[common.ArgoCDKeyTLSPrivateKey]
 		changes = append(changes, "argo tls secret")
-	}
-
-	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeDex {
-		dexOIDCClientSecret, err := r.getDexOAuthClientSecret(cr)
-		if err != nil {
-			return err
-		}
-		actual := string(secret.Data[common.ArgoCDDexSecretKey])
-		if dexOIDCClientSecret != nil {
-			expected := *dexOIDCClientSecret
-			if actual != expected {
-				secret.Data[common.ArgoCDDexSecretKey] = []byte(*dexOIDCClientSecret)
-				changes = append(changes, "argo dex secret")
-			}
-		}
 	}
 
 	if err := applyDeclarativeWebhookSecrets(context.TODO(), r.Client, cr, secret, &changes); err != nil {
