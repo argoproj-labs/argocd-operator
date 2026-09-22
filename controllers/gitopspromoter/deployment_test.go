@@ -477,6 +477,8 @@ func TestReconcilePromoterControllerDeployment_PromoterEnabled(t *testing.T) {
 	assert.Equal(t, cfg.securityContext, retrievedDeployment.Spec.Template.Spec.Containers[0].SecurityContext)
 	assert.Equal(t, cfg.livenessProbe, retrievedDeployment.Spec.Template.Spec.Containers[0].LivenessProbe)
 	assert.Equal(t, cfg.readinessProbe, retrievedDeployment.Spec.Template.Spec.Containers[0].ReadinessProbe)
+	assert.Equal(t, cfg.volumeMounts, retrievedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts)
+	assert.Equal(t, cfg.volumes, retrievedDeployment.Spec.Template.Spec.Volumes)
 }
 
 func TestReconcilePromoterAPIServerDeployment_PromoterDisabled(t *testing.T) {
