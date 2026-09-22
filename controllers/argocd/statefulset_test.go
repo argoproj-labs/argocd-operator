@@ -437,6 +437,15 @@ func TestReconcileArgoCD_reconcileApplicationController_withResources(t *testing
 		},
 		ss))
 
+	volumeNames := make(map[string]bool)
+	for _, vol := range ss.Spec.Template.Spec.Volumes {
+		volumeNames[vol.Name] = true
+	}
+	assert.True(t, volumeNames["argocd-repo-server-tls"])
+	assert.True(t, volumeNames[common.ArgoCDRedisServerTLSSecretName])
+	assert.True(t, volumeNames["backup-storage"])
+	assert.True(t, volumeNames["secret-storage"])
+
 	testResources := corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
 			corev1.ResourceMemory: resourcev1.MustParse("1024Mi"),
