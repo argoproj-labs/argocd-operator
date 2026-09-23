@@ -68,6 +68,8 @@ func createControllerConfig() deploymentConfig {
 		securityContext: buildControllerSecurityContext(),
 		livenessProbe:   buildControllerLivenessProbe(),
 		readinessProbe:  buildControllerReadinessProbe(),
+		volumes:         buildControllerVolumes(),
+		volumeMounts:    buildControllerVolumeMounts(),
 	}
 }
 
@@ -442,6 +444,28 @@ func buildAPIServerArgs() []string {
 		"--secure-port=6443",
 		"--tls-cert-file=/serving-certs/tls.crt",
 		"--tls-private-key-file=/serving-certs/tls.key",
+	}
+}
+
+// buildControllerVolumes provides writable storage for Git clones and temporary index files.
+func buildControllerVolumes() []corev1.Volume {
+	return []corev1.Volume{
+		{
+			Name: "tmp",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+	}
+}
+
+// buildControllerVolumeMounts mounts the controller's writable temporary storage.
+func buildControllerVolumeMounts() []corev1.VolumeMount {
+	return []corev1.VolumeMount{
+		{
+			Name:      "tmp",
+			MountPath: "/tmp",
+		},
 	}
 }
 
