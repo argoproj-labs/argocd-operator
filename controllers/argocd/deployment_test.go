@@ -2,6 +2,7 @@ package argocd
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -38,7 +39,7 @@ import (
 const (
 	testHTTPProxy  = "example.com:8888"
 	testHTTPSProxy = "example.com:8443"
-	testNoProxy    = ".example.com"
+	testNoProxy    = ".example.com,42.43.44.45"
 )
 
 var deploymentNames = []string{
@@ -1177,7 +1178,7 @@ func Test_proxyEnvVars(t *testing.T) {
 			want: []corev1.EnvVar{
 				{Name: "HTTP_PROXY", Value: "example.com:8888"},
 				{Name: "HTTPS_PROXY", Value: "example.com:8443"},
-				{Name: "no_proxy", Value: ".example.com"},
+				{Name: "no_proxy", Value: ".example.com,42.43.44.45,.cluster.local."},
 			},
 		},
 		{
@@ -1188,7 +1189,7 @@ func Test_proxyEnvVars(t *testing.T) {
 				{Name: "TEST_VAR", Value: "testing"},
 				{Name: "HTTP_PROXY", Value: "example.com:8888"},
 				{Name: "HTTPS_PROXY", Value: "example.com:8443"},
-				{Name: "no_proxy", Value: ".example.com"},
+				{Name: "no_proxy", Value: ".example.com,42.43.44.45,.cluster.local."},
 			},
 		},
 	}
@@ -1197,6 +1198,13 @@ func Test_proxyEnvVars(t *testing.T) {
 		e := proxyEnvVars(tt.vars...)
 		assert.Equal(t, tt.want, e)
 	}
+}
+
+func Test_proxyEnvVars_NO_PROXY_no_dupes(t *testing.T) {
+	t.Setenv("NO_PROXY", ".cluster.local.,.example.com")
+	env := proxyEnvVars(corev1.EnvVar{})
+	noProxy := argoutil.EnvGet(env, "NO_PROXY")
+	assert.Equal(t, ".cluster.local.,.example.com", noProxy.Value)
 }
 
 func TestReconcileArgoCD_reconcileDeployment_nodePlacement(t *testing.T) {
@@ -2269,7 +2277,7 @@ func assertDeploymentHasProxyVars(t *testing.T, c client.Client, name string) {
 	want := []corev1.EnvVar{
 		{Name: "HTTP_PROXY", Value: testHTTPProxy},
 		{Name: "HTTPS_PROXY", Value: testHTTPSProxy},
-		{Name: "no_proxy", Value: testNoProxy},
+		{Name: "no_proxy", Value: fmt.Sprintf("%s,.cluster.local.", testNoProxy)},
 	}
 	for _, c := range deployment.Spec.Template.Spec.Containers {
 		for _, w := range want {

@@ -311,7 +311,7 @@ func TestReconcileApplicationSetProxyConfiguration(t *testing.T) {
 		},
 		{
 			Name:  "NO_PROXY",
-			Value: ".cluster.local",
+			Value: ".cluster.local,.cluster.local.",
 		},
 	}
 
