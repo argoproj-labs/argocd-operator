@@ -672,7 +672,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 
 	redisEnv := proxyEnvVars()
 
-	deploy.Spec.Replicas = argoutil.GetRedisHAReplicas()
+	deploy.Spec.Replicas = argoutil.GetRedisHAProxyReplicas(cr)
 
 	deploy.Spec.Template.Spec.Affinity = &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{

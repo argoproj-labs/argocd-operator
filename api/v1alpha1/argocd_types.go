@@ -288,6 +288,11 @@ type ArgoCDHASpec struct {
 	// RedisProxyVersion is the Redis HAProxy container image tag.
 	RedisProxyVersion string `json:"redisProxyVersion,omitempty"`
 
+	// Replicas is the number of replicas for the Redis HAProxy Deployment (argocd-redis-ha-haproxy).
+	// This does not change the Redis HA StatefulSet replica count, which remains 3.
+	// Must be greater than or equal to 1. Defaults to 3 when omitted.
+	Replicas *int32 `json:"replicas,omitempty"`
+
 	// Resources defines the Compute Resources required by the container for HA.
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 }

@@ -900,6 +900,70 @@ func TestReconcileArgoCD_reconcileDeployments_HA_proxy_with_resources(t *testing
 	assert.Equal(t, deployment.Spec.Strategy.RollingUpdate.MaxSurge, &intstr.IntOrString{IntVal: 0})
 }
 
+func TestReconcileArgoCD_reconcileRedisHAProxyDeployment_replicas(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	var customReplicas int32 = 5
+	tests := []struct {
+		name             string
+		replicas         *int32
+		expectedReplicas int32
+	}{
+		{
+			name:             "default replicas when spec.ha.replicas is unset",
+			replicas:         nil,
+			expectedReplicas: 3,
+		},
+		{
+			name:             "custom replicas from spec.ha.replicas",
+			replicas:         &customReplicas,
+			expectedReplicas: 5,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.HA.Enabled = true
+				a.Spec.HA.Replicas = test.replicas
+			})
+
+			resObjs := []client.Object{a}
+			subresObjs := []client.Object{a}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			assert.NoError(t, r.reconcileRedisHAProxyDeployment(a))
+
+			deployment := &appsv1.Deployment{}
+			assert.NoError(t, r.Get(
+				context.TODO(),
+				types.NamespacedName{
+					Name:      a.Name + "-redis-ha-haproxy",
+					Namespace: a.Namespace,
+				},
+				deployment))
+			require.NotNil(t, deployment.Spec.Replicas)
+			assert.Equal(t, test.expectedReplicas, *deployment.Spec.Replicas)
+
+			updatedReplicas := int32(7)
+			a.Spec.HA.Replicas = &updatedReplicas
+			assert.NoError(t, r.reconcileRedisHAProxyDeployment(a))
+			assert.NoError(t, r.Get(
+				context.TODO(),
+				types.NamespacedName{
+					Name:      a.Name + "-redis-ha-haproxy",
+					Namespace: a.Namespace,
+				},
+				deployment))
+			require.NotNil(t, deployment.Spec.Replicas)
+			assert.Equal(t, updatedReplicas, *deployment.Spec.Replicas)
+		})
+	}
+}
+
 func TestReconcileArgoCD_reconcileRedisHAProxyDeployment_ModifyContainerSpec(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
