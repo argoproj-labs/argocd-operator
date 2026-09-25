@@ -96,6 +96,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Expect(*serverRoute.Spec.To.Weight).To(Equal(int32(100)))
 			Expect(serverRoute.Spec.TLS.InsecureEdgeTerminationPolicy).To(Equal(routev1.InsecureEdgeTerminationPolicyRedirect))
 			Expect(serverRoute.Spec.TLS.Termination).To(Equal(routev1.TLSTerminationReencrypt))
+			Expect(serverRoute.Spec.TLS.DestinationCACertificate).NotTo(BeEmpty(), "reencrypt server Route must include destinationCACertificate so the OpenShift router can verify the backend")
 
 			webhookRoute := &routev1.Route{ObjectMeta: metav1.ObjectMeta{Name: "example-appset-webhook", Namespace: ns.Name}}
 			Eventually(webhookRoute).Should(k8sFixture.ExistByName())
