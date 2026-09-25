@@ -34,6 +34,11 @@ import (
 
 var log = logr.Log.WithName("controller_promoter")
 
+// APIAggregationNamespace is the namespace hosting the RoleBinding that the Promoter API server
+// requires for API aggregation. It is the only namespace outside of the Argo CD instance's own
+// namespace in which the Promoter creates a namespace scoped resource.
+const APIAggregationNamespace = "kube-system"
+
 // generatePromoterResourceName generates a resource name for a resource that adheres to length constraints.
 func generatePromoterResourceName(compName string, cr *argoproj.ArgoCD) string {
 	return argoutil.NameWithSuffix(cr.ObjectMeta, compName)
@@ -43,6 +48,14 @@ func generatePromoterResourceName(compName string, cr *argoproj.ArgoCD) string {
 // Useful for cluster scoped resources.
 func generatePromoterResourceNameWithNamespace(compName string, cr *argoproj.ArgoCD) string {
 	return fmt.Sprintf("%s-%s-%s", cr.Name, cr.Namespace, compName)
+}
+
+// ResourceNamePrefix returns the prefix shared by every Promoter resource whose name is qualified with
+// the Argo CD instance's namespace. Instance names are only unique within a namespace, so cleaning up
+// those resources by label alone would also match the resources of a same-named instance living in a
+// different namespace.
+func ResourceNamePrefix(cr *argoproj.ArgoCD) string {
+	return fmt.Sprintf("%s-%s-", cr.Name, cr.Namespace)
 }
 
 // ReconcilePromoterServiceAccount reconciles a ServiceAccount needed for the Promoter's workloads. Handles creation, updating, and deletion.
