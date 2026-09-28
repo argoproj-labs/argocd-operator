@@ -101,7 +101,7 @@ func TestReconcileArgoCD_DexWorkloads(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch, makeTestK8sClientWithTokenReactor("mock-dex-token"))
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
 
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
@@ -149,13 +149,6 @@ func TestReconcileArgoCD_DexWorkloads(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, configMap.Data["dex.config"], a.Spec.SSO.Dex.Config)
-
-	// Verify the expiring token Secret (Opaque type) was created with the expected fixed name.
-	dexTokenSecret := &corev1.Secret{}
-	expectedTokenSecretName := getDexServerTokenSecretName(a)
-	err = r.Get(context.TODO(), types.NamespacedName{Name: expectedTokenSecretName, Namespace: a.Namespace}, dexTokenSecret)
-	assert.NoError(t, err, "expected dex token secret %q to exist", expectedTokenSecretName)
-	assert.Equal(t, corev1.SecretTypeOpaque, dexTokenSecret.Type)
 
 	err = r.Get(context.TODO(), client.ObjectKeyFromObject(a), a)
 	assert.NoError(t, err)

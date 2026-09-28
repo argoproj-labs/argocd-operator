@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 	"testing"
-	"time"
 
 	configv1 "github.com/openshift/api/config/v1"
 	"github.com/stretchr/testify/assert"
@@ -276,6 +275,48 @@ func TestReconcileArgoCD_reconcileDeployments_Dex_with_volumes(t *testing.T) {
 					},
 				},
 				{
+					Name: "sa-token-volume",
+					VolumeSource: corev1.VolumeSource{
+						Projected: &corev1.ProjectedVolumeSource{
+							Sources: []corev1.VolumeProjection{
+								{
+									ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+										ExpirationSeconds: new(common.ArgoCDDexServerTokenExpirySecs),
+										Path:              "token",
+									},
+								},
+								{
+									ConfigMap: &corev1.ConfigMapProjection{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "kube-root-ca.crt",
+										},
+										Items: []corev1.KeyToPath{
+											{
+												Key:  "ca.crt",
+												Path: "ca.crt",
+											},
+										},
+									},
+								},
+								{
+									DownwardAPI: &corev1.DownwardAPIProjection{
+										Items: []corev1.DownwardAPIVolumeFile{
+											{
+												Path: "namespace",
+												FieldRef: &corev1.ObjectFieldSelector{
+													APIVersion: "v1",
+													FieldPath:  "metadata.namespace",
+												},
+											},
+										},
+									},
+								},
+							},
+							DefaultMode: new(corev1.ProjectedVolumeSourceDefaultMode),
+						},
+					},
+				},
+				{
 					Name: "custom-config",
 					VolumeSource: corev1.VolumeSource{
 						EmptyDir: &corev1.EmptyDirVolumeSource{},
@@ -286,6 +327,7 @@ func TestReconcileArgoCD_reconcileDeployments_Dex_with_volumes(t *testing.T) {
 			testVolumeMounts := []corev1.VolumeMount{
 				{Name: "static-files", MountPath: "/shared"},
 				{Name: "dexconfig", MountPath: "/tmp"},
+				{Name: "sa-token-volume", MountPath: "/var/run/secrets/kubernetes.io/serviceaccount", ReadOnly: true},
 				{Name: "custom-config", MountPath: "/etc/custom-config"},
 			}
 
@@ -321,7 +363,9 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 			Namespace: a.Namespace,
 		},
 		deployment))
+	expirationSeconds := common.ArgoCDDexServerTokenExpirySecs
 	want := corev1.PodSpec{
+		AutomountServiceAccountToken: new(false),
 		Volumes: []corev1.Volume{
 			{
 				Name: "static-files",
@@ -333,6 +377,48 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 				Name: "dexconfig",
 				VolumeSource: corev1.VolumeSource{
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			},
+			{
+				Name: "sa-token-volume",
+				VolumeSource: corev1.VolumeSource{
+					Projected: &corev1.ProjectedVolumeSource{
+						Sources: []corev1.VolumeProjection{
+							{
+								ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+									ExpirationSeconds: &expirationSeconds,
+									Path:              "token",
+								},
+							},
+							{
+								ConfigMap: &corev1.ConfigMapProjection{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "kube-root-ca.crt",
+									},
+									Items: []corev1.KeyToPath{
+										{
+											Key:  "ca.crt",
+											Path: "ca.crt",
+										},
+									},
+								},
+							},
+							{
+								DownwardAPI: &corev1.DownwardAPIProjection{
+									Items: []corev1.DownwardAPIVolumeFile{
+										{
+											Path: "namespace",
+											FieldRef: &corev1.ObjectFieldSelector{
+												APIVersion: "v1",
+												FieldPath:  "metadata.namespace",
+											},
+										},
+									},
+								},
+							},
+						},
+						DefaultMode: new(corev1.ProjectedVolumeSourceDefaultMode),
+					},
 				},
 			},
 		},
@@ -356,6 +442,7 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 						Name:      "dexconfig",
 						MountPath: "/tmp",
 					},
+					{Name: "sa-token-volume", MountPath: "/var/run/secrets/kubernetes.io/serviceaccount", ReadOnly: true},
 				},
 				ImagePullPolicy: corev1.PullIfNotPresent,
 			},
@@ -402,6 +489,7 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 				VolumeMounts: []corev1.VolumeMount{
 					{Name: "static-files", MountPath: "/shared"},
 					{Name: "dexconfig", MountPath: "/tmp"},
+					{Name: "sa-token-volume", MountPath: "/var/run/secrets/kubernetes.io/serviceaccount", ReadOnly: true},
 				},
 			},
 		},
@@ -444,6 +532,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 				}
 			}),
 			wantPodSpec: corev1.PodSpec{
+				AutomountServiceAccountToken: new(false),
 				Volumes: []corev1.Volume{
 					{
 						Name: "static-files",
@@ -455,6 +544,48 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 						Name: "dexconfig",
 						VolumeSource: corev1.VolumeSource{
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
+					{
+						Name: "sa-token-volume",
+						VolumeSource: corev1.VolumeSource{
+							Projected: &corev1.ProjectedVolumeSource{
+								Sources: []corev1.VolumeProjection{
+									{
+										ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+											ExpirationSeconds: new(int64(3600)),
+											Path:              "token",
+										},
+									},
+									{
+										ConfigMap: &corev1.ConfigMapProjection{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "kube-root-ca.crt",
+											},
+											Items: []corev1.KeyToPath{
+												{
+													Key:  "ca.crt",
+													Path: "ca.crt",
+												},
+											},
+										},
+									},
+									{
+										DownwardAPI: &corev1.DownwardAPIProjection{
+											Items: []corev1.DownwardAPIVolumeFile{
+												{
+													Path: "namespace",
+													FieldRef: &corev1.ObjectFieldSelector{
+														APIVersion: "v1",
+														FieldPath:  "metadata.namespace",
+													},
+												},
+											},
+										},
+									},
+								},
+								DefaultMode: new(corev1.ProjectedVolumeSourceDefaultMode),
+							},
 						},
 					},
 				},
@@ -478,6 +609,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 								Name:      "dexconfig",
 								MountPath: "/tmp",
 							},
+							{Name: "sa-token-volume", MountPath: "/var/run/secrets/kubernetes.io/serviceaccount", ReadOnly: true},
 						},
 						ImagePullPolicy: corev1.PullIfNotPresent,
 					},
@@ -519,6 +651,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 						VolumeMounts: []corev1.VolumeMount{
 							{Name: "static-files", MountPath: "/shared"},
 							{Name: "dexconfig", MountPath: "/tmp"},
+							{Name: "sa-token-volume", MountPath: "/var/run/secrets/kubernetes.io/serviceaccount", ReadOnly: true},
 						},
 					},
 				},
@@ -553,6 +686,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 				}
 			}),
 			wantPodSpec: corev1.PodSpec{
+				AutomountServiceAccountToken: new(false),
 				Volumes: []corev1.Volume{
 					{
 						Name: "static-files",
@@ -564,6 +698,48 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 						Name: "dexconfig",
 						VolumeSource: corev1.VolumeSource{
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
+					{
+						Name: "sa-token-volume",
+						VolumeSource: corev1.VolumeSource{
+							Projected: &corev1.ProjectedVolumeSource{
+								Sources: []corev1.VolumeProjection{
+									{
+										ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+											ExpirationSeconds: new(common.ArgoCDDexServerTokenExpirySecs),
+											Path:              "token",
+										},
+									},
+									{
+										ConfigMap: &corev1.ConfigMapProjection{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "kube-root-ca.crt",
+											},
+											Items: []corev1.KeyToPath{
+												{
+													Key:  "ca.crt",
+													Path: "ca.crt",
+												},
+											},
+										},
+									},
+									{
+										DownwardAPI: &corev1.DownwardAPIProjection{
+											Items: []corev1.DownwardAPIVolumeFile{
+												{
+													Path: "namespace",
+													FieldRef: &corev1.ObjectFieldSelector{
+														APIVersion: "v1",
+														FieldPath:  "metadata.namespace",
+													},
+												},
+											},
+										},
+									},
+								},
+								DefaultMode: new(corev1.ProjectedVolumeSourceDefaultMode),
+							},
 						},
 					},
 				},
@@ -586,6 +762,11 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 							{
 								Name:      "dexconfig",
 								MountPath: "/tmp",
+							},
+							{
+								Name:      "sa-token-volume",
+								MountPath: "/var/run/secrets/kubernetes.io/serviceaccount",
+								ReadOnly:  true,
 							},
 						},
 						ImagePullPolicy: corev1.PullIfNotPresent,
@@ -646,6 +827,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 						VolumeMounts: []corev1.VolumeMount{
 							{Name: "static-files", MountPath: "/shared"},
 							{Name: "dexconfig", MountPath: "/tmp"},
+							{Name: "sa-token-volume", MountPath: "/var/run/secrets/kubernetes.io/serviceaccount", ReadOnly: true},
 						},
 					},
 				},
@@ -765,6 +947,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_updatesInitContainerFields(t *te
 			wantInitVolumeMounts: []corev1.VolumeMount{
 				{Name: "static-files", MountPath: "/shared"},
 				{Name: "dexconfig", MountPath: "/tmp"},
+				{Name: "sa-token-volume", MountPath: "/var/run/secrets/kubernetes.io/serviceaccount", ReadOnly: true},
 			},
 			wantInitResources: corev1.ResourceRequirements{},
 		},
@@ -790,6 +973,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_updatesInitContainerFields(t *te
 			wantInitVolumeMounts: []corev1.VolumeMount{
 				{Name: "static-files", MountPath: "/shared"},
 				{Name: "dexconfig", MountPath: "/tmp"},
+				{Name: "sa-token-volume", MountPath: "/var/run/secrets/kubernetes.io/serviceaccount", ReadOnly: true},
 			},
 			wantInitResources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
@@ -1251,154 +1435,6 @@ func TestGetOpenShiftDexConfig_OIDCDisabled(t *testing.T) {
 	assert.Empty(t, updated.Status.Conditions)
 }
 
-func TestNeedsDexTokenRenewal(t *testing.T) {
-	renewThreshold := dexServerTokenRenewalThreshold()
-
-	tests := []struct {
-		name   string
-		secret *corev1.Secret
-		want   bool
-	}{
-		{
-			name:   "no expiry key - needs renewal",
-			secret: &corev1.Secret{Data: map[string][]byte{"token": []byte("t")}},
-			want:   true,
-		},
-		{
-			name:   "unparseable expiry - needs renewal",
-			secret: &corev1.Secret{Data: map[string][]byte{"expiry": []byte("not-a-time")}},
-			want:   true,
-		},
-		{
-			name: "expired token - needs renewal",
-			secret: &corev1.Secret{Data: map[string][]byte{
-				"expiry": []byte(time.Now().Add(-time.Minute).UTC().Format(time.RFC3339)),
-			}},
-			want: true,
-		},
-		{
-			name: "within renewal window - needs renewal",
-			secret: &corev1.Secret{Data: map[string][]byte{
-				// just inside the threshold (renewThreshold - 1s remaining)
-				"expiry": []byte(time.Now().Add(renewThreshold - time.Second).UTC().Format(time.RFC3339)),
-			}},
-			want: true,
-		},
-		{
-			name: "outside renewal window - no renewal needed",
-			secret: &corev1.Secret{Data: map[string][]byte{
-				"expiry": []byte(time.Now().Add(renewThreshold + time.Hour).UTC().Format(time.RFC3339)),
-				"token":  []byte("present"),
-			}},
-			want: false,
-		},
-		{
-			name:   "nil secret - needs renewal",
-			secret: nil,
-			want:   true,
-		},
-		{
-			name: "valid expiry but missing token key - needs renewal",
-			secret: &corev1.Secret{Data: map[string][]byte{
-				"expiry": []byte(time.Now().Add(renewThreshold + time.Hour).UTC().Format(time.RFC3339)),
-			}},
-			want: true,
-		},
-		{
-			name: "valid expiry but empty token - needs renewal",
-			secret: &corev1.Secret{Data: map[string][]byte{
-				"expiry": []byte(time.Now().Add(renewThreshold + time.Hour).UTC().Format(time.RFC3339)),
-				"token":  []byte{},
-			}},
-			want: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, needsDexTokenRenewal(tt.secret))
-		})
-	}
-}
-
-func TestReconcileArgoCD_getDexOAuthClientSecret_ReturnsCachedToken(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	const firstToken = "first-token"
-	const secondToken = "second-token"
-
-	a := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
-		ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-			Provider: argoproj.SSOProviderTypeDex,
-			Dex:      &argoproj.ArgoCDDexSpec{OpenShiftOAuth: true},
-		}
-	})
-
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, []client.Object{a}, []client.Object{a}, nil)
-
-	// First call uses firstToken reactor.
-	r := makeTestReconciler(cl, sch, makeTestK8sClientWithTokenReactor(firstToken))
-	assert.NoError(t, createNamespace(r, a.Namespace, ""))
-	_, err := r.reconcileServiceAccount(common.ArgoCDDefaultDexServiceAccountName, a)
-	assert.NoError(t, err)
-
-	token1, err := r.getDexOAuthClientSecret(a)
-	assert.NoError(t, err)
-	require.NotNil(t, token1)
-	assert.Equal(t, firstToken, *token1)
-
-	// Swap the K8sClient reactor to return a different token.
-	// The cached Secret is still valid, so the same firstToken must be returned.
-	r.K8sClient = makeTestK8sClientWithTokenReactor(secondToken)
-
-	token2, err := r.getDexOAuthClientSecret(a)
-	assert.NoError(t, err)
-	require.NotNil(t, token2)
-	assert.Equal(t, firstToken, *token2, "cached token should be returned while Secret is still valid")
-}
-
-func TestReconcileArgoCD_getDexOAuthClientSecret_RenewsExpiredToken(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	const expiredToken = "expired-token"
-	const renewedToken = "renewed-token"
-
-	a := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
-		ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-			Provider: argoproj.SSOProviderTypeDex,
-			Dex:      &argoproj.ArgoCDDexSpec{OpenShiftOAuth: true},
-		}
-	})
-
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, []client.Object{a}, []client.Object{a}, nil)
-	r := makeTestReconciler(cl, sch, makeTestK8sClientWithTokenReactor(renewedToken))
-	assert.NoError(t, createNamespace(r, a.Namespace, ""))
-	_, err := r.reconcileServiceAccount(common.ArgoCDDefaultDexServiceAccountName, a)
-	assert.NoError(t, err)
-
-	// Create an expired token Secret.
-	expiredSecret := argoutil.NewSecretWithSuffix(a, common.ArgoCDDefaultDexServiceAccountName+"-token")
-	expiredSecret.Type = corev1.SecretTypeOpaque
-	expiredSecret.Data = map[string][]byte{
-		"token":  []byte(expiredToken),
-		"expiry": []byte(time.Now().Add(-time.Hour).UTC().Format(time.RFC3339)), // expired 1h ago
-	}
-	argoutil.AddTrackedByOperatorLabel(&expiredSecret.ObjectMeta)
-	assert.NoError(t, r.Create(context.TODO(), expiredSecret))
-
-	token, err := r.getDexOAuthClientSecret(a)
-	assert.NoError(t, err)
-	require.NotNil(t, token)
-	assert.Equal(t, renewedToken, *token, "expired token must be replaced by a fresh one")
-
-	// Verify the Secret was updated with the renewed token.
-	updated := &corev1.Secret{}
-	assert.NoError(t, r.Get(context.TODO(),
-		types.NamespacedName{Name: getDexServerTokenSecretName(a), Namespace: a.Namespace},
-		updated))
-	assert.Equal(t, renewedToken, string(updated.Data["token"]))
-}
-
 func TestReconcileArgoCD_reconcileDexLegacySATokenSecrets(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
@@ -1484,13 +1520,23 @@ func TestReconcileArgoCD_reconcileDexLegacySATokenSecrets_IgnoresUnrelatedSecret
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "argocd-dex-server-token-opaque",
 			Namespace: a.Namespace,
-			Labels: map[string]string{
-				common.ArgoCDTrackedByOperatorLabel: common.ArgoCDAppName,
-			},
 		},
 		Type: corev1.SecretTypeOpaque,
 	}
 	assert.NoError(t, r.Create(context.TODO(), opaqueSecret))
+
+	// SA token secret for a different SA must not be deleted (wrong annotation).
+	otherSATokenSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "other-sa-token-xyz",
+			Namespace: a.Namespace,
+			Annotations: map[string]string{
+				corev1.ServiceAccountNameKey: "some-other-sa",
+			},
+		},
+		Type: corev1.SecretTypeServiceAccountToken,
+	}
+	assert.NoError(t, r.Create(context.TODO(), otherSATokenSecret))
 
 	assert.NoError(t, r.reconcileDexLegacySATokenSecrets(a))
 
@@ -1499,4 +1545,8 @@ func TestReconcileArgoCD_reconcileDexLegacySATokenSecrets_IgnoresUnrelatedSecret
 	assert.NoError(t, r.Get(context.TODO(),
 		types.NamespacedName{Name: opaqueSecret.Name, Namespace: a.Namespace}, kept),
 		"Opaque Secret must not be deleted by legacy cleanup")
+
+	assert.NoError(t, r.Get(context.TODO(),
+		types.NamespacedName{Name: otherSATokenSecret.Name, Namespace: a.Namespace}, kept),
+		"SA token secret for a different SA must not be deleted by legacy cleanup")
 }
