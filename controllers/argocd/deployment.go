@@ -24,11 +24,6 @@ import (
 	"strings"
 	"time"
 
-	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
-	tlsProfile "github.com/argoproj-labs/argocd-operator/pkg/tlsprofile"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,6 +31,12 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	tlsProfile "github.com/argoproj-labs/argocd-operator/pkg/tlsprofile"
 )
 
 // getArgoCDServerReplicas will return the size value for the argocd-server replica count if it
