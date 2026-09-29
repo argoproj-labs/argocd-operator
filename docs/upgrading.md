@@ -2,7 +2,7 @@
 
 This page contains upgrade instructions and migration guides for the Argo CD Operator.
 
-## Resource tracking method preserved on upgrade (Operator 0.19+)
+## Resource tracking method preserved on upgrade
 
 Starting with Operator **0.17.0** the default resource tracking method changed from `label` to
 `annotation` (`application.resourceTrackingMethod` in `argocd-cm`). For installations created
@@ -14,8 +14,8 @@ preserved, but for **Secrets** (which Argo CD applies without a `last-applied-co
 annotation) a sync could **delete labels added by other controllers** (for example the
 `cluster-monitoring-operator` labels on the `alertmanager-main` Secret).
 
-Beginning with Operator **0.19.0**, when `.spec.resourceTrackingMethod` is **not set** on the
-ArgoCD CR, the operator **preserves a valid existing value** in `argocd-cm` instead of overwriting
+When `.spec.resourceTrackingMethod` is **not set** on the ArgoCD CR, the operator
+**preserves a valid existing value** in `argocd-cm` instead of overwriting
 it with the current default. This prevents a silent tracking-method migration on operator upgrade.
 The `annotation` default is still applied when `argocd-cm` has no value (fresh installations) or
 holds a value that is not one of `label`, `annotation` or `annotation+label`. An explicit
@@ -26,11 +26,16 @@ holds a value that is not one of `label`, `annotation` or `annotation+label`. An
 
 The following users are **unaffected** by this change:
 - Users who set `.spec.resourceTrackingMethod` explicitly on their ArgoCD CR (their value is honored, as before)
-- Fresh installations on 0.19+ (they get the `annotation` default)
-- Users who already upgraded through 0.17.x/0.18.x — their `argocd-cm` was already migrated to `annotation`; 0.19.0 preserves that value and does **not** flip it back
+- Fresh installations on 0.20+ (they get the `annotation` default)
+- Users who already upgraded through 0.17.x/0.18.x/0.19.x — their `argocd-cm` was already migrated to `annotation`; 0.20.0 preserves that value and does **not** flip it back
 
 The following users are **affected** and benefit from this change:
-- Users upgrading from Operator **≤0.16** directly to **0.19+** who never set `.spec.resourceTrackingMethod` — their existing `application.resourceTrackingMethod: label` value is now preserved, so managed resources do **not** go OutOfSync and Secret labels are not stripped by a sync
+- Users upgrading from Operator **≤0.16** directly to **0.20+** who never set `.spec.resourceTrackingMethod` — their existing `application.resourceTrackingMethod: label` value is now preserved, so managed resources do **not** go OutOfSync and Secret labels are not stripped by a sync
+
+Note that this change is **preventive**: it only helps installations that cross the 0.17 default flip
+*on or after* upgrading to 0.20. If you already upgraded to 0.17.x–0.19.x, `argocd-cm` was migrated to
+`annotation` at that time and 0.20 will keep it there — see the Remediation Steps below to move back to
+`label` deliberately.
 
 ### Remediation Steps
 
