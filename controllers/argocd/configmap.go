@@ -572,25 +572,25 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 			// Keycloak functionality has been removed, skipping reconciliation
 		}
 
-		// Preserve an existing resource tracking method on upgrade. When the user has not
-		// explicitly set .spec.resourceTrackingMethod, keep the valid value already present
-		// in argocd-cm instead of silently applying the current operator default. This avoids
-		// migrating a running instance between tracking methods (e.g. label -> annotation),
-		// which makes previously-Synced resources go OutOfSync and can strip controller-managed
-		// labels on Secrets during sync. New installs (no existing value) still get the default,
-		// as does an existing value that is not a recognized tracking method. An override in
-		// .spec.extraConfig keeps its documented precedence and is never preserved over.
+		// Warn when the resource tracking method is about to change without the user having
+		// asked for it. This happens when .spec.resourceTrackingMethod is unset and the
+		// operator default differs from the value already in argocd-cm — most commonly on an
+		// upgrade from an operator that defaulted to 'label'. The value is still reconciled
+		// from the CR as usual; this only makes an otherwise silent migration greppable,
+		// because it makes managed resources go OutOfSync and a subsequent sync can remove
+		// controller-managed labels from Secrets. An explicit value in .spec or in
+		// .spec.extraConfig is a deliberate choice and is not warned about. Since the new
+		// value is written on this same reconcile, this logs once per actual change.
 		if cr.Spec.ResourceTrackingMethod == "" {
 			if _, overridden := cr.Spec.ExtraConfig[common.ArgoCDKeyResourceTrackingMethod]; !overridden {
-				if existing := existingCM.Data[common.ArgoCDKeyResourceTrackingMethod]; existing != "" &&
+				existing := existingCM.Data[common.ArgoCDKeyResourceTrackingMethod]
+				computed := cm.Data[common.ArgoCDKeyResourceTrackingMethod]
+				if existing != "" && existing != computed &&
 					argoproj.ParseResourceTrackingMethod(existing) != argoproj.ResourceTrackingMethodInvalid {
-					// getResourceTrackingMethod has already logged the value it computed from the CR;
-					// say so explicitly when the preserved value differs, otherwise that log is misleading.
-					if computed := cm.Data[common.ArgoCDKeyResourceTrackingMethod]; existing != computed {
-						log.Info(fmt.Sprintf("Preserving existing resource tracking method '%s' from %s instead of '%s'. Set .spec.resourceTrackingMethod explicitly to change it.",
-							existing, common.ArgoCDConfigMapName, computed))
-					}
-					cm.Data[common.ArgoCDKeyResourceTrackingMethod] = existing
+					log.Info(fmt.Sprintf("WARNING: resource tracking method in %s is changing from '%s' to the default '%s' because .spec.resourceTrackingMethod is not set. "+
+						"Managed resources will re-sync to apply the new tracking method and may report OutOfSync; a sync can remove controller-managed labels from Secrets. "+
+						"Set .spec.resourceTrackingMethod to '%s' to keep the current behaviour.",
+						common.ArgoCDConfigMapName, existing, computed, existing))
 				}
 			}
 		}
