@@ -29,7 +29,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	tlsProfile "github.com/argoproj-labs/argocd-operator/pkg/tlsprofile"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -399,7 +398,8 @@ func newDeploymentWithName(name string, component string, cr *argoproj.ArgoCD) *
 				Annotations: make(map[string]string),
 			},
 			Spec: corev1.PodSpec{
-				NodeSelector: common.DefaultNodeSelector(),
+				NodeSelector:                 common.DefaultNodeSelector(),
+				AutomountServiceAccountToken: new(false),
 			},
 		},
 	}
@@ -631,6 +631,10 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 		if !reflect.DeepEqual(deploy.Spec.Template.Labels, existing.Spec.Template.Labels) {
 			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
 			changes = append(changes, "labels")
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.AutomountServiceAccountToken, existing.Spec.Template.Spec.AutomountServiceAccountToken) {
+			existing.Spec.Template.Spec.AutomountServiceAccountToken = deploy.Spec.Template.Spec.AutomountServiceAccountToken
+			changes = append(changes, "automountServiceAccountToken")
 		}
 
 		if len(changes) > 0 {
@@ -916,6 +920,10 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 			existing.Spec.Template.Spec.ServiceAccountName = deploy.Spec.Template.Spec.ServiceAccountName
 			changes = append(changes, "serviceAccountName")
 		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.AutomountServiceAccountToken, existing.Spec.Template.Spec.AutomountServiceAccountToken) {
+			existing.Spec.Template.Spec.AutomountServiceAccountToken = deploy.Spec.Template.Spec.AutomountServiceAccountToken
+			changes = append(changes, "automountServiceAccountToken")
+		}
 		if len(changes) > 0 {
 			argoutil.LogResourceUpdate(log, existing, "updating", strings.Join(changes, ", "))
 			return r.Update(context.TODO(), existing)
@@ -984,6 +992,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		serverVolumeMounts = append(serverVolumeMounts, cr.Spec.Server.VolumeMounts...)
 	}
 	arguments := BuildTLSArgsFromClusterTLSProfile(r.CentralTLSConfigProfile)
+	deploy.Spec.Template.Spec.AutomountServiceAccountToken = new(true)
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Args:            arguments,
 		Command:         getArgoServerCommand(cr, useTLSForRedis),
@@ -1307,6 +1316,10 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.ServiceAccountName, existing.Spec.Template.Spec.ServiceAccountName) {
 			existing.Spec.Template.Spec.ServiceAccountName = deploy.Spec.Template.Spec.ServiceAccountName
 			changes = append(changes, "serviceAccountName")
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.AutomountServiceAccountToken, existing.Spec.Template.Spec.AutomountServiceAccountToken) {
+			existing.Spec.Template.Spec.AutomountServiceAccountToken = deploy.Spec.Template.Spec.AutomountServiceAccountToken
+			changes = append(changes, "automountServiceAccountToken")
 		}
 
 		if len(changes) > 0 {

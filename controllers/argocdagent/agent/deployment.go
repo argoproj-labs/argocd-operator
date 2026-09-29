@@ -105,6 +105,7 @@ func buildAgentSpec(compName, saName string, cr *argoproj.ArgoCD) appsv1.Deploym
 				Labels: buildLabelsForAgent(cr.Name, compName),
 			},
 			Spec: corev1.PodSpec{
+				AutomountServiceAccountToken: new(true),
 				Containers: []corev1.Container{
 					{
 						Image:           buildAgentImage(cr),
@@ -295,6 +296,11 @@ func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, dep
 		deployment.Spec.Template.Spec.PriorityClassName = cr.Spec.PriorityClassName
 	}
 
+	if deployment.Spec.Template.Spec.AutomountServiceAccountToken == nil || *deployment.Spec.Template.Spec.AutomountServiceAccountToken == false {
+		log.Info("deployment autoMountServiceAccountToken is being updated")
+		changed = true
+		deployment.Spec.Template.Spec.AutomountServiceAccountToken = new(true)
+	}
 	return deployment, changed
 }
 

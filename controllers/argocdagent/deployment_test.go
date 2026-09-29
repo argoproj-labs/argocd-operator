@@ -151,6 +151,7 @@ func TestReconcilePrincipalDeployment_DeploymentDoesNotExist_PrincipalEnabled(t 
 	assert.Len(t, deployment.OwnerReferences, 1)
 	assert.Equal(t, cr.Name, deployment.OwnerReferences[0].Name)
 	assert.Equal(t, "ArgoCD", deployment.OwnerReferences[0].Kind)
+	assert.True(t, *deployment.Spec.Template.Spec.AutomountServiceAccountToken)
 }
 
 func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalDisabled(t *testing.T) {
@@ -205,6 +206,7 @@ func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalEnabled_NoChange
 	assert.NoError(t, err)
 	assert.Equal(t, buildPrincipalImage(cr), deployment.Spec.Template.Spec.Containers[0].Image)
 	assert.Equal(t, saName, deployment.Spec.Template.Spec.ServiceAccountName)
+	assert.True(t, *deployment.Spec.Template.Spec.AutomountServiceAccountToken)
 }
 
 func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalEnabled_ImageChanged(t *testing.T) {
@@ -232,6 +234,7 @@ func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalEnabled_ImageCha
 	}, deployment)
 	assert.NoError(t, err)
 	assert.Equal(t, "quay.io/argoproj/argocd-agent:v2", deployment.Spec.Template.Spec.Containers[0].Image)
+	assert.True(t, *deployment.Spec.Template.Spec.AutomountServiceAccountToken)
 }
 
 func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalEnabled_ServiceAccountChanged(t *testing.T) {
@@ -261,6 +264,7 @@ func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalEnabled_ServiceA
 	}, deployment)
 	assert.NoError(t, err)
 	assert.Equal(t, newSAName, deployment.Spec.Template.Spec.ServiceAccountName)
+	assert.True(t, *deployment.Spec.Template.Spec.AutomountServiceAccountToken)
 }
 
 func TestReconcilePrincipalDeployment_DeploymentExists_PrincipalNotSet(t *testing.T) {
@@ -445,6 +449,7 @@ func TestReconcilePrincipalDeployment_VerifyDeploymentSpec(t *testing.T) {
 	assert.Equal(t, "argocd-redis-initial-password", redisAuthVolume.Secret.SecretName)
 	assert.NotEqual(t, new(true), redisAuthVolume.Secret.Optional)
 	assert.Len(t, redisAuthVolume.Secret.Items, 2)
+	assert.True(t, *deployment.Spec.Template.Spec.AutomountServiceAccountToken)
 }
 
 func TestReconcilePrincipalDeployment_CustomImage(t *testing.T) {
@@ -548,6 +553,7 @@ func TestReconcilePrincipalDeployment_VolumeMountsAndVolumes(t *testing.T) {
 
 	redisAuthVolume := deployment.Spec.Template.Spec.Volumes[2]
 	assert.Equal(t, "redis-initial-pass", redisAuthVolume.Name)
+	assert.True(t, *deployment.Spec.Template.Spec.AutomountServiceAccountToken)
 }
 
 func TestBuildPrincipalImage(t *testing.T) {

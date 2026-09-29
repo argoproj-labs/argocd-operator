@@ -108,6 +108,7 @@ func buildPrincipalSpec(compName, saName string, cr *argoproj.ArgoCD, centralTLS
 				Labels: buildLabelsForAgentPrincipal(cr.Name, compName),
 			},
 			Spec: corev1.PodSpec{
+				AutomountServiceAccountToken: new(true),
 				Containers: []corev1.Container{
 					{
 						Image:           buildPrincipalImage(cr),
@@ -336,6 +337,12 @@ func updateDeploymentIfChanged(compName, saName string, cr *argoproj.ArgoCD, dep
 		log.Info("deployment priority class name is being updated")
 		changed = true
 		deployment.Spec.Template.Spec.PriorityClassName = cr.Spec.PriorityClassName
+	}
+
+	if deployment.Spec.Template.Spec.AutomountServiceAccountToken == nil || *deployment.Spec.Template.Spec.AutomountServiceAccountToken == false {
+		log.Info("deployment autoMountServiceAccountToken is being updated")
+		changed = true
+		deployment.Spec.Template.Spec.AutomountServiceAccountToken = new(true)
 	}
 
 	return deployment, changed

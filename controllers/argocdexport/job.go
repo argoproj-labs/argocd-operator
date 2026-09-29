@@ -173,6 +173,7 @@ func newCronJob(cr *argoproj.ArgoCDExport) *batchv1.CronJob {
 func newExportPodSpec(cr *argoproj.ArgoCDExport, argocdName string, client client.Client) corev1.PodSpec {
 	pod := corev1.PodSpec{}
 
+	pod.AutomountServiceAccountToken = new(true)
 	pod.Containers = []corev1.Container{{
 		Command:         getArgoExportCommand(cr),
 		Env:             getArgoExportContainerEnv(cr),

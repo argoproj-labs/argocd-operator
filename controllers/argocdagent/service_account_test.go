@@ -136,6 +136,7 @@ func TestReconcilePrincipalServiceAccount_ServiceAccountDoesNotExist_PrincipalEn
 	assert.Len(t, retrievedSA.OwnerReferences, 1)
 	assert.Equal(t, cr.Name, retrievedSA.OwnerReferences[0].Name)
 	assert.Equal(t, "ArgoCD", retrievedSA.OwnerReferences[0].Kind)
+	assert.False(t, *retrievedSA.AutomountServiceAccountToken)
 }
 
 func TestReconcilePrincipalServiceAccount_ServiceAccountExists_PrincipalDisabled(t *testing.T) {
