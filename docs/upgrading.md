@@ -2,45 +2,64 @@
 
 This page contains upgrade instructions and migration guides for the Argo CD Operator.
 
-## Resource tracking method preserved on upgrade
+## Upgrading from Operator ≤0.16 to Operator 0.17+
 
-Starting with Operator **0.17.0** the default resource tracking method changed from `label` to
-`annotation` (`application.resourceTrackingMethod` in `argocd-cm`). For installations created
-under the old `label` default, this flip caused previously **Synced** resources — Namespaces,
-Subscriptions, Secrets, MachineConfigPools, etc. — to be reported **OutOfSync**, because Argo CD
-wanted to remove the `app.kubernetes.io/instance` label and add the `argocd.argoproj.io/tracking-id`
-annotation. Syncing performs the tracking migration; for most resource kinds the other labels are
-preserved, but for **Secrets** (which Argo CD applies without a `last-applied-configuration`
-annotation) a sync could **delete labels added by other controllers** (for example the
-`cluster-monitoring-operator` labels on the `alertmanager-main` Secret).
+### Resource tracking method default changed from `label` to `annotation`
 
-When `.spec.resourceTrackingMethod` is **not set** on the ArgoCD CR, the operator
-**preserves a valid existing value** in `argocd-cm` instead of overwriting
-it with the current default. This prevents a silent tracking-method migration on operator upgrade.
-The `annotation` default is still applied when `argocd-cm` has no value (fresh installations) or
-holds a value that is not one of `label`, `annotation` or `annotation+label`. An explicit
-`.spec.resourceTrackingMethod` always takes precedence, as does an
-`application.resourceTrackingMethod` entry in `.spec.extraConfig`.
+Starting with Operator **0.17.0**, the default resource tracking method changed from `label` to
+`annotation`. This is the `application.resourceTrackingMethod` key in `argocd-cm`, and it applies
+to every ArgoCD instance whose CR does **not** set `.spec.resourceTrackingMethod`.
+
+The operator reconciles this key declaratively from the ArgoCD CR, as it does every other key in
+`argocd-cm`. It does not preserve whatever value is already there, so on the first reconcile after
+the upgrade the value changes from `label` to `annotation` and Argo CD begins migrating its
+tracking data on managed resources.
+
+Two consequences follow, and both are expected rather than a malfunction:
+
+1. **Applications report `OutOfSync`.** Argo CD wants to remove the `app.kubernetes.io/instance`
+   label and add the `argocd.argoproj.io/tracking-id` annotation on every managed resource. This
+   affects resources of any kind — Namespaces, Subscriptions, Secrets, MachineConfigPools and so on.
+2. **A sync can remove labels that other controllers added to Secrets.** Argo CD applies Secrets
+   without the `kubectl.kubernetes.io/last-applied-configuration` annotation, so the three-way
+   merge that normally protects fields absent from Git does not fully apply to them. Labels written
+   by OLM, the cluster monitoring operator and similar controllers — for example on the
+   `alertmanager-main` Secret — can be deleted by the sync and then re-added by their owning
+   controller. Note that `ignoreDifferences` suppresses the reported diff but does **not** prevent
+   the removal, so it is not a sufficient safeguard on its own.
 
 ### Detection
 
-The following users are **unaffected** by this change:
-- Users who set `.spec.resourceTrackingMethod` explicitly on their ArgoCD CR (their value is honored, as before)
-- Fresh installations on 0.20+ (they get the `annotation` default)
-- Users who already upgraded through 0.17.x/0.18.x/0.19.x — their `argocd-cm` was already migrated to `annotation`; 0.20.0 preserves that value and does **not** flip it back
+**Before upgrading**, check whether any ArgoCD CR leaves the field unset while its `argocd-cm`
+still says `label`:
 
-The following users are **affected** and benefit from this change:
-- Users upgrading from Operator **≤0.16** directly to **0.20+** who never set `.spec.resourceTrackingMethod` — their existing `application.resourceTrackingMethod: label` value is now preserved, so managed resources do **not** go OutOfSync and Secret labels are not stripped by a sync
+```bash
+kubectl get cm -A -l app.kubernetes.io/part-of=argocd --field-selector metadata.name=argocd-cm \
+  -o jsonpath='{range .items[*]}{.metadata.namespace}{"\t"}{.data.application\.resourceTrackingMethod}{"\n"}{end}'
+```
 
-Note that this change is **preventive**: it only helps installations that cross the 0.17 default flip
-*on or after* upgrading to 0.20. If you already upgraded to 0.17.x–0.19.x, `argocd-cm` was migrated to
-`annotation` at that time and 0.20 will keep it there — see the Remediation Steps below to move back to
-`label` deliberately.
+Any namespace reporting `label` whose ArgoCD CR does not set `.spec.resourceTrackingMethod` will
+change on upgrade.
+
+**After upgrading**, the operator logs a warning on the reconcile that performs the change. It is
+logged once per instance, at the moment of the change:
+
+```
+WARNING: resource tracking method in argocd-cm is changing from 'label' to the default
+'annotation' because .spec.resourceTrackingMethod is not set. ...
+```
+
+You are **not** affected if any of the following is true:
+
+- `.spec.resourceTrackingMethod` is set explicitly on the ArgoCD CR — your value is honored, and no
+  change occurs
+- The instance already runs on Operator 0.17 or later — the change happened at that upgrade, and
+  `argocd-cm` already reads `annotation`
+- The installation is new on 0.17+ — it starts on `annotation` with nothing to migrate
 
 ### Remediation Steps
 
-1. **To keep label-based tracking (recommended if you upgraded across the 0.17 flip and want no drift):**
-   Set the method explicitly on the ArgoCD CR so it is pinned regardless of future default changes:
+1. **To keep label-based tracking, set it explicitly — ideally before upgrading:**
 
    ```yaml
    apiVersion: argoproj.io/v1beta1
@@ -51,13 +70,17 @@ Note that this change is **preventive**: it only helps installations that cross 
      resourceTrackingMethod: label
    ```
 
-2. **To adopt annotation-based tracking intentionally:**
-   Set `.spec.resourceTrackingMethod: annotation`, then **review the diff for every affected
-   Application before syncing**. Do not blindly sync Secrets managed by other controllers — inspect
-   the diff first, since a sync may remove controller-managed labels that are not present in Git.
-   Where appropriate, keep those labels in Git or add `ignoreDifferences` for the affected fields.
+   Pinning the value also insulates the instance from any future change of the default. This is the
+   recommended action if you have already upgraded and want to return to the previous behaviour:
+   applying it restores `label` and the `OutOfSync` reports clear.
 
-3. **Verify the effective value after upgrade or reconcile:**
+2. **To adopt annotation-based tracking deliberately**, set `.spec.resourceTrackingMethod: annotation`
+   and **review the diff of each affected Application before syncing**. Do not bulk-sync to clear
+   the drift. For Secrets managed by other controllers, either bring the controller-managed labels
+   into Git or confirm that the owning controller will re-add them, and be aware that
+   `ignoreDifferences` alone does not stop a sync from removing them.
+
+3. **Verify the effective value at any time:**
 
    ```bash
    kubectl get cm -n <argocd-namespace> argocd-cm -o jsonpath='{.data.application\.resourceTrackingMethod}'
