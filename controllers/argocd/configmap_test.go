@@ -859,12 +859,27 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_preservesTrackingMethodOnUpgrade
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
-		name        string
-		existingRTM string
-		specRTM     string
-		extraConfig map[string]string
-		expectedRTM string
+		name string
+		// omitExistingRTM creates the existing argocd-cm without the tracking method key at all,
+		// as opposed to existingRTM being set to the empty string.
+		omitExistingRTM bool
+		existingRTM     string
+		specRTM         string
+		extraConfig     map[string]string
+		expectedRTM     string
 	}{
+		{
+			name:            "missing existing key falls back to default when spec empty",
+			omitExistingRTM: true,
+			specRTM:         "",
+			expectedRTM:     argoproj.ResourceTrackingMethodAnnotation.String(),
+		},
+		{
+			name:        "empty existing value falls back to default when spec empty",
+			existingRTM: "",
+			specRTM:     "",
+			expectedRTM: argoproj.ResourceTrackingMethodAnnotation.String(),
+		},
 		{
 			name:        "existing label preserved when spec empty",
 			existingRTM: argoproj.ResourceTrackingMethodLabel.String(),
@@ -906,14 +921,17 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_preservesTrackingMethodOnUpgrade
 			a.Spec.ResourceTrackingMethod = test.specRTM
 			a.Spec.ExtraConfig = test.extraConfig
 
+			existingData := map[string]string{}
+			if !test.omitExistingRTM {
+				existingData[common.ArgoCDKeyResourceTrackingMethod] = test.existingRTM
+			}
+
 			existingCM := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      common.ArgoCDConfigMapName,
 					Namespace: testNamespace,
 				},
-				Data: map[string]string{
-					common.ArgoCDKeyResourceTrackingMethod: test.existingRTM,
-				},
+				Data: existingData,
 			}
 
 			resObjs := []client.Object{a, existingCM}

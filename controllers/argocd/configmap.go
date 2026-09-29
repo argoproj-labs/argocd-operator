@@ -584,6 +584,12 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 			if _, overridden := cr.Spec.ExtraConfig[common.ArgoCDKeyResourceTrackingMethod]; !overridden {
 				if existing := existingCM.Data[common.ArgoCDKeyResourceTrackingMethod]; existing != "" &&
 					argoproj.ParseResourceTrackingMethod(existing) != argoproj.ResourceTrackingMethodInvalid {
+					// getResourceTrackingMethod has already logged the value it computed from the CR;
+					// say so explicitly when the preserved value differs, otherwise that log is misleading.
+					if computed := cm.Data[common.ArgoCDKeyResourceTrackingMethod]; existing != computed {
+						log.Info(fmt.Sprintf("Preserving existing resource tracking method '%s' from %s instead of '%s'. Set .spec.resourceTrackingMethod explicitly to change it.",
+							existing, common.ArgoCDConfigMapName, computed))
+					}
 					cm.Data[common.ArgoCDKeyResourceTrackingMethod] = existing
 				}
 			}
