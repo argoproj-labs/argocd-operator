@@ -4,6 +4,7 @@ repo_url: https://github.com/argoproj-labs/argocd-operator
 strict: true
 theme:
   name: material
+  custom_dir: docs/overrides
   favicon: 'assets/logo.png'
   palette:
   - media: '(prefers-color-scheme: light)'
@@ -21,6 +22,8 @@ theme:
   font:
     text: 'Work Sans'
   logo: 'assets/logo.png'
+extra_css:
+- stylesheets/extra.css
 markdown_extensions:
 - markdown_include.include
 - codehilite:
