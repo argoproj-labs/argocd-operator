@@ -825,7 +825,7 @@ func removeString(slice []string, s string) []string {
 }
 
 // setResourceWatches will register Watches for each of the supported Resources.
-func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, clusterSecretResourceMapper, applicationSetGitlabSCMTLSConfigMapMapper, nmMapper, systemCATrustMapper, imagePullSecretMapper handler.MapFunc) *builder.Builder {
+func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, clusterSecretResourceMapper, applicationSetGitlabSCMTLSConfigMapMapper, nmMapper, systemCATrustMapper, imagePullSecretMapper handler.MapFunc, imageUpdaterWatchNSMapper handler.MapFunc) *builder.Builder {
 
 	// Add new predicate to delete Notifications Resources. The predicate watches the Argo CD CR for changes to the `.spec.Notifications.Enabled`
 	// field. When a change is detected that results in notifications being disabled, we trigger deletion of notifications resources
@@ -929,6 +929,17 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 
 	namespaceHandler := handler.EnqueueRequestsFromMapFunc(namespaceResourceMapper)
 	bldr.Watches(&corev1.Namespace{}, namespaceHandler, builder.WithPredicates(r.namespaceFilterPredicate()))
+
+	// Watch Namespace create/delete events that may match IMAGE_UPDATER_WATCH_NAMESPACES patterns so
+	// that RBAC and the deployment env var are updated without delay when a new tenant namespace appears
+	// or an existing one is removed.
+	bldr.Watches(&corev1.Namespace{}, handler.EnqueueRequestsFromMapFunc(imageUpdaterWatchNSMapper),
+		builder.WithPredicates(predicate.Funcs{
+			CreateFunc:  func(e event.CreateEvent) bool { return true },
+			DeleteFunc:  func(e event.DeleteEvent) bool { return true },
+			UpdateFunc:  func(e event.UpdateEvent) bool { return false },
+			GenericFunc: func(e event.GenericEvent) bool { return false },
+		}))
 
 	bldrHook := newBuilderHook(r.Client, bldr)
 	err := applyReconcilerHook(&argoproj.ArgoCD{}, bldrHook, "")

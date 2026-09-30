@@ -1103,3 +1103,193 @@ func TestReconcileArgoCD_nmMapper(t *testing.T) {
 		})
 	}
 }
+
+func TestReconcileArgoCD_imageUpdaterWatchNSMapper(t *testing.T) {
+	argocd1 := makeTestArgoCD()
+	argocd1.Name = "argocd1"
+	argocd1.Namespace = "argo-ns-1"
+	argocd1.Spec.ImageUpdater.Enabled = true
+	argocd1.Spec.ImageUpdater.Env = []corev1.EnvVar{
+		{Name: "IMAGE_UPDATER_WATCH_NAMESPACES", Value: "app-*"},
+	}
+
+	argocd2 := makeTestArgoCD()
+	argocd2.Name = "argocd2"
+	argocd2.Namespace = "argo-ns-2"
+	argocd2.Spec.ImageUpdater.Enabled = true
+	argocd2.Spec.ImageUpdater.Env = []corev1.EnvVar{
+		{Name: "IMAGE_UPDATER_WATCH_NAMESPACES", Value: "/^team-[a-z]+$/"},
+	}
+
+	argocd3 := makeTestArgoCD()
+	argocd3.Name = "argocd3"
+	argocd3.Namespace = "argo-ns-3"
+	argocd3.Spec.ImageUpdater.Enabled = false
+	argocd3.Spec.ImageUpdater.Env = []corev1.EnvVar{
+		{Name: "IMAGE_UPDATER_WATCH_NAMESPACES", Value: "app-*"},
+	}
+
+	argocd4 := makeTestArgoCD()
+	argocd4.Name = "argocd4"
+	argocd4.Namespace = "argo-ns-4"
+	argocd4.Spec.ImageUpdater.Enabled = true
+	// No IMAGE_UPDATER_WATCH_NAMESPACES → skip
+
+	argocd5 := makeTestArgoCD()
+	argocd5.Name = "argocd5"
+	argocd5.Namespace = "argo-ns-5"
+	argocd5.Spec.ImageUpdater.Enabled = true
+	argocd5.Spec.ImageUpdater.Env = []corev1.EnvVar{
+		{Name: "IMAGE_UPDATER_WATCH_NAMESPACES", Value: "*"},
+	}
+
+	for _, a := range []*argoproj.ArgoCD{argocd1, argocd2, argocd3, argocd4, argocd5} {
+		a.ResourceVersion = ""
+	}
+
+	resObjs := []client.Object{argocd1, argocd2, argocd3, argocd4, argocd5}
+	subresObjs := []client.Object{argocd1, argocd2, argocd3, argocd4, argocd5}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	req1 := reconcile.Request{NamespacedName: types.NamespacedName{Name: "argocd1", Namespace: "argo-ns-1"}}
+	req2 := reconcile.Request{NamespacedName: types.NamespacedName{Name: "argocd2", Namespace: "argo-ns-2"}}
+
+	tests := []struct {
+		name      string
+		namespace string
+		want      []reconcile.Request
+	}{
+		{
+			name:      "glob match triggers reconcile for argocd1",
+			namespace: "app-frontend",
+			want:      []reconcile.Request{req1},
+		},
+		{
+			name:      "glob non-match triggers no reconcile",
+			namespace: "other-ns",
+			want:      []reconcile.Request{},
+		},
+		{
+			name:      "regex match triggers reconcile for argocd2",
+			namespace: "team-alpha",
+			want:      []reconcile.Request{req2},
+		},
+		{
+			name:      "regex non-match (digits not lower-alpha) triggers no reconcile",
+			namespace: "team-123",
+			want:      []reconcile.Request{},
+		},
+		{
+			name:      "disabled image updater is ignored",
+			namespace: "app-ignored",
+			// argocd1 has app-* and is enabled; argocd3 has app-* but is disabled
+			want: []reconcile.Request{req1},
+		},
+		{
+			name:      "argocd with no IMAGE_UPDATER_WATCH_NAMESPACES is ignored",
+			namespace: "any-namespace",
+			// argocd4 is enabled but has no env var
+			want: []reconcile.Request{},
+		},
+		{
+			name:      "wildcard '*' is skipped (cluster-wide mode, no per-namespace matching)",
+			namespace: "app-star-match",
+			// argocd1 matches app-*, argocd5 has '*' which is skipped
+			want: []reconcile.Request{req1},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: tt.namespace}}
+			got := r.imageUpdaterWatchNSMapper(context.TODO(), ns)
+			assert.ElementsMatch(t, tt.want, got)
+		})
+	}
+}
+
+// TestReconcileArgoCD_imageUpdaterWatchNSMapper_EmptyPatterns verifies that a trailing
+// or leading comma in IMAGE_UPDATER_WATCH_NAMESPACES does not produce a match-all empty
+// pattern, which would otherwise enqueue a reconcile for every namespace in the cluster.
+func TestReconcileArgoCD_imageUpdaterWatchNSMapper_EmptyPatterns(t *testing.T) {
+	tests := []struct {
+		name           string
+		watchNamespace string
+		triggerNS      string // namespace event that fires the mapper
+		wantReconcile  bool   // whether a reconcile request is expected
+	}{
+		{
+			name:           "trailing comma: only valid pattern matches, not everything",
+			watchNamespace: "app-*,",
+			triggerNS:      "app-frontend",
+			wantReconcile:  true,
+		},
+		{
+			name:           "trailing comma: non-matching namespace is still rejected",
+			watchNamespace: "app-*,",
+			triggerNS:      "other-ns",
+			wantReconcile:  false,
+		},
+		{
+			name:           "only commas: no valid patterns → no reconcile for any namespace",
+			watchNamespace: ",,,",
+			triggerNS:      "app-frontend",
+			wantReconcile:  false,
+		},
+		{
+			name:           "leading and trailing commas with valid pattern",
+			watchNamespace: ",app-*,",
+			triggerNS:      "app-frontend",
+			wantReconcile:  true,
+		},
+		{
+			name:           "leading and trailing commas: non-matching namespace is still rejected",
+			watchNamespace: ",app-*,",
+			triggerNS:      "other-ns",
+			wantReconcile:  false,
+		},
+		{
+			name:           "sole * with trailing comma is treated as cluster-scoped (skipped by mapper)",
+			watchNamespace: "*,",
+			triggerNS:      "any-namespace",
+			wantReconcile:  false,
+		},
+		{
+			name:           "* mixed with pattern is skipped by mapper (invalid config handled by reconciler)",
+			watchNamespace: "*,team-a",
+			triggerNS:      "team-a",
+			wantReconcile:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			argocd := makeTestArgoCD()
+			argocd.Name = "test-argocd"
+			argocd.Namespace = "test-ns"
+			argocd.Spec.ImageUpdater.Enabled = true
+			argocd.Spec.ImageUpdater.Env = []corev1.EnvVar{
+				{Name: "IMAGE_UPDATER_WATCH_NAMESPACES", Value: tt.watchNamespace},
+			}
+			argocd.ResourceVersion = ""
+
+			resObjs := []client.Object{argocd}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, resObjs, []runtime.Object{})
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: tt.triggerNS}}
+			got := r.imageUpdaterWatchNSMapper(context.TODO(), ns)
+
+			if tt.wantReconcile {
+				assert.Len(t, got, 1)
+				assert.Equal(t, types.NamespacedName{Name: "test-argocd", Namespace: "test-ns"}, got[0].NamespacedName)
+			} else {
+				assert.Empty(t, got)
+			}
+		})
+	}
+}

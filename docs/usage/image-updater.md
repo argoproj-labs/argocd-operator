@@ -28,7 +28,7 @@ The operator supports two installation modes:
 
 The controller runs in the same namespace as the Argo CD instance and watches only that namespace. This is the default behavior when `IMAGE_UPDATER_WATCH_NAMESPACES` is not set or is empty.
 
-If you use Argo CD's [Applications in any namespace](https://argocd-operator.readthedocs.io/en/latest/usage/apps-in-any-namespace/) feature and have `Application` resources in additional namespaces, you can specify a comma-separated list of namespaces to watch:
+If you use Argo CD's [Applications in any namespace](https://argocd-operator.readthedocs.io/en/latest/usage/apps-in-any-namespace/) feature and have `Application` resources in additional namespaces, you can specify a comma-separated list of namespaces to watch. Each entry can be an exact name, a glob-style wildcard, or a regular expression:
 
 ``` yaml
 spec:
@@ -36,10 +36,23 @@ spec:
     enabled: true
     env:
       - name: IMAGE_UPDATER_WATCH_NAMESPACES
-        value: "app-ns1,app-ns2"
+        value: "app-ns1,app-ns2"          # exact names
 ```
 
-The operator will create a `Role` and `RoleBinding` in each listed namespace so the controller can access resources there.
+``` yaml
+      - name: IMAGE_UPDATER_WATCH_NAMESPACES
+        value: "*-argocd"                 # glob: matches team-a-argocd, team-b-argocd, ...
+```
+
+``` yaml
+      - name: IMAGE_UPDATER_WATCH_NAMESPACES
+        value: "/^team-[0-9]+$/"          # regex (must be wrapped in /.../)
+```
+
+The operator resolves the patterns to concrete namespaces at reconcile time and creates a `Role` and `RoleBinding` in each matching namespace. When the namespace list changes (e.g. a new tenant namespace is created that matches the pattern), the operator automatically provisions the required RBAC on the next reconcile.
+
+!!! note
+    Regular expression patterns must be wrapped in forward slashes (`/pattern/`). Patterns without slashes are treated as glob patterns. For example, `team-*` is a glob (matches `team-1`, `team-frontend`, etc.), while `/^team-[0-9]+$/` is a regex (matches `team-1` but not `team-frontend`).
 
 #### Cluster-scoped installation
 

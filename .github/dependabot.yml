@@ -37,11 +37,6 @@ updates:
       interval: "daily"
 
   - package-ecosystem: "docker"
-    directory: "/deploy/registry/"
-    schedule:
-      interval: "daily"
-
-  - package-ecosystem: "docker"
     directory: "/tests/auxiliary/smtplistener/"
     schedule:
       interval: "daily"

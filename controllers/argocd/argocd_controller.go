@@ -100,10 +100,6 @@ type ReconcileArgoCD struct {
 	// FipsConfigChecker checks if the deployment needs FIPS specific environment variables set.
 	FipsConfigChecker argoutil.FipsConfigChecker
 
-	// dexTokenRequeueAfter stores the duration after which the reconciler should
-	// re-run to renew the Dex OAuth client token before it expires.
-	// Key: ArgoCD namespace, Value: time.Duration
-	dexTokenRequeueAfter sync.Map
 	// CentralTLSConfigProfile specifies the TLS configuration profile in the cluster.
 	CentralTLSConfigProfile tlsProfile.TLSConfigProfile
 }
@@ -374,27 +370,13 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 		return reconcile.Result{}, argocd, argoCDStatus, err
 	}
 
-	// If Dex is in use, requeue before the token reaches its renewal threshold so
-	// the operator proactively renews it without waiting for an external event.
-	if UseDex(argocd) {
-		if v, ok := r.dexTokenRequeueAfter.Load(argocd.Namespace); ok {
-			if d, ok := v.(time.Duration); ok {
-				return reconcile.Result{RequeueAfter: d}, argocd, argoCDStatus, nil
-			}
-		}
-	} else {
-		// Dex is disabled; remove any stale requeue entry so it does not fire
-		// if Dex is later re-enabled and a fresh duration has not been stored yet.
-		r.dexTokenRequeueAfter.Delete(argocd.Namespace)
-	}
-
 	return reconcile.Result{}, argocd, argoCDStatus, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ReconcileArgoCD) SetupWithManager(mgr ctrl.Manager) error {
 	bldr := ctrl.NewControllerManagedBy(mgr)
-	r.setResourceWatches(bldr, r.clusterResourceMapper, r.tlsSecretMapper, r.namespaceResourceMapper, r.clusterSecretResourceMapper, r.applicationSetSCMTLSConfigMapMapper, r.nmMapper, r.systemCATrustMapper, r.imagePullSecretMapper)
+	r.setResourceWatches(bldr, r.clusterResourceMapper, r.tlsSecretMapper, r.namespaceResourceMapper, r.clusterSecretResourceMapper, r.applicationSetSCMTLSConfigMapMapper, r.nmMapper, r.systemCATrustMapper, r.imagePullSecretMapper, r.imageUpdaterWatchNSMapper)
 	return bldr.Complete(r)
 }
 

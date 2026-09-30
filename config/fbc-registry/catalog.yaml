@@ -1,0 +1,18 @@
+# `olm.bundle` entries are rendered at build time from the bundle image
+# reference (see `make catalog-build`). Thus, bundles resolve via OLM's
+# bundle-unpack Job rather than being inlined into the InstallPlan.
+#
+# BUNDLE_VERSION must be substituted into the `${BUNDLE_VERSION}` token to the
+# release version matching the rendered bundle's metadata.name, e.g. `0.19.0`
+# -> argocd-operator.v0.19.0. Both `make catalog-build` and the CI workflow
+# derive it from the rendered bundle's own name, so it always matches what gets
+# installed.
+schema: olm.package
+name: argocd-operator
+defaultChannel: alpha
+---
+schema: olm.channel
+package: argocd-operator
+name: alpha
+entries:
+  - name: argocd-operator.v${BUNDLE_VERSION}

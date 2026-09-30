@@ -9,6 +9,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -276,6 +277,52 @@ func (r *ReconcileArgoCD) applicationSetSCMTLSConfigMapMapper(ctx context.Contex
 		}
 		result = []reconcile.Request{
 			{NamespacedName: namespacedName},
+		}
+	}
+
+	return result
+}
+
+// imageUpdaterWatchNSMapper maps a Namespace create/delete event to every ArgoCD instance
+// whose IMAGE_UPDATER_WATCH_NAMESPACES glob/regex patterns match that namespace name.
+// This ensures RBAC and the deployment env var are refreshed immediately when a matching
+// namespace appears or disappears, rather than waiting for the next unrelated reconcile
+// on the ArgoCD CR itself.
+func (r *ReconcileArgoCD) imageUpdaterWatchNSMapper(ctx context.Context, o client.Object) []reconcile.Request {
+	var result []reconcile.Request
+
+	namespaceName := o.GetName()
+
+	argocds := &argoproj.ArgoCDList{}
+	if err := r.List(ctx, argocds, &client.ListOptions{}); err != nil {
+		return result
+	}
+
+	for i := range argocds.Items {
+		argocd := &argocds.Items[i]
+		if !argocd.Spec.ImageUpdater.Enabled {
+			continue
+		}
+		env := argoutil.EnvGet(argocd.Spec.ImageUpdater.Env, "IMAGE_UPDATER_WATCH_NAMESPACES")
+		if env == nil {
+			continue
+		}
+		watchNS := strings.TrimSpace(env.Value)
+		// normalizeWatchNamespaces canonicalizes "*," → "*", rejects "*,team-a", etc.
+		// On error (invalid config) or when the value resolves to a sentinel, skip:
+		// the main reconcile loop will surface the error.
+		normalized, err := normalizeWatchNamespaces(watchNS)
+		if err != nil || normalized == "" || normalized == "*" {
+			continue
+		}
+		patterns := splitAndFilterPatterns(normalized)
+		if len(patterns) == 0 {
+			continue
+		}
+		if glob.MatchStringInList(patterns, namespaceName, glob.REGEXP) {
+			result = append(result, reconcile.Request{
+				NamespacedName: client.ObjectKey{Name: argocd.Name, Namespace: argocd.Namespace},
+			})
 		}
 	}
 
