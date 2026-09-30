@@ -2,6 +2,90 @@
 
 This page contains upgrade instructions and migration guides for the Argo CD Operator.
 
+## Upgrading from Operator ≤0.16 to Operator 0.17+
+
+### Resource tracking method default changed from `label` to `annotation`
+
+Starting with Operator **0.17.0**, the default resource tracking method changed from `label` to
+`annotation`. This is the `application.resourceTrackingMethod` key in `argocd-cm`, and it applies
+to every ArgoCD instance whose CR does **not** set `.spec.resourceTrackingMethod`.
+
+The operator reconciles this key declaratively from the ArgoCD CR, as it does every other key in
+`argocd-cm`. It does not preserve whatever value is already there, so on the first reconcile after
+the upgrade the value changes from `label` to `annotation` and Argo CD begins migrating its
+tracking data on managed resources.
+
+Two consequences follow, and both are expected rather than a malfunction:
+
+1. **Applications report `OutOfSync`.** Argo CD wants to remove the `app.kubernetes.io/instance`
+   label and add the `argocd.argoproj.io/tracking-id` annotation on every managed resource. This
+   affects resources of any kind — Namespaces, Subscriptions, Secrets, MachineConfigPools and so on.
+2. **A sync can remove labels that other controllers added to Secrets.** Argo CD applies Secrets
+   without the `kubectl.kubernetes.io/last-applied-configuration` annotation, so the three-way
+   merge that normally protects fields absent from Git does not fully apply to them. Labels written
+   by OLM, the cluster monitoring operator and similar controllers — for example on the
+   `alertmanager-main` Secret — can be deleted by the sync and then re-added by their owning
+   controller. Note that `ignoreDifferences` suppresses the reported diff but does **not** prevent
+   the removal, so it is not a sufficient safeguard on its own.
+
+### Detection
+
+**Before upgrading**, check whether any ArgoCD CR leaves the field unset while its `argocd-cm`
+still says `label`:
+
+```bash
+kubectl get cm -A -l app.kubernetes.io/part-of=argocd --field-selector metadata.name=argocd-cm \
+  -o jsonpath='{range .items[*]}{.metadata.namespace}{"\t"}{.data.application\.resourceTrackingMethod}{"\n"}{end}'
+```
+
+Any namespace reporting `label` whose ArgoCD CR does not set `.spec.resourceTrackingMethod` will
+change on upgrade.
+
+**After upgrading**, the operator logs a warning on the reconcile that performs the change. It is
+logged once per instance, at the moment of the change:
+
+```
+WARNING: resource tracking method in argocd-cm is changing from 'label' to the default
+'annotation' because .spec.resourceTrackingMethod is not set. ...
+```
+
+You are **not** affected if any of the following is true:
+
+- `.spec.resourceTrackingMethod` is set explicitly on the ArgoCD CR — your value is honored, and no
+  change occurs
+- The instance already runs on Operator 0.17 or later — the change happened at that upgrade, and
+  `argocd-cm` already reads `annotation`
+- The installation is new on 0.17+ — it starts on `annotation` with nothing to migrate
+
+### Remediation Steps
+
+1. **To keep label-based tracking, set it explicitly — ideally before upgrading:**
+
+   ```yaml
+   apiVersion: argoproj.io/v1beta1
+   kind: ArgoCD
+   metadata:
+     name: example-argocd
+   spec:
+     resourceTrackingMethod: label
+   ```
+
+   Pinning the value also insulates the instance from any future change of the default. This is the
+   recommended action if you have already upgraded and want to return to the previous behaviour:
+   applying it restores `label` and the `OutOfSync` reports clear.
+
+2. **To adopt annotation-based tracking deliberately**, set `.spec.resourceTrackingMethod: annotation`
+   and **review the diff of each affected Application before syncing**. Do not bulk-sync to clear
+   the drift. For Secrets managed by other controllers, either bring the controller-managed labels
+   into Git or confirm that the owning controller will re-add them, and be aware that
+   `ignoreDifferences` alone does not stop a sync from removing them.
+
+3. **Verify the effective value at any time:**
+
+   ```bash
+   kubectl get cm -n <argocd-namespace> argocd-cm -o jsonpath='{.data.application\.resourceTrackingMethod}'
+   ```
+
 ## Upgrading from Operator ≤0.14 (Argo CD ≤2.14) to Operator 0.15+ (Argo CD 3.0+)
 
 ### Logs RBAC Enforcement

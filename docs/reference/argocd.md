@@ -1440,9 +1440,14 @@ Valid values are:
 * `annotation` - Track resources using an annotation
 * `annotation+label` - Track resources using both, an annotation and a label
 
-The default is to use `annotation` as tracking method.
+The default is to use `annotation` as tracking method. This changed in Operator 0.17.0, which
+previously defaulted to `label`; instances that do not set this field adopt the new default when
+the operator is upgraded. See [Upgrading](../upgrading.md#upgrading-from-operator-016-to-operator-017)
+for what to expect and how to pin the previous behaviour.
 
-When this value is changed, existing managed resources will re-sync to apply the new tracking method.
+When this value is changed, existing managed resources will re-sync to apply the new tracking
+method. Review the diff before syncing: for Secrets in particular, a sync can remove labels added
+by other controllers, and `ignoreDifferences` hides the diff without preventing the removal.
 
 ### Resource Tracking Method
 
