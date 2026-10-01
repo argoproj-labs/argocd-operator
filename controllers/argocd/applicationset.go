@@ -99,19 +99,19 @@ func (r *ReconcileArgoCD) getArgoApplicationSetCommand(cr *argoproj.ArgoCD) ([]s
 			}
 		}
 		if len(appsetsSourceNamespaces) > 0 {
-			cmd = append(cmd, "--applicationset-namespaces", fmt.Sprint(strings.Join(appsetsSourceNamespaces, ",")))
+			cmd = append(cmd, "--applicationset-namespaces", strings.Join(appsetsSourceNamespaces, ","))
 		}
 
 		// appset in any ns is enabled and no scmProviders allow list is specified,
 		// disables scm & PR generators to prevent potential security issues
 		// https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/Appset-Any-Namespace/#scm-providers-secrets-consideration
-		if len(appsetsSourceNamespaces) > 0 && (len(cr.Spec.ApplicationSet.SCMProviders) <= 0) {
+		if len(appsetsSourceNamespaces) > 0 && len(cr.Spec.ApplicationSet.SCMProviders) == 0 {
 			cmd = append(cmd, "--enable-scm-providers=false")
 		}
 	}
 
 	if len(cr.Spec.ApplicationSet.SCMProviders) > 0 {
-		cmd = append(cmd, "--allowed-scm-providers", fmt.Sprint(strings.Join(cr.Spec.ApplicationSet.SCMProviders, ",")))
+		cmd = append(cmd, "--allowed-scm-providers", strings.Join(cr.Spec.ApplicationSet.SCMProviders, ","))
 	}
 
 	// ApplicationSet command arguments provided by the user
