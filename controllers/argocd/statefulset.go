@@ -72,7 +72,8 @@ func newStatefulSetWithName(name string, component string, cr *argoproj.ArgoCD) 
 				Annotations: make(map[string]string),
 			},
 			Spec: corev1.PodSpec{
-				NodeSelector: common.DefaultNodeSelector(),
+				AutomountServiceAccountToken: new(true),
+				NodeSelector:                 common.DefaultNodeSelector(),
 			},
 		},
 	}
@@ -530,6 +531,10 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 			existing.Spec.Template.Labels = ss.Spec.Template.Labels
 			changes = append(changes, "labels")
 		}
+		if !reflect.DeepEqual(ss.Spec.Template.Spec.AutomountServiceAccountToken, existing.Spec.Template.Spec.AutomountServiceAccountToken) {
+			existing.Spec.Template.Spec.AutomountServiceAccountToken = ss.Spec.Template.Spec.AutomountServiceAccountToken
+			changes = append(changes, "automountServiceAccountToken")
+		}
 
 		if len(changes) > 0 {
 			argoutil.LogResourceUpdate(log, existing, "updating", strings.Join(changes, ", "))
@@ -719,6 +724,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 	}
 
 	podSpec := &ss.Spec.Template.Spec
+	podSpec.AutomountServiceAccountToken = new(true)
 	podSpec.Containers = []corev1.Container{{
 		Command:         getArgoApplicationControllerCommand(cr, useTLSForRedis),
 		Image:           getArgoContainerImage(cr),
@@ -1025,6 +1031,11 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			existing.Spec.Template.Labels = ss.Spec.Template.Labels
 			changes = append(changes, "labels")
 		}
+		if !reflect.DeepEqual(ss.Spec.Template.Spec.AutomountServiceAccountToken, existing.Spec.Template.Spec.AutomountServiceAccountToken) {
+			existing.Spec.Template.Spec.AutomountServiceAccountToken = ss.Spec.Template.Spec.AutomountServiceAccountToken
+			changes = append(changes, "automountServiceAccountToken")
+		}
+
 		if len(changes) > 0 {
 			argoutil.LogResourceUpdate(log, existing, "updating", strings.Join(changes, ", "))
 			return r.Update(context.TODO(), existing)

@@ -345,6 +345,18 @@ func HaveConditionTypeStatus(expectedConditionType appsv1.DeploymentConditionTyp
 	})
 }
 
+func HaveAutomountServiceAccountToken(expected bool) matcher.GomegaMatcher {
+	return fetchDeployment(func(depl *appsv1.Deployment) bool {
+		token := depl.Spec.Template.Spec.AutomountServiceAccountToken
+		if token == nil {
+			GinkgoWriter.Println("HaveAutomountServiceAccountToken - AutomountServiceAccountToken is nil, expected:", expected)
+			return false
+		}
+		GinkgoWriter.Println("HaveAutomountServiceAccountToken - expected:", expected, "actual:", *token)
+		return *token == expected
+	})
+}
+
 func HaveServiceAccountName(expectedServiceAccountName string) matcher.GomegaMatcher {
 	return fetchDeployment(func(depl *appsv1.Deployment) bool {
 

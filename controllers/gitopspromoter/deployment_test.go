@@ -55,6 +55,7 @@ func makeExistingDeployment(sa *corev1.ServiceAccount, cr *argoproj.ArgoCD) *app
 					Labels: buildLabelsForPromoterResources(testCompName, cr),
 				},
 				Spec: corev1.PodSpec{
+					AutomountServiceAccountToken: new(true),
 					Containers: []corev1.Container{
 						{
 							Command:         buildContainerCommand("test"),
@@ -208,6 +209,7 @@ func TestReconcilePromoterDeployment_DoesNotExist_PromoterEnabled(t *testing.T) 
 	assert.Equal(t, referenceDeployment.Spec.Template.Spec.ServiceAccountName, retrievedDeployment.Spec.Template.Spec.ServiceAccountName)
 	assert.Equal(t, referenceDeployment.Spec.Template.Spec.TerminationGracePeriodSeconds, retrievedDeployment.Spec.Template.Spec.TerminationGracePeriodSeconds)
 	assert.Equal(t, referenceDeployment.Spec.Template.Spec.Volumes, retrievedDeployment.Spec.Template.Spec.Volumes)
+	assert.True(t, *retrievedDeployment.Spec.Template.Spec.AutomountServiceAccountToken)
 }
 
 func TestReconcilePromoterDeployment_Exists_PromoterDisabled(t *testing.T) {
@@ -419,6 +421,7 @@ func TestReconcilePromoterDeployment_Exists_PromoterEnabled_Update(t *testing.T)
 	assert.Equal(t, referenceDeployment.Spec.Template.Spec.ServiceAccountName, retrievedDeployment.Spec.Template.Spec.ServiceAccountName)
 	assert.Equal(t, referenceDeployment.Spec.Template.Spec.TerminationGracePeriodSeconds, retrievedDeployment.Spec.Template.Spec.TerminationGracePeriodSeconds)
 	assert.Equal(t, referenceDeployment.Spec.Template.Spec.Volumes, retrievedDeployment.Spec.Template.Spec.Volumes)
+	assert.True(t, *retrievedDeployment.Spec.Template.Spec.AutomountServiceAccountToken)
 }
 
 func TestReconcilePromoterControllerDeployment_PromoterDisabled(t *testing.T) {

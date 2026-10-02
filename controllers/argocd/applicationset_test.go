@@ -135,6 +135,7 @@ func TestReconcileApplicationSet_RemovesResourcesWhenSpecApplicationSetNil(t *te
 
 func checkExpectedDeploymentValues(t *testing.T, r *ReconcileArgoCD, deployment *appsv1.Deployment, sa *v1.ServiceAccount, extraVolumes *[]v1.Volume, extraVolumeMounts *[]v1.VolumeMount, a *argoproj.ArgoCD) {
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.Name)
+	assert.True(t, *deployment.Spec.Template.Spec.AutomountServiceAccountToken)
 	appsetAssertExpectedLabels(t, &deployment.ObjectMeta)
 
 	containerWant, err := r.applicationSetContainer(a, false)
@@ -460,6 +461,7 @@ func TestReconcileApplicationSet_Deployments_resourceRequirements(t *testing.T) 
 		deployment))
 
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.Name)
+	assert.True(t, *deployment.Spec.Template.Spec.AutomountServiceAccountToken)
 	appsetAssertExpectedLabels(t, &deployment.ObjectMeta)
 
 	containerWant, err := r.applicationSetContainer(a, false)
