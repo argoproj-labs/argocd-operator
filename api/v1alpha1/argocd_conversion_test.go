@@ -578,6 +578,9 @@ func TestAlphaToBetaConversion(t *testing.T) {
 							KeepAliveMinInterval: "30s",
 							Service: ArgoCDAgentPrincipalServiceSpec{
 								Type: corev1.ServiceTypeLoadBalancer,
+								Annotations: map[string]string{
+									"metallb.io/address-pool": "production-public-ips",
+								},
 							},
 							Route: ArgoCDAgentPrincipalRouteSpec{
 								Enabled: new(false),
@@ -628,6 +631,9 @@ func TestAlphaToBetaConversion(t *testing.T) {
 							KeepAliveMinInterval: "30s",
 							Service: v1beta1.ArgoCDAgentPrincipalServiceSpec{
 								Type: corev1.ServiceTypeLoadBalancer,
+								Annotations: map[string]string{
+									"metallb.io/address-pool": "production-public-ips",
+								},
 							},
 							Route: v1beta1.ArgoCDAgentPrincipalRouteSpec{
 								Enabled: new(false),
