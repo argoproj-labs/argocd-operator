@@ -5,7 +5,7 @@ go 1.26.5
 require (
 	github.com/argoproj/argo-cd/gitops-engine v0.7.1-0.20250908182407-97ad5b59a627
 	// Update in Makefile and run `make update-dependencies`
-	github.com/argoproj/argo-cd/v3 v3.5.2
+	github.com/argoproj/argo-cd/v3 v3.5.4
 	github.com/cert-manager/cert-manager v1.20.3
 	github.com/go-logr/logr v1.4.4
 	github.com/google/go-cmp v0.7.0
@@ -85,7 +85,7 @@ require (
 )
 
 require (
-	github.com/argoproj-labs/argocd-image-updater v1.3.0
+	github.com/argoproj-labs/argocd-image-updater v1.3.1
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 )
@@ -223,11 +223,11 @@ require (
 )
 
 replace (
-	// v3.5.2 declares gitops-engine at a pseudo-version where go.mod
+	// v3.5.4 declares gitops-engine at a pseudo-version where go.mod
 	// didn't exist yet, then overrides with replace => ./gitops-engine locally.
-	// Downstream consumers must resolve it themselves; pin to the v3.5.2 commit.
-	github.com/argoproj/argo-cd/gitops-engine => github.com/argoproj/argo-cd/gitops-engine v0.0.0-20260827090335-e258ee23c3e5
-	// This replace block is from Argo CD v3.5.2 go.mod
+	// Downstream consumers must resolve it themselves; pin to the v3.5.4 commit.
+	github.com/argoproj/argo-cd/gitops-engine => github.com/argoproj/argo-cd/gitops-engine v0.0.0-20261006195831-d6d5b248ce00
+	// This replace block is from Argo CD v3.5.4 go.mod
 	github.com/golang/protobuf => github.com/golang/protobuf v1.5.4
 	github.com/grpc-ecosystem/grpc-gateway => github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	golang.org/x/tools => golang.org/x/tools v0.35.0
