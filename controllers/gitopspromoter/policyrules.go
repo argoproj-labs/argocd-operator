@@ -178,6 +178,7 @@ func buildPolicyRuleForControllerClusterRole() []rbacv1.PolicyRule {
 				"argocdcommitstatuses/status",
 				"changetransferpolicies/status",
 				"clusterscmproviders/status",
+				"commitstatuses/status",
 				"gitcommitstatuses/status",
 				"gitrepositories/status",
 				"promotionstrategies/status",
