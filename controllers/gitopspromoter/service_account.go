@@ -109,6 +109,7 @@ func buildPromoterServiceAccount(compName string, cr *argoproj.ArgoCD) *corev1.S
 			Namespace: cr.Namespace,
 			Labels:    buildLabelsForPromoterResources(compName, cr),
 		},
+		AutomountServiceAccountToken: new(false),
 	}
 }
 

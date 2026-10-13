@@ -191,6 +191,7 @@ func TestReconcilePromoterServiceAccount_DoesNotExist_PromoterEnabled(t *testing
 	assert.Len(t, retrievedSA.OwnerReferences, 1)
 	assert.Equal(t, cr.Name, retrievedSA.OwnerReferences[0].Name)
 	assert.Equal(t, "ArgoCD", retrievedSA.OwnerReferences[0].Kind)
+	assert.False(t, *retrievedSA.AutomountServiceAccountToken)
 }
 
 func TestReconcilePromoterServiceAccount_Exists_PromoterDisabled(t *testing.T) {

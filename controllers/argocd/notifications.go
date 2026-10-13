@@ -531,6 +531,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, 
 	notificationEnv = argoutil.EnvMerge(notificationEnv, proxyEnvVars(), false)
 
 	podSpec := &desiredDeployment.Spec.Template.Spec
+	podSpec.AutomountServiceAccountToken = new(true)
 	podSpec.SecurityContext = &corev1.PodSecurityContext{
 		RunAsNonRoot: new(true),
 	}

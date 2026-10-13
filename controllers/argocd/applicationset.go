@@ -200,6 +200,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 	setAppSetLabels(&deploy.ObjectMeta)
 
 	podSpec := &deploy.Spec.Template.Spec
+	podSpec.AutomountServiceAccountToken = new(true)
 
 	// sa would be nil when spec.applicationset.enabled = false
 	if sa != nil {
@@ -318,6 +319,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 			existing.Spec.Template.Spec.PriorityClassName = deploy.Spec.Template.Spec.PriorityClassName
 			existing.Spec.Template.Spec.Containers[0].SecurityContext = deploy.Spec.Template.Spec.Containers[0].SecurityContext
 			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
+			existing.Spec.Template.Spec.AutomountServiceAccountToken = deploy.Spec.Template.Spec.AutomountServiceAccountToken
 
 			argoutil.LogResourceUpdate(log, existing, "due to difference in", deploymentsDifferent)
 			return r.Update(context.TODO(), existing)
@@ -378,7 +380,7 @@ func identifyDeploymentDifference(x appsv1.Deployment, y appsv1.Deployment) stri
 	}
 
 	if !reflect.DeepEqual(xPodSpec.Containers[0].SecurityContext, yPodSpec.Containers[0].SecurityContext) {
-		return "Spec.Template.Spec..Containers[0].SecurityContext"
+		return "Spec.Template.Spec.Containers[0].SecurityContext"
 	}
 
 	if xPodSpec.PriorityClassName != yPodSpec.PriorityClassName {
@@ -387,6 +389,10 @@ func identifyDeploymentDifference(x appsv1.Deployment, y appsv1.Deployment) stri
 
 	if !reflect.DeepEqual(x.Spec.Template.Annotations, y.Spec.Template.Annotations) {
 		return ".Spec.Template.Annotations"
+	}
+
+	if !reflect.DeepEqual(xPodSpec.AutomountServiceAccountToken, yPodSpec.AutomountServiceAccountToken) {
+		return "Spec.Template.Spec.AutomountServiceAccountToken"
 	}
 
 	return ""

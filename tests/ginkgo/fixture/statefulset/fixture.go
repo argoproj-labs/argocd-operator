@@ -171,6 +171,18 @@ func HaveTolerations(tolerations []corev1.Toleration) matcher.GomegaMatcher {
 	})
 }
 
+func HaveAutomountServiceAccountToken(expected bool) matcher.GomegaMatcher {
+	return fetchStatefulSet(func(ss *appsv1.StatefulSet) bool {
+		token := ss.Spec.Template.Spec.AutomountServiceAccountToken
+		if token == nil {
+			GinkgoWriter.Println("HaveAutomountServiceAccountToken - AutomountServiceAccountToken is nil, expected:", expected)
+			return false
+		}
+		GinkgoWriter.Println("HaveAutomountServiceAccountToken - expected:", expected, "actual:", *token)
+		return *token == expected
+	})
+}
+
 func HaveContainerImage(containerImage string, containerIndex int) matcher.GomegaMatcher {
 	return fetchStatefulSet(func(ss *appsv1.StatefulSet) bool {
 

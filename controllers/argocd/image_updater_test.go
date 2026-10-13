@@ -268,6 +268,7 @@ func TestReconcileImageUpdater_CreateDeployments(t *testing.T) {
 
 	// Ensure the created Deployment has the expected properties
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.Name)
+	assert.True(t, *deployment.Spec.Template.Spec.AutomountServiceAccountToken)
 
 	want := []v1.Container{{
 		Command:         []string{"/manager"},

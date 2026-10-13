@@ -430,6 +430,7 @@ func TestReconcileServiceAccount_SetsImagePullSecrets(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, retrieved.ImagePullSecrets, 1)
 	assert.Equal(t, "my-pull-secret", retrieved.ImagePullSecrets[0].Name)
+	assert.False(t, *retrieved.AutomountServiceAccountToken)
 }
 
 func TestReconcileServiceAccount_UpdatesImagePullSecrets(t *testing.T) {
