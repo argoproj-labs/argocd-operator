@@ -26,6 +26,12 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - serviceaccounts/token
+  verbs:
+  - create
+- apiGroups:
+  - ""
+  resources:
   - pods
   verbs:
   - '*'
