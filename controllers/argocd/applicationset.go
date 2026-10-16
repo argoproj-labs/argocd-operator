@@ -1243,6 +1243,7 @@ func (r *ReconcileArgoCD) reconcileSourceNamespaceRole(role v1.Role, cr *argopro
 	if err := applyReconcilerHook(cr, role, ""); err != nil {
 		return err
 	}
+	role.Rules = policyRulesForNamespacedRole(role.Rules)
 
 	existingRole := v1.Role{}
 	err := r.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: role.Namespace}, &existingRole)
