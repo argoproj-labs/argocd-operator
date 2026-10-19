@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -16,6 +18,7 @@ import (
 	testclient "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/yaml"
 
 	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
 	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
@@ -1331,4 +1334,28 @@ func TestReconcileArgoCD_reconcileRole_enable_server_role(t *testing.T) {
 	err = r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole)
 	assert.Error(t, err)
 	assertNotFound(t, err)
+}
+
+func TestManagerRoleIncludesServiceAccountsTokenCreate(t *testing.T) {
+	// go test runs with cwd set to this package directory.
+	rolePath := filepath.Join("..", "..", "config", "rbac", "role.yaml")
+
+	raw, err := os.ReadFile(rolePath)
+	require.NoError(t, err)
+
+	var role v1.ClusterRole
+	require.NoError(t, yaml.Unmarshal(raw, &role))
+
+	found := false
+	for _, rule := range role.Rules {
+		for _, resource := range rule.Resources {
+			if resource != "serviceaccounts/token" {
+				continue
+			}
+			found = true
+			assert.Contains(t, rule.APIGroups, "", "serviceaccounts/token must be in the core API group")
+			assert.Contains(t, rule.Verbs, "create", "TokenRequest requires explicit create; verbs=* on serviceaccounts does not include the token subresource")
+		}
+	}
+	assert.True(t, found, "manager-role must grant create on serviceaccounts/token (Kubernetes TokenRequest subresource)")
 }

@@ -1920,6 +1920,12 @@ spec:
           verbs:
           - get
         - apiGroups:
+          - ""
+          resources:
+          - serviceaccounts/token
+          verbs:
+          - create
+        - apiGroups:
           - apiregistration.k8s.io
           resources:
           - apiservices
