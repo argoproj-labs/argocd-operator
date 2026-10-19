@@ -381,6 +381,17 @@ func TestPolicyRulesForNamespacedRole(t *testing.T) {
 		got := policyRulesForNamespacedRole([]v1.PolicyRule{resourceRule})
 		assert.Equal(t, []v1.PolicyRule{resourceRule}, got)
 	})
+
+	t.Run("drops rules with APIGroups or ResourceNames but no Resources after stripping", func(t *testing.T) {
+		got := policyRulesForNamespacedRole([]v1.PolicyRule{{
+			APIGroups:       []string{"*"},
+			ResourceNames:   []string{"foo"},
+			NonResourceURLs: []string{"/healthz"},
+			Verbs:           []string{"get"},
+		}})
+		assert.Empty(t, got)
+		assert.NotNil(t, got)
+	})
 }
 
 func TestReconcileArgoCD_reconcileRole_omitsNonResourceURLs(t *testing.T) {

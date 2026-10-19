@@ -61,10 +61,9 @@ func policyRulesForNamespacedRole(rules []v1.PolicyRule) []v1.PolicyRule {
 }
 
 func isEmptyPolicyRule(rule v1.PolicyRule) bool {
-	return len(rule.APIGroups) == 0 &&
-		len(rule.Resources) == 0 &&
-		len(rule.ResourceNames) == 0 &&
-		len(rule.NonResourceURLs) == 0
+	// Namespaced Roles require Resources. After stripping nonResourceURLs, a rule
+	// with only APIGroups or ResourceNames is still invalid (ValidateRole).
+	return len(rule.Resources) == 0
 }
 
 func sanitizeNamespacedRole(role *v1.Role) {
