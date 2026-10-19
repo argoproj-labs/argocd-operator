@@ -43,6 +43,40 @@ func newRoleForApplicationSourceNamespaces(namespace string, rules []v1.PolicyRu
 	}
 }
 
+// policyRulesForNamespacedRole copies ClusterRole-style rules that are valid on a
+// namespaced Role. nonResourceURLs is only permitted on ClusterRoles; rules that
+// are empty after stripping are dropped.
+func policyRulesForNamespacedRole(rules []v1.PolicyRule) []v1.PolicyRule {
+	filtered := make([]v1.PolicyRule, 0, len(rules))
+	for _, rule := range rules {
+		if len(rule.NonResourceURLs) > 0 {
+			rule.NonResourceURLs = nil
+		}
+		if isEmptyPolicyRule(rule) {
+			continue
+		}
+		filtered = append(filtered, rule)
+	}
+	return filtered
+}
+
+func isEmptyPolicyRule(rule v1.PolicyRule) bool {
+	// Namespaced Roles require Resources. After stripping nonResourceURLs, a rule
+	// with only APIGroups or ResourceNames is still invalid (ValidateRole).
+	return len(rule.Resources) == 0
+}
+
+func sanitizeNamespacedRole(role *v1.Role) {
+	if role == nil {
+		return
+	}
+	original := len(role.Rules)
+	role.Rules = policyRulesForNamespacedRole(role.Rules)
+	if omitted := original - len(role.Rules); omitted > 0 {
+		log.Info(fmt.Sprintf("omitted %d nonResourceURLs rule(s) from namespaced Role %s/%s; they are only valid on ClusterRoles", omitted, role.Namespace, role.Name))
+	}
+}
+
 func generateResourceName(argoComponentName string, cr *argoproj.ArgoCD) string {
 	return argoutil.NameWithSuffix(cr.ObjectMeta, argoComponentName)
 }
@@ -135,6 +169,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 		if err := applyReconcilerHook(cr, role, ""); err != nil {
 			return nil, err
 		}
+		sanitizeNamespacedRole(role)
 		role.Namespace = namespace.Name
 		existingRole := v1.Role{}
 		err = r.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: role.Namespace}, &existingRole)
@@ -271,6 +306,7 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 		if err := applyReconcilerHook(cr, role, ""); err != nil {
 			return err
 		}
+		sanitizeNamespacedRole(role)
 		role.Namespace = namespace.Name
 		// patch rules if appset in source namespace is allowed
 		appsetSourceNamespaces, err := r.getApplicationSetSourceNamespaces(cr)
