@@ -1910,12 +1910,6 @@ spec:
         - apiGroups:
           - ""
           resources:
-          - serviceaccounts/token
-          verbs:
-          - create
-        - apiGroups:
-          - ""
-          resources:
           - pods
           verbs:
           - '*'
@@ -1925,6 +1919,12 @@ spec:
           - pods/log
           verbs:
           - get
+        - apiGroups:
+          - ""
+          resources:
+          - serviceaccounts/token
+          verbs:
+          - create
         - apiGroups:
           - apiregistration.k8s.io
           resources:
