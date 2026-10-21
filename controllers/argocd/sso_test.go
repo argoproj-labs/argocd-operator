@@ -39,6 +39,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 	tests := []struct {
 		name                     string
 		argoCD                   *argoproj.ArgoCD
+		openShiftCluster         bool
 		wantErr                  bool
 		Err                      error
 		wantSSOConfigLegalStatus string
@@ -99,6 +100,34 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			wantSSOConfigLegalStatus: "Failed",
 		},
 		{
+			name: "openShiftOAuth true on non-OpenShift cluster",
+			argoCD: makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+				ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
+						OpenShiftOAuth: true,
+					},
+				}
+			}),
+			wantErr:                  true,
+			Err:                      errors.New("illegal SSO configuration: openShiftOAuth is only supported on OpenShift clusters. Please disable the openShiftOAuth configuration."),
+			wantSSOConfigLegalStatus: "Failed",
+		},
+		{
+			name: "openShiftOAuth true on OpenShift cluster",
+			argoCD: makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+				ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
+						OpenShiftOAuth: true,
+					},
+				}
+			}),
+			openShiftCluster:         true,
+			wantErr:                  false,
+			wantSSOConfigLegalStatus: "",
+		},
+		{
 			name: "sso provider missing but sso.dex/keycloak supplied",
 			argoCD: makeTestArgoCD(func(ac *argoproj.ArgoCD) {
 				ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
@@ -134,6 +163,10 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			original := versionAPIFound
+			versionAPIFound = test.openShiftCluster
+			t.Cleanup(func() { versionAPIFound = original })
+
 			resObjs := []client.Object{test.argoCD}
 			subresObjs := []client.Object{test.argoCD}
 			runtimeObjs := []runtime.Object{}
