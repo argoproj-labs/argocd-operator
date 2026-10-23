@@ -99,7 +99,7 @@ jobs:
         env:
           ARGOCD_CLUSTER_CONFIG_NAMESPACES: argocd-e2e-cluster-config, argocd-test-impersonation
           ARGOCD_REDIS_HA_PROXY_IMAGE: "quay.io/akuity/haproxy@sha256:e11f034e651603f10a365e5ad5a0321825e18eded9620e40c4f4d6ae58419bfe"
-	        ARGOCD_REDIS_IMAGE: "quay.io/akuity/redis@sha256:4ed22bc23e35e4c2315b365ed63355f48eca31edbc5f17e8e54b7859645ef14d"
+          ARGOCD_REDIS_IMAGE: "quay.io/akuity/redis@sha256:4ed22bc23e35e4c2315b365ed63355f48eca31edbc5f17e8e54b7859645ef14d"
           ARGOCD_REDIS_HA_IMAGE: "quay.io/akuity/redis@sha256:4ed22bc23e35e4c2315b365ed63355f48eca31edbc5f17e8e54b7859645ef14d"
         run: |
           set -o pipefail
