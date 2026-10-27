@@ -61,7 +61,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 		})
 
-		FIt("verifies that all Argo CD components can run with pod-security enforce, warn, and audit of 'restricted'", func() {
+		It("verifies that all Argo CD components can run with pod-security enforce, warn, and audit of 'restricted'", func() {
 
 			// Note: Even though this test enables Redis HA, it does NOT require a cluster with multiple nodes.
 

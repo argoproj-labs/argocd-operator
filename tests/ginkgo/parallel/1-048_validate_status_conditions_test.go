@@ -47,7 +47,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			ctx = context.Background()
 		})
 
-		FIt("verifies that .status.condition correct reports configuration errors, such as sso dex and keycloak", func() {
+		It("verifies that .status.condition correct reports configuration errors, such as sso dex and keycloak", func() {
 
 			By("create an Argo CD instance with empty SSO, which is invalid")
 			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
