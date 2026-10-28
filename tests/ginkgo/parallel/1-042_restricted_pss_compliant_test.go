@@ -95,7 +95,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 					SSO: &argov1beta1api.ArgoCDSSOSpec{
 						Provider: argov1beta1api.SSOProviderTypeDex,
 						Dex: &argov1beta1api.ArgoCDDexSpec{
-							OpenShiftOAuth: true,
+							OpenShiftOAuth: fixture.RunningOnOpenShift(),
 						},
 					},
 				},
@@ -105,6 +105,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 				argoCD.Spec.Server = argov1beta1api.ArgoCDServerSpec{
 					Ingress: argov1beta1api.ArgoCDIngressSpec{Enabled: true},
 				}
+				argoCD.Spec.SSO.Dex.Config = "test-config"
 			}
 
 			Expect(k8sClient.Create(ctx, argoCD)).To(Succeed())

@@ -73,6 +73,8 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 
 		It("verifies that the Dex client secret is sourced from a short-lived TokenRequest token and is correctly set in argocd-secret", func() {
 
+			fixture.EnsureRunningOnOpenShift()
+
 			By("creating simple Argo CD instance with Dex and Openshift OAuth enabled")
 			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()
 			defer cleanupFunc()
@@ -100,6 +102,8 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 		})
 
 		It("verifies the operator deletes legacy non-expiring Dex kubernetes.io/service-account-token Secrets and drops them from the Dex SA", func() {
+
+			fixture.EnsureRunningOnOpenShift()
 
 			By("creating simple Argo CD instance with Dex and Openshift OAuth enabled")
 			ns, cleanupFunc := fixture.CreateRandomE2ETestNamespaceWithCleanupFunc()

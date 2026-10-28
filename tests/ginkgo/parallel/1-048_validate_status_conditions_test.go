@@ -90,7 +90,7 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 								corev1.ResourceMemory: resource.MustParse("128Mi"),
 							},
 						},
-						OpenShiftOAuth: true,
+						Config: "test-config",
 					},
 					Provider: argov1beta1api.SSOProviderTypeDex,
 				}

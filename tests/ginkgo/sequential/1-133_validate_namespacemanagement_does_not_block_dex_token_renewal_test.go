@@ -79,6 +79,8 @@ var _ = Describe("GitOps Operator Sequential E2E Tests", func() {
 
 		It("keeps ArgoCD Available and renews Dex tokens when a disallowed NamespaceManagement CR exists", func() {
 
+			fixture.EnsureRunningOnOpenShift()
+
 			By("ensuring NamespaceManagement feature is enabled on the operator")
 			if os.Getenv("LOCAL_RUN") == "true" {
 				By("LOCAL_RUN: expecting ALLOW_NAMESPACE_MANAGEMENT_IN_NAMESPACE_SCOPED_INSTANCES=true on the local operator process")
