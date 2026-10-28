@@ -865,7 +865,10 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			VolumeMounts:    getArgoImportVolumeMounts(),
 		}}
 
-		podSpec.Volumes = append(controllerVolumes, getArgoImportVolumes(export)...)
+		importVolumes := getArgoImportVolumes(export)
+		// Import volumes use reserved names (backup-storage, secret-storage, tmp).
+		// Drop colliding user volumes so the StatefulSet is not rejected for duplicate names.
+		podSpec.Volumes = append(dropVolumesWithNames(controllerVolumes, volumeNameSet(importVolumes)), importVolumes...)
 	}
 
 	invalidImagePod, err := containsInvalidImage(*cr, r)
@@ -1096,6 +1099,28 @@ func updateNodePlacementStateful(existing *appsv1.StatefulSet, ss *appsv1.Statef
 		changes = append(changes, "tolerations")
 	}
 	return changes
+}
+
+func volumeNameSet(vols []corev1.Volume) map[string]struct{} {
+	names := make(map[string]struct{}, len(vols))
+	for _, v := range vols {
+		names[v.Name] = struct{}{}
+	}
+	return names
+}
+
+func dropVolumesWithNames(vols []corev1.Volume, names map[string]struct{}) []corev1.Volume {
+	if len(names) == 0 {
+		return vols
+	}
+	out := make([]corev1.Volume, 0, len(vols))
+	for _, v := range vols {
+		if _, found := names[v.Name]; found {
+			continue
+		}
+		out = append(out, v)
+	}
+	return out
 }
 
 // Returns true if a StatefulSet has pods in ErrImagePull or ImagePullBackoff state.

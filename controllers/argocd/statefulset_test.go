@@ -479,6 +479,68 @@ func TestReconcileArgoCD_reconcileApplicationController_withResources(t *testing
 	assert.False(t, testResources.Limits.Memory().Equal(*rsC.Limits.Memory()))
 }
 
+func TestReconcileArgoCD_reconcileApplicationController_importDropsReservedUserVolumes(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	reserved := []string{"backup-storage", "secret-storage", "tmp"}
+	for _, reservedName := range reserved {
+		t.Run(reservedName, func(t *testing.T) {
+			a := makeTestArgoCDWithResources(func(a *argoproj.ArgoCD) {
+				a.Spec.Import = &argoproj.ArgoCDImportSpec{
+					Name: "testimport",
+				}
+				a.Spec.Controller.Volumes = []corev1.Volume{
+					{
+						Name: reservedName,
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
+					{
+						Name: "custom-storage",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
+				}
+			})
+			ex := argoprojv1alpha1.ArgoCDExport{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testimport",
+					Namespace: a.Namespace,
+				},
+				Spec: argoprojv1alpha1.ArgoCDExportSpec{
+					Storage: &argoprojv1alpha1.ArgoCDExportStorageSpec{},
+				},
+			}
+
+			resObjs := []client.Object{a, &ex}
+			subresObjs := []client.Object{a, &ex}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, argoprojv1alpha1.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, nil)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a, false))
+
+			ss := &appsv1.StatefulSet{}
+			assert.NoError(t, r.Get(
+				context.TODO(),
+				types.NamespacedName{
+					Name:      applicationControllerResourceName(a),
+					Namespace: a.Namespace,
+				},
+				ss))
+
+			seen := map[string]int{}
+			for _, vol := range ss.Spec.Template.Spec.Volumes {
+				seen[vol.Name]++
+			}
+			assert.Equal(t, 1, seen[reservedName], "reserved import volume name must appear once")
+			assert.Equal(t, 1, seen["custom-storage"], "non-reserved controller volume must be kept")
+		})
+	}
+}
+
 func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
