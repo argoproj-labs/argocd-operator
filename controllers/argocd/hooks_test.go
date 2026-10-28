@@ -41,6 +41,17 @@ func testRoleHook(cr *argoproj.ArgoCD, v any, s string) error {
 	return nil
 }
 
+func testNonResourceURLsRoleHook(_ *argoproj.ArgoCD, v any, _ string) error {
+	switch o := v.(type) {
+	case *v1.Role:
+		o.Rules = append(o.Rules, v1.PolicyRule{
+			NonResourceURLs: []string{"*"},
+			Verbs:           []string{"get"},
+		})
+	}
+	return nil
+}
+
 func testErrorHook(cr *argoproj.ArgoCD, v any, s string) error {
 	return errMsg
 }

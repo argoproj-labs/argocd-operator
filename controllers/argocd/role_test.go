@@ -336,6 +336,108 @@ func TestReconcileArgoCD_RoleHooks(t *testing.T) {
 	assert.Equal(t, role.Rules, []v1.PolicyRule{})
 }
 
+func TestPolicyRulesForNamespacedRole(t *testing.T) {
+	resourceRule := v1.PolicyRule{
+		APIGroups: []string{"apps"},
+		Resources: []string{"deployments"},
+		Verbs:     []string{"get", "list"},
+	}
+	nonResourceRule := v1.PolicyRule{
+		NonResourceURLs: []string{"*"},
+		Verbs:           []string{"get"},
+	}
+	metricsNonResourceRule := v1.PolicyRule{
+		NonResourceURLs: []string{"/metrics"},
+		Verbs:           []string{"get"},
+	}
+	mixedRule := v1.PolicyRule{
+		APIGroups:       []string{"test.com"},
+		Resources:       []string{"tests"},
+		NonResourceURLs: []string{"/healthz"},
+		Verbs:           []string{"get"},
+	}
+
+	t.Run("drops rules that only grant nonResourceURLs", func(t *testing.T) {
+		got := policyRulesForNamespacedRole([]v1.PolicyRule{resourceRule, nonResourceRule, metricsNonResourceRule})
+		assert.Equal(t, []v1.PolicyRule{resourceRule}, got)
+	})
+
+	t.Run("strips nonResourceURLs from mixed rules and keeps resource fields", func(t *testing.T) {
+		got := policyRulesForNamespacedRole([]v1.PolicyRule{mixedRule})
+		assert.Equal(t, []v1.PolicyRule{{
+			APIGroups: []string{"test.com"},
+			Resources: []string{"tests"},
+			Verbs:     []string{"get"},
+		}}, got)
+	})
+
+	t.Run("returns empty slice when every rule is nonResourceURLs only", func(t *testing.T) {
+		got := policyRulesForNamespacedRole([]v1.PolicyRule{nonResourceRule})
+		assert.Empty(t, got)
+		assert.NotNil(t, got)
+	})
+
+	t.Run("keeps resource rules unchanged", func(t *testing.T) {
+		got := policyRulesForNamespacedRole([]v1.PolicyRule{resourceRule})
+		assert.Equal(t, []v1.PolicyRule{resourceRule}, got)
+	})
+
+	t.Run("drops rules with APIGroups or ResourceNames but no Resources after stripping", func(t *testing.T) {
+		got := policyRulesForNamespacedRole([]v1.PolicyRule{{
+			APIGroups:       []string{"*"},
+			ResourceNames:   []string{"foo"},
+			NonResourceURLs: []string{"/healthz"},
+			Verbs:           []string{"get"},
+		}})
+		assert.Empty(t, got)
+		assert.NotNil(t, got)
+	})
+}
+
+func TestReconcileArgoCD_reconcileRole_omitsNonResourceURLs(t *testing.T) {
+	defer resetHooks()()
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	Register(testNonResourceURLsRoleHook)
+
+	workloadIdentifier := common.ArgoCDApplicationControllerComponent
+	expectedRules := policyRuleForApplicationController()
+	_, err := r.reconcileRole(workloadIdentifier, expectedRules, a)
+	assert.NoError(t, err)
+
+	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
+	reconciledRole := &v1.Role{}
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
+	assert.Equal(t, expectedRules, reconciledRole.Rules)
+	for _, rule := range reconciledRole.Rules {
+		assert.Empty(t, rule.NonResourceURLs)
+	}
+
+	// Existing Role with illegal nonResourceURLs is cleaned on the next reconcile.
+	reconciledRole.Rules = append(reconciledRole.Rules, v1.PolicyRule{
+		NonResourceURLs: []string{"/metrics"},
+		Verbs:           []string{"get"},
+	})
+	assert.NoError(t, r.Update(context.TODO(), reconciledRole))
+
+	_, err = r.reconcileRole(workloadIdentifier, expectedRules, a)
+	assert.NoError(t, err)
+	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
+	assert.Equal(t, expectedRules, reconciledRole.Rules)
+	for _, rule := range reconciledRole.Rules {
+		assert.Empty(t, rule.NonResourceURLs)
+	}
+}
+
 func TestReconcileArgoCD_reconcileRole_custom_role(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
