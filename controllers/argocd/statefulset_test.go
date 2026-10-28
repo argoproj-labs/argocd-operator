@@ -493,7 +493,9 @@ func TestReconcileArgoCD_reconcileApplicationController_importDropsReservedUserV
 					{
 						Name: reservedName,
 						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
+							EmptyDir: &corev1.EmptyDirVolumeSource{
+								Medium: corev1.StorageMediumMemory,
+							},
 						},
 					},
 					{
@@ -532,11 +534,19 @@ func TestReconcileArgoCD_reconcileApplicationController_importDropsReservedUserV
 				ss))
 
 			seen := map[string]int{}
+			sources := map[string]corev1.VolumeSource{}
 			for _, vol := range ss.Spec.Template.Spec.Volumes {
 				seen[vol.Name]++
+				sources[vol.Name] = vol.VolumeSource
 			}
 			assert.Equal(t, 1, seen[reservedName], "reserved import volume name must appear once")
 			assert.Equal(t, 1, seen["custom-storage"], "non-reserved controller volume must be kept")
+			wantImport := map[string]corev1.VolumeSource{}
+			for _, vol := range getArgoImportVolumes(&ex) {
+				wantImport[vol.Name] = vol.VolumeSource
+			}
+			assert.Equal(t, wantImport[reservedName], sources[reservedName], "reserved name must keep the import VolumeSource")
+			assert.Equal(t, corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}, sources["custom-storage"])
 		})
 	}
 }
