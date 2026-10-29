@@ -1110,14 +1110,16 @@ func volumeNameSet(vols []corev1.Volume) map[string]struct{} {
 }
 
 func dropVolumesWithNames(vols []corev1.Volume, names map[string]struct{}) []corev1.Volume {
-	if len(names) == 0 {
-		return vols
-	}
 	out := make([]corev1.Volume, 0, len(vols))
+	seen := make(map[string]struct{}, len(vols))
 	for _, v := range vols {
 		if _, found := names[v.Name]; found {
 			continue
 		}
+		if _, found := seen[v.Name]; found {
+			continue
+		}
+		seen[v.Name] = struct{}{}
 		out = append(out, v)
 	}
 	return out

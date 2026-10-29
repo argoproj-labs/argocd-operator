@@ -551,6 +551,21 @@ func TestReconcileArgoCD_reconcileApplicationController_importDropsReservedUserV
 	}
 }
 
+func TestDropVolumesWithNamesKeepsFirstDuplicate(t *testing.T) {
+	vols := []corev1.Volume{
+		{Name: "custom-storage"},
+		{Name: "custom-storage"},
+		{Name: "backup-storage"},
+		{Name: "other"},
+	}
+	got := dropVolumesWithNames(vols, map[string]struct{}{"backup-storage": {}})
+	names := make([]string, 0, len(got))
+	for _, v := range got {
+		names = append(names, v.Name)
+	}
+	assert.Equal(t, []string{"custom-storage", "other"}, names)
+}
+
 func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
