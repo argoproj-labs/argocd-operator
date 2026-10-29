@@ -437,6 +437,15 @@ func TestReconcileArgoCD_reconcileApplicationController_withResources(t *testing
 		},
 		ss))
 
+	volumeNames := make(map[string]bool)
+	for _, vol := range ss.Spec.Template.Spec.Volumes {
+		volumeNames[vol.Name] = true
+	}
+	assert.True(t, volumeNames["argocd-repo-server-tls"])
+	assert.True(t, volumeNames[common.ArgoCDRedisServerTLSSecretName])
+	assert.True(t, volumeNames["backup-storage"])
+	assert.True(t, volumeNames["secret-storage"])
+
 	testResources := corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
 			corev1.ResourceMemory: resourcev1.MustParse("1024Mi"),
@@ -468,6 +477,93 @@ func TestReconcileArgoCD_reconcileApplicationController_withResources(t *testing
 	assert.False(t, testResources.Requests.Memory().Equal(*rsC.Requests.Memory()))
 	assert.False(t, testResources.Limits.Cpu().Equal(*rsC.Limits.Cpu()))
 	assert.False(t, testResources.Limits.Memory().Equal(*rsC.Limits.Memory()))
+}
+
+func TestReconcileArgoCD_reconcileApplicationController_importDropsReservedUserVolumes(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	reserved := []string{"backup-storage", "secret-storage", "tmp"}
+	for _, reservedName := range reserved {
+		t.Run(reservedName, func(t *testing.T) {
+			a := makeTestArgoCDWithResources(func(a *argoproj.ArgoCD) {
+				a.Spec.Import = &argoproj.ArgoCDImportSpec{
+					Name: "testimport",
+				}
+				a.Spec.Controller.Volumes = []corev1.Volume{
+					{
+						Name: reservedName,
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{
+								Medium: corev1.StorageMediumMemory,
+							},
+						},
+					},
+					{
+						Name: "custom-storage",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
+				}
+			})
+			ex := argoprojv1alpha1.ArgoCDExport{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testimport",
+					Namespace: a.Namespace,
+				},
+				Spec: argoprojv1alpha1.ArgoCDExportSpec{
+					Storage: &argoprojv1alpha1.ArgoCDExportStorageSpec{},
+				},
+			}
+
+			resObjs := []client.Object{a, &ex}
+			subresObjs := []client.Object{a, &ex}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, argoprojv1alpha1.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, nil)
+			r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+			assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a, false))
+
+			ss := &appsv1.StatefulSet{}
+			assert.NoError(t, r.Get(
+				context.TODO(),
+				types.NamespacedName{
+					Name:      applicationControllerResourceName(a),
+					Namespace: a.Namespace,
+				},
+				ss))
+
+			seen := map[string]int{}
+			sources := map[string]corev1.VolumeSource{}
+			for _, vol := range ss.Spec.Template.Spec.Volumes {
+				seen[vol.Name]++
+				sources[vol.Name] = vol.VolumeSource
+			}
+			assert.Equal(t, 1, seen[reservedName], "reserved import volume name must appear once")
+			assert.Equal(t, 1, seen["custom-storage"], "non-reserved controller volume must be kept")
+			wantImport := map[string]corev1.VolumeSource{}
+			for _, vol := range getArgoImportVolumes(&ex) {
+				wantImport[vol.Name] = vol.VolumeSource
+			}
+			assert.Equal(t, wantImport[reservedName], sources[reservedName], "reserved name must keep the import VolumeSource")
+			assert.Equal(t, corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}, sources["custom-storage"])
+		})
+	}
+}
+
+func TestDropVolumesWithNamesKeepsFirstDuplicate(t *testing.T) {
+	vols := []corev1.Volume{
+		{Name: "custom-storage"},
+		{Name: "custom-storage"},
+		{Name: "backup-storage"},
+		{Name: "other"},
+	}
+	got := dropVolumesWithNames(vols, map[string]struct{}{"backup-storage": {}})
+	names := make([]string, 0, len(got))
+	for _, v := range got {
+		names = append(names, v.Name)
+	}
+	assert.Equal(t, []string{"custom-storage", "other"}, names)
 }
 
 func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.T) {
