@@ -192,7 +192,7 @@ kubectl delete -n argocd -f examples/argocd-ingress.yaml
 ```
 
 [install_olm]:../install/olm.md
-[docs_argo]:https://argoproj.github.io/argo-cd/getting_started/#creating-apps-via-cli
+[docs_argo]:https://argo-cd.readthedocs.io/en/stable/getting_started/#creating-apps-via-cli
 
 ### Host for Ingress in Argo CD Status
 

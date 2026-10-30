@@ -154,7 +154,7 @@ argocd-operator-metrics         ClusterIP   10.97.124.166    <none>        8383/
 The Argo CD server component exposes the API and UI. The operator creates a Service to expose this component and
 can be accessed through the various methods available in Kubernetes.
 
-Follow the ArgoCD [Getting Started Guide](https://argoproj.github.io/argo-cd/getting_started/#creating-apps-via-ui) to
+Follow the ArgoCD [Getting Started Guide](https://argo-cd.readthedocs.io/en/stable/getting_started/#creating-apps-via-ui) to
 create a new application from the UI.
 
 ### Local Machine

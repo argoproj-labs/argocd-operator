@@ -505,5 +505,5 @@ Argo CD cluster.
 
 [argocdexport_reference]:../reference/argocdexport.md
 [storage_reference]:../reference/argocdexport.md#storage-options
-[argocd_dr]:https://argoproj.github.io/argo-cd/operator-manual/disaster_recovery/
+[argocd_dr]:https://argo-cd.readthedocs.io/en/stable/operator-manual/disaster_recovery/
 [argocd_import]:../reference/argocd.md#import-options
