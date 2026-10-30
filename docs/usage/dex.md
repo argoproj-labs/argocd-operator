@@ -79,7 +79,7 @@ oc adm policy add-cluster-role-to-group cluster-admin cluster-admins
 
 The below section describes how to configure Argo CD SSO using GitHub (OAuth2) as an example, but the steps should be similar for other identity providers.
 
-1. Register the application in the identity provider as explained [here](https://argoproj.github.io/argo-cd/operator-manual/user-management/#1-register-the-application-in-the-identity-provider).
+1. Register the application in the identity provider as explained [here](https://argo-cd.readthedocs.io/en/stable/operator-manual/user-management/#1-register-the-application-in-the-identity-provider).
 
 2. Update the Argo CD CR.
 
@@ -115,7 +115,7 @@ spec:
 
 The below section describes how to configure Argo CD's Dex to accept authentication requests from Argo Workflows.
 
-1. Register the application in the identity provider as explained [here](https://argoproj.github.io/argo-cd/operator-manual/user-management/#1-register-the-application-in-the-identity-provider).
+1. Register the application in the identity provider as explained [here](https://argo-cd.readthedocs.io/en/stable/operator-manual/user-management/#1-register-the-application-in-the-identity-provider).
 
 2. Update the Argo CD CR.
 

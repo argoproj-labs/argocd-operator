@@ -31,4 +31,4 @@ oc adm policy add-scc-to-user anyuid -z argocd-redis-ha
 
 If the above step is not performed, the StatefulSet for HA Redis will not be able to create Pods.
 
-[argocd_ha]:https://argoproj.github.io/argo-cd/operator-manual/high_availability
+[argocd_ha]:https://argo-cd.readthedocs.io/en/stable/operator-manual/high_availability/
