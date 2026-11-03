@@ -15,8 +15,75 @@ import (
 	"github.com/stretchr/testify/require"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/tlsprofile"
 )
+
+func TestGetRedisHAProxyReplicas(t *testing.T) {
+	var (
+		customReplicas   int32 = 5
+		zeroReplicas     int32 = 0
+		negativeReplicas int32 = -1
+	)
+
+	tests := []struct {
+		name     string
+		cr       *argoproj.ArgoCD
+		expected int32
+	}{
+		{
+			name:     "nil CR uses default",
+			cr:       nil,
+			expected: common.ArgoCDDefaultRedisHAReplicas,
+		},
+		{
+			name:     "unset replicas uses default",
+			cr:       &argoproj.ArgoCD{},
+			expected: common.ArgoCDDefaultRedisHAReplicas,
+		},
+		{
+			name: "custom replicas from spec.ha.replicas",
+			cr: &argoproj.ArgoCD{
+				Spec: argoproj.ArgoCDSpec{
+					HA: argoproj.ArgoCDHASpec{
+						Replicas: &customReplicas,
+					},
+				},
+			},
+			expected: 5,
+		},
+		{
+			name: "zero replicas falls back to default",
+			cr: &argoproj.ArgoCD{
+				Spec: argoproj.ArgoCDSpec{
+					HA: argoproj.ArgoCDHASpec{
+						Replicas: &zeroReplicas,
+					},
+				},
+			},
+			expected: common.ArgoCDDefaultRedisHAReplicas,
+		},
+		{
+			name: "negative replicas falls back to default",
+			cr: &argoproj.ArgoCD{
+				Spec: argoproj.ArgoCDSpec{
+					HA: argoproj.ArgoCDHASpec{
+						Replicas: &negativeReplicas,
+					},
+				},
+			},
+			expected: common.ArgoCDDefaultRedisHAReplicas,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := GetRedisHAProxyReplicas(tt.cr)
+			require.NotNil(t, got)
+			assert.Equal(t, tt.expected, *got)
+		})
+	}
+}
 
 // TestGetRedisHAProxyConfigRenderedTLSValues verifies that TLS minVersion and ciphers
 // are correctly rendered in the final HAProxy configuration template output.

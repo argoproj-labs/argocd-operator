@@ -19,7 +19,10 @@ spec:
     enabled: true
     redisProxyImage: haproxy
     redisProxyVersion: "2.0.4"
+    replicas: 3
 ```
+
+Use `.spec.ha.replicas` to set the number of `argocd-redis-ha-haproxy` pods. This field does not change the Redis HA StatefulSet replica count, which remains 3.
 
 ## OpenShift
 
