@@ -1562,6 +1562,12 @@ type ArgoCDAgentPrincipalServiceSpec struct {
 	// Type is the ServiceType to use for the Service resource.
 	// If not set, type ClusterIP will be used by default.
 	Type corev1.ServiceType `json:"type"`
+
+	// Annotations is the map of annotations to apply to the Principal Service.
+	// Use this to configure load-balancer implementations such as MetalLB
+	// (for example metallb.io/address-pool or metallb.io/loadBalancerIPs)
+	// when the Service type is LoadBalancer.
+	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
 // ArgoCDAgentPrincipalRouteSpec defines the options for the Route backing the ArgoCD Agent Principal component.
