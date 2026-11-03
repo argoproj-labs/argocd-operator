@@ -218,6 +218,10 @@ func ReconcilePromoterDeployment(client client.Client, compName string, sa *core
 			deployment.Spec.Template.Spec.Containers[0].VolumeMounts = cfg.volumeMounts
 			changed = true
 		}
+		if deployment.Spec.Template.Spec.AutomountServiceAccountToken == nil || !*deployment.Spec.Template.Spec.AutomountServiceAccountToken {
+			deployment.Spec.Template.Spec.AutomountServiceAccountToken = new(true)
+			changed = true
+		}
 
 		if changed {
 			argoutil.LogResourceUpdate(log, deployment)
@@ -264,6 +268,7 @@ func buildDeploymentSpec(compName string, sa *corev1.ServiceAccount, cr *argopro
 				Labels: buildLabelsForPromoterResources(compName, cr),
 			},
 			Spec: corev1.PodSpec{
+				AutomountServiceAccountToken: new(true),
 				Containers: []corev1.Container{
 					{
 						Command:         cfg.command,

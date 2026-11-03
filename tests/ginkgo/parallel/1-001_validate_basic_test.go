@@ -111,11 +111,29 @@ var _ = Describe("GitOps Operator Parallel E2E Tests", func() {
 			Eventually(ss).Should(statefulsetFixture.HaveReplicas(1))
 			Eventually(ss).Should(statefulsetFixture.HaveReadyReplicas(1))
 
+			By("verifying automountServiceAccountToken is explicitly set on all deployments and statefulsets")
+			for _, tc := range []struct {
+				name     string
+				expected bool
+			}{
+				{"example-argocd-server", true},
+				{"example-argocd-repo-server", false},
+				{"example-argocd-redis", false},
+			} {
+				depl := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: tc.name, Namespace: ns.Name}}
+				Eventually(depl).Should(deploymentFixture.HaveAutomountServiceAccountToken(tc.expected))
+			}
+			Eventually(ss).Should(statefulsetFixture.HaveAutomountServiceAccountToken(true))
+
 			serviceAccountsShouldExist := []string{"example-argocd-argocd-application-controller", "example-argocd-argocd-server", "example-argocd-argocd-redis-ha"}
 
-			By("verifying service accounts exist")
+			By("verifying service accounts exist and have automountServiceAccountToken disabled")
 			for _, serviceAccountShouldExist := range serviceAccountsShouldExist {
-				Eventually(&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: serviceAccountShouldExist, Namespace: argoCD.Namespace}}).Should(k8sFixture.ExistByName())
+				sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: serviceAccountShouldExist, Namespace: argoCD.Namespace}}
+				Eventually(sa).Should(k8sFixture.ExistByName())
+				Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(sa), sa)).To(Succeed())
+				Expect(sa.AutomountServiceAccountToken).ToNot(BeNil())
+				Expect(*sa.AutomountServiceAccountToken).To(BeFalse())
 			}
 
 			By("verifying rolebindings exist")

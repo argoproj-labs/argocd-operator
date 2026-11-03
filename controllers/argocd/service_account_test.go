@@ -63,6 +63,7 @@ func TestReconcileArgoCD_reconcileServiceAccountPermissions(t *testing.T) {
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconcileRoleBinding))
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledServiceAccount))
+	assert.False(t, *reconciledServiceAccount.AutomountServiceAccountToken)
 	assert.Equal(t, expectedRules, reconciledRole.Rules)
 
 	// undesirable changes
@@ -107,6 +108,7 @@ func TestReconcileArgoCD_reconcileServiceAccountClusterPermissions(t *testing.T)
 
 	// Service account should be created but no ClusterRole/ClusterRoleBinding should be created
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedNameSA, Namespace: a.Namespace}, reconcileServiceAccount))
+	assert.False(t, *reconcileServiceAccount.AutomountServiceAccountToken)
 	// assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding), "not found")
 	// TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
 	assert.Error(t, r.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding))

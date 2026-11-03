@@ -37,6 +37,7 @@ func newServiceAccount(cr *argoproj.ArgoCD) *corev1.ServiceAccount {
 			Namespace: cr.Namespace,
 			Labels:    argoutil.LabelsForCluster(cr),
 		},
+		AutomountServiceAccountToken: new(false),
 	}
 }
 

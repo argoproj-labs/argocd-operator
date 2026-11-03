@@ -102,6 +102,7 @@ func buildServiceAccount(compName string, cr *argoproj.ArgoCD) *corev1.ServiceAc
 			Namespace: cr.Namespace,
 			Labels:    buildLabelsForAgentPrincipal(cr.Name, compName),
 		},
+		AutomountServiceAccountToken: new(false),
 	}
 }
 

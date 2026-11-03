@@ -174,6 +174,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_enabled(t *testing.T) {
 	// test resource is Created when HA is enabled
 	assert.NoError(t, r.reconcileRedisStatefulSet(a))
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
+	assert.False(t, *s.Spec.Template.Spec.AutomountServiceAccountToken)
 
 	// test resource is Updated on reconciliation
 	a.Spec.Redis.Image = testRedisImage
@@ -300,6 +301,7 @@ func TestReconcileArgoCD_reconcileApplicationController(t *testing.T) {
 	if diff := cmp.Diff(wantVolumeMounts, ss.Spec.Template.Spec.Containers[0].VolumeMounts); diff != "" {
 		t.Fatalf("reconciliation failed:\n%s", diff)
 	}
+	assert.True(t, *ss.Spec.Template.Spec.AutomountServiceAccountToken)
 }
 
 func TestReconcileArgoCD_reconcileApplicationController_withRedisTLS(t *testing.T) {
@@ -1007,6 +1009,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_RevertDrift(t *testing.T) {
 
 	s := newStatefulSetWithSuffix("redis-ha-server", "redis", a)
 	assert.NoError(t, r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
+	assert.False(t, *s.Spec.Template.Spec.AutomountServiceAccountToken)
 
 	// Modify the container environment variable
 	s.Spec.Template.Spec.Containers[0].Env = append(s.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
