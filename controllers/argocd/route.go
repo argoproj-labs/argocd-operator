@@ -22,6 +22,7 @@ import (
 
 	routev1 "github.com/openshift/api/route/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -38,6 +39,12 @@ const (
 	maxLabelLength    = 63
 	maxHostnameLength = 253
 	minFirstLabelSize = 20
+
+	// openShiftServiceCAConfigMapName is created in every OpenShift namespace and
+	// holds the CA that signs Service CA serving certificates.
+	openShiftServiceCAConfigMapName = "openshift-service-ca.crt"
+	openShiftServiceCAConfigMapKey  = "service-ca.crt"
+	tlsCAKey                        = "ca.crt"
 )
 
 // newRoute returns a new Route instance for the given ArgoCD.
@@ -179,6 +186,9 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 
 	route.Spec.Host = hostname
 
+	tlsSecret := &corev1.Secret{}
+	isTLSSecretFound := false
+
 	if cr.Spec.Server.Insecure {
 		// Disable TLS and rely on the cluster certificate.
 		route.Spec.Port = &routev1.RoutePort{
@@ -193,11 +203,11 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 			TargetPort: intstr.FromString("https"),
 		}
 
-		tlsSecret := &corev1.Secret{}
-		isTLSSecretFound, err := argoutil.IsObjectFound(r.Client, cr.Namespace, common.ArgoCDServerTLSSecretName, tlsSecret)
+		found, err := argoutil.IsObjectFound(r.Client, cr.Namespace, common.ArgoCDServerTLSSecretName, tlsSecret)
 		if err != nil {
 			return err
 		}
+		isTLSSecretFound = found
 		// Since Passthrough was the default policy in the previous versions of the operator, we don't want to
 		// break users who have already configured a TLS secret for Passthrough.
 		// We continue with Passthrough if we find a TLS secret that was manually configured
@@ -222,6 +232,14 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	// Reencrypt routes must present a destination CA so the OpenShift router can
+	// verify the Argo CD server serving certificate. An empty value can cause
+	// HAProxy to return 503 "Application is not available" without forwarding
+	// traffic to a healthy backend.
+	if err := r.ensureReencryptDestinationCACertificate(cr, route, tlsSecret, isTLSSecretFound); err != nil {
+		return err
 	}
 
 	log.Info(fmt.Sprintf("Using %s termination policy for the Server Route", string(route.Spec.TLS.Termination)))
@@ -270,6 +288,57 @@ func isCreatedByServiceCA(serviceName string, secret corev1.Secret) bool {
 	}
 
 	return false
+}
+
+// ensureReencryptDestinationCACertificate sets destinationCACertificate on reencrypt
+// server routes when the user has not already provided one. The CA is taken from the
+// Service CA serving-cert secret (ca.crt) or the per-namespace OpenShift Service CA ConfigMap.
+func (r *ReconcileArgoCD) ensureReencryptDestinationCACertificate(cr *argoproj.ArgoCD, route *routev1.Route, tlsSecret *corev1.Secret, isTLSSecretFound bool) error {
+	if route.Spec.TLS == nil || route.Spec.TLS.Termination != routev1.TLSTerminationReencrypt {
+		return nil
+	}
+	if strings.TrimSpace(route.Spec.TLS.DestinationCACertificate) != "" {
+		return nil
+	}
+	if ca := destinationCAFromTLSSecret(tlsSecret, isTLSSecretFound); ca != "" {
+		route.Spec.TLS.DestinationCACertificate = ca
+		return nil
+	}
+	ca, err := r.destinationCAFromServiceCAConfigMap(cr.Namespace)
+	if err != nil {
+		return err
+	}
+	if ca != "" {
+		route.Spec.TLS.DestinationCACertificate = ca
+	}
+	return nil
+}
+
+// destinationCAFromTLSSecret returns ca.crt from the Argo CD server TLS secret when present.
+func destinationCAFromTLSSecret(tlsSecret *corev1.Secret, found bool) string {
+	if !found || tlsSecret == nil {
+		return ""
+	}
+	if ca, ok := tlsSecret.Data[tlsCAKey]; ok && len(ca) > 0 {
+		return string(ca)
+	}
+	return ""
+}
+
+// destinationCAFromServiceCAConfigMap returns the OpenShift Service CA bundle from the
+// per-namespace ConfigMap. A missing ConfigMap is not an error.
+func (r *ReconcileArgoCD) destinationCAFromServiceCAConfigMap(namespace string) (string, error) {
+	cm := &corev1.ConfigMap{}
+	if err := r.Get(context.TODO(), client.ObjectKey{Name: openShiftServiceCAConfigMapName, Namespace: namespace}, cm); err != nil {
+		if apierrors.IsNotFound(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	if ca, ok := cm.Data[openShiftServiceCAConfigMapKey]; ok && strings.TrimSpace(ca) != "" {
+		return ca, nil
+	}
+	return "", nil
 }
 
 // reconcileApplicationSetControllerWebhookRoute will ensure that the ArgoCD Server Route is present.

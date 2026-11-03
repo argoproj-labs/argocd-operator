@@ -109,6 +109,13 @@ for satisfying the validation constraints of the route controller. The Service C
 this certificate to a secret named `argocd-server-tls` in the operand's namespace if it does
 not yet exist.
 
+The OpenShift router must be able to verify that serving certificate. When
+`.spec.server.route.tls.destinationCACertificate` is empty, the Operator populates it from
+`ca.crt` in `argocd-server-tls`, or from the `openshift-service-ca.crt` ConfigMap in the
+operand namespace. Without a destination CA, the router can return HTTP 503
+(`Application is not available`) even when the Argo CD server pod is healthy. You can still
+override the value by setting `.spec.server.route.tls.destinationCACertificate` on the Argo CD CR.
+
 When you later chose to switch back to another TLS termination policy, you should manually
 delete the `argocd-server-tls` secret from the namespace after changing the mode.
 
