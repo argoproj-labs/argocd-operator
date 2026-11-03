@@ -43,7 +43,7 @@ jobs:
 
       - name: Set up Buildx
         id: buildx
-        uses: docker/setup-buildx-action@v4.3.0
+        uses: docker/setup-buildx-action@v4.4.1
         with:
           # Give every multi-arch RUN step its own network namespace (BuildKit's
           # built-in bridge provider, no CNI config/plugins required) so the
