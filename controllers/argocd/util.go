@@ -717,18 +717,27 @@ func (r *ReconcileArgoCD) deleteClusterResources(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
-	// At the current moment the only role binding that will be cleaned up in the GitOps promoted kube-system located one
+	// At the current moment the only role binding that will be cleaned up is the GitOps promoter kube-system located one.
+	// The list has to be restricted to that namespace and to the resources this instance owns: the selector only matches
+	// on the instance name, so an unrestricted list would also match the RoleBindings of same-named Argo CD instances
+	// living in other namespaces. RoleBindings in the namespaces managed by this instance are removed by the namespace
+	// predicate once removeManagedByLabelFromNamespaces drops their 'managed-by' label.
 	roleBindingList := &v1.RoleBindingList{}
-	if err := filterObjectsBySelector(r.Client, roleBindingList, selector); err != nil {
+	if err := filterObjectsBySelector(r.Client, roleBindingList, selector, client.InNamespace(gitopspromoter.APIAggregationNamespace)); err != nil {
 		return fmt.Errorf("failed to filter RoleBindings for %s: %w", cr.Name, err)
 	}
+
+	prefix := gitopspromoter.ResourceNamePrefix(cr)
+	roleBindingList.Items = slices.DeleteFunc(roleBindingList.Items, func(roleBinding v1.RoleBinding) bool {
+		return !strings.HasPrefix(roleBinding.Name, prefix)
+	})
 
 	if err := deleteRoleBindings(r.Client, roleBindingList); err != nil {
 		return err
 	}
 
-	// The GitOps promoter also has two other cluster scoped resources that need to be deleted
-	// These resources are an APIService and the ClusterConfiguration CR
+	// The GitOps promoter also has two other resources that need to be deleted
+	// These resources are a cluster scoped APIService and the namespaced ClusterConfiguration CR
 	apiSvcList := &apiregistrationv1.APIServiceList{}
 	if err := filterObjectsBySelector(r.Client, apiSvcList, selector); err != nil {
 		return fmt.Errorf("failed to filter APIServices for %s: %w", cr.Name, err)
@@ -738,8 +747,10 @@ func (r *ReconcileArgoCD) deleteClusterResources(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
+	// ControllerConfigurations are created in the instance's own namespace, so restrict the list to it rather than
+	// matching the ControllerConfiguration of a same-named instance in another namespace.
 	controllerConfigList := &promoter.ControllerConfigurationList{}
-	if err := filterObjectsBySelector(r.Client, controllerConfigList, selector); err != nil {
+	if err := filterObjectsBySelector(r.Client, controllerConfigList, selector, client.InNamespace(cr.Namespace)); err != nil {
 		return fmt.Errorf("failed to filter ControllerConfigurations for %s: %w", cr.Name, err)
 	}
 
@@ -782,8 +793,37 @@ func (r *ReconcileArgoCD) removeManagedByLabelFromNamespaces(namespace string) e
 	return nil
 }
 
-func filterObjectsBySelector(c client.Client, objectList client.ObjectList, selector labels.Selector) error {
-	return c.List(context.TODO(), objectList, client.MatchingLabelsSelector{Selector: selector})
+func filterObjectsBySelector(c client.Client, objectList client.ObjectList, selector labels.Selector, opts ...client.ListOption) error {
+	opts = append(opts, client.MatchingLabelsSelector{Selector: selector})
+	return c.List(context.TODO(), objectList, opts...)
+}
+
+// createIgnoringAlreadyExists creates the given object and treats an 'already exists' error as success.
+//
+// A single reconciliation reconciles the RBAC resources of every component twice: once through
+// reconcileRoles/reconcileRoleBindings and once through reconcileServiceAccounts. The read that
+// precedes each create is served by the manager's cache, so the second pass can still observe an
+// object created by the first pass as missing and issue a duplicate create. The object is the one we
+// want either way, and any drift is corrected by the next reconciliation, so failing the whole
+// reconciliation - which flips .status.phase to 'Failed' - would be counterproductive.
+func (r *ReconcileArgoCD) createIgnoringAlreadyExists(obj client.Object) error {
+	if err := r.Create(context.TODO(), obj); err != nil && !apierrors.IsAlreadyExists(err) {
+		return err
+	}
+	return nil
+}
+
+// deleteIgnoringNotFound deletes the given object and treats a 'not found' error as success.
+//
+// This is the counterpart of createIgnoringAlreadyExists: the cached read that decides an object has
+// to be deleted is subject to the same lag, so the second pass over the same component can still
+// observe an object the first pass has already deleted. The object is gone either way, which is what
+// the caller wanted, so there is nothing to report.
+func (r *ReconcileArgoCD) deleteIgnoringNotFound(obj client.Object) error {
+	if err := r.Delete(context.TODO(), obj); err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+	return nil
 }
 
 func argocdInstanceSelector(name string) (labels.Selector, error) {

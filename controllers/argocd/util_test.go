@@ -4,6 +4,7 @@ import (
 	"context"
 	b64 "encoding/base64"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -15,11 +16,17 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj-labs/argocd-operator/controllers/gitopspromoter"
 
+	promoter "github.com/argoproj-labs/gitops-promoter/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/rbac/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	testclient "k8s.io/client-go/kubernetes/fake"
+	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 )
 
 const (
@@ -818,6 +825,120 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 		_, ok := n.Labels[common.ArgoCDManagedByLabel]
 		assert.Equal(t, ok, false)
 	}
+}
+
+func TestDeleteClusterResources(t *testing.T) {
+	a := makeTestArgoCD()
+
+	// The RoleBinding the GitOps promoter creates in the API aggregation namespace for this instance.
+	// Its name is qualified with the instance's namespace, which is what tells it apart from the
+	// RoleBinding of the same-named instance below.
+	promoterRoleBinding := &v1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      a.Name + "-" + a.Namespace + "-promoter-api-server-extension-auth-reader",
+			Namespace: gitopspromoter.APIAggregationNamespace,
+			Labels:    map[string]string{common.ArgoCDKeyManagedBy: a.Name},
+		},
+	}
+
+	// The same, but belonging to an instance that shares this instance's name in another namespace.
+	otherInstanceRoleBinding := &v1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      a.Name + "-other-namespace-promoter-api-server-extension-auth-reader",
+			Namespace: gitopspromoter.APIAggregationNamespace,
+			Labels:    map[string]string{common.ArgoCDKeyManagedBy: a.Name},
+		},
+	}
+
+	// A RoleBinding in a namespace managed by an instance. Those are cleaned up by the namespace
+	// predicate once the 'managed-by' label is dropped, not here.
+	managedNamespaceRoleBinding := &v1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd-argocd-redis",
+			Namespace: "managed-namespace",
+			Labels:    map[string]string{common.ArgoCDKeyManagedBy: a.Name},
+		},
+	}
+
+	resObjs := []client.Object{a, promoterRoleBinding, otherInstanceRoleBinding, managedNamespaceRoleBinding}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, promoter.AddToScheme, apiregistrationv1.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	assert.NoError(t, r.deleteClusterResources(a))
+
+	roleBindingList := &v1.RoleBindingList{}
+	assert.NoError(t, r.List(context.TODO(), roleBindingList))
+
+	remaining := []string{}
+	for _, roleBinding := range roleBindingList.Items {
+		remaining = append(remaining, roleBinding.Namespace+"/"+roleBinding.Name)
+	}
+	sort.Strings(remaining)
+
+	assert.Equal(t, []string{
+		otherInstanceRoleBinding.Namespace + "/" + otherInstanceRoleBinding.Name,
+		managedNamespaceRoleBinding.Namespace + "/" + managedNamespaceRoleBinding.Name,
+	}, remaining)
+}
+
+func TestCreateIgnoringAlreadyExists(t *testing.T) {
+	a := makeTestArgoCD()
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	newRoleBinding := func() *v1.RoleBinding {
+		return &v1.RoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "argocd-argocd-redis",
+				Namespace: a.Namespace,
+			},
+		}
+	}
+
+	assert.NoError(t, r.createIgnoringAlreadyExists(newRoleBinding()))
+
+	// A second pass of the same reconciliation can still see the RoleBinding as missing, because its
+	// read is served by a cache that has not caught up with the create yet.
+	assert.NoError(t, r.createIgnoringAlreadyExists(newRoleBinding()))
+
+	// Any other error is still reported.
+	assert.Error(t, r.createIgnoringAlreadyExists(&v1.RoleBinding{}))
+}
+
+func TestDeleteIgnoringNotFound(t *testing.T) {
+	a := makeTestArgoCD()
+
+	roleBinding := &v1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd-argocd-redis",
+			Namespace: a.Namespace,
+		},
+	}
+
+	resObjs := []client.Object{a, roleBinding}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch, testclient.NewSimpleClientset())
+
+	assert.NoError(t, r.deleteIgnoringNotFound(roleBinding))
+
+	// A second pass of the same reconciliation can still see the RoleBinding as present, because its
+	// read is served by a cache that has not caught up with the delete yet.
+	assert.NoError(t, r.deleteIgnoringNotFound(roleBinding))
+
+	remaining := &v1.RoleBinding{}
+	err := r.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: roleBinding.Namespace}, remaining)
+	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestSetManagedNamespaces(t *testing.T) {

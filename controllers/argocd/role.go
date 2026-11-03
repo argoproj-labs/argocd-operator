@@ -160,7 +160,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 			}
 
 			argoutil.LogResourceCreation(log, role)
-			if err := r.Create(context.TODO(), role); err != nil {
+			if err := r.createIgnoringAlreadyExists(role); err != nil {
 				return nil, err
 			}
 			continue
@@ -182,7 +182,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 			}
 			if shouldDelete {
 				argoutil.LogResourceDeletion(log, role, explanation)
-				if err := r.Delete(context.TODO(), role); err != nil {
+				if err := r.deleteIgnoringNotFound(role); err != nil {
 					return nil, err
 				}
 			}
@@ -200,7 +200,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 				explanation = "dex is disabled or not configured"
 			}
 			argoutil.LogResourceDeletion(log, &existingRole, explanation)
-			if err := r.Delete(context.TODO(), &existingRole); err != nil {
+			if err := r.deleteIgnoringNotFound(&existingRole); err != nil {
 				return nil, err
 			}
 			continue
@@ -287,7 +287,7 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 			}
 
 			argoutil.LogResourceCreation(log, role)
-			if err := r.Create(context.TODO(), role); err != nil {
+			if err := r.createIgnoringAlreadyExists(role); err != nil {
 				return err
 			}
 			created = true
@@ -358,7 +358,7 @@ func (r *ReconcileArgoCD) reconcileClusterRole(componentName string, policyRules
 		if componentName == common.ArgoCDApplicationControllerComponentView || componentName == common.ArgoCDApplicationControllerComponentAdmin {
 			if err := r.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRole.Name}, expectedClusterRole); err == nil {
 				argoutil.LogResourceDeletion(log, expectedClusterRole, "aggregated cluster role mode is not enabled")
-				if err := r.Delete(context.TODO(), expectedClusterRole); err != nil {
+				if err := r.deleteIgnoringNotFound(expectedClusterRole); err != nil {
 					return nil, fmt.Errorf("failed to delete aggregated ClusterRoles: %s", expectedClusterRole.Name)
 				}
 			} else {
@@ -391,7 +391,7 @@ func (r *ReconcileArgoCD) reconcileClusterRole(componentName string, policyRules
 		}
 
 		argoutil.LogResourceCreation(log, expectedClusterRole)
-		return expectedClusterRole, r.Create(context.TODO(), expectedClusterRole)
+		return expectedClusterRole, r.createIgnoringAlreadyExists(expectedClusterRole)
 	}
 
 	if !allowed {
@@ -401,7 +401,7 @@ func (r *ReconcileArgoCD) reconcileClusterRole(componentName string, policyRules
 		}
 		// delete existing ClusterRole as namespace can not host cluster-scoped Argo CD instance
 		argoutil.LogResourceDeletion(log, existingClusterRole, fmt.Sprintf("namespace '%s' cannot host cluster-scoped argocd instance", cr.Namespace))
-		return nil, r.Delete(context.TODO(), existingClusterRole)
+		return nil, r.deleteIgnoringNotFound(existingClusterRole)
 	}
 
 	var changes []string
@@ -443,7 +443,7 @@ func checkCustomClusterRoleMode(r *ReconcileArgoCD, cr *argoproj.ArgoCD, compone
 		if err := r.Get(context.TODO(), types.NamespacedName{Name: GenerateUniqueResourceName(componentName, cr)}, existingClusterRole); err == nil {
 			// default ClusterRole exists, now delete it
 			argoutil.LogResourceDeletion(log, existingClusterRole, "custom clusterrole mode is enabled, deleting default cluster role")
-			if err := r.Delete(context.TODO(), existingClusterRole); err != nil {
+			if err := r.deleteIgnoringNotFound(existingClusterRole); err != nil {
 				return true, fmt.Errorf("failed to delete existing cluster role for the service account associated with %s : %s", componentName, err)
 			}
 		} else {
