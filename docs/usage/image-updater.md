@@ -41,6 +41,9 @@ spec:
 
 The operator will create a `Role` and `RoleBinding` in each listed namespace so the controller can access resources there.
 
+!!! note
+Watching namespaces other than the Argo CD instance's own namespace normally requires the instance to be installed in a cluster configuration namespace. This requirement is waived if every matched namespace already consents to being managed by the instance, either via the `argocd.argoproj.io/managed-by` label or a `NamespaceManagement` CR. A `NamespaceManagement` CR only grants consent when the feature is enabled, its `spec.managedBy` targets this Argo CD instance, and the namespace matches `.spec.namespaceManagement` patterns on the Argo CD CR.
+
 #### Cluster-scoped installation
 
 For environments where the controller must watch `ImageUpdater` CRs in all namespaces, set `IMAGE_UPDATER_WATCH_NAMESPACES` to `"*"`:
