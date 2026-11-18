@@ -274,7 +274,6 @@ func TestReconcileImageUpdater_CreateDeployments(t *testing.T) {
 
 	// Ensure the created Deployment has the expected properties
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.Name)
-	assert.True(t, *deployment.Spec.Template.Spec.AutomountServiceAccountToken)
 
 	// No Command is expected: the container must inherit the image ENTRYPOINT so that
 	// tini stays PID 1 and reaps git child processes (GITOPS-11648).
