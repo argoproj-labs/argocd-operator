@@ -17,16 +17,25 @@ tracking data on managed resources.
 
 Two consequences follow, and both are expected rather than a malfunction:
 
-1. **Applications report `OutOfSync`.** Argo CD wants to remove the `app.kubernetes.io/instance`
-   label and add the `argocd.argoproj.io/tracking-id` annotation on every managed resource. This
-   affects resources of any kind — Namespaces, Subscriptions, Secrets, MachineConfigPools and so on.
-2. **A sync can remove labels that other controllers added to Secrets.** Argo CD applies Secrets
-   without the `kubectl.kubernetes.io/last-applied-configuration` annotation, so the three-way
-   merge that normally protects fields absent from Git does not fully apply to them. Labels written
-   by OLM, the cluster monitoring operator and similar controllers — for example on the
-   `alertmanager-main` Secret — can be deleted by the sync and then re-added by their owning
-   controller. Note that `ignoreDifferences` suppresses the reported diff but does **not** prevent
-   the removal, so it is not a sufficient safeguard on its own.
+1. **The next sync migrates tracking metadata on every managed resource.** Argo CD removes the
+   `app.kubernetes.io/instance` label and adds the `argocd.argoproj.io/tracking-id` annotation.
+   Argo CD hides this migration diff when comparing, so most Applications stay `Synced`.
+   Resources described in item 2 report `OutOfSync`, unless `ignoreDifferences` hides their labels.
+2. **A sync can remove every label that other controllers added, if the manifest in Git declares
+   no labels.** Under label tracking, Argo CD added `app.kubernetes.io/instance` to every
+   manifest it applied, so the `kubectl.kubernetes.io/last-applied-configuration` annotation
+   records a `metadata.labels` map. After the switch, a manifest that has no `metadata.labels`
+   in Git produces a desired state with no labels map at all. The three-way merge treats this as
+   removal of the whole map. It deletes **all** labels on the live object, including those
+   written by OLM, the cluster monitoring operator and similar controllers. Resources whose
+   manifest declares at least one label keep labels added by other controllers; only the
+   `app.kubernetes.io/instance` label is removed.
+
+   This applies to resources of any kind, not only Secrets. It is most visible on Secrets such as
+   `alertmanager-main` because their owning controller creates them once and does not restore
+   the labels. Controllers that reconcile continuously re-add their labels on Namespaces and
+   Subscriptions shortly after the sync. Note that `ignoreDifferences` suppresses the reported
+   diff but does **not** prevent the removal, so it is not a sufficient safeguard on its own.
 
 ### Detection
 
@@ -71,13 +80,18 @@ You are **not** affected if any of the following is true:
    ```
 
    Pinning the value also insulates the instance from any future change of the default. This is the
-   recommended action if you have already upgraded and want to return to the previous behaviour:
-   applying it restores `label` and the `OutOfSync` reports clear.
+   recommended action if you have already upgraded and want to return to the previous behaviour.
+   If you have not synced since the upgrade, applying it restores `label` and the `OutOfSync`
+   reports clear. If resources were already synced under annotation tracking, they report
+   `OutOfSync` until the next sync adds the `app.kubernetes.io/instance` label back. Pinning does
+   not restore labels that a sync has already deleted.
 
 2. **To adopt annotation-based tracking deliberately**, set `.spec.resourceTrackingMethod: annotation`
    and **review the diff of each affected Application before syncing**. Do not bulk-sync to clear
-   the drift. For Secrets managed by other controllers, either bring the controller-managed labels
-   into Git or confirm that the owning controller will re-add them, and be aware that
+   the drift. Before the first sync, find manifests that declare no `metadata.labels` for
+   resources that other controllers also label. For each one, either declare at least one label
+   in Git, which preserves labels added by other controllers, or bring the controller-managed
+   labels into Git. Otherwise, confirm that the owning controller will re-add them. Be aware that
    `ignoreDifferences` alone does not stop a sync from removing them.
 
 3. **Verify the effective value at any time:**
