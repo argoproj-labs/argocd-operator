@@ -554,7 +554,7 @@ func cloneArgoCDRepoIntoTempDir(latestReleaseVersionTag string) (string, error) 
 // retrieveSHA256DigestUsingSkopeo determines the SHA256 digest value for a given container image
 func retrieveSHA256DigestUsingSkopeo(url string) *processedContainerImage {
 
-	stdout, _, err := runCommandWithWorkDir("", "skopeo", "inspect", "--no-tags", "docker://"+url)
+	stdout, _, err := runCommandWithWorkDir("", "skopeo", "inspect", "--no-tags", "--override-os", "linux", "--override-arch", "amd64", "docker://"+url)
 	if err != nil {
 		exitWithError(fmt.Errorf("unexpected skopeo error: %v", err))
 		return nil
