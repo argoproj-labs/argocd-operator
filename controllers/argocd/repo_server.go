@@ -20,13 +20,13 @@ import (
 	"fmt"
 	"hash"
 	"maps"
-	"reflect"
 	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	certificatesv1beta1 "k8s.io/api/certificates/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -34,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -384,6 +385,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 		return err
 	}
 	if deplExists {
+		argoutil.SetPodSpecDefaults(&deploy.Spec.Template.Spec)
 
 		if !cr.Spec.Repo.IsEnabled() {
 			// Delete existing deployment for ArgoCD Repo Server, if any ..
@@ -409,7 +411,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 			existing.Spec.Template.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			changes = append(changes, "container image")
 		}
-		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Args, deploy.Spec.Template.Spec.Containers[0].Args) {
+		if !equality.Semantic.DeepEqual(existing.Spec.Template.Spec.Containers[0].Args, deploy.Spec.Template.Spec.Containers[0].Args) {
 			existing.Spec.Template.Spec.Containers[0].Args = deploy.Spec.Template.Spec.Containers[0].Args
 			changes = append(changes, "container args")
 		}
@@ -425,52 +427,52 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 			changes = append(changes, "priority class name")
 		}
 
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
+		if !equality.Semantic.DeepEqual(deploy.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
 			existing.Spec.Template.Spec.Volumes = deploy.Spec.Template.Spec.Volumes
 			changes = append(changes, "volumes")
 		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].VolumeMounts,
+		if !equality.Semantic.DeepEqual(deploy.Spec.Template.Spec.Containers[0].VolumeMounts,
 			existing.Spec.Template.Spec.Containers[0].VolumeMounts) {
 			existing.Spec.Template.Spec.Containers[0].VolumeMounts = deploy.Spec.Template.Spec.Containers[0].VolumeMounts
 			changes = append(changes, "container volume mounts")
 		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Env,
+		if !equality.Semantic.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Env,
 			existing.Spec.Template.Spec.Containers[0].Env) {
 			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
 			changes = append(changes, "container env")
 		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Resources, existing.Spec.Template.Spec.Containers[0].Resources) {
+		if !equality.Semantic.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Resources, existing.Spec.Template.Spec.Containers[0].Resources) {
 			existing.Spec.Template.Spec.Containers[0].Resources = deploy.Spec.Template.Spec.Containers[0].Resources
 			changes = append(changes, "container resources")
 		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Command, existing.Spec.Template.Spec.Containers[0].Command) {
+		if !equality.Semantic.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Command, existing.Spec.Template.Spec.Containers[0].Command) {
 			existing.Spec.Template.Spec.Containers[0].Command = deploy.Spec.Template.Spec.Containers[0].Command
 			changes = append(changes, "container command")
 		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].SecurityContext, existing.Spec.Template.Spec.Containers[0].SecurityContext) {
+		if !equality.Semantic.DeepEqual(deploy.Spec.Template.Spec.Containers[0].SecurityContext, existing.Spec.Template.Spec.Containers[0].SecurityContext) {
 			existing.Spec.Template.Spec.Containers[0].SecurityContext = deploy.Spec.Template.Spec.Containers[0].SecurityContext
 			changes = append(changes, "container security context")
 		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.SecurityContext, existing.Spec.Template.Spec.SecurityContext) {
+		if !equality.Semantic.DeepEqual(deploy.Spec.Template.Spec.SecurityContext, existing.Spec.Template.Spec.SecurityContext) {
 			existing.Spec.Template.Spec.SecurityContext = deploy.Spec.Template.Spec.SecurityContext
 			changes = append(changes, "pod security context")
 		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[1:],
+		if !equality.Semantic.DeepEqual(deploy.Spec.Template.Spec.Containers[1:],
 			existing.Spec.Template.Spec.Containers[1:]) {
 			existing.Spec.Template.Spec.Containers = append(existing.Spec.Template.Spec.Containers[0:1],
 				deploy.Spec.Template.Spec.Containers[1:]...)
 			changes = append(changes, "additional containers")
 		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers, existing.Spec.Template.Spec.InitContainers) {
+		if !equality.Semantic.DeepEqual(deploy.Spec.Template.Spec.InitContainers, existing.Spec.Template.Spec.InitContainers) {
 			existing.Spec.Template.Spec.InitContainers = deploy.Spec.Template.Spec.InitContainers
 			changes = append(changes, "init containers")
 		}
-		if !reflect.DeepEqual(deploy.Spec.Replicas, existing.Spec.Replicas) {
+		if ptr.Deref(deploy.Spec.Replicas, 1) != ptr.Deref(existing.Spec.Replicas, 1) {
 			existing.Spec.Replicas = deploy.Spec.Replicas
 			changes = append(changes, "replicas")
 		}
 
-		if deploy.Spec.Template.Spec.AutomountServiceAccountToken != existing.Spec.Template.Spec.AutomountServiceAccountToken {
+		if !equality.Semantic.DeepEqual(deploy.Spec.Template.Spec.AutomountServiceAccountToken, existing.Spec.Template.Spec.AutomountServiceAccountToken) {
 			existing.Spec.Template.Spec.AutomountServiceAccountToken = deploy.Spec.Template.Spec.AutomountServiceAccountToken
 			changes = append(changes, "auto-mount service account token")
 		}
@@ -485,12 +487,12 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argocdoperatorv1beta1.Argo
 		addKubernetesData(deploy.Spec.Template.Labels, existing.Spec.Template.Labels)
 		addKubernetesData(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations)
 
-		if !reflect.DeepEqual(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
+		if !equality.Semantic.DeepEqual(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
 			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
 			changes = append(changes, "annotations")
 		}
 
-		if !reflect.DeepEqual(deploy.Spec.Template.Labels, existing.Spec.Template.Labels) {
+		if !equality.Semantic.DeepEqual(deploy.Spec.Template.Labels, existing.Spec.Template.Labels) {
 			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
 			changes = append(changes, "labels")
 		}

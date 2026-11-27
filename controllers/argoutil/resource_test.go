@@ -448,3 +448,35 @@ func TestAnnotationsForCluster_DoesNotPropagateCRAnnotations(t *testing.T) {
 
 	assert.Len(t, annotations, 2, "only the two default annotations should be present")
 }
+
+func TestSetPodSpecDefaults(t *testing.T) {
+	custom := int32(0400)
+	spec := corev1.PodSpec{
+		Volumes: []corev1.Volume{
+			{Name: "s", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{}}},
+			{Name: "c", VolumeSource: corev1.VolumeSource{ConfigMap: &corev1.ConfigMapVolumeSource{DefaultMode: &custom}}},
+		},
+		InitContainers: []corev1.Container{{Name: "init"}},
+		Containers: []corev1.Container{{
+			Name:                     "main",
+			TerminationMessagePath:   "/custom",
+			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+			Ports:                    []corev1.ContainerPort{{ContainerPort: 1}, {ContainerPort: 2, Protocol: corev1.ProtocolUDP}},
+			Env: []corev1.EnvVar{{Name: "NS", ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.namespace"}}}},
+		}},
+	}
+
+	SetPodSpecDefaults(&spec)
+
+	assert.Equal(t, int32(420), *spec.Volumes[0].Secret.DefaultMode)
+	assert.Equal(t, custom, *spec.Volumes[1].ConfigMap.DefaultMode)
+	assert.Equal(t, corev1.TerminationMessagePathDefault, spec.InitContainers[0].TerminationMessagePath)
+	assert.Equal(t, corev1.TerminationMessageReadFile, spec.InitContainers[0].TerminationMessagePolicy)
+	assert.Equal(t, "/custom", spec.Containers[0].TerminationMessagePath)
+	assert.Equal(t, corev1.TerminationMessageFallbackToLogsOnError, spec.Containers[0].TerminationMessagePolicy)
+	assert.Equal(t, corev1.ProtocolTCP, spec.Containers[0].Ports[0].Protocol)
+	assert.Equal(t, corev1.ProtocolUDP, spec.Containers[0].Ports[1].Protocol)
+	assert.Equal(t, "v1", spec.Containers[0].Env[0].ValueFrom.FieldRef.APIVersion)
+	assert.NotNil(t, spec.SecurityContext)
+}

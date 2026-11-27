@@ -26,6 +26,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -300,6 +301,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 	}
 
 	if deplExists {
+		argoutil.SetPodSpecDefaults(&deploy.Spec.Template.Spec)
 		// Add Kubernetes-specific labels/annotations from the live object in the source to preserve metadata.
 		addKubernetesData(deploy.Spec.Template.Labels, existing.Spec.Template.Labels)
 		addKubernetesData(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations)
@@ -345,11 +347,11 @@ func identifyDeploymentDifference(x appsv1.Deployment, y appsv1.Deployment) stri
 	xPodSpec := x.Spec.Template.Spec
 	yPodSpec := y.Spec.Template.Spec
 
-	if !reflect.DeepEqual(xPodSpec.Containers, yPodSpec.Containers) {
+	if !equality.Semantic.DeepEqual(xPodSpec.Containers, yPodSpec.Containers) {
 		return ".Spec.Template.Spec.Containers"
 	}
 
-	if !reflect.DeepEqual(xPodSpec.Volumes, yPodSpec.Volumes) {
+	if !equality.Semantic.DeepEqual(xPodSpec.Volumes, yPodSpec.Volumes) {
 		return ".Spec.Template.Spec.Volumes"
 	}
 
@@ -357,27 +359,27 @@ func identifyDeploymentDifference(x appsv1.Deployment, y appsv1.Deployment) stri
 		return "ServiceAccountName"
 	}
 
-	if !reflect.DeepEqual(x.Labels, y.Labels) {
+	if !equality.Semantic.DeepEqual(x.Labels, y.Labels) {
 		return "Labels"
 	}
 
-	if !reflect.DeepEqual(x.Spec.Template.Labels, y.Spec.Template.Labels) {
+	if !equality.Semantic.DeepEqual(x.Spec.Template.Labels, y.Spec.Template.Labels) {
 		return ".Spec.Template.Labels"
 	}
 
-	if !reflect.DeepEqual(x.Spec.Selector, y.Spec.Selector) {
+	if !equality.Semantic.DeepEqual(x.Spec.Selector, y.Spec.Selector) {
 		return ".Spec.Selector"
 	}
 
-	if !reflect.DeepEqual(xPodSpec.NodeSelector, yPodSpec.NodeSelector) {
+	if !equality.Semantic.DeepEqual(xPodSpec.NodeSelector, yPodSpec.NodeSelector) {
 		return "Spec.Template.Spec.NodeSelector"
 	}
 
-	if !reflect.DeepEqual(xPodSpec.Tolerations, yPodSpec.Tolerations) {
+	if !equality.Semantic.DeepEqual(xPodSpec.Tolerations, yPodSpec.Tolerations) {
 		return "Spec.Template.Spec.Tolerations"
 	}
 
-	if !reflect.DeepEqual(xPodSpec.Containers[0].SecurityContext, yPodSpec.Containers[0].SecurityContext) {
+	if !equality.Semantic.DeepEqual(xPodSpec.Containers[0].SecurityContext, yPodSpec.Containers[0].SecurityContext) {
 		return "Spec.Template.Spec..Containers[0].SecurityContext"
 	}
 
@@ -385,7 +387,7 @@ func identifyDeploymentDifference(x appsv1.Deployment, y appsv1.Deployment) stri
 		return "Spec.Template.Spec.PriorityClassName"
 	}
 
-	if !reflect.DeepEqual(x.Spec.Template.Annotations, y.Spec.Template.Annotations) {
+	if !equality.Semantic.DeepEqual(x.Spec.Template.Annotations, y.Spec.Template.Annotations) {
 		return ".Spec.Template.Annotations"
 	}
 
@@ -924,6 +926,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRole(cr *argoproj.ArgoCD) (*v1.
 		}
 		exists = false
 	}
+	orig := role.DeepCopy()
 
 	if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.IsEnabled() {
 		if exists {
@@ -942,6 +945,9 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRole(cr *argoproj.ArgoCD) (*v1.
 		return role, err
 	}
 	if exists {
+		if equality.Semantic.DeepEqual(orig, role) {
+			return role, nil
+		}
 		argoutil.LogResourceUpdate(log, role)
 		return role, r.Update(context.TODO(), role)
 	} else {
@@ -966,6 +972,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRoleBinding(cr *argoproj.ArgoCD
 		}
 		roleBindingExists = false
 	}
+	orig := roleBinding.DeepCopy()
 
 	if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.IsEnabled() {
 		if roleBindingExists {
@@ -996,6 +1003,9 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRoleBinding(cr *argoproj.ArgoCD
 	}
 
 	if roleBindingExists {
+		if equality.Semantic.DeepEqual(orig, roleBinding) {
+			return nil
+		}
 		argoutil.LogResourceUpdate(log, roleBinding)
 		return r.Update(context.TODO(), roleBinding)
 	}

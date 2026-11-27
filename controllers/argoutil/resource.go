@@ -351,3 +351,46 @@ func GetImagePullPolicy(policy corev1.PullPolicy) corev1.PullPolicy {
 
 	}
 }
+
+// SetPodSpecDefaults fills in fields the API server defaults when they are unset, so that a desired
+// PodSpec can be compared with a live one without spurious differences. Explicit values are kept.
+func SetPodSpecDefaults(spec *corev1.PodSpec) {
+	for i := range spec.Volumes {
+		v := &spec.Volumes[i].VolumeSource
+		defaultMode := corev1.SecretVolumeSourceDefaultMode
+		switch {
+		case v.Secret != nil && v.Secret.DefaultMode == nil:
+			v.Secret.DefaultMode = &defaultMode
+		case v.ConfigMap != nil && v.ConfigMap.DefaultMode == nil:
+			v.ConfigMap.DefaultMode = &defaultMode
+		case v.DownwardAPI != nil && v.DownwardAPI.DefaultMode == nil:
+			v.DownwardAPI.DefaultMode = &defaultMode
+		case v.Projected != nil && v.Projected.DefaultMode == nil:
+			v.Projected.DefaultMode = &defaultMode
+		}
+	}
+	for _, containers := range [][]corev1.Container{spec.InitContainers, spec.Containers} {
+		for i := range containers {
+			c := &containers[i]
+			if c.TerminationMessagePath == "" {
+				c.TerminationMessagePath = corev1.TerminationMessagePathDefault
+			}
+			if c.TerminationMessagePolicy == "" {
+				c.TerminationMessagePolicy = corev1.TerminationMessageReadFile
+			}
+			for j := range c.Ports {
+				if c.Ports[j].Protocol == "" {
+					c.Ports[j].Protocol = corev1.ProtocolTCP
+				}
+			}
+			for j := range c.Env {
+				if f := c.Env[j].ValueFrom; f != nil && f.FieldRef != nil && f.FieldRef.APIVersion == "" {
+					f.FieldRef.APIVersion = "v1"
+				}
+			}
+		}
+	}
+	if spec.SecurityContext == nil {
+		spec.SecurityContext = &corev1.PodSecurityContext{}
+	}
+}

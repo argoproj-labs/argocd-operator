@@ -22,6 +22,7 @@ import (
 
 	routev1 "github.com/openshift/api/route/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -143,6 +144,7 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 	if err != nil {
 		return err
 	}
+	orig := route.DeepCopy()
 	if found {
 		if !cr.Spec.Server.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
@@ -244,6 +246,9 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 		argoutil.LogResourceCreation(log, route)
 		return r.Create(context.TODO(), route)
 	}
+	if equality.Semantic.DeepEqual(orig, route) {
+		return nil
+	}
 	argoutil.LogResourceUpdate(log, route)
 	return r.Update(context.TODO(), route)
 }
@@ -282,6 +287,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 	if err != nil {
 		return err
 	}
+	orig := route.DeepCopy()
 
 	if found {
 		if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.WebhookServer.Route.Enabled {
@@ -412,6 +418,9 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 	if !found {
 		argoutil.LogResourceCreation(log, route)
 		return r.Create(context.TODO(), route)
+	}
+	if equality.Semantic.DeepEqual(orig, route) {
+		return nil
 	}
 	argoutil.LogResourceUpdate(log, route)
 	return r.Update(context.TODO(), route)

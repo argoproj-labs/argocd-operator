@@ -139,9 +139,12 @@ func checkExpectedDeploymentValues(t *testing.T, r *ReconcileArgoCD, deployment 
 
 	containerWant, err := r.applicationSetContainer(a, false)
 	assert.NoError(t, err)
-	want := []v1.Container{containerWant}
+	want := v1.PodSpec{Containers: []v1.Container{containerWant}}
+	got := deployment.DeepCopy().Spec.Template.Spec
+	argoutil.SetPodSpecDefaults(&want)
+	argoutil.SetPodSpecDefaults(&got)
 
-	if diff := cmp.Diff(want, deployment.Spec.Template.Spec.Containers); diff != "" {
+	if diff := cmp.Diff(want.Containers, got.Containers); diff != "" {
 		t.Fatalf("failed to reconcile applicationset-controller deployment containers:\n%s", diff)
 	}
 
@@ -212,7 +215,9 @@ func checkExpectedDeploymentValues(t *testing.T, r *ReconcileArgoCD, deployment 
 		volumes = append(volumes, *extraVolumes...)
 	}
 
-	if diff := cmp.Diff(volumes, deployment.Spec.Template.Spec.Volumes); diff != "" {
+	want.Volumes = volumes
+	argoutil.SetPodSpecDefaults(&want)
+	if diff := cmp.Diff(want.Volumes, got.Volumes); diff != "" {
 		t.Fatalf("failed to reconcile applicationset-controller deployment volumes:\n%s", diff)
 	}
 
@@ -1300,8 +1305,15 @@ func TestArgoCDApplicationSetEnv(t *testing.T) {
 		},
 		deployment))
 
+	// The fake client applies no API defaults; normalize both sides like a real API server would.
+	withDefaults := func(env []v1.EnvVar) []v1.EnvVar {
+		spec := (&v1.PodSpec{Containers: []v1.Container{{Env: env}}}).DeepCopy()
+		argoutil.SetPodSpecDefaults(spec)
+		return spec.Containers[0].Env
+	}
+
 	expectedEnv := append(defaultEnv, customEnv...)
-	assert.Equal(t, expectedEnv, deployment.Spec.Template.Spec.Containers[0].Env)
+	assert.Equal(t, withDefaults(expectedEnv), withDefaults(deployment.Spec.Template.Spec.Containers[0].Env))
 
 	// Remove all the env vars that were added.
 	a.Spec.ApplicationSet.Env = []v1.EnvVar{}
@@ -1315,7 +1327,7 @@ func TestArgoCDApplicationSetEnv(t *testing.T) {
 		},
 		deployment))
 
-	assert.Equal(t, defaultEnv, deployment.Spec.Template.Spec.Containers[0].Env)
+	assert.Equal(t, withDefaults(defaultEnv), withDefaults(deployment.Spec.Template.Spec.Containers[0].Env))
 }
 
 func TestArgoCDApplicationSet_getApplicationSetSourceNamespaces(t *testing.T) {
