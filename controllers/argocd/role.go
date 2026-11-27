@@ -8,6 +8,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -207,7 +208,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 		}
 
 		// if the Rules differ, update the Role
-		if !reflect.DeepEqual(existingRole.Rules, role.Rules) {
+		if !equality.Semantic.DeepEqual(existingRole.Rules, role.Rules) {
 			existingRole.Rules = role.Rules
 			argoutil.LogResourceUpdate(log, &existingRole, "updating policy rules")
 			if err := r.Update(context.TODO(), &existingRole); err != nil {
@@ -308,7 +309,7 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 		}
 
 		// if the Rules differ, update the Role
-		if !created && !reflect.DeepEqual(existingRole.Rules, role.Rules) {
+		if !created && !equality.Semantic.DeepEqual(existingRole.Rules, role.Rules) {
 			existingRole.Rules = role.Rules
 			argoutil.LogResourceUpdate(log, &existingRole, "updating policy rules")
 			if err := r.Update(context.TODO(), &existingRole); err != nil {

@@ -869,7 +869,11 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 				},
 				deployment))
 
-			assert.Equal(t, test.wantPodSpec, deployment.Spec.Template.Spec)
+			// The fake client applies no API defaults; normalize both sides like a real API server would.
+			want := test.wantPodSpec.DeepCopy()
+			argoutil.SetPodSpecDefaults(want)
+			argoutil.SetPodSpecDefaults(&deployment.Spec.Template.Spec)
+			assert.Equal(t, *want, deployment.Spec.Template.Spec)
 		})
 	}
 }

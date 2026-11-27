@@ -1992,6 +1992,9 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 		NodeSelector:       common.DefaultNodeSelector(),
 	}
 
+	// The fake client applies no API defaults; normalize both sides like a real API server would.
+	argoutil.SetPodSpecDefaults(&want)
+	argoutil.SetPodSpecDefaults(&deployment.Spec.Template.Spec)
 	assert.Equal(t, want, deployment.Spec.Template.Spec)
 }
 
